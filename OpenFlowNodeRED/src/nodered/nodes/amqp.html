@@ -1,0 +1,153 @@
+<script type="text/x-red" data-template-name="amqp-connection">
+    <div class="form-row">
+        <label><i class="icon-host"></i> Host</label>
+        <input type="text" id="node-config-input-host">
+    </div>
+    <div class="form-row">
+        <label><i class="icon-bookmark"></i> Username</label>
+        <input type="text" id="node-config-input-username">
+    </div>
+    <div class="form-row">
+        <label><i class="icon-bookmark"></i> Password</label>
+        <input type="password" id="node-config-input-password">
+    </div>
+</script>
+<script type="text/javascript">
+    RED.nodes.registerType('amqp-connection',{
+        category: 'config',
+        defaults: {
+            host: { value: "", required:true },
+        },
+        credentials: {
+            username: { type:"text" },
+            password: { type: "password" }
+        },
+        label: function() {
+            return this.host || "amqp credentials";
+        }
+    });
+</script>
+
+
+<script type="text/x-red" data-template-name="amqp consumer">
+    <!-- readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" -->
+    <div class="form-row">
+        <label for="node-input-config"><i class="fa fa-globe"></i> Config</label>
+        <input type="text" id="node-input-config">
+    </div>
+    <div class="form-row">
+        <label ><i class="fa fa-tag"></i> Queue name</label>
+        <input type="text" id="node-input-queue" placeholder="Queue name">
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-tag"></i> Auto acknowledgment</label>
+        <input type="checkbox" id="node-input-noack" style="width: auto;">
+    </div>
+    <div class="form-row">
+        <label ><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Node name">
+    </div>
+</script>
+<script type="text/x-red" data-help-name="amqp consumer">
+AMQP consumer, listening for messages
+</script>
+<script type="text/javascript">
+    RED.nodes.registerType('amqp consumer', {
+        category: 'amqp',
+        color: "#a6bbcf",
+        defaults: {
+            queue: { value: "", required:true },
+            noack: { value: true, required:true },
+            name: { value: "" },
+            config: {value:"",type:"amqp-connection", required:true}
+        },
+        inputs: 0,
+        outputs: 1,
+        icon: "bridge.png",
+        label: function () {
+            return this.name || "amqp consumer";
+        },
+        labelStyle: function () {
+            return this.name ? "node_label_italic" : "";
+        },
+
+    });
+</script>
+
+
+
+
+<script type="text/x-red" data-template-name="amqp publisher">
+    <!-- readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" -->
+    <div class="form-row">
+        <label for="node-input-config"><i class="fa fa-globe"></i> Config</label>
+        <input type="text" id="node-input-config">
+    </div>
+    <div class="form-row">
+        <label ><i class="fa fa-tag"></i> Queue name</label>
+        <input type="text" id="node-input-queue" placeholder="Queue name">
+    </div>
+    <div class="form-row">
+        <label ><i class="fa fa-tag"></i> Local queue name</label>
+        <input type="text" id="node-input-localqueue" placeholder="Queue name">
+    </div>
+    <div class="form-row">
+        <label ><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Node name">
+    </div>
+</script>
+<script type="text/x-red" data-help-name="amqp publisher">
+AMQP publisher, sends messages to queue. queue is the exchange to send message too.
+localqueue is this nodes personal queue, leave blank for auto generated ( will change on every restart/Deploy )
+</script>
+<script type="text/javascript">
+    RED.nodes.registerType('amqp publisher', {
+        category: 'amqp',
+        color: "#a6bbcf",
+        defaults: {
+            queue: { value: "", required:true },
+            localqueue: { value: "" },
+            config: {value:"",type:"amqp-connection", required:true}
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "bridge.png",
+        label: function () {
+            return this.name || "amqp publisher";
+        },
+        labelStyle: function () {
+            return this.name ? "node_label_italic" : "";
+        },
+
+    });
+</script>
+
+
+
+<script type="text/x-red" data-template-name="amqp acknowledgment">
+    <div class="form-row">
+        <label ><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Node name">
+    </div>
+</script>
+<script type="text/x-red" data-help-name="amqp acknowledgment">
+Acknowledgment processing a AMQP message.
+</script>
+<script type="text/javascript">
+    RED.nodes.registerType('amqp acknowledgment', {
+        category: 'amqp',
+        color: "#a6bbcf",
+        defaults: {
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "bridge.png",
+        label: function () {
+            return this.name || "amqp acknowledgment";
+        },
+        labelStyle: function () {
+            return this.name ? "node_label_italic" : "";
+        },
+
+    });
+</script>

@@ -1,0 +1,53 @@
+<div class="starter-template">
+  <h1 translate lib="web">entities</h1>
+</div>
+<div class="row">
+  <div class="col-md-6">
+    <div class="btn-group" role="group">
+      <a ng-href="#/Entities/entities" class="btn btn-info" translate lib="web">entities</a>
+      <a ng-href="#/Entities/config" class="btn btn-info" translate lib="web">config</a>
+      <a ng-href="#/Entities/nodered" class="btn btn-info" translate lib="web">nodered</a>
+      <a ng-href="#/Entities/openrpa" class="btn btn-info" translate lib="web">openrpa</a>
+      <a ng-href="#/Entities/users" class="btn btn-info" translate lib="web">users</a>
+      <a ng-href="#/Entities/audit" class="btn btn-info" translate lib="web">audit</a>
+      <input type="button" value="empty" ng-click="ctrl.DeleteMany()" class="btn btn-secondary"
+        ng-disabled="ctrl.loading==true" translate lib="web" />
+    </div>
+  </div>
+  <div class="col-md-6 text-right">
+    <a ng-href="#/Entity/{{ctrl.collection}}" class="btn btn-info" translate lib="web">addentity</a>
+  </div>
+</div>
+
+<table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;">
+  <thead class="thead-dark">
+    <tr>
+      <th ng-click="ctrl.ToggleOrder('name')"><b translate lib="web">name</b></th>
+      <th ng-click="ctrl.ToggleOrder('_type')"><b translate lib="web">type</b></th>
+      <th ng-click="ctrl.ToggleOrder('_createdby')"><b translate lib="web">createdby</b></th>
+      <th ng-click="ctrl.ToggleOrder('_created')"><b translate lib="web">created</b></th>
+      <th ng-click="ctrl.ToggleOrder('_modified')"><b translate lib="web">updated</b></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr ng-repeat="model in ctrl.models">
+      <td>{{model.name}}</td>
+      <td><span translate lib="web">{{model.type || model._type}}</span></td>
+      <td>{{model._createdby}}</td>
+      <td>
+        <timesince ng-model="model._created" />
+      </td>
+      <td>
+        <timesince ng-model="model._modified" />
+      </td>
+      <td class="btn-cell">
+        <a ng-href="#/Entity/{{ctrl.collection}}/{{model._id}}" translate lib="web">edit</a>
+      </td>
+      <td class="btn-cell">
+        <a href ng-click="ctrl.DeleteOne(model)" ng-disabled="ctrl.loading==true" translate lib="web">delete</a>
+      </td>
+    </tr>
+  </tbody>
+</table>

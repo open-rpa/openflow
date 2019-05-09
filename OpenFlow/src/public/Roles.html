@@ -1,0 +1,30 @@
+<div class="starter-template">
+  <h1>Roles</h1>
+</div>
+<div class="col-sm-12 text-right">
+  <a href="#/Role" class="btn btn-info" data-i18n="common.addentity">Add role</a>
+</div>
+<table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;">
+  <thead class="thead-dark">
+    <tr>
+      <th ng-click="ctrl.ToggleOrder('name')"><b data-i18n="common.name">name</b></th>
+      <th ng-click="ctrl.ToggleOrder('_created')"><b data-i18n="common.name">created</b></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr ng-repeat="model in ctrl.models">
+      <td>{{model.name}}</td>
+      <td>
+        <timesince ng-model="model._created" />
+      </td>
+      <td class="btn-cell">
+        <a ng-href="#/Role/{{model._id}}">edit</a>
+      </td>
+      <td class="btn-cell">
+        <a href ng-click="ctrl.DeleteOne(model)" ng-disabled="ctrl.loading==true">Delete</a>
+      </td>
+    </tr>
+  </tbody>
+</table>

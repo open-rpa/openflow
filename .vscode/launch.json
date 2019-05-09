@@ -1,0 +1,63 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "node",
+            "request": "attach",
+            "name": "Attach to Remote",
+            "address": "demo1red.openrpa.dk",
+            "port": 5858,
+            "localRoot": "${workspaceFolder}/OpenFlowNodeRED/dist",
+            "remoteRoot": "/data"
+        },
+        {
+            "name": "Launch index.html",
+            "type": "chrome",
+            "request": "launch",
+            "url": "https://localhost.openrpa.dk:3000/",
+            "webRoot": "${workspaceFolder}/dist/Public/index.html"
+        },
+        {
+            "args": [],
+            "cwd": "${workspaceRoot}",
+            "envFile": "${workspaceFolder}/config/.env",
+            "name": "OpenFlow",
+            "outFiles": [
+                "${workspaceRoot}/dist/**/*"
+            ],
+            "outputCapture": "std",
+            "preLaunchTask": "openflow-tsc-watch",
+            "program": "${workspaceRoot}/OpenFlow/src/index.ts",
+            "request": "launch",
+            "runtimeArgs": [
+                "--nolazy"
+            ],
+            "trace": true,
+            "runtimeExecutable": null,
+            "sourceMaps": true,
+            "stopOnEntry": false,
+            "type": "node"
+        },
+        {
+            "args": [],
+            "cwd": "${workspaceRoot}",
+            "envFile": "${workspaceFolder}/config/.env",
+            "name": "OpenFlowNodeRED",
+            "outFiles": [
+                "${workspaceRoot}/OpenFlowNodeRED/dist/**/*"
+            ],
+            "outputCapture": "std",
+            "preLaunchTask": "openflownodered-tsc-watch",
+            "program": "${workspaceRoot}/OpenFlowNodeRED/src/index.ts",
+            "request": "launch",
+            "runtimeArgs": [
+                "--nolazy"
+            ],
+            "trace": true,
+            "runtimeExecutable": null,
+            "sourceMaps": true,
+            "stopOnEntry": false,
+            "type": "node"
+        }
+    ]
+}

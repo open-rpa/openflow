@@ -1,0 +1,62 @@
+{
+    "sitename": "OpenFlow",
+    "home": "Home",
+    "entities": "Entities",
+    "admin": "Admin",
+    "users": "Users",
+    "roles": "Roles",
+    "providers": "Providers",
+    "provider": "Provider",
+    "session": "Session",
+    "flow": "Flow",
+    "setting": "Setting",
+    "credential": "Credential",
+    "logout": "Sign out",
+    "signin": "Sign in",
+    "username": "Username",
+    "password": "Password",
+
+    "insert": "Insert",
+    "edit": "Edit",
+    "update": "Update",
+    "delete": "Delete",
+    "insertone": "Insert one",
+    "insertmany": "Insert many",
+    "deletemany": "Delete many",
+    
+    "created": "Created",
+    "createdby": "Created by",
+    "updated": "Updated",
+    "updatedby": "Updated by",
+    "name": "Name",
+    "type": "Type",
+
+    "config": "Config",
+    "nodered": "NodeRed",
+    "openrpa": "OpenRPA",
+    "audit": "Audit",
+    "empty": "Empty",
+    "clear": "Clear",
+    "addentity": "Add entity",
+
+    "unknown": "Unknown",
+    "details": "Details",
+    "detailsfor": "Details for",
+    "showjson": "Show json",
+    "save": "Save",
+    
+    "addprovider": "Add Provider",
+    
+
+    "yes": "Yes",
+    "no": "No",
+    "open": "Open",
+    "state": "State",
+    "text": "Text",
+    
+    "takenby": "Updated",
+ 
+
+
+    "helloworld": "Hello world"
+}

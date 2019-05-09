@@ -1,0 +1,51 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558 
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "tsc-watch-all",
+            "command": "echo",
+            "type": "shell",
+            "args": [ "echo1" ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "dependsOn":["gulp-task", "openflow-tsc-watch", "openflownodered-tsc-watch"]
+        },
+        {
+            "label": "gulp-task",
+            "command": "gulp",
+            "args": ["--no-color"]
+        },
+        {
+            "label": "openflow-tsc-watch",
+            "type": "typescript",
+            "tsconfig": "OpenFlow\\tsconfig.json",
+            "option": "watch",
+            "problemMatcher": [
+                "$tsc-watch"
+            ]
+        },
+        {
+            "label": "openflownodered-tsc-watch",
+            "type": "typescript",
+            "tsconfig": "OpenFlowNodeRED\\tsconfig.json",
+            "option": "watch",
+            "problemMatcher": [
+                "$tsc-watch"
+            ]
+        }
+        // {
+        //     "label": "openflowweb-tsc-watch",
+        //     "type": "typescript",
+        //     "tsconfig": "OpenFlowWeb\\tsconfig.json",
+        //     "option": "watch",
+        //     "problemMatcher": [
+        //         "$tsc-watch"
+        //     ]
+        // }
+
+    ]
+}

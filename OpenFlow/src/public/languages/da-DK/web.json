@@ -1,0 +1,63 @@
+{
+    "sitename": "OpenFlow",
+    "home": "Hjem",
+    "entities": "Objekter",
+    "admin": "Admin",
+    "users": "Brugere",
+    "roles": "Roller",
+    "providers": "Udbydere",
+    "provider": "Udbyder",
+    "session": "Session",
+    "flow": "Flow",
+    "setting": "Indstilling",
+    "credential": "Legitimation",
+    "logout": "Logud",
+    "signin": "Login",
+    "username": "Brugernavn",
+    "password": "Kodeord",
+
+    "insert": "Indsæt",
+    "edit": "Rediger",
+    "update": "Opdater",
+    "delete": "Slet",
+    "insertone": "Indsæt en",
+    "insertmany": "Indsæt mange",
+    "deletemany": "Slet mange",
+    
+    "created": "Oprettet",
+    "createdby": "Oprettet af",
+    "updated": "Opdateret",
+    "updatedby": "Opdateret af",
+    "name": "Navn",
+    "type": "Type",
+
+    "config": "Konfig",
+    "nodered": "NodeRed",
+    "openrpa": "OpenRPA",
+    "audit": "Log",
+    "empty": "Tøm",
+    "clear": "Tøm",
+    "addentity": "Indsæt objekt",
+
+    "unknown": "Ukendt",
+    "details": "Detaljer",
+    "detailsfor": "Details for",
+    "showjson": "Vis json",
+    "save": "Gem",
+
+    "addprovider": "Tilføj Udbyder",
+
+
+
+    "yes": "Ja",
+    "no": "Nej",
+    "open": "Åben",
+    "state": "Status",
+    "text": "Tekst",
+    
+    "takenby": "Taget af",
+ 
+
+
+    "helloworld": "Hej verden"
+}

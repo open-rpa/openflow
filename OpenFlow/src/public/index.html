@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="webApp" data-framework="typescript">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>OpenFlow</title>
+  <style>
+    body {
+      padding-top: 65px;
+    }
+  </style>
+</head>
+
+<body ng-controller="MenuCtrl as menuctrl">
+  <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top" ng-show="menuctrl.signedin" >
+    <a class="navbar-brand" href="#"><span translate lib="web">sitename</span></a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" aria-expanded="false" data-target=".navbar-collapse"
+      aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse">
+      <ul class="navbar-nav mr-auto">
+        <li class="nav-item active">
+          <a class="nav-link" href="#/main"><span translate lib="web">home</span> <span class="sr-only">(current)</span></a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#/Entities/entities"><span translate lib="web">entities</span></a>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" data-toggle="dropdown" aria-haspopup="true"
+            aria-expanded="false" translate lib="web">admin</a>
+          <div class="dropdown-menu">
+            <a class="dropdown-item" href="#/Users"><span translate lib="web">users</span></a>
+            <a class="dropdown-item" href="#/Roles"><span translate lib="web">roles</span></a>
+            <a class="dropdown-item" href="#/Providers"><span translate lib="web">providers</span></a>
+          </div>
+        </li>
+      </ul>
+      <a href="/Signout" class="btn btn-outline-secondary"><span translate lib="web">logout</span> {{menuctrl.user.name || menuctrl.user.username }}</a>
+    </div>
+  </nav>
+  
+  <main role="main" class="container" ng-show="menuctrl.signedin || menuctrl.path=='/Login'">
+    <div ng-view class="starter-template">
+    </div>
+  </main>
+
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+    integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.1/css/all.css" integrity="sha384-50oBUHEmvpQ+1lW4y57PTFmhCaXp0ML5d60M1M7uH2+nqUivzIebhndOJK28anvf" crossorigin="anonymous">
+
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.8/angular.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.8/angular-route.js"></script>
+  <script>
+    angular.lowercase = text => (text==undefined || text==null?"":text.toLowerCase());
+  </script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.1/angular-sanitize.min.js"></script>
+  <script src="angular-localization.min.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+    integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+    crossorigin="anonymous"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+    integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+    crossorigin="anonymous"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0/dist/Chart.min.js" integrity="sha256-Uv9BNBucvCPipKQ2NS9wYpJmi8DTOEfTA/nH2aoJALw=" crossorigin="anonymous"></script>
+
+  <script src="//cdn.jsdelivr.net/angular.chartjs/latest/angular-chart.min.js" crossorigin="anonymous"></script>
+
+  <script src="ReconnectingWebSocket.js"></script>
+  <script src="CommonControllers.js"></script>
+  <script src="Controllers.js"></script>
+  <script src="Message.js"></script>
+  <script src="WebSocketClient.js"></script>
+  <script src="app.js"></script>
+
+  <script>
+    $(function () {
+      var navMain = $(".navbar-collapse"); // avoid dependency on #id
+      // "a:not([data-toggle])" - to avoid issues caused
+      // when you have dropdown inside navbar
+      navMain.on("click", "a:not([data-toggle])", null, function () {
+        navMain.collapse('hide');
+      });
+    });
+  </script>
+  
+</body>
+
+</html>

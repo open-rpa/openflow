@@ -1,0 +1,56 @@
+<div class="row">
+    <div class="col-sm-7">
+        <h1 class="pagetitle" data-i18n="common.userdetails">User details</h1>
+    </div>
+</div>
+
+<pre ng-show="ErrorMessage!=null">{{ ErrorMessage }}</pre>
+<form ng-submit="ctrl.submit()" class="form-horizontal" role="form" autocomplete="off">
+
+    <div class="form-group">
+        <label for="name" class="col-sm-2 control-label" data-i18n="common.name">Name</label>
+        <div class="col-sm-4">
+            <input ng-model="ctrl.model.name" class="form-control input-md" ng-disabled="ctrl.loading==true" />
+        </div>
+    </div>
+    <div class="form-group">
+        <label for="username" class="col-sm-2 control-label" data-i18n="common.username">Username</label>
+        <div class="col-sm-4">
+            <input ng-model="ctrl.model.username" class="form-control input-md" ng-disabled="ctrl.loading==true" autocomplete="new-password" />
+        </div>
+    </div>
+    <div class="form-group">
+        <label for="newpassword" class="col-sm-2 control-label" data-i18n="common.newpassword">Password</label>
+        <div class="col-sm-4">
+            <input ng-model="ctrl.model.newpassword" type="password" class="form-control input-md" ng-disabled="ctrl.loading==true" />
+        </div>
+    </div>
+    <div class="form-group" ng-show="ctrl.model.sid != '' && ctrl.model.sid != null && ctrl.model.sid != undefined">
+        <label for="sid" class="col-sm-2 control-label" data-i18n="common.sid">SID</label>
+        <div class="col-sm-4">
+            <input ng-model="ctrl.model.sid" class="form-control input-md" ng-disabled="ctrl.loading==true" />
+        </div>
+    </div>
+    <div class="form-group" ng-show="ctrl.model.firebasetoken != '' && ctrl.model.firebasetoken != null && ctrl.model.firebasetoken != undefined">
+        <label for="sid" class="col-sm-2 control-label" data-i18n="common.sid">Firebase Token</label>
+        <div class="col-sm-4">
+            <input ng-model="ctrl.model.firebasetoken" class="form-control input-md" ng-disabled="ctrl.loading==true" />
+        </div>
+    </div>
+    <div class="form-group" ng-show="ctrl.model.onesignalid != '' && ctrl.model.onesignalid != null && ctrl.model.onesignalid != undefined">
+        <label for="sid" class="col-sm-2 control-label" data-i18n="common.sid">OneSignal Id</label>
+        <div class="col-sm-4">
+            <input ng-model="ctrl.model.onesignalid" class="form-control input-md" ng-disabled="ctrl.loading==true" />
+        </div>
+    </div>
+
+
+    <div class="form-group">
+        <div class="col-sm-offset-2 col-sm-10">
+            <button type="submit" ng-disabled="ctrl.loading==true" class="btn btn-success"
+                data-i18n="common.save">Save</button>
+        </div>
+    </div>
+
+
+</form>

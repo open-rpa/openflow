@@ -1,0 +1,70 @@
+<div class="row">
+    <div class="col-sm-7">
+        <h1 class="pagetitle" translate lib="web">provider</h1>
+    </div>
+</div>
+
+<pre ng-show="ErrorMessage!=null">{{ ErrorMessage }}</pre>
+<form ng-submit="ctrl.submit()" class="form-horizontal" role="form" autocomplete="off">
+
+    <div class="form-group">
+        <label for="provider" class="col-sm-2 control-label" data-i18n="common.provider">Provider</label>
+        <div class="col-sm-4">
+            <select class="form-control" ng-model="ctrl.model.provider">
+                <option value="saml">WS-Federation/SAML</option>
+                <option value="google">Google OAuth</option>
+                <option value="local">Username/Password</option>
+            </select>
+        </div>
+    </div>
+    <div class="form-group">
+        <label for="name" class="col-sm-2 control-label" data-i18n="common.name">Name</label>
+        <div class="col-sm-4">
+            <input ng-model="ctrl.model.name" class="form-control input-md" ng-disabled="ctrl.loading==true" />
+        </div>
+    </div>
+    <div class="form-group" ng-show="ctrl.model.provider!='local'">
+        <label for="id" class="col-sm-2 control-label" data-i18n="common.id">Id</label>
+        <div class="col-sm-4">
+            <input ng-model="ctrl.model.id" class="form-control input-md" ng-disabled="ctrl.loading==true" />
+        </div>
+    </div>
+    <div class="form-group" ng-show="ctrl.model.provider=='saml'">
+        <label for="issuer" class="col-sm-2 control-label" data-i18n="common.issuer">Issuer</label>
+        <div class="col-sm-4">
+            <input ng-model="ctrl.model.issuer" class="form-control input-md" ng-disabled="ctrl.loading==true" />
+        </div>
+    </div>
+    <div class="form-group" ng-show="ctrl.model.provider=='saml'">
+        <label for="saml_federation_metadata" class="col-sm-2 control-label"
+            data-i18n="common.saml_federation_metadata">Metadata url</label>
+        <div class="col-sm-4">
+            <input ng-model="ctrl.model.saml_federation_metadata" class="form-control input-md"
+                ng-disabled="ctrl.loading==true" />
+        </div>
+    </div>
+    <div class="form-group" ng-show="ctrl.model.provider=='google'">
+        <label for="consumerKey" class="col-sm-2 control-label" data-i18n="common.consumerKey">Consumer key</label>
+        <div class="col-sm-4">
+            <input ng-model="ctrl.model.consumerKey" class="form-control input-md" ng-disabled="ctrl.loading==true" />
+        </div>
+    </div>
+    <div class="form-group" ng-show="ctrl.model.provider=='google'">
+        <label for="consumerSecret" class="col-sm-2 control-label" data-i18n="common.consumerSecret">Consumer
+            secret</label>
+        <div class="col-sm-4">
+            <input ng-model="ctrl.model.consumerSecret" class="form-control input-md"
+                ng-disabled="ctrl.loading==true" />
+        </div>
+    </div>
+
+
+    <div class="form-group">
+        <div class="col-sm-offset-2 col-sm-10">
+            <button type="submit" ng-disabled="ctrl.loading==true" class="btn btn-success"
+                data-i18n="common.save">Save</button>
+        </div>
+    </div>
+
+
+</form>

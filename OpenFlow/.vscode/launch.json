@@ -1,0 +1,28 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "args": [],
+            "cwd": "${workspaceRoot}",
+            "env": {
+                "NODE_ENV": "development"
+            },
+            "name": "OpenFlow",
+            "outFiles": [
+                "${workspaceRoot}/../dist/**/*"
+            ],
+            "outputCapture": "std",
+            "preLaunchTask": "nb-tsc-watch",
+            "program": "${workspaceRoot}/src/index.ts",
+            "request": "launch",
+            "runtimeArgs": [
+                "--nolazy"
+            ],
+            "trace": true,
+            "runtimeExecutable": null,
+            "sourceMaps": true,
+            "stopOnEntry": false,
+            "type": "node"
+        }
+    ]
+}

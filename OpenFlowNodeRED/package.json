@@ -1,0 +1,34 @@
+{
+  "name": "openflownodered",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/amqplib": "^0.5.11",
+    "@types/compression": "0.0.36",
+    "@types/node": "^11.13.0",
+    "amqplib": "^0.5.3",
+    "async-retry": "^1.2.3",
+    "body-parser": "^1.18.3",
+    "bson": "^4.0.2",
+    "compression": "^1.7.4",
+    "cookie-parser": "^1.4.4",
+    "cookie-session": "^1.3.3",
+    "express": "^4.16.4",
+    "gulp-shell": "^0.7.0",
+    "jsonwebtoken": "^8.5.1",
+    "node-red": "^0.20.5",
+    "passport-google-oauth20": "^2.0.0",
+    "passport-openid-connect": "^0.1.0",
+    "passport-saml": "^1.0.0",
+    "passport-saml-metadata": "^1.6.0",
+    "ssl-root-cas": "^1.3.1",
+    "winston": "^3.2.1",
+    "xml-crypto": "^1.3.0"
+  }
+}

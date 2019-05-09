@@ -1,0 +1,36 @@
+        async Projection():Promise<void> {
+            var q: QueryMessage = new QueryMessage();
+            q.collectionname = "entities"; q.query = {}; q.projection = {name:1, username:1};
+            var msg:Message  = new Message(); msg.command = "query"; msg.data = JSON.stringify(q);
+            q = await this.WebSocketClient.Send<QueryMessage>(msg);
+        }
+        async Aggregate():Promise<void> {
+            var month:number = 5;
+            var aggregates:object[] = [
+                { $match: { $and: [{ "started": { "$exists": true, "$type": 9 } }, { _type: { $ne: "system" } }] } },
+                {
+                    "$project": {
+                        hours: { $divide: [{ $subtract: ["$completed", "$started"] }, 3600000] },
+                        seconds: { $divide: [{ $subtract: ["$completed", "$started"] }, 1000] },
+                        "y": { $year: "$completed" },
+                        "m": { $month: "$completed" },
+                        "d": { $dayOfMonth: "$completed" }
+                    }
+                },
+                { $match: { "m": month } },
+                {
+                    $group: {
+                        _id: { "year": "$y", "month": "$m", "day": "$d", "_type": "_type" },
+                        count: { $sum: 1 },
+                        avg: { $avg: "$seconds" },
+                        min: { $min: "$seconds" },
+                        max: { $max: "$seconds" }
+                    }
+                }
+            ];
+            var q: AggregateMessage = new AggregateMessage();
+            q.collectionname = "entities";
+            q.aggregates = aggregates;
+            var msg:Message  = new Message(); msg.command = "aggregate"; msg.data = JSON.stringify(q);
+            q = await this.WebSocketClient.Send<AggregateMessage>(msg);
+        }
