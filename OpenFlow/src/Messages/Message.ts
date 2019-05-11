@@ -53,7 +53,11 @@ export class Message {
                 if(this.replyto!==null && this.replyto!==undefined) {
                     var qmsg:QueuedMessage = cli.messageQueue[this.replyto];
                     if(qmsg!==undefined && qmsg !== null) {
-                        qmsg.message = Object.assign(qmsg.message, JSON.parse(this.data));
+                        try {
+                            qmsg.message = Object.assign(qmsg.message, JSON.parse(this.data));
+                        } catch (error) {
+                            // TODO: should we set message to data ?
+                        }
                         if(qmsg.cb!==undefined && qmsg.cb !== null) { qmsg.cb(qmsg.message); }
                         delete cli.messageQueue[this.id];
                     }
