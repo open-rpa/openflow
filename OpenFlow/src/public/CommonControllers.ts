@@ -43,13 +43,13 @@ module openflow {
         }
     }
 
-    async function getString(locale: any, lib:string, key:string):Promise<string> {
+    async function getString(locale: any, lib: string, key: string): Promise<string> {
         return new Promise((resolve) => {
             try {
-                if(locale===null || locale === undefined) { return resolve();}
+                if (locale === null || locale === undefined) { return resolve(); }
                 locale.ready(lib).then(function () {
                     var value = locale.getString(lib + "." + key);
-                    if(value!==null && value!==undefined && value!== "") {
+                    if (value !== null && value !== undefined && value !== "") {
                         resolve(value);
                     } else {
                         resolve(key);
@@ -59,41 +59,73 @@ module openflow {
             }
         });
     }
-
+    var global_translate_notfound:string[] = [];
     export class translate implements ng.IDirective {
         require = '?ngModel';
         replace = true;
-        value: string = "";
-        result: string = "";
+        
         constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService, public locale) {
         }
         link: ng.IDirectiveLinkFn = (scope: ng.IScope, element: ng.IAugmentedJQuery, attr: ng.IAttributes, ngModelCtrl: any) => {
-            var calculateValue = async (value) => {
-                var lib = (attr.lib?attr.lib:"common");
-                if (value.startsWith(lib + ".")) { return; }
+            var calculateValue = (value:string):string => {
+                if (value === null || value === undefined || value ==="") return value;
+                var lib = (attr.lib ? attr.lib : "common");
+                if ((value.toString()).startsWith(lib + ".")) { return; }
                 var key: string = (lib + "." + value).toLowerCase();
-                this.result = await getString(this.locale, lib, value);
-                // this.result = this.locale.getString(key);
-                // console.log(key + "=" + this.result);
-
-                if (this.result == "%%KEY_NOT_FOUND%%" || this.result == "") {
-                    this.result = value;
+                var result = this.locale.getString(key);
+                if(result.startsWith(lib + ".")) { result = result.slice( (lib + ".").length); }
+                // var result = await getString(this.locale, lib, value);
+                if (result == "%%KEY_NOT_FOUND%%" || result == "") {
+                    if(global_translate_notfound.indexOf(lib + "." + value)===-1) {
+                        global_translate_notfound.push(lib + "." + value);
+                        console.log("KEY_NOT_FOUND " + lib + "." + value);
+                    }
+                    result = value;
                 }
-                element.text(this.result);
-                if(value == attr.value) {
-                    attr.$set('value', this.result);
-                }
+                
+                return result;
             };
-            scope.$watch("name", () => {
-                this.value = attr.value;
-                if (ngModelCtrl !== null) { this.value = ngModelCtrl.$viewValue; }
-                if (this.value === null || this.value === undefined) { this.value = ""; }
-                this.value = this.value.trim();
-                if (this.value === "") { this.value = element.text(); }
-                if (this.value === null || this.value === undefined) { this.value = ""; }
-                this.value = this.value.trim();
-                if(this.value!=="") { calculateValue(this.value); }
-                return this.value.trim();
+            var lib = (attr.lib ? attr.lib : "common");
+            this.locale.ready(lib).then(() => {
+                var value:string = null;
+                if (ngModelCtrl !== null) {
+                    ngModelCtrl.$formatters.push(function (value) {
+                        return calculateValue(value);
+                    });
+                    // value = calculateValue(ngModelCtrl.$viewValue);
+                    // ngModelCtrl.$setViewValue(this.result);
+                    // ngModelCtrl.$render();
+                } else {
+                    var hashCode = (s:string) => {
+                        return s.split("").reduce(function(a,b){a=((a<<5)-a)+b.charCodeAt(0);return a&a},0);              
+                      }
+                    var watchFunction = () => {
+                        if (attr.value !== null && attr.value !== undefined) {
+                            return hashCode(attr.value);
+                        } else {
+                            var value = element.text();
+                            if (value !== null || value !== undefined) {
+                                return hashCode(value);
+                            }
+                            return value;
+                        }
+                    };
+                    // attrs.$observe('i18n', function (newVal, oldVal) {
+                    // });
+                    //scope.$watch(watchFunction, () => {
+                        if (attr.value !== null && attr.value !== undefined) {
+                            value = calculateValue(attr.value);
+                            attr.$set('value', value);
+                        } else {
+                            value = element.text();
+                            if (value !== null || value !== undefined) {
+                                var result = calculateValue(value);
+                                // console.log(value + "=" + result);
+                                element.text(result);
+                            }
+                        }
+                    //});
+                }
             });
         }
         static factory(): ng.IDirectiveFactory {
