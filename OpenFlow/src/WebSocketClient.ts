@@ -83,10 +83,12 @@ export class WebSocketClient {
         this.consumers = [];
     }
     public async CreateConsumer(queuename:string):Promise<void> {
+        var autoDelete:boolean = false;
+        if(queuename===null || queuename === undefined || queuename === "") { queuename = "web." + Math.random().toString(36).substr(2, 9); autoDelete = true; }
         var consumer = new amqp_consumer(this._logger, Config.amqp_url, queuename);
         consumer.OnMessage = this.OnMessage.bind(this);
         this.consumers.push(consumer);
-        await consumer.connect(false);
+        await consumer.connect(false, true);
     }
     public async CloseConsumer(queuename:string):Promise<void> {
         var index = -1;
@@ -188,7 +190,6 @@ export class WebSocketClient {
         });
     }
     private _Send(message: Message, cb: QueuedMessageCallback):void {
-        // console.log("SEND:::" + message.command);
         var messages: string[] = this.chunkString(message.data, 500);
         if(messages===null || messages===undefined || messages.length === 0) {
             var singlemessage: SocketMessage = SocketMessage.frommessage(message, "", 1, 0);
@@ -225,7 +226,7 @@ export class WebSocketClient {
         q.data = data; q.replyto = replyTo;
         q.correlationId = correlationId; q.queuename = queuename;
         let m: Message = Message.fromcommand("queuemessage");
-        q.correlationId = m.id;
+        if(q.correlationId === undefined || q.correlationId === null || q.correlationId === "") { q.correlationId = m.id; }
         m.data = JSON.stringify(q);
         q = await this.Send<QueueMessage>(m);
         return q.data;

@@ -11,7 +11,8 @@ module openflow {
         .controller("Providers", ProvidersCtrl)
         .directive("timesince", timesince.factory())
         .directive("translate", translate.factory())
-        .service("WebSocketClient", WebSocketClient);
+        .service("WebSocketClient", WebSocketClient)
+        .service("api", api);
         // .directive("todoBlur", todoBlur)
         // .directive("todoFocus", todoFocus)
         // .directive("todoEscape", todoEscape)
@@ -35,6 +36,8 @@ module openflow {
                 .when('/Entities/:collection', { templateUrl: 'Entities.html', controller: EntitiesCtrl, controllerAs: 'ctrl' })
                 .when('/Entity/:collection', { templateUrl: 'Entity.html', controller: EntityCtrl, controllerAs: 'ctrl' })
                 .when('/Entity/:collection/:id', { templateUrl: 'Entity.html', controller: EntityCtrl, controllerAs: 'ctrl' })
+
+                .when('/Socket', { templateUrl: 'Socket.html', controller: SocketCtrl, controllerAs: 'ctrl' })
 
                 .otherwise({ redirectTo: '/main' });
             }

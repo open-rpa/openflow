@@ -1,5 +1,69 @@
 module openflow {
     "use strict";
+
+
+    class messagequeue {
+        constructor(
+            public msg: QueueMessage,
+            public callback: any) {}
+    }
+    interface IHashTable<T> {
+        [key: string]: T;
+    }
+    export class api {
+        static $inject = ["$rootScope", "$location", "WebSocketClient"];
+        public messageQueue: IHashTable<messagequeue> = {};
+        constructor(public $rootScope:ng.IRootScopeService, public $location, public WebSocketClient:WebSocketClient) {
+
+            var cleanup = $rootScope.$on('queuemessage', (event, data:QueueMessage) => {
+                if (event && data) { }
+                if(this.messageQueue[data.correlationId] !== undefined) {
+                    this.messageQueue[data.correlationId].callback(data);
+                    delete this.messageQueue[data.correlationId];
+                }
+            });
+        }
+        async Insert(collection:string, model: any): Promise<any> {
+            var q: InsertOneMessage = new InsertOneMessage();
+            q.collectionname = collection; q.item = model;
+            var msg: Message = new Message(); msg.command = "insertone"; msg.data = JSON.stringify(q);
+            q = await this.WebSocketClient.Send<InsertOneMessage>(msg);
+            return q.result;
+        }
+        async Update(collection:string, model: any): Promise<any> {
+            var q: UpdateOneMessage = new UpdateOneMessage();
+            q.collectionname = collection; q.item = model;
+            var msg: Message = new Message(); msg.command = "updateone"; msg.data = JSON.stringify(q);
+            q = await this.WebSocketClient.Send<UpdateOneMessage>(msg);
+            return q.result;
+        }
+        async Delete(collection:string, model: any): Promise<void> {
+            var q: DeleteOneMessage = new DeleteOneMessage();
+            q.collectionname = collection; q._id = model._id;
+            var msg: Message = new Message(); msg.command = "deleteone"; msg.data = JSON.stringify(q);
+            q = await this.WebSocketClient.Send<DeleteOneMessage>(msg);
+        }
+
+        async _QueueMessage(queuename: string, data: any):Promise<QueueMessage> {
+            return new Promise<QueueMessage>(async (resolve, reject) => {
+                var q: QueueMessage = new QueueMessage();
+                q.correlationId = Math.random().toString(36).substr(2, 9);
+                q.queuename = queuename; q.data = JSON.stringify(data);
+                var msg:Message  = new Message(); msg.command = "queuemessage"; msg.data = JSON.stringify(q);
+                this.messageQueue[q.correlationId] = new messagequeue(q, (msgresult:QueueMessage)=> {
+                    resolve(msgresult);
+                });
+                await this.WebSocketClient.Send(msg);
+            });
+        }
+        async QueueMessage(queuename: string, data: any):Promise<any> {
+            var result:any = await this._QueueMessage(queuename, data);
+            var msg = JSON.parse(result.data);
+            return msg;
+        }
+
+    }
+
     function _timeSince(timeStamp) {
         var now: Date = new Date(),
             secondsPast: number = (now.getTime() - timeStamp.getTime()) / 1000;
@@ -146,13 +210,15 @@ module openflow {
             "$scope",
             "$location",
             "$routeParams",
-            "WebSocketClient"
+            "WebSocketClient",
+            "api"
         ];
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
-            public WebSocketClient: WebSocketClient
+            public WebSocketClient: WebSocketClient,
+            public api: api
         ) {
         }
         async loadData(): Promise<void> {
@@ -164,30 +230,7 @@ module openflow {
             this.models = q.result;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
-        async Insert(model: any): Promise<any> {
-            var q: InsertOneMessage = new InsertOneMessage();
-            // model.name = "Find me " + Math.random().toString(36).substr(2, 9);
-            q.collectionname = this.collection; q.item = model;
-            var msg: Message = new Message(); msg.command = "insertone"; msg.data = JSON.stringify(q);
-            q = await this.WebSocketClient.Send<InsertOneMessage>(msg);
-            return q.result;
-        }
-        async Update(model: any): Promise<any> {
-            var q: UpdateOneMessage = new UpdateOneMessage();
-            // model.name = "Find me " + Math.random().toString(36).substr(2, 9);
-            q.collectionname = this.collection; q.item = model;
-            var msg: Message = new Message(); msg.command = "updateone"; msg.data = JSON.stringify(q);
-            q = await this.WebSocketClient.Send<UpdateOneMessage>(msg);
-            return q.result;
-        }
-        async Delete(model: any): Promise<void> {
-            var q: DeleteOneMessage = new DeleteOneMessage();
-            q.collectionname = this.collection; q._id = model._id;
-            var msg: Message = new Message(); msg.command = "deleteone"; msg.data = JSON.stringify(q);
-            q = await this.WebSocketClient.Send<DeleteOneMessage>(msg);
-            // this.models = this.models.filter(function (m: any):boolean { return m._id!==model._id;});
-            // if (!this.$scope.$$phase) { this.$scope.$apply(); }
-        }
+
 
         ToggleOrder(field: string) {
             if (this.orderby[field] == undefined) {
@@ -218,13 +261,15 @@ module openflow {
             "$scope",
             "$location",
             "$routeParams",
-            "WebSocketClient"
+            "WebSocketClient", 
+            "api"
         ];
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
-            public WebSocketClient: WebSocketClient
+            public WebSocketClient: WebSocketClient,
+            public api: api
         ) {
             this.id = $routeParams.id;
             this.basequery = { _id: this.id };
@@ -238,28 +283,6 @@ module openflow {
             if (q.result.length > 0) { this.model = q.result[0]; }
             this.keys = Object.keys(this.model);
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
-        }
-        async Insert(model: any): Promise<any> {
-            var q: InsertOneMessage = new InsertOneMessage();
-            // model.name = "Find me " + Math.random().toString(36).substr(2, 9);
-            q.collectionname = this.collection; q.item = model;
-            var msg: Message = new Message(); msg.command = "insertone"; msg.data = JSON.stringify(q);
-            q = await this.WebSocketClient.Send<InsertOneMessage>(msg);
-            return q.result;
-        }
-        async Update(model: any): Promise<any> {
-            var q: UpdateOneMessage = new UpdateOneMessage();
-            // model.name = "Find me " + Math.random().toString(36).substr(2, 9);
-            q.collectionname = this.collection; q.item = model;
-            var msg: Message = new Message(); msg.command = "updateone"; msg.data = JSON.stringify(q);
-            q = await this.WebSocketClient.Send<UpdateOneMessage>(msg);
-            return q.result;
-        }
-        async Delete(model: any): Promise<void> {
-            var q: DeleteOneMessage = new DeleteOneMessage();
-            q.collectionname = this.collection; q._id = model._id;
-            var msg: Message = new Message(); msg.command = "deleteone"; msg.data = JSON.stringify(q);
-            q = await this.WebSocketClient.Send<DeleteOneMessage>(msg);
         }
     }
 }

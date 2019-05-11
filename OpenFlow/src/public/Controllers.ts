@@ -8,9 +8,10 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
-            public WebSocketClient: WebSocketClient
+            public WebSocketClient: WebSocketClient,
+            public api: api,
         ) {
-            super($scope, $location, $routeParams, WebSocketClient);
+            super($scope, $location, $routeParams, WebSocketClient, api);
             console.log("MainCtrl::constructor");
             WebSocketClient.onSignedin((user: TokenUser) => {
                 this.loadData();
@@ -20,7 +21,7 @@ module openflow {
         async InsertNew():Promise<void> {
             // this.loading = true;
             var model = {name: "Find me " + Math.random().toString(36).substr(2, 9), "temp": "hi mom"};
-            var result = await this.Insert(model);
+            var result = await this.api.Insert(this.collection, model);
             this.models.push(result);
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -29,7 +30,7 @@ module openflow {
             var index = this.models.indexOf(model);
             this.loading = true;
             model.name = "Find me " + Math.random().toString(36).substr(2, 9);
-            var newmodel = await this.Update(model);
+            var newmodel = await this.api.Update(this.collection, model);
             this.models = this.models.filter(function (m: any):boolean { return m._id!==model._id;});
             this.models.splice(index, 0, newmodel);
             this.loading = false;
@@ -37,7 +38,7 @@ module openflow {
         }
         async DeleteOne(model: any):Promise<any> {
             this.loading = true;
-            await this.Delete(model);
+            await this.api.Delete(this.collection, model);
             this.models = this.models.filter(function (m: any):boolean { return m._id!==model._id;});
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -151,6 +152,7 @@ module openflow {
                 if (event && data) { }
                 this.user = data.user;
                 this.signedin = true;
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 // cleanup();
             });
         }
@@ -165,9 +167,10 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
-            public WebSocketClient: WebSocketClient
+            public WebSocketClient: WebSocketClient,
+            public api
         ) {
-            super($scope, $location, $routeParams, WebSocketClient);
+            super($scope, $location, $routeParams, WebSocketClient, api);
             this.basequery = {_type: "provider"};
             this.collection = "config";
             WebSocketClient.onSignedin((user: TokenUser) => {
@@ -176,7 +179,7 @@ module openflow {
         }
         async DeleteOne(model: any):Promise<any> {
             this.loading = true;
-            await this.Delete(model);
+            await this.api.Delete(this.collection, model);
             this.models = this.models.filter(function (m: any):boolean { return m._id!==model._id;});
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -188,9 +191,10 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
-            public WebSocketClient: WebSocketClient
+            public WebSocketClient: WebSocketClient,
+            public api: api
         ) {
-            super($scope, $location, $routeParams, WebSocketClient);
+            super($scope, $location, $routeParams, WebSocketClient, api);
             this.collection = "config";
             WebSocketClient.onSignedin((user: TokenUser) => {
                 if (this.id !== null && this.id !== undefined) {
@@ -209,9 +213,9 @@ module openflow {
         }
         async submit():Promise<void> {
             if (this.model._id) {
-                await this.Update(this.model);
+                await this.api.Update(this.collection, this.model);
             } else {
-                await this.Insert(this.model);
+                await this.api.Insert(this.collection, this.model);
             }
             this.$location.path("/Providers");
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -226,9 +230,10 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
-            public WebSocketClient: WebSocketClient
+            public WebSocketClient: WebSocketClient,
+            public api: api
         ) {
-            super($scope, $location, $routeParams, WebSocketClient);
+            super($scope, $location, $routeParams, WebSocketClient, api);
             this.basequery = {_type: "user"};
             this.collection = "users";
             WebSocketClient.onSignedin((user: TokenUser) => {
@@ -237,7 +242,7 @@ module openflow {
         }
         async DeleteOne(model: any):Promise<any> {
             this.loading = true;
-            await this.Delete(model);
+            await this.api.Delete(this.collection, model);
             this.models = this.models.filter(function (m: any):boolean { return m._id!==model._id;});
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -248,9 +253,10 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
-            public WebSocketClient: WebSocketClient
+            public WebSocketClient: WebSocketClient,
+            public api:api
         ) {
-            super($scope, $location, $routeParams, WebSocketClient);
+            super($scope, $location, $routeParams, WebSocketClient, api);
             this.collection = "users";
             WebSocketClient.onSignedin((user: TokenUser) => {
                 if (this.id !== null && this.id !== undefined) {
@@ -269,9 +275,9 @@ module openflow {
         }
         async submit():Promise<void> {
             if (this.model._id) {
-                await this.Update(this.model);
+                await this.api.Update(this.collection, this.model);
             } else {
-                await this.Insert(this.model);
+                await this.api.Insert(this.collection, this.model);
             }
             this.$location.path("/Users");
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -288,9 +294,10 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
-            public WebSocketClient: WebSocketClient
+            public WebSocketClient: WebSocketClient,
+            public api:api
         ) {
-            super($scope, $location, $routeParams, WebSocketClient);
+            super($scope, $location, $routeParams, WebSocketClient, api);
             this.basequery = {_type: "role"};
             this.collection = "users";
             WebSocketClient.onSignedin((user: TokenUser) => {
@@ -299,7 +306,7 @@ module openflow {
         }
         async DeleteOne(model: any):Promise<any> {
             this.loading = true;
-            await this.Delete(model);
+            await this.api.Delete(this.collection, model);
             this.models = this.models.filter(function (m: any):boolean { return m._id!==model._id;});
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -312,9 +319,10 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
-            public WebSocketClient: WebSocketClient
+            public WebSocketClient: WebSocketClient,
+            public api:api
         ) {
-            super($scope, $location, $routeParams, WebSocketClient);
+            super($scope, $location, $routeParams, WebSocketClient, api);
             this.collection = "users";
             WebSocketClient.onSignedin(async (user: TokenUser) => {
                 if (this.id !== null && this.id !== undefined) {
@@ -353,9 +361,9 @@ module openflow {
         }
         async submit():Promise<void> {
             if (this.model._id) {
-                await this.Update(this.model);
+                await this.api.Update(this.collection, this.model);
             } else {
-                await this.Insert(this.model);
+                await this.api.Insert(this.collection, this.model);
             }
             this.$location.path("/Roles");
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -380,6 +388,37 @@ module openflow {
 
 
 
+    export class SocketCtrl {
+        public static $inject = [
+            "$scope",
+            "$location",
+            "$routeParams",
+            "WebSocketClient",
+            "api"
+        ];
+        public loading:boolean = false;
+        public messages:string = "";
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public WebSocketClient: WebSocketClient,
+            public api:api
+        ) {
+            WebSocketClient.onSignedin(async (user: TokenUser) => {
+                var q: RegisterQueueMessage = new RegisterQueueMessage();
+                var msg:Message  = new Message(); msg.command = "registerqueue"; msg.data = JSON.stringify(q);
+                await this.WebSocketClient.Send(msg);
+            });
+        }
+
+        async SendOne():Promise<void> {
+            var result:any = await this.api.QueueMessage("webtest", {payload: "hi mom"});
+            var msg = JSON.parse(result.data);
+            this.messages += msg.payload + "\n";
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+    }
 
 
     
@@ -390,27 +429,16 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
-            public WebSocketClient: WebSocketClient
+            public WebSocketClient: WebSocketClient, 
+            public api:api
         ) {
-            super($scope, $location, $routeParams, WebSocketClient);
+            super($scope, $location, $routeParams, WebSocketClient, api);
             this.basequery = {};
             this.collection = $routeParams.collection;
             this.baseprojection = {_type:1, type:1, name:1, _created:1, _createdby:1, _modified:1};
             WebSocketClient.onSignedin((user: TokenUser) => {
                 this.loadData();
             });
-        }
-        async DeleteOne(model:any) {
-            if(this.loading) { return; }
-            this.loading = true;
-            try {
-                await this.Delete(model);
-                this.models = this.models.filter(function (m: any):boolean { return m._id!==model._id;});
-            } catch (error) {
-                console.error(error);
-            }
-            this.loading = false;
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async DeleteMany():Promise<void> {
             this.loading = true;
@@ -440,9 +468,10 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
-            public WebSocketClient: WebSocketClient
+            public WebSocketClient: WebSocketClient,
+            public api:api
         ) {
-            super($scope, $location, $routeParams, WebSocketClient);
+            super($scope, $location, $routeParams, WebSocketClient, api);
             this.collection = $routeParams.collection;
             WebSocketClient.onSignedin(async (user: TokenUser) => {
                 if (this.id !== null && this.id !== undefined) {
@@ -485,9 +514,9 @@ module openflow {
                 this.model = JSON.parse(this.jsonmodel);
             }
                 if (this.model._id) {
-                await this.Update(this.model);
+                await this.api.Update(this.collection, this.model);
             } else {
-                await this.Insert(this.model);
+                await this.api.Insert(this.collection, this.model);
             }
             this.$location.path("/Entities/" + this.collection);
             if (!this.$scope.$$phase) { this.$scope.$apply(); }

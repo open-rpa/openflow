@@ -15,12 +15,12 @@ export class amqp_consumer  {
         this.queue = queue;
         this.connectionstring = connectionstring;
     }
-    async connect(autoack:boolean): Promise<void> {
+    async connect(autoack:boolean, autoDelete:boolean): Promise<void> {
         var me:amqp_consumer = this;
         this.conn = await amqplib.connect(this.connectionstring);
         this.conn.on("error", () => null);
         this.channel = await this.conn.createChannel();
-        this._ok = await this.channel.assertQueue(this.queue, { durable: false });
+        this._ok = await this.channel.assertQueue(this.queue, { durable: false, autoDelete: autoDelete });
         await this.channel.consume(this.queue, (msg)=> { this.OnMessage(me, msg); }, { noAck: autoack });
         this._logger.info("Connected to " + this.connectionstring);
     }

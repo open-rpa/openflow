@@ -203,6 +203,7 @@ module openflow {
                 if(first.count === msgs.length) {
                     if(msgs.length === 1) {
                         var singleresult: Message = Message.frommessage(first, first.data);
+                        this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage):boolean { return msg.id!==id;});
                         singleresult.Process(this);
                     } else {
                         var buffer: string = "";
@@ -210,6 +211,7 @@ module openflow {
                             if(msg.data!==null && msg.data !== undefined) { buffer += msg.data; }
                         });
                         var result: Message = Message.frommessage(first, buffer);
+                        this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage):boolean { return msg.id!==id;});
                         result.Process(this);
                     }
                     this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage):boolean { return msg.id!==id;});
