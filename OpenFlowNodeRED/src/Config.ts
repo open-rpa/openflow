@@ -60,15 +60,16 @@ export class Config {
 
 
         try {
+            console.log("ssl-root-cas SKIPPED!!!!!!");
             // rootCas.addFile(path.join(__dirname, '../config/ssl/gd_bundle-g2-g1.crt'));
-            if (Config.tls_ca !== "") {
+            //if (Config.tls_ca !== "") {
                 // var tls_ca: string = Buffer.from(Config.tls_ca, 'base64').toString('ascii')
                 // var rootCas = require('ssl-root-cas/latest').create();
                 // rootCas.push(tls_ca);
                 // // rootCas.addFile( tls_ca );
                 // https.globalAgent.options.ca = rootCas;
                 // require('https').globalAgent.options.ca = rootCas;
-            }
+            //}
         } catch (error) {
             console.log(error);
         }

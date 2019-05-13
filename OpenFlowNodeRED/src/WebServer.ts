@@ -51,17 +51,18 @@ export class WebServer {
                             key: Buffer.from(Config.tls_key, 'base64').toString('ascii')
                         };
                     }
-                    var ca:string = Config.tls_ca;
-                    if (ca!== "") {
-                        if(ca.indexOf("---") === -1) {
-                            ca = Buffer.from(Config.tls_ca, 'base64').toString('ascii');
-                        }
-                        // if(ca.indexOf("---") > -1) {
-                        //     console.log(ca);
-                        //     options.ca = ca;
-                        // }
-                        // options.cert += "\n" + ca;
-                    }
+                    console.log("Config.tls_ca SKIPPED!!!!!!");
+                    // var ca:string = Config.tls_ca;
+                    // if (ca!== "") {
+                    //     if(ca.indexOf("---") === -1) {
+                    //         ca = Buffer.from(ca, 'base64').toString('ascii');
+                    //     }
+                    //     // if(ca.indexOf("---") > -1) {
+                    //     //     console.log(ca);
+                    //     //     options.ca = ca;
+                    //     // }
+                    //     // options.cert += "\n" + ca;
+                    // }
                     if(Config.tls_passphrase!=="") {
                         options.passphrase = Config.tls_passphrase;
                     }
