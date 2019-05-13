@@ -115,7 +115,7 @@ export class WebSocketClient {
     }
     public async sendToQueue(msg:QueueMessage) {
         if(this.consumers.length === 0) { throw new Error("No consumers for client available to send message through") }
-        this.consumers[0].sendToQueue(msg.queuename, msg.correlationId, msg.data);
+        var result = this.consumers[0].sendToQueue(msg.queuename, msg.correlationId,{payload: msg.data, jwt: this.jwt});
     }
     async OnMessage(sender: amqp_consumer, msg: amqplib.ConsumeMessage ) {
         try {
@@ -222,8 +222,9 @@ export class WebSocketClient {
 
 
     async Queue(data:string, replyTo: string, correlationId:string, queuename:string):Promise<any[]> {
+        var d:any = JSON.parse(data);
         var q: QueueMessage = new QueueMessage();
-        q.data = data; q.replyto = replyTo;
+        q.data = d.payload; q.replyto = replyTo;
         q.correlationId = correlationId; q.queuename = queuename;
         let m: Message = Message.fromcommand("queuemessage");
         if(q.correlationId === undefined || q.correlationId === null || q.correlationId === "") { q.correlationId = m.id; }

@@ -81,6 +81,10 @@ export class amqp_consumer_node {
             result.amqpacknowledgment = ack;
 
             var data = JSON.parse(msg.content.toString());
+            try {
+                data.payload = JSON.parse(data.payload);
+            } catch (error) {
+            }
             result.payload = data.payload;
             result.jwt = data.jwt;
             this.node.send(result);

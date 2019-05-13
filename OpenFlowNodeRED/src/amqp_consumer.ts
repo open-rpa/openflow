@@ -33,7 +33,7 @@ export class amqp_consumer  {
     }
     private _OnMessage(sender: amqp_consumer, msg: amqplib.ConsumeMessage): void {
         try {
-            sender._logger.info("OnMessage " + msg.content.toString());
+            // sender._logger.info("OnMessage " + msg.content.toString());
             if(this.OnMessage!==null && this.OnMessage!==undefined) { 
                 if(!this.noAck || (msg.properties.replyTo!== null && msg.properties.replyTo!== undefined)) {
                     this.OnMessage(msg, (result) => {

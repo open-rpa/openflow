@@ -69,6 +69,17 @@ gulp.task("bumpnodered", function() {
         .pipe(replace(/openflownodered:\d+(\.\d+)+/g, 'openflownodered:' + version))
         .pipe(gulp.dest("config"));
 });
-gulp.task("bump", gulp.series("bumpflow", "bumpnodered"));
+
+gulp.task("bumpaiotfrontend", function() {
+    var version = "0.0.1";
+    version = fs.readFileSync("../aiot-frontend/VERSION", "utf8");
+
+    console.log('cloudhack/aiot-frontend:' + version);
+    return gulp.src(["config/**/controllers.yml"])
+        .pipe(replace(/aiot-frontend:\d+(\.\d+)+/g, 'aiot-frontend:' + version))
+        .pipe(gulp.dest("config"));
+});
+
+gulp.task("bump", gulp.series("bumpflow", "bumpnodered", "bumpaiotfrontend"));
 
 gulp.task("default", gulp.series("copyfiles1", "copyfiles2", "watch"));
