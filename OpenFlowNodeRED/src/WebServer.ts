@@ -56,10 +56,10 @@ export class WebServer {
                         if(ca.indexOf("---") === -1) {
                             ca = Buffer.from(Config.tls_ca, 'base64').toString('ascii');
                         }
-                        if(ca.indexOf("---") > -1) {
-                            console.log(ca);
-                            options.ca = ca;
-                        }
+                        // if(ca.indexOf("---") > -1) {
+                        //     console.log(ca);
+                        //     options.ca = ca;
+                        // }
                         // options.cert += "\n" + ca;
                     }
                     if(Config.tls_passphrase!=="") {
