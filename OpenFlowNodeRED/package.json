@@ -22,6 +22,7 @@
     "gulp-shell": "^0.7.0",
     "jsonwebtoken": "^8.5.1",
     "node-red": "^0.20.5",
+    "node-red-contrib-auth-saml": "^1.0.7",
     "passport-google-oauth20": "^2.0.0",
     "passport-openid-connect": "^0.1.0",
     "passport-saml": "^1.0.0",
