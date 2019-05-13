@@ -56,7 +56,9 @@ export class WebServer {
                         if(ca.indexOf("---") === -1) {
                             ca = Buffer.from(Config.tls_ca, 'base64').toString('ascii');
                         }
-                        options.ca = ca;
+                        if(ca.indexOf("---") > -1) {
+                            options.ca = ca;
+                        }
                         // options.cert += "\n" + ca;
                     }
                     if(Config.tls_passphrase!=="") {
