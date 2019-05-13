@@ -51,18 +51,17 @@ export class WebServer {
                             key: Buffer.from(Config.tls_key, 'base64').toString('ascii')
                         };
                     }
-                    console.log("Config.tls_ca SKIPPED!!!!!!");
-                    // var ca:string = Config.tls_ca;
-                    // if (ca!== "") {
-                    //     if(ca.indexOf("---") === -1) {
-                    //         ca = Buffer.from(ca, 'base64').toString('ascii');
-                    //     }
-                    //     // if(ca.indexOf("---") > -1) {
-                    //     //     console.log(ca);
-                    //     //     options.ca = ca;
-                    //     // }
-                    //     // options.cert += "\n" + ca;
-                    // }
+                    var ca:string = Config.tls_ca;
+                    if (ca!== "") {
+                        if(ca.indexOf("---") === -1) {
+                            ca = Buffer.from(ca, 'base64').toString('ascii');
+                        }
+                        if(ca.indexOf("---") > -1) {
+                            console.log(ca);
+                            options.ca = ca;
+                        }
+                        // options.cert += "\n" + ca;
+                    }
                     if(Config.tls_passphrase!=="") {
                         options.passphrase = Config.tls_passphrase;
                     }
@@ -90,7 +89,7 @@ export class WebServer {
                 (profile:string | any, done:any)=> {
                     // profile.permissions = "*";
                     done(profile);
-                });
+                }, "");
                 // this.settings.adminAuth = await noderedcontribauthsaml.configure(this._logger, Config.baseurl());clear
 
                 // settings.adminAuth = new noderedcontribauthopenid(this._logger, Config.baseurl());
