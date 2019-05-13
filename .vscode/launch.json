@@ -4,6 +4,15 @@
         {
             "type": "node",
             "request": "attach",
+            "name": "Attach to aiotdevred.openrpa.dk",
+            "address": "aiotdevred.openrpa.dk",
+            "port": 9229,
+            "localRoot": "${workspaceFolder}",
+            "remoteRoot": "/data"
+        },
+        {
+            "type": "node",
+            "request": "attach",
             "name": "Attach to Remote",
             "address": "aiotdevred.openrpa.dk",
             "port": 5858,

@@ -60,7 +60,6 @@ export class Config {
 
 
         try {
-            // rootCas.addFile(path.join(__dirname, '../config/ssl/gd_bundle-g2-g1.crt'));
             if (Config.tls_ca !== "") {
                 var tls_ca: string = Buffer.from(Config.tls_ca, 'base64').toString('ascii')
                 var rootCas = require('ssl-root-cas/latest').create();

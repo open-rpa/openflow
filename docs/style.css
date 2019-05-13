@@ -1,0 +1,157 @@
+body {
+    font-family: 'Open Sans', sans-serif;
+    margin: 0;
+    
+    
+}
+
+.page{
+    display: flex;
+    flex-direction: column;
+    background-image: url(images/gears-1236578_1920.jpg);
+    background-size: cover;
+    min-height: 100vh;
+
+}
+header{
+    width: 100%;
+    padding: 30px 20px 70px;
+    box-sizing: border-box;
+    background-color: #1b1b33;
+    clip-path: polygon(
+        0 0,
+        100% 0%,
+        100% calc(100% - 6vw),
+        0% 100%
+      );
+    margin-bottom: -6vw;
+}
+main {
+    flex-grow: 2;
+    display: flex;
+    flex-direction: column;
+      clip-path: polygon(
+        6w 0,
+        100% 0,
+        100% 100%,
+        0% 100%
+      );
+}
+.product1{
+    background: linear-gradient(to right, rgba(3,119,148,0.9), rgba(87,69,147,0.9));
+    flex-grow: 1;
+    padding-top: 6vw; 
+        clip-path: polygon(
+        0 6vw,
+        100% 0%,
+        100% 100%,
+        0% calc(100% - 6vw)
+      );
+    padding: 3vw 10vw;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;    
+}
+.product2 {
+    background: linear-gradient(to left, rgba(3,119,148,0.9), rgba( 55,167,74,0.9));
+    flex-grow: 1;
+    margin-top: -6vw;
+     clip-path: polygon(
+        0 0,
+        100% 6vw,
+        100% calc(100% - 6vw),
+        0% 100%
+      );
+    padding: 3vw 10vw;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+}
+footer {
+    background-color: #1b1b33;
+    color: rgba(255,255,255,0.5);
+    margin-top: -6vw;
+    padding: 0.7vw 20px 10px 20px;
+    font-size: 11px;
+    clip-path: polygon(
+        0 6vw,
+        100% 0%,
+        100% 100%,
+        0% 100%
+      );
+    display: flex;
+    align-content: flex-end;
+    justify-content: flex-end;
+}
+h2{
+    font-family: 'Quicksand', sans-serif;
+    margin-bottom: 0.5em;
+}
+h4{
+    margin-bottom: 0.3em;
+    font-weight: bold;
+}
+p {
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+}
+.logo{
+    text-align: center;
+    margin: 10px;
+}
+    .logo img {
+        max-width: 40px;
+        margin-right: 10px
+}
+.name {
+    color: #ffffff;
+    font-size: 36px;
+    font-family: 'Quicksand', sans-serif;
+    display: inline-block;
+    vertical-align: 0.15em;
+}
+.payoff {
+    color: #ffffff;
+    text-align: center;
+    font-style: italic;
+    font-size: 24px;
+    color: rgba(255,255,255,0.5);
+}
+.description {
+    width: 80vw;
+    max-width: 480px;
+    color: #ffffff;
+    margin-top:10px;
+    margin-bottom: 20px;
+}
+.product_logo{
+    margin-bottom: 10px;
+    display: inline-block;
+    margin-right: 10px;
+}
+.product_logo img {
+    width: 30px;
+}
+.product_name{
+    display: inline-block;
+    vertical-align: 0.15em;
+}
+
+.button {
+    border: 1px solid #ffffff;
+    border-radius: 16px;
+    color:#ffffff;
+    text-decoration: none;
+    padding: 3px 15px 4px;
+    margin: 5px 0;
+    cursor: pointer;
+    display: inline-block;
+}
+.button:hover{
+    background-color: #ffffff;
+    color: #1b1b33;
+}
+.company-info{
+text-align: right;
+    padding-bottom: 10px;
+}
