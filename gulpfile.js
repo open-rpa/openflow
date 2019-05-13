@@ -57,15 +57,18 @@ gulp.task("compose", shell.task([
     'docker push cloudhack/openflow:' + version
 ]));
 
-gulp.task("bump", function() {
-    console.log('cloudhack/openflownodered:' + version);
-    gulp.src(["config/**/controllers.yml"])
+gulp.task("bumpflow", function() {
+    console.log('cloudhack/openflow:' + version);
+    return gulp.src(["config/**/controllers.yml"])
         .pipe(replace(/openflow:\d+(\.\d+)+/g, 'openflow:' + version))
         .pipe(gulp.dest("config"));
-
-        return gulp.src(["config/**/controllers.yml"])
+});
+gulp.task("bumpnodered", function() {
+    console.log('cloudhack/openflownodered:' + version);
+    return gulp.src(["config/**/controllers.yml"])
         .pipe(replace(/openflownodered:\d+(\.\d+)+/g, 'openflownodered:' + version))
         .pipe(gulp.dest("config"));
 });
+gulp.task("bump", gulp.series("bumpflow", "bumpnodered"));
 
 gulp.task("default", gulp.series("copyfiles1", "copyfiles2", "watch"));
