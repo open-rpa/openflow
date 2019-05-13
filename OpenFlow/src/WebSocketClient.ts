@@ -88,7 +88,7 @@ export class WebSocketClient {
         var consumer = new amqp_consumer(this._logger, Config.amqp_url, queuename);
         consumer.OnMessage = this.OnMessage.bind(this);
         this.consumers.push(consumer);
-        await consumer.connect(false, true);
+        await consumer.connect(false, autoDelete);
     }
     public async CloseConsumer(queuename:string):Promise<void> {
         var index = -1;
