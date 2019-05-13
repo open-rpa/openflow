@@ -1,6 +1,8 @@
 var fs = require("fs");
 var gulp = require("gulp");
 var shell = require("gulp-shell");
+var replace = require('gulp-replace');
+
 var destination = "./dist/public";
 var version = "0.0.1";
 if (fs.existsSync("../VERSION")) {
@@ -54,5 +56,16 @@ gulp.task("compose", shell.task([
     'echo "Push cloudhack/openflow"',
     'docker push cloudhack/openflow:' + version
 ]));
+
+gulp.task("bump", function() {
+    console.log('cloudhack/openflownodered:' + version);
+    gulp.src(["config/**/controllers.yml"])
+        .pipe(replace(/openflow:\d+(\.\d+)+/g, 'openflow:' + version))
+        .pipe(gulp.dest("config"));
+
+        return gulp.src(["config/**/controllers.yml"])
+        .pipe(replace(/openflownodered:\d+(\.\d+)+/g, 'openflownodered:' + version))
+        .pipe(gulp.dest("config"));
+});
 
 gulp.task("default", gulp.series("copyfiles1", "copyfiles2", "watch"));
