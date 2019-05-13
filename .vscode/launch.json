@@ -2,31 +2,6 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "node",
-            "request": "attach",
-            "name": "Attach to aiotdevred.openrpa.dk",
-            "address": "aiotdevred.openrpa.dk",
-            "port": 9229,
-            "localRoot": "${workspaceFolder}",
-            "remoteRoot": "/data"
-        },
-        {
-            "type": "node",
-            "request": "attach",
-            "name": "Attach to Remote",
-            "address": "aiotdevred.openrpa.dk",
-            "port": 5858,
-            "localRoot": "${workspaceFolder}/OpenFlowNodeRED/dist",
-            "remoteRoot": "/data"
-        },
-        {
-            "name": "Launch index.html",
-            "type": "chrome",
-            "request": "launch",
-            "url": "https://localhost.openrpa.dk:3000/",
-            "webRoot": "${workspaceFolder}/dist/Public/index.html"
-        },
-        {
             "args": [],
             "cwd": "${workspaceRoot}",
             "envFile": "${workspaceFolder}/config/.env",
@@ -46,6 +21,13 @@
             "sourceMaps": true,
             "stopOnEntry": false,
             "type": "node"
+        },
+        {
+            "name": "Launch index.html",
+            "type": "chrome",
+            "request": "launch",
+            "url": "https://localhost.openrpa.dk:3000/",
+            "webRoot": "${workspaceFolder}/dist/Public/index.html"
         },
         {
             "args": [],

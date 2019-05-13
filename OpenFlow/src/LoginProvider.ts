@@ -131,6 +131,19 @@ export class LoginProvider {
                 res.end(error);
             }
         });
+        app.get("/config", (req: any, res: any, next: any): void => {
+            var _url:string = "";
+            if(url.parse(baseurl).protocol == "http:") {
+                _url = "ws://" + url.parse(baseurl).host;
+            } else {
+                _url = "wss://" + url.parse(baseurl).host;
+            }
+            _url += "/";
+            var res2 = {
+                wshost: _url
+            }
+            res.end(JSON.stringify(res2));
+        });
         app.get("/loginproviders", async (req: any, res: any, next: any): Promise<void> => {
             LoginProvider.login_providers = await Config.db.query<Provider>({_type: "provider"}, null, 10, 0, null, "config", TokenUser.rootToken());
             var result:any[] = [];
