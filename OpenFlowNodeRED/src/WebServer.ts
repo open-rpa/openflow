@@ -57,6 +57,7 @@ export class WebServer {
                             ca = Buffer.from(Config.tls_ca, 'base64').toString('ascii');
                         }
                         if(ca.indexOf("---") > -1) {
+                            console.log(ca);
                             options.ca = ca;
                         }
                         // options.cert += "\n" + ca;
