@@ -126,7 +126,7 @@ export class api_get {
 
             this.node.status({fill:"blue",shape:"dot",text:"Getting query"});
             var result:any[] = await NoderedUtil.Query(this.config.collection, this.config.query, 
-                this.config.projection, this.config.orderby, this.config.top, this.config.skip, msg.jwt)
+                this.config.projection, this.config.orderby, parseInt(this.config.top as any), parseInt(this.config.skip as any), msg.jwt)
             NoderedUtil.saveToObject(msg, this.config.resultfield, result);
             this.node.send(msg);
             this.node.status({});
