@@ -8,13 +8,11 @@ import * as bodyParser from "body-parser";
 import * as cookieParser from "cookie-parser";
 import * as nodered from "node-red";
 
+import * as samlauth from "node-red-contrib-auth-saml";
 import * as cookieSession from "cookie-session";
 
 import { nodered_settings } from "./nodered_settings";
-import { noderedcontribauthgoogle } from "./node-red-contrib-auth-google";
-import { noderedcontribauthsaml } from "./node-red-contrib-auth-saml";
 import { Config } from "./Config";
-import { noderedcontribauthopenid } from "./node-red-contrib-auth-openid";
 import { WebSocketClient } from "./WebSocketClient";
 import { noderedcontribopenflowstorage } from "./node-red-contrib-openflow-storage";
 import { SigninMessage, Message } from "./Message";
@@ -78,8 +76,19 @@ export class WebServer {
                 this.settings.userDir = path.join(__dirname, "./nodered");
                 this.settings.nodesDir = path.join(__dirname, "./nodered");
     
-                // settings.adminAuth = new noderedcontribauthgoogle(this._logger, Config.baseurl());
-                this.settings.adminAuth = await noderedcontribauthsaml.configure(this._logger, Config.baseurl());
+
+                // this.settings.adminAuth = new googleauth.noderedcontribauthgoogle(Config.baseurl(), Config.consumer_key, Config.consumer_secret, 
+                // (profile:string | any, done:any)=> {
+                //     profile.permissions = "*";
+                //     done(profile);
+                // });
+                this.settings.adminAuth = await samlauth.noderedcontribauthsaml.configure(Config.baseurl(), Config.saml_federation_metadata, Config.saml_issuer, 
+                (profile:string | any, done:any)=> {
+                    // profile.permissions = "*";
+                    done(profile);
+                });
+                // this.settings.adminAuth = await noderedcontribauthsaml.configure(this._logger, Config.baseurl());clear
+
                 // settings.adminAuth = new noderedcontribauthopenid(this._logger, Config.baseurl());
 
                 this.settings.httpNodeMiddleware = (req:express.Request,res:express.Response,next:express.NextFunction) => {

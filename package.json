@@ -35,6 +35,7 @@
     "gulp-shell": "^0.7.0",
     "jsonwebtoken": "^8.5.1",
     "mongodb": "^3.2.3",
+    "node-red-contrib-auth-saml": "^1.0.6",
     "npm": "^6.9.0",
     "passport": "^0.4.0",
     "passport-google-oauth20": "^2.0.0",

@@ -23,6 +23,14 @@ module openflow {
                 }
             });
         }
+        async Query(collection: string, query: any, projection: any = null, orderby: any = { _created: -1 }, top: number = 500, skip: number = 0): Promise<any[]> {
+            var q: QueryMessage = new QueryMessage();
+            q.collectionname = collection; q.query = query;
+            q.projection = projection; q.orderby = orderby; q.top = top; q.skip = skip;
+            var msg: Message = new Message(); msg.command = "query"; msg.data = JSON.stringify(q);
+            q = await this.WebSocketClient.Send<QueryMessage>(msg);
+            return q.result;
+        }
         async Insert(collection:string, model: any): Promise<any> {
             var q: InsertOneMessage = new InsertOneMessage();
             q.collectionname = collection; q.item = model;
