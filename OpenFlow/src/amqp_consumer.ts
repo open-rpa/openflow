@@ -32,6 +32,9 @@ export class amqp_consumer  {
         sender._logger.info("OnMessage " + msg.content.toString());
     }
     sendToQueue(replyto: string, correlationId:string, data: any) {
+        if (typeof data !== 'string' && !(data instanceof String)) {
+            data = JSON.stringify(data);
+        }
         this._logger.info("SendMessage " + data);
         //this.channel.publish( this.exchange, "", Buffer.from(msg));
         this.channel.sendToQueue(replyto, Buffer.from(data), { correlationId: correlationId, replyTo: this._ok.queue });

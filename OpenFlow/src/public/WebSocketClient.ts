@@ -36,25 +36,18 @@ module openflow {
         private _sendQueue: SocketMessage[] = [];
         public user:TokenUser = null;
         public jwt:string = null;
-        static $inject = ["$rootScope", "$location"];
+        static $inject = ["$rootScope", "$location", "$window"];
         public messageQueue: IHashTable<QueuedMessage> = {};
-        constructor(public $rootScope:ng.IRootScopeService, public $location) {
-            var url:string = window.location.href;
-            var arr:string[] = url.split("/");
-            var result:string = arr[0] + "//" + arr[2];
-            if(arr[0] === "http:") {
-                result = "ws://" + arr[2];
-            } else {
-                result = "wss://" + arr[2];
-            }
-            this._url = result;
-            console.log("WebSocketClient::onopen: connecting to " + result);
-            this._socketObject = new ReconnectingWebSocket(result);
-            this._socketObject.onopen = (this.onopen).bind(this);
-            this._socketObject.onmessage = (this.onmessage).bind(this);
-            this._socketObject.onclose = (this.onclose).bind(this);
-            this._socketObject.onerror = (this.onerror).bind(this);
-            WebSocketClient.instance = this;
+        constructor(public $rootScope:ng.IRootScopeService, public $location, public $window:any) {
+            this.getJSON("/config", async (error:any, data:any) => {
+                console.debug("WebSocketClient::onopen: connecting to " + data.wshost);
+                this._socketObject = new ReconnectingWebSocket(data.wshost);
+                this._socketObject.onopen = (this.onopen).bind(this);
+                this._socketObject.onmessage = (this.onmessage).bind(this);
+                this._socketObject.onclose = (this.onclose).bind(this);
+                this._socketObject.onerror = (this.onerror).bind(this);
+                WebSocketClient.instance = this;
+            });
         }
         public connect():void {
         }
@@ -86,9 +79,6 @@ module openflow {
         private async onopen(evt: Event):Promise<void> {
             console.log("WebSocketClient::onopen: connected");
             var me:WebSocketClient = WebSocketClient.instance;
-            // me.communication = "Conenction opened, signing in" + "<br/>" + me.communication;
-            // var message:any = { command: "signin", data: {username: "az", password: "az"}};
-            // me._socketObject.send(JSON.stringify(message));
             var q:SigninMessage = new SigninMessage();
             this.getJSON("/jwt", async (error:any, data:any) => {
                 try {
@@ -96,10 +86,6 @@ module openflow {
                         if(this.$location.path() !=="/Login") {
                             console.log("path: " + this.$location.path());
                             console.log("WebSocketClient::onopen: Not signed in, redirect /Login");
-                            // var url:string = window.location.href;
-                            // var arr:string[] = url.split("/");
-                            // var result:string = arr[0] + "//" + arr[2];
-                            // top.location.href = result + "/#Login";
                             this.$location.path("/Login");
                             this.$rootScope.$apply();
                         }
@@ -111,6 +97,7 @@ module openflow {
                     } catch (error) {                        
                     }
                     q.jwt = data.jwt;
+                    q.rawAssertion = data.rawAssertion;
                     q.realm = "browser";
                     console.log("WebSocketClient::onopen: Validate jwt");
                     if(_android!=null) {
@@ -136,16 +123,14 @@ module openflow {
                     console.error(error);
                     this.$location.path("/Login");
                     this.$rootScope.$apply();
-        }
+                }
             });
         }
         private onclose(evt: CloseEvent):void {
             var me:WebSocketClient = WebSocketClient.instance;
-            // me.communication = "Conenction Closed " + evt.code + "  " + evt.type + "<br/>" + me.communication;
         }
         private onerror(evt: ErrorEvent):void {
             var me:WebSocketClient = WebSocketClient.instance;
-            // me.communication = "Error Occured " + evt.message + "<br/>" + me.communication;
         }
         private onmessage(evt: MessageEvent):void {
             var me:WebSocketClient = WebSocketClient.instance;
@@ -156,7 +141,7 @@ module openflow {
         public async Send<T>(message: Message):Promise<T> {
             return new Promise<T>(async (resolve, reject) => {
                 this._Send(message, ((msg)=> {
-                    if(msg.error!==null && msg.error !== undefined) { return reject(msg.error); }
+                    if(msg.error!==null && msg.error !== undefined) { console.log(message); return reject(msg.error); }
                     resolve(msg);
                 }).bind(this));
             });
@@ -179,9 +164,6 @@ module openflow {
             if(message.replyto === null || message.replyto === undefined) {
                 this.messageQueue[message.id] = new QueuedMessage(message, cb);
             }
-            // setTimeout(() => {
-            //     this.ProcessQueue();
-            // }, 500);
             this.ProcessQueue();
         }
         public chunkString(str: string, length: number): string[] {

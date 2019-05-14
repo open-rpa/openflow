@@ -406,16 +406,18 @@ module openflow {
             public api:api
         ) {
             WebSocketClient.onSignedin(async (user: TokenUser) => {
-                var q: RegisterQueueMessage = new RegisterQueueMessage();
-                var msg:Message  = new Message(); msg.command = "registerqueue"; msg.data = JSON.stringify(q);
-                await this.WebSocketClient.Send(msg);
+                await api.RegisterQueue();
             });
         }
 
         async SendOne():Promise<void> {
-            var result:any = await this.api.QueueMessage("webtest", {payload: "hi mom"});
-            var msg = JSON.parse(result.data);
-            this.messages += msg.payload + "\n";
+            var result:any = await this.api.QueueMessage("webtest", {"payload": "hi mom"});
+            console.log(result);
+            try {
+                result = JSON.parse(result);
+            } catch (error) {
+            }
+            this.messages += result.payload + "\n";
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
     }
