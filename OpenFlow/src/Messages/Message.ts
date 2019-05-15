@@ -422,6 +422,11 @@ export class Message {
             user = await User.ensureUser(msg.name, msg.username, msg.password, null);
             msg.user = new TokenUser(user);
         } catch (error) {
+            msg.error = error.toString();
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
             this.data = "";
             msg.error = error.toString();
         }
