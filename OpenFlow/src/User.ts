@@ -112,5 +112,18 @@ export class User extends Base {
             });
         }
     }
+
+    public static async ensureUser(name:string, username:string, password:string, id:string):Promise<User> {
+        var user:User = await User.FindByUsernameOrId(username, id);
+        if(user!==null && (user._id === id || id === null)) { return user; }
+        if(user!==null && id !== null ) { await Config.db.DeleteOne(user._id, "users", TokenUser.rootToken()); }
+        user  = new User(); user._id = id; user.name = name; user.username = username;
+        if(password===null || password===undefined || password === "") { password = Math.random().toString(36).substr(2, 9); }
+        await user.SetPassword(password);
+        user = await Config.db.InsertOne(user, "users", TokenUser.rootToken());
+        user = User.assign(user);
+        return user;
+    }
+    
 }
 

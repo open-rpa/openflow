@@ -20,6 +20,7 @@ import { MapReduceMessage } from "./MapReduceMessage";
 import { CloseQueueMessage } from "./CloseQueueMessage";
 import { RegisterQueueMessage } from "./RegisterQueueMessage";
 import { QueueMessage } from "./QueueMessage";
+import { RegisterUserMessage } from "./RegisterUserMessage";
 
 export class Message {
     public id: string;
@@ -94,6 +95,9 @@ export class Message {
                     break;
                 case "signin":
                     this.Signin(cli);
+                    break;
+                case "registeruser":
+                    this.RegisterUser(cli);
                     break;
                 case "mapreduce":
                     this.MapReduce(cli);
@@ -401,6 +405,22 @@ export class Message {
         }
         try {
             this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            msg.error = error.toString();
+        }
+        this.Send(cli);
+    }
+    private async RegisterUser(cli: WebSocketClient): Promise<void> {
+        this.Reply();
+        var msg: RegisterUserMessage;
+        var user:User;
+        try {
+            msg = RegisterUserMessage.assign(this.data);
+            user = await User.FindByUsername(msg.username);
+            if(user!==null && user !== undefined) { throw new Error("Illegal username"); }
+            user = await User.ensureUser(msg.name, msg.username, msg.password, null);
+            msg.user = new TokenUser(user);
         } catch (error) {
             this.data = "";
             msg.error = error.toString();
