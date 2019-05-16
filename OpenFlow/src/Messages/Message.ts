@@ -417,6 +417,9 @@ export class Message {
         var user:User;
         try {
             msg = RegisterUserMessage.assign(this.data);
+            if(msg.name == null || msg.name == undefined || msg.name == "") { throw new Error("Name cannot be null"); }
+            if(msg.username == null || msg.username == undefined || msg.username == "") { throw new Error("Username cannot be null"); }
+            if(msg.password == null || msg.password == undefined || msg.password == "") { throw new Error("Password cannot be null"); }
             user = await User.FindByUsername(msg.username);
             if(user!==null && user !== undefined) { throw new Error("Illegal username"); }
             user = await User.ensureUser(msg.name, msg.username, msg.password, null);

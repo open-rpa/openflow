@@ -36,7 +36,7 @@
     </div>
 </script>
 <script type="text/x-red" data-help-name="api get jwt">
-Request a JWT token for talking with API. Leave config blank to impersonate root
+Request a JWT token for talking with API. Leave config blank to impersonate root.
 </script>
 <script type="text/javascript">
     RED.nodes.registerType('api get jwt', {
@@ -430,7 +430,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
     </div>
 </script>
 <script type="text/x-red" data-help-name="grant permission">
-    <p>Delete payload as new entity in collection</p>
+    <p>Grants a role (or user if set by msg.targetid) a specific permission on the entity/entities in payload.</p>
 </script>
 <script type="text/javascript">
     RED.nodes.registerType('grant permission', {
@@ -508,7 +508,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
     </div>
 </script>
 <script type="text/x-red" data-help-name="revoke permission">
-    <p>Delete payload as new entity in collection</p>
+    <p>Revoke a specific permission for a role (or user if set by msg.targetid) on the entity/entities in payload.</p>
 </script>
 <script type="text/javascript">
     RED.nodes.registerType('revoke permission', {
@@ -559,81 +559,6 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 
 
 
-
-
-
-
-<script type="text/x-red" data-template-name="grant permission">
-    <div class="form-row">
-        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
-        <input type="text" id="node-input-name" placeholder="Name">
-    </div>
-    <div class="form-row">
-        <label for="node-input-targetid"><i class="fa fa-tasks"></i> Target</label>
-        <select id="node-input-targetid-select">
-        </select>
-        <input id="node-input-targetid" type="hidden">
-    </div>
-    <div class="form-row">
-        <label for="node-input-typed-entities"><i class="fa fa-list"></i> Entities</label>
-        <input id="node-input-typed-entities" type="text" style="width: 70%">
-        <input id="node-input-entities" type="hidden">
-    </div>
-    <div class="form-row">
-        <label><i class="fa fa-tag"></i> Bitsexplained </label>
-        (F:-1, R:2, U:3, D:4, I:5)
-    </div>
-    <div class="form-row">
-        <label for="node-input-bits"><i class="fa fa-tag"></i> Bits </label>
-        <input type="text" id="node-input-bits" placeholder="Bits seperated by comma,">
-    </div>
-</script>
-<script type="text/x-red" data-help-name="grant permission">
-    <p>Delete payload as new entity in collection</p>
-</script>
-<script type="text/javascript">
-    RED.nodes.registerType('grant permission', {
-        category: 'api',
-        color: "#a6bbcf",
-        defaults: {
-            name: { value: "" },
-            targetid: { value: "result._id", required: true },
-            entities: { value: "payload", required: true },
-            bits: { value: "", required: true }
-        },
-        inputs: 1,
-        outputs: 1,
-        icon: "bridge.png",
-        label: function () {
-            return this.name || "grant permission";
-        },
-        labelStyle: function () {
-            return this.name ? "node_label_italic" : "";
-        },
-
-        oneditprepare: function () {
-            $("#node-input-typed-entities").typedInput({ types: ['msg'] });
-            $("#node-input-typed-entities").typedInput('value', this.entities);
-
-
-            $.getJSON('api_roles',function(data) {
-                $.each(data, function(i, ele) {
-                    $('#node-input-targetid-select').append($('<option>', { 
-                        value: ele._id,
-                        text : ele.name
-                    }));
-                });
-                $('#node-input-targetid-select').val($('#node-input-targetid').val());
-            });
-
-        },
-        oneditsave: function () {
-            $('#node-input-targetid').val($('#node-input-targetid-select').val());
-            $("#node-input-entities").val($("#node-input-typed-entities").typedInput('value'));
-        }
-
-    });
-</script>
 
 
 
@@ -699,7 +624,14 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 
 </script>
 <script type="text/x-red" data-help-name="map reduce">
-    <p>Delete payload as new entity in collection</p>
+    <p>
+        Run a mapreduce on a collection.
+        If output is set for inline, the result will be returned in payload, for all else, you can get the result in the receiving collection.<br>
+        Finalize is optional, and can be left blank if not needed.<br>
+        Be carefull to keep _acl on all reduced objects, so you have permission to read the result.<br>
+        <a href="https://docs.mongodb.com/manual/tutorial/map-reduce-examples/index.html">map-reduce-examples</a><br>
+<a href="https://docs.mongodb.com/manual/reference/method/db.collection.mapReduce/#db.collection.mapReduce">dokumentation</a>
+    </p>
 </script>
 <script type="text/javascript">
     RED.nodes.registerType('map reduce', {

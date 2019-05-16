@@ -155,6 +155,7 @@ export class WebSocketClient {
             var first: SocketMessage = msgs[0];
             if(first.count === msgs.length) {
                 if(msgs.length === 1) {
+                    this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage):boolean { return msg.id!==id;});
                     var singleresult: Message = Message.frommessage(first, first.data);
                     singleresult.Process(this);
                 } else {
@@ -162,10 +163,10 @@ export class WebSocketClient {
                     msgs.forEach(msg => {
                         if(msg.data!==null && msg.data !== undefined) { buffer += msg.data; }
                     });
+                    this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage):boolean { return msg.id!==id;});
                     var result: Message = Message.frommessage(first, buffer);
                     result.Process(this);
                 }
-                this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage):boolean { return msg.id!==id;});
             }
         });
         this._sendQueue.forEach(msg => {
