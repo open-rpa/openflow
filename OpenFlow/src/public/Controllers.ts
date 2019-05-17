@@ -442,6 +442,13 @@ module openflow {
                 this.loadData();
             });
         }
+        async DeleteOne(model: any):Promise<any> {
+            this.loading = true;
+            await this.api.Delete(this.collection, model);
+            this.models = this.models.filter(function (m: any):boolean { return m._id!==model._id;});
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
         async DeleteMany():Promise<void> {
             this.loading = true;
             var Promises:Promise<DeleteOneMessage>[] = [];

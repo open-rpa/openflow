@@ -10,6 +10,7 @@ export class Config {
     public static db:DatabaseConnection = null;
     public static auto_create_users:boolean = Config.parseBoolean(Config.getEnv("auto_create_users", "false"));
     public static auto_create_domains:string[] = Config.parseArray(Config.getEnv("auto_create_domains", ""));
+    public static allow_user_registration:boolean = Config.parseBoolean(Config.getEnv("allow_user_registration", "false"));
 
     public static api_bypass_perm_check:boolean = Config.parseBoolean(Config.getEnv("api_bypass_perm_check", "false"));
     public static websocket_package_size:number = parseInt(Config.getEnv("websocket_package_size", "1024"), 10);
