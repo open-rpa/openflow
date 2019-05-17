@@ -605,21 +605,21 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
     </div>
 
     <div class="form-row">
-        <label for="node-input-output"><i class="fa fa-tag"></i> Output</label>
-        <select type="text" id="node-input-output">
-            <option>replace</option>
-            <option>merge</option>
-            <option>reduce</option>
-            <option>inline</option>
-        </select>
-    </div>
-    <div class="form-row">
         <label for="node-input-collection"><i class="fa fa-tag"></i> Collection</label>
         <input type="text" id="node-input-collection" placeholder="Run reduce on this Collection">
     </div>
     <div class="form-row">
         <label for="node-input-query"><i class="fa fa-tag"></i> Query</label>
         <input type="text" id="node-input-query" placeholder="Query limiting reduced documents">
+    </div>
+    <div class="form-row">
+        <label for="node-input-output"><i class="fa fa-tag"></i> Out(Action)</label>
+        <select type="text" id="node-input-output">
+            <option>replace</option>
+            <option>merge</option>
+            <option>reduce</option>
+            <option>inline</option>
+        </select>
     </div>
     <div class="form-row">
         <label for="node-input-outcol"><i class="fa fa-tag"></i> Out collection</label>
