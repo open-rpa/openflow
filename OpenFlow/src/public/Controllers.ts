@@ -1,7 +1,149 @@
 module openflow {
     "use strict";
+    export class chartset {
+        options: any = {
+            legend: { display: true }
+        };
+        baseColors: string[] = ['#F7464A', '#97BBCD', '#FDB45C', '#46BFBD', '#949FB1', '#4D5360'];
+        colors: string[] = this.baseColors;
+        type: string = 'bar';
+        heading: string = "";
+        labels: string[] = [];
+        series: string[] = [];
+        data: any[] = [];
+        charttype: string = "bar";
+
+    }
+    export declare function emit(k, v);
+    export class ReportsCtrl extends entitiesCtrl {
+        public loading: boolean = false;
+        public message: string = "";
+        public charts: chartset[] = [];
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public WebSocketClient: WebSocketClient,
+            public api: api
+        ) {
+            super($scope, $location, $routeParams, WebSocketClient, api);
+            WebSocketClient.onSignedin((user: TokenUser) => {
+                this.loadData();
+            });
+        }
+
+        async loadData(): Promise<void> {
+            this.loading = true;
+            var models: any[] = [];
+            this.charts = [];
+            var chart: chartset = null;
 
 
+
+            var stats = await this.api.MapReduce("openrpa_instances",
+                function map() {
+                    this.count = 1;
+                    emit(this.WorkflowId, this);
+                }, function reduce(key, values) {
+                    var reducedObject = { count: 0, value: 0, avg: 0, minrun: 0, maxrun: 0, run: 0, _acl: [] };
+                    values.forEach(function (value) {
+                        var startDate = new Date(value._created);
+                        var endDate = new Date(value._modified);
+                        var seconds = (endDate.getTime() - startDate.getTime()) / 1000;
+                        if (reducedObject.minrun == 0 && seconds > 0) reducedObject.minrun = seconds;
+                        if (reducedObject.minrun > seconds) reducedObject.minrun = seconds;
+                        if (reducedObject.maxrun < seconds) reducedObject.maxrun = seconds;
+                        reducedObject.run += seconds;
+                        reducedObject.count += value.count;
+                        reducedObject._acl = value._acl;
+                    });
+                    return reducedObject;
+                }, function finalize(key, reducedValue) {
+                    if (reducedValue.count > 0) {
+                        reducedValue.avg = reducedValue.value / reducedValue.count;
+                        reducedValue.run = reducedValue.run / reducedValue.count;
+                    }
+                    return reducedValue;
+                }, {}, { inline: 1 }, null);
+
+            var workflows = await this.api.Query("openrpa", { _type: "workflow" }, null, null);
+            models = await this.api.Query("openrpa_instances", {}, null, null);
+
+
+
+            chart = new chartset();
+            chart.heading = "compare run times"; 
+            chart.series = ['minrun', 'avgrun', 'maxrun'];
+            // chart.labels = ['ok', 'warning', 'alarm'];
+            chart.data = [[], [], []];
+            for (var x = 0; x < stats.length; x++) {
+                var model = stats[x].value;
+                chart.data[1].push(model.minrun);
+                chart.data[2].push(model.run);
+                chart.data[0].push(model.maxrun);
+                var id = stats[x]._id; 
+                var workflow = workflows.filter(x => x._id == id)[0];
+                chart.labels.push(workflow.name);
+            }
+            this.charts.push(chart);
+            var instances = await this.api.Query("openrpa_instances", {}, null, null);
+
+            for (var x = 0; x < stats.length; x++) {
+                var model = stats[x].value;
+                var id = stats[x]._id;
+                var workflow = workflows.filter(x => x._id == id)[0];
+
+                chart = new chartset();
+                chart.heading = workflow.name;
+                chart.charttype = "line"
+                chart.data = [];
+
+                for (var i = 0; i < instances.length; i++) {
+                    var value = instances[i];
+                    console.log(value._id + "==" + id);
+                    if (value.WorkflowId == id) {
+
+                        var startDate = new Date(value._created);
+                        var endDate = new Date(value._modified);
+                        var seconds = (endDate.getTime() - startDate.getTime()) / 1000;
+
+                        chart.data.push(seconds);
+                        chart.labels.push(startDate.toISOString().split('T')[0]);
+                    }
+                }
+
+                console.log("add chart!!!");
+                this.charts.push(chart);
+            }
+
+            
+
+            // chart = new chartset();
+            // models.forEach(element => {
+            //     if (!element.value) { return; }
+            //     if (!element._id.tags) {    return; }
+            //     for(let i=0; i < element._id.tags.length; i++) {
+            //         tag = element._id.tags[i];
+            //         if(chart.series.indexOf(tag) === -1 ) {
+            //             chart.series.push(tag);
+            //             chart.data.push([]);
+            //         }
+            //         var seriesindex = chart.series.indexOf(tag);
+            //         if(seriesindex>-1) {
+            //             chart.data[seriesindex].push(element.value.avg);
+            //             var dt = new Date(element._id.dt);
+            //             if(chart.labels.indexOf(dt.getHours() + ":" + dt.getMinutes()) === -1 ) {
+            //                 chart.labels.push(dt.getHours() + ":" + dt.getMinutes());
+            //             }
+            //         }
+            //     }
+            // });
+            // this.charts.push(chart);
+
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+    }
     export class MainCtrl extends entitiesCtrl {
         public loading: boolean = false;
         constructor(
