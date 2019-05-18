@@ -78,9 +78,9 @@ module openflow {
             chart.data = [[], [], []];
             for (var x = 0; x < stats.length; x++) {
                 var model = stats[x].value;
-                chart.data[1].push(model.minrun);
-                chart.data[2].push(model.run);
-                chart.data[0].push(model.maxrun);
+                chart.data[0].push(model.minrun);
+                chart.data[1].push(model.run);
+                chart.data[2].push(model.maxrun);
                 var id = stats[x]._id;
                 var workflow = workflows.filter(x => x._id == id)[0];
                 if (workflow == undefined) { chart.labels.push("unknown"); } else { chart.labels.push(workflow.name); }
