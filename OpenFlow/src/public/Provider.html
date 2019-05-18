@@ -8,7 +8,7 @@
 <form ng-submit="ctrl.submit()" class="form-horizontal" role="form" autocomplete="off">
 
     <div class="form-group">
-        <label for="provider" class="col-sm-2 control-label" data-i18n="common.provider">Provider</label>
+        <label for="provider" class="col-sm-2 control-label" translate lib="web">provider</label>
         <div class="col-sm-4">
             <select class="form-control" ng-model="ctrl.model.provider">
                 <option value="saml">WS-Federation/SAML</option>
@@ -18,40 +18,38 @@
         </div>
     </div>
     <div class="form-group">
-        <label for="name" class="col-sm-2 control-label" data-i18n="common.name">Name</label>
+        <label for="name" class="col-sm-2 control-label" translate lib="web">name</label>
         <div class="col-sm-4">
             <input ng-model="ctrl.model.name" class="form-control input-md" ng-disabled="ctrl.loading==true" />
         </div>
     </div>
     <div class="form-group" ng-show="ctrl.model.provider!='local'">
-        <label for="id" class="col-sm-2 control-label" data-i18n="common.id">Id</label>
+        <label for="id" class="col-sm-2 control-label" translate lib="web">Id</label>
         <div class="col-sm-4">
             <input ng-model="ctrl.model.id" class="form-control input-md" ng-disabled="ctrl.loading==true" />
         </div>
     </div>
     <div class="form-group" ng-show="ctrl.model.provider=='saml'">
-        <label for="issuer" class="col-sm-2 control-label" data-i18n="common.issuer">Issuer</label>
+        <label for="issuer" class="col-sm-2 control-label" translate lib="web">issuer</label>
         <div class="col-sm-4">
             <input ng-model="ctrl.model.issuer" class="form-control input-md" ng-disabled="ctrl.loading==true" />
         </div>
     </div>
     <div class="form-group" ng-show="ctrl.model.provider=='saml'">
-        <label for="saml_federation_metadata" class="col-sm-2 control-label"
-            data-i18n="common.saml_federation_metadata">Metadata url</label>
+        <label for="saml_federation_metadata" class="col-sm-2 control-label" translate lib="web">metadataurl</label>
         <div class="col-sm-4">
             <input ng-model="ctrl.model.saml_federation_metadata" class="form-control input-md"
                 ng-disabled="ctrl.loading==true" />
         </div>
     </div>
     <div class="form-group" ng-show="ctrl.model.provider=='google'">
-        <label for="consumerKey" class="col-sm-2 control-label" data-i18n="common.consumerKey">Consumer key</label>
+        <label for="consumerKey" class="col-sm-2 control-label" translate lib="web">consumerkey</label>
         <div class="col-sm-4">
             <input ng-model="ctrl.model.consumerKey" class="form-control input-md" ng-disabled="ctrl.loading==true" />
         </div>
     </div>
     <div class="form-group" ng-show="ctrl.model.provider=='google'">
-        <label for="consumerSecret" class="col-sm-2 control-label" data-i18n="common.consumerSecret">Consumer
-            secret</label>
+        <label for="consumerSecret" class="col-sm-2 control-label" translate lib="web">consumersecret</label>
         <div class="col-sm-4">
             <input ng-model="ctrl.model.consumerSecret" class="form-control input-md"
                 ng-disabled="ctrl.loading==true" />
@@ -61,8 +59,8 @@
 
     <div class="form-group">
         <div class="col-sm-offset-2 col-sm-10">
-            <button type="submit" ng-disabled="ctrl.loading==true" class="btn btn-success"
-                data-i18n="common.save">Save</button>
+            <button type="submit" ng-disabled="ctrl.loading==true" class="btn btn-success" translate
+                lib="web">Save</button>
         </div>
     </div>
 
