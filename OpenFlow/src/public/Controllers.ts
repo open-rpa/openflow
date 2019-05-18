@@ -72,7 +72,7 @@ module openflow {
 
 
             chart = new chartset();
-            chart.heading = "compare run times"; 
+            chart.heading = "compare run times";
             chart.series = ['minrun', 'avgrun', 'maxrun'];
             // chart.labels = ['ok', 'warning', 'alarm'];
             chart.data = [[], [], []];
@@ -81,9 +81,10 @@ module openflow {
                 chart.data[1].push(model.minrun);
                 chart.data[2].push(model.run);
                 chart.data[0].push(model.maxrun);
-                var id = stats[x]._id; 
+                var id = stats[x]._id;
                 var workflow = workflows.filter(x => x._id == id)[0];
-                chart.labels.push(workflow.name);
+                if (workflow == undefined) { chart.labels.push("unknown"); } else { chart.labels.push(workflow.name); }
+
             }
             this.charts.push(chart);
             var instances = await this.api.Query("openrpa_instances", {}, null, null);
@@ -116,7 +117,7 @@ module openflow {
                 this.charts.push(chart);
             }
 
-            
+
 
             // chart = new chartset();
             // models.forEach(element => {
