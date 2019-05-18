@@ -5,9 +5,9 @@
 
 <pre>{{ ctrl.message }}</pre>
 
-<div class="panel panel-default" ng-repeat="chart in ctrl.charts">
-    <div class="panel-heading">{{chart.heading}}</div>
-    <div class="panel-body">
+<div ng-repeat="chart in ctrl.charts" style="display: inline-block;">
+    <div>{{chart.heading}}</div>
+    <div style="width: 500px">
         <canvas id="bar" class="chart-base" chart-type="chart.charttype" chart-data="chart.data"
             chart-labels="chart.labels" chart-series="chart.series">
         </canvas>
