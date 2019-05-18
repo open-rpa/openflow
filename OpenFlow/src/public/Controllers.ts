@@ -95,7 +95,8 @@ module openflow {
                 var workflow = workflows.filter(x => x._id == id)[0];
 
                 chart = new chartset();
-                chart.heading = workflow.name;
+
+                if (workflow == undefined) { chart.heading = "deleted workflow"; } else { chart.heading = workflow.name; }
                 chart.charttype = "line"
                 chart.data = [];
 
