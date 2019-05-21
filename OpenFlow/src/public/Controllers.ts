@@ -166,7 +166,8 @@ module openflow {
                 console.log(userstats);
 
                 chart = new chartset();
-                chart.heading = user.name + " logins per day";
+                chart.charttype = "line"
+                chart.heading = user.name + " (" + user.username + ") logins per day";
                 chart.data = [];
                 for (var x = 0; x < userstats.length; x++) {
                     var model = userstats[x].value;
