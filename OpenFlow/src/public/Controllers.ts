@@ -34,12 +34,10 @@ module openflow {
 
         async loadData(): Promise<void> {
             this.loading = true;
-            var models: any[] = [];
             this.charts = [];
             var chart: chartset = null;
 
-
-
+            console.log("get mapreduce of instances");
             var stats = await this.api.MapReduce("openrpa_instances",
                 function map() {
                     this.count = 1;
@@ -66,8 +64,17 @@ module openflow {
                     return reducedValue;
                 }, {}, { inline: 1 }, null);
 
+
+            console.log("get workflows");
             var workflows = await this.api.Query("openrpa", { _type: "workflow" }, null, null);
-            models = await this.api.Query("openrpa_instances", {}, null, null);
+            console.log("get workflow instances");
+            var workflowids = [];
+            workflows.forEach(workflow => {
+                workflowids.push(workflow._id);
+            });
+            var q = { WorkflowId: { $in: workflowids } }
+            console.log(q);
+            var instances = await this.api.Query("openrpa_instances", q, null, null);
 
 
 
@@ -87,12 +94,12 @@ module openflow {
 
             }
             this.charts.push(chart);
-            var instances = await this.api.Query("openrpa_instances", {}, null, null);
 
-            for (var x = 0; x < stats.length; x++) {
-                var model = stats[x].value;
-                var id = stats[x]._id;
-                var workflow = workflows.filter(x => x._id == id)[0];
+            //for (var x = 0; x < stats.length; x++) {
+            for (var x = 0; x < workflows.length; x++) {
+                //var workflow = workflows.filter(x => x._id == id)[0];
+                var workflow = workflows[x];
+                var id = workflow._id;
 
                 chart = new chartset();
 
@@ -102,7 +109,6 @@ module openflow {
 
                 for (var i = 0; i < instances.length; i++) {
                     var value = instances[i];
-                    console.log(value._id + "==" + id);
                     if (value.WorkflowId == id) {
 
                         var startDate = new Date(value._created);
@@ -114,33 +120,71 @@ module openflow {
                     }
                 }
 
-                console.log("add chart!!!");
+                console.log("add chart for " + workflow.name);
                 this.charts.push(chart);
             }
 
 
 
-            // chart = new chartset();
-            // models.forEach(element => {
-            //     if (!element.value) { return; }
-            //     if (!element._id.tags) {    return; }
-            //     for(let i=0; i < element._id.tags.length; i++) {
-            //         tag = element._id.tags[i];
-            //         if(chart.series.indexOf(tag) === -1 ) {
-            //             chart.series.push(tag);
-            //             chart.data.push([]);
-            //         }
-            //         var seriesindex = chart.series.indexOf(tag);
-            //         if(seriesindex>-1) {
-            //             chart.data[seriesindex].push(element.value.avg);
-            //             var dt = new Date(element._id.dt);
-            //             if(chart.labels.indexOf(dt.getHours() + ":" + dt.getMinutes()) === -1 ) {
-            //                 chart.labels.push(dt.getHours() + ":" + dt.getMinutes());
-            //             }
-            //         }
-            //     }
-            // });
-            // this.charts.push(chart);
+
+
+
+
+            console.log("get users");
+            var users = await this.api.Query("users", { _type: "user" }, null, null);
+
+            for (var y = 0; y < users.length; y++) {
+                var user = users[y];
+
+                console.log("get mapreduce for user " + user.name);
+                var d = new Date();
+                d.setMonth(d.getMonth() - 1); //1 month ago
+                console.log(d.toISOString());
+                var userstats = await this.api.MapReduce("audit",
+                    function map() {
+                        var dateString = new Date(this._created).toUTCString();
+                        dateString = dateString.split(' ').slice(0, 4).join(' ');
+                        var day = new Date(dateString);
+                        // var day = "" + date.getFullYear() +
+                        //     "" + (date.getMonth() + 1) +
+                        //     "" + date.getDate();
+                        emit(day, { count: 1, value: 1, avg: 0, _acl: [] });
+
+                    }, function reduce(key, values) {
+                        var reducedObject = { count: 0, value: 0, avg: 0, _acl: [] };
+                        values.forEach(function (value) {
+                            reducedObject.count += value.count;
+                            reducedObject._acl = value._acl;
+                        });
+                        return reducedObject;
+                    }, function finalize(key, reducedValue) {
+                        if (reducedValue.count > 0) {
+                            reducedValue.avg = reducedValue.value / reducedValue.count;
+                        }
+                        return reducedValue;
+                    }, { userid: user._id }, { inline: 1 }, null);
+                console.log(userstats);
+
+                chart = new chartset();
+                chart.heading = user.name + " logins per day";
+                chart.data = [];
+                for (var x = 0; x < userstats.length; x++) {
+                    var model = userstats[x].value;
+                    chart.data.push(model.count);
+                    var id = userstats[x]._id;
+                    // chart.labels.push(id);
+                    chart.labels.push(new Date(id).toISOString().split('T')[0]);
+                    // if (workflow == undefined) { chart.labels.push("unknown"); } else { chart.labels.push(workflow.name); }
+
+                }
+                this.charts.push(chart);
+
+            }
+
+
+
+
+
 
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
