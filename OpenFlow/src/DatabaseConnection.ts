@@ -183,9 +183,14 @@ export class DatabaseConnection {
         item._modifiedbyid = user._id;
         item._modified = item._created;
         var hasUser: Ace = item._acl.find(e => e._id === user._id);
+        console.log("_acl: " + item._acl.length);
         if (hasUser === null || hasUser === undefined) {
+            console.log("Adding self " + user.username + " to object " + item.name);
             item.addRight(user._id, user.name, [Rights.full_control]);
+        } else {
+            console.log("Self " + user.username + " allready have access to object " + item.name);
         }
+        console.log("_acl: " + item._acl.length);
         if (collectionname != "audit") { this._logger.debug("adding " + (item.name || item._name) + " to database"); }
 
         item = this.encryptentity<T>(item);
