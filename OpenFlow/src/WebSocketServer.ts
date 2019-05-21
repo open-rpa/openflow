@@ -19,11 +19,11 @@ export class WebSocketServer {
         this._clients = [];
         this._logger = logger;
         this._server = server;
-        this._socketserver =  new WebSocket.Server({ server: server });
-        this._socketserver.on("connection", (socketObject: WebSocket):void => {
+        this._socketserver = new WebSocket.Server({ server: server });
+        this._socketserver.on("connection", (socketObject: WebSocket): void => {
             this._clients.push(new WebSocketClient(logger, socketObject));
         });
-        this._socketserver.on("error", (error: Error):void => {
+        this._socketserver.on("error", (error: Error): void => {
             this._logger.error(error);
         });
         // this._socketserver.on("listening", (cb: () => void):void => {
@@ -34,21 +34,21 @@ export class WebSocketServer {
         // });
         setInterval(this.pingClients, 3000);
     }
-    private static pingClients():void {
+    private static pingClients(): void {
         let count: number = WebSocketServer._clients.length;
-        WebSocketServer._clients = WebSocketServer._clients.filter(function (cli: WebSocketClient):boolean {
+        WebSocketServer._clients = WebSocketServer._clients.filter(function (cli: WebSocketClient): boolean {
             try {
-                if(cli.jwt !== null && cli.jwt !== undefined) {
+                if (cli.jwt !== null && cli.jwt !== undefined) {
                     var tuser = Crypt.verityToken(cli.jwt);
                     var payload = Crypt.decryptToken(cli.jwt);
                     var clockTimestamp = Math.floor(Date.now() / 1000);
-                    if((clockTimestamp - payload.iat) > 20) {
+                    if ((clockTimestamp - payload.iat) > 180) {
                         WebSocketServer._logger.silly("Send new jwt to client");
-                        var l:SigninMessage = new SigninMessage();
+                        var l: SigninMessage = new SigninMessage();
                         cli.jwt = Crypt.createToken(tuser);
                         l.jwt = cli.jwt;
                         l.user = tuser;
-                        var m:Message = new Message(); m.command = "refreshtoken";
+                        var m: Message = new Message(); m.command = "refreshtoken";
                         m.data = JSON.stringify(l);
                         cli.Send(m);
                     }
@@ -56,12 +56,12 @@ export class WebSocketServer {
             } catch (error) {
                 console.error(error);
             }
-            
+
             // if cli.jwt
             // SigninMessage
             return cli.ping();
         });
-        if(count!==WebSocketServer._clients.length) {
+        if (count !== WebSocketServer._clients.length) {
             WebSocketServer._logger.info("new client count: " + WebSocketServer._clients.length);
         }
     }
