@@ -178,7 +178,7 @@ module openflow {
 
                 }
                 this.charts.push(chart);
-
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
 
 
