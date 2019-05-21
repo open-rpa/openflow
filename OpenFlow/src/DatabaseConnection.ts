@@ -194,6 +194,7 @@ export class DatabaseConnection {
         if (collectionname != "audit") { this._logger.debug("adding " + (item.name || item._name) + " to database"); }
 
         item = this.encryptentity<T>(item);
+        console.log("_acl after encrypt: " + item._acl.length);
         if (!item._id) { item._id = new ObjectID().toHexString(); }
 
         if (collectionname === "users" && item._type === "user" && item.hasOwnProperty("newpassword")) {
@@ -201,8 +202,10 @@ export class DatabaseConnection {
             delete (item as any).newpassword;
         }
 
+        console.log("_acl before insert: " + item._acl.length);
         var result: InsertOneWriteOpResult = await this.db.collection(collectionname).insertOne(item);
         item = result.ops[0];
+        console.log("_acl after insert: " + item._acl.length);
 
         if (collectionname === "users" && item._type === "user") {
             var users: Role = await Role.FindByNameOrId("users", jwt);
