@@ -183,18 +183,13 @@ export class DatabaseConnection {
         item._modifiedbyid = user._id;
         item._modified = item._created;
         var hasUser: Ace = item._acl.find(e => e._id === user._id);
-        console.log("_acl: " + item._acl.length);
         if (hasUser === null || hasUser === undefined) {
-            console.log("Adding self " + user.username + " to object " + item.name);
+            if (collectionname != "audit") { this._logger.debug("Adding self " + user.username + " to object " + (item.name || item._name)); }
             item.addRight(user._id, user.name, [Rights.full_control]);
-        } else {
-            console.log("Self " + user.username + " allready have access to object " + item.name);
         }
-        console.log("_acl: " + item._acl.length);
         if (collectionname != "audit") { this._logger.debug("adding " + (item.name || item._name) + " to database"); }
 
         item = this.encryptentity<T>(item);
-        console.log("_acl after encrypt: " + item._acl.length);
         if (!item._id) { item._id = new ObjectID().toHexString(); }
 
         if (collectionname === "users" && item._type === "user" && item.hasOwnProperty("newpassword")) {
@@ -202,10 +197,8 @@ export class DatabaseConnection {
             delete (item as any).newpassword;
         }
 
-        console.log("_acl before insert: " + item._acl.length);
         var result: InsertOneWriteOpResult = await this.db.collection(collectionname).insertOne(item);
         item = result.ops[0];
-        console.log("_acl after insert: " + item._acl.length);
 
         if (collectionname === "users" && item._type === "user") {
             var users: Role = await Role.FindByNameOrId("users", jwt);
@@ -258,6 +251,12 @@ export class DatabaseConnection {
         this.traversejsonencode(item);
         item = this.encryptentity<T>(item);
 
+        var hasUser: Ace = item._acl.find(e => e._id === user._id);
+        if (hasUser === null || hasUser === undefined) {
+            if (collectionname != "audit") { this._logger.debug("Adding self " + user.username + " to object " + (item.name || item._name)); }
+            item.addRight(user._id, user.name, [Rights.full_control]);
+        }
+
         if (collectionname === "users" && item._type === "user" && item.hasOwnProperty("newpassword")) {
             (item as any).passwordhash = await Crypt.hash((item as any).newpassword);
             delete (item as any).newpassword;
@@ -286,6 +285,13 @@ export class DatabaseConnection {
         }
         else if (exists.length > 1) {
             throw JSON.stringify(query) + " is not uniqe, more than 1 item in collection matches this";
+        }
+        var user: TokenUser = Crypt.verityToken(jwt);
+        if (!this.hasAuthorization(user, item, "update")) { throw new Error("Access denied"); }
+        var hasUser: Ace = item._acl.find(e => e._id === user._id);
+        if (hasUser === null || hasUser === undefined) {
+            if (collectionname != "audit") { this._logger.debug("Adding self " + user.username + " to object " + (item.name || item._name)); }
+            item.addRight(user._id, user.name, [Rights.full_control]);
         }
         if (item._id !== null && item._id !== undefined && item._id !== "") {
             item = await this.UpdateOne(item, collectionname, jwt);
