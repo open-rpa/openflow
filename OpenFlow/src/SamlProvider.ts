@@ -61,7 +61,7 @@ export class SamlProvider {
         var key: string = Buffer.from(Config.singing_key, "base64").toString("ascii");
 
         var samlpoptions: any = {
-            issuer: "the-issuer",
+            issuer: Config.saml_issuer,
             cert: cert,
             key: key,
             getPostURL: (wtrealm: any, wreply: any, req: any, callback: any) => {
@@ -110,7 +110,7 @@ export class SamlProvider {
 
         app.get("/issue/", samlp.auth(samlpoptions));
         app.get("/issue/FederationMetadata/2007-06/FederationMetadata.xml", samlp.metadata({
-            issuer: "the-issuer",
+            issuer: Config.saml_issuer,
             cert: cert,
         }));
         var SessionParticipants = require('samlp/lib/sessionParticipants');
@@ -133,7 +133,7 @@ export class SamlProvider {
         });
 
         app.post('/logout', samlp.logout({
-            issuer: 'the-issuer',
+            issuer: Config.saml_issuer,
             protocolBinding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
             cert: cert,
             key: key
