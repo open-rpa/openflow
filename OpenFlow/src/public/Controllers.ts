@@ -15,7 +15,7 @@ module openflow {
 
     }
     export declare function emit(k, v);
-    export class ReportsCtrl extends entitiesCtrl {
+    export class ReportsCtrl extends entitiesCtrl<openflow.Base> {
         public loading: boolean = false;
         public message: string = "";
         public charts: chartset[] = [];
@@ -191,7 +191,7 @@ module openflow {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
     }
-    export class MainCtrl extends entitiesCtrl {
+    export class MainCtrl extends entitiesCtrl<openflow.Base> {
         public loading: boolean = false;
         constructor(
             public $scope: ng.IScope,
@@ -350,7 +350,7 @@ module openflow {
         }
     }
 
-    export class ProvidersCtrl extends entitiesCtrl {
+    export class ProvidersCtrl extends entitiesCtrl<openflow.Provider> {
         public loading: boolean = false;
         constructor(
             public $scope: ng.IScope,
@@ -375,7 +375,7 @@ module openflow {
         }
 
     }
-    export class ProviderCtrl extends entityCtrl {
+    export class ProviderCtrl extends entityCtrl<openflow.Provider> {
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -389,13 +389,8 @@ module openflow {
                 if (this.id !== null && this.id !== undefined) {
                     this.loadData();
                 } else {
-                    this.model = {};
-                    this.model._type = "provider";
-                    this.model.name = "Office 365";
-                    this.model.id = "Office365";
-                    this.model.provider = "saml";
-                    this.model.issuer = "";
-                    this.model.saml_federation_metadata = "https://login.microsoftonline.com/common/FederationMetadata/2007-06/FederationMetadata.xml";
+                    this.model = new Provider("Office 365", "Office365", "saml", "",
+                        "https://login.microsoftonline.com/common/FederationMetadata/2007-06/FederationMetadata.xml")
                 }
 
             });
@@ -413,7 +408,7 @@ module openflow {
 
 
 
-    export class UsersCtrl extends entitiesCtrl {
+    export class UsersCtrl extends entitiesCtrl<openflow.TokenUser> {
         public loading: boolean = false;
         constructor(
             public $scope: ng.IScope,
@@ -437,7 +432,7 @@ module openflow {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
     }
-    export class UserCtrl extends entityCtrl {
+    export class UserCtrl extends entityCtrl<openflow.TokenUser> {
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -451,7 +446,7 @@ module openflow {
                 if (this.id !== null && this.id !== undefined) {
                     this.loadData();
                 } else {
-                    this.model = {};
+                    this.model = new openflow.TokenUser("", "");
                     this.model._type = "user";
                     this.model.name = "";
                     this.model.username = "";
@@ -477,7 +472,7 @@ module openflow {
 
 
 
-    export class RolesCtrl extends entitiesCtrl {
+    export class RolesCtrl extends entitiesCtrl<openflow.Role> {
         public loading: boolean = false;
         constructor(
             public $scope: ng.IScope,
@@ -501,7 +496,7 @@ module openflow {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
     }
-    export class RoleCtrl extends entityCtrl {
+    export class RoleCtrl extends entityCtrl<openflow.Role> {
         public addthis: any = "";
         public users: any[] = null;
         constructor(
@@ -518,10 +513,7 @@ module openflow {
                     await this.loadData();
                     await this.loadUsers();
                 } else {
-                    this.model = {};
-                    this.model._type = "role";
-                    this.model.members = [];
-                    this.model.name = "";
+                    this.model = new openflow.Role("");
                 }
 
             });
@@ -587,6 +579,8 @@ module openflow {
         ];
         public loading: boolean = false;
         public messages: string = "";
+        public queuename: string = "webtest";
+        public message: string = "Hi mom";
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -599,14 +593,16 @@ module openflow {
             });
         }
 
-        async SendOne(): Promise<void> {
-            var result: any = await this.api.QueueMessage("webtest", { "payload": "hi mom" });
-            console.log(result);
+        async submit() {
+            await this.SendOne(this.queuename, this.message);
+        }
+        async SendOne(queuename: string, message: any): Promise<void> {
+            var result: any = await this.api.QueueMessage(queuename, message);
             try {
-                result = JSON.parse(result);
+                // result = JSON.parse(result);
             } catch (error) {
             }
-            this.messages += result.payload + "\n";
+            this.messages += result + "\n";
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
     }
@@ -614,7 +610,7 @@ module openflow {
 
 
 
-    export class EntitiesCtrl extends entitiesCtrl {
+    export class EntitiesCtrl extends entitiesCtrl<openflow.Base> {
         public loading: boolean = false;
         constructor(
             public $scope: ng.IScope,
@@ -656,7 +652,7 @@ module openflow {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
     }
-    export class EntityCtrl extends entityCtrl {
+    export class EntityCtrl extends entityCtrl<openflow.Base> {
         public addthis: any = "";
         public users: any[] = null;
         public newkey: string = "";
@@ -677,13 +673,9 @@ module openflow {
                 if (this.id !== null && this.id !== undefined) {
                     await this._loadData();
                 } else {
-                    this.model = {};
+                    this.model = new openflow.Base();
                     this.model._type = "role";
                     this.model.name = "";
-                    this.model.username = "";
-                    this.model.newpassword = "";
-                    this.model.sid = "";
-                    this.model.federationids = [];
                     this.keys = Object.keys(this.model);
                 }
             });

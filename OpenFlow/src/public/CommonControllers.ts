@@ -1,7 +1,5 @@
 module openflow {
     "use strict";
-
-
     class messagequeue {
         constructor(
             public msg: QueueMessage,
@@ -13,6 +11,7 @@ module openflow {
     export type mapFunc = () => void;
     export type reduceFunc = (key: string, values: any[]) => any;
     export type finalizeFunc = (key: string, value: any) => any;
+
     export class api {
         static $inject = ["$rootScope", "$location", "WebSocketClient"];
         public messageQueue: IHashTable<messagequeue> = {};
@@ -44,7 +43,6 @@ module openflow {
             q = await this.WebSocketClient.Send<MapReduceMessage>(msg);
             return q.result;
         }
-
         async Insert(collection: string, model: any): Promise<any> {
             var q: InsertOneMessage = new InsertOneMessage();
             q.collectionname = collection; q.item = model;
@@ -85,12 +83,14 @@ module openflow {
         }
         async QueueMessage(queuename: string, data: any): Promise<any> {
             var result: any = await this._QueueMessage(queuename, data);
-            var msg = JSON.parse(result.data);
+            var msg = result.data;
+            try {
+                result.data = JSON.parse(result.data);
+            } catch (error) {
+            }
             return msg;
         }
-
     }
-
     export class JSONfn {
         public static stringify(obj) {
             return JSON.stringify(obj, function (key, value) {
@@ -147,7 +147,7 @@ module openflow {
         }
     }
 
-    async function getString(locale: any, lib: string, key: string): Promise<string> {
+    async function getString(locale: any, lib: string, key: string): Promise<any> {
         return new Promise((resolve) => {
             try {
                 if (locale === null || locale === undefined) { return resolve(); }
@@ -239,11 +239,11 @@ module openflow {
         }
     }
 
-    export class entitiesCtrl {
+    export class entitiesCtrl<T> {
         public basequery: any = {};
         public baseprojection: any = {};
         public collection: string = "entities";
-        public models: any[] = [];
+        public models: T[] = [];
         public orderby: any = { _created: -1 };
 
         public static $inject = [
@@ -289,11 +289,11 @@ module openflow {
     }
 
 
-    export class entityCtrl {
+    export class entityCtrl<T> {
         public basequery: any = {};
         public baseprojection: any = {};
         public collection: string = "entities";
-        public model: any = null;
+        public model: T = null;
         public id: string = null;
         public keys: string[] = [];
 

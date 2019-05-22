@@ -57,21 +57,6 @@ module openflow {
             return Object.assign(new SigninMessage(), o);
         }
     }
-    export class TokenUser {
-        _type: string;
-        _id: string;
-        name: string;
-        username: string;
-        roles: Rolemember[] = [];
-    }
-    export class Rolemember {
-        constructor(name: string, _id: string) {
-            this.name = name;
-            this._id = _id;
-        }
-        name: string;
-        _id: string;
-    }
     export class QueryMessage {
         public error: string;
 
