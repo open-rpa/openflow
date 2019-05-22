@@ -18,6 +18,8 @@ export class Config {
     public static tls_passphrase: string = Config.getEnv("tls_passphrase", "");
     public static port: number = parseInt(Config.getEnv("port", "1880"));
     public static domain: string = Config.getEnv("domain", "localhost");
+    public static nodered_domain_schema: string = Config.getEnv("nodered_domain_schema", "");
+
     public static api_ws_url: string = Config.getEnv("api_ws_url", "ws://localhost:3000");
     public static amqp_url: string = Config.getEnv("amqp_url", "amqp://localhost");
 
@@ -27,6 +29,11 @@ export class Config {
     public static aes_secret: string = Config.getEnv("aes_secret", "");
 
     public static baseurl(): string {
+        var matches = Config.nodered_id.match(/\d+/);
+        Config.nodered_id = matches[matches.length - 1]; // Just grab the last number
+        if (Config.nodered_domain_schema != "") {
+            Config.domain = Config.nodered_domain_schema.replace("$nodered_id$", Config.nodered_id)
+        }
         if (Config.tls_crt != '' && Config.tls_key != '') {
             return "https://" + Config.domain + ":" + Config.port + "/";
         }
@@ -38,8 +45,8 @@ export class Config {
         if (!value || value === "") { value = defaultvalue; }
         return value;
     }
-    public static parseBoolean(s:any):boolean {
-        var val:string = "false";
+    public static parseBoolean(s: any): boolean {
+        var val: string = "false";
         if (typeof s === "number") {
             val = s.toString();
         } else if (typeof s === "string") {
@@ -49,7 +56,7 @@ export class Config {
         } else {
             throw new Error("Unknown type!");
         }
-        switch(val) {
+        switch (val) {
             case "true": case "yes": case "1": return true;
             case "false": case "no": case "0": case null: return false;
             default: return Boolean(s);
