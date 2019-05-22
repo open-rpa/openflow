@@ -32,6 +32,7 @@ export class WebServer {
         if (this.app !== null) { return; }
 
         try {
+            this._logger.debug("WebServer.configure::begin");
             if (this.app === null) {
                 this.app = express();
                 this.app.use(compression());

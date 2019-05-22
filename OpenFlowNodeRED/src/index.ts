@@ -14,6 +14,7 @@ import { Crypt } from "./Crypt";
 
 const logger: winston.Logger = Logger.configure();
 
+Config.DumpConfig();
 
 
 var con: amqp_consumer = new amqp_consumer(logger, Config.amqp_url, "hello1");
@@ -22,21 +23,21 @@ var excon1: amqp_exchange_consumer = new amqp_exchange_consumer(logger, Config.a
 var excon2: amqp_exchange_consumer = new amqp_exchange_consumer(logger, Config.amqp_url, "hello2");
 var expub: amqp_exchange_publisher = new amqp_exchange_publisher(logger, Config.amqp_url, "hello2");
 
-var rpccon: amqp_rpc_consumer = new amqp_rpc_consumer(logger, Config.amqp_url, "rpchello", (msg: string): string=> {
+var rpccon: amqp_rpc_consumer = new amqp_rpc_consumer(logger, Config.amqp_url, "rpchello", (msg: string): string => {
     return "server response! " + msg;
 });
 var rpcpub: amqp_rpc_publisher = new amqp_rpc_publisher(logger, Config.amqp_url);
 
-(async function(): Promise<void> {
+(async function (): Promise<void> {
     try {
-        var socket:WebSocketClient = new WebSocketClient(logger, Config.api_ws_url);
+        var socket: WebSocketClient = new WebSocketClient(logger, Config.api_ws_url);
         socket.events.on("onopen", async () => {
-            
-            var q:SigninMessage = new SigninMessage();
+
+            var q: SigninMessage = new SigninMessage();
             var user = new TokenUser(); user.name = "nodered" + Config.nodered_id; user.username = user.name;
             q.jwt = Crypt.createToken(user);
-            var msg:Message  = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
-            var result:SigninMessage = await socket.Send<SigninMessage>(msg);
+            var msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
+            var result: SigninMessage = await socket.Send<SigninMessage>(msg);
             logger.info("signed in as " + result.user.name + " with id " + result.user._id);
 
             const server: http.Server = await WebServer.configure(logger, socket);

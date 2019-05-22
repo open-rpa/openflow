@@ -100,6 +100,8 @@ export class Config {
 
 
     static DumpConfig() {
+        console.log("baseurl" + Config.baseurl());
+
         console.log("nodered_id: " + Config.nodered_id);
 
         console.log("consumer_key: " + Config.consumer_key);
@@ -127,7 +129,7 @@ export class Config {
         // console.log("tls_passphrase: " + Config.tls_passphrase);
         // console.log("aes_secret: " + Config.aes_secret);
 
-        console.log("baseurl" + Config.baseurl());
+
     }
 
 }
