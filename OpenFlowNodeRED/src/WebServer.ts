@@ -79,8 +79,6 @@ export class WebServer {
                 this.settings.userDir = path.join(__dirname, "./nodered");
                 this.settings.nodesDir = path.join(__dirname, "./nodered");
 
-                Config.DumpConfig();
-
                 // this.settings.adminAuth = new googleauth.noderedcontribauthgoogle(Config.baseurl(), Config.consumer_key, Config.consumer_secret, 
                 // (profile:string | any, done:any)=> {
                 //     profile.permissions = "*";

@@ -123,6 +123,7 @@ export class WebSocketClient {
     }
     async OnMessage(sender: amqp_consumer, msg: amqplib.ConsumeMessage) {
         try {
+            this._logger.debug("WebSocketclient::WebSocket Send message to socketclient, from " + msg.properties.replyTo + " correlationId: " + msg.properties.correlationId);
             var data = await this.Queue(msg.content.toString(), msg.properties.replyTo, msg.properties.correlationId, sender.queue);
             this._logger.debug("WebSocketclient::WebSocket ack message in queue " + sender.queue);
             sender.channel.ack(msg);
