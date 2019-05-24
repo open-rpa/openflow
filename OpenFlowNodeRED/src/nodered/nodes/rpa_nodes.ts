@@ -1,0 +1,174 @@
+import * as RED from "node-red";
+import { Red } from "node-red";
+import { NoderedUtil } from "./NoderedUtil";
+import { Logger } from "../../Logger";
+import { amqp_consumer } from "../../amqp_consumer";
+import { amqp_publisher } from "../../amqp_publisher";
+import { Config } from "../../Config";
+
+export interface Irpa_detector_node {
+    queue: string;
+    noack: boolean;
+}
+export class rpa_detector_node {
+    public node: Red = null;
+    public name: string = "";
+    public con: amqp_consumer;
+    public host: string = null;
+    constructor(public config: Irpa_detector_node) {
+        RED.nodes.createNode(this, config);
+        try {
+            this.node = this;
+            this.node.on("close", this.onclose);
+            this.host = Config.amqp_url;
+            this.connect();
+        } catch (error) {
+            NoderedUtil.HandleError(this, error);
+        }
+    }
+    async connect() {
+        try {
+            this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
+            this.con = new amqp_consumer(Logger.instanse, this.host, this.config.queue);
+            this.con.OnMessage = this.OnMessage.bind(this);
+            await this.con.connect(this.config.noack);
+            this.node.status({ fill: "green", shape: "dot", text: "Connected" });
+        } catch (error) {
+            NoderedUtil.HandleError(this, error);
+        }
+    }
+    async OnMessage(msg: any, ack: any) {
+        try {
+            var result: any = {};
+            result.amqpacknowledgment = ack;
+
+            var data = JSON.parse(msg.content.toString());
+            try {
+                data.payload = JSON.parse(data.payload);
+            } catch (error) {
+            }
+            result.payload = data.payload;
+            result.jwt = data.jwt;
+            this.node.send(result);
+        } catch (error) {
+            NoderedUtil.HandleError(this, error);
+        }
+    }
+    onclose() {
+        if (!NoderedUtil.IsNullUndefinded(this.con)) {
+            this.con.close();
+        }
+    }
+}
+
+
+
+export interface Irpa_workflow_node {
+    queue: string;
+    workflow: string;
+    localqueue: string;
+}
+export class rpa_workflow_node {
+    public node: Red = null;
+    public name: string = "";
+    public con: amqp_publisher;
+    public host: string = null;
+    constructor(public config: Irpa_workflow_node) {
+        RED.nodes.createNode(this, config);
+        try {
+            this.node = this;
+            this.node.on("input", this.oninput);
+            this.node.on("close", this.onclose);
+            this.host = Config.amqp_url;
+            this.connect();
+        } catch (error) {
+            NoderedUtil.HandleError(this, error);
+        }
+    }
+    async connect() {
+        try {
+            this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
+            this.con = new amqp_publisher(Logger.instanse, this.host, this.config.localqueue);
+            this.con.OnMessage = this.OnMessage.bind(this);
+            await this.con.connect();
+            this.node.status({ fill: "green", shape: "dot", text: "Connected" });
+        } catch (error) {
+            NoderedUtil.HandleError(this, error);
+        }
+    }
+    async OnMessage(msg: any, ack: any) {
+        try {
+            var result: any = {};
+            result.amqpacknowledgment = ack;
+            var json: string = msg.content.toString();
+            var data = JSON.parse(json);
+            result.jwt = data.jwt;
+
+            if (data.payload.command == "invokecompleted") {
+                result.payload = data.payload.data;
+                this.node.send(result);
+            }
+            else if (data.payload.command == "invokefailed" || data.payload.command == "invokeaborted") {
+                result.payload = data.payload;
+                this.node.send([null, null, result]);
+            }
+            else {
+                result.payload = data.payload;
+                this.node.send([null, result]);
+            }
+            // this.node.send(result);
+        } catch (error) {
+            NoderedUtil.HandleError(this, error);
+        }
+    }
+    async oninput(msg: any) {
+        try {
+            this.node.status({});
+            var rpacommand = {
+                command: "invoke",
+                workflowid: this.config.workflow,
+                data: msg.payload
+            }
+            var data = {
+                jwt: msg.jwt,
+                payload: rpacommand
+            }
+            this.con.SendMessage(JSON.stringify(data), this.config.queue);
+            // var data: any = {};
+            // data.payload = msg.payload;
+            // data.jwt = msg.jwt;
+            // this.con.SendMessage(JSON.stringify(data), this.config.queue);
+            this.node.status({});
+        } catch (error) {
+            NoderedUtil.HandleError(this, error);
+        }
+    }
+    onclose() {
+        if (!NoderedUtil.IsNullUndefinded(this.con)) {
+            this.con.close();
+        }
+    }
+}
+
+export async function get_rpa_detectors(req, res) {
+    var token = await NoderedUtil.GetToken(null, null);
+    var result: any[] = await NoderedUtil.Query('openrpa', { _type: "detector" },
+        { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
+    res.json(result);
+}
+export async function get_rpa_robots(req, res) {
+    var token = await NoderedUtil.GetToken(null, null);
+    var result: any[] = await NoderedUtil.Query('users', { _type: "user" },
+        { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
+    res.json(result);
+}
+export async function get_rpa_workflows(req, res) {
+    var token = await NoderedUtil.GetToken(null, null);
+    var q: any = { _type: "workflow" };
+    if (req.query.queue != null && req.query.queue != undefined) {
+        q = { _type: "workflow", $or: [{ _createdbyid: req.query.queue }, { _modifiedbyid: req.query.queue }] };
+    }
+    var result: any[] = await NoderedUtil.Query('openrpa', q,
+        { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
+    res.json(result);
+}
