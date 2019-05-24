@@ -1,23 +1,25 @@
 module openflow {
     "use strict";
-
-
     class messagequeue {
         constructor(
             public msg: QueueMessage,
-            public callback: any) {}
+            public callback: any) { }
     }
     interface IHashTable<T> {
         [key: string]: T;
     }
+    export type mapFunc = () => void;
+    export type reduceFunc = (key: string, values: any[]) => any;
+    export type finalizeFunc = (key: string, value: any) => any;
+
     export class api {
         static $inject = ["$rootScope", "$location", "WebSocketClient"];
         public messageQueue: IHashTable<messagequeue> = {};
-        constructor(public $rootScope:ng.IRootScopeService, public $location, public WebSocketClient:WebSocketClient) {
+        constructor(public $rootScope: ng.IRootScopeService, public $location, public WebSocketClient: WebSocketClient) {
 
-            var cleanup = $rootScope.$on('queuemessage', (event, data:QueueMessage) => {
+            var cleanup = $rootScope.$on('queuemessage', (event, data: QueueMessage) => {
                 if (event && data) { }
-                if(this.messageQueue[data.correlationId] !== undefined) {
+                if (this.messageQueue[data.correlationId] !== undefined) {
                     this.messageQueue[data.correlationId].callback(data);
                     delete this.messageQueue[data.correlationId];
                 }
@@ -31,52 +33,77 @@ module openflow {
             q = await this.WebSocketClient.Send<QueryMessage>(msg);
             return q.result;
         }
-        async Insert(collection:string, model: any): Promise<any> {
+        async MapReduce(collection: string, map: mapFunc, reduce: reduceFunc, finalize: finalizeFunc, query: any, out: string | any, scope: any): Promise<any> {
+            var q: MapReduceMessage = new MapReduceMessage(map, reduce, finalize, query, out);
+            q.collectionname = collection; q.scope = scope;
+            var msg: Message = new Message(); msg.command = "mapreduce"; q.out = out;
+
+            // msg.data = JSON.stringify(q);
+            msg.data = JSONfn.stringify(q);
+            q = await this.WebSocketClient.Send<MapReduceMessage>(msg);
+            return q.result;
+        }
+        async Insert(collection: string, model: any): Promise<any> {
             var q: InsertOneMessage = new InsertOneMessage();
             q.collectionname = collection; q.item = model;
             var msg: Message = new Message(); msg.command = "insertone"; msg.data = JSON.stringify(q);
             q = await this.WebSocketClient.Send<InsertOneMessage>(msg);
             return q.result;
         }
-        async Update(collection:string, model: any): Promise<any> {
+        async Update(collection: string, model: any): Promise<any> {
             var q: UpdateOneMessage = new UpdateOneMessage();
             q.collectionname = collection; q.item = model;
             var msg: Message = new Message(); msg.command = "updateone"; msg.data = JSON.stringify(q);
             q = await this.WebSocketClient.Send<UpdateOneMessage>(msg);
             return q.result;
         }
-        async Delete(collection:string, model: any): Promise<void> {
+        async Delete(collection: string, model: any): Promise<void> {
             var q: DeleteOneMessage = new DeleteOneMessage();
             q.collectionname = collection; q._id = model._id;
             var msg: Message = new Message(); msg.command = "deleteone"; msg.data = JSON.stringify(q);
             q = await this.WebSocketClient.Send<DeleteOneMessage>(msg);
         }
-        async RegisterQueue(queuename:string = undefined): Promise<void> {
+        async RegisterQueue(queuename: string = undefined): Promise<void> {
             var q: RegisterQueueMessage = new RegisterQueueMessage();
             q.queuename = queuename;
-            var msg:Message  = new Message(); msg.command = "registerqueue"; msg.data = JSON.stringify(q);
+            var msg: Message = new Message(); msg.command = "registerqueue"; msg.data = JSON.stringify(q);
             await this.WebSocketClient.Send(msg);
         }
-        async _QueueMessage(queuename: string, data: any):Promise<QueueMessage> {
+        async _QueueMessage(queuename: string, data: any): Promise<QueueMessage> {
             return new Promise<QueueMessage>(async (resolve, reject) => {
                 var q: QueueMessage = new QueueMessage();
                 q.correlationId = Math.random().toString(36).substr(2, 9);
                 q.queuename = queuename; q.data = JSON.stringify(data);
-                var msg:Message  = new Message(); msg.command = "queuemessage"; msg.data = JSON.stringify(q);
-                this.messageQueue[q.correlationId] = new messagequeue(q, (msgresult:QueueMessage)=> {
+                var msg: Message = new Message(); msg.command = "queuemessage"; msg.data = JSON.stringify(q);
+                this.messageQueue[q.correlationId] = new messagequeue(q, (msgresult: QueueMessage) => {
                     resolve(msgresult);
                 });
                 await this.WebSocketClient.Send(msg);
             });
         }
-        async QueueMessage(queuename: string, data: any):Promise<any> {
-            var result:any = await this._QueueMessage(queuename, data);
-            var msg = JSON.parse(result.data);
+        async QueueMessage(queuename: string, data: any): Promise<any> {
+            var result: any = await this._QueueMessage(queuename, data);
+            var msg = result.data;
+            try {
+                result.data = JSON.parse(result.data);
+            } catch (error) {
+            }
             return msg;
         }
-
     }
-
+    export class JSONfn {
+        public static stringify(obj) {
+            return JSON.stringify(obj, function (key, value) {
+                return (typeof value === 'function') ? value.toString() : value;
+            });
+        }
+        public static parse(str) {
+            return JSON.parse(str, function (key, value) {
+                if (typeof value != 'string') return value;
+                return (value.substring(0, 8) == 'function') ? eval('(' + value + ')') : value;
+            });
+        }
+    }
     function _timeSince(timeStamp) {
         var now: Date = new Date(),
             secondsPast: number = (now.getTime() - timeStamp.getTime()) / 1000;
@@ -120,7 +147,7 @@ module openflow {
         }
     }
 
-    async function getString(locale: any, lib: string, key: string): Promise<string> {
+    async function getString(locale: any, lib: string, key: string): Promise<any> {
         return new Promise((resolve) => {
             try {
                 if (locale === null || locale === undefined) { return resolve(); }
@@ -136,35 +163,35 @@ module openflow {
             }
         });
     }
-    var global_translate_notfound:string[] = [];
+    var global_translate_notfound: string[] = [];
     export class translate implements ng.IDirective {
         require = '?ngModel';
         replace = true;
-        
+
         constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService, public locale) {
         }
         link: ng.IDirectiveLinkFn = (scope: ng.IScope, element: ng.IAugmentedJQuery, attr: ng.IAttributes, ngModelCtrl: any) => {
-            var calculateValue = (value:string):string => {
-                if (value === null || value === undefined || value ==="") return value;
+            var calculateValue = (value: string): string => {
+                if (value === null || value === undefined || value === "") return value;
                 var lib = (attr.lib ? attr.lib : "common");
                 if ((value.toString()).startsWith(lib + ".")) { return; }
                 var key: string = (lib + "." + value).toLowerCase();
                 var result = this.locale.getString(key);
-                if(result.startsWith(lib + ".")) { result = result.slice( (lib + ".").length); }
+                if (result.startsWith(lib + ".")) { result = result.slice((lib + ".").length); }
                 // var result = await getString(this.locale, lib, value);
                 if (result == "%%KEY_NOT_FOUND%%" || result == "") {
-                    if(global_translate_notfound.indexOf(lib + "." + value)===-1) {
+                    if (global_translate_notfound.indexOf(lib + "." + value) === -1) {
                         global_translate_notfound.push(lib + "." + value);
                         console.log("KEY_NOT_FOUND " + lib + "." + value);
                     }
                     result = value;
                 }
-                
+
                 return result;
             };
             var lib = (attr.lib ? attr.lib : "common");
             this.locale.ready(lib).then(() => {
-                var value:string = null;
+                var value: string = null;
                 if (ngModelCtrl !== null) {
                     ngModelCtrl.$formatters.push(function (value) {
                         return calculateValue(value);
@@ -173,9 +200,9 @@ module openflow {
                     // ngModelCtrl.$setViewValue(this.result);
                     // ngModelCtrl.$render();
                 } else {
-                    var hashCode = (s:string) => {
-                        return s.split("").reduce(function(a,b){a=((a<<5)-a)+b.charCodeAt(0);return a&a},0);              
-                      }
+                    var hashCode = (s: string) => {
+                        return s.split("").reduce(function (a, b) { a = ((a << 5) - a) + b.charCodeAt(0); return a & a }, 0);
+                    }
                     var watchFunction = () => {
                         if (attr.value !== null && attr.value !== undefined) {
                             return hashCode(attr.value);
@@ -190,17 +217,17 @@ module openflow {
                     // attrs.$observe('i18n', function (newVal, oldVal) {
                     // });
                     //scope.$watch(watchFunction, () => {
-                        if (attr.value !== null && attr.value !== undefined) {
-                            value = calculateValue(attr.value);
-                            attr.$set('value', value);
-                        } else {
-                            value = element.text();
-                            if (value !== null || value !== undefined) {
-                                var result = calculateValue(value);
-                                // console.log(value + "=" + result);
-                                element.text(result);
-                            }
+                    if (attr.value !== null && attr.value !== undefined) {
+                        value = calculateValue(attr.value);
+                        attr.$set('value', value);
+                    } else {
+                        value = element.text();
+                        if (value !== null || value !== undefined) {
+                            var result = calculateValue(value);
+                            // console.log(value + "=" + result);
+                            element.text(result);
                         }
+                    }
                     //});
                 }
             });
@@ -212,11 +239,11 @@ module openflow {
         }
     }
 
-    export class entitiesCtrl {
+    export class entitiesCtrl<T> {
         public basequery: any = {};
         public baseprojection: any = {};
         public collection: string = "entities";
-        public models: any[] = [];
+        public models: T[] = [];
         public orderby: any = { _created: -1 };
 
         public static $inject = [
@@ -262,11 +289,11 @@ module openflow {
     }
 
 
-    export class entityCtrl {
+    export class entityCtrl<T> {
         public basequery: any = {};
         public baseprojection: any = {};
         public collection: string = "entities";
-        public model: any = null;
+        public model: T = null;
         public id: string = null;
         public keys: string[] = [];
 
@@ -274,7 +301,7 @@ module openflow {
             "$scope",
             "$location",
             "$routeParams",
-            "WebSocketClient", 
+            "WebSocketClient",
             "api"
         ];
         constructor(

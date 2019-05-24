@@ -23,13 +23,6 @@
             "type": "node"
         },
         {
-            "name": "Launch index.html",
-            "type": "chrome",
-            "request": "launch",
-            "url": "https://localhost.openrpa.dk:3000/",
-            "webRoot": "${workspaceFolder}/dist/Public/index.html"
-        },
-        {
             "args": [],
             "cwd": "${workspaceRoot}",
             "envFile": "${workspaceFolder}/config/.env",
@@ -49,6 +42,13 @@
             "sourceMaps": true,
             "stopOnEntry": false,
             "type": "node"
-        }
+        },
+        {
+            "name": "Launch index.html",
+            "type": "chrome",
+            "request": "launch",
+            "url": "https://localhost.openrpa.dk:3000/",
+            "webRoot": "${workspaceFolder}/dist/Public/index.html"
+        },
     ]
 }

@@ -1,5 +1,5 @@
 import * as winston from "winston";
-import * as express  from "express";
+import * as express from "express";
 import * as passport from "passport";
 
 import * as samlp from "samlp";
@@ -11,60 +11,60 @@ export class SamlProvider {
     private static _logger: winston.Logger;
     // private static app:express.Express;
 
-    public static profileMapper (pu:any):any {
+    public static profileMapper(pu: any): any {
         return {
             pu: pu,
-            getClaims: function():any {
-                var claims:any = {};
-                var k:string[]=Object.keys(this.pu);
+            getClaims: function (): any {
+                var claims: any = {};
+                var k: string[] = Object.keys(this.pu);
                 k.forEach(key => {
-                    if(key.indexOf("http://")===0) {
+                    if (key.indexOf("http://") === 0) {
                         claims[key] = this.pu[key];
                     } else {
-                        switch(key) {
+                        switch (key) {
                             case "id":
-                            claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] = this.pu[key]; break;
+                                claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] = this.pu[key]; break;
                             case "displayName":
-                            claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] = this.pu[key]; break;
+                                claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] = this.pu[key]; break;
                             case "name":
-                            claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] = this.pu[key]; break;
+                                claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] = this.pu[key]; break;
                             case "username":
-                            claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] = this.pu[key]; break;
+                                claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] = this.pu[key]; break;
                             case "emails":
-                            claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"] = this.pu[key][0];
-                            claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] = this.pu[key][0]; break;
+                                claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"] = this.pu[key][0];
+                                claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] = this.pu[key][0]; break;
                             case "roles":
-                            var roles:string[] = [];
-                            this.pu[key].forEach(role => {
-                                roles.push(role.name);
-                            });
-                            claims["http://schemas.xmlsoap.org/claims/Group"] = roles;
+                                var roles: string[] = [];
+                                this.pu[key].forEach(role => {
+                                    roles.push(role.name);
+                                });
+                                claims["http://schemas.xmlsoap.org/claims/Group"] = roles;
                         }
                     }
                 });
                 return claims;
             },
-            getNameIdentifier: function():any {
-                var claims:any = this.getClaims();
+            getNameIdentifier: function (): any {
+                var claims: any = this.getClaims();
                 return {
                     nameIdentifier: claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] ||
-                                    claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] ||
-                                    claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"]
-                  };
+                        claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] ||
+                        claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"]
+                };
             }
         };
     }
 
-    static configure(logger: winston.Logger, app:express.Express, baseurl:string): void {
+    static configure(logger: winston.Logger, app: express.Express, baseurl: string): void {
         this._logger = logger;
         var cert: string = Buffer.from(Config.signing_crt, "base64").toString("ascii");
         var key: string = Buffer.from(Config.singing_key, "base64").toString("ascii");
 
         var samlpoptions: any = {
-            issuer: "the-issuer",
+            issuer: Config.saml_issuer,
             cert: cert,
             key: key,
-            getPostURL: (wtrealm:any, wreply:any, req:any, callback:any) => {
+            getPostURL: (wtrealm: any, wreply: any, req: any, callback: any) => {
                 (async () => {
                     if (typeof wreply === "object") {
                         wreply = wreply.documentElement.getAttribute("AssertionConsumerServiceURL");
@@ -73,9 +73,11 @@ export class SamlProvider {
                 })();
 
             },
-            getUserFromRequest: (req:any) => {
-                var tuser:TokenUser = new TokenUser(req.user);
-                Audit.LoginSuccess(tuser, "tokenissued", "saml");
+            getUserFromRequest: (req: any) => {
+                var tuser: TokenUser = new TokenUser(req.user);
+                var remoteip = "";
+                if (req.connection) { remoteip = req.connection.remoteAddress; }
+                Audit.LoginSuccess(tuser, "tokenissued", "saml", remoteip);
                 return req.user;
             },
             profileMapper: SamlProvider.profileMapper
@@ -84,10 +86,10 @@ export class SamlProvider {
         app.get("/issue/", (req: any, res: any, next: any): void => {
             // passport.authenticate("session");
             if (req.query.SAMLRequest !== undefined && req.query.SAMLRequest !== null) {
-                if((req.user===undefined || req.user === null) ) {
+                if ((req.user === undefined || req.user === null)) {
                     try {
                         // tslint:disable-next-line: max-line-length
-                        samlp.parseRequest(req, samlpoptions, async (_err:any, samlRequestDom:any):Promise<void> => {
+                        samlp.parseRequest(req, samlpoptions, async (_err: any, samlRequestDom: any): Promise<void> => {
                             res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
                             res.redirect("/");
                         });
@@ -108,7 +110,7 @@ export class SamlProvider {
 
         app.get("/issue/", samlp.auth(samlpoptions));
         app.get("/issue/FederationMetadata/2007-06/FederationMetadata.xml", samlp.metadata({
-            issuer: "the-issuer",
+            issuer: Config.saml_issuer,
             cert: cert,
         }));
         var SessionParticipants = require('samlp/lib/sessionParticipants');
@@ -129,12 +131,12 @@ export class SamlProvider {
             req.logout();
             res.redirect("/");
         });
-      
+
         app.post('/logout', samlp.logout({
-            issuer:             'the-issuer',
-            protocolBinding:    'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
-            cert:               cert,
-            key:                key
+            issuer: Config.saml_issuer,
+            protocolBinding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
+            cert: cert,
+            key: key
         }));
 
 

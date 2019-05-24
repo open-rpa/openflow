@@ -9,15 +9,15 @@
     </div>
 </script>
 <script type="text/javascript">
-    RED.nodes.registerType('api-credentials',{
+    RED.nodes.registerType('api-credentials', {
         category: 'config',
         defaults: {
         },
         credentials: {
-            username: { type:"text" },
+            username: { type: "text" },
             password: { type: "password" }
         },
-        label: function() {
+        label: function () {
             return this.name || "api credentials";
         }
     });
@@ -44,7 +44,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         color: "#a6bbcf",
         defaults: {
             name: { value: "" },
-            config: {value:"",type:"api-credentials", required:false}
+            config: { value: "", type: "api-credentials", required: false }
         },
         inputs: 1,
         outputs: 1,
@@ -457,11 +457,11 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             $("#node-input-typed-entities").typedInput('value', this.entities);
 
 
-            $.getJSON('api_roles',function(data) {
-                $.each(data, function(i, ele) {
-                    $('#node-input-targetid-select').append($('<option>', { 
+            $.getJSON('api_roles', function (data) {
+                $.each(data, function (i, ele) {
+                    $('#node-input-targetid-select').append($('<option>', {
                         value: ele._id,
-                        text : ele.name
+                        text: ele.name
                     }));
                 });
                 $('#node-input-targetid-select').val($('#node-input-targetid').val());
@@ -535,11 +535,11 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             $("#node-input-typed-entities").typedInput('value', this.entities);
 
 
-            $.getJSON('api_roles',function(data) {
-                $.each(data, function(i, ele) {
-                    $('#node-input-targetid-select').append($('<option>', { 
+            $.getJSON('api_roles', function (data) {
+                $.each(data, function (i, ele) {
+                    $('#node-input-targetid-select').append($('<option>', {
                         value: ele._id,
-                        text : ele.name
+                        text: ele.name
                     }));
                 });
                 $('#node-input-targetid-select').val($('#node-input-targetid').val());
@@ -605,7 +605,15 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
     </div>
 
     <div class="form-row">
-        <label for="node-input-output"><i class="fa fa-tag"></i> Output</label>
+        <label for="node-input-collection"><i class="fa fa-tag"></i> Collection</label>
+        <input type="text" id="node-input-collection" placeholder="Run reduce on this Collection">
+    </div>
+    <div class="form-row">
+        <label for="node-input-query"><i class="fa fa-tag"></i> Query</label>
+        <input type="text" id="node-input-query" placeholder="Query limiting reduced documents">
+    </div>
+    <div class="form-row">
+        <label for="node-input-output"><i class="fa fa-tag"></i> Out(Action)</label>
         <select type="text" id="node-input-output">
             <option>replace</option>
             <option>merge</option>
@@ -616,10 +624,6 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
     <div class="form-row">
         <label for="node-input-outcol"><i class="fa fa-tag"></i> Out collection</label>
         <input type="text" id="node-input-outcol" placeholder="Output collection">
-    </div>
-    <div class="form-row">
-        <label for="node-input-query"><i class="fa fa-tag"></i> Out collection</label>
-        <input type="text" id="node-input-query" placeholder="Output collection">
     </div>
 
 </script>
@@ -640,12 +644,15 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         defaults: {
             name: { value: "" },
             collection: { value: "entities", required: true },
-            map: { value: 
-`function map(this) {
+            map: {
+                value:
+                    `function map() {
     emit(this._type, this);
-}`, required: true },
-            reduce: { value: 
-`function reduce(key, values) {
+}`, required: true
+            },
+            reduce: {
+                value:
+                    `function reduce(key, values) {
     var reducedObject = { count: 0, value: 0, avg: 0, _acl: [] };
     values.forEach(function (value) {
         reducedObject.value += value.value;
@@ -653,9 +660,11 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         reducedObject._acl = value._acl;
     });
     return reducedObject;
-}`, required: true },
-            finalize: { value: 
-`function finalize(key, reducedValue) {
+}`, required: true
+            },
+            finalize: {
+                value:
+                    `function finalize(key, reducedValue) {
     if (reducedValue.count > 0) {
         reducedValue.avg = reducedValue.value / reducedValue.count;
     }
@@ -666,7 +675,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             outcol: { value: "1", required: true },
             query: { value: "{}", required: true },
 
-            noerr: {value:0,required:true,validate:function(v) { return ((!v) || (v === 0)) ? true : false; }}
+            noerr: { value: 0, required: true, validate: function (v) { return ((!v) || (v === 0)) ? true : false; } }
         },
         inputs: 1,
         outputs: 1,
@@ -741,7 +750,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             });
 
             var that = this;
-            $("#node-function-expand-js-map").click(function(e) {
+            $("#node-function-expand-js-map").click(function (e) {
                 e.preventDefault();
                 var value = that.mapeditor.getValue();
                 RED.editor.editJavaScript({
@@ -749,16 +758,16 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
                     width: "Infinity",
                     cursor: that.mapeditor.getCursorPosition(),
                     mode: "ace/mode/nrjavascript",
-                    complete: function(v,cursor) {
+                    complete: function (v, cursor) {
                         that.mapeditor.setValue(v, -1);
-                        that.mapeditor.gotoLine(cursor.row+1,cursor.column,false);
-                        setTimeout(function() {
+                        that.mapeditor.gotoLine(cursor.row + 1, cursor.column, false);
+                        setTimeout(function () {
                             that.mapeditor.focus();
-                        },300);
+                        }, 300);
                     }
                 })
             });
-            $("#node-function-expand-js-reduce").click(function(e) {
+            $("#node-function-expand-js-reduce").click(function (e) {
                 e.preventDefault();
                 var value = that.reduceeditor.getValue();
                 RED.editor.editJavaScript({
@@ -766,16 +775,16 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
                     width: "Infinity",
                     cursor: that.reduceeditor.getCursorPosition(),
                     mode: "ace/mode/nrjavascript",
-                    complete: function(v,cursor) {
+                    complete: function (v, cursor) {
                         that.reduceeditor.setValue(v, -1);
-                        that.reduceeditor.gotoLine(cursor.row+1,cursor.column,false);
-                        setTimeout(function() {
+                        that.reduceeditor.gotoLine(cursor.row + 1, cursor.column, false);
+                        setTimeout(function () {
                             that.reduceeditor.focus();
-                        },300);
+                        }, 300);
                     }
                 })
             });
-            $("#node-function-expand-js-finalize").click(function(e) {
+            $("#node-function-expand-js-finalize").click(function (e) {
                 e.preventDefault();
                 var value = that.finalizeeditor.getValue();
                 RED.editor.editJavaScript({
@@ -783,12 +792,12 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
                     width: "Infinity",
                     cursor: that.finalizeeditor.getCursorPosition(),
                     mode: "ace/mode/nrjavascript",
-                    complete: function(v,cursor) {
+                    complete: function (v, cursor) {
                         that.finalizeeditor.setValue(v, -1);
-                        that.finalizeeditor.gotoLine(cursor.row+1,cursor.column,false);
-                        setTimeout(function() {
+                        that.finalizeeditor.gotoLine(cursor.row + 1, cursor.column, false);
+                        setTimeout(function () {
                             that.finalizeeditor.focus();
-                        },300);
+                        }, 300);
                     }
                 })
             });
@@ -805,8 +814,8 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 
             var annot = this.mapeditor.getSession().getAnnotations();
             $("#node-input-noerr-map").val(0);
-            for (var k=0; k < annot.length; k++) {
-                console.log(annot[k].type,":",annot[k].text, "on line", annot[k].row);
+            for (var k = 0; k < annot.length; k++) {
+                console.log(annot[k].type, ":", annot[k].text, "on line", annot[k].row);
                 if (annot[k].type === "error") {
                     $("#node-input-noerr-map").val(annot.length);
                     this.noerr = annot.length;
@@ -815,8 +824,8 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 
             annot = this.reduceeditor.getSession().getAnnotations();
             $("#node-input-noerr-reduce").val(0);
-            for (var k=0; k < annot.length; k++) {
-                console.log(annot[k].type,":",annot[k].text, "on line", annot[k].row);
+            for (var k = 0; k < annot.length; k++) {
+                console.log(annot[k].type, ":", annot[k].text, "on line", annot[k].row);
                 if (annot[k].type === "error") {
                     $("#node-input-noerr-reduce").val(annot.length);
                     this.noerr = annot.length;
@@ -825,8 +834,8 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 
             annot = this.finalizeeditor.getSession().getAnnotations();
             $("#node-input-noerr-finalize").val(0);
-            for (var k=0; k < annot.length; k++) {
-                console.log(annot[k].type,":",annot[k].text, "on line", annot[k].row);
+            for (var k = 0; k < annot.length; k++) {
+                console.log(annot[k].type, ":", annot[k].text, "on line", annot[k].row);
                 if (annot[k].type === "error") {
                     $("#node-input-noerr-finalize").val(annot.length);
                     this.noerr = annot.length;
@@ -848,7 +857,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             $("#node-input-scope").val($("#node-input-typed-scope").typedInput('value'));
 
         },
-        oneditcancel: function() {
+        oneditcancel: function () {
             this.mapeditor.destroy();
             delete this.mapeditor;
 
@@ -858,7 +867,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             this.finalizeeditor.destroy();
             delete this.finalizeeditor;
         },
-        oneditresize: function(size) {
+        oneditresize: function (size) {
             // var rows = $("#dialog-form>div:not(.node-text-editor-row)");
             // var height = $("#dialog-form").height();
             // for (var i=0; i<rows.size(); i++) {

@@ -1,0 +1,141 @@
+<script type="text/x-red" data-template-name="rpa detector">
+    <div class="form-row">
+        <label ><i class="fa fa-tag"></i> Detector</label>
+        <select id="node-input-queue-select">
+        </select>
+        <input id="node-input-queue" type="hidden">
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-tag"></i> Auto acknowledgment</label>
+        <input type="checkbox" id="node-input-noack" style="width: auto;">
+    </div>
+    <div class="form-row">
+        <label ><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Node name">
+    </div>
+</script>
+<script type="text/x-red" data-help-name="rpa detector">
+Active everytime a trigger gets triggered on a robot
+</script>
+<script type="text/javascript">
+    RED.nodes.registerType('rpa detector', {
+        category: 'rpa',
+        color: "#a6bbcf",
+        defaults: {
+            queue: { value: "", required: true },
+            noack: { value: true, required: true },
+            name: { value: "" }
+        },
+        inputs: 0,
+        outputs: 1,
+        icon: "bridge.png",
+        label: function () {
+            return this.name || "rpa detector";
+        },
+        labelStyle: function () {
+            return this.name ? "node_label_italic" : "";
+        },
+        oneditprepare: function () {
+            $.getJSON('rpa_detectors', function (data) {
+                $.each(data, function (i, ele) {
+                    $('#node-input-queue-select').append($('<option>', {
+                        value: ele._id,
+                        text: ele.name
+                    }));
+                });
+                $('#node-input-queue-select').val($('#node-input-queue').val());
+            });
+        },
+        oneditsave: function () {
+            $('#node-input-queue').val($('#node-input-queue-select').val());
+        }
+    });
+</script>
+
+
+
+
+<script type="text/x-red" data-template-name="rpa workflow">
+    <div class="form-row">
+        <label ><i class="fa fa-tag"></i> Robot</label>
+        <select id="node-input-queue-select">
+        </select>
+        <input id="node-input-queue" type="hidden">
+    </div>
+    <div class="form-row">
+        <label ><i class="fa fa-tag"></i> Workflow</label>
+        <select id="node-input-workflow-select">
+        </select>
+        <input id="node-input-workflow" type="hidden">
+    </div>
+    <div class="form-row">
+        <label ><i class="fa fa-tag"></i> Local queue name</label>
+        <input type="text" id="node-input-localqueue" placeholder="Queue name">
+    </div>
+    <div class="form-row">
+        <label ><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Node name">
+    </div>
+</script>
+<script type="text/x-red" data-help-name="rpa workflow">
+Send payload as data to a robot, requesting it to run the selected Workflow
+</script>
+<script type="text/javascript">
+    RED.nodes.registerType('rpa workflow', {
+        category: 'rpa',
+        color: "#a6bbcf",
+        defaults: {
+            queue: { value: "", required: true },
+            workflow: { value: "", required: true },
+            localqueue: { value: "" }
+        },
+        inputs: 1,
+        outputs: 3,
+        icon: "bridge.png",
+        outputLabels: ["completed", "status", "failed"],
+        label: function () {
+            return this.name || "rpa workflow";
+        },
+        labelStyle: function () {
+            return this.name ? "node_label_italic" : "";
+        },
+        oneditprepare: function () {
+            $.getJSON('rpa_robots', function (data) {
+                $('#node-input-queue-select').append($('<option>', {
+                    value: null,
+                    text: "none"
+                }));
+                $.each(data, function (i, ele) {
+                    $('#node-input-queue-select').append($('<option>', {
+                        value: ele._id,
+                        text: ele.name
+                    }));
+                });
+                $('#node-input-queue-select').val($('#node-input-queue').val());
+                reloadWorkflows(true);
+                $("#node-input-queue-select").change(function () {
+                    reloadWorkflows(false);
+                })
+            });
+            var reloadWorkflows = function (firstrun) {
+                $.getJSON('rpa_workflows', { queue: $('#node-input-queue-select').val() }, function (data) {
+                    $('#node-input-workflow-select').find('option').remove()
+                    $.each(data, function (i, ele) {
+                        $('#node-input-workflow-select').append($('<option>', {
+                            value: ele._id,
+                            text: ele.name
+                        }));
+                    });
+                    if (firstrun) {
+                        $('#node-input-workflow-select').val($('#node-input-workflow').val());
+                    }
+                });
+            }
+        },
+        oneditsave: function () {
+            $('#node-input-queue').val($('#node-input-queue-select').val());
+            $('#node-input-workflow').val($('#node-input-workflow-select').val());
+        }
+
+    });
+</script>

@@ -57,21 +57,6 @@ module openflow {
             return Object.assign(new SigninMessage(), o);
         }
     }
-    export class TokenUser {
-        _type: string;
-        _id: string;
-        name: string;
-        username: string;
-        roles: Rolemember[] = [];
-    }
-    export class Rolemember {
-        constructor(name: string, _id: string) {
-            this.name = name;
-            this._id = _id;
-        }
-        name: string;
-        _id: string;
-    }
     export class QueryMessage {
         public error: string;
 
@@ -89,6 +74,24 @@ module openflow {
             return Object.assign(new QueryMessage(), o);
         }
     }
+    export class MapReduceMessage implements IReplyMessage {
+        public error: string;
+        public jwt: string;
+
+        public scope: any;
+        public collectionname: string;
+        public result: any[];
+
+        constructor(public map: mapFunc, public reduce: reduceFunc, public finalize: finalizeFunc, public query: any, public out: string) {
+        }
+        static assign<T>(o: any): MapReduceMessage {
+            if (typeof o === "string" || o instanceof String) {
+                return Object.assign(new MapReduceMessage(null, null, null, null, null), JSON.parse(o.toString()));
+            }
+            return Object.assign(new MapReduceMessage(null, null, null, null, null), o);
+        }
+    }
+
     export class AggregateMessage {
         public error: string;
         public jwt: any;
@@ -256,7 +259,7 @@ module openflow {
             this.Reply("queuemessage");
             this.Send(cli);
         }
-        
+
     }
 
 }

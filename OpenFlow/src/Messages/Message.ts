@@ -49,24 +49,24 @@ export class Message {
     public Process(cli: WebSocketClient): void {
         try {
             var command: string = "";
-            if(this.command!==null && this.command!==undefined) { command = this.command.toLowerCase(); }
-            if(this.command !== "ping" && this.command !== "pong") {
-                if(this.replyto!==null && this.replyto!==undefined) {
-                    var qmsg:QueuedMessage = cli.messageQueue[this.replyto];
-                    if(qmsg!==undefined && qmsg !== null) {
+            if (this.command !== null && this.command !== undefined) { command = this.command.toLowerCase(); }
+            if (this.command !== "ping" && this.command !== "pong") {
+                if (this.replyto !== null && this.replyto !== undefined) {
+                    var qmsg: QueuedMessage = cli.messageQueue[this.replyto];
+                    if (qmsg !== undefined && qmsg !== null) {
                         try {
                             qmsg.message = Object.assign(qmsg.message, JSON.parse(this.data));
                         } catch (error) {
                             // TODO: should we set message to data ?
                         }
-                        if(qmsg.cb!==undefined && qmsg.cb !== null) { qmsg.cb(qmsg.message); }
+                        if (qmsg.cb !== undefined && qmsg.cb !== null) { qmsg.cb(qmsg.message); }
                         delete cli.messageQueue[this.id];
                     }
                     return;
                 }
             }
 
-            if(command !== "ping" && command !== "pong") {
+            if (command !== "ping" && command !== "pong") {
                 command = command;
             }
             switch (command) {
@@ -129,7 +129,7 @@ export class Message {
         var msg: RegisterQueueMessage<Base> = RegisterQueueMessage.assign(this.data);
         try {
             var jwt = cli.jwt;
-            if(msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
+            if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
             await cli.CreateConsumer(msg.queuename);
         } catch (error) {
             cli._logger.error(error);
@@ -149,13 +149,13 @@ export class Message {
         var msg: QueueMessage = QueueMessage.assign(this.data);
         try {
             //
-            if(msg.replyto === null || msg.replyto === undefined || msg.replyto === "") {
+            if (msg.replyto === null || msg.replyto === undefined || msg.replyto === "") {
                 console.log("# sendToQueue");
                 await cli.sendToQueue(msg);
             } else {
-                if(msg.queuename === msg.replyto) { 
+                if (msg.queuename === msg.replyto) {
                     cli._logger.warn("Ignore reply to self queuename:" + msg.queuename + " correlationId:" + msg.correlationId);
-                    return 
+                    return
                 }
                 this.replyto = msg.correlationId;
                 console.log("# sendQueueReply");
@@ -182,7 +182,7 @@ export class Message {
         var msg: CloseQueueMessage<Base> = CloseQueueMessage.assign(this.data);
         try {
             var jwt = cli.jwt;
-            if(msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
+            if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
             await cli.CloseConsumer(msg.queuename);
         } catch (error) {
             cli._logger.error(error);
@@ -214,7 +214,7 @@ export class Message {
         var msg: QueryMessage<Base> = QueryMessage.assign(this.data);
         try {
             var jwt = cli.jwt;
-            if(msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
+            if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
             msg.result = await Config.db.query(msg.query, msg.projection, msg.top, msg.skip, msg.orderby, msg.collectionname, jwt);
         } catch (error) {
             cli._logger.error(error);
@@ -233,7 +233,7 @@ export class Message {
         var msg: AggregateMessage<Base> = AggregateMessage.assign(this.data);
         try {
             var jwt = cli.jwt;
-            if(msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
+            if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
             msg.result = await Config.db.aggregate(msg.aggregates, msg.collectionname, jwt);
         } catch (error) {
             msg.error = error.toString();
@@ -252,7 +252,7 @@ export class Message {
         var msg: InsertOneMessage<Base> = InsertOneMessage.assign(this.data);
         try {
             var jwt = cli.jwt;
-            if(msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
+            if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
             msg.result = await Config.db.InsertOne(msg.item, msg.collectionname, jwt);
         } catch (error) {
             msg.error = error.toString();
@@ -271,7 +271,7 @@ export class Message {
         var msg: UpdateOneMessage<Base> = UpdateOneMessage.assign(this.data);
         try {
             var jwt = cli.jwt;
-            if(msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
+            if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
             msg.result = await Config.db.UpdateOne(msg.item, msg.collectionname, jwt);
         } catch (error) {
             msg.error = error.toString();
@@ -290,7 +290,7 @@ export class Message {
         var msg: InsertOrUpdateOneMessage<Base> = InsertOrUpdateOneMessage.assign(this.data);
         try {
             var jwt = cli.jwt;
-            if(msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
+            if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
             msg.result = await Config.db.InsertOrUpdateOne(msg.item, msg.collectionname, msg.uniqeness, jwt);
         } catch (error) {
             msg.error = error.toString();
@@ -309,7 +309,7 @@ export class Message {
         var msg: DeleteOneMessage = DeleteOneMessage.assign(this.data);
         try {
             var jwt = cli.jwt;
-            if(msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
+            if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
             await Config.db.DeleteOne(msg._id, msg.collectionname, jwt);
         } catch (error) {
             msg.error = error.toString();
@@ -328,7 +328,7 @@ export class Message {
         var msg: MapReduceMessage<any> = MapReduceMessage.assign(this.data);
         try {
             var jwt = cli.jwt;
-            if(msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
+            if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
             msg.result = await Config.db.MapReduce(msg.map, msg.reduce, msg.finalize, msg.query, msg.out, msg.collectionname, msg.scope, jwt);
         } catch (error) {
             msg.error = error.toString();
@@ -349,25 +349,25 @@ export class Message {
         try {
             var tuser: TokenUser = null;
             var user: User = null;
-            var type:string = "local";
-            if(msg.jwt!== null && msg.jwt!== undefined) {
+            var type: string = "local";
+            if (msg.jwt !== null && msg.jwt !== undefined) {
                 type = "jwtsignin";
                 tuser = Crypt.verityToken(msg.jwt);
                 user = await User.FindByUsername(tuser.username);
-                if(user !== null && user !== undefined) {
+                if (user !== null && user !== undefined) {
                     // refresh, for roles and stuff
                     tuser = new TokenUser(user);
-                } else if(tuser.username.startsWith("nodered")) {
+                } else if (tuser.username.startsWith("nodered")) {
                     user = new User(); user.name = tuser.name; user.username = tuser.username;
                     await user.Save(TokenUser.rootToken());
                     tuser = new TokenUser(user);
                 } else {
                     msg.error = "Unknown username or password";
                 }
-            } else if(msg.rawAssertion !== null && msg.rawAssertion !== undefined) {
+            } else if (msg.rawAssertion !== null && msg.rawAssertion !== undefined) {
                 type = "samltoken";
                 user = await LoginProvider.validateToken(msg.rawAssertion);
-                if(user!==null && user != undefined) { tuser = new TokenUser(user); }
+                if (user !== null && user != undefined) { tuser = new TokenUser(user); }
                 msg.rawAssertion = "";
             } else {
                 user = await Auth.ValidateByPassword(msg.username, msg.password);
@@ -375,23 +375,23 @@ export class Message {
             }
             if (user === null || user === undefined) {
                 msg.error = "Unknown username or password";
-                Audit.LoginFailed(tuser.username, type, "websocket");
+                Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip);
                 cli._logger.debug(tuser.username + " failed logging in using " + type);
             } else {
-                if(msg.firebasetoken != null && msg.firebasetoken != undefined && msg.firebasetoken != ""){
+                if (msg.firebasetoken != null && msg.firebasetoken != undefined && msg.firebasetoken != "") {
                     user.firebasetoken = msg.firebasetoken;
                 }
-                if(msg.onesignalid != null && msg.onesignalid != undefined && msg.onesignalid != ""){
+                if (msg.onesignalid != null && msg.onesignalid != undefined && msg.onesignalid != "") {
                     user.onesignalid = msg.onesignalid;
                 }
-                if((msg.onesignalid != null && msg.onesignalid != undefined && msg.onesignalid != "") || 
+                if ((msg.onesignalid != null && msg.onesignalid != undefined && msg.onesignalid != "") ||
                     (msg.onesignalid != null && msg.onesignalid != undefined && msg.onesignalid != "")) {
                     await user.Save(msg.jwt);
-                }                
-                Audit.LoginSuccess(tuser, type, "websocket");
+                }
+                Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip);
                 msg.jwt = Crypt.createToken(user);
                 msg.user = tuser;
-                if(msg.validate_only!==true) {
+                if (msg.validate_only !== true) {
                     cli._logger.debug(tuser.username + " signed in using " + type);
                     cli.jwt = msg.jwt;
                     cli.user = user;
@@ -414,14 +414,14 @@ export class Message {
     private async RegisterUser(cli: WebSocketClient): Promise<void> {
         this.Reply();
         var msg: RegisterUserMessage;
-        var user:User;
+        var user: User;
         try {
             msg = RegisterUserMessage.assign(this.data);
-            if(msg.name == null || msg.name == undefined || msg.name == "") { throw new Error("Name cannot be null"); }
-            if(msg.username == null || msg.username == undefined || msg.username == "") { throw new Error("Username cannot be null"); }
-            if(msg.password == null || msg.password == undefined || msg.password == "") { throw new Error("Password cannot be null"); }
+            if (msg.name == null || msg.name == undefined || msg.name == "") { throw new Error("Name cannot be null"); }
+            if (msg.username == null || msg.username == undefined || msg.username == "") { throw new Error("Username cannot be null"); }
+            if (msg.password == null || msg.password == undefined || msg.password == "") { throw new Error("Password cannot be null"); }
             user = await User.FindByUsername(msg.username);
-            if(user!==null && user !== undefined) { throw new Error("Illegal username"); }
+            if (user !== null && user !== undefined) { throw new Error("Illegal username"); }
             user = await User.ensureUser(msg.name, msg.username, msg.password, null);
             msg.user = new TokenUser(user);
         } catch (error) {
@@ -439,14 +439,14 @@ export class Message {
 
 export class JSONfn {
     public static stringify(obj) {
-        return JSON.stringify(obj,function(key, value){
-                return (typeof value === 'function' ) ? value.toString() : value;
-            });
+        return JSON.stringify(obj, function (key, value) {
+            return (typeof value === 'function') ? value.toString() : value;
+        });
     }
     public static parse(str) {
-        return JSON.parse(str,function(key, value){
-            if(typeof value != 'string') return value;
-            return ( value.substring(0,8) == 'function') ? eval('('+value+')') : value;
+        return JSON.parse(str, function (key, value) {
+            if (typeof value != 'string') return value;
+            return (value.substring(0, 8) == 'function') ? eval('(' + value + ')') : value;
         });
-    }            
+    }
 }
