@@ -165,7 +165,7 @@ export async function get_rpa_robots(req, res) {
 export async function get_rpa_workflows(req, res) {
     var token = await NoderedUtil.GetToken(null, null);
     var q: any = { _type: "workflow" };
-    if (req.query.queue != null && req.query.queue != undefined) {
+    if (req.query.queue != null && req.query.queue != undefined && req.query.queue != "" && req.query.queue != "none") {
         q = { _type: "workflow", $or: [{ _createdbyid: req.query.queue }, { _modifiedbyid: req.query.queue }] };
     }
     var result: any[] = await NoderedUtil.Query('openrpa', q,
