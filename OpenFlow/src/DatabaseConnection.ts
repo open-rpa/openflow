@@ -80,6 +80,9 @@ export class DatabaseConnection {
         }
         if (!top) { top = 500; }
         if (!skip) { skip = 0; }
+        if (collectionname == "openrpa") {
+            arr = await this.db.collection(collectionname).find(query).limit(top).skip(skip).toArray();
+        }
         if (projection != null) {
             arr = await this.db.collection(collectionname).find(_query).project(projection).sort(mysort).limit(top).skip(skip).toArray();
         } else {

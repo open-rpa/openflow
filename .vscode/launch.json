@@ -2,15 +2,6 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "node",
-            "request": "attach",
-            "name": "Attach to Remote",
-            "address": "demo2red0.openrpa.dk",
-            "port": 5858,
-            "localRoot": "${workspaceFolder}/OpenFlowNodeRED/dist/",
-            "remoteRoot": "data"
-        },
-        {
             "args": [],
             "cwd": "${workspaceRoot}",
             "envFile": "${workspaceFolder}/config/.env",
@@ -58,6 +49,24 @@
             "sourceMaps": true,
             "stopOnEntry": false,
             "type": "node"
-        }
+        },
+        {
+            "type": "node",
+            "request": "attach",
+            "name": "Attach to demo2red0",
+            "address": "demo2red0.openrpa.dk",
+            "port": 5858,
+            "localRoot": "${workspaceFolder}/OpenFlowNodeRED/dist/",
+            "remoteRoot": "/data"
+        },
+        {
+            "type": "node",
+            "request": "attach",
+            "name": "Attach to demo2",
+            "address": "demo2.openrpa.dk",
+            "port": 5858,
+            "localRoot": "${workspaceFolder}/dist/",
+            "remoteRoot": "/data"
+        },
     ]
 }
