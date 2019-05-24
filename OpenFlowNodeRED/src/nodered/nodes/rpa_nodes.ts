@@ -108,7 +108,7 @@ export class rpa_workflow_node {
                 result.payload = data.payload.data;
                 this.node.send(result);
             }
-            else if (data.payload.command == "invokefailed" || data.payload.command == "invokeaborted") {
+            else if (data.payload.command == "invokefailed" || data.payload.command == "invokeaborted" || data.payload.command == "error") {
                 result.payload = data.payload;
                 this.node.send([null, null, result]);
             }
