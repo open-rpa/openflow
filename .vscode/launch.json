@@ -23,13 +23,6 @@
             "type": "node"
         },
         {
-            "name": "Launch index.html",
-            "type": "chrome",
-            "request": "launch",
-            "url": "https://localhost.openrpa.dk:3000/",
-            "webRoot": "${workspaceFolder}/dist/Public/index.html"
-        },
-        {
             "args": [],
             "cwd": "${workspaceRoot}",
             "envFile": "${workspaceFolder}/config/.env",
@@ -51,22 +44,11 @@
             "type": "node"
         },
         {
-            "type": "node",
-            "request": "attach",
-            "name": "Attach to demo2red0",
-            "address": "demo2red0.openrpa.dk",
-            "port": 5858,
-            "localRoot": "${workspaceFolder}/OpenFlowNodeRED/dist/",
-            "remoteRoot": "/data"
-        },
-        {
-            "type": "node",
-            "request": "attach",
-            "name": "Attach to demo2",
-            "address": "demo2.openrpa.dk",
-            "port": 5858,
-            "localRoot": "${workspaceFolder}/dist/",
-            "remoteRoot": "/data"
+            "name": "Launch index.html",
+            "type": "chrome",
+            "request": "launch",
+            "url": "https://localhost.openrpa.dk:3000/",
+            "webRoot": "${workspaceFolder}/dist/Public/index.html"
         },
     ]
 }

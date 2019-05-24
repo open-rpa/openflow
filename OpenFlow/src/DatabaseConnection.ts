@@ -80,11 +80,11 @@ export class DatabaseConnection {
         }
         if (!top) { top = 500; }
         if (!skip) { skip = 0; }
-        if (collectionname == "openrpa") {
-            var user: TokenUser = Crypt.verityToken(jwt);
-            arr = await this.db.collection(collectionname).find(query).limit(top).skip(skip).toArray();
-            _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
-        }
+        // if (collectionname == "openrpa") {
+        //     var user: TokenUser = Crypt.verityToken(jwt);
+        //     arr = await this.db.collection(collectionname).find(query).limit(top).skip(skip).toArray();
+        //     _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
+        // }
         if (projection != null) {
             arr = await this.db.collection(collectionname).find(_query).project(projection).sort(mysort).limit(top).skip(skip).toArray();
         } else {
