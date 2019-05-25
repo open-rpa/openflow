@@ -59,7 +59,8 @@ export class Message {
                         } catch (error) {
                             // TODO: should we set message to data ?
                         }
-                        if (qmsg.cb !== undefined && qmsg.cb !== null) { qmsg.cb(qmsg.message); }
+                        //if (qmsg.cb !== undefined && qmsg.cb !== null) { qmsg.cb(qmsg.message); }
+                        if (qmsg.cb !== undefined && qmsg.cb !== null) { qmsg.cb(this); }
                         delete cli.messageQueue[this.id];
                     }
                     return;
@@ -145,12 +146,10 @@ export class Message {
     }
     async QueueMessage(cli: WebSocketClient) {
         this.Reply();
-        console.log("#*********************************************#");
         var msg: QueueMessage = QueueMessage.assign(this.data);
         try {
             //
             if (msg.replyto === null || msg.replyto === undefined || msg.replyto === "") {
-                console.log("# sendToQueue");
                 await cli.sendToQueue(msg);
             } else {
                 if (msg.queuename === msg.replyto) {
@@ -158,7 +157,6 @@ export class Message {
                     return
                 }
                 this.replyto = msg.correlationId;
-                console.log("# sendQueueReply");
                 await cli.sendQueueReply(msg);
             }
         } catch (error) {
@@ -171,9 +169,7 @@ export class Message {
             this.data = "";
             msg.error = error.toString();
         }
-        console.log("# send reply");
         this.Send(cli);
-        console.log("#*********************************************#");
         // if(this.replyto !== null && this.replyto !== undefined && this.replyto !== "") {  
         // }
     }
