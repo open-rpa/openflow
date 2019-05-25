@@ -121,17 +121,25 @@ export class WebSocketClient {
         if (this.consumers.length === 0) { throw new Error("No consumers for client available to send message through") }
         var result = this.consumers[0].sendToQueue(msg.queuename, msg.correlationId, { payload: msg.data, jwt: this.jwt });
     }
+    sleep(ms) {
+        return new Promise(resolve => {
+            setTimeout(resolve, ms)
+        })
+    }
     async OnMessage(sender: amqp_consumer, msg: amqplib.ConsumeMessage) {
         try {
             this._logger.debug("WebSocketclient::WebSocket Send message to socketclient, from " + msg.properties.replyTo + " correlationId: " + msg.properties.correlationId);
             var data = await this.Queue(msg.content.toString(), msg.properties.replyTo, msg.properties.correlationId, sender.queue);
+            console.log("*******************************************");
+            console.log(data);
             this._logger.debug("WebSocketclient::WebSocket ack message in queue " + sender.queue);
             sender.channel.ack(msg);
         } catch (error) {
             this._logger.error("WebSocketclient::WebSocket error in queue " + sender.queue + " / " + error);
-            sender.channel.nack(msg);
+            setTimeout(() => {
+                sender.channel.nack(msg);
+            }, 2000);
         }
-
     }
     public ping(): boolean {
         try {
@@ -236,6 +244,7 @@ export class WebSocketClient {
         if (q.correlationId === undefined || q.correlationId === null || q.correlationId === "") { q.correlationId = m.id; }
         m.data = JSON.stringify(q);
         q = await this.Send<QueueMessage>(m);
+        if ((q as any).command == "error") throw new Error(q.data);
         return q.data;
     }
 
