@@ -262,7 +262,7 @@ export class LoginProvider {
                     if (user == null) {
                         user = new User(); user.name = username; user.username = username;
                         await user.SetPassword(password);
-                        user = await Config.db.InsertOne(user, "users", TokenUser.rootToken());
+                        user = await Config.db.InsertOne(user, "users", 0, false, TokenUser.rootToken());
                         var admins: Role = await Role.FindByNameOrId("admins", TokenUser.rootToken());
                         admins.AddMember(user);
                         await admins.Save(TokenUser.rootToken())
@@ -274,7 +274,7 @@ export class LoginProvider {
                     }
                     Audit.LoginSuccess(new TokenUser(user), "weblogin", "local", "");
                     var provider: Provider = new Provider(); provider.provider = "local"; provider.name = "Local";
-                    provider = await Config.db.InsertOne(provider, "config", TokenUser.rootToken());
+                    provider = await Config.db.InsertOne(provider, "config", 0, false, TokenUser.rootToken());
                     LoginProvider.login_providers.push(provider);
                     tuser = new TokenUser(user);
                     return done(null, tuser);
@@ -323,7 +323,7 @@ export class LoginProvider {
                     _user.name = profile["http://schemas.microsoft.com/identity/claims/displayname"];
                 }
                 _user.username = username;
-                _user = await Config.db.InsertOne(_user, "users", TokenUser.rootToken());
+                _user = await Config.db.InsertOne(_user, "users", 0, false, TokenUser.rootToken());
             }
         }
 
@@ -353,7 +353,7 @@ export class LoginProvider {
                 _user = new User(); _user.name = profile.name;
                 if (profile.displayName !== undefined) { _user.name = profile.displayName; }
                 _user.username = username;
-                _user = await Config.db.InsertOne(_user, "users", jwt);
+                _user = await Config.db.InsertOne(_user, "users", 0, false, jwt);
                 var users: Role = await Role.FindByNameOrId("users", jwt);
                 users.AddMember(_user);
                 await users.Save(jwt)

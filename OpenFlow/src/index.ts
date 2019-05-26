@@ -38,7 +38,7 @@ async function ensureUser(jwt: string, name: string, username: string, id: strin
     if (user !== null && id !== null) { await Config.db.DeleteOne(user._id, "users", jwt); }
     user = new User(); user._id = id; user.name = name; user.username = username;
     await user.SetPassword(Math.random().toString(36).substr(2, 9));
-    user = await Config.db.InsertOne(user, "users", jwt);
+    user = await Config.db.InsertOne(user, "users", 0, false, jwt);
     user = User.assign(user);
     return user;
 }
@@ -47,7 +47,7 @@ async function ensureRole(jwt: string, name: string, id: string): Promise<Role> 
     if (role !== null && role._id === id) { return role; }
     if (role !== null) { await Config.db.DeleteOne(role._id, "users", jwt); }
     role = new Role(); role._id = id; role.name = name;
-    role = await Config.db.InsertOne(role, "users", jwt);
+    role = await Config.db.InsertOne(role, "users", 0, false, jwt);
     role = Role.assign(role);
     return role;
 }

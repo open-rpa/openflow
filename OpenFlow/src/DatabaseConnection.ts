@@ -174,7 +174,7 @@ export class DatabaseConnection {
      * @param  {string} jwt JWT of the user, creating the item, to ensure rights and permission
      * @returns Promise<T> Returns the new item added
      */
-    async InsertOne<T extends Base>(item: T, collectionname: string, jwt: string): Promise<T> {
+    async InsertOne<T extends Base>(item: T, collectionname: string, w: number, j: boolean, jwt: string): Promise<T> {
         if (item === null || item === undefined) { throw Error("Cannot create null item"); }
         await this.connect();
         item = this.ensureResource(item);
@@ -201,8 +201,8 @@ export class DatabaseConnection {
             (item as any).passwordhash = await Crypt.hash((item as any).newpassword);
             delete (item as any).newpassword;
         }
-
-        var result: InsertOneWriteOpResult = await this.db.collection(collectionname).insertOne(item);
+        var options = { writeConcern: { w: w, j: j } };
+        var result: InsertOneWriteOpResult = await this.db.collection(collectionname).insertOne(item, options);
         item = result.ops[0];
 
         if (collectionname === "users" && item._type === "user") {
@@ -220,7 +220,7 @@ export class DatabaseConnection {
      * @param  {string} jwt JWT of user who is doing the update, ensuring rights
      * @returns Promise<T>
      */
-    async UpdateOne<T extends Base>(item: T, collectionname: string, jwt: string): Promise<T> {
+    async UpdateOne<T extends Base>(item: T, collectionname: string, w: number, j: boolean, jwt: string): Promise<T> {
         if (item === null || item === undefined) { throw Error("Cannot update null item"); }
         if (!item.hasOwnProperty("_id")) { throw Error("Cannot update item without _id"); }
         await this.connect();
@@ -267,11 +267,12 @@ export class DatabaseConnection {
             delete (item as any).newpassword;
         }
         this._logger.debug("updating " + (item.name || item._name) + " in database");
-        await this.db.collection(collectionname).replaceOne({ _id: item._id }, item);
+        var options = { writeConcern: { w: w, j: j } };
+        await this.db.collection(collectionname).replaceOne({ _id: item._id }, item, options);
         this.traversejsondecode(item);
         return item;
     }
-    async InsertOrUpdateOne<T extends Base>(item: T, collectionname: string, uniqeness: string, jwt: string): Promise<T> {
+    async InsertOrUpdateOne<T extends Base>(item: T, collectionname: string, uniqeness: string, w: number, j: boolean, jwt: string): Promise<T> {
         var query: any = null;
         if (uniqeness !== null && uniqeness !== undefined && uniqeness !== "") {
             query = {};
@@ -299,9 +300,9 @@ export class DatabaseConnection {
             item.addRight(user._id, user.name, [Rights.full_control]);
         }
         if (item._id !== null && item._id !== undefined && item._id !== "") {
-            item = await this.UpdateOne(item, collectionname, jwt);
+            item = await this.UpdateOne(item, collectionname, w, j, jwt);
         } else {
-            item = await this.InsertOne(item, collectionname, jwt);
+            item = await this.InsertOne(item, collectionname, w, j, jwt);
         }
         return item;
     }

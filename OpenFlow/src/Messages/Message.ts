@@ -248,8 +248,13 @@ export class Message {
         var msg: InsertOneMessage<Base> = InsertOneMessage.assign(this.data);
         try {
             var jwt = cli.jwt;
+            var w: number = 0;
+            var j: boolean = false;
+            if ((msg.w as any) !== undefined && (msg.w as any) !== null) w = msg.w;
+            if ((msg.j as any) !== undefined && (msg.j as any) !== null) j = msg.j;
+
             if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
-            msg.result = await Config.db.InsertOne(msg.item, msg.collectionname, jwt);
+            msg.result = await Config.db.InsertOne(msg.item, msg.collectionname, w, j, jwt);
         } catch (error) {
             msg.error = error.toString();
             cli._logger.error(error);
@@ -268,7 +273,11 @@ export class Message {
         try {
             var jwt = cli.jwt;
             if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
-            msg.result = await Config.db.UpdateOne(msg.item, msg.collectionname, jwt);
+            var w: number = 0;
+            var j: boolean = false;
+            if ((msg.w as any) !== undefined && (msg.w as any) !== null) w = msg.w;
+            if ((msg.j as any) !== undefined && (msg.j as any) !== null) j = msg.j;
+            msg.result = await Config.db.UpdateOne(msg.item, msg.collectionname, w, j, jwt);
         } catch (error) {
             msg.error = error.toString();
             cli._logger.error(error);
@@ -287,7 +296,12 @@ export class Message {
         try {
             var jwt = cli.jwt;
             if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
-            msg.result = await Config.db.InsertOrUpdateOne(msg.item, msg.collectionname, msg.uniqeness, jwt);
+            var w: number = 0;
+            var j: boolean = false;
+            if ((msg.w as any) !== undefined && (msg.w as any) !== null) w = msg.w;
+            if ((msg.j as any) !== undefined && (msg.j as any) !== null) j = msg.j;
+
+            msg.result = await Config.db.InsertOrUpdateOne(msg.item, msg.collectionname, msg.uniqeness, w, j, jwt);
         } catch (error) {
             msg.error = error.toString();
             cli._logger.error(error);
