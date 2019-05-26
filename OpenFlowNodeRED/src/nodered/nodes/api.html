@@ -164,6 +164,17 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         <input id="node-input-resultfield" type="hidden">
     </div>
     <div class="form-row">
+        <label><i class="fa fa-list"></i> Write Concern</label>
+        <select id="node-input-writeconcern">
+            <option value="0">Requests no acknowledgment</option>
+            <option value="1">Requests acknowledgment</option>
+        <!-- 
+            <option value="2">Requests acknowledgment from 2</option>
+            <option value="3">Requests acknowledgment from 3</option>
+        -->
+        </select>
+    </div>
+    <div class="form-row">
         <label><i class="fa fa-tag"></i> Name</label>
         <input type="text" id="node-input-name" placeholder="Name">
     </div>
@@ -178,6 +189,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         defaults: {
             name: { value: "" },
             entitytype: { value: "" },
+            writeconcern: { value: "0", required: true },
             collection: { value: "entities", required: true },
             inputfield: { value: "payload", required: true },
             resultfield: { value: "payload", required: true }
@@ -228,6 +240,17 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         <input id="node-input-resultfield" type="hidden">
     </div>
     <div class="form-row">
+        <label><i class="fa fa-list"></i> Write Concern</label>
+        <select id="node-input-writeconcern">
+            <option value="0">Requests no acknowledgment</option>
+            <option value="1">Requests acknowledgment</option>
+        <!-- 
+            <option value="2">Requests acknowledgment from 2</option>
+            <option value="3">Requests acknowledgment from 3</option>
+        -->
+        </select>
+    </div>
+    <div class="form-row">
         <label><i class="fa fa-tag"></i> Name</label>
         <input type="text" id="node-input-name" placeholder="Name">
     </div>
@@ -242,6 +265,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         defaults: {
             name: { value: "" },
             entitytype: { value: "" },
+            writeconcern: { value: "0", required: true },
             collection: { value: "entities", required: true },
             inputfield: { value: "payload", required: true },
             resultfield: { value: "payload", required: true }
@@ -297,6 +321,17 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         <input id="node-input-resultfield" type="hidden">
     </div>
     <div class="form-row">
+        <label><i class="fa fa-list"></i> Write Concern</label>
+        <select id="node-input-writeconcern">
+            <option value="0">Requests no acknowledgment</option>
+            <option value="1">Requests acknowledgment</option>
+        <!-- 
+            <option value="2">Requests acknowledgment from 2</option>
+            <option value="3">Requests acknowledgment from 3</option>
+        -->
+        </select>
+    </div>
+    <div class="form-row">
         <label><i class="fa fa-tag"></i> Name</label>
         <input type="text" id="node-input-name" placeholder="Name">
     </div>
@@ -316,6 +351,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         defaults: {
             name: { value: "" },
             entitytype: { value: "" },
+            writeconcern: { value: "0", required: true },
             collection: { value: "entities", required: true },
             inputfield: { value: "payload", required: true },
             resultfield: { value: "payload", required: true },

@@ -143,6 +143,7 @@ export interface Iapi_add {
     collection: string;
     inputfield: string;
     resultfield: string;
+    writeconcern: number;
 }
 export class api_add {
     public node: Red = null;
@@ -162,6 +163,9 @@ export class api_add {
             if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
             if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { this.config.inputfield = msg.inputfield; }
             if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { this.config.resultfield = msg.resultfield; }
+            if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
+
+            if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
 
             var data: any[] = [];
             var _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
@@ -177,7 +181,7 @@ export class api_add {
                 if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
                     element._type = this.config.entitytype;
                 }
-                Promises.push(NoderedUtil.InsertOne(this.config.collection, element, msg.jwt));
+                Promises.push(NoderedUtil.InsertOne(this.config.collection, element, this.config.writeconcern, false, msg.jwt));
             }
             data = await Promise.all(Promises.map(p => p.catch(e => e)));
 
@@ -207,6 +211,7 @@ export interface Iapi_update {
     collection: string;
     inputfield: string;
     resultfield: string;
+    writeconcern: number;
 }
 export class api_update {
     public node: Red = null;
@@ -226,6 +231,9 @@ export class api_update {
             if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
             if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { this.config.inputfield = msg.inputfield; }
             if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { this.config.resultfield = msg.resultfield; }
+            if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
+
+            if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
 
             var data: any[] = [];
             var _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
@@ -241,7 +249,7 @@ export class api_update {
                 if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
                     element._type = this.config.entitytype;
                 }
-                Promises.push(NoderedUtil.UpdateOne(this.config.collection, element, msg.jwt));
+                Promises.push(NoderedUtil.UpdateOne(this.config.collection, element, this.config.writeconcern, false, msg.jwt));
             }
             data = await Promise.all(Promises.map(p => p.catch(e => e)));
 
@@ -271,6 +279,7 @@ export interface Iapi_addorupdate {
     inputfield: string;
     resultfield: string;
     uniqeness: string;
+    writeconcern: number;
 }
 export class api_addorupdate {
     public node: Red = null;
@@ -291,6 +300,9 @@ export class api_addorupdate {
             if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { this.config.inputfield = msg.inputfield; }
             if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { this.config.resultfield = msg.resultfield; }
             if (!NoderedUtil.IsNullEmpty(msg.uniqeness)) { this.config.uniqeness = msg.uniqeness; }
+            if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
+
+            if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
 
 
             var data: any[] = [];
@@ -307,7 +319,7 @@ export class api_addorupdate {
                 if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
                     element._type = this.config.entitytype;
                 }
-                Promises.push(NoderedUtil.InsertOrUpdateOne(this.config.collection, element, this.config.uniqeness, msg.jwt));
+                Promises.push(NoderedUtil.InsertOrUpdateOne(this.config.collection, element, this.config.uniqeness, this.config.writeconcern, false, msg.jwt));
             }
             data = await Promise.all(Promises.map(p => p.catch(e => e)));
 

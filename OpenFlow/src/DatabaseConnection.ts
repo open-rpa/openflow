@@ -201,7 +201,7 @@ export class DatabaseConnection {
             (item as any).passwordhash = await Crypt.hash((item as any).newpassword);
             delete (item as any).newpassword;
         }
-        var options = { writeConcern: { w: w, j: j } };
+        var options = { writeConcern: { w: parseInt((w as any)), j: j } };
         var result: InsertOneWriteOpResult = await this.db.collection(collectionname).insertOne(item, options);
         item = result.ops[0];
 
@@ -267,7 +267,7 @@ export class DatabaseConnection {
             delete (item as any).newpassword;
         }
         this._logger.debug("updating " + (item.name || item._name) + " in database");
-        var options = { writeConcern: { w: w, j: j } };
+        var options = { writeConcern: { w: parseInt((w as any)), j: j } };
         await this.db.collection(collectionname).replaceOne({ _id: item._id }, item, options);
         this.traversejsondecode(item);
         return item;
