@@ -13,16 +13,16 @@
     </div>
 </script>
 <script type="text/javascript">
-    RED.nodes.registerType('amqp-connection',{
+    RED.nodes.registerType('amqp-connection', {
         category: 'config',
         defaults: {
-            host: { value: "", required:true },
+            host: { value: "", required: true },
         },
         credentials: {
-            username: { type:"text" },
+            username: { type: "text" },
             password: { type: "password" }
         },
-        label: function() {
+        label: function () {
             return this.host || "amqp credentials";
         }
     });
@@ -56,10 +56,10 @@ AMQP consumer, listening for messages
         category: 'amqp',
         color: "#a6bbcf",
         defaults: {
-            queue: { value: "", required:true },
-            noack: { value: true, required:true },
+            queue: { value: "", required: true },
+            noack: { value: true, required: true },
             name: { value: "" },
-            config: {value:"",type:"amqp-connection", required:true}
+            config: { value: "", type: "amqp-connection", required: true }
         },
         inputs: 0,
         outputs: 1,
@@ -105,9 +105,9 @@ localqueue is this nodes personal queue, leave blank for auto generated ( will c
         category: 'amqp',
         color: "#a6bbcf",
         defaults: {
-            queue: { value: "", required:true },
+            queue: { value: "", required: true },
             localqueue: { value: "" },
-            config: {value:"",type:"amqp-connection", required:true}
+            config: { value: "", type: "amqp-connection", required: true }
         },
         inputs: 1,
         outputs: 1,
@@ -142,6 +142,7 @@ Acknowledgment processing a AMQP message.
         inputs: 1,
         outputs: 1,
         icon: "bridge.png",
+        align: "right",
         label: function () {
             return this.name || "amqp acknowledgment";
         },

@@ -1,0 +1,33 @@
+<script type="text/x-red" data-template-name="smtpserver in">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+    <div class="form-row">
+        <label for="node-input-email"><i class="fa fa-tag"></i> Email</label>
+        <input type="text" id="node-input-email" placeholder="Name">
+    </div>
+</script>
+<script type="text/x-red" data-help-name="smtpserver in">
+   <p>Receive emails directly from outside world on port 25s</p>
+</script>
+<script type="text/javascript">
+    RED.nodes.registerType('smtpserver in', {
+        category: 'rpa',
+        color: "rgb(215, 215, 160)",
+        defaults: {
+            name: { value: "", required: false },
+            email: { value: 'allan@demo1.openrpa.dk', required: true }
+        },
+        inputs: 0,
+        outputs: 1,
+        icon: "parser-html.png",     // saved in icons/myicon.png
+        //align: "right",
+        label: function () {
+            return this.name || this.email || "smtpserver in";
+        },
+        labelStyle: function () {
+            return this.name ? "node_label_italic" : "";
+        }
+    });
+</script>

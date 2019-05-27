@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/open-rpa/openflow",
   "dependencies": {
+    "@nodemailer/mailparser2": "^1.0.3",
     "@types/angular": "^1.6.54",
     "@types/angular-route": "^1.7.0",
     "@types/jquery": "^3.3.29",

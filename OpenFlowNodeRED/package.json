@@ -27,6 +27,7 @@
     "passport-openid-connect": "^0.1.0",
     "passport-saml": "^1.0.0",
     "passport-saml-metadata": "^1.6.0",
+    "smtp-server": "^3.5.0",
     "winston": "^3.2.1"
   }
 }
