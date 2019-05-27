@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@nodemailer/mailparser2": "^1.0.3",
     "@types/amqplib": "^0.5.11",
     "@types/compression": "0.0.36",
     "@types/node": "^11.13.0",
