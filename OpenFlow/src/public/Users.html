@@ -10,6 +10,7 @@
       <th ng-click="ctrl.ToggleOrder('name')"><b translate lib="web">name</b></th>
       <th ng-click="ctrl.ToggleOrder('username')"><b translate lib="web">username</b></th>
       <th ng-click="ctrl.ToggleOrder('_created')"><b translate lib="web">created</b></th>
+      <th ng-click="ctrl.ToggleOrder('lastseen')"><b translate lib="web">lastseen</b></th>
       <th></th>
       <th></th>
     </tr>
@@ -20,6 +21,9 @@
       <td>{{model.username}}</td>
       <td>
         <timesince ng-model="model._created" />
+      </td>
+      <td>
+        <timesince ng-model="model.lastseen" />
       </td>
       <td class="btn-cell">
         <a ng-href="#/User/{{model._id}}">edit</a>

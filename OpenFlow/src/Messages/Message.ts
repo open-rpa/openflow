@@ -436,9 +436,9 @@ export class Message {
                     cli.jwt = msg.jwt;
                     cli.user = user;
                 } else {
-                    user.lastseen = new Date(new Date().toISOString());
                     cli._logger.debug(tuser.username + " was validated in using " + type);
                 }
+                user.lastseen = new Date(new Date().toISOString());
                 await user.Save(TokenUser.rootToken());
             }
         } catch (error) {

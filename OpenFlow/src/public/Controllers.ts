@@ -131,7 +131,7 @@ module openflow {
 
 
             console.log("get users");
-            var users = await this.api.Query("users", { _type: "user" }, null, null);
+            var users = await this.api.Query("users", { _type: "user" }, null, { lastseen: -1 });
 
             for (var y = 0; y < users.length; y++) {
                 var user = users[y];
