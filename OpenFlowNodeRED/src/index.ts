@@ -28,6 +28,11 @@ var rpccon: amqp_rpc_consumer = new amqp_rpc_consumer(logger, Config.amqp_url, "
 });
 var rpcpub: amqp_rpc_publisher = new amqp_rpc_publisher(logger, Config.amqp_url);
 
+process.on('unhandledRejection', up => {
+    console.error(up);
+    throw up
+});
+
 (async function (): Promise<void> {
     try {
         var socket: WebSocketClient = new WebSocketClient(logger, Config.api_ws_url);

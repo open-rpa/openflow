@@ -21,6 +21,7 @@ import { CloseQueueMessage } from "./CloseQueueMessage";
 import { RegisterQueueMessage } from "./RegisterQueueMessage";
 import { QueueMessage } from "./QueueMessage";
 import { RegisterUserMessage } from "./RegisterUserMessage";
+import { UpdateManyMessage } from "./UpdateManyMessage";
 
 export class Message {
     public id: string;
@@ -87,6 +88,9 @@ export class Message {
                     break;
                 case "updateone":
                     this.UpdateOne(cli);
+                    break;
+                case "updatemany":
+                    this.UpdateMany(cli);
                     break;
                 case "insertorupdateone":
                     this.InsertOrUpdateOne(cli);
@@ -277,7 +281,7 @@ export class Message {
             var j: boolean = false;
             if ((msg.w as any) !== undefined && (msg.w as any) !== null) w = msg.w;
             if ((msg.j as any) !== undefined && (msg.j as any) !== null) j = msg.j;
-            msg.result = await Config.db.UpdateOne(msg.item, msg.collectionname, w, j, jwt);
+            msg.result = await Config.db.UpdateOne(msg.query, msg.item, msg.collectionname, w, j, jwt);
         } catch (error) {
             msg.error = error.toString();
             cli._logger.error(error);
@@ -290,6 +294,32 @@ export class Message {
         }
         this.Send(cli);
     }
+    private async UpdateMany(cli: WebSocketClient): Promise<void> {
+        this.Reply();
+        var msg: UpdateManyMessage<Base> = UpdateManyMessage.assign(this.data);
+        try {
+            var jwt = cli.jwt;
+            if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
+            var w: number = 0;
+            var j: boolean = false;
+            if ((msg.w as any) !== undefined && (msg.w as any) !== null) w = msg.w;
+            if ((msg.j as any) !== undefined && (msg.j as any) !== null) j = msg.j;
+            // msg.result = await Config.db.UpdateMany(msg.query, msg.item, msg.collectionname, w, j, jwt);
+            var res = await Config.db.UpdateMany(msg.query, msg.item, msg.collectionname, w, j, jwt);
+            msg.result = res;
+        } catch (error) {
+            msg.error = error.toString();
+            cli._logger.error(error);
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            msg.error = error.toString();
+        }
+        this.Send(cli);
+    }
+
     private async InsertOrUpdateOne(cli: WebSocketClient): Promise<void> {
         this.Reply();
         var msg: InsertOrUpdateOneMessage<Base> = InsertOrUpdateOneMessage.assign(this.data);
@@ -324,6 +354,7 @@ export class Message {
         } catch (error) {
             msg.error = error.toString();
             cli._logger.error(error);
+            //cli._logger.error(JSON.stringify(error));
         }
         try {
             this.data = JSON.stringify(msg);
@@ -396,7 +427,6 @@ export class Message {
                 }
                 if ((msg.onesignalid != null && msg.onesignalid != undefined && msg.onesignalid != "") ||
                     (msg.onesignalid != null && msg.onesignalid != undefined && msg.onesignalid != "")) {
-                    await user.Save(msg.jwt);
                 }
                 Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip);
                 msg.jwt = Crypt.createToken(user);
@@ -406,8 +436,10 @@ export class Message {
                     cli.jwt = msg.jwt;
                     cli.user = user;
                 } else {
-                    cli._logger.debug(tuser.username + " was validted in using " + type);
+                    user.lastseen = new Date(new Date().toISOString());
+                    cli._logger.debug(tuser.username + " was validated in using " + type);
                 }
+                await user.Save(msg.jwt);
             }
         } catch (error) {
             msg.error = error.toString();

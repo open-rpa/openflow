@@ -14,6 +14,7 @@ import { InsertOneMessage } from "./Messages/InsertOneMessage";
 import { UpdateOneMessage } from "./Messages/UpdateOneMessage";
 import { DeleteOneMessage } from "./Messages/DeleteOneMessage";
 import { Base } from "./base";
+import { UpdateManyMessage } from "./Messages/UpdateManyMessage";
 
 interface IHashTable<T> {
     [key: string]: T;
@@ -265,15 +266,12 @@ export class WebSocketClient {
         var q: MapReduceMessage<any> = new MapReduceMessage(map, reduce, finalize, query, out);
         q.collectionname = collection; q.scope = scope;
         var msg: Message = new Message(); msg.command = "mapreduce"; q.out = out;
-
-        // msg.data = JSON.stringify(q);
         msg.data = JSONfn.stringify(q);
         q = await this.Send<MapReduceMessage<any>>(msg);
         return q.result;
     }
     async Insert<T extends Base>(collection: string, model: any): Promise<any> {
         var q: InsertOneMessage<T> = new InsertOneMessage();
-        // model.name = "Find me " + Math.random().toString(36).substr(2, 9);
         q.collectionname = collection; q.item = model;
         var msg: Message = new Message(); msg.command = "insertone"; msg.data = JSONfn.stringify(q);
         q = await this.Send<InsertOneMessage<T>>(msg);
@@ -281,10 +279,16 @@ export class WebSocketClient {
     }
     async Update<T extends Base>(collection: string, model: any): Promise<any> {
         var q: UpdateOneMessage<T> = new UpdateOneMessage();
-        // model.name = "Find me " + Math.random().toString(36).substr(2, 9);
         q.collectionname = collection; q.item = model;
         var msg: Message = new Message(); msg.command = "updateone"; msg.data = JSONfn.stringify(q);
         q = await this.Send<UpdateOneMessage<T>>(msg);
+        return q.result;
+    }
+    async UpdateMany<T extends Base>(collection: string, query: any, document: any): Promise<any> {
+        var q: UpdateManyMessage<T> = new UpdateManyMessage();
+        q.collectionname = collection; q.item = document; q.query = query;
+        var msg: Message = new Message(); msg.command = "updateone"; msg.data = JSONfn.stringify(q);
+        q = await this.Send<UpdateManyMessage<T>>(msg);
         return q.result;
     }
     async Delete(collection: string, id: any): Promise<void> {
@@ -292,8 +296,6 @@ export class WebSocketClient {
         q.collectionname = collection; q._id = id;
         var msg: Message = new Message(); msg.command = "deleteone"; msg.data = JSON.stringify(q);
         q = await this.Send<DeleteOneMessage>(msg);
-        // this.models = this.models.filter(function (m: any):boolean { return m._id!==model._id;});
-        // if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 
 

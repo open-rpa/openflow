@@ -1,5 +1,5 @@
 import { Red } from "node-red";
-import { QueryMessage, Message, InsertOneMessage, UpdateOneMessage, DeleteOneMessage, InsertOrUpdateOneMessage, SigninMessage, TokenUser, mapFunc, reduceFunc, finalizeFunc, MapReduceMessage, JSONfn } from "../../Message";
+import { QueryMessage, Message, InsertOneMessage, UpdateOneMessage, DeleteOneMessage, InsertOrUpdateOneMessage, SigninMessage, TokenUser, mapFunc, reduceFunc, finalizeFunc, MapReduceMessage, JSONfn, UpdateManyMessage } from "../../Message";
 import { WebSocketClient } from "../../WebSocketClient";
 import { Crypt } from "../../Crypt";
 
@@ -83,6 +83,15 @@ export class NoderedUtil {
         q.w = w; q.j = j;
         var _msg: Message = new Message();
         _msg.command = "updateone"; _msg.data = JSON.stringify(q);
+        var result: QueryMessage = await WebSocketClient.instance.Send<QueryMessage>(_msg);
+        return result.result;
+    }
+    public static async UpdateMany(collection: string, query: any, item: any, w: number, j: boolean, jwt: string): Promise<any> {
+        var q: UpdateManyMessage = new UpdateManyMessage(); q.collectionname = collection;
+        q.item = item; q.jwt = jwt; q.query = query;
+        q.w = w; q.j = j;
+        var _msg: Message = new Message();
+        _msg.command = "updatemany"; _msg.data = JSON.stringify(q);
         var result: QueryMessage = await WebSocketClient.instance.Send<QueryMessage>(_msg);
         return result.result;
     }

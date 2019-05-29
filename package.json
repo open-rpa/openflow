@@ -20,6 +20,7 @@
     "@types/angular": "^1.6.54",
     "@types/angular-route": "^1.7.0",
     "@types/jquery": "^3.3.29",
+    "@types/mongodb": "^3.1.27",
     "@types/passport": "^1.0.0",
     "amqplib": "^0.5.3",
     "async-retry": "^1.2.3",

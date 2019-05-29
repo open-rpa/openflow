@@ -1,6 +1,6 @@
 import { Base } from "../base";
 
-export class UpdateOneMessage<T extends Base> implements IReplyMessage {
+export class UpdateManyMessage<T extends Base> implements IReplyMessage {
     public error: string;
     public jwt: string;
 
@@ -11,14 +11,14 @@ export class UpdateOneMessage<T extends Base> implements IReplyMessage {
     public w: number;
     // true, requests acknowledgment that the mongod instances have written to the on-disk journal
     public j: boolean;
-    public item: T;
     public query: any;
+    public item: T;
     public collectionname: string;
-    public result: T;
-    static assign<T extends Base>(o: any): UpdateOneMessage<T> {
+    public result: T[];
+    static assign<T extends Base>(o: any): UpdateManyMessage<T> {
         if (typeof o === "string" || o instanceof String) {
-            return Object.assign(new UpdateOneMessage(), JSON.parse(o.toString()));
+            return Object.assign(new UpdateManyMessage(), JSON.parse(o.toString()));
         }
-        return Object.assign(new UpdateOneMessage(), o);
+        return Object.assign(new UpdateManyMessage(), o);
     }
 }

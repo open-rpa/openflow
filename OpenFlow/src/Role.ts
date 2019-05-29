@@ -50,6 +50,6 @@ export class Role extends Base {
         return result;
     }
     public async Save(jwt: string): Promise<void> {
-        await Config.db.UpdateOne(this, "users", 0, false, jwt);
+        await Config.db.UpdateOne(null, this, "users", 0, false, jwt);
     }
 }

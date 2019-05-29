@@ -464,6 +464,66 @@ export async function get_api_roles(req, res) {
 
 
 
+
+
+
+export interface Iapi_updatedocument {
+    name: string;
+    writeconcern: number;
+    action: string;
+    query: string;
+    updatedocument: string;
+    collection: string;
+}
+export class api_updatedocument {
+    public node: Red = null;
+
+    constructor(public config: Iapi_updatedocument) {
+        RED.nodes.createNode(this, config);
+        this.node = this;
+        this.node.on("input", this.oninput);
+        this.node.on("close", this.onclose);
+    }
+    async oninput(msg: any) {
+        try {
+            this.node.status({});
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
+
+            if (!NoderedUtil.IsNullUndefinded(msg.name)) { this.config.name = msg.name; }
+            if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
+            if (!NoderedUtil.IsNullUndefinded(msg.action)) { this.config.action = msg.action; }
+            if (!NoderedUtil.IsNullUndefinded(msg.query)) { this.config.query = msg.query; }
+            if (!NoderedUtil.IsNullUndefinded(msg.updatedocument)) { this.config.updatedocument = msg.updatedocument; }
+            if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
+
+            if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
+
+            if (!NoderedUtil.IsNullEmpty(this.config.query) && NoderedUtil.IsString(this.config.query)) {
+                this.config.query = JSON.parse(this.config.query);
+            }
+            if (!NoderedUtil.IsNullEmpty(this.config.updatedocument) && NoderedUtil.IsString(this.config.updatedocument)) {
+                this.config.updatedocument = JSON.parse(this.config.updatedocument);
+            }
+
+            this.node.status({ fill: "blue", shape: "dot", text: "Running Update Document" });
+            var result = await NoderedUtil.UpdateMany(this.config.collection, this.config.query, this.config.updatedocument, this.config.writeconcern, false, msg.jwt);
+            msg.payload = result;
+            this.node.send(msg);
+            this.node.status({});
+        } catch (error) {
+            NoderedUtil.HandleError(this, error);
+        }
+    }
+    onclose() {
+    }
+}
+
+
+
+
+
+
+
 export interface Igrant_permission {
     targetid: string;
     entities: any;

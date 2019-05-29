@@ -21,6 +21,7 @@ export class User extends Base {
         var newo: User = new User();
         return Object.assign(newo, o);
     }
+    lastseen: Date;
     username: string;
     passwordhash: string;
     sid: string;
@@ -41,7 +42,7 @@ export class User extends Base {
             var temp: User = await Config.db.InsertOne(this, "users", 0, false, jwt);
             this._id = temp._id;
         } else {
-            await Config.db.UpdateOne(this, "users", 0, false, jwt);
+            await Config.db.UpdateOne(null, this, "users", 0, false, jwt);
         }
     }
 

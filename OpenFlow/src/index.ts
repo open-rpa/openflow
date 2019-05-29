@@ -10,7 +10,7 @@ import { amqp_publisher, amqp_rpc_publisher } from "./amqp_publisher";
 import { amqp_exchange_consumer } from "./amqp_exchange_consumer";
 import { amqp_exchange_publisher } from "./amqp_exchange_publisher";
 import { DatabaseConnection } from "./DatabaseConnection";
-import { Base, WellknownIds } from "./base";
+import { Base, WellknownIds, Rights } from "./base";
 import { User, FederationId } from "./User";
 import { Crypt } from "./Crypt";
 import { TokenUser } from "./TokenUser";
@@ -56,27 +56,50 @@ async function initDatabase(): Promise<void> {
     var admins: Role = await ensureRole(jwt, "admins", WellknownIds.admins);
     var users: Role = await ensureRole(jwt, "users", WellknownIds.users);
     var root: User = await ensureUser(jwt, "root", "root", WellknownIds.root);
+    root.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
+    root.removeRight(WellknownIds.admins, [Rights.delete]);
+    root.addRight(WellknownIds.root, "root", [Rights.full_control]);
+    root.removeRight(WellknownIds.root, [Rights.delete]);
+    await root.Save(jwt);
+
+
+    admins.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
+    admins.removeRight(WellknownIds.admins, [Rights.delete]);
+    await admins.Save(jwt);
+
+    users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
+    users.removeRight(WellknownIds.admins, [Rights.delete]);
+    users.AddMember(root);
+    await users.Save(jwt);
 
     var nodered_admins: Role = await ensureRole(jwt, "nodered admins", WellknownIds.nodered_admins);
     nodered_admins.AddMember(admins);
+    nodered_admins.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
+    nodered_admins.removeRight(WellknownIds.admins, [Rights.delete]);
     await nodered_admins.Save(jwt);
     var nodered_users: Role = await ensureRole(jwt, "nodered users", WellknownIds.nodered_users);
     nodered_users.AddMember(admins);
+    nodered_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
+    nodered_users.removeRight(WellknownIds.admins, [Rights.delete]);
     await nodered_users.Save(jwt);
     var nodered_api_users: Role = await ensureRole(jwt, "nodered api users", WellknownIds.nodered_api_users);
     nodered_api_users.AddMember(admins);
+    nodered_api_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
+    nodered_api_users.removeRight(WellknownIds.admins, [Rights.delete]);
     await nodered_api_users.Save(jwt);
 
     var robot_admins: Role = await ensureRole(jwt, "robot admins", WellknownIds.robot_admins);
     robot_admins.AddMember(admins);
+    robot_admins.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
+    robot_admins.removeRight(WellknownIds.admins, [Rights.delete]);
     await robot_admins.Save(jwt);
     var robot_users: Role = await ensureRole(jwt, "robot users", WellknownIds.robot_users);
     robot_users.AddMember(admins);
     robot_users.AddMember(users);
+    robot_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
+    robot_users.removeRight(WellknownIds.admins, [Rights.delete]);
     await robot_users.Save(jwt);
 
-    users.AddMember(root);
-    await users.Save(jwt);
 
     if (!admins.IsMember(root._id)) {
         admins.AddMember(root);
