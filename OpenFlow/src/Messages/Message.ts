@@ -439,7 +439,7 @@ export class Message {
                     user.lastseen = new Date(new Date().toISOString());
                     cli._logger.debug(tuser.username + " was validated in using " + type);
                 }
-                await user.Save(msg.jwt);
+                await user.Save(TokenUser.rootToken());
             }
         } catch (error) {
             msg.error = error.toString();
