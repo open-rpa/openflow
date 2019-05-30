@@ -237,8 +237,6 @@ export class DatabaseConnection {
         await this.connect();
         var user: TokenUser = Crypt.verityToken(jwt);
         if (!this.hasAuthorization(user, item, "update")) { throw new Error("Access denied"); }
-        var original: T = await this.getbyid<T>(item._id, collectionname, jwt);
-        if (!original) { throw Error("item not found!"); }
 
         // assume empty query, means full document, else update document
         if (query === null || query === undefined) {
@@ -246,6 +244,8 @@ export class DatabaseConnection {
             if (!item.hasOwnProperty("_id")) {
                 throw Error("Cannot update item without _id");
             }
+            var original: T = await this.getbyid<T>(item._id, collectionname, jwt);
+            if (!original) { throw Error("item not found!"); }
             item._modifiedby = user.name;
             item._modifiedbyid = user._id;
             item._modified = new Date(new Date().toISOString());
@@ -400,14 +400,10 @@ export class DatabaseConnection {
                 throw Error("item not found!");
             }
             if (res.result.ok == 1) {
-                if (w > 0) {
-                    if (res.modifiedCount == 0) {
-                        throw Error("item not found!");
-                    } else if (res.modifiedCount == 1 || res.modifiedCount == undefined) {
-                        item = item;
-                    } else {
-                        throw Error("More than one item was updated !!!");
-                    }
+                if (res.modifiedCount == 0) {
+                    throw Error("item not found!");
+                } else if (res.modifiedCount == 1 || res.modifiedCount == undefined) {
+                    item = item;
                 }
             } else {
                 throw Error("UpdateOne failed!!!");

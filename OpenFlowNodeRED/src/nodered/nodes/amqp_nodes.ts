@@ -17,6 +17,7 @@ export class amqp_connection {
     constructor(public config: Iamqp_connection) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.node.status({});
         if (this.node.credentials && this.node.credentials.hasOwnProperty("username")) {
             this.username = this.node.credentials.username;
         }
@@ -41,6 +42,7 @@ export class amqp_consumer_node {
         RED.nodes.createNode(this, config);
         try {
             this.node = this;
+            this.node.status({});
             this.node.on("close", this.onclose);
             var _config: amqp_connection = RED.nodes.getNode(this.config.config);
             let username: string = null;
@@ -117,6 +119,7 @@ export class amqp_publisher_node {
         RED.nodes.createNode(this, config);
         try {
             this.node = this;
+            this.node.status({});
             this.node.on("input", this.oninput);
             this.node.on("close", this.onclose);
 
@@ -198,6 +201,7 @@ export class amqp_acknowledgment_node {
     constructor(public config: Iamqp_acknowledgment_node) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
     }

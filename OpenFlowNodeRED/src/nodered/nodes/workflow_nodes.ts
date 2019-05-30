@@ -77,7 +77,7 @@ export class workflow_in_node {
                 result = this.nestedassign(res[0], result);
                 // result.payload = Object.assign(res[0].payload, result.payload);
                 // result = Object.assign(res[0], result);
-                await NoderedUtil.UpdateOne("workflow_instances", result, 0, false, data.jwt);
+                await NoderedUtil.UpdateOne("workflow_instances", null, result, 0, false, data.jwt);
             } else {
                 var res2 = this.workflow = await NoderedUtil.InsertOne("workflow_instances",
                     { _type: "instance", "queue": this.config.queue, "name": this.config.name, payload: data.payload }, 0, false, data.jwt);
@@ -111,6 +111,7 @@ export class workflow_out_node {
     constructor(public config: Iworkflow_out_node) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
 
@@ -121,7 +122,7 @@ export class workflow_out_node {
             if (msg.amqpacknowledgment) {
                 msg.state = this.config.state;
                 if (msg._id !== null && msg._id !== undefined && msg._id !== "") {
-                    var res = await NoderedUtil.UpdateOne("workflow_instances", msg, 0, false, msg.jwt);
+                    var res = await NoderedUtil.UpdateOne("workflow_instances", null, msg, 0, false, msg.jwt);
                 }
                 var data: any = {};
                 data.payload = msg.payload;

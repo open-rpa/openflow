@@ -77,10 +77,10 @@ export class NoderedUtil {
         var result: QueryMessage = await WebSocketClient.instance.Send<QueryMessage>(_msg);
         return result.result;
     }
-    public static async UpdateOne(collection: string, item: any, w: number, j: boolean, jwt: string): Promise<any> {
+    public static async UpdateOne(collection: string, query: any, item: any, w: number, j: boolean, jwt: string): Promise<any> {
         var q: UpdateOneMessage = new UpdateOneMessage(); q.collectionname = collection;
         q.item = item; q.jwt = jwt;
-        q.w = w; q.j = j;
+        q.w = w; q.j = j; q.query = query;
         var _msg: Message = new Message();
         _msg.command = "updateone"; _msg.data = JSON.stringify(q);
         var result: QueryMessage = await WebSocketClient.instance.Send<QueryMessage>(_msg);

@@ -18,6 +18,7 @@ export class api_credentials {
     constructor(public config: Iapi_get_jwt) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.node.status({});
         if (this.node.credentials && this.node.credentials.hasOwnProperty("username")) {
             this.username = this.node.credentials.username;
         }
@@ -35,6 +36,7 @@ export class api_get_jwt {
     constructor(public config: Iapi_get_jwt) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
     }
@@ -92,6 +94,7 @@ export class api_get {
     constructor(public config: Iapi_get) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
     }
@@ -152,6 +155,7 @@ export class api_add {
     constructor(public config: Iapi_add) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
     }
@@ -223,6 +227,7 @@ export class api_update {
     constructor(public config: Iapi_update) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
     }
@@ -255,7 +260,7 @@ export class api_update {
                 if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
                     element._type = this.config.entitytype;
                 }
-                Promises.push(NoderedUtil.UpdateOne(this.config.collection, element, this.config.writeconcern, this.config.journal, msg.jwt));
+                Promises.push(NoderedUtil.UpdateOne(this.config.collection, null, element, this.config.writeconcern, this.config.journal, msg.jwt));
             }
             data = await Promise.all(Promises.map(p => p.catch(e => e)));
 
@@ -294,6 +299,7 @@ export class api_addorupdate {
     constructor(public config: Iapi_addorupdate) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
     }
@@ -364,6 +370,7 @@ export class api_delete {
     constructor(public config: Iapi_delete) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
     }
@@ -428,6 +435,7 @@ export class api_map_reduce {
     constructor(public config: Iapi_map_reduce) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
     }
@@ -491,6 +499,7 @@ export class api_updatedocument {
     constructor(public config: Iapi_updatedocument) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
     }
@@ -518,8 +527,13 @@ export class api_updatedocument {
             }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Running Update Document" });
-            var result = await NoderedUtil.UpdateMany(this.config.collection, this.config.query, this.config.updatedocument, this.config.writeconcern, this.config.journal, msg.jwt);
-            msg.payload = result;
+            if (this.config.action === "updateOne") {
+                var result = await NoderedUtil.UpdateOne(this.config.collection, this.config.query, this.config.updatedocument, this.config.writeconcern, this.config.journal, msg.jwt);
+                msg.payload = result;
+            } else {
+                var result = await NoderedUtil.UpdateMany(this.config.collection, this.config.query, this.config.updatedocument, this.config.writeconcern, this.config.journal, msg.jwt);
+                msg.payload = result;
+            }
             this.node.send(msg);
             this.node.status({});
         } catch (error) {

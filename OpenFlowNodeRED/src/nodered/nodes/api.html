@@ -1011,7 +1011,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             journal: { value: "false", required: true },
             action: { value: "updateOne", required: true },
             query: { value: "", required: true },
-            updatedocument: { value: "", required: true },
+            updatedocument: { value: "{ \"$inc\": { \"count\": 1}}", required: true },
             collection: { value: "entities", required: true }
         },
         inputs: 1,

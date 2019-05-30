@@ -147,6 +147,7 @@ export class UpdateOneMessage {
     public j: boolean;
     public item: object;
     public collectionname: string;
+    public query: object;
     public result: any;
     static assign(o: any): UpdateOneMessage {
         if (typeof o === "string" || o instanceof String) {
