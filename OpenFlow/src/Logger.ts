@@ -45,7 +45,7 @@ export class Logger {
                 enumerateErrorFormat(),
                 winston.format.json()
             ),
-            defaultMeta: { service: "openflownodered" },
+            defaultMeta: { service: "openflow" },
             transports: [
                 // new winston.transports.File(options.file),
                 new winston.transports.Console(options.console)

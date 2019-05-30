@@ -1,6 +1,16 @@
 module openflow {
     "use strict";
 
+    function treatAsUTC(date): number {
+        var result = new Date(date);
+        result.setMinutes(result.getMinutes() - result.getTimezoneOffset());
+        return result as any;
+    }
+
+    function daysBetween(startDate, endDate): number {
+        var millisecondsPerDay = 24 * 60 * 60 * 1000;
+        return (treatAsUTC(endDate) - treatAsUTC(startDate)) / millisecondsPerDay;
+    }
 
 
     export class WorkflowsCtrl extends entitiesCtrl<openflow.Base> {
@@ -30,36 +40,67 @@ module openflow {
             for (var i = 0; i < this.models.length; i++) {
                 var workflow = this.models[i] as any;
                 var d = new Date();
-                //d.setMonth(d.getMonth() - 1);
-                d.setDate(d.getDate() - 30);
+                d.setMonth(d.getMonth() - 1);
+                //d.setDate(d.getDate() - 30);
                 console.log(d);
-                // {$where : function() { return this.date.getMonth() == 11} }
-                var q = { _type: "workflowinstance", WorkflowId: workflow._id, "_created": { "$gte": new Date(d.toISOString()) } };
-                // var q = { _type: "workflowinstance", WorkflowId: workflow._id, "_created": { "$gte": new Date("2010-04-30T00:00:00.000Z") } };
 
-                workflow.instances = await this.api.Query("openrpa_instances", q, null, null, 100);
+
+                console.log("get mapreduce of instances");
+                var stats = await this.api.MapReduce("openrpa_instances",
+                    function map() {
+                        var startDate = new Date(this._created);
+                        this.count = 1;
+                        emit(startDate.toISOString().split('T')[0], this);
+                    }, function reduce(key, values) {
+                        var reducedObject = { count: 0, value: 0, avg: 0, minrun: 0, maxrun: 0, run: 0, _acl: [] };
+                        values.forEach(function (value) {
+                            var startDate = new Date(value._created);
+                            var endDate = new Date(value._modified);
+                            var seconds = (endDate.getTime() - startDate.getTime()) / 1000;
+                            if (reducedObject.minrun == 0 && seconds > 0) reducedObject.minrun = seconds;
+                            if (reducedObject.minrun > seconds) reducedObject.minrun = seconds;
+                            if (reducedObject.maxrun < seconds) reducedObject.maxrun = seconds;
+                            reducedObject.run += seconds;
+                            reducedObject.count += value.count;
+                            reducedObject._acl = value._acl;
+                        });
+                        return reducedObject;
+                    }, function finalize(key, reducedValue) {
+                        if (reducedValue.count > 0) {
+                            reducedValue.avg = reducedValue.value / reducedValue.count;
+                            reducedValue.run = reducedValue.run / reducedValue.count;
+                        }
+                        return reducedValue;
+                    }, { _type: "workflowinstance", WorkflowId: workflow._id, "_created": { "$gte": new Date(d.toISOString()) } }, { inline: 1 }, null);
+
+
+
+                // // {$where : function() { return this.date.getMonth() == 11} }
+                // var q = { _type: "workflowinstance", WorkflowId: workflow._id, "_created": { "$gte": new Date(d.toISOString()) } };
+                // // var q = { _type: "workflowinstance", WorkflowId: workflow._id, "_created": { "$gte": new Date("2010-04-30T00:00:00.000Z") } };
+
+                // workflow.instances = await this.api.Query("openrpa_instances", q, null, null, 100);
 
 
                 chart = new chartset();
-                if (workflow == undefined) { chart.heading = "deleted workflow"; } else { chart.heading = workflow.name; }
                 chart.charttype = "line"
                 chart.data = [];
                 var lastdate = "";
-                console.log(workflow.instances);
-                for (var i = 0; i < workflow.instances.length; i++) {
-                    var value = workflow.instances[i];
-                    var startDate = new Date(value._created);
-                    var endDate = new Date(value._modified);
-                    var seconds = (endDate.getTime() - startDate.getTime()) / 1000;
-
-                    chart.data.push(seconds);
-                    if (lastdate != startDate.toISOString().split('T')[0]) {
-                        lastdate = startDate.toISOString().split('T')[0];
-                        chart.labels.push(startDate.toISOString().split('T')[0]);
+                var days = daysBetween(d, new Date());
+                console.log(stats);
+                for (var y = 0; y < days; y++) {
+                    var startDate = new Date(d);
+                    startDate.setDate(d.getDate() + y);
+                    var datestring = startDate.toISOString().split('T')[0];
+                    var exists = stats.filter(m => m._id == datestring);
+                    if (exists.length > 0) {
+                        chart.data.push(exists[0].value.count);
                     } else {
-                        chart.labels.push("");
+                        chart.data.push(0);
                     }
-                    // chart.labels.push(startDate.toISOString().split('T')[0]);
+
+
+                    chart.labels.push(datestring);
                 }
                 workflow.chart = chart;
 
@@ -492,7 +533,68 @@ module openflow {
             this.collection = "users";
             WebSocketClient.onSignedin((user: TokenUser) => {
                 this.loadData();
+                this._loadData();
             });
+
+        }
+        async _loadData(): Promise<void> {
+            this.loading = true;
+            var chart: chartset = null;
+            console.log("get users");
+            this.models = await this.api.Query("users", { _type: "user" }, null, null);
+            console.log(this.models);
+
+            for (var i = 0; i < this.models.length; i++) {
+                var user = this.models[i] as any;
+                var d = new Date();
+                d.setMonth(d.getMonth() - 1);
+                //d.setDate(d.getDate() - 30);
+                console.log(d);
+
+
+                console.log("get mapreduce for " + user.name);
+                var stats = await this.api.MapReduce("audit",
+                    function map() {
+                        var startDate = new Date(this._created);
+                        this.count = 1;
+                        emit(startDate.toISOString().split('T')[0], this);
+                    }, function reduce(key, values) {
+                        var reducedObject = { count: 0, value: 0, avg: 0, minrun: 0, maxrun: 0, run: 0, _acl: [] };
+                        values.forEach(function (value) {
+                            reducedObject.count += value.count;
+                            reducedObject._acl = value._acl;
+                        });
+                        return reducedObject;
+                    }, function finalize(key, reducedValue) {
+                        if (reducedValue.count > 0) {
+                            reducedValue.avg = reducedValue.value / reducedValue.count;
+                        }
+                        return reducedValue;
+                    }, { userid: user._id, "_created": { "$gte": new Date(d.toISOString()) } }, { inline: 1 }, null);
+
+                chart = new chartset();
+                chart.charttype = "line"
+                chart.data = [];
+                var days = daysBetween(d, new Date());
+                console.log(stats);
+                for (var y = 0; y < days; y++) {
+                    var startDate = new Date(d);
+                    startDate.setDate(d.getDate() + y);
+                    var datestring = startDate.toISOString().split('T')[0];
+                    var exists = stats.filter(m => m._id == datestring);
+                    if (exists.length > 0) {
+                        chart.data.push(exists[0].value.count);
+                    } else {
+                        chart.data.push(0);
+                    }
+                    //chart.labels.push(datestring);
+                    chart.labels.push("");
+                }
+                user.chart = chart;
+
+            }
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async DeleteOne(model: any): Promise<any> {
             this.loading = true;
@@ -503,6 +605,7 @@ module openflow {
         }
     }
     export class UserCtrl extends entityCtrl<openflow.TokenUser> {
+        public newid: string;
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -526,6 +629,18 @@ module openflow {
                 }
 
             });
+        }
+        deleteid(id) {
+            if (this.model.federationids === null || this.model.federationids === undefined) {
+                this.model.federationids = [];
+            }
+            this.model.federationids = this.model.federationids.filter(function (m: any): boolean { return m !== id; });
+        }
+        addid() {
+            if (this.model.federationids === null || this.model.federationids === undefined) {
+                this.model.federationids = [];
+            }
+            this.model.federationids.push(this.newid);
         }
         async submit(): Promise<void> {
             if (this.model._id) {

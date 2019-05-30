@@ -156,6 +156,27 @@ export class DatabaseConnection {
      */
     async MapReduce<T>(map: mapFunc, reduce: reduceFunc, finalize: finalizeFunc, query: any, out: string | any, collectionname: string, scope: any, jwt: string): Promise<T[]> {
         await this.connect();
+
+        if (query !== null && query !== undefined) {
+            var json: any = query;
+            if (typeof json !== 'string' && !(json instanceof String)) {
+                json = JSON.stringify(json, (key, value) => {
+                    if (value instanceof RegExp)
+                        return ("__REGEXP " + value.toString());
+                    else
+                        return value;
+                });
+            }
+            query = JSON.parse(json, (key, value) => {
+                if (typeof value === 'string' && value.match(isoDatePattern)) {
+                    return new Date(value); // isostring, so cast to js date
+                } else if (value.toString().indexOf("__REGEXP ") == 0) {
+                    var m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
+                    return new RegExp(m[1], m[2] || "");
+                } else
+                    return value; // leave any other value as-is
+            });
+        }
         var q: any = query;
         if (query !== null && query !== undefined) {
             q = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };

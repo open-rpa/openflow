@@ -13,6 +13,7 @@
       <th ng-click="ctrl.ToggleOrder('lastseen')"><b translate lib="web">lastseen</b></th>
       <th></th>
       <th></th>
+      <th></th>
     </tr>
   </thead>
   <tbody>
@@ -24,6 +25,11 @@
       </td>
       <td>
         <timesince ng-model="model.lastseen" />
+      </td>
+      <td class="btn-cell">
+        <canvas id="bar" class="model.chart-base" chart-type="model.chart.charttype" chart-data="model.chart.data"
+          chart-labels="model.chart.labels" chart-series="model.chart.series">
+        </canvas>
       </td>
       <td class="btn-cell">
         <a ng-href="#/User/{{model._id}}">edit</a>
