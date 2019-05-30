@@ -99,8 +99,8 @@ module openflow {
                         chart.data.push(0);
                     }
 
-
-                    chart.labels.push(datestring);
+                    //chart.labels.push(datestring);
+                    chart.labels.push(startDate.getDate().toString());
                 }
                 workflow.chart = chart;
 
@@ -588,7 +588,7 @@ module openflow {
                         chart.data.push(0);
                     }
                     //chart.labels.push(datestring);
-                    chart.labels.push("");
+                    chart.labels.push(startDate.getDate().toString());
                 }
                 user.chart = chart;
 
