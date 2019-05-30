@@ -15,6 +15,7 @@ export declare function emit(k, v);
 export type mapFunc = () => void;
 export type reduceFunc = (key: string, values: any[]) => any;
 export type finalizeFunc = (key: string, value: any) => any;
+const isoDatePattern = new RegExp(/\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z)/);
 export class DatabaseConnection {
     private mongodburl: string;
     private cli: MongoClient;
@@ -37,6 +38,7 @@ export class DatabaseConnection {
         this.cli = await MongoClient.connect(this.mongodburl, { autoReconnect: false, useNewUrlParser: true });
         this.db = this.cli.db(this._dbname);
     }
+
 
     /**
      * Send a query to the database.
@@ -67,6 +69,27 @@ export class DatabaseConnection {
                 delete query._id;
                 query.$or = [{ _id: id }, { _id: safeObjectID(id) }];
             }
+        }
+
+        if (query !== null && query !== undefined) {
+            var json: any = query;
+            if (typeof json !== 'string' && !(json instanceof String)) {
+                json = JSON.stringify(json, (key, value) => {
+                    if (value instanceof RegExp)
+                        return ("__REGEXP " + value.toString());
+                    else
+                        return value;
+                });
+            }
+            query = JSON.parse(json, (key, value) => {
+                if (typeof value === 'string' && value.match(isoDatePattern)) {
+                    return new Date(value); // isostring, so cast to js date
+                } else if (value.toString().indexOf("__REGEXP ") == 0) {
+                    var m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
+                    return new RegExp(m[1], m[2] || "");
+                } else
+                    return value; // leave any other value as-is
+            });
         }
         var _query: Object = {};
         if (collectionname === "files") { collectionname = "fs.files"; }

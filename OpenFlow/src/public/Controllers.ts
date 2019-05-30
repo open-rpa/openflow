@@ -1,5 +1,75 @@
 module openflow {
     "use strict";
+
+
+
+    export class WorkflowsCtrl extends entitiesCtrl<openflow.Base> {
+        public loading: boolean = false;
+        public message: string = "";
+        public charts: chartset[] = [];
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public WebSocketClient: WebSocketClient,
+            public api: api
+        ) {
+            super($scope, $location, $routeParams, WebSocketClient, api);
+            WebSocketClient.onSignedin((user: TokenUser) => {
+                this.loadData();
+            });
+        }
+
+        async loadData(): Promise<void> {
+            this.loading = true;
+            this.charts = [];
+            var chart: chartset = null;
+            console.log("get workflows");
+            this.models = await this.api.Query("openrpa", { _type: "workflow" }, null, null);
+
+            for (var i = 0; i < this.models.length; i++) {
+                var workflow = this.models[i] as any;
+                var d = new Date();
+                //d.setMonth(d.getMonth() - 1);
+                d.setDate(d.getDate() - 30);
+                console.log(d);
+                // {$where : function() { return this.date.getMonth() == 11} }
+                var q = { _type: "workflowinstance", WorkflowId: workflow._id, "_created": { "$gte": new Date(d.toISOString()) } };
+                // var q = { _type: "workflowinstance", WorkflowId: workflow._id, "_created": { "$gte": new Date("2010-04-30T00:00:00.000Z") } };
+
+                workflow.instances = await this.api.Query("openrpa_instances", q, null, null, 100);
+
+
+                chart = new chartset();
+                if (workflow == undefined) { chart.heading = "deleted workflow"; } else { chart.heading = workflow.name; }
+                chart.charttype = "line"
+                chart.data = [];
+                var lastdate = "";
+                console.log(workflow.instances);
+                for (var i = 0; i < workflow.instances.length; i++) {
+                    var value = workflow.instances[i];
+                    var startDate = new Date(value._created);
+                    var endDate = new Date(value._modified);
+                    var seconds = (endDate.getTime() - startDate.getTime()) / 1000;
+
+                    chart.data.push(seconds);
+                    if (lastdate != startDate.toISOString().split('T')[0]) {
+                        lastdate = startDate.toISOString().split('T')[0];
+                        chart.labels.push(startDate.toISOString().split('T')[0]);
+                    } else {
+                        chart.labels.push("");
+                    }
+                    // chart.labels.push(startDate.toISOString().split('T')[0]);
+                }
+                workflow.chart = chart;
+
+            }
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+    }
+
+
     export class chartset {
         options: any = {
             legend: { display: true }
