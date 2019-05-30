@@ -144,6 +144,7 @@ export interface Iapi_add {
     inputfield: string;
     resultfield: string;
     writeconcern: number;
+    journal: boolean;
 }
 export class api_add {
     public node: Red = null;
@@ -164,8 +165,10 @@ export class api_add {
             if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { this.config.inputfield = msg.inputfield; }
             if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { this.config.resultfield = msg.resultfield; }
             if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
+            if (!NoderedUtil.IsNullEmpty(msg.journal)) { this.config.journal = msg.journal; }
 
             if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
+            if ((this.config.journal as any) === undefined || (this.config.journal as any) === null) this.config.journal = false;
 
             var data: any[] = [];
             var _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
@@ -181,7 +184,7 @@ export class api_add {
                 if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
                     element._type = this.config.entitytype;
                 }
-                Promises.push(NoderedUtil.InsertOne(this.config.collection, element, this.config.writeconcern, false, msg.jwt));
+                Promises.push(NoderedUtil.InsertOne(this.config.collection, element, this.config.writeconcern, this.config.journal, msg.jwt));
             }
             data = await Promise.all(Promises.map(p => p.catch(e => e)));
 
@@ -212,6 +215,7 @@ export interface Iapi_update {
     inputfield: string;
     resultfield: string;
     writeconcern: number;
+    journal: boolean;
 }
 export class api_update {
     public node: Red = null;
@@ -232,8 +236,10 @@ export class api_update {
             if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { this.config.inputfield = msg.inputfield; }
             if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { this.config.resultfield = msg.resultfield; }
             if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
+            if (!NoderedUtil.IsNullEmpty(msg.journal)) { this.config.journal = msg.journal; }
 
             if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
+            if ((this.config.journal as any) === undefined || (this.config.journal as any) === null) this.config.journal = false;
 
             var data: any[] = [];
             var _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
@@ -249,7 +255,7 @@ export class api_update {
                 if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
                     element._type = this.config.entitytype;
                 }
-                Promises.push(NoderedUtil.UpdateOne(this.config.collection, element, this.config.writeconcern, false, msg.jwt));
+                Promises.push(NoderedUtil.UpdateOne(this.config.collection, element, this.config.writeconcern, this.config.journal, msg.jwt));
             }
             data = await Promise.all(Promises.map(p => p.catch(e => e)));
 
@@ -280,6 +286,7 @@ export interface Iapi_addorupdate {
     resultfield: string;
     uniqeness: string;
     writeconcern: number;
+    journal: boolean;
 }
 export class api_addorupdate {
     public node: Red = null;
@@ -301,8 +308,10 @@ export class api_addorupdate {
             if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { this.config.resultfield = msg.resultfield; }
             if (!NoderedUtil.IsNullEmpty(msg.uniqeness)) { this.config.uniqeness = msg.uniqeness; }
             if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
+            if (!NoderedUtil.IsNullEmpty(msg.journal)) { this.config.journal = msg.journal; }
 
             if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
+            if ((this.config.journal as any) === undefined || (this.config.journal as any) === null) this.config.journal = false;
 
 
             var data: any[] = [];
@@ -319,7 +328,7 @@ export class api_addorupdate {
                 if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
                     element._type = this.config.entitytype;
                 }
-                Promises.push(NoderedUtil.InsertOrUpdateOne(this.config.collection, element, this.config.uniqeness, this.config.writeconcern, false, msg.jwt));
+                Promises.push(NoderedUtil.InsertOrUpdateOne(this.config.collection, element, this.config.uniqeness, this.config.writeconcern, this.config.journal, msg.jwt));
             }
             data = await Promise.all(Promises.map(p => p.catch(e => e)));
 
@@ -470,6 +479,7 @@ export async function get_api_roles(req, res) {
 export interface Iapi_updatedocument {
     name: string;
     writeconcern: number;
+    journal: boolean;
     action: string;
     query: string;
     updatedocument: string;
@@ -490,13 +500,15 @@ export class api_updatedocument {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
 
             if (!NoderedUtil.IsNullUndefinded(msg.name)) { this.config.name = msg.name; }
-            if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
             if (!NoderedUtil.IsNullUndefinded(msg.action)) { this.config.action = msg.action; }
             if (!NoderedUtil.IsNullUndefinded(msg.query)) { this.config.query = msg.query; }
             if (!NoderedUtil.IsNullUndefinded(msg.updatedocument)) { this.config.updatedocument = msg.updatedocument; }
             if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
+            if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
+            if (!NoderedUtil.IsNullEmpty(msg.journal)) { this.config.journal = msg.journal; }
 
             if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
+            if ((this.config.journal as any) === undefined || (this.config.journal as any) === null) this.config.journal = false;
 
             if (!NoderedUtil.IsNullEmpty(this.config.query) && NoderedUtil.IsString(this.config.query)) {
                 this.config.query = JSON.parse(this.config.query);
@@ -506,7 +518,7 @@ export class api_updatedocument {
             }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Running Update Document" });
-            var result = await NoderedUtil.UpdateMany(this.config.collection, this.config.query, this.config.updatedocument, this.config.writeconcern, false, msg.jwt);
+            var result = await NoderedUtil.UpdateMany(this.config.collection, this.config.query, this.config.updatedocument, this.config.writeconcern, this.config.journal, msg.jwt);
             msg.payload = result;
             this.node.send(msg);
             this.node.status({});

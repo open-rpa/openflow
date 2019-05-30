@@ -51,61 +51,73 @@ async function ensureRole(jwt: string, name: string, id: string): Promise<Role> 
     role = Role.assign(role);
     return role;
 }
-async function initDatabase(): Promise<void> {
-    var jwt: string = TokenUser.rootToken();
-    var admins: Role = await ensureRole(jwt, "admins", WellknownIds.admins);
-    var users: Role = await ensureRole(jwt, "users", WellknownIds.users);
-    var root: User = await ensureUser(jwt, "root", "root", WellknownIds.root);
-    root.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
-    root.removeRight(WellknownIds.admins, [Rights.delete]);
-    root.addRight(WellknownIds.root, "root", [Rights.full_control]);
-    root.removeRight(WellknownIds.root, [Rights.delete]);
-    await root.Save(jwt);
+async function initDatabase(): Promise<boolean> {
+    try {
+        var jwt: string = TokenUser.rootToken();
+        var admins: Role = await ensureRole(jwt, "admins", WellknownIds.admins);
+        var users: Role = await ensureRole(jwt, "users", WellknownIds.users);
+        var root: User = await ensureUser(jwt, "root", "root", WellknownIds.root);
+        root.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
+        root.removeRight(WellknownIds.admins, [Rights.delete]);
+        root.addRight(WellknownIds.root, "root", [Rights.full_control]);
+        root.removeRight(WellknownIds.root, [Rights.delete]);
+        await root.Save(jwt);
 
 
-    admins.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
-    admins.removeRight(WellknownIds.admins, [Rights.delete]);
-    await admins.Save(jwt);
-
-    users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
-    users.removeRight(WellknownIds.admins, [Rights.delete]);
-    users.AddMember(root);
-    await users.Save(jwt);
-
-    var nodered_admins: Role = await ensureRole(jwt, "nodered admins", WellknownIds.nodered_admins);
-    nodered_admins.AddMember(admins);
-    nodered_admins.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
-    nodered_admins.removeRight(WellknownIds.admins, [Rights.delete]);
-    await nodered_admins.Save(jwt);
-    var nodered_users: Role = await ensureRole(jwt, "nodered users", WellknownIds.nodered_users);
-    nodered_users.AddMember(admins);
-    nodered_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
-    nodered_users.removeRight(WellknownIds.admins, [Rights.delete]);
-    await nodered_users.Save(jwt);
-    var nodered_api_users: Role = await ensureRole(jwt, "nodered api users", WellknownIds.nodered_api_users);
-    nodered_api_users.AddMember(admins);
-    nodered_api_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
-    nodered_api_users.removeRight(WellknownIds.admins, [Rights.delete]);
-    await nodered_api_users.Save(jwt);
-
-    var robot_admins: Role = await ensureRole(jwt, "robot admins", WellknownIds.robot_admins);
-    robot_admins.AddMember(admins);
-    robot_admins.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
-    robot_admins.removeRight(WellknownIds.admins, [Rights.delete]);
-    await robot_admins.Save(jwt);
-    var robot_users: Role = await ensureRole(jwt, "robot users", WellknownIds.robot_users);
-    robot_users.AddMember(admins);
-    robot_users.AddMember(users);
-    robot_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
-    robot_users.removeRight(WellknownIds.admins, [Rights.delete]);
-    await robot_users.Save(jwt);
-
-
-    if (!admins.IsMember(root._id)) {
-        admins.AddMember(root);
+        admins.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
+        admins.removeRight(WellknownIds.admins, [Rights.delete]);
         await admins.Save(jwt);
+
+        users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
+        users.removeRight(WellknownIds.admins, [Rights.delete]);
+        users.AddMember(root);
+        await users.Save(jwt);
+
+        var nodered_admins: Role = await ensureRole(jwt, "nodered admins", WellknownIds.nodered_admins);
+        nodered_admins.AddMember(admins);
+        nodered_admins.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
+        nodered_admins.removeRight(WellknownIds.admins, [Rights.delete]);
+        await nodered_admins.Save(jwt);
+        var nodered_users: Role = await ensureRole(jwt, "nodered users", WellknownIds.nodered_users);
+        nodered_users.AddMember(admins);
+        nodered_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
+        nodered_users.removeRight(WellknownIds.admins, [Rights.delete]);
+        await nodered_users.Save(jwt);
+        var nodered_api_users: Role = await ensureRole(jwt, "nodered api users", WellknownIds.nodered_api_users);
+        nodered_api_users.AddMember(admins);
+        nodered_api_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
+        nodered_api_users.removeRight(WellknownIds.admins, [Rights.delete]);
+        await nodered_api_users.Save(jwt);
+
+        var robot_admins: Role = await ensureRole(jwt, "robot admins", WellknownIds.robot_admins);
+        robot_admins.AddMember(admins);
+        robot_admins.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
+        robot_admins.removeRight(WellknownIds.admins, [Rights.delete]);
+        await robot_admins.Save(jwt);
+        var robot_users: Role = await ensureRole(jwt, "robot users", WellknownIds.robot_users);
+        robot_users.AddMember(admins);
+        robot_users.AddMember(users);
+        robot_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
+        robot_users.removeRight(WellknownIds.admins, [Rights.delete]);
+        await robot_users.Save(jwt);
+
+
+        if (!admins.IsMember(root._id)) {
+            admins.AddMember(root);
+            await admins.Save(jwt);
+        }
+        return true;
+    } catch (error) {
+        logger.error(error);
+        return false;
     }
 }
+
+
+process.on('unhandledRejection', up => {
+    console.error(up);
+    throw up
+});
 
 (async function (): Promise<void> {
     try {
@@ -113,7 +125,9 @@ async function initDatabase(): Promise<void> {
         const server: http.Server = await WebServer.configure(logger, Config.baseurl());
         WebSocketServer.configure(logger, server);
         logger.info("listening on " + Config.baseurl());
-        await initDatabase();
+        if (!await initDatabase()) {
+            process.exit(404);
+        }
 
         // console.log("************************");
         // var e:Base = new Base();
@@ -150,6 +164,5 @@ async function initDatabase(): Promise<void> {
         // console.log("************************");
     } catch (error) {
         logger.error(error.message);
-        console.error(error);
     }
 })();

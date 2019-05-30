@@ -192,7 +192,7 @@ export class DatabaseConnection {
         item._modifiedbyid = user._id;
         item._modified = item._created;
         var hasUser: Ace = item._acl.find(e => e._id === user._id);
-        if ((hasUser === null || hasUser === undefined) && item._acl.length == 0) {
+        if ((hasUser === null || hasUser === undefined)) {
             if (collectionname != "audit") { this._logger.debug("Adding self " + user.username + " to object " + (item.name || item._name)); }
             item.addRight(user._id, user.name, [Rights.full_control]);
         }
@@ -205,8 +205,12 @@ export class DatabaseConnection {
             (item as any).passwordhash = await Crypt.hash((item as any).newpassword);
             delete (item as any).newpassword;
         }
+        j = ((j as any) === 'true' || j === true);
+        w = parseInt((w as any));
+
         // var options:CollectionInsertOneOptions = { writeConcern: { w: parseInt((w as any)), j: j } };
         var options: CollectionInsertOneOptions = { w: w, j: j };
+        //var options: CollectionInsertOneOptions = { w: "majority" };
         var result: InsertOneWriteOpResult = await this.db.collection(collectionname).insertOne(item, options);
         item = result.ops[0];
 
@@ -300,8 +304,13 @@ export class DatabaseConnection {
             }
         }
 
+        j = ((j as any) === 'true' || j === true);
+        w = parseInt((w as any));
         // var options = { writeConcern: { w: parseInt((w as any)), j: j } };
         var options: CollectionInsertOneOptions = { w: w, j: j };
+        //var options: CollectionInsertOneOptions = { w: w };
+        // var options: CollectionInsertOneOptions = { w: "majority" };
+        // var options: CollectionInsertOneOptions = {};
         var res: UpdateWriteOpResult = null;
         try {
             if (itemUpdate) {
@@ -311,14 +320,12 @@ export class DatabaseConnection {
             }
             // var res: ReplaceOneWriteOpResult = await this.db.collection(collectionname).replaceOne(_query, item, options);
             if (res.result.ok == 1) {
-                if (w > 0) {
-                    if (res.modifiedCount == 0 || res.modifiedCount == undefined) {
-                        throw Error("item not found!");
-                    } else if (res.modifiedCount == 1) {
-                        item = item;
-                    } else {
-                        throw Error("More than one item was updated !!!");
-                    }
+                if (res.modifiedCount == 0) {
+                    throw Error("item not found!");
+                } else if (res.modifiedCount == 1 || res.modifiedCount == undefined) {
+                    item = item;
+                } else {
+                    throw Error("More than one item was updated !!!");
                 }
             } else {
                 throw Error("UpdateOne failed!!!");
@@ -377,9 +384,14 @@ export class DatabaseConnection {
             item.$set._modified = new Date(new Date().toISOString());
         }
 
+
         this._logger.debug("updateMany " + (item.name || item._name) + " in database");
+
+        j = ((j as any) === 'true' || j === true);
+        w = parseInt((w as any));
         // var options = { writeConcern: { w: parseInt((w as any)), j: j } };
-        var options: CollectionInsertOneOptions = {};
+        //var options: CollectionInsertOneOptions = {};
+        var options: CollectionInsertOneOptions = { w: w, j: j };
         if (w > 0) { options.w = w; }
         var res: UpdateWriteOpResult = null;
         try {
@@ -389,9 +401,9 @@ export class DatabaseConnection {
             }
             if (res.result.ok == 1) {
                 if (w > 0) {
-                    if (res.modifiedCount == 0 || res.modifiedCount == undefined) {
+                    if (res.modifiedCount == 0) {
                         throw Error("item not found!");
-                    } else if (res.modifiedCount == 1) {
+                    } else if (res.modifiedCount == 1 || res.modifiedCount == undefined) {
                         item = item;
                     } else {
                         throw Error("More than one item was updated !!!");
@@ -439,11 +451,6 @@ export class DatabaseConnection {
         }
         var user: TokenUser = Crypt.verityToken(jwt);
         if (!this.hasAuthorization(user, item, "update")) { throw new Error("Access denied"); }
-        var hasUser: Ace = item._acl.find(e => e._id === user._id);
-        if ((hasUser === null || hasUser === undefined) && item._acl.length == 0) {
-            if (collectionname != "audit") { this._logger.debug("Adding self " + user.username + " to object " + (item.name || item._name)); }
-            item.addRight(user._id, user.name, [Rights.full_control]);
-        }
         if (item._id !== null && item._id !== undefined && item._id !== "") {
             item = await this.UpdateOne(null, item, collectionname, w, j, jwt);
         } else {
