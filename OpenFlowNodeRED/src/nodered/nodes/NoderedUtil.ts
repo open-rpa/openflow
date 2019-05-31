@@ -77,23 +77,25 @@ export class NoderedUtil {
         var result: QueryMessage = await WebSocketClient.instance.Send<QueryMessage>(_msg);
         return result.result;
     }
-    public static async UpdateOne(collection: string, query: any, item: any, w: number, j: boolean, jwt: string): Promise<any> {
+    public static async _UpdateOne(collection: string, query: any, item: any, w: number, j: boolean, jwt: string): Promise<any> {
         var q: UpdateOneMessage = new UpdateOneMessage(); q.collectionname = collection;
         q.item = item; q.jwt = jwt;
         q.w = w; q.j = j; q.query = query;
+        q = await this.UpdateOne(q);
+        return q.result;
+    }
+    public static async UpdateOne(q: UpdateOneMessage): Promise<UpdateOneMessage> {
         var _msg: Message = new Message();
         _msg.command = "updateone"; _msg.data = JSON.stringify(q);
-        var result: QueryMessage = await WebSocketClient.instance.Send<QueryMessage>(_msg);
-        return result.result;
+        var result: UpdateOneMessage = await WebSocketClient.instance.Send<UpdateOneMessage>(_msg);
+        return result;
     }
-    public static async UpdateMany(collection: string, query: any, item: any, w: number, j: boolean, jwt: string): Promise<any> {
-        var q: UpdateManyMessage = new UpdateManyMessage(); q.collectionname = collection;
-        q.item = item; q.jwt = jwt; q.query = query;
-        q.w = w; q.j = j;
+    //public static async UpdateMany(collection: string, query: any, item: any, w: number, j: boolean, jwt: string): Promise<any> {
+    public static async UpdateMany(q: UpdateManyMessage): Promise<any> {
         var _msg: Message = new Message();
         _msg.command = "updatemany"; _msg.data = JSON.stringify(q);
-        var result: QueryMessage = await WebSocketClient.instance.Send<QueryMessage>(_msg);
-        return result.result;
+        var result: UpdateOneMessage = await WebSocketClient.instance.Send<UpdateOneMessage>(_msg);
+        return result;
     }
     public static async InsertOrUpdateOne(collection: string, item: any, uniqeness: string, w: number, j: boolean, jwt: string): Promise<any> {
         var q: InsertOrUpdateOneMessage = new InsertOrUpdateOneMessage(); q.collectionname = collection;

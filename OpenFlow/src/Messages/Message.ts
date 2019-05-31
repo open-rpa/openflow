@@ -275,13 +275,10 @@ export class Message {
         this.Reply();
         var msg: UpdateOneMessage<Base> = UpdateOneMessage.assign(this.data);
         try {
-            var jwt = cli.jwt;
-            if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
-            var w: number = 0;
-            var j: boolean = false;
-            if ((msg.w as any) !== undefined && (msg.w as any) !== null) w = msg.w;
-            if ((msg.j as any) !== undefined && (msg.j as any) !== null) j = msg.j;
-            msg.result = await Config.db.UpdateOne(msg.query, msg.item, msg.collectionname, w, j, jwt);
+            if (msg.jwt === null || msg.jwt === undefined) { msg.jwt = cli.jwt; }
+            if ((msg.w as any) === undefined || (msg.w as any) === null) msg.w = 0;
+            if ((msg.j as any) === undefined || (msg.j as any) === null) msg.j = false;
+            msg = await Config.db.UpdateOne(msg);
         } catch (error) {
             msg.error = error.toString();
             cli._logger.error(error);
@@ -298,15 +295,10 @@ export class Message {
         this.Reply();
         var msg: UpdateManyMessage<Base> = UpdateManyMessage.assign(this.data);
         try {
-            var jwt = cli.jwt;
-            if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
-            var w: number = 0;
-            var j: boolean = false;
-            if ((msg.w as any) !== undefined && (msg.w as any) !== null) w = msg.w;
-            if ((msg.j as any) !== undefined && (msg.j as any) !== null) j = msg.j;
-            // msg.result = await Config.db.UpdateMany(msg.query, msg.item, msg.collectionname, w, j, jwt);
-            var res = await Config.db.UpdateMany(msg.query, msg.item, msg.collectionname, w, j, jwt);
-            msg.result = res;
+            if (msg.jwt === null || msg.jwt === undefined) { msg.jwt = cli.jwt; }
+            if ((msg.w as any) === undefined || (msg.w as any) === null) msg.w = 0;
+            if ((msg.j as any) === undefined || (msg.j as any) === null) msg.j = false;
+            msg = await Config.db.UpdateMany(msg);
         } catch (error) {
             msg.error = error.toString();
             cli._logger.error(error);
@@ -324,14 +316,10 @@ export class Message {
         this.Reply();
         var msg: InsertOrUpdateOneMessage<Base> = InsertOrUpdateOneMessage.assign(this.data);
         try {
-            var jwt = cli.jwt;
-            if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
-            var w: number = 0;
-            var j: boolean = false;
-            if ((msg.w as any) !== undefined && (msg.w as any) !== null) w = msg.w;
-            if ((msg.j as any) !== undefined && (msg.j as any) !== null) j = msg.j;
-
-            msg.result = await Config.db.InsertOrUpdateOne(msg.item, msg.collectionname, msg.uniqeness, w, j, jwt);
+            if (msg.jwt === null || msg.jwt === undefined) { msg.jwt = cli.jwt; }
+            if ((msg.w as any) === undefined || (msg.w as any) === null) msg.w = 0;
+            if ((msg.j as any) === undefined || (msg.j as any) === null) msg.j = false;
+            msg = await Config.db.InsertOrUpdateOne(msg);
         } catch (error) {
             msg.error = error.toString();
             cli._logger.error(error);

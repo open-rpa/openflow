@@ -98,9 +98,11 @@ module openflow {
                     } else {
                         chart.data.push(0);
                     }
-
-                    //chart.labels.push(datestring);
-                    chart.labels.push(startDate.getDate().toString());
+                    if ((y % 2) == 0 || (days == 30 && y == 30)) {
+                        chart.labels.push(startDate.getDate().toString());
+                    } else {
+                        chart.labels.push("");
+                    }
                 }
                 workflow.chart = chart;
 
@@ -207,96 +209,6 @@ module openflow {
                 }
             }
             this.charts.push(chart);
-
-            //for (var x = 0; x < stats.length; x++) {
-            for (var x = 0; x < workflows.length; x++) {
-                //var workflow = workflows.filter(x => x._id == id)[0];
-                var workflow = workflows[x];
-                var id = workflow._id;
-
-                chart = new chartset();
-
-                if (workflow == undefined) { chart.heading = "deleted workflow"; } else { chart.heading = workflow.name; }
-                chart.charttype = "line"
-                chart.data = [];
-
-                for (var i = 0; i < instances.length; i++) {
-                    var value = instances[i];
-                    if (value.WorkflowId == id) {
-
-                        var startDate = new Date(value._created);
-                        var endDate = new Date(value._modified);
-                        var seconds = (endDate.getTime() - startDate.getTime()) / 1000;
-
-                        chart.data.push(seconds);
-                        chart.labels.push(startDate.toISOString().split('T')[0]);
-                    }
-                }
-
-                console.log("add chart for " + workflow.name);
-                this.charts.push(chart);
-            }
-
-
-
-
-
-
-
-            console.log("get users");
-            var users = await this.api.Query("users", { _type: "user" }, null, { lastseen: -1 });
-
-            for (var y = 0; y < users.length; y++) {
-                var user = users[y];
-
-                console.log("get mapreduce for user " + user.name);
-                var d = new Date();
-                d.setMonth(d.getMonth() - 1); //1 month ago
-                console.log(d.toISOString());
-                var userstats = await this.api.MapReduce("audit",
-                    function map() {
-                        var dateString = new Date(this._created).toUTCString();
-                        dateString = dateString.split(' ').slice(0, 4).join(' ');
-                        var day = new Date(dateString);
-                        // var day = "" + date.getFullYear() +
-                        //     "" + (date.getMonth() + 1) +
-                        //     "" + date.getDate();
-                        emit(day, { count: 1, value: 1, avg: 0, _acl: [] });
-
-                    }, function reduce(key, values) {
-                        var reducedObject = { count: 0, value: 0, avg: 0, _acl: [] };
-                        values.forEach(function (value) {
-                            reducedObject.count += value.count;
-                            reducedObject._acl = value._acl;
-                        });
-                        return reducedObject;
-                    }, function finalize(key, reducedValue) {
-                        if (reducedValue.count > 0) {
-                            reducedValue.avg = reducedValue.value / reducedValue.count;
-                        }
-                        return reducedValue;
-                    }, { userid: user._id }, { inline: 1 }, null);
-                console.log(userstats);
-
-                chart = new chartset();
-                chart.charttype = "line"
-                chart.heading = user.name + " (" + user.username + ") logins per day";
-                chart.data = [];
-                for (var x = 0; x < userstats.length; x++) {
-                    var model = userstats[x].value;
-                    chart.data.push(model.count);
-                    var id = userstats[x]._id;
-                    // chart.labels.push(id);
-                    chart.labels.push(new Date(id).toISOString().split('T')[0]);
-                    // if (workflow == undefined) { chart.labels.push("unknown"); } else { chart.labels.push(workflow.name); }
-
-                }
-                this.charts.push(chart);
-                if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            }
-
-
-
 
 
 
@@ -544,14 +456,12 @@ module openflow {
             var chart: chartset = null;
             console.log("get users");
             this.models = await this.api.Query("users", { _type: "user" }, null, null);
-            console.log(this.models);
 
             for (var i = 0; i < this.models.length; i++) {
                 var user = this.models[i] as any;
                 var d = new Date();
                 d.setMonth(d.getMonth() - 1);
                 //d.setDate(d.getDate() - 30);
-                console.log(d);
 
 
                 console.log("get mapreduce for " + user.name);
@@ -578,7 +488,6 @@ module openflow {
                 chart.charttype = "line"
                 chart.data = [];
                 var days = daysBetween(d, new Date());
-                console.log(stats);
                 for (var y = 0; y < days; y++) {
                     var startDate = new Date(d);
                     startDate.setDate(d.getDate() + y);
@@ -590,7 +499,11 @@ module openflow {
                         chart.data.push(0);
                     }
                     //chart.labels.push(datestring);
-                    chart.labels.push(startDate.getDate().toString());
+                    if ((y % 2) == 0 || (days == 30 && y == 30)) {
+                        chart.labels.push(startDate.getDate().toString());
+                    } else {
+                        chart.labels.push("");
+                    }
                 }
                 user.chart = chart;
 

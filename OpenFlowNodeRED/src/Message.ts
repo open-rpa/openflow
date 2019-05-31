@@ -149,6 +149,7 @@ export class UpdateOneMessage {
     public collectionname: string;
     public query: object;
     public result: any;
+    public opresult: any;
     static assign(o: any): UpdateOneMessage {
         if (typeof o === "string" || o instanceof String) {
             return Object.assign(new UpdateOneMessage(), JSON.parse(o.toString()));

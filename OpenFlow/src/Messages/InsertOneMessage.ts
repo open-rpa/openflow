@@ -14,6 +14,7 @@ export class InsertOneMessage<T extends Base> implements IReplyMessage {
     public item: T;
     public collectionname: string;
     public result: T;
+    public opresult: any;
     static assign<T extends Base>(o: any): InsertOneMessage<T> {
         if (typeof o === "string" || o instanceof String) {
             return Object.assign(new InsertOneMessage(), JSON.parse(o.toString()));

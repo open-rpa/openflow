@@ -1,4 +1,5 @@
 import { Base } from "../base";
+import { UpdateWriteOpResult } from "mongodb";
 
 export class UpdateOneMessage<T extends Base> implements IReplyMessage {
     public error: string;
@@ -15,6 +16,7 @@ export class UpdateOneMessage<T extends Base> implements IReplyMessage {
     public query: any;
     public collectionname: string;
     public result: T;
+    public opresult: UpdateWriteOpResult;
     static assign<T extends Base>(o: any): UpdateOneMessage<T> {
         if (typeof o === "string" || o instanceof String) {
             return Object.assign(new UpdateOneMessage(), JSON.parse(o.toString()));

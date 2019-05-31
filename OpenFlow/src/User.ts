@@ -42,7 +42,7 @@ export class User extends Base {
             var temp: User = await Config.db.InsertOne(this, "users", 0, false, jwt);
             this._id = temp._id;
         } else {
-            await Config.db.UpdateOne(null, this, "users", 0, false, jwt);
+            await Config.db._UpdateOne(null, this, "users", 0, false, jwt);
         }
     }
 

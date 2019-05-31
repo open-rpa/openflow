@@ -1,6 +1,6 @@
 import * as RED from "node-red";
 import { Red } from "node-red";
-import { TokenUser, SigninMessage, Message, QueryMessage, mapFunc, reduceFunc, finalizeFunc } from "../../Message";
+import { TokenUser, SigninMessage, Message, QueryMessage, mapFunc, reduceFunc, finalizeFunc, UpdateOneMessage } from "../../Message";
 import { Crypt } from "../../Crypt";
 import { WebSocketClient } from "../../WebSocketClient";
 import { NoderedUtil } from "./NoderedUtil";
@@ -260,7 +260,7 @@ export class api_update {
                 if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
                     element._type = this.config.entitytype;
                 }
-                Promises.push(NoderedUtil.UpdateOne(this.config.collection, null, element, this.config.writeconcern, this.config.journal, msg.jwt));
+                Promises.push(NoderedUtil._UpdateOne(this.config.collection, null, element, this.config.writeconcern, this.config.journal, msg.jwt));
             }
             data = await Promise.all(Promises.map(p => p.catch(e => e)));
 
@@ -528,11 +528,21 @@ export class api_updatedocument {
 
             this.node.status({ fill: "blue", shape: "dot", text: "Running Update Document" });
             if (this.config.action === "updateOne") {
-                var result = await NoderedUtil.UpdateOne(this.config.collection, this.config.query, this.config.updatedocument, this.config.writeconcern, this.config.journal, msg.jwt);
-                msg.payload = result;
+                var q: UpdateOneMessage = new UpdateOneMessage(); q.collectionname = this.config.collection;
+                q.item = (this.config.updatedocument as any); q.jwt = msg.jwt;
+                q.w = this.config.writeconcern; q.j = this.config.journal; q.query = (this.config.query as any);
+                q = await NoderedUtil.UpdateOne(q);
+                msg.payload = q.result;
+                msg.opresult = q.opresult;
             } else {
-                var result = await NoderedUtil.UpdateMany(this.config.collection, this.config.query, this.config.updatedocument, this.config.writeconcern, this.config.journal, msg.jwt);
-                msg.payload = result;
+                // var result = await NoderedUtil.UpdateMany(this.config.collection, this.config.query, this.config.updatedocument, this.config.writeconcern, this.config.journal, msg.jwt);
+                // msg.payload = result;
+                var q: UpdateOneMessage = new UpdateOneMessage(); q.collectionname = this.config.collection;
+                q.item = (this.config.updatedocument as any); q.jwt = msg.jwt;
+                q.w = this.config.writeconcern; q.j = this.config.journal; q.query = (this.config.query as any);
+                q = await NoderedUtil.UpdateMany(q);
+                msg.payload = q.result;
+                msg.opresult = q.opresult;
             }
             this.node.send(msg);
             this.node.status({});

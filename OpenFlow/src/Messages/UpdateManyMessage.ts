@@ -1,4 +1,5 @@
 import { Base } from "../base";
+import { UpdateWriteOpResult } from "mongodb";
 
 export class UpdateManyMessage<T extends Base> implements IReplyMessage {
     public error: string;
@@ -15,6 +16,7 @@ export class UpdateManyMessage<T extends Base> implements IReplyMessage {
     public item: T;
     public collectionname: string;
     public result: T[];
+    public opresult: UpdateWriteOpResult;
     static assign<T extends Base>(o: any): UpdateManyMessage<T> {
         if (typeof o === "string" || o instanceof String) {
             return Object.assign(new UpdateManyMessage(), JSON.parse(o.toString()));

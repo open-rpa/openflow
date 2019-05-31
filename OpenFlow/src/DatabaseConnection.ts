@@ -9,6 +9,9 @@ import { Config } from "./Config";
 import { TokenUser } from "./TokenUser";
 import { Ace } from "./Ace";
 import { Role } from "./Role";
+import { UpdateOneMessage } from "./Messages/UpdateOneMessage";
+import { UpdateManyMessage } from "./Messages/UpdateManyMessage";
+import { InsertOrUpdateOneMessage } from "./Messages/InsertOrUpdateOneMessage";
 // tslint:disable-next-line: typedef
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 export declare function emit(k, v);
@@ -275,115 +278,118 @@ export class DatabaseConnection {
      * @param  {string} jwt JWT of user who is doing the update, ensuring rights
      * @returns Promise<T>
      */
-    async UpdateOne<T extends Base>(query: any, item: T, collectionname: string, w: number, j: boolean, jwt: string): Promise<T> {
+    async _UpdateOne<T extends Base>(query: any, item: T, collectionname: string, w: number, j: boolean, jwt: string): Promise<T> {
+        var q = new UpdateOneMessage<T>();
+        q.query = query; q.item = item; q.collectionname = collectionname; q.w = w; q.j; q.jwt = jwt;
+        q = await this.UpdateOne(q);
+        if (q.opresult.result.ok == 1) {
+            if (q.opresult.modifiedCount == 0) {
+                throw Error("item not found!");
+            } else if (q.opresult.modifiedCount == 1 || q.opresult.modifiedCount == undefined) {
+                q.item = q.item;
+            } else {
+                throw Error("More than one item was updated !!!");
+            }
+        } else {
+            throw Error("UpdateOne failed!!!");
+        }
+        return q.result;
+    }
+    async UpdateOne<T extends Base>(q: UpdateOneMessage<T>): Promise<UpdateOneMessage<T>> {
         var itemReplace: boolean = true;
-        if (item === null || item === undefined) { throw Error("Cannot update null item"); }
+        if (q === null || q === undefined) { throw Error("UpdateOneMessage cannot be null"); }
+        if (q.item === null || q.item === undefined) { throw Error("Cannot update null item"); }
         await this.connect();
-        var user: TokenUser = Crypt.verityToken(jwt);
-        if (!this.hasAuthorization(user, item, "update")) { throw new Error("Access denied"); }
+        var user: TokenUser = Crypt.verityToken(q.jwt);
+        if (!this.hasAuthorization(user, q.item, "update")) { throw new Error("Access denied"); }
 
         // assume empty query, means full document, else update document
-        if (query === null || query === undefined) {
+        if (q.query === null || q.query === undefined) {
             // this will add an _acl so needs to be after we checked old item
-            if (!item.hasOwnProperty("_id")) {
+            if (!q.item.hasOwnProperty("_id")) {
                 throw Error("Cannot update item without _id");
             }
-            var original: T = await this.getbyid<T>(item._id, collectionname, jwt);
+            var original: T = await this.getbyid<T>(q.item._id, q.collectionname, q.jwt);
             if (!original) { throw Error("item not found!"); }
-            item._modifiedby = user.name;
-            item._modifiedbyid = user._id;
-            item._modified = new Date(new Date().toISOString());
+            q.item._modifiedby = user.name;
+            q.item._modifiedbyid = user._id;
+            q.item._modified = new Date(new Date().toISOString());
             // now add all _ fields to the new object
             var keys: string[] = Object.keys(original);
             for (let i: number = 0; i < keys.length; i++) {
                 let key: string = keys[i];
                 if (key === "_created") {
-                    item[key] = new Date(original[key]);
+                    q.item[key] = new Date(original[key]);
                 } else if (key === "_createdby" || key === "_createdbyid") {
-                    item[key] = original[key];
+                    q.item[key] = original[key];
                 } else if (key === "_modifiedby" || key === "_modifiedbyid" || key === "_modified") {
                     // allready updated
                 } else if (key.indexOf("_") === 0) {
-                    if (!item.hasOwnProperty(key)) {
-                        item[key] = original[key]; // add missing key
-                    } else if (item[key] === null) {
-                        delete item[key]; // remove key
+                    if (!q.item.hasOwnProperty(key)) {
+                        q.item[key] = original[key]; // add missing key
+                    } else if (q.item[key] === null) {
+                        delete q.item[key]; // remove key
                     } else {
                         // key allready exists, might been updated since last save
                     }
                 }
             }
-            item = this.ensureResource(item);
-            this.traversejsonencode(item);
-            item = this.encryptentity<T>(item);
-            var hasUser: Ace = item._acl.find(e => e._id === user._id);
-            if ((hasUser === null || hasUser === undefined) && item._acl.length == 0) {
-                if (collectionname != "audit") { this._logger.debug("Adding self " + user.username + " to object " + (item.name || item._name)); }
-                item.addRight(user._id, user.name, [Rights.full_control]);
+            q.item = this.ensureResource(q.item);
+            this.traversejsonencode(q.item);
+            q.item = this.encryptentity<T>(q.item);
+            var hasUser: Ace = q.item._acl.find(e => e._id === user._id);
+            if ((hasUser === null || hasUser === undefined) && q.item._acl.length == 0) {
+                if (q.collectionname != "audit") { this._logger.debug("Adding self " + user.username + " to object " + (q.item.name || q.item._name)); }
+                q.item.addRight(user._id, user.name, [Rights.full_control]);
             }
         } else {
             itemReplace = false;
         }
 
-        if (collectionname === "users" && item._type === "user" && item.hasOwnProperty("newpassword")) {
-            (item as any).passwordhash = await Crypt.hash((item as any).newpassword);
-            delete (item as any).newpassword;
+        if (q.collectionname === "users" && q.item._type === "user" && q.item.hasOwnProperty("newpassword")) {
+            (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
+            delete (q.item as any).newpassword;
         }
-        this._logger.debug("updating " + (item.name || item._name) + " in database");
+        this._logger.debug("updating " + (q.item.name || q.item._name) + " in database");
         // await this.db.collection(collectionname).replaceOne({ _id: item._id }, item, options);
 
-        if (query === null || query === undefined) {
-            query = { _id: item._id };
+        if (q.query === null || q.query === undefined) {
+            q.query = { _id: q.item._id };
         }
         var _query: Object = {};
-        if (collectionname === "files") { collectionname = "fs.files"; }
-        if (collectionname === "fs.files") {
-            _query = { $and: [query, this.getbasequery(jwt, "metadata._acl", [Rights.update])] };
+        if (q.collectionname === "files") { q.collectionname = "fs.files"; }
+        if (q.collectionname === "fs.files") {
+            _query = { $and: [q.query, this.getbasequery(q.jwt, "metadata._acl", [Rights.update])] };
         } else {
-            if (!collectionname.endsWith("hist")) {
-                _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.update])] };
+            if (!q.collectionname.endsWith("hist")) {
+                _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.update])] };
             } else {
                 // todo: enforcer permissions when fetching hist ?
-                _query = query;
+                _query = q.query;
             }
         }
 
-        j = ((j as any) === 'true' || j === true);
-        w = parseInt((w as any));
-        // var options = { writeConcern: { w: parseInt((w as any)), j: j } };
-        var options: CollectionInsertOneOptions = { w: w, j: j };
-        //var options: CollectionInsertOneOptions = { w: w };
-        // var options: CollectionInsertOneOptions = { w: "majority" };
-        // var options: CollectionInsertOneOptions = {};
-        var res: UpdateWriteOpResult = null;
+        q.j = ((q.j as any) === 'true' || q.j === true);
+        if ((q.w as any) !== "majority") q.w = parseInt((q.w as any));
+
+        var options: CollectionInsertOneOptions = { w: q.w, j: q.j };
+        q.opresult = null;
         try {
             if (itemReplace) {
-                res = await this.db.collection(collectionname).replaceOne(_query, item, options);
+                q.opresult = await this.db.collection(q.collectionname).replaceOne(_query, q.item, options);
             } else {
-                if ((item["$set"]) === undefined) { (item["$set"]) = {} };
-                (item["$set"])._modifiedby = user.name;
-                (item["$set"])._modifiedbyid = user._id;
-                (item["$set"])._modified = new Date(new Date().toISOString());
-                res = await this.db.collection(collectionname).updateOne(_query, item, options);
+                if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };
+                (q.item["$set"])._modifiedby = user.name;
+                (q.item["$set"])._modifiedbyid = user._id;
+                (q.item["$set"])._modified = new Date(new Date().toISOString());
+                q.opresult = await this.db.collection(q.collectionname).updateOne(_query, q.item, options);
             }
-            // var res: ReplaceOneWriteOpResult = await this.db.collection(collectionname).replaceOne(_query, item, options);
-            if (res.result.ok == 1) {
-                if (res.modifiedCount == 0) {
-                    throw Error("item not found!");
-                } else if (res.modifiedCount == 1 || res.modifiedCount == undefined) {
-                    item = item;
-                } else {
-                    throw Error("More than one item was updated !!!");
-                }
-            } else {
-                throw Error("UpdateOne failed!!!");
-            }
-            item = this.decryptentity<T>(item);
-            this.traversejsondecode(item);
-            return item;
+            q.item = this.decryptentity<T>(q.item);
+            this.traversejsondecode(q.item);
+            q.result = q.item;
+            return q;
         } catch (error) {
             throw error;
-
         }
     }
     /**
@@ -396,67 +402,63 @@ export class DatabaseConnection {
     * @param  {string} jwt JWT of user who is doing the update, ensuring rights
     * @returns Promise<T>
     */
-    async UpdateMany(query: any, item: any, collectionname: string, w: number, j: boolean, jwt: string): Promise<any[]> {
-        if (item === null || item === undefined) { throw Error("Cannot update null item"); }
+    async UpdateMany<T extends Base>(q: UpdateManyMessage<T>): Promise<UpdateManyMessage<T>> {
+        if (q === null || q === undefined) { throw Error("UpdateManyMessage cannot be null"); }
+        if (q.item === null || q.item === undefined) { throw Error("Cannot update null item"); }
         await this.connect();
-        var user: TokenUser = Crypt.verityToken(jwt);
-        if (!this.hasAuthorization(user, item, "update")) { throw new Error("Access denied"); }
+        var user: TokenUser = Crypt.verityToken(q.jwt);
+        if (!this.hasAuthorization(user, q.item, "update")) { throw new Error("Access denied"); }
 
-        if (collectionname === "users" && item._type === "user" && item.hasOwnProperty("newpassword")) {
-            (item as any).passwordhash = await Crypt.hash((item as any).newpassword);
-            delete (item as any).newpassword;
+        if (q.collectionname === "users" && q.item._type === "user" && q.item.hasOwnProperty("newpassword")) {
+            (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
+            delete (q.item as any).newpassword;
         }
-        for (let key in query) {
+        for (let key in q.query) {
             if (key === "_id") {
-                var id: string = query._id;
-                delete query._id;
-                query.$or = [{ _id: id }, { _id: safeObjectID(id) }];
+                var id: string = q.query._id;
+                delete q.query._id;
+                q.query.$or = [{ _id: id }, { _id: safeObjectID(id) }];
             }
         }
         var _query: Object = {};
-        if (collectionname === "files") { collectionname = "fs.files"; }
-        if (collectionname === "fs.files") {
-            _query = { $and: [query, this.getbasequery(jwt, "metadata._acl", [Rights.read])] };
+        if (q.collectionname === "files") { q.collectionname = "fs.files"; }
+        if (q.collectionname === "fs.files") {
+            _query = { $and: [q.query, this.getbasequery(q.jwt, "metadata._acl", [Rights.read])] };
         } else {
-            if (!collectionname.endsWith("hist")) {
-                _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
+            if (!q.collectionname.endsWith("hist")) {
+                _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.read])] };
             } else {
                 // todo: enforcer permissions when fetching hist ?
-                _query = query;
+                _query = q.query;
             }
         }
 
-        if (item.$set !== undefined) {
-            item.$set._modifiedby = user.name;
-            item.$set._modifiedbyid = user._id;
-            item.$set._modified = new Date(new Date().toISOString());
-        }
+        if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };
+        (q.item["$set"])._modifiedby = user.name;
+        (q.item["$set"])._modifiedbyid = user._id;
+        (q.item["$set"])._modified = new Date(new Date().toISOString());
 
 
-        this._logger.debug("updateMany " + (item.name || item._name) + " in database");
+        this._logger.debug("updateMany " + (q.item.name || q.item._name) + " in database");
 
-        j = ((j as any) === 'true' || j === true);
-        w = parseInt((w as any));
-        // var options = { writeConcern: { w: parseInt((w as any)), j: j } };
-        //var options: CollectionInsertOneOptions = {};
-        var options: CollectionInsertOneOptions = { w: w, j: j };
-        if (w > 0) { options.w = w; }
-        var res: UpdateWriteOpResult = null;
+        q.j = ((q.j as any) === 'true' || q.j === true);
+        if ((q.w as any) !== "majority") q.w = parseInt((q.w as any));
+        var options: CollectionInsertOneOptions = { w: q.w, j: q.j };
         try {
-            res = await this.db.collection(collectionname).updateMany(_query, item, options);
-            if (res.modifiedCount == 0) {
-                throw Error("item not found!");
-            }
-            if (res.result.ok == 1) {
-                if (res.modifiedCount == 0) {
-                    throw Error("item not found!");
-                } else if (res.modifiedCount == 1 || res.modifiedCount == undefined) {
-                    item = item;
-                }
-            } else {
-                throw Error("UpdateOne failed!!!");
-            }
-            return null;
+            q.opresult = await this.db.collection(q.collectionname).updateMany(_query, q.item, options);
+            // if (res.modifiedCount == 0) {
+            //     throw Error("item not found!");
+            // }
+            // if (res.result.ok == 1) {
+            //     if (res.modifiedCount == 0) {
+            //         throw Error("item not found!");
+            //     } else if (res.modifiedCount == 1 || res.modifiedCount == undefined) {
+            //         q.item = q.item;
+            //     }
+            // } else {
+            //     throw Error("UpdateOne failed!!!");
+            // }
+            return q;
         } catch (error) {
             throw error;
         }
@@ -473,34 +475,38 @@ export class DatabaseConnection {
     * @param  {string} jwt JWT of user who is doing the update, ensuring rights
     * @returns Promise<T>
     */
-    async InsertOrUpdateOne<T extends Base>(item: T, collectionname: string, uniqeness: string, w: number, j: boolean, jwt: string): Promise<T> {
+    async InsertOrUpdateOne<T extends Base>(q: InsertOrUpdateOneMessage<T>): Promise<InsertOrUpdateOneMessage<T>> {
         var query: any = null;
-        if (uniqeness !== null && uniqeness !== undefined && uniqeness !== "") {
+        if (q.uniqeness !== null && q.uniqeness !== undefined && q.uniqeness !== "") {
             query = {};
-            var arr = uniqeness.split(",");
+            var arr = q.uniqeness.split(",");
             arr.forEach(field => {
                 if (field.trim() !== "") {
-                    query[field] = item[field];
+                    query[field] = q.item[field];
                 }
             });
         } else {
-            query = { _id: item._id };
+            query = { _id: q.item._id };
         }
-        var exists = await this.query(query, { name: 1 }, 2, 0, null, collectionname, jwt);
+        var exists = await this.query(query, { name: 1 }, 2, 0, null, q.collectionname, q.jwt);
         if (exists.length == 1) {
-            item._id = exists[0]._id;
+            q.item._id = exists[0]._id;
         }
         else if (exists.length > 1) {
             throw JSON.stringify(query) + " is not uniqe, more than 1 item in collection matches this";
         }
-        var user: TokenUser = Crypt.verityToken(jwt);
-        if (!this.hasAuthorization(user, item, "update")) { throw new Error("Access denied"); }
-        if (item._id !== null && item._id !== undefined && item._id !== "") {
-            item = await this.UpdateOne(null, item, collectionname, w, j, jwt);
+        var user: TokenUser = Crypt.verityToken(q.jwt);
+        if (!this.hasAuthorization(user, q.item, "update")) { throw new Error("Access denied"); }
+        if (q.item._id !== null && q.item._id !== undefined && q.item._id !== "") {
+            var uq = new UpdateOneMessage<T>();
+            uq.query = query; uq.item = q.item; uq.collectionname = q.collectionname; uq.w = q.w; uq.j; uq.jwt = q.jwt;
+            uq = await this.UpdateOne(uq);
+            q.opresult = uq.opresult;
+            q.result = uq.result;
         } else {
-            item = await this.InsertOne(item, collectionname, w, j, jwt);
+            q.result = await this.InsertOne(q.item, q.collectionname, q.w, q.j, q.jwt);
         }
-        return item;
+        return q;
     }
     /**
      * @param  {string} id id of object to delete
