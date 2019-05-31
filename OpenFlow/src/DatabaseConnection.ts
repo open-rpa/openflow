@@ -12,6 +12,7 @@ import { Role } from "./Role";
 import { UpdateOneMessage } from "./Messages/UpdateOneMessage";
 import { UpdateManyMessage } from "./Messages/UpdateManyMessage";
 import { InsertOrUpdateOneMessage } from "./Messages/InsertOrUpdateOneMessage";
+import { User } from "./User";
 // tslint:disable-next-line: typedef
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 export declare function emit(k, v);
@@ -605,6 +606,9 @@ export class DatabaseConnection {
             return { _id: { $ne: "bum" } };
         }
         var user: TokenUser = Crypt.verityToken(jwt);
+        if (user._id === WellknownIds.root) {
+            return { _id: { $ne: "bum" } };
+        }
         var isme: any[] = [];
         isme.push({ _id: user._id });
         for (var i: number = 0; i < bits.length; i++) {
