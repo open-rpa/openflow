@@ -184,7 +184,6 @@ module openflow {
                 workflowids.push(workflow._id);
             });
             var q = { WorkflowId: { $in: workflowids } }
-            console.log(q);
             var instances = await this.api.Query("openrpa_instances", q, null, null);
 
 
@@ -196,13 +195,16 @@ module openflow {
             chart.data = [[], [], []];
             for (var x = 0; x < stats.length; x++) {
                 var model = stats[x].value;
-                chart.data[0].push(model.minrun);
-                chart.data[1].push(model.run);
-                chart.data[2].push(model.maxrun);
-                var id = stats[x]._id;
-                var workflow = workflows.filter(x => x._id == id)[0];
-                if (workflow == undefined) { chart.labels.push("unknown"); } else { chart.labels.push(workflow.name); }
-
+                var _id = stats[x]._id;
+                var workflow = workflows.filter(y => y._id == _id)[0];
+                if (workflow !== undefined) {
+                    chart.data[0].push(model.minrun);
+                    chart.data[1].push(model.run);
+                    chart.data[2].push(model.maxrun);
+                    var id = stats[x]._id;
+                    var workflow = workflows.filter(x => x._id == id)[0];
+                    if (workflow == undefined) { chart.labels.push("unknown"); } else { chart.labels.push(workflow.name); }
+                }
             }
             this.charts.push(chart);
 
@@ -886,6 +888,7 @@ module openflow {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async submit(): Promise<void> {
+            console.log(this.model);
             if (this.showjson) {
                 this.model = JSON.parse(this.jsonmodel);
             }

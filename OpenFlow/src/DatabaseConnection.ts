@@ -276,7 +276,7 @@ export class DatabaseConnection {
      * @returns Promise<T>
      */
     async UpdateOne<T extends Base>(query: any, item: T, collectionname: string, w: number, j: boolean, jwt: string): Promise<T> {
-        var itemUpdate: boolean = true;
+        var itemReplace: boolean = true;
         if (item === null || item === undefined) { throw Error("Cannot update null item"); }
         await this.connect();
         var user: TokenUser = Crypt.verityToken(jwt);
@@ -322,7 +322,7 @@ export class DatabaseConnection {
                 item.addRight(user._id, user.name, [Rights.full_control]);
             }
         } else {
-            itemUpdate = false;
+            itemReplace = false;
         }
 
         if (collectionname === "users" && item._type === "user" && item.hasOwnProperty("newpassword")) {
@@ -357,9 +357,13 @@ export class DatabaseConnection {
         // var options: CollectionInsertOneOptions = {};
         var res: UpdateWriteOpResult = null;
         try {
-            if (itemUpdate) {
-                res = await this.db.collection(collectionname).updateOne(_query, { $set: item }, options);
+            if (itemReplace) {
+                res = await this.db.collection(collectionname).replaceOne(_query, item, options);
             } else {
+                if ((item["$set"]) === undefined) { (item["$set"]) = {} };
+                (item["$set"])._modifiedby = user.name;
+                (item["$set"])._modifiedbyid = user._id;
+                (item["$set"])._modified = new Date(new Date().toISOString());
                 res = await this.db.collection(collectionname).updateOne(_query, item, options);
             }
             // var res: ReplaceOneWriteOpResult = await this.db.collection(collectionname).replaceOne(_query, item, options);
