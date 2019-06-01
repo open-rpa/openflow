@@ -1,6 +1,6 @@
-function locationTracker(Longitude, Latitude) {
-    console.log(Longitude + " " + Latitude);
-}
+// function locationTracker(Longitude, Latitude) {
+//     console.log(Longitude + " " + Latitude);
+// }
 /**
  * @type {angular.Module}
  */
