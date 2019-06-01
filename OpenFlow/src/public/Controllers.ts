@@ -360,7 +360,7 @@ module openflow {
                 } catch (error) {
                     console.log(error);
                 }
-
+                console.debug("signing in with username/password");
                 var a: any = await this.WebSocketClient.Send(msg);
                 var result: SigninMessage = a;
                 if (result.user == null) { return; }

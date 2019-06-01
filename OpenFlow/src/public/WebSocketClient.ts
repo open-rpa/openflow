@@ -136,7 +136,7 @@ module openflow {
                     } catch (error) {
                         console.log(error);
                     }
-                    console.debug("signing in");
+                    console.debug("signing in with token");
                     var msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
                     var a: any = await this.Send(msg);
                     var result: SigninMessage = a;

@@ -5,6 +5,7 @@
   <table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;">
     <thead class="thead-dark">
       <tr>
+        <th ng-click="ctrl.ToggleOrder('_type')"><b translate lib="web">type</b></th>
         <th ng-click="ctrl.ToggleOrder('_createdby')"><b translate lib="web">createdby</b></th>
         <th ng-click="ctrl.ToggleOrder('_created')"><b translate lib="web">created</b></th>
         <th></th>
@@ -12,6 +13,7 @@
     </thead>
     <tbody>
       <tr ng-repeat="model in ctrl.models">
+        <td>{{model._type}}</td>
         <td>{{model._createdby}}</td>
         <td>
           <timesince ng-model="model._created" />
