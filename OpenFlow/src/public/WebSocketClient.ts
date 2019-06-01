@@ -33,8 +33,8 @@ module openflow {
             try {
                 (window as any).bridge.post('onesignaltoken', {}, (results, error) => {
                     if (error) { return reject(error); }
+                    console.log(results);
                     resolve(results.token);
-                    console.log(results.token);
                 });
             } catch (error) {
                 reject(error);
