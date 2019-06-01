@@ -95,7 +95,7 @@ module openflow {
             var q: SigninMessage = new SigninMessage();
             this.getJSON("/jwt", async (error: any, data: any) => {
                 try {
-                    if (data === null || data === undefined) {
+                    if (data !== null && data !== undefined) {
                         if ((data.jwt === null || data.jwt === undefined || data.jwt.trim() === "") ||
                             (data.rawAssertion === null || data.rawAssertion === undefined || data.rawAssertion.trim() === "")) {
                             data = null;
