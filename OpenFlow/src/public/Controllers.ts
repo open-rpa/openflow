@@ -25,6 +25,7 @@ module openflow {
             public api: api
         ) {
             super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("WorkflowsCtrl");
             WebSocketClient.onSignedin((user: TokenUser) => {
                 this.loadData();
             });
@@ -140,6 +141,7 @@ module openflow {
             public api: api
         ) {
             super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("ReportsCtrl");
             WebSocketClient.onSignedin((user: TokenUser) => {
                 this.loadData();
             });
@@ -226,6 +228,7 @@ module openflow {
             public api: api,
         ) {
             super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("MainCtrl");
             console.log("MainCtrl::constructor");
             WebSocketClient.onSignedin((user: TokenUser) => {
                 this.loadData();
@@ -385,6 +388,7 @@ module openflow {
             public api
         ) {
             super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("ProvidersCtrl");
             this.basequery = { _type: "provider" };
             this.collection = "config";
             WebSocketClient.onSignedin((user: TokenUser) => {
@@ -409,13 +413,14 @@ module openflow {
             public api: api
         ) {
             super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("ProviderCtrl");
             this.collection = "config";
             WebSocketClient.onSignedin((user: TokenUser) => {
                 if (this.id !== null && this.id !== undefined) {
                     this.loadData();
                 } else {
-                    this.model = new Provider("Office 365", "Office365", "saml", "",
-                        "https://login.microsoftonline.com/common/FederationMetadata/2007-06/FederationMetadata.xml")
+                    this.model = new Provider("", "", "", "",
+                        "")
                 }
 
             });
@@ -443,6 +448,7 @@ module openflow {
             public api: api
         ) {
             super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("UsersCtrl");
             this.basequery = { _type: "user" };
             this.collection = "users";
             WebSocketClient.onSignedin((user: TokenUser) => {
@@ -529,6 +535,7 @@ module openflow {
             public api: api
         ) {
             super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("UserCtrl");
             this.collection = "users";
             WebSocketClient.onSignedin((user: TokenUser) => {
                 if (this.id !== null && this.id !== undefined) {
@@ -582,6 +589,7 @@ module openflow {
             public api: api
         ) {
             super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("RolesCtrl");
             this.basequery = { _type: "role" };
             this.collection = "users";
             WebSocketClient.onSignedin((user: TokenUser) => {
@@ -607,6 +615,7 @@ module openflow {
             public api: api
         ) {
             super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("RoleCtrl");
             this.collection = "users";
             WebSocketClient.onSignedin(async (user: TokenUser) => {
                 if (this.id !== null && this.id !== undefined) {
@@ -688,6 +697,7 @@ module openflow {
             public WebSocketClient: WebSocketClient,
             public api: api
         ) {
+            console.debug("SocketCtrl");
             WebSocketClient.onSignedin(async (user: TokenUser) => {
                 await api.RegisterQueue();
             });
@@ -720,6 +730,7 @@ module openflow {
             public api: api
         ) {
             super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("EntitiesCtrl");
             this.basequery = {};
             this.collection = $routeParams.collection;
             this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
@@ -765,6 +776,7 @@ module openflow {
             public api: api
         ) {
             super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("jslogCtrl");
             WebSocketClient.onSignedin((user: TokenUser) => {
                 this.loadData();
             });
@@ -798,6 +810,7 @@ module openflow {
             public api: api
         ) {
             super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("EntityCtrl");
             this.collection = $routeParams.collection;
             WebSocketClient.onSignedin(async (user: TokenUser) => {
                 if (this.id !== null && this.id !== undefined) {

@@ -96,7 +96,7 @@ module openflow {
             var q: SigninMessage = new SigninMessage();
             this.getJSON("/jwt", async (error: any, data: any) => {
                 try {
-                    if (data === null || data === undefined || data.jwt === "") {
+                    if (data === null || data === undefined || (data.jwt === "" && data.rawAssertion === "")) {
                         if (this.$location.path() !== "/Login") {
                             console.log("path: " + this.$location.path());
                             console.log("WebSocketClient::onopen: Not signed in, redirect /Login");
@@ -117,22 +117,26 @@ module openflow {
                     if (_android != null) {
                         q.realm = "android";
                         try {
+                            console.debug("getFirebaseToken");
                             q.firebasetoken = _android.getFirebaseToken();
                         } catch (error) {
                             console.log(error);
                         }
                         try {
+                            console.debug("getOneSignalRegisteredId");
                             q.onesignalid = _android.getOneSignalRegisteredId();
                         } catch (error) {
                             console.log(error);
                         }
                         try {
+                            console.debug("iosGetOnesignalToken");
                             var results = await this.iosGetOnesignalToken();
                             q.onesignalid = results.token;
                         } catch (error) {
                             console.log(error);
                         }
                     }
+                    console.debug("signing in");
                     var msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
                     var a: any = await this.Send(msg);
                     var result: SigninMessage = a;
