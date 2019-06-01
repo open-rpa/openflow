@@ -23,6 +23,20 @@ module openflow {
             return value;
         };
     };
+    var gpsparameters: any = null;
+    export function getgpsparameters() {
+        return gpsparameters;
+    }
+    function iosListenGPSocation() {
+        try {
+            (window as any).bridge.on('gps_location', (parameters) => {
+                gpsparameters = parameters;
+            });
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
     export class api {
         static $inject = ["$rootScope", "$location", "WebSocketClient"];
         public messageQueue: IHashTable<messagequeue> = {};
@@ -48,6 +62,11 @@ module openflow {
             window.onerror = (message, url, linenumber) => {
                 var log = { message: message, url: url, linenumber: linenumber, _type: "error" };
                 this.Insert("jslog", log);
+            }
+            try {
+                iosListenGPSocation();
+            } catch (error) {
+                console.log(error);
             }
 
 

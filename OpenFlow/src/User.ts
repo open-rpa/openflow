@@ -27,6 +27,7 @@ export class User extends Base {
     sid: string;
     firebasetoken: string;
     onesignalid: string;
+    gpslocation: any;
     federationids: FederationId[] = [];
     roles: Rolemember[] = [];
     HasRoleName(name: string): Boolean {

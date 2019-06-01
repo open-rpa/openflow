@@ -416,6 +416,10 @@ export class Message {
                 if ((msg.onesignalid != null && msg.onesignalid != undefined && msg.onesignalid != "") ||
                     (msg.onesignalid != null && msg.onesignalid != undefined && msg.onesignalid != "")) {
                 }
+                if (msg.gpslocation != null && msg.gpslocation != undefined && msg.gpslocation != "") {
+                    user.gpslocation = msg.gpslocation;
+                }
+
                 Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip);
                 msg.jwt = Crypt.createToken(user);
                 msg.user = tuser;
