@@ -99,8 +99,8 @@ module openflow {
                     if (data !== null && data !== undefined) {
                         if ((data.jwt === null || data.jwt === undefined || data.jwt.trim() === "") ||
                             (data.rawAssertion === null || data.rawAssertion === undefined || data.rawAssertion.trim() === "")) {
-                            console.log("data.jwt or data.rawAssertion is null");
-                            data = null;
+                            // console.log("data.jwt or data.rawAssertion is null");
+                            // data = null;
                         }
                     }
                     if (data === null || data === undefined) {
