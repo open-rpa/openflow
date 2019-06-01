@@ -231,6 +231,9 @@ export class DatabaseConnection {
         await this.connect();
         item = this.ensureResource(item);
         this.traversejsonencode(item);
+        if (jwt === null || jwt === undefined && collectionname === "jslog") {
+            jwt = TokenUser.rootToken();
+        }
         var user: TokenUser = Crypt.verityToken(jwt);
         if (!this.hasAuthorization(user, item, "create")) { throw new Error("Access denied"); }
         item._createdby = user.name;

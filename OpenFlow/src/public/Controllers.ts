@@ -752,6 +752,36 @@ module openflow {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
     }
+
+    export class jslogCtrl extends entitiesCtrl<openflow.Base> {
+        public loading: boolean = false;
+        public message: string = "";
+        public charts: chartset[] = [];
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public WebSocketClient: WebSocketClient,
+            public api: api
+        ) {
+            super($scope, $location, $routeParams, WebSocketClient, api);
+            WebSocketClient.onSignedin((user: TokenUser) => {
+                this.loadData();
+            });
+        }
+
+        async loadData(): Promise<void> {
+            this.loading = true;
+            this.charts = [];
+            var chart: chartset = null;
+            console.log("get log");
+            this.models = await this.api.Query("jslog", {}, null, { _created: -1 });
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+    }
+
+
     export class EntityCtrl extends entityCtrl<openflow.Base> {
         public addthis: any = "";
         public users: any[] = null;

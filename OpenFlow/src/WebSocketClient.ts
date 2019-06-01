@@ -165,6 +165,10 @@ export class WebSocketClient {
         });
         ids.forEach(id => {
             var msgs: SocketMessage[] = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id === id; });
+            if (this._receiveQueue.length > 100) {
+                this._logger.error("_receiveQueue containers more than 100 messages for id '" + id + "' so discarding all !!!!!!!");
+                this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
+            }
             msgs.sort((a, b) => a.index - b.index);
             var first: SocketMessage = msgs[0];
             if (first.count === msgs.length) {

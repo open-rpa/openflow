@@ -11,11 +11,45 @@ module openflow {
     export type mapFunc = () => void;
     export type reduceFunc = (key: string, values: any[]) => any;
     export type finalizeFunc = (key: string, value: any) => any;
-
+    const getCircularReplacer = () => {
+        const seen = new WeakSet();
+        return (key, value) => {
+            if (typeof value === "object" && value !== null) {
+                if (seen.has(value)) {
+                    return;
+                }
+                seen.add(value);
+            }
+            return value;
+        };
+    };
     export class api {
         static $inject = ["$rootScope", "$location", "WebSocketClient"];
         public messageQueue: IHashTable<messagequeue> = {};
         constructor(public $rootScope: ng.IRootScopeService, public $location, public WebSocketClient: WebSocketClient) {
+            var formerlog = console.log.bind(window.console);
+            var formerwarn = console.warn.bind(window.console);
+            var formerdebug = console.debug.bind(window.console);
+            console.log = (msg) => {
+                formerlog.apply(console, { arguments: arguments });
+                var log = { message: msg, _type: "message" };
+                this.Insert("jslog", log);
+            }
+            console.warn = (msg) => {
+                formerwarn.apply(console, { arguments: arguments });
+                var log = { message: msg, _type: "warning" };
+                this.Insert("jslog", log);
+            }
+            console.debug = (msg) => {
+                formerdebug.apply(console, { arguments: arguments });
+                var log = { message: msg, _type: "debug" };
+                this.Insert("jslog", log);
+            }
+            window.onerror = (message, url, linenumber) => {
+                var log = { message: message, url: url, linenumber: linenumber, _type: "error" };
+                this.Insert("jslog", log);
+            }
+
 
             var cleanup = $rootScope.$on('queuemessage', (event, data: QueueMessage) => {
                 if (event && data) { }
