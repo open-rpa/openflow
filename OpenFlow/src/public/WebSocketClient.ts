@@ -4,7 +4,7 @@ module openflow {
     interface IHashTable<T> {
         [key: string]: T;
     }
-    interface WebAppInterface {
+    export interface WebAppInterface {
         getFirebaseToken(): any;
         getOneSignalRegisteredId(): any;
         isProductPurchased(): any;
@@ -15,7 +15,7 @@ module openflow {
         createNotification(displayname: string, message: string): void;
 
     }
-    declare var android: WebAppInterface;
+    export declare var android: WebAppInterface;
 
     type QueuedMessageCallback = (msg: any) => any;
     export class QueuedMessage {
@@ -27,6 +27,20 @@ module openflow {
         public cb: QueuedMessageCallback;
         public id: string;
         public message: any;
+    }
+    export function iosGetOnesignalToken() {
+        return new Promise<any>(async (resolve, reject) => {
+            try {
+                (window as any).bridge.post('onesignaltoken', {}, (results, error) => {
+                    if (error) { return reject(error); }
+                    resolve(results.token);
+                    console.log(results.token);
+                });
+            } catch (error) {
+                reject(error);
+            }
+        });
+
     }
     export class WebSocketClient {
         private _socketObject: ReconnectingWebSocket = null;
@@ -76,20 +90,6 @@ module openflow {
                 callback(this.user);
             });
         }
-        iosGetOnesignalToken() {
-            return new Promise<any>(async (resolve, reject) => {
-                try {
-                    (window as any).bridge.post('onesignaltoken', {}, (results, error) => {
-                        if (error) { return reject(error); }
-                        resolve(results.token);
-                        console.log(results.token);
-                    });
-                } catch (error) {
-                    reject(error);
-                }
-            });
-
-        }
         private async onopen(evt: Event): Promise<void> {
             console.log("WebSocketClient::onopen: connected");
             var me: WebSocketClient = WebSocketClient.instance;
@@ -128,13 +128,13 @@ module openflow {
                         } catch (error) {
                             console.log(error);
                         }
-                        try {
-                            console.debug("iosGetOnesignalToken");
-                            var results = await this.iosGetOnesignalToken();
-                            q.onesignalid = results.token;
-                        } catch (error) {
-                            console.log(error);
-                        }
+                    }
+                    try {
+                        console.debug("iosGetOnesignalToken");
+                        var results = await iosGetOnesignalToken();
+                        q.onesignalid = results.token;
+                    } catch (error) {
+                        console.log(error);
                     }
                     console.debug("signing in");
                     var msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);

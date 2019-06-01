@@ -333,6 +333,34 @@ module openflow {
             q.username = this.username; q.password = this.password;
             var msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
             try {
+                var _android: WebAppInterface = null;
+                try {
+                    _android = android;
+                } catch (error) {
+                }
+                if (_android != null) {
+                    q.realm = "android";
+                    try {
+                        console.debug("getFirebaseToken");
+                        q.firebasetoken = _android.getFirebaseToken();
+                    } catch (error) {
+                        console.log(error);
+                    }
+                    try {
+                        console.debug("getOneSignalRegisteredId");
+                        q.onesignalid = _android.getOneSignalRegisteredId();
+                    } catch (error) {
+                        console.log(error);
+                    }
+                }
+                try {
+                    console.debug("iosGetOnesignalToken");
+                    var results = await openflow.iosGetOnesignalToken();
+                    q.onesignalid = results.token;
+                } catch (error) {
+                    console.log(error);
+                }
+
                 var a: any = await this.WebSocketClient.Send(msg);
                 var result: SigninMessage = a;
                 if (result.user == null) { return; }
