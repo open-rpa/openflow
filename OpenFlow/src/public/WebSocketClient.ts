@@ -28,7 +28,7 @@ module openflow {
         public id: string;
         public message: any;
     }
-    export function iosGetOnesignalToken() {
+    function iosGetOnesignalToken() {
         return new Promise<any>(async (resolve, reject) => {
             try {
                 (window as any).bridge.post('onesignaltoken', {}, (results, error) => {
@@ -40,7 +40,6 @@ module openflow {
                 reject(error);
             }
         });
-
     }
     export class WebSocketClient {
         private _socketObject: ReconnectingWebSocket = null;
@@ -96,7 +95,13 @@ module openflow {
             var q: SigninMessage = new SigninMessage();
             this.getJSON("/jwt", async (error: any, data: any) => {
                 try {
-                    if (data === null || data === undefined || (data.jwt === "" && data.rawAssertion === "")) {
+                    if (data === null || data === undefined) {
+                        if ((data.jwt === null || data.jwt === undefined || data.jwt.trim() === "") ||
+                            (data.rawAssertion === null || data.rawAssertion === undefined || data.rawAssertion.trim() === "")) {
+                            data = null;
+                        }
+                    }
+                    if (data === null || data === undefined) {
                         if (this.$location.path() !== "/Login") {
                             console.log("path: " + this.$location.path());
                             console.log("WebSocketClient::onopen: Not signed in, redirect /Login");
@@ -130,7 +135,7 @@ module openflow {
                         }
                     }
                     try {
-                        console.debug("iosGetOnesignalToken");
+                        console.debug("WebSocketClient::iosGetOnesignalToken");
                         var results = await iosGetOnesignalToken();
                         q.onesignalid = results.token;
                     } catch (error) {
