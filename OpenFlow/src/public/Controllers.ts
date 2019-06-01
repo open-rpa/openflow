@@ -818,6 +818,8 @@ module openflow {
         ) {
             super($scope, $location, $routeParams, WebSocketClient, api);
             console.debug("jslogCtrl");
+            this.collection = "jslog";
+            this.basequery = {};
             WebSocketClient.onSignedin((user: TokenUser) => {
                 this.loadData();
             });
@@ -832,6 +834,24 @@ module openflow {
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
+        async DeleteMany(): Promise<void> {
+            this.loading = true;
+            var Promises: Promise<DeleteOneMessage>[] = [];
+            var q: DeleteOneMessage = new DeleteOneMessage();
+            this.models.forEach(model => {
+                q.collectionname = this.collection; q._id = (model as any)._id;
+                var msg: Message = new Message(); msg.command = "deleteone"; msg.data = JSON.stringify(q);
+                Promises.push(this.WebSocketClient.Send(msg));
+            });
+            const results: any = await Promise.all(Promises.map(p => p.catch(e => e)));
+            const values: DeleteOneMessage[] = results.filter(result => !(result instanceof Error));
+            var ids: string[] = [];
+            values.forEach((x: DeleteOneMessage) => ids.push(x._id));
+            this.models = this.models.filter(function (m: any): boolean { return ids.indexOf(m._id) === -1; });
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+
     }
 
 
