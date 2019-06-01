@@ -849,7 +849,8 @@ module openflow {
             values.forEach((x: DeleteOneMessage) => ids.push(x._id));
             this.models = this.models.filter(function (m: any): boolean { return ids.indexOf(m._id) === -1; });
             this.loading = false;
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            this.loadData();
+            //if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
 
     }
