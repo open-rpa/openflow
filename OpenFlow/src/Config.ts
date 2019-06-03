@@ -5,6 +5,7 @@ import { json } from "body-parser";
 import { DatabaseConnection } from "./DatabaseConnection";
 import { Provider } from "./LoginProvider";
 import { TokenUser } from "./TokenUser";
+import { Logger } from "./Logger";
 
 export class Config {
     public static db: DatabaseConnection = null;
@@ -63,7 +64,7 @@ export class Config {
         }, {
                 retries: 50,
                 onRetry: function (error: Error, count: number): void {
-                    console.log("retry " + count + " error " + error.message + " getting " + url);
+                    Logger.instanse.warn("retry " + count + " error " + error.message + " getting " + url);
                 }
             });
         return metadata;

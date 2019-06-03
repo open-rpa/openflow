@@ -27,7 +27,6 @@ var excon1: amqp_exchange_consumer = new amqp_exchange_consumer(logger, Config.a
 var excon2: amqp_exchange_consumer = new amqp_exchange_consumer(logger, Config.amqp_url, "hello2");
 var expub: amqp_exchange_publisher = new amqp_exchange_publisher(logger, Config.amqp_url, "hello2");
 var rpccon: amqp_rpc_consumer = new amqp_rpc_consumer(logger, Config.amqp_url, "rpchello", (msg: string): string => {
-    console.log("SUCCESS!!!!!! " + msg);
     return "server response! " + msg;
 });
 var rpcpub: amqp_rpc_publisher = new amqp_rpc_publisher(logger, Config.amqp_url);
@@ -128,40 +127,6 @@ process.on('unhandledRejection', up => {
         if (!await initDatabase()) {
             process.exit(404);
         }
-
-        // console.log("************************");
-        // var e:Base = new Base();
-        // e.name = "find me";
-        // item = await db.create(e, "users", userjwt);
-        // console.log(item);
-        // console.log(res);
-        // var arr:any[] = await db.query({}, null, 500, 0, null, "users", userjwt);
-        // console.log(arr);
-        // console.log("************************");
-        // arr = await db.query({}, null, 500, 0, null, "users", jwt);
-        // console.log(arr);
-        // var item:Base = await db.getbyid(arr[0]._id, "users", jwt);
-        // console.log(item);
-        // item.name = "TEST: " + new Date().toISOString();
-        // item = await db.update(item, "users", userjwt);
-        // console.log(item);
-
-        // console.log("************************");
-        // await con.connect();
-        // await pub.connect();
-        // pub.SendMessage("pub/sub hi mom");
-        // console.log("************************");
-        // await excon1.connect();
-        // await excon2.connect();
-        // await expub.connect();
-        // expub.SendMessage("exchange/hi mom");
-        // console.log("************************");
-        // await rpccon.connect();
-        // await rpcpub.connect();
-        // console.log("************************");
-        // var rpcresult:string  = await rpcpub.SendMessage("Client says hi!", "rpchello");
-        // console.log("rpcresult: " + rpcresult);
-        // console.log("************************");
     } catch (error) {
         logger.error(error.message);
     }

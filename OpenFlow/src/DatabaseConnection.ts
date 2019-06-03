@@ -536,8 +536,6 @@ export class DatabaseConnection {
 
 
         // var arr = await this.db.collection(collectionname).find(_query).toArray();
-        // console.log(JSON.stringify(_query, null, 2));
-        // console.log(arr);
 
         this._logger.debug("deleting " + id + " in database");
         var res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne(_query);

@@ -31,6 +31,7 @@ module openflow {
         try {
             (window as any).bridge.on('gps_location', (parameters) => {
                 gpsparameters = parameters;
+                console.debug("iosListenGPSocation: " + JSON.stringify(gpsparameters));
             });
         } catch (error) {
             console.error(error);
@@ -277,7 +278,6 @@ module openflow {
                         value = element.text();
                         if (value !== null || value !== undefined) {
                             var result = calculateValue(value);
-                            // console.log(value + "=" + result);
                             element.text(result);
                         }
                     }
