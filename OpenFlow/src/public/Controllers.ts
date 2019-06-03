@@ -346,33 +346,6 @@ module openflow {
             q.username = this.username; q.password = this.password;
             var msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
             try {
-                var _android: WebAppInterface = null;
-                try {
-                    _android = android;
-                } catch (error) {
-                }
-                if (_android != null) {
-                    q.realm = "android";
-                    try {
-                        console.debug("getFirebaseToken");
-                        q.firebasetoken = _android.getFirebaseToken();
-                    } catch (error) {
-                        console.log(error);
-                    }
-                    try {
-                        console.debug("getOneSignalRegisteredId");
-                        q.onesignalid = _android.getOneSignalRegisteredId();
-                    } catch (error) {
-                        console.log(error);
-                    }
-                }
-                try {
-                    console.debug("LoginCtrl::iosGetOnesignalToken");
-                    var results = await iosGetOnesignalToken();
-                    q.onesignalid = results.token;
-                } catch (error) {
-                    console.log(error);
-                }
                 console.debug("signing in with username/password");
                 var a: any = await this.WebSocketClient.Send(msg);
                 var result: SigninMessage = a;
@@ -805,6 +778,175 @@ module openflow {
         }
     }
 
+    export class FormsCtrl extends entitiesCtrl<openflow.Base> {
+        public loading: boolean = false;
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public WebSocketClient: WebSocketClient,
+            public api: api
+        ) {
+            super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("EditFormCtrl");
+            this.collection = "forms";
+            this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
+            WebSocketClient.onSignedin((user: TokenUser) => {
+                this.loadData();
+            });
+        }
+        async DeleteOne(model: any): Promise<any> {
+            this.loading = true;
+            await this.api.Delete(this.collection, model);
+            this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        async DeleteMany(): Promise<void> {
+            this.loading = true;
+            var Promises: Promise<DeleteOneMessage>[] = [];
+            var q: DeleteOneMessage = new DeleteOneMessage();
+            this.models.forEach(model => {
+                q.collectionname = this.collection; q._id = (model as any)._id;
+                var msg: Message = new Message(); msg.command = "deleteone"; msg.data = JSON.stringify(q);
+                Promises.push(this.WebSocketClient.Send(msg));
+            });
+            const results: any = await Promise.all(Promises.map(p => p.catch(e => e)));
+            const values: DeleteOneMessage[] = results.filter(result => !(result instanceof Error));
+            var ids: string[] = [];
+            values.forEach((x: DeleteOneMessage) => ids.push(x._id));
+            this.models = this.models.filter(function (m: any): boolean { return ids.indexOf(m._id) === -1; });
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+    }
+    export class EditFormCtrl extends entityCtrl<openflow.Base> {
+        public loading: boolean = false;
+        public message: string = "";
+        public charts: chartset[] = [];
+        public formBuilder: any;
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public WebSocketClient: WebSocketClient,
+            public api: api
+        ) {
+            super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("EditFormCtrl");
+            this.collection = "forms";
+            this.basequery = {};
+            WebSocketClient.onSignedin(async (user: TokenUser) => {
+                this.loadData();
+            });
+        }
+        async loadData(): Promise<void> {
+            this.loading = true;
+            this.charts = [];
+            var chart: chartset = null;
+            console.log("get log");
+            var res = await this.api.Query(this.collection, this.basequery, null, { _created: -1 }, 1);
+            if (res.length > 0) { this.model = res[0]; }
+            // this.loading = false;
+            // if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            this.renderform();
+        }
+        async Save() {
+            console.log("OnSAVE!!!!");
+            var json = this.formBuilder.actions.getData('json');
+            console.log(json);
+            var formRenderOpts = {
+                formData: json,
+                dataType: 'json'
+            };
+            var ele: any = $('.render-wrap');
+            ele.formRender(formRenderOpts);
+        }
+        async renderform() {
+            // https://www.npmjs.com/package/angular2-json-schema-form
+            // http://www.alpacajs.org/demos/form-builder/form-builder.html
+            // https://github.com/kevinchappell/formBuilder - https://formbuilder.online/ - https://kevinchappell.github.io/formBuilder/
+            var json: string = '[{"type":"select","label":"Select","className":"form-control","name":"select-1559559389368","values":[{"label":"Option 1","value":"option-1","selected":true},{"label":"Option 2","value":"option-2"},{"label":"Option 3","value":"option-3"}]},{"type":"text","label":"Text Field","className":"form-control","name":"text-1559559391301","value":"1221","subtype":"text"},{"type":"textarea","label":"Text Area","className":"form-control","name":"textarea-1559559392649","value":"wfwefwefe","subtype":"textarea"}]';
+            var ele: any;
+            var fbOptions = {
+                formData: json,
+                dataType: 'json',
+                disabledActionButtons: ['data', 'clear'],
+                onSave: this.Save.bind(this)
+            };
+            ele = $(document.getElementById('fb-editor'));
+            this.formBuilder = await ele.formBuilder(fbOptions).promise;
+
+            // ele = document.getElementById("save-template").addEventListener("click", () => {
+            //     console.log("SAVE!!!");
+            //     formBuilder.actions.save();
+            // });
+
+            // var formData = '<form-template><fields><field class="form-control" label="Full Name" name="text-input-1459436848806" type="text" subtype="text"></field><field class="form-control" label="Select" name="select-1459436851691" type="select"><option value="option-1">Option 1</option><option value="option-2">Option 2</option></field><field class="form-control" label="Your Message" name="textarea-1459436854560" type="textarea"></field></fields></form-template>';
+            // var formRenderOpts = {
+            //     formData: formData,
+            //     dataType: 'xml'
+            // };
+
+            json = this.formBuilder.actions.getData('json');
+            console.log(json);
+            var formRenderOpts = {
+                formData: json,
+                dataType: 'json'
+            };
+
+            ele = $('.render-wrap');
+            ele.formRender(formRenderOpts);
+
+
+            // ele = document.getElementById('fb-render');
+            // var formData = '<form-template><fields><field class="form-control" label="Full Name" name="text-input-1459436848806" type="text" subtype="text"></field><field class="form-control" label="Select" name="select-1459436851691" type="select"><option value="option-1">Option 1</option><option value="option-2">Option 2</option></field><field class="form-control" label="Your Message" name="textarea-1459436854560" type="textarea"></field></fields></form-template>';
+            // var formRenderOpts = {
+            //     formData: formData,
+            //     dataType: 'xml'
+            // };
+            // console.log(ele);
+            // // ele.formRender(formRenderOpts);
+
+            // const wrap: any = $('.render-wrap');
+            // const formRender = wrap.formRender();
+            // wrap.formRender('render', formRenderOpts);
+            // // or
+            // formRender.actions.render(formData)
+
+            // var renderedForm: any = $('<div>');
+            // renderedForm.formRender(formRenderOpts);
+
+            // console.log(renderedForm.html());
+
+            // var ele: any = $(document.getElementById('form'));
+            // ele.alpaca({
+            //     "schema": {
+            //         "title": "User Feedback",
+            //         "description": "What do you think about Alpaca?",
+            //         "type": "object",
+            //         "properties": {
+            //             "name": {
+            //                 "type": "string",
+            //                 "title": "Name"
+            //             },
+            //             "feedback": {
+            //                 "type": "string",
+            //                 "title": "Feedback"
+            //             },
+            //             "ranking": {
+            //                 "type": "string",
+            //                 "title": "Ranking",
+            //                 "enum": ['excellent', 'ok', 'so so']
+            //             }
+            //         }
+            //     }
+            // });
+            // console.log("post editor");
+
+        }
+
+    }
     export class jslogCtrl extends entitiesCtrl<openflow.Base> {
         public loading: boolean = false;
         public message: string = "";

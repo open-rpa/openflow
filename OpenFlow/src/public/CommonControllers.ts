@@ -23,21 +23,6 @@ module openflow {
             return value;
         };
     };
-    var gpsparameters: any = null;
-    export function getgpsparameters() {
-        return gpsparameters;
-    }
-    function iosListenGPSocation() {
-        try {
-            (window as any).bridge.on('gps_location', (parameters) => {
-                gpsparameters = parameters;
-                console.debug("iosListenGPSocation: " + JSON.stringify(gpsparameters));
-            });
-        } catch (error) {
-            console.error(error);
-        }
-    }
-
     export class api {
         static $inject = ["$rootScope", "$location", "WebSocketClient"];
         public messageQueue: IHashTable<messagequeue> = {};
@@ -46,7 +31,8 @@ module openflow {
             var formerwarn = console.warn.bind(window.console);
             var formerdebug = console.debug.bind(window.console);
             console.log = (msg) => {
-                formerlog.apply(console, { arguments: arguments });
+                // formerlog.apply(console, { arguments: arguments });
+                formerlog(msg);
                 var log = { message: msg, _type: "message" };
                 this.Insert("jslog", log);
             }
@@ -64,13 +50,6 @@ module openflow {
                 var log = { message: message, url: url, linenumber: linenumber, _type: "error" };
                 this.Insert("jslog", log);
             }
-            try {
-                iosListenGPSocation();
-            } catch (error) {
-                console.log(error);
-            }
-
-
             var cleanup = $rootScope.$on('queuemessage', (event, data: QueueMessage) => {
                 if (event && data) { }
                 if (this.messageQueue[data.correlationId] !== undefined) {
@@ -278,6 +257,7 @@ module openflow {
                         value = element.text();
                         if (value !== null || value !== undefined) {
                             var result = calculateValue(value);
+                            // console.log(value + "=" + result);
                             element.text(result);
                         }
                     }

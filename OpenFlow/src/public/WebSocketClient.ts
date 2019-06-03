@@ -4,18 +4,20 @@ module openflow {
     interface IHashTable<T> {
         [key: string]: T;
     }
-    export interface WebAppInterface {
-        getFirebaseToken(): any;
-        getOneSignalRegisteredId(): any;
-        isProductPurchased(): any;
-        showLoader(): void;
-        hideLoader(): void;
-        rateApp(): void;
-        playSound(file: string): void;
-        createNotification(displayname: string, message: string): void;
+    // export interface WebAppInterface {
+    //     getFirebaseToken(): any;
+    //     getOneSignalRegisteredId(): any;
+    //     isProductPurchased(): any;
+    //     showLoader(): void;
+    //     hideLoader(): void;
+    //     rateApp(): void;
+    //     playSound(file: string): void;
+    //     createNotification(displayname: string, message: string): void;
 
-    }
-    export declare var android: WebAppInterface;
+    // }
+    // export declare var android: WebAppInterface;
+    declare var cordova: any;
+    declare var device: any;
 
     type QueuedMessageCallback = (msg: any) => any;
     export class QueuedMessage {
@@ -28,19 +30,6 @@ module openflow {
         public id: string;
         public message: any;
     }
-    function iosGetOnesignalToken() {
-        return new Promise<any>(async (resolve, reject) => {
-            try {
-                (window as any).bridge.post('onesignaltoken', {}, (results, error) => {
-                    if (error) { return reject(error); }
-                    console.log(results);
-                    resolve(results);
-                });
-            } catch (error) {
-                reject(error);
-            }
-        });
-    }
     export class WebSocketClient {
         private _socketObject: ReconnectingWebSocket = null;
         private _url: string = null;
@@ -49,9 +38,67 @@ module openflow {
         private _sendQueue: SocketMessage[] = [];
         public user: TokenUser = null;
         public jwt: string = null;
+        public device: any = null;
+        public usingCordova: boolean = false;
+        public oneSignalId: string = null;
         static $inject = ["$rootScope", "$location", "$window"];
         public messageQueue: IHashTable<QueuedMessage> = {};
         constructor(public $rootScope: ng.IRootScopeService, public $location, public $window: any) {
+            try {
+                var path = this.$location.absUrl().split('#')[0];
+                this.usingCordova = (path.indexOf("/android/") > -1 || path.indexOf("/ios/") > -1);
+            } catch (error) {
+            }
+            this.init();
+        }
+        setCookie(cname, cvalue, exdays) {
+            var d = new Date();
+            d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
+            var expires = "expires=" + d.toUTCString();
+            document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+        }
+        getCookie(cname) {
+            var name = cname + "=";
+            var decodedCookie = decodeURIComponent(document.cookie);
+            var ca = decodedCookie.split(';');
+            for (var i = 0; i < ca.length; i++) {
+                var c = ca[i];
+                while (c.charAt(0) == ' ') {
+                    c = c.substring(1);
+                }
+                if (c.indexOf(name) == 0) {
+                    return c.substring(name.length, c.length);
+                }
+            }
+            return "";
+        }
+        deleteCookie(cname) {
+            document.cookie = cname + "=;Thu, 01 Jan 1970 00:00:00 UTC;path=/";
+        }
+        onbackbutton() {
+            console.log("Handle the onbackbutton event");
+        }
+
+        onPause() {
+            console.log("Handle the pause event");
+        }
+
+        onResume() {
+            console.log("Handle the resume event");
+        }
+
+        onMenuKeyDown() {
+            console.log("Handle the menubutton event");
+        }
+        getids(oneSignal: any): Promise<string> {
+            return new Promise<string>(async (resolve, reject) => {
+                oneSignal.getIds(function (ids) {
+                    resolve(ids.userId);
+                    console.log(ids.userId);
+                });
+            });
+        }
+        init() {
             this.getJSON("/config", async (error: any, data: any) => {
                 console.debug("WebSocketClient::onopen: connecting to " + data.wshost);
                 this._socketObject = new ReconnectingWebSocket(data.wshost);
@@ -62,6 +109,22 @@ module openflow {
                 WebSocketClient.instance = this;
             });
         }
+        notificationOpenedCallback(state) {
+            console.debug("notificationOpenedCallback");
+            console.debug(JSON.stringify(state));
+            //console.log(state);
+        }
+        notificationReceivedCallback(state) {
+            console.debug("notificationReceivedCallback");
+            console.debug(JSON.stringify(state));
+            if (state.isAppInFocus) {
+                window.location.href = state.payload.additionalData.URL;
+                return;
+            }
+            // {"isAppInFocus":true,"shown":true,"androidNotificationId":-1616162934,"displayType":0,"payload":{"notificationID":"aee1f7a2-2108-489d-a401-86dba6a1ad99","body":"Android 2019-06-02T20:58:25.876Z","additionalData":{"URL":"https://aiotdev-frontend.openrpa.dk/#/Alert/5cf25ad801530ae6396519b8"},"launchURL":"https://aiotdev-frontend.openrpa.dk/#/Alert/5cf25ad801530ae6396519b8","lockScreenVisibility":1,"fromProjectNumber":"906036108091","priority":0,"rawPayload":"{\"google.delivered_priority\":\"normal\",\"google.sent_time\":1559509106669,\"google.ttl\":259200,\"google.original_priority\":\"normal\",\"custom\":\"{\\\"a\\\":{\\\"URL\\\":\\\"https:\\\\\\/\\\\\\/aiotdev-frontend.openrpa.dk\\\\\\/#\\\\\\/Alert\\\\\\/5cf25ad801530ae6396519b8\\\"},\\\"u\\\":\\\"https:\\\\\\/\\\\\\/aiotdev-frontend.openrpa.dk\\\\\\/#\\\\\\/Alert\\\\\\/5cf25ad801530ae6396519b8\\\",\\\"i\\\":\\\"aee1f7a2-2108-489d-a401-86dba6a1ad99\\\"}\",\"from\":\"906036108091\",\"alert\":\"Android 2019-06-02T20:58:25.876Z\",\"google.message_id\":\"0:1559509106674108%6c875f80f9fd7ecd\",\"notificationId\":-1616162934}"}}
+            //console.log(state);
+        }
+
         public connect(): void {
         }
         getJSON(url: string, callback: any): void {
@@ -91,11 +154,67 @@ module openflow {
         }
         private async onopen(evt: Event): Promise<void> {
             console.log("WebSocketClient::onopen: connected");
+            console.log("this.usingCordova: " + this.usingCordova);
+            if (!this.usingCordova) {
+                var win: any = window;
+                this.usingCordova = !!win.cordova;
+            }
+            if (this.usingCordova) {
+                document.addEventListener("deviceready", async () => {
+                    console.log("deviceready");
+                    if ((window as any).plugins) {
+                        var oneSignal = (window as any).plugins.OneSignal;
+                        if (oneSignal) {
+                            try {
+                                console.debug("window.plugins.OneSignal exists");
+
+                                const sender_id = "906036108091";  // google_project_number
+                                const oneSignalAppId = "cfdefd08-d4ad-4593-8173-4ba4ebf4d67a";  // onesignal_app_id
+                                var iosSettings = {};
+                                iosSettings["kOSSettingsKeyAutoPrompt"] = true;
+                                iosSettings["kOSSettingsKeyInAppLaunchURL"] = true;
+
+                                console.debug("oneSignal.startInit");
+                                oneSignal.startInit(oneSignalAppId, sender_id).
+                                    iOSSettings(iosSettings).
+                                    inFocusDisplaying(oneSignal.OSInFocusDisplayOption.Notification).
+                                    handleNotificationOpened(this.notificationOpenedCallback).
+                                    handleNotificationReceived(this.notificationReceivedCallback).
+                                    endInit();
+                                this.oneSignalId = await this.getids(oneSignal);
+
+                            } catch (error) {
+                                console.error(error);
+                            }
+                        } else {
+                            console.log("Missing oneSignal plugin");
+                        }
+                    }
+                    try {
+                        if (device) {
+                            console.debug("device exists");
+                            console.debug(JSON.stringify(device));
+                        } else {
+                            console.debug("device does NOT exists");
+                        }
+                    } catch (error) {
+                        console.error(error);
+                    }
+                    document.addEventListener("pause", this.onPause, false);
+                    document.addEventListener("resume", this.onResume, false);
+                    document.addEventListener("menubutton", this.onMenuKeyDown, false);
+                    document.addEventListener("backbutton", this.onbackbutton, false);
+                    this.gettoken();
+                });
+            } else {
+                this.gettoken();
+            }
+        }
+        gettoken() {
             var me: WebSocketClient = WebSocketClient.instance;
             var q: SigninMessage = new SigninMessage();
             this.getJSON("/jwt", async (error: any, data: any) => {
                 try {
-                    console.log(data);
                     if (data !== null && data !== undefined) {
                         if ((data.jwt === null || data.jwt === undefined || data.jwt.trim() === "") ||
                             (data.rawAssertion === null || data.rawAssertion === undefined || data.rawAssertion.trim() === "")) {
@@ -107,43 +226,67 @@ module openflow {
                         if (this.$location.path() !== "/Login") {
                             console.log("path: " + this.$location.path());
                             console.log("WebSocketClient::onopen: Not signed in, redirect /Login");
+                            var _url = this.$location.absUrl();
+                            this.setCookie("url", _url, 365);
                             this.$location.path("/Login");
                             this.$rootScope.$apply();
                         }
                         return;
                     }
-                    var _android: WebAppInterface = null;
-                    try {
-                        _android = android;
-                    } catch (error) {
-                    }
+
+                    // var url = this.getCookie("url");
+                    // console.log("url: " + url);
+                    // if (url !== "") {
+                    //     console.log("cookie instructed, redirect to: " + url);
+                    //     this.deleteCookie("url");
+                    //     window.location.href = url;
+                    //     return;
+                    // }
+                    // return;
+
+                    // var _android: WebAppInterface = null;
+                    // try {
+                    //     _android = android;
+                    // } catch (error) {
+                    // }
                     q.jwt = data.jwt;
                     q.rawAssertion = data.rawAssertion;
                     q.realm = "browser";
                     console.log("WebSocketClient::onopen: Validate jwt");
-                    if (_android != null) {
-                        q.realm = "android";
-                        try {
-                            console.debug("getFirebaseToken");
-                            q.firebasetoken = _android.getFirebaseToken();
-                        } catch (error) {
-                            console.log(error);
-                        }
-                        try {
-                            console.debug("getOneSignalRegisteredId");
-                            q.onesignalid = _android.getOneSignalRegisteredId();
-                        } catch (error) {
-                            console.log(error);
-                        }
-                    }
+                    // if (_android != null) {
+                    //     q.realm = "android";
+                    //     try {
+                    //         console.debug("getFirebaseToken");
+                    //         q.firebasetoken = _android.getFirebaseToken();
+                    //     } catch (error) {
+                    //         console.log(error);
+                    //     }
+                    //     try {
+                    //         console.debug("getOneSignalRegisteredId");
+                    //         q.onesignalid = _android.getOneSignalRegisteredId();
+                    //     } catch (error) {
+                    //         console.log(error);
+                    //     }
+                    // }
                     try {
-                        console.debug("WebSocketClient::iosGetOnesignalToken");
-                        var results = await iosGetOnesignalToken();
-                        q.onesignalid = results.token;
+                        if (this.oneSignalId) {
+                            console.debug("WebSocketClient::iosGetOnesignalToken");
+                            console.debug(this.oneSignalId);
+                            q.onesignalid = this.oneSignalId;
+                            q.device = this.device;
+                        } else {
+                            console.debug("WebSocketClient::iosGetOnesignalToken missing");
+                        }
                     } catch (error) {
-                        console.log(error);
+                        console.error(error);
                     }
-                    q.gpslocation = openflow.getgpsparameters();
+                    // try {
+                    //     console.debug("WebSocketClient::iosGetOnesignalToken");
+                    //     var results = await iosGetOnesignalToken();
+                    //     q.onesignalid = results.token;
+                    // } catch (error) {
+                    //     console.log(error);
+                    // }
                     console.debug("signing in with token");
                     var msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
                     var a: any = await this.Send(msg);
@@ -173,7 +316,7 @@ module openflow {
         public async Send<T>(message: Message): Promise<T> {
             return new Promise<T>(async (resolve, reject) => {
                 this._Send(message, ((msg) => {
-                    if (msg.error !== null && msg.error !== undefined) { console.log(message); return reject(msg.error); }
+                    if (msg.error !== null && msg.error !== undefined) { console.error(message); return reject(msg.error); }
                     resolve(msg);
                 }).bind(this));
             });

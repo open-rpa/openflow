@@ -8,6 +8,7 @@ export class SigninMessage implements IReplyMessage {
     public firebasetoken: string;
     public onesignalid: string;
     public gpslocation: any;
+    public device: any;
 
     public validate_only: boolean = false;
     public username: string;
