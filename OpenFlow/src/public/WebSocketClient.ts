@@ -233,60 +233,10 @@ module openflow {
                         }
                         return;
                     }
-
-                    // var url = this.getCookie("url");
-                    // console.log("url: " + url);
-                    // if (url !== "") {
-                    //     console.log("cookie instructed, redirect to: " + url);
-                    //     this.deleteCookie("url");
-                    //     window.location.href = url;
-                    //     return;
-                    // }
-                    // return;
-
-                    // var _android: WebAppInterface = null;
-                    // try {
-                    //     _android = android;
-                    // } catch (error) {
-                    // }
                     q.jwt = data.jwt;
                     q.rawAssertion = data.rawAssertion;
                     q.realm = "browser";
                     console.log("WebSocketClient::onopen: Validate jwt");
-                    // if (_android != null) {
-                    //     q.realm = "android";
-                    //     try {
-                    //         console.debug("getFirebaseToken");
-                    //         q.firebasetoken = _android.getFirebaseToken();
-                    //     } catch (error) {
-                    //         console.log(error);
-                    //     }
-                    //     try {
-                    //         console.debug("getOneSignalRegisteredId");
-                    //         q.onesignalid = _android.getOneSignalRegisteredId();
-                    //     } catch (error) {
-                    //         console.log(error);
-                    //     }
-                    // }
-                    try {
-                        if (this.oneSignalId) {
-                            console.debug("WebSocketClient::iosGetOnesignalToken");
-                            console.debug(this.oneSignalId);
-                            q.onesignalid = this.oneSignalId;
-                            q.device = this.device;
-                        } else {
-                            console.debug("WebSocketClient::iosGetOnesignalToken missing");
-                        }
-                    } catch (error) {
-                        console.error(error);
-                    }
-                    // try {
-                    //     console.debug("WebSocketClient::iosGetOnesignalToken");
-                    //     var results = await iosGetOnesignalToken();
-                    //     q.onesignalid = results.token;
-                    // } catch (error) {
-                    //     console.log(error);
-                    // }
                     console.debug("signing in with token");
                     var msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
                     var a: any = await this.Send(msg);

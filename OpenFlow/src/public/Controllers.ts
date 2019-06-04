@@ -296,19 +296,6 @@ module openflow {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
     }
-    function iosGetOnesignalToken() {
-        return new Promise<any>(async (resolve, reject) => {
-            try {
-                (window as any).bridge.post('onesignaltoken', {}, (results, error) => {
-                    if (error) { return reject(error); }
-                    console.log(results);
-                    resolve(results);
-                });
-            } catch (error) {
-                reject(error);
-            }
-        });
-    }
     export class LoginCtrl {
         public localenabled: boolean = false;
         public providers: any = false;
