@@ -31,6 +31,7 @@ export class Config {
     public static mongodb_db: string = Config.getEnv("mongodb_db", "openflow");
 
     public static aes_secret: string = Config.getEnv("aes_secret", "");
+    public static skip_history_collections: string = Config.getEnv("skip_history_collections", "");
 
     public static baseurl(): string {
         if (Config.tls_crt != '' && Config.tls_key != '') {

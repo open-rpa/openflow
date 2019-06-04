@@ -1,23 +1,14 @@
 /// <reference path='ReconnectingWebSocket.ts' />
 module openflow {
-    "use strict";
+    // "use strict";
+
+    var doLoadMobileData: boolean = false;
     interface IHashTable<T> {
         [key: string]: T;
     }
-    // export interface WebAppInterface {
-    //     getFirebaseToken(): any;
-    //     getOneSignalRegisteredId(): any;
-    //     isProductPurchased(): any;
-    //     showLoader(): void;
-    //     hideLoader(): void;
-    //     rateApp(): void;
-    //     playSound(file: string): void;
-    //     createNotification(displayname: string, message: string): void;
-
-    // }
-    // export declare var android: WebAppInterface;
     declare var cordova: any;
     declare var device: any;
+    declare var diagnostic: any;
 
     type QueuedMessageCallback = (msg: any) => any;
     export class QueuedMessage {
@@ -41,6 +32,7 @@ module openflow {
         public device: any = null;
         public usingCordova: boolean = false;
         public oneSignalId: string = null;
+        public location: any;
         static $inject = ["$rootScope", "$location", "$window"];
         public messageQueue: IHashTable<QueuedMessage> = {};
         constructor(public $rootScope: ng.IRootScopeService, public $location, public $window: any) {
@@ -98,6 +90,82 @@ module openflow {
                 });
             });
         }
+        getLocation(): Promise<any> {
+            return new Promise<any>(async (resolve, reject) => {
+                var onSuccess = function (position) {
+                    var result = {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        altitude: position.coords.altitude,
+                        accuracy: position.coords.accuracy,
+                        altitudeAccuracy: position.coords.altitudeAccuracy,
+                        heading: position.coords.heading,
+                        speed: position.coords.speed,
+                        timestamp: position.coords.timestamp
+                    }
+                    console.log('Latitude: ' + result.latitude + '\n' +
+                        'Longitude: ' + result.longitude + '\n' +
+                        'Altitude: ' + result.altitude + '\n' +
+                        'Accuracy: ' + result.accuracy + '\n' +
+                        'Altitude Accuracy: ' + result.altitudeAccuracy + '\n' +
+                        'Heading: ' + result.heading + '\n' +
+                        'Speed: ' + result.speed + '\n' +
+                        'Timestamp: ' + result.timestamp + '\n');
+                    resolve(result);
+                };
+
+                // onError Callback receives a PositionError object
+                //
+                function onError(error) {
+                    reject(error);
+                    console.error('code: ' + error.code + '\n' +
+                        'message: ' + error.message + '\n');
+                }
+                var options = {
+                    enableHighAccuracy: true,
+                    timeout: 2000,
+                    maximumAge: 0
+                };
+                try {
+                    if (navigator && navigator.geolocation) {
+                        console.log("getCurrentPosition");
+                        navigator.geolocation.getCurrentPosition(onSuccess, onError, options);
+                    } else {
+                        console.log("geolocation not installed");
+                        reject(new Error("geolocation not installed!"));
+                    }
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        }
+        isLocationAvailable(): Promise<boolean> {
+            return new Promise<boolean>(async (resolve, reject) => {
+                cordova.plugins.diagnostic.isLocationAvailable((isAvailable) => {
+                    resolve(isAvailable);
+                }, (error) => {
+                    reject(error);
+                });
+            });
+        }
+        isLocationAuthorized(): Promise<boolean> {
+            return new Promise<boolean>(async (resolve, reject) => {
+                cordova.plugins.diagnostic.isLocationAuthorized((authorized) => {
+                    resolve(authorized);
+                }, (error) => {
+                    reject(error);
+                });
+            });
+        }
+        requestLocationAuthorization(): Promise<void> {
+            return new Promise<void>(async (resolve, reject) => {
+                cordova.plugins.diagnostic.requestLocationAuthorization(() => {
+                    resolve();
+                }, (error) => {
+                    reject(error);
+                });
+            });
+        }
         init() {
             this.getJSON("/config", async (error: any, data: any) => {
                 console.debug("WebSocketClient::onopen: connecting to " + data.wshost);
@@ -152,12 +220,21 @@ module openflow {
                 callback(this.user);
             });
         }
-        private async onopen(evt: Event): Promise<void> {
-            console.log("WebSocketClient::onopen: connected");
+        timeout(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+        private async LoadMobileData() {
             console.log("this.usingCordova: " + this.usingCordova);
             if (!this.usingCordova) {
-                var win: any = window;
-                this.usingCordova = !!win.cordova;
+                console.log("wait 1 seconds and test for Cordova again");
+                let counter: number = 0;
+                while (!this.usingCordova && counter < 15) {
+                    counter++;
+                    await this.timeout(100);
+                    var win: any = window;
+                    this.usingCordova = !!win.cordova;
+                }
+                console.log("this.usingCordova: " + this.usingCordova);
             }
             if (this.usingCordova) {
                 document.addEventListener("deviceready", async () => {
@@ -193,7 +270,7 @@ module openflow {
                     try {
                         if (device) {
                             console.debug("device exists");
-                            console.debug(JSON.stringify(device));
+                            this.device = device;
                         } else {
                             console.debug("device does NOT exists");
                         }
@@ -204,11 +281,32 @@ module openflow {
                     document.addEventListener("resume", this.onResume, false);
                     document.addEventListener("menubutton", this.onMenuKeyDown, false);
                     document.addEventListener("backbutton", this.onbackbutton, false);
-                    this.gettoken();
+
+
+                    if (cordova.plugins && cordova.plugins.diagnostic) {
+                        console.debug("Check if authorized for location");
+                        var isAuthorized = await this.isLocationAuthorized();
+                        if (!isAuthorized) {
+                            console.debug("Not authorized for location is not , request authorization");
+                            await this.requestLocationAuthorization();
+                        }
+
+                        var isAvailable = await this.isLocationAvailable();
+                        if (!isAvailable) {
+                            console.debug("Location is not available");
+                        } else {
+                            console.debug("Location is available, get current location");
+                            this.location = await this.getLocation();
+                        }
+                    } else {
+                        console.debug("diagnostic is missing");
+                    }
                 });
-            } else {
-                this.gettoken();
             }
+        }
+        private onopen(evt: Event) {
+            console.log("WebSocketClient::onopen: connected");
+            this.gettoken();
         }
         gettoken() {
             var me: WebSocketClient = WebSocketClient.instance;
@@ -216,10 +314,11 @@ module openflow {
             this.getJSON("/jwt", async (error: any, data: any) => {
                 try {
                     if (data !== null && data !== undefined) {
-                        if ((data.jwt === null || data.jwt === undefined || data.jwt.trim() === "") ||
-                            (data.rawAssertion === null || data.rawAssertion === undefined || data.rawAssertion.trim() === "")) {
-                            // console.log("data.jwt or data.rawAssertion is null");
-                            // data = null;
+                        if (data.jwt === null || data.jwt === undefined || data.jwt.trim() === "") { data.jwt = null; }
+                        if (data.rawAssertion === null || data.rawAssertion === undefined || data.rawAssertion.trim() === "") { data.rawAssertion = null; }
+                        if (data.jwt === null && data.rawAssertion === null) {
+                            console.log("data.jwt or data.rawAssertion is null");
+                            data = null;
                         }
                     }
                     if (data === null || data === undefined) {
@@ -233,10 +332,18 @@ module openflow {
                         }
                         return;
                     }
+                    if (doLoadMobileData == true) {
+                        await this.LoadMobileData()
+                    }
                     q.jwt = data.jwt;
                     q.rawAssertion = data.rawAssertion;
                     q.realm = "browser";
-                    console.log("WebSocketClient::onopen: Validate jwt");
+                    q.onesignalid = this.oneSignalId;
+                    q.device = this.device;
+                    q.gpslocation = this.location;
+                    console.debug("onesignalid: " + q.onesignalid);
+                    console.debug("device: " + JSON.stringify(q.device));
+                    console.debug("gpslocation: " + JSON.stringify(q.gpslocation));
                     console.debug("signing in with token");
                     var msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
                     var a: any = await this.Send(msg);

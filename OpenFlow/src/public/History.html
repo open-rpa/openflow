@@ -1,0 +1,51 @@
+<div class="starter-template">
+  <h1 translate lib="web">entities</h1>
+</div>
+<div class="row">
+
+  <table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;">
+    <thead class="thead-dark">
+      <tr>
+        <th ng-click="ctrl.ToggleOrder('name')"><b translate lib="web">name</b></th>
+        <th ng-click="ctrl.ToggleOrder('_createdby')"><b translate lib="web">createdby</b></th>
+        <th ng-click="ctrl.ToggleOrder('_modified')"><b translate lib="web">updated</b></th>
+        <th ng-click="ctrl.ToggleOrder('_version')"><b translate lib="web">version</b></th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr ng-repeat="model in ctrl.models">
+        <td>{{model.name}}</td>
+        <td>{{model._createdby}}</td>
+        <td>
+          <timesince ng-model="model._modified" />
+        </td>
+        <td>{{model._version}}</td>
+        <td class="btn-cell">
+          <a href ng-click="ctrl.CompareNow(model)" translate lib="web">now</a>
+          <a href ng-click="ctrl.CompareThen(model)" translate lib="web">then</a>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <div class="modal" tabindex="-1" role="dialog" id="exampleModal">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">{{ctrl.model.name}} </h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div id="visual"></div>
+          <hr />
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>

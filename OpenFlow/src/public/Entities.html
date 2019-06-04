@@ -29,6 +29,7 @@
         <th ng-click="ctrl.ToggleOrder('_modified')"><b translate lib="web">updated</b></th>
         <th></th>
         <th></th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
@@ -44,6 +45,9 @@
         </td>
         <td class="btn-cell">
           <a ng-href="#/Entity/{{ctrl.collection}}/{{model._id}}" translate lib="web">edit</a>
+        </td>
+        <td class="btn-cell">
+          <a ng-href="#/History/{{ctrl.collection}}/{{model._id}}" translate lib="web">hist</a>
         </td>
         <td class="btn-cell">
           <a href ng-click="ctrl.DeleteOne(model)" ng-disabled="ctrl.loading==true" translate lib="web">delete</a>

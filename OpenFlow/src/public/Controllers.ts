@@ -11,6 +11,7 @@ module openflow {
         var millisecondsPerDay = 24 * 60 * 60 * 1000;
         return (treatAsUTC(endDate) - treatAsUTC(startDate)) / millisecondsPerDay;
     }
+    declare var jsondiffpatch: any;
 
 
     export class WorkflowsCtrl extends entitiesCtrl<openflow.Base> {
@@ -1157,4 +1158,50 @@ module openflow {
 
     }
 
+    export class HistoryCtrl extends entitiesCtrl<openflow.Base> {
+        public loading: boolean = false;
+        public id: string = "";
+        public model: openflow.Base;
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public WebSocketClient: WebSocketClient,
+            public api: api
+        ) {
+            super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("HistoryCtrl");
+            console.log("HistoryCtrl");
+            this.id = $routeParams.id;
+            this.basequery = { id: this.id };
+            this.collection = $routeParams.collection;
+            this.baseprojection = null;
+            WebSocketClient.onSignedin((user: TokenUser) => {
+                console.log("onSignedin");
+                this.LoadData();
+            });
+        }
+        async LoadData() {
+            this.models = await this.api.Query(this.collection, { _id: this.id }, null, null);
+            console.log(this.models);
+            this.model = this.models[0];
+            console.log(this.model);
+            this.models = await this.api.Query(this.collection + "_hist", { id: this.id }, null, { _version: -1 });
+            console.log(this.models);
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        CompareNow(model) {
+            var modal: any = $("#exampleModal");
+            modal.modal()
+            // console.log(model.item);
+            // var delta = jsondiffpatch.diff(this.model, model.item);
+            var delta = jsondiffpatch.diff(model.item, this.model);
+            document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(delta, this.model);
+        }
+        CompareThen(model) {
+            var modal: any = $("#exampleModal");
+            modal.modal()
+            document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(model.delta, model.item);
+        }
+    }
 }

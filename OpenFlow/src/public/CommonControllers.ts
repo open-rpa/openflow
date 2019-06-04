@@ -31,17 +31,20 @@ module openflow {
             var formerwarn = console.warn.bind(window.console);
             var formerdebug = console.debug.bind(window.console);
             console.log = (msg) => {
-                formerlog.apply(console, { arguments: arguments });
+                //formerlog.apply(console, { arguments: arguments });
+                formerlog(msg);
                 var log = { message: msg, _type: "message", host: window.location.hostname };
                 this.Insert("jslog", log);
             }
             console.warn = (msg) => {
-                formerwarn.apply(console, { arguments: arguments });
+                //formerwarn.apply(console, { arguments: arguments });
+                formerwarn(msg);
                 var log = { message: msg, _type: "warning", host: window.location.hostname };
                 this.Insert("jslog", log);
             }
             console.debug = (msg) => {
-                formerdebug.apply(console, { arguments: arguments });
+                //formerdebug.apply(console, { arguments: arguments });
+                formerdebug(msg);
                 var log = { message: msg, _type: "debug", host: window.location.hostname };
                 this.Insert("jslog", log);
             }

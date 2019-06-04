@@ -100,10 +100,10 @@ export class DatabaseConnection {
         if (collectionname === "fs.files") {
             _query = { $and: [query, this.getbasequery(jwt, "metadata._acl", [Rights.read])] };
         } else {
-            if (!collectionname.endsWith("hist")) {
+            if (!collectionname.endsWith("_hist")) {
                 _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
             } else {
-                // todo: enforcer permissions when fetching hist ?
+                // todo: enforcer permissions when fetching _hist ?
                 _query = query;
             }
         }
@@ -259,11 +259,14 @@ export class DatabaseConnection {
         j = ((j as any) === 'true' || j === true);
         w = parseInt((w as any));
 
+        item._version = await this.SaveDiff(collectionname, null, item);
+
         // var options:CollectionInsertOneOptions = { writeConcern: { w: parseInt((w as any)), j: j } };
         var options: CollectionInsertOneOptions = { w: w, j: j };
         //var options: CollectionInsertOneOptions = { w: "majority" };
         var result: InsertOneWriteOpResult = await this.db.collection(collectionname).insertOne(item, options);
         item = result.ops[0];
+
 
         if (collectionname === "users" && item._type === "user") {
             var users: Role = await Role.FindByNameOrId("users", jwt);
@@ -307,13 +310,14 @@ export class DatabaseConnection {
         var user: TokenUser = Crypt.verityToken(q.jwt);
         if (!this.hasAuthorization(user, q.item, "update")) { throw new Error("Access denied"); }
 
+        var original: T = null;
         // assume empty query, means full document, else update document
         if (q.query === null || q.query === undefined) {
             // this will add an _acl so needs to be after we checked old item
             if (!q.item.hasOwnProperty("_id")) {
                 throw Error("Cannot update item without _id");
             }
-            var original: T = await this.getbyid<T>(q.item._id, q.collectionname, q.jwt);
+            original = await this.getbyid<T>(q.item._id, q.collectionname, q.jwt);
             if (!original) { throw Error("item not found!"); }
             q.item._modifiedby = user.name;
             q.item._modifiedbyid = user._id;
@@ -346,8 +350,12 @@ export class DatabaseConnection {
                 if (q.collectionname != "audit") { this._logger.debug("Adding self " + user.username + " to object " + (q.item.name || q.item._name)); }
                 q.item.addRight(user._id, user.name, [Rights.full_control]);
             }
+            q.item._version = await this.SaveDiff(q.collectionname, original, q.item);
         } else {
             itemReplace = false;
+            var _version = await this.SaveUpdateDiff(q, user);
+            if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };
+            (q.item["$set"])._version = _version;
         }
 
         if (q.collectionname === "users" && q.item._type === "user" && q.item.hasOwnProperty("newpassword")) {
@@ -365,10 +373,10 @@ export class DatabaseConnection {
         if (q.collectionname === "fs.files") {
             _query = { $and: [q.query, this.getbasequery(q.jwt, "metadata._acl", [Rights.update])] };
         } else {
-            if (!q.collectionname.endsWith("hist")) {
+            if (!q.collectionname.endsWith("_hist")) {
                 _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.update])] };
             } else {
-                // todo: enforcer permissions when fetching hist ?
+                // todo: enforcer permissions when fetching _hist ?
                 _query = q.query;
             }
         }
@@ -386,15 +394,17 @@ export class DatabaseConnection {
                 (q.item["$set"])._modifiedby = user.name;
                 (q.item["$set"])._modifiedbyid = user._id;
                 (q.item["$set"])._modified = new Date(new Date().toISOString());
+                if ((q.item["$inc"]) === undefined) { (q.item["$inc"]) = {} };
+                (q.item["$inc"])._version = 1;
                 q.opresult = await this.db.collection(q.collectionname).updateOne(_query, q.item, options);
             }
             q.item = this.decryptentity<T>(q.item);
             this.traversejsondecode(q.item);
             q.result = q.item;
-            return q;
         } catch (error) {
             throw error;
         }
+        return q;
     }
     /**
     * Update multiple documents in database based on update document
@@ -429,10 +439,10 @@ export class DatabaseConnection {
         if (q.collectionname === "fs.files") {
             _query = { $and: [q.query, this.getbasequery(q.jwt, "metadata._acl", [Rights.read])] };
         } else {
-            if (!q.collectionname.endsWith("hist")) {
+            if (!q.collectionname.endsWith("_hist")) {
                 _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.read])] };
             } else {
-                // todo: enforcer permissions when fetching hist ?
+                // todo: enforcer permissions when fetching _hist ?
                 _query = q.query;
             }
         }
@@ -539,8 +549,6 @@ export class DatabaseConnection {
 
         this._logger.debug("deleting " + id + " in database");
         var res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne(_query);
-
-
 
         // var res:DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne({_id:id});
         // var res:DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne(id);
@@ -779,5 +787,130 @@ export class DatabaseConnection {
         }
 
     }
+
+    async SaveUpdateDiff<T extends Base>(q: UpdateOneMessage<T>, user: TokenUser) {
+        var _skip_array: string[] = Config.skip_history_collections.split(",");
+        var skip_array: string[] = [];
+        _skip_array.forEach(x => skip_array.push(x.trim()));
+        if (skip_array.indexOf(q.collectionname) > -1) { return 0; }
+        var res = await this.query<T>(q.query, null, 1, 0, null, q.collectionname, q.jwt);
+        if (res.length > 0) {
+            var _version = 1;
+            var original = res[0];
+
+            delete original._modifiedby;
+            delete original._modifiedbyid;
+            delete original._modified;
+            if (original._version != undefined && original._version != null) {
+                _version = original._version + 1;
+            }
+        }
+        var updatehist = {
+            _modified: new Date(new Date().toISOString()),
+            _modifiedby: user.name,
+            _modifiedbyid: user._id,
+            _created: new Date(new Date().toISOString()),
+            _createdby: user.name,
+            _createdbyid: user._id,
+            name: original.name,
+            id: original._id,
+            update: q.item,
+            _version: _version,
+            reason: ""
+        }
+        await this.db.collection(q.collectionname + '_hist').insertOne(updatehist);
+    }
+    async SaveDiff(collectionname: string, original: any, item: any) {
+        if (item._type == 'instance' && collectionname == 'workflows') return 0;
+        if (item._type == 'instance' && collectionname == 'workflows') return 0;
+        var _modified = item._modified;
+        var _modifiedby = item._modifiedby;
+        var _modifiedbyid = item._modifiedbyid;
+        var _version = 0;
+        var _acl = item._acl;
+        var _type = item._type;
+        var reason = item._updatereason;
+        try {
+            var _skip_array: string[] = Config.skip_history_collections.split(",");
+            var skip_array: string[] = [];
+            _skip_array.forEach(x => skip_array.push(x.trim()));
+            if (skip_array.indexOf(collectionname) > -1) { return 0; }
+
+            if (original != null) {
+                delete original._modifiedby;
+                delete original._modifiedbyid;
+                delete original._modified;
+                if (original._version != undefined && original._version != null) {
+                    _version = original._version + 1;
+                }
+            }
+            var jsondiffpatch = require('jsondiffpatch').create({
+                objectHash: function (obj, index) {
+                    // try to find an id property, otherwise just use the index in the array
+                    return obj.name || obj.id || obj._id || '$$index:' + index;
+                }
+            });
+            var delta: any = null;
+            // for backward comp, we cannot assume all objects have an history
+            // we create diff from version 0
+            // var delta_collections = Config.history_delta_collections.split(',');
+            // var full_collections = Config.history_full_collections.split(',');
+            // if (delta_collections.indexOf(collectionname) == -1 && full_collections.indexOf(collectionname) == -1) return 0;
+
+            item._version = _version;
+            delete item._modifiedby;
+            delete item._modifiedbyid;
+            delete item._modified;
+            delete item._updatereason;
+
+            // if (original != null && _version > 0 && delta_collections.indexOf(collectionname) > -1) {
+            if (original != null && _version > 0) {
+                delta = jsondiffpatch.diff(original, item);
+                if (delta == undefined || delta == null) return 0;
+                var deltahist = {
+                    _acl: _acl,
+                    _type: _type,
+                    _modified: _modified,
+                    _modifiedby: _modifiedby,
+                    _modifiedbyid: _modifiedbyid,
+                    _created: _modified,
+                    _createdby: _modifiedby,
+                    _createdbyid: _modifiedbyid,
+                    name: item.name,
+                    id: item._id,
+                    item: original,
+                    delta: delta,
+                    _version: _version,
+                    reason: reason
+                }
+                await this.db.collection(collectionname + '_hist').insertOne(deltahist);
+            }
+            else {
+                var fullhist = {
+                    _acl: _acl,
+                    _type: _type,
+                    _modified: _modified,
+                    _modifiedby: _modifiedby,
+                    _modifiedbyid: _modifiedbyid,
+                    _created: _modified,
+                    _createdby: _modifiedby,
+                    _createdbyid: _modifiedbyid,
+                    name: item.name,
+                    id: item._id,
+                    item: item,
+                    _version: _version,
+                    reason: reason
+                }
+                await this.db.collection(collectionname + '_hist').insertOne(fullhist);
+            }
+            item._modifiedby = _modifiedby;
+            item._modifiedbyid = _modifiedbyid;
+            item._modified = _modified;
+        } catch (error) {
+            this._logger.error(error);
+        }
+        return _version;
+    }
+
 
 }

@@ -35,6 +35,7 @@
     "gulp": "^4.0.0",
     "gulp-replace": "^1.0.0",
     "gulp-shell": "^0.7.0",
+    "jsondiffpatch": "^0.3.11",
     "jsonwebtoken": "^8.5.1",
     "mongodb": "^3.2.3",
     "node-red-contrib-auth-saml": "^1.0.6",
