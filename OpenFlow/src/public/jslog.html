@@ -9,6 +9,7 @@
       <tr>
         <th ng-click="ctrl.ToggleOrder('_type')"><b translate lib="web">type</b></th>
         <th ng-click="ctrl.ToggleOrder('_createdby')"><b translate lib="web">createdby</b></th>
+        <th ng-click="ctrl.ToggleOrder('host')"><b translate lib="web">host</b></th>
         <th ng-click="ctrl.ToggleOrder('_created')"><b translate lib="web">created</b></th>
         <th></th>
       </tr>
@@ -17,6 +18,7 @@
       <tr ng-repeat="model in ctrl.models">
         <td>{{model._type}}</td>
         <td>{{model._createdby}}</td>
+        <td>{{model.host}}</td>
         <td>
           <timesince ng-model="model._created" />
         </td>

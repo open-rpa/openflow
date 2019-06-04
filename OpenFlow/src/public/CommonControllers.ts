@@ -31,23 +31,22 @@ module openflow {
             var formerwarn = console.warn.bind(window.console);
             var formerdebug = console.debug.bind(window.console);
             console.log = (msg) => {
-                // formerlog.apply(console, { arguments: arguments });
-                formerlog(msg);
-                var log = { message: msg, _type: "message" };
+                formerlog.apply(console, { arguments: arguments });
+                var log = { message: msg, _type: "message", host: window.location.hostname };
                 this.Insert("jslog", log);
             }
             console.warn = (msg) => {
                 formerwarn.apply(console, { arguments: arguments });
-                var log = { message: msg, _type: "warning" };
+                var log = { message: msg, _type: "warning", host: window.location.hostname };
                 this.Insert("jslog", log);
             }
             console.debug = (msg) => {
                 formerdebug.apply(console, { arguments: arguments });
-                var log = { message: msg, _type: "debug" };
+                var log = { message: msg, _type: "debug", host: window.location.hostname };
                 this.Insert("jslog", log);
             }
             window.onerror = (message, url, linenumber) => {
-                var log = { message: message, url: url, linenumber: linenumber, _type: "error" };
+                var log = { message: message, url: url, linenumber: linenumber, _type: "error", host: window.location.hostname };
                 this.Insert("jslog", log);
             }
             var cleanup = $rootScope.$on('queuemessage', (event, data: QueueMessage) => {
