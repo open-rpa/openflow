@@ -108,7 +108,7 @@ export class workflow_in_node {
             NoderedUtil.HandleError(this, error);
             try {
                 msg.error = error;
-                msg.amqpacknowledgment(JSON.stringify(msg));
+                ack(JSON.stringify(msg));
             } catch (error) {
 
             }
