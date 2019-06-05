@@ -14,7 +14,7 @@ module openflow {
     declare var jsondiffpatch: any;
 
 
-    export class WorkflowsCtrl extends entitiesCtrl<openflow.Base> {
+    export class RPAWorkflowsCtrl extends entitiesCtrl<openflow.Base> {
         public loading: boolean = false;
         public message: string = "";
         public charts: chartset[] = [];
@@ -26,7 +26,7 @@ module openflow {
             public api: api
         ) {
             super($scope, $location, $routeParams, WebSocketClient, api);
-            console.debug("WorkflowsCtrl");
+            console.debug("RPAWorkflowsCtrl");
             WebSocketClient.onSignedin((user: TokenUser) => {
                 this.loadData();
             });
@@ -109,6 +109,36 @@ module openflow {
                 workflow.chart = chart;
 
             }
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+    }
+
+
+    export class WorkflowsCtrl extends entitiesCtrl<openflow.Base> {
+        public loading: boolean = false;
+        public message: string = "";
+        public charts: chartset[] = [];
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public WebSocketClient: WebSocketClient,
+            public api: api
+        ) {
+            super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("WorkflowsCtrl");
+            WebSocketClient.onSignedin((user: TokenUser) => {
+                this.loadData();
+            });
+        }
+
+        async loadData(): Promise<void> {
+            this.loading = true;
+            this.charts = [];
+            var chart: chartset = null;
+            console.log("get workflows");
+            this.models = await this.api.Query("workflow", { _type: "workflow", web: true }, null, null);
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
@@ -776,7 +806,7 @@ module openflow {
             public api: api
         ) {
             super($scope, $location, $routeParams, WebSocketClient, api);
-            console.debug("EditFormCtrl");
+            console.debug("FormsCtrl");
             this.collection = "forms";
             this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
             WebSocketClient.onSignedin((user: TokenUser) => {
@@ -808,7 +838,7 @@ module openflow {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
     }
-    export class EditFormCtrl extends entityCtrl<openflow.Base> {
+    export class EditFormCtrl extends entityCtrl<openflow.Form> {
         public loading: boolean = false;
         public message: string = "";
         public charts: chartset[] = [];
@@ -824,115 +854,227 @@ module openflow {
             console.debug("EditFormCtrl");
             this.collection = "forms";
             this.basequery = {};
+            this.id = $routeParams.id;
+            this.basequery = { _id: this.id };
             WebSocketClient.onSignedin(async (user: TokenUser) => {
-                this.loadData();
+                if (this.id !== null && this.id !== undefined && this.id !== "") {
+                    this.basequery = { _id: this.id };
+                    this.loadData();
+                } else {
+                    this.model = new openflow.Form();
+                    this.renderform();
+                }
+
             });
         }
         async loadData(): Promise<void> {
             this.loading = true;
             this.charts = [];
-            var chart: chartset = null;
-            console.log("get log");
             var res = await this.api.Query(this.collection, this.basequery, null, { _created: -1 }, 1);
-            if (res.length > 0) { this.model = res[0]; }
-            // this.loading = false;
-            // if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            if (res.length > 0) { this.model = res[0]; } else { console.error(this.id + " not found!"); }
             this.renderform();
         }
         async Save() {
-            console.log("OnSAVE!!!!");
-            var json = this.formBuilder.actions.getData('json');
-            console.log(json);
-            var formRenderOpts = {
-                formData: json,
-                dataType: 'json'
-            };
-            var ele: any = $('.render-wrap');
-            ele.formRender(formRenderOpts);
+            this.model.formData = this.formBuilder.actions.getData(this.model.dataType);
+            if (this.model._id) {
+                this.model = await this.api.Update(this.collection, this.model);
+            } else {
+                this.model = await this.api.Insert(this.collection, this.model);
+            }
+            this.$location.path("/Forms");
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async renderform() {
             // https://www.npmjs.com/package/angular2-json-schema-form
             // http://www.alpacajs.org/demos/form-builder/form-builder.html
             // https://github.com/kevinchappell/formBuilder - https://formbuilder.online/ - https://kevinchappell.github.io/formBuilder/
-            var json: string = '[{"type":"select","label":"Select","className":"form-control","name":"select-1559559389368","values":[{"label":"Option 1","value":"option-1","selected":true},{"label":"Option 2","value":"option-2"},{"label":"Option 3","value":"option-3"}]},{"type":"text","label":"Text Field","className":"form-control","name":"text-1559559391301","value":"1221","subtype":"text"},{"type":"textarea","label":"Text Area","className":"form-control","name":"textarea-1559559392649","value":"wfwefwefe","subtype":"textarea"}]';
             var ele: any;
+            var roles: any = {};
+            this.WebSocketClient.user.roles.forEach(role => {
+                roles[role._id] = role.name;
+            });
+
             var fbOptions = {
-                formData: json,
-                dataType: 'json',
+                formData: this.model.formData,
+                dataType: this.model.dataType,
+                roles: roles,
                 disabledActionButtons: ['data', 'clear'],
-                onSave: this.Save.bind(this)
+                onSave: this.Save.bind(this),
             };
             ele = $(document.getElementById('fb-editor'));
             this.formBuilder = await ele.formBuilder(fbOptions).promise;
-
-            // ele = document.getElementById("save-template").addEventListener("click", () => {
-            //     console.log("SAVE!!!");
-            //     formBuilder.actions.save();
-            // });
-
-            // var formData = '<form-template><fields><field class="form-control" label="Full Name" name="text-input-1459436848806" type="text" subtype="text"></field><field class="form-control" label="Select" name="select-1459436851691" type="select"><option value="option-1">Option 1</option><option value="option-2">Option 2</option></field><field class="form-control" label="Your Message" name="textarea-1459436854560" type="textarea"></field></fields></form-template>';
-            // var formRenderOpts = {
-            //     formData: formData,
-            //     dataType: 'xml'
-            // };
-
-            json = this.formBuilder.actions.getData('json');
-            console.log(json);
-            var formRenderOpts = {
-                formData: json,
-                dataType: 'json'
-            };
-
-            ele = $('.render-wrap');
-            ele.formRender(formRenderOpts);
-
-
-            // ele = document.getElementById('fb-render');
-            // var formData = '<form-template><fields><field class="form-control" label="Full Name" name="text-input-1459436848806" type="text" subtype="text"></field><field class="form-control" label="Select" name="select-1459436851691" type="select"><option value="option-1">Option 1</option><option value="option-2">Option 2</option></field><field class="form-control" label="Your Message" name="textarea-1459436854560" type="textarea"></field></fields></form-template>';
-            // var formRenderOpts = {
-            //     formData: formData,
-            //     dataType: 'xml'
-            // };
-            // console.log(ele);
-            // // ele.formRender(formRenderOpts);
-
-            // const wrap: any = $('.render-wrap');
-            // const formRender = wrap.formRender();
-            // wrap.formRender('render', formRenderOpts);
-            // // or
-            // formRender.actions.render(formData)
-
-            // var renderedForm: any = $('<div>');
-            // renderedForm.formRender(formRenderOpts);
-
-            // console.log(renderedForm.html());
-
-            // var ele: any = $(document.getElementById('form'));
-            // ele.alpaca({
-            //     "schema": {
-            //         "title": "User Feedback",
-            //         "description": "What do you think about Alpaca?",
-            //         "type": "object",
-            //         "properties": {
-            //             "name": {
-            //                 "type": "string",
-            //                 "title": "Name"
-            //             },
-            //             "feedback": {
-            //                 "type": "string",
-            //                 "title": "Feedback"
-            //             },
-            //             "ranking": {
-            //                 "type": "string",
-            //                 "title": "Ranking",
-            //                 "enum": ['excellent', 'ok', 'so so']
-            //             }
-            //         }
-            //     }
-            // });
-            // console.log("post editor");
-
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
+    }
+    export class FormCtrl extends entityCtrl<openflow.WorkflowInstance> {
+        public loading: boolean = false;
+        public message: string = "";
+        public formRender: any;
+        public workflow: openflow.Workflow;
+        public form: openflow.Form;
+        public instanceid: string;
+
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public WebSocketClient: WebSocketClient,
+            public api: api
+        ) {
+            super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("FormCtrl");
+            this.collection = "workflow";
+            this.basequery = {};
+            this.id = $routeParams.id;
+            this.instanceid = $routeParams.instance;
+
+            this.basequery = { _id: this.id };
+            WebSocketClient.onSignedin(async (user: TokenUser) => {
+                $(document).on('submit', '.render-wrap', () => {
+                    this.Save();
+                });
+                await api.RegisterQueue();
+                if (this.id !== null && this.id !== undefined && this.id !== "") {
+                    this.basequery = { _id: this.id };
+                    this.loadData();
+                } else {
+                    console.error("missing id");
+                }
+            });
+        }
+        async loadData(): Promise<void> {
+            this.loading = true;
+            var res = await this.api.Query(this.collection, this.basequery, null, { _created: -1 }, 1);
+            if (res.length > 0) { this.workflow = res[0]; } else { console.error(this.id + " workflow not found!"); return; }
+            if (this.instanceid !== null && this.instanceid !== undefined && this.instanceid !== "") {
+                var res = await this.api.Query("workflow_instances", { _id: this.instanceid }, null, { _created: -1 }, 1);
+                if (res.length > 0) { this.model = res[0]; } else { console.error(this.id + " workflow instances not found!"); return; }
+                // await this.SendOne(this.workflow.queue, this.message);
+                if (this.model.form !== "") {
+                    var res = await this.api.Query("forms", { _id: this.model.form }, null, { _created: -1 }, 1);
+                    if (res.length > 0) { this.form = res[0]; } else { console.error(this.id + " form not found!"); return; }
+                } else {
+                    console.log("Model contains no form");
+                }
+                this.renderform();
+            } else {
+                console.log("No instance id found, send empty message");
+                await this.SendOne(this.workflow.queue, {});
+                this.loadData();
+            }
+        }
+        async SendOne(queuename: string, message: any): Promise<void> {
+            var result: any = await this.api.QueueMessage(queuename, message);
+            try {
+                // result = JSON.parse(result);
+            } catch (error) {
+            }
+            this.instanceid = result._id;
+        }
+        async Save() {
+            var userData: any[] = this.formRender.userData;
+            if (this.model.payload === null || this.model.payload === undefined) { this.model.payload = {}; }
+            for (var i = 0; i < userData.length; i++) {
+                this.model.payload[userData[i].name] = "";
+                var val = userData[i].userData;
+                if (val !== undefined && val !== null) {
+                    if (Array.isArray(val)) {
+                        this.model.payload[userData[i].name] = val[0];
+                    } else {
+                        this.model.payload[userData[i].name] = val;
+                    }
+
+                }
+            }
+            var ele = $('.render-wrap');
+            ele.hide();
+            await this.SendOne(this.workflow.queue, this.model);
+            this.loadData();
+        }
+        async renderform() {
+            console.log("renderform");
+            var ele: any;
+            var roles: any = {};
+            this.WebSocketClient.user.roles.forEach(role => {
+                roles[role._id] = role.name;
+            });
+            if (typeof this.form.formData === 'string' || this.form.formData instanceof String) {
+                this.form.formData = JSON.parse((this.form.formData as any));
+            }
+            for (var i = 0; i < this.form.formData.length; i++) {
+                console.log(this.form.formData[i]);
+                this.form.formData[i].userData = [this.model.payload[this.form.formData[i].name]];
+                if (this.model.payload[this.form.formData[i].label] !== null && this.model.payload[this.form.formData[i].label] !== undefined) {
+                    this.form.formData[i].label = this.model.payload[this.form.formData[i].label];
+                }
+            }
+            var formRenderOpts = {
+                formData: this.form.formData,
+                dataType: this.form.dataType,
+                roles: roles,
+                disabledActionButtons: ['data', 'clear'],
+                onSave: this.Save.bind(this),
+            };
+            if (this.model.userData !== null && this.model.userData !== undefined && this.model.userData !== "") {
+                formRenderOpts.formData = this.model.userData;
+            }
+            ele = $('.render-wrap');
+            ele.show();
+            this.formRender = ele.formRender(formRenderOpts);
+        }
+
+        // async loadData(): Promise<void> {
+        //     this.loading = true;
+        //     this.charts = [];
+        //     // var res = await this.api.Query(this.collection, this.basequery, null, { _created: -1 }, 1);
+        //     // if (res.length > 0) { this.model = res[0]; } else { console.error(this.id + " instance not found!"); return; }
+        //     // res = await this.api.Query(this.collection, { _id: this.model.form }, null, { _created: -1 }, 1);
+        //     // if (res.length > 0) { this.form = res[0]; } else { console.error(this.model.form + " form not found!"); return; }
+
+        //     var res = await this.api.Query(this.collection, {}, null, { _created: -1 }, 1);
+        //     if (res.length > 0) { this.form = res[0]; } else { console.error(this.id + " not found!"); return; }
+
+        //     this.renderform();
+        // }
+        // async Save() {
+        //     console.log(this.formRender.userData);
+        //     this.model.userData = this.formRender.userData;
+        //     // this.model.formData = this.formBuilder.actions.getData(this.model.dataType);
+        //     // if (this.model._id) {
+        //     //     this.model = await this.api.Update(this.collection, this.model);
+        //     // } else {
+        //     //     this.model = await this.api.Insert(this.collection, this.model);
+        //     // }
+        //     // var formRenderOpts = {
+        //     //     formData: this.model.formData,
+        //     //     dataType: this.model.dataType
+        //     // };
+        //     // var ele: any = $('.render-wrap');
+        //     // ele.formRender(formRenderOpts);
+        // }
+        // async renderform() {
+        //     // https://www.npmjs.com/package/angular2-json-schema-form
+        //     // http://www.alpacajs.org/demos/form-builder/form-builder.html
+        //     // https://github.com/kevinchappell/formBuilder - https://formbuilder.online/ - https://kevinchappell.github.io/formBuilder/
+        //     var ele: any;
+        //     var roles: any = {};
+        //     this.WebSocketClient.user.roles.forEach(role => {
+        //         roles[role._id] = role.name;
+        //     });
+        //     var formRenderOpts = {
+        //         formData: this.form.formData,
+        //         dataType: this.form.dataType,
+        //         roles: roles,
+        //         disabledActionButtons: ['data', 'clear'],
+        //         onSave: this.Save.bind(this),
+        //     };
+        //     if (this.model.userData !== null && this.model.userData !== undefined && this.model.userData !== "") {
+        //         formRenderOpts.formData = this.model.userData;
+        //     }
+        //     ele = $('.render-wrap');
+        //     this.formRender = ele.formRender(formRenderOpts);
+        // }
 
     }
     export class jslogCtrl extends entitiesCtrl<openflow.Base> {

@@ -7,8 +7,6 @@
       <tr>
         <th ng-click="ctrl.ToggleOrder('name')"><b translate lib="web">name</b></th>
         <th ng-click="ctrl.ToggleOrder('_createdby')"><b translate lib="web">createdby</b></th>
-        <th ng-click="ctrl.ToggleOrder('_created')"><b translate lib="web">created</b></th>
-        <th ng-click="ctrl.ToggleOrder('_modified')"><b translate lib="web">updated</b></th>
         <th></th>
         <th></th>
       </tr>
@@ -17,19 +15,8 @@
       <tr ng-repeat="model in ctrl.models">
         <td>{{model.name}}</td>
         <td>{{model._createdby}}</td>
-        <td>
-          <timesince ng-model="model._created" />
-        </td>
-        <td>
-          <timesince ng-model="model._modified" />
-        </td>
         <td class="btn-cell">
-          <canvas id="bar" class="model.chart-base" chart-type="model.chart.charttype" chart-data="model.chart.data"
-            chart-labels="model.chart.labels" chart-series="model.chart.series" height="40px">
-          </canvas>
-        </td>
-        <td class="btn-cell">
-          <a href ng-click="ctrl.DeleteOne(model)" ng-disabled="ctrl.loading==true" translate lib="web">delete</a>
+          <a ng-href="#/Form/{{model._id}}" translate lib="web">invoke</a>
         </td>
       </tr>
     </tbody>

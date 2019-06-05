@@ -59,4 +59,36 @@ module openflow {
         _id: string;
     }
 
+    export class Form extends Base {
+        constructor() {
+            super();
+            this._type = "form";
+            this.dataType = "json";
+        }
+        public formData: any;
+        public dataType: string;
+    }
+    export class Workflow extends Base {
+        constructor() {
+            super();
+            this._type = "workflow";
+        }
+        public rpa: boolean;
+        public web: boolean;
+        public queue: string;
+    }
+    export class WorkflowInstance extends Base {
+        constructor() {
+            super();
+            this._type = "instance";
+        }
+        public queue: string;
+        public payload: any;
+        public jwt: string;
+        public state: string;
+        public form: string;
+        public userData: string;
+
+    }
+
 }

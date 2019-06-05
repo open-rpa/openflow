@@ -11,6 +11,7 @@ export interface Iworkflow_in_node {
     queue: string;
     name: string;
     rpa: boolean;
+    web: boolean;
 }
 export class workflow_in_node {
     public node: Red = null;
@@ -45,7 +46,12 @@ export class workflow_in_node {
         var res = await NoderedUtil.Query("workflow", { "queue": this.config.queue }, null, null, 1, 0, null);
         if (res.length == 0) {
             this.workflow = await NoderedUtil.InsertOne("workflow", { _type: "workflow", "queue": this.config.queue, "name": this.config.name }, 0, false, null);
-        } else { this.workflow = res[0]; }
+        } else {
+            this.workflow = res[0];
+        }
+        this.workflow.rpa = this.config.rpa;
+        this.workflow.web = this.config.web;
+        this.workflow = await NoderedUtil._UpdateOne("workflow", null, this.workflow, 0, false, null);
     }
     nestedassign(target, source) {
         Object.keys(source).forEach(sourcekey => {
@@ -68,18 +74,21 @@ export class workflow_in_node {
             } catch (error) {
             }
             result.payload = data.payload;
-            if (data._id !== null && data._id !== undefined && data._id !== "") {
-                var res = await NoderedUtil.Query("workflow_instances", { "_id": data._id }, null, null, 1, 0, data.jwt);
+            if (data.payload._id !== null && data.payload._id !== undefined && data.payload._id !== "") {
+                var res = await NoderedUtil.Query("workflow_instances", { "_id": data.payload._id }, null, null, 1, 0, data.jwt);
                 if (res.length == 0) {
-                    NoderedUtil.HandleError(this, "Unknown workflow_instances id " + data._id);
+                    NoderedUtil.HandleError(this, "Unknown workflow_instances id " + data.payload._id);
                     return;
                 }
-                result = this.nestedassign(res[0], result);
+                result._id = res[0]._id;
+                result.payload = Object.assign(res[0].payload, result.payload.payload);;
+                // result = this.nestedassign(res[0], result);
                 // result.payload = Object.assign(res[0].payload, result.payload);
                 // result = Object.assign(res[0], result);
-                await NoderedUtil._UpdateOne("workflow_instances", null, result, 0, false, data.jwt);
+                // await NoderedUtil._UpdateOne("workflow_instances", null, result, 0, false, data.jwt);
+                //result = result.payload;
             } else {
-                var res2 = this.workflow = await NoderedUtil.InsertOne("workflow_instances",
+                var res2 = await NoderedUtil.InsertOne("workflow_instances",
                     { _type: "instance", "queue": this.config.queue, "name": this.config.name, payload: data.payload }, 0, false, data.jwt);
                 //result = Object.assign(res2, result);
                 result = this.nestedassign(res2, result);
@@ -103,6 +112,7 @@ export class workflow_in_node {
 
 export interface Iworkflow_out_node {
     state: string;
+    form: string;
 }
 export class workflow_out_node {
     public node: Red = null;
@@ -121,12 +131,18 @@ export class workflow_out_node {
             this.node.status({});
             if (msg.amqpacknowledgment) {
                 msg.state = this.config.state;
+                msg.form = this.config.form;
+                if (msg.payload === null || msg.payload === undefined) { msg.payload == {}; }
+                if (typeof msg.payload === 'string' || msg.payload instanceof String) {
+                    msg.payload = { data: msg.payload };
+                }
                 if (msg._id !== null && msg._id !== undefined && msg._id !== "") {
-                    var res = await NoderedUtil._UpdateOne("workflow_instances", null, msg, 0, false, msg.jwt);
+                    var res = await NoderedUtil._UpdateOne("workflow_instances", null, msg, 1, false, msg.jwt);
                 }
                 var data: any = {};
                 data.payload = msg.payload;
                 data.jwt = msg.jwt;
+                data.payload._id = msg._id;
                 msg.amqpacknowledgment(JSON.stringify(data));
             }
             this.node.send(msg);
@@ -137,4 +153,11 @@ export class workflow_out_node {
     }
     onclose() {
     }
+}
+
+export async function get_workflow_forms(req, res) {
+    var token = await NoderedUtil.GetToken(null, null);
+    var result: any[] = await NoderedUtil.Query('forms', { _type: "form" },
+        { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
+    res.json(result);
 }
