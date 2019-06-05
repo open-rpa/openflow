@@ -81,7 +81,14 @@ export class workflow_in_node {
                     return;
                 }
                 result._id = res[0]._id;
-                result.payload = Object.assign(res[0].payload, result.payload.payload);;
+                result._created = res[0]._created;
+                result._createdby = res[0]._createdby;
+                result._createdbyid = res[0]._createdbyid;
+                result._modified = res[0]._modified;
+                result._modifiedby = res[0]._modifiedby;
+                result._modifiedbyid = res[0]._modifiedbyid;
+                result.payload = this.nestedassign(res[0].payload, result.payload.payload);
+
                 // result = this.nestedassign(res[0], result);
                 // result.payload = Object.assign(res[0].payload, result.payload);
                 // result = Object.assign(res[0], result);
