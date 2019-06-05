@@ -106,6 +106,12 @@ export class workflow_in_node {
             this.node.send(result);
         } catch (error) {
             NoderedUtil.HandleError(this, error);
+            try {
+                msg.error = error;
+                msg.amqpacknowledgment(JSON.stringify(msg));
+            } catch (error) {
+
+            }
         }
     }
     onclose() {
