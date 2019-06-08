@@ -1,0 +1,37 @@
+<div class="row">
+    <div class="col-sm-7">
+        <h1 class="pagetitle"><span translate lib="web">detailsfor</span> {{ctrl.model.name}}</h1>
+    </div>
+</div>
+<pre ng-show="ctrl.message!=null">{{ ctrl.message }}</pre>
+<form ng-submit="ctrl.submit()" class="form-horizontal" role="form" autocomplete="off" ng-hide="ctrl.showjson==true">
+    <section>
+        <div class="form-group">
+            <label class="col-sm-3 control-label"><span translate lib="web">Robot</span>
+            </label>
+            <div class="col-sm-9">
+                <select ng-model="ctrl.user" ng-options="item as item.name for item in ctrl.users">
+                </select>
+            </div>
+        </div>
+    </section>
+    <section ng-repeat="model in ctrl.model.Parameters">
+        <div class="form-group">
+            <label class="col-sm-3 control-label"><span translate lib="web">{{ model.name }}</span> ({{ model.type }}):
+            </label>
+            <div class="col-sm-9">
+                <input ng-model="ctrl.arguments[model.name]" class="form-control input-md"
+                    ng-disabled="ctrl.loading==true" />
+            </div>
+        </div>
+    </section>
+    <div class="form-group">
+        <div class="col-sm-offset-2 col-sm-10">
+            <button type="submit" ng-disabled="ctrl.loading==true" class="btn btn-success" translate
+                lib="web">invoke</button>
+        </div>
+    </div>
+</form>
+{{ ctrl.arguments }}
+
+<pre ng-show="ctrl.messages!=null">{{ ctrl.messages }}</pre>

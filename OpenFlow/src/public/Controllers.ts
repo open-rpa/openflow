@@ -13,6 +13,74 @@ module openflow {
     }
     declare var jsondiffpatch: any;
 
+    export class RPAWorkflowCtrl extends entityCtrl<openflow.RPAWorkflow> {
+        public arguments: any;
+        public users: TokenUser[];
+        public user: TokenUser;
+        public messages: string;
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public WebSocketClient: WebSocketClient,
+            public api: api
+        ) {
+            super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("RPAWorkflowCtrl");
+            this.collection = "openrpa";
+            this.messages = "";
+            WebSocketClient.onSignedin(async (_user: TokenUser) => {
+                if (this.id !== null && this.id !== undefined) {
+                    await api.RegisterQueue();
+                    await this.loadData();
+                    await this.loadUsers();
+                    $scope.$on('queuemessage', (event, data: QueueMessage) => {
+                        if (event && data) { }
+                        // console.log("queuemessage");
+                        // console.log(event);
+                        console.log(data);
+                        this.messages += data.data.command + "\n";
+                        if (data.data.command == "invokecompleted") {
+                            this.arguments = data.data.data;
+                        }
+                        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    });
+
+                } else {
+                    console.error("Missing id");
+                }
+            });
+        }
+        async loadUsers(): Promise<void> {
+            this.users = await this.api.Query("users", { $or: [{ _type: "user" }, { _type: "role" }] }, null, null);
+            this.users.forEach(user => {
+                if (user._id == this.model._createdbyid || user._id == this.model._createdbyid) {
+                    this.user = user;
+                }
+            });
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        async submit(): Promise<void> {
+            var rpacommand = {
+                command: "invoke",
+                workflowid: this.model._id,
+                data: this.arguments
+            }
+            // var message = {
+            //     jwt: this.WebSocketClient.jwt,
+            //     payload: rpacommand
+            // }
+            console.log("QueueMessage");
+            console.log(rpacommand);
+            var result: any = await this.api.QueueMessage(this.user._id, rpacommand);
+            console.log("result:");
+            console.log(result);
+            try {
+                // result = JSON.parse(result);
+            } catch (error) {
+            }
+        }
+    }
 
     export class RPAWorkflowsCtrl extends entitiesCtrl<openflow.Base> {
         public message: string = "";
@@ -636,7 +704,7 @@ module openflow {
     }
     export class RoleCtrl extends entityCtrl<openflow.Role> {
         public addthis: any = "";
-        public users: any[] = null;
+        public users: TokenUser[] = null;
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -658,13 +726,7 @@ module openflow {
             });
         }
         async loadUsers(): Promise<void> {
-            var q: QueryMessage = new QueryMessage();
-            q.collectionname = this.collection;
-            // q.query = {};
-            q.query = { $or: [{ _type: "user" }, { _type: "role" }] };
-            var msg: Message = new Message(); msg.command = "query"; msg.data = JSON.stringify(q);
-            q = await this.WebSocketClient.Send<QueryMessage>(msg);
-            this.users = q.result;
+            this.users = await this.api.Query(this.collection, { $or: [{ _type: "user" }, { _type: "role" }] }, null, null);
             var ids: string[] = [];
             if (this.model.members === undefined) { this.model.members = []; }
             for (var i: number = 0; i < this.model.members.length; i++) {
@@ -675,8 +737,7 @@ module openflow {
                     this.users.splice(i, 1);
                 }
             }
-            this.addthis = q.result[0]._id;
-
+            this.addthis = this.users[0]._id;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async submit(): Promise<void> {

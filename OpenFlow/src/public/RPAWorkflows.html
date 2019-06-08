@@ -29,7 +29,8 @@
           </canvas>
         </td>
         <td class="btn-cell">
-          <a href ng-click="ctrl.DeleteOne(model)" ng-disabled="ctrl.loading==true" translate lib="web">delete</a>
+          <a ng-href="#/RPAWorkflow/{{model._id}}" ng-disabled="ctrl.loading==true" translate lib="web">invoke</a>
+
         </td>
       </tr>
     </tbody>

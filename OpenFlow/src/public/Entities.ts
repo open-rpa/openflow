@@ -59,6 +59,22 @@ module openflow {
         _id: string;
     }
 
+    export class RPAWorkflowParameter {
+        public name: string;
+        public type: string;
+        public direction: string;
+    }
+    export class RPAWorkflow extends Base {
+        constructor() {
+            super();
+            this._type = "workflow";
+        }
+        public Parameters: RPAWorkflowParameter[];
+        public Serializable: boolean;
+        public Filename: string;
+        public projectid: string;
+    }
+
     export class Form extends Base {
         constructor() {
             super();

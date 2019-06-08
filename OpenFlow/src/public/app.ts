@@ -31,6 +31,7 @@ module openflow {
                 .when('/Role/:id', { templateUrl: 'Role.html', controller: RoleCtrl, controllerAs: 'ctrl' })
 
                 .when('/RPAWorkflows', { templateUrl: 'RPAWorkflows.html', controller: RPAWorkflowsCtrl, controllerAs: 'ctrl' })
+                .when('/RPAWorkflow/:id', { templateUrl: 'RPAWorkflow.html', controller: RPAWorkflowCtrl, controllerAs: 'ctrl' })
 
                 .when('/Workflows', { templateUrl: 'Workflows.html', controller: WorkflowsCtrl, controllerAs: 'ctrl' })
                 .when('/Reports', { templateUrl: 'Reports.html', controller: ReportsCtrl, controllerAs: 'ctrl' })
