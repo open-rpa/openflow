@@ -1,5 +1,5 @@
 module openflow {
-    "use strict";
+    // "use strict";
 
     function treatAsUTC(date): number {
         var result = new Date(date);
@@ -396,8 +396,11 @@ module openflow {
             });
         }
     }
+    declare var QRScanner: any;
     export class LoginCtrl {
         public localenabled: boolean = false;
+        public scanning: boolean = false;
+        public qrcodescan: boolean = false;
         public providers: any = false;
         public username: string = "";
         public password: string = "";
@@ -423,9 +426,80 @@ module openflow {
                         this.localenabled = true;
                     }
                 }
-
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                setTimeout(this.scanForQRScanner.bind(this), 200);
+
+                console.log("get mobiledomain");
+                var storage = window.localStorage;
+                var value = storage.getItem("mobiledomain"); // Pass a key name to get its value.
+                console.log(value);
+                if (value !== null && value !== undefined && value !== "") {
+                    if (value !== window.location.hostname) {
+                        window.location.replace("https://" + value);
+                        return;
+                    }
+                }
+
             });
+        }
+        scanForQRScanner() {
+            try {
+                if (QRScanner !== undefined) {
+                    console.log("Found QRScanner!!!!");
+                    this.qrcodescan = true;
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                } else {
+                    console.debug("QRScanner not definded");
+                    setTimeout(this.scanForQRScanner, 200);
+                }
+            } catch (error) {
+                console.debug("Failed locating QRScanner");
+                setTimeout(this.scanForQRScanner, 200);
+            }
+        }
+        Scan() {
+            try {
+                console.log("Scan");
+                if (this.scanning) {
+                    this.scanning = false;
+                    QRScanner.destroy();
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    return;
+                }
+                this.scanning = true;
+                QRScanner.scan(this.QRScannerHit.bind(this));
+                QRScanner.show();
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            } catch (error) {
+                console.error("Error Scan");
+                console.error(error);
+            }
+        }
+        QRScannerHit(err, contents) {
+            try {
+                console.log("QRScannerHit");
+                if (err) {
+                    // console.error(err._message);
+                    console.error(err);
+                    return;
+                }
+                console.log(contents);
+                QRScanner.hide();
+                QRScanner.destroy();
+
+                var storage = window.localStorage;
+                var value = storage.getItem("mobiledomain"); // Pass a key name to get its value.
+                storage.setItem("mobiledomain", contents) // Pass a key name and its value to add or update that key.
+                // storage.removeItem(key) // Pass a key name to remove that key from storage.
+                console.log("set mobiledomain to " + contents);
+
+                this.scanning = false;
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            } catch (error) {
+                console.error("Error QRScannerHit");
+                console.error(error);
+
+            }
         }
         async submit(): Promise<void> {
             this.message = "";
