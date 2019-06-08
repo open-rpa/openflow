@@ -3,7 +3,8 @@
     <div class="col-sm-9 col-md-7 col-lg-5 mx-auto">
       <div class="card card-signin my-5">
         <div class="card-body">
-          <h5 class="card-title text-center" translate lib="web">signin</h5>
+          <h5 class="card-title text-center"><span translate lib="web">signin</span> {{ctrl.domain}}</h5>
+          </h5>
           <form class="form-signin" ngNoForm method='post' action='/local'>
             <div class="form-label-group" ng-show="ctrl.localenabled">
               <input type="text" name="username" ng-model="ctrl.username" class="form-control" placeholder="Username"

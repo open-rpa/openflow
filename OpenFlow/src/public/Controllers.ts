@@ -405,6 +405,7 @@ module openflow {
         public username: string = "";
         public password: string = "";
         public message: string = "";
+        public domain: string = "";
         public static $inject = [
             "$scope",
             "$location",
@@ -418,6 +419,7 @@ module openflow {
             public WebSocketClient: WebSocketClient
         ) {
             console.log("LoginCtrl::constructor");
+            this.domain = window.location.hostname;
             WebSocketClient.getJSON("/loginproviders", async (error: any, data: any) => {
                 this.providers = data;
                 for (var i: number = this.providers.length - 1; i >= 0; i--) {
