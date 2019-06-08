@@ -34,4 +34,6 @@
     </div>
   </div>
 </div>
-<button value="Scan now" ng-click="ctrl.Scan()" type="button" ng-show="ctrl.scanning==true">QRCode Scan</button>
+<div class="cameraView" ng-show="ctrl.scanning==true">
+  <button value="Scan now" ng-click="ctrl.Scan()" type="button" ng-show="ctrl.scanning==true">QRCode Scan</button>
+</div>

@@ -493,6 +493,8 @@ module openflow {
                 // storage.removeItem(key) // Pass a key name to remove that key from storage.
                 console.log("set mobiledomain to " + contents);
 
+                window.location.replace("https://" + contents);
+
                 this.scanning = false;
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
             } catch (error) {
