@@ -7,34 +7,44 @@
             "label": "tsc-watch-all",
             "command": "echo",
             "type": "shell",
-            "args": [ "echo1" ],
+            "args": [
+                "echo1"
+            ],
             "group": {
                 "kind": "build",
                 "isDefault": true
             },
-            "dependsOn":["gulp-task", "openflow-tsc-watch", "openflownodered-tsc-watch"]
+            "dependsOn": [
+                "gulp-task",
+                "openflow-tsc-watch",
+                "openflownodered-tsc-watch"
+            ]
         },
         {
             "label": "gulp-task",
             "command": "gulp",
-            "args": ["--no-color"]
+            "args": [
+                "--no-color"
+            ]
         },
         {
             "label": "openflow-tsc-watch",
             "type": "typescript",
-            "tsconfig": "OpenFlow\\tsconfig.json",
+            // "tsconfig": "OpenFlow\\tsconfig.json",
+            "tsconfig": "../../../c:/code/OpenFlow/OpenFlow/tsconfig.json",
             "option": "watch",
             "problemMatcher": [
-                "$tsc-watch"
+                "$tsc"
             ]
         },
         {
             "label": "openflownodered-tsc-watch",
             "type": "typescript",
-            "tsconfig": "OpenFlowNodeRED\\tsconfig.json",
+            // "tsconfig": "OpenFlowNodeRED\\tsconfig.json",
+            "tsconfig": "../../../c:/code/OpenFlow/OpenFlowNodeRED/tsconfig.json",
             "option": "watch",
             "problemMatcher": [
-                "$tsc-watch"
+                "$tsc"
             ]
         }
         // {
@@ -46,6 +56,5 @@
         //         "$tsc-watch"
         //     ]
         // }
-
     ]
 }

@@ -29,10 +29,10 @@
         <timesince ng-model="model._modified" />
       </td>
       <td class="btn-cell">
-        <a ng-href="#/EditForm/{{model._id}}" translate lib="web">edit</a>
+        <a ng-href="#/EditForm/{{model._id}}"><i class="az-edit"></i></a>
       </td>
       <td class="btn-cell">
-        <a href ng-click="ctrl.DeleteOne(model)" ng-disabled="ctrl.loading==true" translate lib="web">delete</a>
+        <a href ng-click="ctrl.DeleteOne(model)" ng-disabled="ctrl.loading==true"><i class="az-trash"></i></a>
       </td>
     </tr>
   </tbody>

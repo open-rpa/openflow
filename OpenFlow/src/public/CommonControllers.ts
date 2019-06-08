@@ -275,6 +275,7 @@ module openflow {
     }
 
     export class entitiesCtrl<T> {
+        public loading: boolean = false;
         public basequery: any = {};
         public baseprojection: any = {};
         public collection: string = "entities";
@@ -297,15 +298,11 @@ module openflow {
         ) {
         }
         async loadData(): Promise<void> {
-            var q: QueryMessage = new QueryMessage();
-            q.collectionname = this.collection; q.query = this.basequery;
-            q.projection = this.baseprojection; q.orderby = this.orderby;
-            var msg: Message = new Message(); msg.command = "query"; msg.data = JSON.stringify(q);
-            q = await this.WebSocketClient.Send<QueryMessage>(msg);
-            this.models = q.result;
+            this.loading = true;
+            this.models = await this.api.Query(this.collection, this.basequery, this.baseprojection, this.orderby);
+            this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
-
 
         ToggleOrder(field: string) {
             if (this.orderby[field] == undefined) {
@@ -325,6 +322,7 @@ module openflow {
 
 
     export class entityCtrl<T> {
+        public loading: boolean = false;
         public basequery: any = {};
         public baseprojection: any = {};
         public collection: string = "entities";
@@ -350,13 +348,11 @@ module openflow {
             this.basequery = { _id: this.id };
         }
         async loadData(): Promise<void> {
-            var q: QueryMessage = new QueryMessage();
-            q.collectionname = this.collection; q.query = this.basequery;
-            q.projection = this.baseprojection; q.top = 1;
-            var msg: Message = new Message(); msg.command = "query"; msg.data = JSON.stringify(q);
-            q = await this.WebSocketClient.Send<QueryMessage>(msg);
-            if (q.result.length > 0) { this.model = q.result[0]; }
+            this.loading = true;
+            var result = await this.api.Query(this.collection, this.basequery, this.baseprojection, null, 1);
+            if (result.length > 0) { this.model = result[0]; }
             this.keys = Object.keys(this.model);
+            this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
     }

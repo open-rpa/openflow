@@ -87,6 +87,7 @@ module openflow {
         public jwt: string;
         public state: string;
         public form: string;
+        public workflow: string;
         public userData: string;
 
     }

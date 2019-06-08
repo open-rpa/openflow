@@ -96,7 +96,7 @@ export class workflow_in_node {
                 //result = result.payload;
             } else {
                 var res2 = await NoderedUtil.InsertOne("workflow_instances",
-                    { _type: "instance", "queue": this.config.queue, "name": this.config.name, payload: data.payload }, 1, false, data.jwt);
+                    { _type: "instance", "queue": this.config.queue, "name": this.config.name, payload: data.payload, workflow: this.workflow._id }, 1, false, data.jwt);
                 //result = Object.assign(res2, result);
                 result = this.nestedassign(res2, result);
             }

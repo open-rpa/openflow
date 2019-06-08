@@ -15,7 +15,6 @@ module openflow {
 
 
     export class RPAWorkflowsCtrl extends entitiesCtrl<openflow.Base> {
-        public loading: boolean = false;
         public message: string = "";
         public charts: chartset[] = [];
         constructor(
@@ -116,7 +115,6 @@ module openflow {
 
 
     export class WorkflowsCtrl extends entitiesCtrl<openflow.Base> {
-        public loading: boolean = false;
         public message: string = "";
         public charts: chartset[] = [];
         constructor(
@@ -161,7 +159,6 @@ module openflow {
     }
     export declare function emit(k, v);
     export class ReportsCtrl extends entitiesCtrl<openflow.Base> {
-        public loading: boolean = false;
         public message: string = "";
         public charts: chartset[] = [];
         constructor(
@@ -248,23 +245,8 @@ module openflow {
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
-    }
-    export class MainCtrl extends entitiesCtrl<openflow.Base> {
-        public loading: boolean = false;
-        constructor(
-            public $scope: ng.IScope,
-            public $location: ng.ILocationService,
-            public $routeParams: ng.route.IRouteParamsService,
-            public WebSocketClient: WebSocketClient,
-            public api: api,
-        ) {
-            super($scope, $location, $routeParams, WebSocketClient, api);
-            console.debug("MainCtrl");
-            console.log("MainCtrl::constructor");
-            WebSocketClient.onSignedin((user: TokenUser) => {
-                this.loadData();
-            });
-        }
+
+
 
         async InsertNew(): Promise<void> {
             // this.loading = true;
@@ -325,6 +307,25 @@ module openflow {
             this.models = this.models.filter(function (m: any): boolean { return ids.indexOf(m._id) === -1; });
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+
+
+    }
+    export class MainCtrl extends entitiesCtrl<openflow.Base> {
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public WebSocketClient: WebSocketClient,
+            public api: api,
+        ) {
+            super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("MainCtrl");
+            this.collection = "workflow_instances"
+            this.basequery = { state: { $ne: "completed" }, form: { $exists: true } };
+            WebSocketClient.onSignedin((_user: TokenUser) => {
+                this.loadData();
+            });
         }
     }
     export class LoginCtrl {
@@ -411,7 +412,6 @@ module openflow {
     }
 
     export class ProvidersCtrl extends entitiesCtrl<openflow.Provider> {
-        public loading: boolean = false;
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -471,7 +471,6 @@ module openflow {
 
 
     export class UsersCtrl extends entitiesCtrl<openflow.TokenUser> {
-        public loading: boolean = false;
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -612,7 +611,6 @@ module openflow {
 
 
     export class RolesCtrl extends entitiesCtrl<openflow.Role> {
-        public loading: boolean = false;
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -718,7 +716,6 @@ module openflow {
             "WebSocketClient",
             "api"
         ];
-        public loading: boolean = false;
         public messages: string = "";
         public queuename: string = "webtest";
         public message: string = "Hi mom";
@@ -753,7 +750,7 @@ module openflow {
 
 
     export class EntitiesCtrl extends entitiesCtrl<openflow.Base> {
-        public loading: boolean = false;
+
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -797,7 +794,6 @@ module openflow {
     }
 
     export class FormsCtrl extends entitiesCtrl<openflow.Base> {
-        public loading: boolean = false;
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -839,7 +835,6 @@ module openflow {
         }
     }
     export class EditFormCtrl extends entityCtrl<openflow.Form> {
-        public loading: boolean = false;
         public message: string = "";
         public charts: chartset[] = [];
         public formBuilder: any;
@@ -908,7 +903,6 @@ module openflow {
         }
     }
     export class FormCtrl extends entityCtrl<openflow.WorkflowInstance> {
-        public loading: boolean = false;
         public message: string = "";
         public formRender: any;
         public workflow: openflow.Workflow;
@@ -950,6 +944,7 @@ module openflow {
             if (this.instanceid !== null && this.instanceid !== undefined && this.instanceid !== "") {
                 var res = await this.api.Query("workflow_instances", { _id: this.instanceid }, null, { _created: -1 }, 1);
                 if (res.length > 0) { this.model = res[0]; } else { console.error(this.id + " workflow instances not found!"); return; }
+
                 // await this.SendOne(this.workflow.queue, this.message);
                 if (this.model.form !== "") {
                     var res = await this.api.Query("forms", { _id: this.model.form }, null, { _created: -1 }, 1);
@@ -1078,7 +1073,6 @@ module openflow {
 
     }
     export class jslogCtrl extends entitiesCtrl<openflow.Base> {
-        public loading: boolean = false;
         public message: string = "";
         public charts: chartset[] = [];
         constructor(
@@ -1301,7 +1295,6 @@ module openflow {
     }
 
     export class HistoryCtrl extends entitiesCtrl<openflow.Base> {
-        public loading: boolean = false;
         public id: string = "";
         public model: openflow.Base;
         constructor(
