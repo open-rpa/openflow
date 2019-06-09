@@ -435,7 +435,7 @@ module openflow {
                 var storage = window.localStorage;
                 var value = storage.getItem("mobiledomain"); // Pass a key name to get its value.
                 console.log(value);
-                if (value == "aiotdev-frontend.openrpa.dk" || value == "slagelse.openrpa.dk" || value == "slagelsedev.openrpa.dk") {
+                if (value == "aiotdev-frontend.openrpa.dk" || value == "slagelse.access-iot.com" || value == "slagelsedev.access-iot.com") {
                     storage.removeItem("mobiledomain");
                     value = null;
                 }
