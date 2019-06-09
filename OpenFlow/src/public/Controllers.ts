@@ -535,7 +535,7 @@ module openflow {
                 console.error(error);
             }
         }
-        async QRScannerHit(err, contents) {
+        async QRScannerHit(err, value) {
             try {
                 console.log("QRScannerHit");
                 if (err) {
@@ -543,16 +543,20 @@ module openflow {
                     console.error(err);
                     return;
                 }
-                console.log(contents);
+                console.log(value);
                 QRScanner.hide();
                 QRScanner.destroy();
 
-                console.log("set mobiledomain to " + contents);
-                await this.writefile("mobiledomain.txt", contents);
-                window.location.replace("https://" + contents);
+                console.log("set mobiledomain to " + value);
+                await this.writefile("mobiledomain.txt", value);
 
                 this.scanning = false;
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                if (value !== null && value !== undefined && value !== "") {
+                    console.log(value);
+                    var config = JSON.parse(value);
+                    window.location.replace(config.url);
+                }
             } catch (error) {
                 console.error("Error QRScannerHit");
                 console.error(error);
