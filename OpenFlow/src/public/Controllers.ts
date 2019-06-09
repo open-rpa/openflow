@@ -432,20 +432,83 @@ module openflow {
                 setTimeout(this.scanForQRScanner.bind(this), 200);
 
                 console.log("get mobiledomain");
-                var storage = window.localStorage;
-                var value = storage.getItem("mobiledomain"); // Pass a key name to get its value.
+                var value = await this.readfile("mobiledomain.txt");
                 console.log(value);
-                if (value == "aiotdev-frontend.openrpa.dk" || value == "slagelse.access-iot.com" || value == "slagelsedev.access-iot.com") {
-                    storage.removeItem("mobiledomain");
-                    value = null;
-                }
                 if (value !== null && value !== undefined && value !== "") {
                     if (value !== window.location.hostname) {
                         window.location.replace("https://" + value);
                         return;
                     }
                 }
+                // console.log("get mobiledomain");
+                // var storage = window.localStorage;
+                // var value = storage.getItem("mobiledomain"); // Pass a key name to get its value.
+                // console.log(value);
+                // if (value == "aiotdev-frontend.openrpa.dk" || value == "slagelse.access-iot.com" || value == "slagelsedev.access-iot.com") {
+                //     storage.removeItem("mobiledomain");
+                //     value = null;
+                // }
+                // if (value !== null && value !== undefined && value !== "") {
+                //     if (value !== window.location.hostname) {
+                //         window.location.replace("https://" + value);
+                //         return;
+                //     }
+                // }
 
+            });
+        }
+        readfile(filename: string) {
+            return new Promise<string>(async (resolve, reject) => {
+                var win: any = window;
+                //var type = win.TEMPORARY;
+                var type = win.PERSISTENT;
+                var size = 5 * 1024 * 1024;
+                win.requestFileSystem(type, size, successCallback, errorCallback)
+                function successCallback(fs) {
+                    fs.root.getFile(filename, {}, function (fileEntry) {
+
+                        fileEntry.file(function (file) {
+                            var reader = new FileReader();
+                            reader.onloadend = function (e) {
+                                resolve(this.result as string);
+                            };
+                            reader.readAsText(file);
+                        }, errorCallback);
+                    }, errorCallback);
+                }
+                function errorCallback(error) {
+                    console.log(error);
+                    resolve();
+                }
+            });
+        }
+        writefile(filename: string, content: string) {
+            return new Promise<string>(async (resolve, reject) => {
+                var win: any = window;
+                //var type = win.TEMPORARY;
+                var type = win.PERSISTENT;
+                var size = 5 * 1024 * 1024;
+                win.requestFileSystem(type, size, successCallback, errorCallback)
+                function successCallback(fs) {
+                    fs.root.getFile(filename, { create: true }, function (fileEntry) {
+                        fileEntry.createWriter(function (fileWriter) {
+                            fileWriter.onwriteend = function (e) {
+                                console.log('Write completed.');
+                                resolve();
+                            };
+                            fileWriter.onerror = function (e) {
+                                console.error('Write failed: ' + e.toString());
+                                resolve();
+                            };
+                            var blob = new Blob([content], { type: 'text/plain' });
+                            fileWriter.write(blob);
+                        }, errorCallback);
+                    }, errorCallback);
+                }
+                function errorCallback(error) {
+                    console.error(error);
+                    resolve();
+                }
             });
         }
         scanForQRScanner() {
@@ -481,7 +544,7 @@ module openflow {
                 console.error(error);
             }
         }
-        QRScannerHit(err, contents) {
+        async QRScannerHit(err, contents) {
             try {
                 console.log("QRScannerHit");
                 if (err) {
@@ -493,11 +556,13 @@ module openflow {
                 QRScanner.hide();
                 QRScanner.destroy();
 
-                var storage = window.localStorage;
-                var value = storage.getItem("mobiledomain"); // Pass a key name to get its value.
-                storage.setItem("mobiledomain", contents) // Pass a key name and its value to add or update that key.
-                // storage.removeItem(key) // Pass a key name to remove that key from storage.
                 console.log("set mobiledomain to " + contents);
+                await this.writefile("mobiledomain.txt", contents);
+
+                // var storage = window.localStorage;
+                // var value = storage.getItem("mobiledomain"); // Pass a key name to get its value.
+                // storage.setItem("mobiledomain", contents) // Pass a key name and its value to add or update that key.
+                // // storage.removeItem(key) // Pass a key name to remove that key from storage.
 
                 window.location.replace("https://" + contents);
 
