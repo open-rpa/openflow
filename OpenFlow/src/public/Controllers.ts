@@ -431,30 +431,21 @@ module openflow {
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 setTimeout(this.scanForQRScanner.bind(this), 200);
 
-                console.log("get mobiledomain");
-                var value = await this.readfile("mobiledomain.txt");
-                console.log(value);
-                if (value !== null && value !== undefined && value !== "") {
-                    if (value !== window.location.hostname) {
-                        window.location.replace("https://" + value);
-                        return;
+                var domain = window.location.hostname;
+                try {
+                    console.log("get mobiledomain.txt");
+                    var value = await this.readfile("mobiledomain.txt");
+                    if (value !== null && value !== undefined && value !== "") {
+                        console.log(value);
+                        var config = JSON.parse(value);
+                        if (config.loginurl.indexOf(domain) === -1) {
+                            console.log("Login url different from current domain, redirect to " + config.url);
+                            window.location.replace(config.url);
+                            return;
+                        }
                     }
+                } catch (error) {
                 }
-                // console.log("get mobiledomain");
-                // var storage = window.localStorage;
-                // var value = storage.getItem("mobiledomain"); // Pass a key name to get its value.
-                // console.log(value);
-                // if (value == "aiotdev-frontend.openrpa.dk" || value == "slagelse.access-iot.com" || value == "slagelsedev.access-iot.com") {
-                //     storage.removeItem("mobiledomain");
-                //     value = null;
-                // }
-                // if (value !== null && value !== undefined && value !== "") {
-                //     if (value !== window.location.hostname) {
-                //         window.location.replace("https://" + value);
-                //         return;
-                //     }
-                // }
-
             });
         }
         readfile(filename: string) {
@@ -558,12 +549,6 @@ module openflow {
 
                 console.log("set mobiledomain to " + contents);
                 await this.writefile("mobiledomain.txt", contents);
-
-                // var storage = window.localStorage;
-                // var value = storage.getItem("mobiledomain"); // Pass a key name to get its value.
-                // storage.setItem("mobiledomain", contents) // Pass a key name and its value to add or update that key.
-                // // storage.removeItem(key) // Pass a key name to remove that key from storage.
-
                 window.location.replace("https://" + contents);
 
                 this.scanning = false;
