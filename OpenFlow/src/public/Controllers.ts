@@ -1141,8 +1141,6 @@ module openflow {
             if (this.instanceid !== null && this.instanceid !== undefined && this.instanceid !== "") {
                 var res = await this.api.Query("workflow_instances", { _id: this.instanceid }, null, { _created: -1 }, 1);
                 if (res.length > 0) { this.model = res[0]; } else { console.error(this.id + " workflow instances not found!"); return; }
-
-                // await this.SendOne(this.workflow.queue, this.message);
                 if (this.model.form !== "") {
                     var res = await this.api.Query("forms", { _id: this.model.form }, null, { _created: -1 }, 1);
                     if (res.length > 0) { this.form = res[0]; } else { console.error(this.id + " form not found!"); return; }
@@ -1152,6 +1150,7 @@ module openflow {
                 this.renderform();
             } else {
                 console.log("No instance id found, send empty message");
+                console.log("SendOne: " + this.workflow._id + " / " + this.workflow.queue);
                 await this.SendOne(this.workflow.queue, {});
                 this.loadData();
             }
@@ -1181,6 +1180,7 @@ module openflow {
             }
             var ele = $('.render-wrap');
             ele.hide();
+            console.log("SendOne: " + this.workflow._id + " / " + this.workflow.queue);
             await this.SendOne(this.workflow.queue, this.model);
             this.loadData();
         }
@@ -1195,10 +1195,11 @@ module openflow {
                 this.form.formData = JSON.parse((this.form.formData as any));
             }
             for (var i = 0; i < this.form.formData.length; i++) {
-                console.log(this.form.formData[i]);
-                this.form.formData[i].userData = [this.model.payload[this.form.formData[i].name]];
+                var value = this.model.payload[this.form.formData[i].name];
+                if (value == undefined || value == null) { value = ""; }
+                this.form.formData[i].userData = [value];
                 if (this.model.payload[this.form.formData[i].label] !== null && this.model.payload[this.form.formData[i].label] !== undefined) {
-                    this.form.formData[i].label = this.model.payload[this.form.formData[i].label];
+                    this.form.formData[i].label = value;
                 }
             }
             var formRenderOpts = {
@@ -1215,59 +1216,6 @@ module openflow {
             ele.show();
             this.formRender = ele.formRender(formRenderOpts);
         }
-
-        // async loadData(): Promise<void> {
-        //     this.loading = true;
-        //     this.charts = [];
-        //     // var res = await this.api.Query(this.collection, this.basequery, null, { _created: -1 }, 1);
-        //     // if (res.length > 0) { this.model = res[0]; } else { console.error(this.id + " instance not found!"); return; }
-        //     // res = await this.api.Query(this.collection, { _id: this.model.form }, null, { _created: -1 }, 1);
-        //     // if (res.length > 0) { this.form = res[0]; } else { console.error(this.model.form + " form not found!"); return; }
-
-        //     var res = await this.api.Query(this.collection, {}, null, { _created: -1 }, 1);
-        //     if (res.length > 0) { this.form = res[0]; } else { console.error(this.id + " not found!"); return; }
-
-        //     this.renderform();
-        // }
-        // async Save() {
-        //     console.log(this.formRender.userData);
-        //     this.model.userData = this.formRender.userData;
-        //     // this.model.formData = this.formBuilder.actions.getData(this.model.dataType);
-        //     // if (this.model._id) {
-        //     //     this.model = await this.api.Update(this.collection, this.model);
-        //     // } else {
-        //     //     this.model = await this.api.Insert(this.collection, this.model);
-        //     // }
-        //     // var formRenderOpts = {
-        //     //     formData: this.model.formData,
-        //     //     dataType: this.model.dataType
-        //     // };
-        //     // var ele: any = $('.render-wrap');
-        //     // ele.formRender(formRenderOpts);
-        // }
-        // async renderform() {
-        //     // https://www.npmjs.com/package/angular2-json-schema-form
-        //     // http://www.alpacajs.org/demos/form-builder/form-builder.html
-        //     // https://github.com/kevinchappell/formBuilder - https://formbuilder.online/ - https://kevinchappell.github.io/formBuilder/
-        //     var ele: any;
-        //     var roles: any = {};
-        //     this.WebSocketClient.user.roles.forEach(role => {
-        //         roles[role._id] = role.name;
-        //     });
-        //     var formRenderOpts = {
-        //         formData: this.form.formData,
-        //         dataType: this.form.dataType,
-        //         roles: roles,
-        //         disabledActionButtons: ['data', 'clear'],
-        //         onSave: this.Save.bind(this),
-        //     };
-        //     if (this.model.userData !== null && this.model.userData !== undefined && this.model.userData !== "") {
-        //         formRenderOpts.formData = this.model.userData;
-        //     }
-        //     ele = $('.render-wrap');
-        //     this.formRender = ele.formRender(formRenderOpts);
-        // }
-
     }
     export class jslogCtrl extends entitiesCtrl<openflow.Base> {
         public message: string = "";
