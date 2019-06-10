@@ -1,5 +1,8 @@
 {
     "sitename": "OpenFlow",
+    "workflow": "Arbejdsgang",
+    "workflows": "Arbejdsgange",
+    "rpaworkflows": "RPA Arbejdsgange",
     "home": "Hjem",
     "entities": "Objekter",
     "admin": "Admin",
