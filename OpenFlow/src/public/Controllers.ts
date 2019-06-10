@@ -1158,10 +1158,13 @@ module openflow {
         async SendOne(queuename: string, message: any): Promise<void> {
             var result: any = await this.api.QueueMessage(queuename, message);
             try {
-                // result = JSON.parse(result);
+                result = JSON.parse(result);
             } catch (error) {
             }
-            this.instanceid = result._id;
+            console.log(result);
+            if ((this.instanceid === undefined || this.instanceid === null) && (result !== null && result !== unescape)) {
+                this.instanceid = result._id;
+            }
         }
         async Save() {
             var userData: any[] = this.formRender.userData;
