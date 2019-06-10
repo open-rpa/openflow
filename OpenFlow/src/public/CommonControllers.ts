@@ -112,6 +112,7 @@ module openflow {
                 var msg: Message = new Message(); msg.command = "queuemessage"; msg.data = JSON.stringify(q);
                 this.messageQueue[q.correlationId] = new messagequeue(q, (msgresult: QueueMessage) => {
                     resolve(msgresult);
+                    delete this.messageQueue[q.correlationId];
                 });
                 await this.WebSocketClient.Send(msg);
             });
