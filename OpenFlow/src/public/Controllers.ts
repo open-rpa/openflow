@@ -1105,6 +1105,7 @@ module openflow {
         public workflow: openflow.Workflow;
         public form: openflow.Form;
         public instanceid: string;
+        public myid: string;
 
         constructor(
             public $scope: ng.IScope,
@@ -1114,6 +1115,7 @@ module openflow {
             public api: api
         ) {
             super($scope, $location, $routeParams, WebSocketClient, api);
+            this.myid = new Date().toISOString();
             console.debug("FormCtrl");
             this.collection = "workflow";
             this.basequery = {};
@@ -1122,9 +1124,9 @@ module openflow {
 
             this.basequery = { _id: this.id };
             WebSocketClient.onSignedin(async (user: TokenUser) => {
-                $(document).on('submit', '.render-wrap', () => {
-                    this.Save();
-                });
+                // $(document).on('submit', '.render-wrap', () => {
+                //     this.Save();
+                // });
                 await api.RegisterQueue();
                 if (this.id !== null && this.id !== undefined && this.id !== "") {
                     this.basequery = { _id: this.id };
@@ -1156,6 +1158,7 @@ module openflow {
             }
         }
         async SendOne(queuename: string, message: any): Promise<void> {
+            console.log("SendOne: queuename " + queuename + " / " + this.myid);
             var result: any = await this.api.QueueMessage(queuename, message);
             try {
                 result = JSON.parse(result);
@@ -1164,6 +1167,8 @@ module openflow {
             console.log(result);
             if ((this.instanceid === undefined || this.instanceid === null) && (result !== null && result !== unescape)) {
                 this.instanceid = result._id;
+                this.$location.path("/Form/" + this.id + "/" + this.instanceid);
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
         }
         async Save() {
@@ -1202,6 +1207,8 @@ module openflow {
                 if (value == undefined || value == null) { value = ""; }
                 this.form.formData[i].userData = [value];
                 if (this.model.payload[this.form.formData[i].label] !== null && this.model.payload[this.form.formData[i].label] !== undefined) {
+                    value = this.model.payload[this.form.formData[i].label];
+                    if (value == undefined || value == null) { value = ""; }
                     this.form.formData[i].label = value;
                 }
             }

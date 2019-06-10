@@ -12,6 +12,7 @@
         <th ng-click="ctrl.ToggleOrder('host')"><b translate lib="web">host</b></th>
         <th ng-click="ctrl.ToggleOrder('_created')"><b translate lib="web">created</b></th>
         <th></th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
@@ -25,6 +26,7 @@
         <td class="btn-cell">
           {{model.message}}
         </td>
+        <td>{{model.initiator}}</td>
       </tr>
     </tbody>
   </table>

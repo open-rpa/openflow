@@ -27,27 +27,83 @@ module openflow {
         static $inject = ["$rootScope", "$location", "WebSocketClient"];
         public messageQueue: IHashTable<messagequeue> = {};
         constructor(public $rootScope: ng.IRootScopeService, public $location, public WebSocketClient: WebSocketClient) {
-            var formerlog = console.log.bind(window.console);
-            var formerwarn = console.warn.bind(window.console);
-            var formerdebug = console.debug.bind(window.console);
-            console.log = (msg) => {
-                //formerlog.apply(console, { arguments: arguments });
-                formerlog(msg);
-                var log = { message: msg, _type: "message", host: window.location.hostname };
-                this.Insert("jslog", log).catch(() => { });
-            }
-            console.warn = (msg) => {
-                //formerwarn.apply(console, { arguments: arguments });
-                formerwarn(msg);
-                var log = { message: msg, _type: "warning", host: window.location.hostname };
-                this.Insert("jslog", log).catch(() => { });
-            }
-            console.debug = (msg) => {
-                //formerdebug.apply(console, { arguments: arguments });
-                formerdebug(msg);
-                var log = { message: msg, _type: "debug", host: window.location.hostname };
-                this.Insert("jslog", log).catch(() => { });
-            }
+            var isChrome = navigator.userAgent.indexOf("Chrome") !== -1;
+            var formerlog = console.log.bind(console);
+            var formerwarn = console.warn.bind(console);
+            var formerdebug = console.debug.bind(console);
+            var me = this;
+
+            ['log', 'warn', 'debug', 'error'].forEach((methodName) => {
+                //['error'].forEach((methodName) => {
+                const originalMethod = console[methodName];
+                console[methodName] = (...args) => {
+                    let initiator = 'unknown place';
+                    try {
+                        throw new Error();
+                    } catch (e) {
+                        if (typeof e.stack === 'string') {
+                            let isFirst = true;
+                            for (const line of e.stack.split('\n')) {
+                                const matches = line.match(/^\s+at\s+(.*)/);
+                                if (matches) {
+                                    if (!isFirst) { // first line - current function
+                                        // second line - caller (what we are looking for)
+                                        initiator = matches[1];
+                                        break;
+                                    }
+                                    isFirst = false;
+                                }
+                            }
+                        }
+                    }
+                    var _type = "message";
+                    if (methodName == "warn") _type = "warning";
+                    if (methodName == "debug") _type = "debug";
+                    if (methodName == "error") _type = "error";
+                    var a = args[0];
+                    try {
+                        if (a == "[object Object]") {
+                            a = JSON.stringify(args[0]);
+                        }
+                    } catch (error) {
+                    }
+                    var log = { message: a, _type: _type, host: window.location.hostname, initiator: initiator };
+                    this.Insert("jslog", log).catch(() => { });
+                    //originalMethod.apply(console, [...args, `\n  at ${initiator}`]);
+                    originalMethod.apply(console, [...args]);
+                };
+            });
+
+            // console.log = (msg) => {
+            //     var log = { message: msg, _type: "message", host: window.location.hostname };
+            //     this.Insert("jslog", log).catch(() => { });
+            // }
+
+            // (function () {
+            //     var oldLog = console.log;
+            //     console.log = function (msg) {
+            //         var log = { message: msg, _type: "message", host: window.location.hostname };
+            //         me.Insert("jslog", log).catch(() => { });
+            //         // oldLog.apply(console, arguments);
+            //         console.trace.apply(console, arguments);
+            //     };
+            // })();
+            // console.log = function (test) {
+            //     // var log = { message: arguments, _type: "message", host: window.location.hostname };
+            //     // me.Insert("jslog", log).catch(() => { });
+            //     console.warn(test)
+            //     return Function.prototype.bind.call(console.log, console, "test");
+            // }();
+            // console.warn = (msg) => {
+            //     var log = { message: msg, _type: "warning", host: window.location.hostname };
+            //     this.Insert("jslog", log).catch(() => { });
+            // }
+            // console.debug = (msg) => {
+            //     formerdebug.apply(console, { arguments: arguments });
+            //     // formerdebug(msg);
+            //     var log = { message: msg, _type: "debug", host: window.location.hostname };
+            //     this.Insert("jslog", log).catch(() => { });
+            // }
             window.onerror = (message, url, linenumber) => {
                 var log = { message: message, url: url, linenumber: linenumber, _type: "error", host: window.location.hostname };
                 this.Insert("jslog", log).catch(() => { });
@@ -110,6 +166,7 @@ module openflow {
                 q.correlationId = Math.random().toString(36).substr(2, 9);
                 q.queuename = queuename; q.data = JSON.stringify(data);
                 var msg: Message = new Message(); msg.command = "queuemessage"; msg.data = JSON.stringify(q);
+                console.log("_QueueMessage: correlationId " + q.correlationId);
                 this.messageQueue[q.correlationId] = new messagequeue(q, (msgresult: QueueMessage) => {
                     resolve(msgresult);
                     delete this.messageQueue[q.correlationId];

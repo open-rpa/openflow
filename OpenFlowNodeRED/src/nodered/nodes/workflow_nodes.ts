@@ -32,12 +32,12 @@ export class workflow_in_node {
     }
     async connect() {
         try {
+            await this.init();
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
             this.con = new amqp_consumer(Logger.instanse, this.host, this.config.queue);
             this.con.OnMessage = this.OnMessage.bind(this);
             await this.con.connect(false);
             this.node.status({ fill: "green", shape: "dot", text: "Connected" });
-            this.init();
         } catch (error) {
             NoderedUtil.HandleError(this, error);
         }
@@ -80,6 +80,7 @@ export class workflow_in_node {
                     NoderedUtil.HandleError(this, "Unknown workflow_instances id " + data.payload._id);
                     return;
                 }
+                result.name = res[0].name;
                 result._id = res[0]._id;
                 result._created = res[0]._created;
                 result._createdby = res[0]._createdby;
@@ -96,7 +97,7 @@ export class workflow_in_node {
                 //result = result.payload;
             } else {
                 var res2 = await NoderedUtil.InsertOne("workflow_instances",
-                    { _type: "instance", "queue": this.config.queue, "name": this.config.name, payload: data.payload, workflow: this.workflow._id }, 1, false, data.jwt);
+                    { _type: "instance", "queue": this.config.queue, "name": this.workflow.name, payload: data.payload, workflow: this.workflow._id }, 1, true, data.jwt);
                 //result = Object.assign(res2, result);
                 result = this.nestedassign(res2, result);
             }
