@@ -19,6 +19,7 @@ export class rpa_detector_node {
         RED.nodes.createNode(this, config);
         try {
             this.node = this;
+            this.node.status({});
             this.node.on("close", this.onclose);
             this.host = Config.amqp_url;
             this.connect();
@@ -77,6 +78,7 @@ export class rpa_workflow_node {
         RED.nodes.createNode(this, config);
         try {
             this.node = this;
+            this.node.status({});
             this.node.on("input", this.oninput);
             this.node.on("close", this.onclose);
             this.host = Config.amqp_url;

@@ -45,6 +45,8 @@ module openflow {
         public realm: string;
         public firebasetoken: string;
         public onesignalid: string;
+        public device: any;
+        public gpslocation: any;
         public username: string;
         public password: string;
         public user: TokenUser;

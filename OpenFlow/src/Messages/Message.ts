@@ -21,6 +21,7 @@ import { CloseQueueMessage } from "./CloseQueueMessage";
 import { RegisterQueueMessage } from "./RegisterQueueMessage";
 import { QueueMessage } from "./QueueMessage";
 import { RegisterUserMessage } from "./RegisterUserMessage";
+import { UpdateManyMessage } from "./UpdateManyMessage";
 
 export class Message {
     public id: string;
@@ -87,6 +88,9 @@ export class Message {
                     break;
                 case "updateone":
                     this.UpdateOne(cli);
+                    break;
+                case "updatemany":
+                    this.UpdateMany(cli);
                     break;
                 case "insertorupdateone":
                     this.InsertOrUpdateOne(cli);
@@ -248,8 +252,13 @@ export class Message {
         var msg: InsertOneMessage<Base> = InsertOneMessage.assign(this.data);
         try {
             var jwt = cli.jwt;
+            var w: number = 0;
+            var j: boolean = false;
+            if ((msg.w as any) !== undefined && (msg.w as any) !== null) w = msg.w;
+            if ((msg.j as any) !== undefined && (msg.j as any) !== null) j = msg.j;
+
             if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
-            msg.result = await Config.db.InsertOne(msg.item, msg.collectionname, jwt);
+            msg.result = await Config.db.InsertOne(msg.item, msg.collectionname, w, j, jwt);
         } catch (error) {
             msg.error = error.toString();
             cli._logger.error(error);
@@ -266,9 +275,10 @@ export class Message {
         this.Reply();
         var msg: UpdateOneMessage<Base> = UpdateOneMessage.assign(this.data);
         try {
-            var jwt = cli.jwt;
-            if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
-            msg.result = await Config.db.UpdateOne(msg.item, msg.collectionname, jwt);
+            if (msg.jwt === null || msg.jwt === undefined) { msg.jwt = cli.jwt; }
+            if ((msg.w as any) === undefined || (msg.w as any) === null) msg.w = 0;
+            if ((msg.j as any) === undefined || (msg.j as any) === null) msg.j = false;
+            msg = await Config.db.UpdateOne(msg);
         } catch (error) {
             msg.error = error.toString();
             cli._logger.error(error);
@@ -281,13 +291,35 @@ export class Message {
         }
         this.Send(cli);
     }
+    private async UpdateMany(cli: WebSocketClient): Promise<void> {
+        this.Reply();
+        var msg: UpdateManyMessage<Base> = UpdateManyMessage.assign(this.data);
+        try {
+            if (msg.jwt === null || msg.jwt === undefined) { msg.jwt = cli.jwt; }
+            if ((msg.w as any) === undefined || (msg.w as any) === null) msg.w = 0;
+            if ((msg.j as any) === undefined || (msg.j as any) === null) msg.j = false;
+            msg = await Config.db.UpdateMany(msg);
+        } catch (error) {
+            msg.error = error.toString();
+            cli._logger.error(error);
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            msg.error = error.toString();
+        }
+        this.Send(cli);
+    }
+
     private async InsertOrUpdateOne(cli: WebSocketClient): Promise<void> {
         this.Reply();
         var msg: InsertOrUpdateOneMessage<Base> = InsertOrUpdateOneMessage.assign(this.data);
         try {
-            var jwt = cli.jwt;
-            if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
-            msg.result = await Config.db.InsertOrUpdateOne(msg.item, msg.collectionname, msg.uniqeness, jwt);
+            if (msg.jwt === null || msg.jwt === undefined) { msg.jwt = cli.jwt; }
+            if ((msg.w as any) === undefined || (msg.w as any) === null) msg.w = 0;
+            if ((msg.j as any) === undefined || (msg.j as any) === null) msg.j = false;
+            msg = await Config.db.InsertOrUpdateOne(msg);
         } catch (error) {
             msg.error = error.toString();
             cli._logger.error(error);
@@ -310,6 +342,7 @@ export class Message {
         } catch (error) {
             msg.error = error.toString();
             cli._logger.error(error);
+            //cli._logger.error(JSON.stringify(error));
         }
         try {
             this.data = JSON.stringify(msg);
@@ -382,7 +415,12 @@ export class Message {
                 }
                 if ((msg.onesignalid != null && msg.onesignalid != undefined && msg.onesignalid != "") ||
                     (msg.onesignalid != null && msg.onesignalid != undefined && msg.onesignalid != "")) {
-                    await user.Save(msg.jwt);
+                }
+                if (msg.gpslocation != null && msg.gpslocation != undefined && msg.gpslocation != "") {
+                    user.gpslocation = msg.gpslocation;
+                }
+                if (msg.device != null && msg.device != undefined && msg.device != "") {
+                    user.device = msg.device;
                 }
                 Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip);
                 msg.jwt = Crypt.createToken(user);
@@ -392,8 +430,10 @@ export class Message {
                     cli.jwt = msg.jwt;
                     cli.user = user;
                 } else {
-                    cli._logger.debug(tuser.username + " was validted in using " + type);
+                    cli._logger.debug(tuser.username + " was validated in using " + type);
                 }
+                user.lastseen = new Date(new Date().toISOString());
+                await user.Save(TokenUser.rootToken());
             }
         } catch (error) {
             msg.error = error.toString();

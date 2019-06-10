@@ -3,6 +3,13 @@ var gulp = require("gulp");
 var shell = require("gulp-shell");
 var replace = require('gulp-replace');
 
+
+var OpenFlowFiles = ["./OpenFlow/src/public/**/*.html", "./OpenFlow/src/public/**/*.css", "./OpenFlow/src/public/**/*.js", "./OpenFlow/src/public/**/*.json",
+    "./OpenFlow/src/public/**/*.ico", "./OpenFlow/src/public/**/*.eot", "./OpenFlow/src/public/**/*.svg", "./OpenFlow/src/public/**/*.ttf",
+    "./OpenFlow/src/public/**/*.woff", "./OpenFlow/src/public/**/*.png"];
+var NodeREDHTMLFiles = ["./OpenFlowNodeRED/src/nodered/nodes/**/*.html"]
+
+
 var destination = "./dist/public";
 var version = "0.0.1";
 if (fs.existsSync("../VERSION")) {
@@ -10,21 +17,19 @@ if (fs.existsSync("../VERSION")) {
 } else if (fs.existsSync("VERSION")) {
     version = fs.readFileSync("VERSION", "utf8");
 }
-gulp.task("copyfiles1", function() {
+gulp.task("copyfiles1", function () {
     console.log("copyfiles1");
-    return gulp.src(["OpenFlow/src/public/**/*.html", "OpenFlow/src/public/**/*.css", 
-    "OpenFlow/src/public/**/*.js", "OpenFlow/src/public/**/*.json", "OpenFlow/src/public/**/*.ico", "OpenFlow/src/public/**/*.png"])
+    return gulp.src(OpenFlowFiles)
         .pipe(gulp.dest(destination));
 });
-gulp.task("copyfiles2", function() {
+gulp.task("copyfiles2", function () {
     console.log("copyfiles2");
-    return gulp.src(["OpenFlowNodeRED/src/nodered/nodes/*.html"])
+    return gulp.src(NodeREDHTMLFiles)
         .pipe(gulp.dest("OpenFlowNodeRED/dist/nodered/nodes"));
 });
-gulp.task("watch", function() {
-    gulp.watch(["OpenFlow/src/public/**/*.html", "OpenFlow/src/public/**/*.css", "OpenFlow/src/public/**/*.js", "OpenFlow/src/public/**/*.json", 
-    "OpenFlow/src/public/**/*.ico", , "OpenFlow/src/public/**/*.png"], gulp.series("copyfiles1"));
-    return gulp.watch(["OpenFlowNodeRED/src/nodered/nodes/**/*.html"], gulp.series("copyfiles2"));
+gulp.task("watch", function () {
+    gulp.watch(OpenFlowFiles, gulp.series("copyfiles1"));
+    return gulp.watch(NodeREDHTMLFiles, gulp.series("copyfiles2"));
 });
 
 // gulp.task("compose", shell.task([
@@ -57,20 +62,20 @@ gulp.task("compose", shell.task([
     'docker push cloudhack/openflow:' + version
 ]));
 
-gulp.task("bumpflow", function() {
+gulp.task("bumpflow", function () {
     console.log('cloudhack/openflow:' + version);
     return gulp.src(["config/**/controllers.yml"])
         .pipe(replace(/openflow:\d+(\.\d+)+/g, 'openflow:' + version))
         .pipe(gulp.dest("config"));
 });
-gulp.task("bumpnodered", function() {
+gulp.task("bumpnodered", function () {
     console.log('cloudhack/openflownodered:' + version);
     return gulp.src(["config/**/controllers.yml"])
         .pipe(replace(/openflownodered:\d+(\.\d+)+/g, 'openflownodered:' + version))
         .pipe(gulp.dest("config"));
 });
 
-gulp.task("bumpaiotfrontend", function() {
+gulp.task("bumpaiotfrontend", function () {
     var version = "0.0.1";
     version = fs.readFileSync("../aiot-frontend/VERSION", "utf8");
 

@@ -14,6 +14,7 @@ import { InsertOneMessage } from "./Messages/InsertOneMessage";
 import { UpdateOneMessage } from "./Messages/UpdateOneMessage";
 import { DeleteOneMessage } from "./Messages/DeleteOneMessage";
 import { Base } from "./base";
+import { UpdateManyMessage } from "./Messages/UpdateManyMessage";
 
 interface IHashTable<T> {
     [key: string]: T;
@@ -118,6 +119,7 @@ export class WebSocketClient {
         }
     }
     public async sendToQueue(msg: QueueMessage) {
+        if (msg.queuename === null || msg.queuename === undefined || msg.queuename === "") { throw new Error("sendToQueue, queuename is mandatory") }
         if (this.consumers.length === 0) { throw new Error("No consumers for client available to send message through") }
         var result = this.consumers[0].sendToQueue(msg.queuename, msg.correlationId, { payload: msg.data, jwt: this.jwt });
     }
@@ -164,6 +166,10 @@ export class WebSocketClient {
         });
         ids.forEach(id => {
             var msgs: SocketMessage[] = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id === id; });
+            if (this._receiveQueue.length > 100) {
+                this._logger.error("_receiveQueue containers more than 100 messages for id '" + id + "' so discarding all !!!!!!!");
+                this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
+            }
             msgs.sort((a, b) => a.index - b.index);
             var first: SocketMessage = msgs[0];
             if (first.count === msgs.length) {
@@ -265,15 +271,12 @@ export class WebSocketClient {
         var q: MapReduceMessage<any> = new MapReduceMessage(map, reduce, finalize, query, out);
         q.collectionname = collection; q.scope = scope;
         var msg: Message = new Message(); msg.command = "mapreduce"; q.out = out;
-
-        // msg.data = JSON.stringify(q);
         msg.data = JSONfn.stringify(q);
         q = await this.Send<MapReduceMessage<any>>(msg);
         return q.result;
     }
     async Insert<T extends Base>(collection: string, model: any): Promise<any> {
         var q: InsertOneMessage<T> = new InsertOneMessage();
-        // model.name = "Find me " + Math.random().toString(36).substr(2, 9);
         q.collectionname = collection; q.item = model;
         var msg: Message = new Message(); msg.command = "insertone"; msg.data = JSONfn.stringify(q);
         q = await this.Send<InsertOneMessage<T>>(msg);
@@ -281,10 +284,16 @@ export class WebSocketClient {
     }
     async Update<T extends Base>(collection: string, model: any): Promise<any> {
         var q: UpdateOneMessage<T> = new UpdateOneMessage();
-        // model.name = "Find me " + Math.random().toString(36).substr(2, 9);
         q.collectionname = collection; q.item = model;
         var msg: Message = new Message(); msg.command = "updateone"; msg.data = JSONfn.stringify(q);
         q = await this.Send<UpdateOneMessage<T>>(msg);
+        return q.result;
+    }
+    async UpdateMany<T extends Base>(collection: string, query: any, document: any): Promise<any> {
+        var q: UpdateManyMessage<T> = new UpdateManyMessage();
+        q.collectionname = collection; q.item = document; q.query = query;
+        var msg: Message = new Message(); msg.command = "updateone"; msg.data = JSONfn.stringify(q);
+        q = await this.Send<UpdateManyMessage<T>>(msg);
         return q.result;
     }
     async Delete(collection: string, id: any): Promise<void> {
@@ -292,8 +301,6 @@ export class WebSocketClient {
         q.collectionname = collection; q._id = id;
         var msg: Message = new Message(); msg.command = "deleteone"; msg.data = JSON.stringify(q);
         q = await this.Send<DeleteOneMessage>(msg);
-        // this.models = this.models.filter(function (m: any):boolean { return m._id!==model._id;});
-        // if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 
 

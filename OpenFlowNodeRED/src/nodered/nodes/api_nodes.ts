@@ -1,6 +1,6 @@
 import * as RED from "node-red";
 import { Red } from "node-red";
-import { TokenUser, SigninMessage, Message, QueryMessage, mapFunc, reduceFunc, finalizeFunc } from "../../Message";
+import { TokenUser, SigninMessage, Message, QueryMessage, mapFunc, reduceFunc, finalizeFunc, UpdateOneMessage } from "../../Message";
 import { Crypt } from "../../Crypt";
 import { WebSocketClient } from "../../WebSocketClient";
 import { NoderedUtil } from "./NoderedUtil";
@@ -18,6 +18,7 @@ export class api_credentials {
     constructor(public config: Iapi_get_jwt) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.node.status({});
         if (this.node.credentials && this.node.credentials.hasOwnProperty("username")) {
             this.username = this.node.credentials.username;
         }
@@ -35,6 +36,7 @@ export class api_get_jwt {
     constructor(public config: Iapi_get_jwt) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
     }
@@ -92,6 +94,7 @@ export class api_get {
     constructor(public config: Iapi_get) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
     }
@@ -143,6 +146,8 @@ export interface Iapi_add {
     collection: string;
     inputfield: string;
     resultfield: string;
+    writeconcern: number;
+    journal: boolean;
 }
 export class api_add {
     public node: Red = null;
@@ -150,6 +155,7 @@ export class api_add {
     constructor(public config: Iapi_add) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
     }
@@ -162,6 +168,11 @@ export class api_add {
             if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
             if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { this.config.inputfield = msg.inputfield; }
             if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { this.config.resultfield = msg.resultfield; }
+            if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
+            if (!NoderedUtil.IsNullEmpty(msg.journal)) { this.config.journal = msg.journal; }
+
+            if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
+            if ((this.config.journal as any) === undefined || (this.config.journal as any) === null) this.config.journal = false;
 
             var data: any[] = [];
             var _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
@@ -177,7 +188,7 @@ export class api_add {
                 if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
                     element._type = this.config.entitytype;
                 }
-                Promises.push(NoderedUtil.InsertOne(this.config.collection, element, msg.jwt));
+                Promises.push(NoderedUtil.InsertOne(this.config.collection, element, this.config.writeconcern, this.config.journal, msg.jwt));
             }
             data = await Promise.all(Promises.map(p => p.catch(e => e)));
 
@@ -207,6 +218,8 @@ export interface Iapi_update {
     collection: string;
     inputfield: string;
     resultfield: string;
+    writeconcern: number;
+    journal: boolean;
 }
 export class api_update {
     public node: Red = null;
@@ -214,6 +227,7 @@ export class api_update {
     constructor(public config: Iapi_update) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
     }
@@ -226,6 +240,11 @@ export class api_update {
             if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
             if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { this.config.inputfield = msg.inputfield; }
             if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { this.config.resultfield = msg.resultfield; }
+            if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
+            if (!NoderedUtil.IsNullEmpty(msg.journal)) { this.config.journal = msg.journal; }
+
+            if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
+            if ((this.config.journal as any) === undefined || (this.config.journal as any) === null) this.config.journal = false;
 
             var data: any[] = [];
             var _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
@@ -241,7 +260,7 @@ export class api_update {
                 if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
                     element._type = this.config.entitytype;
                 }
-                Promises.push(NoderedUtil.UpdateOne(this.config.collection, element, msg.jwt));
+                Promises.push(NoderedUtil._UpdateOne(this.config.collection, null, element, this.config.writeconcern, this.config.journal, msg.jwt));
             }
             data = await Promise.all(Promises.map(p => p.catch(e => e)));
 
@@ -271,6 +290,8 @@ export interface Iapi_addorupdate {
     inputfield: string;
     resultfield: string;
     uniqeness: string;
+    writeconcern: number;
+    journal: boolean;
 }
 export class api_addorupdate {
     public node: Red = null;
@@ -278,6 +299,7 @@ export class api_addorupdate {
     constructor(public config: Iapi_addorupdate) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
     }
@@ -291,6 +313,11 @@ export class api_addorupdate {
             if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { this.config.inputfield = msg.inputfield; }
             if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { this.config.resultfield = msg.resultfield; }
             if (!NoderedUtil.IsNullEmpty(msg.uniqeness)) { this.config.uniqeness = msg.uniqeness; }
+            if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
+            if (!NoderedUtil.IsNullEmpty(msg.journal)) { this.config.journal = msg.journal; }
+
+            if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
+            if ((this.config.journal as any) === undefined || (this.config.journal as any) === null) this.config.journal = false;
 
 
             var data: any[] = [];
@@ -307,7 +334,7 @@ export class api_addorupdate {
                 if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
                     element._type = this.config.entitytype;
                 }
-                Promises.push(NoderedUtil.InsertOrUpdateOne(this.config.collection, element, this.config.uniqeness, msg.jwt));
+                Promises.push(NoderedUtil.InsertOrUpdateOne(this.config.collection, element, this.config.uniqeness, this.config.writeconcern, this.config.journal, msg.jwt));
             }
             data = await Promise.all(Promises.map(p => p.catch(e => e)));
 
@@ -343,6 +370,7 @@ export class api_delete {
     constructor(public config: Iapi_delete) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
     }
@@ -407,6 +435,7 @@ export class api_map_reduce {
     constructor(public config: Iapi_map_reduce) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
     }
@@ -449,6 +478,85 @@ export async function get_api_roles(req, res) {
         { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
     res.json(result);
 }
+
+
+
+
+
+
+export interface Iapi_updatedocument {
+    name: string;
+    writeconcern: number;
+    journal: boolean;
+    action: string;
+    query: string;
+    updatedocument: string;
+    collection: string;
+}
+export class api_updatedocument {
+    public node: Red = null;
+
+    constructor(public config: Iapi_updatedocument) {
+        RED.nodes.createNode(this, config);
+        this.node = this;
+        this.node.status({});
+        this.node.on("input", this.oninput);
+        this.node.on("close", this.onclose);
+    }
+    async oninput(msg: any) {
+        try {
+            this.node.status({});
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
+
+            if (!NoderedUtil.IsNullUndefinded(msg.name)) { this.config.name = msg.name; }
+            if (!NoderedUtil.IsNullUndefinded(msg.action)) { this.config.action = msg.action; }
+            if (!NoderedUtil.IsNullUndefinded(msg.query)) { this.config.query = msg.query; }
+            if (!NoderedUtil.IsNullUndefinded(msg.updatedocument)) { this.config.updatedocument = msg.updatedocument; }
+            if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
+            if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
+            if (!NoderedUtil.IsNullEmpty(msg.journal)) { this.config.journal = msg.journal; }
+
+            if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
+            if ((this.config.journal as any) === undefined || (this.config.journal as any) === null) this.config.journal = false;
+
+            if (!NoderedUtil.IsNullEmpty(this.config.query) && NoderedUtil.IsString(this.config.query)) {
+                this.config.query = JSON.parse(this.config.query);
+            }
+            if (!NoderedUtil.IsNullEmpty(this.config.updatedocument) && NoderedUtil.IsString(this.config.updatedocument)) {
+                this.config.updatedocument = JSON.parse(this.config.updatedocument);
+            }
+
+            this.node.status({ fill: "blue", shape: "dot", text: "Running Update Document" });
+            if (this.config.action === "updateOne") {
+                var q: UpdateOneMessage = new UpdateOneMessage(); q.collectionname = this.config.collection;
+                q.item = (this.config.updatedocument as any); q.jwt = msg.jwt;
+                q.w = this.config.writeconcern; q.j = this.config.journal; q.query = (this.config.query as any);
+                q = await NoderedUtil.UpdateOne(q);
+                msg.payload = q.result;
+                msg.opresult = q.opresult;
+            } else {
+                // var result = await NoderedUtil.UpdateMany(this.config.collection, this.config.query, this.config.updatedocument, this.config.writeconcern, this.config.journal, msg.jwt);
+                // msg.payload = result;
+                var q: UpdateOneMessage = new UpdateOneMessage(); q.collectionname = this.config.collection;
+                q.item = (this.config.updatedocument as any); q.jwt = msg.jwt;
+                q.w = this.config.writeconcern; q.j = this.config.journal; q.query = (this.config.query as any);
+                q = await NoderedUtil.UpdateMany(q);
+                msg.payload = q.result;
+                msg.opresult = q.opresult;
+            }
+            this.node.send(msg);
+            this.node.status({});
+        } catch (error) {
+            NoderedUtil.HandleError(this, error);
+        }
+    }
+    onclose() {
+    }
+}
+
+
+
+
 
 
 

@@ -5,6 +5,7 @@ import { json } from "body-parser";
 import { DatabaseConnection } from "./DatabaseConnection";
 import { Provider } from "./LoginProvider";
 import { TokenUser } from "./TokenUser";
+import { Logger } from "./Logger";
 
 export class Config {
     public static db: DatabaseConnection = null;
@@ -30,6 +31,7 @@ export class Config {
     public static mongodb_db: string = Config.getEnv("mongodb_db", "openflow");
 
     public static aes_secret: string = Config.getEnv("aes_secret", "");
+    public static skip_history_collections: string = Config.getEnv("skip_history_collections", "");
 
     public static baseurl(): string {
         if (Config.tls_crt != '' && Config.tls_key != '') {
@@ -63,7 +65,7 @@ export class Config {
         }, {
                 retries: 50,
                 onRetry: function (error: Error, count: number): void {
-                    console.log("retry " + count + " error " + error.message + " getting " + url);
+                    Logger.instanse.warn("retry " + count + " error " + error.message + " getting " + url);
                 }
             });
         return metadata;

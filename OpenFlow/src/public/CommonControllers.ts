@@ -11,12 +11,47 @@ module openflow {
     export type mapFunc = () => void;
     export type reduceFunc = (key: string, values: any[]) => any;
     export type finalizeFunc = (key: string, value: any) => any;
-
+    const getCircularReplacer = () => {
+        const seen = new WeakSet();
+        return (key, value) => {
+            if (typeof value === "object" && value !== null) {
+                if (seen.has(value)) {
+                    return;
+                }
+                seen.add(value);
+            }
+            return value;
+        };
+    };
     export class api {
         static $inject = ["$rootScope", "$location", "WebSocketClient"];
         public messageQueue: IHashTable<messagequeue> = {};
         constructor(public $rootScope: ng.IRootScopeService, public $location, public WebSocketClient: WebSocketClient) {
-
+            var formerlog = console.log.bind(window.console);
+            var formerwarn = console.warn.bind(window.console);
+            var formerdebug = console.debug.bind(window.console);
+            console.log = (msg) => {
+                //formerlog.apply(console, { arguments: arguments });
+                formerlog(msg);
+                var log = { message: msg, _type: "message", host: window.location.hostname };
+                this.Insert("jslog", log).catch(() => { });
+            }
+            console.warn = (msg) => {
+                //formerwarn.apply(console, { arguments: arguments });
+                formerwarn(msg);
+                var log = { message: msg, _type: "warning", host: window.location.hostname };
+                this.Insert("jslog", log).catch(() => { });
+            }
+            console.debug = (msg) => {
+                //formerdebug.apply(console, { arguments: arguments });
+                formerdebug(msg);
+                var log = { message: msg, _type: "debug", host: window.location.hostname };
+                this.Insert("jslog", log).catch(() => { });
+            }
+            window.onerror = (message, url, linenumber) => {
+                var log = { message: message, url: url, linenumber: linenumber, _type: "error", host: window.location.hostname };
+                this.Insert("jslog", log).catch(() => { });
+            }
             var cleanup = $rootScope.$on('queuemessage', (event, data: QueueMessage) => {
                 if (event && data) { }
                 if (this.messageQueue[data.correlationId] !== undefined) {
@@ -240,6 +275,7 @@ module openflow {
     }
 
     export class entitiesCtrl<T> {
+        public loading: boolean = false;
         public basequery: any = {};
         public baseprojection: any = {};
         public collection: string = "entities";
@@ -262,15 +298,11 @@ module openflow {
         ) {
         }
         async loadData(): Promise<void> {
-            var q: QueryMessage = new QueryMessage();
-            q.collectionname = this.collection; q.query = this.basequery;
-            q.projection = this.baseprojection; q.orderby = this.orderby;
-            var msg: Message = new Message(); msg.command = "query"; msg.data = JSON.stringify(q);
-            q = await this.WebSocketClient.Send<QueryMessage>(msg);
-            this.models = q.result;
+            this.loading = true;
+            this.models = await this.api.Query(this.collection, this.basequery, this.baseprojection, this.orderby);
+            this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
-
 
         ToggleOrder(field: string) {
             if (this.orderby[field] == undefined) {
@@ -290,6 +322,7 @@ module openflow {
 
 
     export class entityCtrl<T> {
+        public loading: boolean = false;
         public basequery: any = {};
         public baseprojection: any = {};
         public collection: string = "entities";
@@ -315,13 +348,11 @@ module openflow {
             this.basequery = { _id: this.id };
         }
         async loadData(): Promise<void> {
-            var q: QueryMessage = new QueryMessage();
-            q.collectionname = this.collection; q.query = this.basequery;
-            q.projection = this.baseprojection; q.top = 1;
-            var msg: Message = new Message(); msg.command = "query"; msg.data = JSON.stringify(q);
-            q = await this.WebSocketClient.Send<QueryMessage>(msg);
-            if (q.result.length > 0) { this.model = q.result[0]; }
+            this.loading = true;
+            var result = await this.api.Query(this.collection, this.basequery, this.baseprojection, null, 1);
+            if (result.length > 0) { this.model = result[0]; }
             this.keys = Object.keys(this.model);
+            this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
     }

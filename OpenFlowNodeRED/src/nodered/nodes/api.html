@@ -164,6 +164,23 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         <input id="node-input-resultfield" type="hidden">
     </div>
     <div class="form-row">
+        <label><i class="fa fa-list"></i> Write Concern</label>
+        <select id="node-input-writeconcern">
+            <option value="0">Requests no acknowledgment</option>
+            <option value="majority">Requests majority</option>
+            <option value="1">Requests acknowledgment from 1</option>
+            <option value="2">Requests acknowledgment from 2</option>
+            <option value="3">Requests acknowledgment from 3</option>
+        </select>
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-list"></i> Journal</label>
+        <select id="node-input-journal">
+            <option value="false">In memory</option>
+            <option value="true">Written to the journal</option>
+        </select>
+    </div>
+    <div class="form-row">
         <label><i class="fa fa-tag"></i> Name</label>
         <input type="text" id="node-input-name" placeholder="Name">
     </div>
@@ -178,6 +195,8 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         defaults: {
             name: { value: "" },
             entitytype: { value: "" },
+            writeconcern: { value: "0", required: true },
+            journal: { value: "false", required: true },
             collection: { value: "entities", required: true },
             inputfield: { value: "payload", required: true },
             resultfield: { value: "payload", required: true }
@@ -228,6 +247,23 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         <input id="node-input-resultfield" type="hidden">
     </div>
     <div class="form-row">
+        <label><i class="fa fa-list"></i> Write Concern</label>
+        <select id="node-input-writeconcern">
+            <option value="0">Requests no acknowledgment</option>
+            <option value="majority">Requests majority</option>
+            <option value="1">Requests acknowledgment from 1</option>
+            <option value="2">Requests acknowledgment from 2</option>
+            <option value="3">Requests acknowledgment from 3</option>
+        </select>
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-list"></i> Journal</label>
+        <select id="node-input-journal">
+            <option value="false">In memory</option>
+            <option value="true">Written to the journal</option>
+        </select>
+    </div>
+    <div class="form-row">
         <label><i class="fa fa-tag"></i> Name</label>
         <input type="text" id="node-input-name" placeholder="Name">
     </div>
@@ -242,6 +278,8 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         defaults: {
             name: { value: "" },
             entitytype: { value: "" },
+            writeconcern: { value: "0", required: true },
+            journal: { value: "false", required: true },
             collection: { value: "entities", required: true },
             inputfield: { value: "payload", required: true },
             resultfield: { value: "payload", required: true }
@@ -297,6 +335,23 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         <input id="node-input-resultfield" type="hidden">
     </div>
     <div class="form-row">
+        <label><i class="fa fa-list"></i> Write Concern</label>
+        <select id="node-input-writeconcern">
+            <option value="0">Requests no acknowledgment</option>
+            <option value="majority">Requests majority</option>
+            <option value="1">Requests acknowledgment from 1</option>
+            <option value="2">Requests acknowledgment from 2</option>
+            <option value="3">Requests acknowledgment from 3</option>
+        </select>
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-list"></i> Journal</label>
+        <select id="node-input-journal">
+            <option value="false">In memory</option>
+            <option value="true">Written to the journal</option>
+        </select>
+    </div>
+    <div class="form-row">
         <label><i class="fa fa-tag"></i> Name</label>
         <input type="text" id="node-input-name" placeholder="Name">
     </div>
@@ -316,6 +371,8 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         defaults: {
             name: { value: "" },
             entitytype: { value: "" },
+            writeconcern: { value: "0", required: true },
+            journal: { value: "false", required: true },
             collection: { value: "entities", required: true },
             inputfield: { value: "payload", required: true },
             resultfield: { value: "payload", required: true },
@@ -398,6 +455,9 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 
     });
 </script>
+
+
+
 
 
 
@@ -882,4 +942,146 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         }
 
     });
+</script>
+
+
+
+
+<script type="text/x-red" data-template-name="api updatedocument">
+    <div class="form-row">
+        <label><i class="fa fa-tag"></i> Query</label>
+        <input type="text" id="node-input-query" placeholder="Mongo Query">
+    </div>
+    <div class="form-row" style="margin-bottom: 0px;">
+        <label for="node-input-updatedocument"><i class="fa fa-wrench"></i> Update document</label>
+        <input type="hidden" id="node-input-updatedocument" autofocus="autofocus">
+        <input type="hidden" id="node-input-noerr-updatedocument">
+    </div>
+    <div class="form-row node-text-editor-row" style="position:relative">
+        <div style="position: absolute; right:0; bottom:calc(100% + 3px);"><button id="node-function-expand-js-updatedocument" class="editor-button editor-button-small"><i class="fa fa-expand"></i></button></div>
+        <div style="height: 100px; min-height:100px;" class="node-text-editor" id="node-input-updatedocument-editor" ></div>
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-tag"></i> Collection</label>
+        <input type="text" id="node-input-collection" placeholder="Collection">
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-list"></i> Action</label>
+        <select id="node-input-action">
+            <option value="updateOne">updateOne</option>
+            <option value="updateMany">updateMany</option>
+        </select>
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-list"></i> Write Concern</label>
+        <select id="node-input-writeconcern">
+            <option value="0">Requests no acknowledgment</option>
+            <option value="majority">Requests majority</option>
+            <option value="1">Requests acknowledgment from 1</option>
+            <option value="2">Requests acknowledgment from 2</option>
+            <option value="3">Requests acknowledgment from 3</option>
+        </select>
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-list"></i> Journal</label>
+        <select id="node-input-journal">
+            <option value="false">In memory</option>
+            <option value="true">Written to the journal</option>
+        </select>
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>
+<script type="text/x-red" data-help-name="api updatedocument">
+    <p>Send an Update document to collection ( updates parts of one or more document) 
+        read more about the 
+        <a tagret="_blank" href="https://docs.mongodb.com/manual/tutorial/update-documents/">
+        concept here</a> and update <a tagret="_blank" href="https://docs.mongodb.com/manual/reference/operator/update/">operators here</a>
+    </p>
+</script>
+<script type="text/javascript">
+    RED.nodes.registerType('api updatedocument', {
+        category: 'api',
+        color: "#a6bbcf",
+        defaults: {
+            name: { value: "" },
+            writeconcern: { value: "0", required: true },
+            journal: { value: "false", required: true },
+            action: { value: "updateOne", required: true },
+            query: { value: "", required: true },
+            updatedocument: { value: "{ \"$inc\": { \"count\": 1}}", required: true },
+            collection: { value: "entities", required: true }
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: "bridge.png",
+        label: function () {
+            return this.name || "api update";
+        },
+        labelStyle: function () {
+            return this.name ? "node_label_italic" : "";
+        },
+        oneditprepare: function () {
+            this.updatedocumenteditor = RED.editor.createEditor({
+                id: 'node-input-updatedocument-editor',
+                mode: 'ace/mode/json',
+                value: $("#node-input-updatedocument").val(),
+                globals: {
+                    msg: false,
+                    context: false,
+                    RED: false,
+                    util: true,
+                    flow: false,
+                    global: false,
+                    console: false,
+                    Buffer: true,
+                    setTimeout: false,
+                    clearTimeout: false,
+                    setInterval: false,
+                    clearInterval: false
+                }
+            });
+            $("#node-function-expand-js-updatedocument").click(function (e) {
+                e.preventDefault();
+                var value = that.updatedocumenteditor.getValue();
+                RED.editor.editJavaScript({
+                    value: value,
+                    width: "Infinity",
+                    cursor: that.updatedocumenteditor.getCursorPosition(),
+                    mode: "ace/mode/nrjavascript",
+                    complete: function (v, cursor) {
+                        that.updatedocumenteditor.setValue(v, -1);
+                        that.updatedocumenteditor.gotoLine(cursor.row + 1, cursor.column, false);
+                        setTimeout(function () {
+                            that.updatedocumenteditor.focus();
+                        }, 300);
+                    }
+                })
+            });
+
+        },
+        oneditcancel: function () {
+            this.updatedocumenteditor.destroy();
+            delete this.updatedocumenteditor;
+        },
+        oneditsave: function () {
+            annot = this.updatedocumenteditor.getSession().getAnnotations();
+            $("#node-input-noerr-updatedocument").val(0);
+            for (var k = 0; k < annot.length; k++) {
+                console.log(annot[k].type, ":", annot[k].text, "on line", annot[k].row);
+                if (annot[k].type === "error") {
+                    $("#node-input-noerr-updatedocument").val(annot.length);
+                    this.noerr = annot.length;
+                }
+            }
+
+            $("#node-input-updatedocument").val(this.updatedocumenteditor.getValue());
+            this.updatedocumenteditor.destroy();
+            delete this.updatedocumenteditor;
+        }
+
+    });
+
 </script>

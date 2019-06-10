@@ -1,0 +1,145 @@
+@charset "UTF-8";
+
+@font-face {
+  font-family: "openflow-font";
+  src:url("fonts/openflow-font.eot");
+  src:url("fonts/openflow-font.eot?#iefix") format("embedded-opentype"),
+    url("fonts/openflow-font.woff") format("woff"),
+    url("fonts/openflow-font.ttf") format("truetype"),
+    url("fonts/openflow-font.svg#openflow-font") format("svg");
+  font-weight: normal;
+  font-style: normal;
+
+}
+
+[data-icon]:before {
+  font-family: "openflow-font" !important;
+  content: attr(data-icon);
+  font-style: normal !important;
+  font-weight: normal !important;
+  font-variant: normal !important;
+  text-transform: none !important;
+  speak: none;
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+[class^="az-"]:before,
+[class*=" az-"]:before {
+  font-family: "openflow-font" !important;
+  font-style: normal !important;
+  font-weight: normal !important;
+  font-variant: normal !important;
+  text-transform: none !important;
+  speak: none;
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.az-add-lg:before {
+  content: "\1000";
+}
+.az-add-sm:before {
+  content: "\1001";
+}
+.az-alert:before {
+  content: "\1002";
+}
+.az-check-lg:before {
+  content: "\1003";
+}
+.az-check-sm:before {
+  content: "\1004";
+}
+.az-close-lg:before {
+  content: "\1005";
+}
+.az-close-sm:before {
+  content: "\1006";
+}
+.az-edit:before {
+  content: "\1007";
+}
+.az-estates:before {
+  content: "\1008";
+}
+.az-menu-toggle:before {
+  content: "\1009";
+}
+.az-sensor:before {
+  content: "\1010";
+}
+.az-task:before {
+  content: "\1011";
+}
+.az-trash:before {
+  content: "\1012";
+}
+.az-users:before {
+  content: "\1013";
+}
+.az-view:before {
+  content: "\1014";
+}
+.az-aiot:before {
+  content: "\1015";
+}
+.az-user:before {
+  content: "\1016";
+}
+.az-calendar:before {
+  content: "\1017";
+}
+.az-report:before {
+  content: "\1018";
+}
+.az-angle-down:before {
+  content: "\1019";
+}
+.az-angle-left:before {
+  content: "\101a";
+}
+.az-angle-up:before {
+  content: "\101b";
+}
+.az-angle-right:before {
+  content: "\101c";
+}
+.az-arrow-up-sm:before {
+  content: "\100a";
+}
+.az-arrow-up-lg:before {
+  content: "\101d";
+}
+.az-arrow-right-sm:before {
+  content: "\100b";
+}
+.az-arrow-right-lg:before {
+  content: "\101e";
+}
+.az-arrow-left-sm:before {
+  content: "\100c";
+}
+.az-arrow-left-lg:before {
+  content: "\101f";
+}
+.az-arrow-down-sm:before {
+  content: "\100d";
+}
+.az-arrow-down-lg:before {
+  content: "\1020";
+}
+.az-filter:before {
+  content: "\1021";
+}
+.az-check-circle:before {
+  content: "\1022";
+}
+.az-close-circle:before {
+  content: "\1023";
+}
+.az-add-circle:before {
+  content: "\1024";
+}

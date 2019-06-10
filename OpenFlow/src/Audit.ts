@@ -12,7 +12,7 @@ export class Audit {
         log.userid = user._id;
         log.name = user.name;
         log.username = user.username;
-        Config.db.InsertOne(log, "audit", TokenUser.rootToken());
+        Config.db.InsertOne(log, "audit", 0, false, TokenUser.rootToken());
     }
     public static LoginFailed(username: string, type: string, provider: string, remoteip: string) {
         var log: Singin = new Singin();
@@ -21,7 +21,7 @@ export class Audit {
         log.type = type;
         log.provider = provider;
         log.username = username;
-        Config.db.InsertOne(log, "audit", TokenUser.rootToken());
+        Config.db.InsertOne(log, "audit", 0, false, TokenUser.rootToken());
     }
 }
 export class Singin extends Base {

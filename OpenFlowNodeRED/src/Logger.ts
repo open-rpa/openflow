@@ -1,7 +1,6 @@
 import * as winston from "winston";
 
 export class Logger {
-    static instanse:winston.Logger = null;
     static configure(): winston.Logger {
         var options: any = {
             // file: {
@@ -14,14 +13,38 @@ export class Logger {
             //     colorize: false,
             // },
             console: {
-                level: "silly",
+                level: "debug",
                 handleExceptions: false,
                 json: false,
                 colorize: true
             },
         };
+        const enumerateErrorFormat = winston.format(info => {
+            if ((info.message as any) instanceof Error) {
+                var e = (info.message as any) as Error;
+                info.message = Object.assign({
+                    message: e.message,
+                    stack: e.stack
+                }, info.message);
+            }
+
+            if (info instanceof Error) {
+                return Object.assign({
+                    message: info.message,
+                    stack: info.stack
+                }, info);
+            }
+
+            return info;
+        });
         const logger: winston.Logger = winston.createLogger({
-            format: winston.format.json(),
+            level: "debug",
+            //format: winston.format.json(),
+
+            format: winston.format.combine(
+                enumerateErrorFormat(),
+                winston.format.json()
+            ),
             defaultMeta: { service: "openflownodered" },
             transports: [
                 // new winston.transports.File(options.file),
@@ -31,4 +54,5 @@ export class Logger {
         Logger.instanse = logger;
         return logger;
     }
+    static instanse: winston.Logger = null;
 }

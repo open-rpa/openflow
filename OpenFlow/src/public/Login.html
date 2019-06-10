@@ -1,31 +1,40 @@
-<div class="starter-template">
+<div class="starter-template" ng-show="ctrl.scanning==false">
   <div class="row">
-      <div class="col-sm-9 col-md-7 col-lg-5 mx-auto">
-        <div class="card card-signin my-5">
-          <div class="card-body">
-            <h5 class="card-title text-center" translate lib="web">signin</h5>
-            <form class="form-signin" ngNoForm method='post' action='/local' >
-              <div class="form-label-group" ng-show="ctrl.localenabled">
-                <input type="text" name="username" ng-model="ctrl.username" class="form-control" placeholder="Username" required autofocus autocomplete='off'>
-                <label for="username" translate lib="web">username</label>
-              </div>
+    <div class="col-sm-9 col-md-7 col-lg-5 mx-auto">
+      <div class="card card-signin my-5">
+        <div class="card-body">
+          <h5 class="card-title text-center"><span translate lib="web">signin</span> {{ctrl.domain}}</h5>
+          </h5>
+          <form class="form-signin" ngNoForm method='post' action='/local'>
+            <div class="form-label-group" ng-show="ctrl.localenabled">
+              <input type="text" name="username" ng-model="ctrl.username" class="form-control" placeholder="Username"
+                required autofocus autocomplete='off'>
+              <label for="username" translate lib="web">username</label>
+            </div>
+            <div class="form-label-group" ng-show="ctrl.localenabled">
+              <input type="password" name="password" ng-model="ctrl.password" class="form-control"
+                placeholder="Password" required>
+              <label for="password" translate lib="web">password</label>
+            </div>
+            <div class="mb-3">
+              <label class="text-danger" translate lib="web" ng-model="ctrl.message"></label>
+            </div>
+            <button class="btn btn-lg btn-primary btn-block text-uppercase" type="submit" ng-show="ctrl.localenabled"
+              translate lib="web">signin</button>
+            <hr class="my-4" ng-show="ctrl.localenabled">
+            <div class="form-label-group" ng-show="ctrl.qrcodescan">
+              <button value="Scan now" ng-click="ctrl.Scan()" type="button">QRCode Scan</button>
+            </div>
 
-              <div class="form-label-group" ng-show="ctrl.localenabled">
-                <input type="password" name="password" ng-model="ctrl.password" class="form-control" placeholder="Password" required >
-                <label for="password" translate lib="web">password</label>
-              </div>
-              <div class="mb-3">
-                  <label class="text-danger" translate lib="web" ng-model="ctrl.message"></label>
-              </div>
-              <button class="btn btn-lg btn-primary btn-block text-uppercase" type="submit" ng-show="ctrl.localenabled" translate lib="web">signin</button>
-              <hr class="my-4" ng-show="ctrl.localenabled">
-              
-              <a ng-href="/{{model.id}}" ng-repeat="model in ctrl.providers" class="btn btn-lg btn-block text-uppercase" >
-                <i class="fab {{model.logo}} mr-2"></i><span translate lib="web">{{model.name}}</span> 
-              </a>
-            </form>
-          </div>
+            <a ng-href="/{{model.id}}" ng-repeat="model in ctrl.providers" class="btn btn-lg btn-block text-uppercase">
+              <i class="fab {{model.logo}} mr-2"></i><span translate lib="web">{{model.name}}</span>
+            </a>
+          </form>
         </div>
       </div>
     </div>
+  </div>
+</div>
+<div class="cameraView" ng-show="ctrl.scanning==true">
+  <button value="Scan now" ng-click="ctrl.Scan()" type="button" ng-show="ctrl.scanning==true">QRCode Scan</button>
 </div>

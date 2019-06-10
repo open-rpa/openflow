@@ -4,11 +4,11 @@ import * as api from "./api_nodes";
 
 // declare function fn(RED: Red): void;
 // export = fn;
-export = function(RED: Red) {
-    RED.nodes.registerType("api-credentials", api.api_credentials,{
+export = function (RED: Red) {
+    RED.nodes.registerType("api-credentials", api.api_credentials, {
         credentials: {
-            username: {type:"text"},
-            password: {type: "password"}
+            username: { type: "text" },
+            password: { type: "password" }
         }
     });
     RED.nodes.registerType("api get jwt", api.api_get_jwt);
@@ -19,10 +19,11 @@ export = function(RED: Red) {
     RED.nodes.registerType("api delete", api.api_delete);
 
     RED.nodes.registerType("map reduce", api.api_map_reduce);
-    
+    RED.nodes.registerType("api updatedocument", api.api_updatedocument);
+
     RED.nodes.registerType("grant permission", api.grant_permission);
     RED.nodes.registerType("revoke permission", api.revoke_permission);
 
     RED.httpAdmin.get("/api_roles", RED.auth.needsPermission('serial.read'), api.get_api_roles);
-    
+
 }

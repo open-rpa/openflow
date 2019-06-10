@@ -1,5 +1,216 @@
 module openflow {
-    "use strict";
+    // "use strict";
+
+    function treatAsUTC(date): number {
+        var result = new Date(date);
+        result.setMinutes(result.getMinutes() - result.getTimezoneOffset());
+        return result as any;
+    }
+
+    function daysBetween(startDate, endDate): number {
+        var millisecondsPerDay = 24 * 60 * 60 * 1000;
+        return (treatAsUTC(endDate) - treatAsUTC(startDate)) / millisecondsPerDay;
+    }
+    declare var jsondiffpatch: any;
+
+    export class RPAWorkflowCtrl extends entityCtrl<openflow.RPAWorkflow> {
+        public arguments: any;
+        public users: TokenUser[];
+        public user: TokenUser;
+        public messages: string;
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public WebSocketClient: WebSocketClient,
+            public api: api
+        ) {
+            super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("RPAWorkflowCtrl");
+            this.collection = "openrpa";
+            this.messages = "";
+            WebSocketClient.onSignedin(async (_user: TokenUser) => {
+                if (this.id !== null && this.id !== undefined) {
+                    await api.RegisterQueue();
+                    await this.loadData();
+                    await this.loadUsers();
+                    $scope.$on('queuemessage', (event, data: QueueMessage) => {
+                        if (event && data) { }
+                        // console.log("queuemessage");
+                        // console.log(event);
+                        console.log(data);
+                        this.messages += data.data.command + "\n";
+                        if (data.data.command == "invokecompleted") {
+                            this.arguments = data.data.data;
+                        }
+                        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    });
+
+                } else {
+                    console.error("Missing id");
+                }
+            });
+        }
+        async loadUsers(): Promise<void> {
+            this.users = await this.api.Query("users", { $or: [{ _type: "user" }, { _type: "role" }] }, null, null);
+            this.users.forEach(user => {
+                if (user._id == this.model._createdbyid || user._id == this.model._createdbyid) {
+                    this.user = user;
+                }
+            });
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        async submit(): Promise<void> {
+            var rpacommand = {
+                command: "invoke",
+                workflowid: this.model._id,
+                data: this.arguments
+            }
+            // var message = {
+            //     jwt: this.WebSocketClient.jwt,
+            //     payload: rpacommand
+            // }
+            console.log("QueueMessage");
+            console.log(rpacommand);
+            var result: any = await this.api.QueueMessage(this.user._id, rpacommand);
+            console.log("result:");
+            console.log(result);
+            try {
+                // result = JSON.parse(result);
+            } catch (error) {
+            }
+        }
+    }
+
+    export class RPAWorkflowsCtrl extends entitiesCtrl<openflow.Base> {
+        public message: string = "";
+        public charts: chartset[] = [];
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public WebSocketClient: WebSocketClient,
+            public api: api
+        ) {
+            super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("RPAWorkflowsCtrl");
+            WebSocketClient.onSignedin((user: TokenUser) => {
+                this.loadData();
+            });
+        }
+
+        async loadData(): Promise<void> {
+            this.loading = true;
+            this.charts = [];
+            var chart: chartset = null;
+            console.log("get workflows");
+            this.models = await this.api.Query("openrpa", { _type: "workflow" }, null, null);
+
+            for (var i = 0; i < this.models.length; i++) {
+                var workflow = this.models[i] as any;
+                var d = new Date();
+                d.setMonth(d.getMonth() - 1);
+                //d.setDate(d.getDate() - 30);
+                console.log(d);
+
+
+                console.log("get mapreduce of instances");
+                var stats = await this.api.MapReduce("openrpa_instances",
+                    function map() {
+                        var startDate = new Date(this._created);
+                        this.count = 1;
+                        emit(startDate.toISOString().split('T')[0], this);
+                    }, function reduce(key, values) {
+                        var reducedObject = { count: 0, value: 0, avg: 0, minrun: 0, maxrun: 0, run: 0, _acl: [] };
+                        values.forEach(function (value) {
+                            var startDate = new Date(value._created);
+                            var endDate = new Date(value._modified);
+                            var seconds = (endDate.getTime() - startDate.getTime()) / 1000;
+                            if (reducedObject.minrun == 0 && seconds > 0) reducedObject.minrun = seconds;
+                            if (reducedObject.minrun > seconds) reducedObject.minrun = seconds;
+                            if (reducedObject.maxrun < seconds) reducedObject.maxrun = seconds;
+                            reducedObject.run += seconds;
+                            reducedObject.count += value.count;
+                            reducedObject._acl = value._acl;
+                        });
+                        return reducedObject;
+                    }, function finalize(key, reducedValue) {
+                        if (reducedValue.count > 0) {
+                            reducedValue.avg = reducedValue.value / reducedValue.count;
+                            reducedValue.run = reducedValue.run / reducedValue.count;
+                        }
+                        return reducedValue;
+                    }, { _type: "workflowinstance", WorkflowId: workflow._id, "_created": { "$gte": new Date(d.toISOString()) } }, { inline: 1 }, null);
+
+
+
+                // // {$where : function() { return this.date.getMonth() == 11} }
+                // var q = { _type: "workflowinstance", WorkflowId: workflow._id, "_created": { "$gte": new Date(d.toISOString()) } };
+                // // var q = { _type: "workflowinstance", WorkflowId: workflow._id, "_created": { "$gte": new Date("2010-04-30T00:00:00.000Z") } };
+
+                // workflow.instances = await this.api.Query("openrpa_instances", q, null, null, 100);
+
+
+                chart = new chartset();
+                chart.charttype = "line"
+                chart.data = [];
+                var lastdate = "";
+                var days = daysBetween(d, new Date());
+                console.log(stats);
+                for (var y = 0; y < days; y++) {
+                    var startDate = new Date(d);
+                    startDate.setDate(d.getDate() + y);
+                    var datestring = startDate.toISOString().split('T')[0];
+                    var exists = stats.filter(m => m._id == datestring);
+                    if (exists.length > 0) {
+                        chart.data.push(exists[0].value.count);
+                    } else {
+                        chart.data.push(0);
+                    }
+                    if ((y % 2) == 0 || (days == 30 && y == 30)) {
+                        chart.labels.push(startDate.getDate().toString());
+                    } else {
+                        chart.labels.push("");
+                    }
+                }
+                workflow.chart = chart;
+
+            }
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+    }
+
+
+    export class WorkflowsCtrl extends entitiesCtrl<openflow.Base> {
+        public message: string = "";
+        public charts: chartset[] = [];
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public WebSocketClient: WebSocketClient,
+            public api: api
+        ) {
+            super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("WorkflowsCtrl");
+            WebSocketClient.onSignedin((user: TokenUser) => {
+                this.loadData();
+            });
+        }
+
+        async loadData(): Promise<void> {
+            this.loading = true;
+            this.charts = [];
+            var chart: chartset = null;
+            console.log("get workflows");
+            this.models = await this.api.Query("workflow", { _type: "workflow", web: true }, null, null);
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+    }
+
+
     export class chartset {
         options: any = {
             legend: { display: true }
@@ -16,7 +227,6 @@ module openflow {
     }
     export declare function emit(k, v);
     export class ReportsCtrl extends entitiesCtrl<openflow.Base> {
-        public loading: boolean = false;
         public message: string = "";
         public charts: chartset[] = [];
         constructor(
@@ -27,6 +237,7 @@ module openflow {
             public api: api
         ) {
             super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("ReportsCtrl");
             WebSocketClient.onSignedin((user: TokenUser) => {
                 this.loadData();
             });
@@ -73,7 +284,6 @@ module openflow {
                 workflowids.push(workflow._id);
             });
             var q = { WorkflowId: { $in: workflowids } }
-            console.log(q);
             var instances = await this.api.Query("openrpa_instances", q, null, null);
 
 
@@ -85,127 +295,26 @@ module openflow {
             chart.data = [[], [], []];
             for (var x = 0; x < stats.length; x++) {
                 var model = stats[x].value;
-                chart.data[0].push(model.minrun);
-                chart.data[1].push(model.run);
-                chart.data[2].push(model.maxrun);
-                var id = stats[x]._id;
-                var workflow = workflows.filter(x => x._id == id)[0];
-                if (workflow == undefined) { chart.labels.push("unknown"); } else { chart.labels.push(workflow.name); }
-
+                var _id = stats[x]._id;
+                var workflow = workflows.filter(y => y._id == _id)[0];
+                if (workflow !== undefined) {
+                    chart.data[0].push(model.minrun);
+                    chart.data[1].push(model.run);
+                    chart.data[2].push(model.maxrun);
+                    var id = stats[x]._id;
+                    var workflow = workflows.filter(x => x._id == id)[0];
+                    if (workflow == undefined) { chart.labels.push("unknown"); } else { chart.labels.push(workflow.name); }
+                }
             }
             this.charts.push(chart);
-
-            //for (var x = 0; x < stats.length; x++) {
-            for (var x = 0; x < workflows.length; x++) {
-                //var workflow = workflows.filter(x => x._id == id)[0];
-                var workflow = workflows[x];
-                var id = workflow._id;
-
-                chart = new chartset();
-
-                if (workflow == undefined) { chart.heading = "deleted workflow"; } else { chart.heading = workflow.name; }
-                chart.charttype = "line"
-                chart.data = [];
-
-                for (var i = 0; i < instances.length; i++) {
-                    var value = instances[i];
-                    if (value.WorkflowId == id) {
-
-                        var startDate = new Date(value._created);
-                        var endDate = new Date(value._modified);
-                        var seconds = (endDate.getTime() - startDate.getTime()) / 1000;
-
-                        chart.data.push(seconds);
-                        chart.labels.push(startDate.toISOString().split('T')[0]);
-                    }
-                }
-
-                console.log("add chart for " + workflow.name);
-                this.charts.push(chart);
-            }
-
-
-
-
-
-
-
-            console.log("get users");
-            var users = await this.api.Query("users", { _type: "user" }, null, null);
-
-            for (var y = 0; y < users.length; y++) {
-                var user = users[y];
-
-                console.log("get mapreduce for user " + user.name);
-                var d = new Date();
-                d.setMonth(d.getMonth() - 1); //1 month ago
-                console.log(d.toISOString());
-                var userstats = await this.api.MapReduce("audit",
-                    function map() {
-                        var dateString = new Date(this._created).toUTCString();
-                        dateString = dateString.split(' ').slice(0, 4).join(' ');
-                        var day = new Date(dateString);
-                        // var day = "" + date.getFullYear() +
-                        //     "" + (date.getMonth() + 1) +
-                        //     "" + date.getDate();
-                        emit(day, { count: 1, value: 1, avg: 0, _acl: [] });
-
-                    }, function reduce(key, values) {
-                        var reducedObject = { count: 0, value: 0, avg: 0, _acl: [] };
-                        values.forEach(function (value) {
-                            reducedObject.count += value.count;
-                            reducedObject._acl = value._acl;
-                        });
-                        return reducedObject;
-                    }, function finalize(key, reducedValue) {
-                        if (reducedValue.count > 0) {
-                            reducedValue.avg = reducedValue.value / reducedValue.count;
-                        }
-                        return reducedValue;
-                    }, { userid: user._id }, { inline: 1 }, null);
-                console.log(userstats);
-
-                chart = new chartset();
-                chart.charttype = "line"
-                chart.heading = user.name + " (" + user.username + ") logins per day";
-                chart.data = [];
-                for (var x = 0; x < userstats.length; x++) {
-                    var model = userstats[x].value;
-                    chart.data.push(model.count);
-                    var id = userstats[x]._id;
-                    // chart.labels.push(id);
-                    chart.labels.push(new Date(id).toISOString().split('T')[0]);
-                    // if (workflow == undefined) { chart.labels.push("unknown"); } else { chart.labels.push(workflow.name); }
-
-                }
-                this.charts.push(chart);
-                if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            }
-
-
-
 
 
 
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
-    }
-    export class MainCtrl extends entitiesCtrl<openflow.Base> {
-        public loading: boolean = false;
-        constructor(
-            public $scope: ng.IScope,
-            public $location: ng.ILocationService,
-            public $routeParams: ng.route.IRouteParamsService,
-            public WebSocketClient: WebSocketClient,
-            public api: api,
-        ) {
-            super($scope, $location, $routeParams, WebSocketClient, api);
-            console.log("MainCtrl::constructor");
-            WebSocketClient.onSignedin((user: TokenUser) => {
-                this.loadData();
-            });
-        }
+
+
 
         async InsertNew(): Promise<void> {
             // this.loading = true;
@@ -267,13 +376,36 @@ module openflow {
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
+
+
     }
+    export class MainCtrl extends entitiesCtrl<openflow.Base> {
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public WebSocketClient: WebSocketClient,
+            public api: api,
+        ) {
+            super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("MainCtrl");
+            this.collection = "workflow_instances"
+            this.basequery = { state: { $ne: "completed" }, form: { $exists: true } };
+            WebSocketClient.onSignedin((_user: TokenUser) => {
+                this.loadData();
+            });
+        }
+    }
+    declare var QRScanner: any;
     export class LoginCtrl {
         public localenabled: boolean = false;
+        public scanning: boolean = false;
+        public qrcodescan: boolean = false;
         public providers: any = false;
         public username: string = "";
         public password: string = "";
         public message: string = "";
+        public domain: string = "";
         public static $inject = [
             "$scope",
             "$location",
@@ -287,6 +419,7 @@ module openflow {
             public WebSocketClient: WebSocketClient
         ) {
             console.log("LoginCtrl::constructor");
+            this.domain = window.location.hostname;
             WebSocketClient.getJSON("/loginproviders", async (error: any, data: any) => {
                 this.providers = data;
                 for (var i: number = this.providers.length - 1; i >= 0; i--) {
@@ -295,9 +428,140 @@ module openflow {
                         this.localenabled = true;
                     }
                 }
-
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                setTimeout(this.scanForQRScanner.bind(this), 200);
+
+                var domain = window.location.hostname;
+                try {
+                    console.log("get mobiledomain.txt");
+                    var value = await this.readfile("mobiledomain.txt");
+                    if (value !== null && value !== undefined && value !== "") {
+                        console.log(value);
+                        var config = JSON.parse(value);
+                        if (config.loginurl.indexOf(domain) === -1) {
+                            console.log("Login url different from current domain, redirect to " + config.url);
+                            window.location.replace(config.url);
+                            return;
+                        }
+                    }
+                } catch (error) {
+                }
             });
+        }
+        readfile(filename: string) {
+            return new Promise<string>(async (resolve, reject) => {
+                var win: any = window;
+                //var type = win.TEMPORARY;
+                var type = win.PERSISTENT;
+                var size = 5 * 1024 * 1024;
+                win.requestFileSystem(type, size, successCallback, errorCallback)
+                function successCallback(fs) {
+                    fs.root.getFile(filename, {}, function (fileEntry) {
+
+                        fileEntry.file(function (file) {
+                            var reader = new FileReader();
+                            reader.onloadend = function (e) {
+                                resolve(this.result as string);
+                            };
+                            reader.readAsText(file);
+                        }, errorCallback);
+                    }, errorCallback);
+                }
+                function errorCallback(error) {
+                    console.log(error);
+                    resolve();
+                }
+            });
+        }
+        writefile(filename: string, content: string) {
+            return new Promise<string>(async (resolve, reject) => {
+                var win: any = window;
+                //var type = win.TEMPORARY;
+                var type = win.PERSISTENT;
+                var size = 5 * 1024 * 1024;
+                win.requestFileSystem(type, size, successCallback, errorCallback)
+                function successCallback(fs) {
+                    fs.root.getFile(filename, { create: true }, function (fileEntry) {
+                        fileEntry.createWriter(function (fileWriter) {
+                            fileWriter.onwriteend = function (e) {
+                                console.log('Write completed.');
+                                resolve();
+                            };
+                            fileWriter.onerror = function (e) {
+                                console.error('Write failed: ' + e.toString());
+                                resolve();
+                            };
+                            var blob = new Blob([content], { type: 'text/plain' });
+                            fileWriter.write(blob);
+                        }, errorCallback);
+                    }, errorCallback);
+                }
+                function errorCallback(error) {
+                    console.error(error);
+                    resolve();
+                }
+            });
+        }
+        scanForQRScanner() {
+            try {
+                if (QRScanner !== undefined) {
+                    console.log("Found QRScanner!!!!");
+                    this.qrcodescan = true;
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                } else {
+                    console.debug("QRScanner not definded");
+                    setTimeout(this.scanForQRScanner, 200);
+                }
+            } catch (error) {
+                console.debug("Failed locating QRScanner");
+                setTimeout(this.scanForQRScanner, 200);
+            }
+        }
+        Scan() {
+            try {
+                console.log("Scan");
+                if (this.scanning) {
+                    this.scanning = false;
+                    QRScanner.destroy();
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    return;
+                }
+                this.scanning = true;
+                QRScanner.scan(this.QRScannerHit.bind(this));
+                QRScanner.show();
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            } catch (error) {
+                console.error("Error Scan");
+                console.error(error);
+            }
+        }
+        async QRScannerHit(err, value) {
+            try {
+                console.log("QRScannerHit");
+                if (err) {
+                    // console.error(err._message);
+                    console.error(err);
+                    return;
+                }
+                console.log(value);
+                QRScanner.hide();
+                QRScanner.destroy();
+
+                console.log("set mobiledomain to " + value);
+                await this.writefile("mobiledomain.txt", value);
+
+                this.scanning = false;
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                if (value !== null && value !== undefined && value !== "") {
+                    console.log(value);
+                    var config = JSON.parse(value);
+                    window.location.replace(config.url);
+                }
+            } catch (error) {
+                console.error("Error QRScannerHit");
+                console.error(error);
+
+            }
         }
         async submit(): Promise<void> {
             this.message = "";
@@ -305,6 +569,7 @@ module openflow {
             q.username = this.username; q.password = this.password;
             var msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
             try {
+                console.debug("signing in with username/password");
                 var a: any = await this.WebSocketClient.Send(msg);
                 var result: SigninMessage = a;
                 if (result.user == null) { return; }
@@ -351,7 +616,6 @@ module openflow {
     }
 
     export class ProvidersCtrl extends entitiesCtrl<openflow.Provider> {
-        public loading: boolean = false;
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -360,6 +624,7 @@ module openflow {
             public api
         ) {
             super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("ProvidersCtrl");
             this.basequery = { _type: "provider" };
             this.collection = "config";
             WebSocketClient.onSignedin((user: TokenUser) => {
@@ -384,13 +649,14 @@ module openflow {
             public api: api
         ) {
             super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("ProviderCtrl");
             this.collection = "config";
             WebSocketClient.onSignedin((user: TokenUser) => {
                 if (this.id !== null && this.id !== undefined) {
                     this.loadData();
                 } else {
-                    this.model = new Provider("Office 365", "Office365", "saml", "",
-                        "https://login.microsoftonline.com/common/FederationMetadata/2007-06/FederationMetadata.xml")
+                    this.model = new Provider("", "", "", "",
+                        "")
                 }
 
             });
@@ -409,7 +675,6 @@ module openflow {
 
 
     export class UsersCtrl extends entitiesCtrl<openflow.TokenUser> {
-        public loading: boolean = false;
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -418,11 +683,74 @@ module openflow {
             public api: api
         ) {
             super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("UsersCtrl");
             this.basequery = { _type: "user" };
             this.collection = "users";
             WebSocketClient.onSignedin((user: TokenUser) => {
                 this.loadData();
+                this._loadData();
             });
+
+        }
+        async _loadData(): Promise<void> {
+            this.loading = true;
+            var chart: chartset = null;
+            console.log("get users");
+            this.models = await this.api.Query("users", { _type: "user" }, null, null);
+
+            for (var i = 0; i < this.models.length; i++) {
+                var user = this.models[i] as any;
+                var d = new Date();
+                d.setMonth(d.getMonth() - 1);
+                //d.setDate(d.getDate() - 30);
+
+
+                console.log("get mapreduce for " + user.name);
+                var stats = await this.api.MapReduce("audit",
+                    function map() {
+                        var startDate = new Date(this._created);
+                        this.count = 1;
+                        emit(startDate.toISOString().split('T')[0], this);
+                    }, function reduce(key, values) {
+                        var reducedObject = { count: 0, value: 0, avg: 0, minrun: 0, maxrun: 0, run: 0, _acl: [] };
+                        values.forEach(function (value) {
+                            reducedObject.count += value.count;
+                            reducedObject._acl = value._acl;
+                        });
+                        return reducedObject;
+                    }, function finalize(key, reducedValue) {
+                        if (reducedValue.count > 0) {
+                            reducedValue.avg = reducedValue.value / reducedValue.count;
+                        }
+                        return reducedValue;
+                    }, { userid: user._id, "_created": { "$gte": new Date(d.toISOString()) } }, { inline: 1 }, null);
+
+                chart = new chartset();
+                chart.charttype = "line"
+                chart.data = [];
+                var days = daysBetween(d, new Date());
+                for (var y = 0; y < days; y++) {
+                    var startDate = new Date(d);
+                    startDate.setDate(d.getDate() + y);
+                    var datestring = startDate.toISOString().split('T')[0];
+                    var exists = stats.filter(m => m._id == datestring);
+                    if (exists.length > 0) {
+                        chart.data.push(exists[0].value.count);
+                    } else {
+                        chart.data.push(0);
+                    }
+                    //chart.labels.push(datestring);
+                    if ((y % 2) == 0 || (days == 30 && y == 30)) {
+                        chart.labels.push(startDate.getDate().toString());
+                    } else {
+                        chart.labels.push("");
+                    }
+                }
+                user.chart = chart;
+
+            }
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async DeleteOne(model: any): Promise<any> {
             this.loading = true;
@@ -433,6 +761,7 @@ module openflow {
         }
     }
     export class UserCtrl extends entityCtrl<openflow.TokenUser> {
+        public newid: string;
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -441,6 +770,7 @@ module openflow {
             public api: api
         ) {
             super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("UserCtrl");
             this.collection = "users";
             WebSocketClient.onSignedin((user: TokenUser) => {
                 if (this.id !== null && this.id !== undefined) {
@@ -456,6 +786,18 @@ module openflow {
                 }
 
             });
+        }
+        deleteid(id) {
+            if (this.model.federationids === null || this.model.federationids === undefined) {
+                this.model.federationids = [];
+            }
+            this.model.federationids = this.model.federationids.filter(function (m: any): boolean { return m !== id; });
+        }
+        addid() {
+            if (this.model.federationids === null || this.model.federationids === undefined) {
+                this.model.federationids = [];
+            }
+            this.model.federationids.push(this.newid);
         }
         async submit(): Promise<void> {
             if (this.model._id) {
@@ -473,7 +815,6 @@ module openflow {
 
 
     export class RolesCtrl extends entitiesCtrl<openflow.Role> {
-        public loading: boolean = false;
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -482,6 +823,7 @@ module openflow {
             public api: api
         ) {
             super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("RolesCtrl");
             this.basequery = { _type: "role" };
             this.collection = "users";
             WebSocketClient.onSignedin((user: TokenUser) => {
@@ -498,7 +840,7 @@ module openflow {
     }
     export class RoleCtrl extends entityCtrl<openflow.Role> {
         public addthis: any = "";
-        public users: any[] = null;
+        public users: TokenUser[] = null;
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -507,6 +849,7 @@ module openflow {
             public api: api
         ) {
             super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("RoleCtrl");
             this.collection = "users";
             WebSocketClient.onSignedin(async (user: TokenUser) => {
                 if (this.id !== null && this.id !== undefined) {
@@ -519,13 +862,7 @@ module openflow {
             });
         }
         async loadUsers(): Promise<void> {
-            var q: QueryMessage = new QueryMessage();
-            q.collectionname = this.collection;
-            // q.query = {};
-            q.query = { $or: [{ _type: "user" }, { _type: "role" }] };
-            var msg: Message = new Message(); msg.command = "query"; msg.data = JSON.stringify(q);
-            q = await this.WebSocketClient.Send<QueryMessage>(msg);
-            this.users = q.result;
+            this.users = await this.api.Query(this.collection, { $or: [{ _type: "user" }, { _type: "role" }] }, null, null);
             var ids: string[] = [];
             if (this.model.members === undefined) { this.model.members = []; }
             for (var i: number = 0; i < this.model.members.length; i++) {
@@ -536,8 +873,7 @@ module openflow {
                     this.users.splice(i, 1);
                 }
             }
-            this.addthis = q.result[0]._id;
-
+            this.addthis = this.users[0]._id;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async submit(): Promise<void> {
@@ -577,7 +913,6 @@ module openflow {
             "WebSocketClient",
             "api"
         ];
-        public loading: boolean = false;
         public messages: string = "";
         public queuename: string = "webtest";
         public message: string = "Hi mom";
@@ -588,6 +923,7 @@ module openflow {
             public WebSocketClient: WebSocketClient,
             public api: api
         ) {
+            console.debug("SocketCtrl");
             WebSocketClient.onSignedin(async (user: TokenUser) => {
                 await api.RegisterQueue();
             });
@@ -611,7 +947,7 @@ module openflow {
 
 
     export class EntitiesCtrl extends entitiesCtrl<openflow.Base> {
-        public loading: boolean = false;
+
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -620,6 +956,7 @@ module openflow {
             public api: api
         ) {
             super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("EntitiesCtrl");
             this.basequery = {};
             this.collection = $routeParams.collection;
             this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
@@ -652,6 +989,336 @@ module openflow {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
     }
+
+    export class FormsCtrl extends entitiesCtrl<openflow.Base> {
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public WebSocketClient: WebSocketClient,
+            public api: api
+        ) {
+            super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("FormsCtrl");
+            this.collection = "forms";
+            this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
+            WebSocketClient.onSignedin((user: TokenUser) => {
+                this.loadData();
+            });
+        }
+        async DeleteOne(model: any): Promise<any> {
+            this.loading = true;
+            await this.api.Delete(this.collection, model);
+            this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        async DeleteMany(): Promise<void> {
+            this.loading = true;
+            var Promises: Promise<DeleteOneMessage>[] = [];
+            var q: DeleteOneMessage = new DeleteOneMessage();
+            this.models.forEach(model => {
+                q.collectionname = this.collection; q._id = (model as any)._id;
+                var msg: Message = new Message(); msg.command = "deleteone"; msg.data = JSON.stringify(q);
+                Promises.push(this.WebSocketClient.Send(msg));
+            });
+            const results: any = await Promise.all(Promises.map(p => p.catch(e => e)));
+            const values: DeleteOneMessage[] = results.filter(result => !(result instanceof Error));
+            var ids: string[] = [];
+            values.forEach((x: DeleteOneMessage) => ids.push(x._id));
+            this.models = this.models.filter(function (m: any): boolean { return ids.indexOf(m._id) === -1; });
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+    }
+    export class EditFormCtrl extends entityCtrl<openflow.Form> {
+        public message: string = "";
+        public charts: chartset[] = [];
+        public formBuilder: any;
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public WebSocketClient: WebSocketClient,
+            public api: api
+        ) {
+            super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("EditFormCtrl");
+            this.collection = "forms";
+            this.basequery = {};
+            this.id = $routeParams.id;
+            this.basequery = { _id: this.id };
+            WebSocketClient.onSignedin(async (user: TokenUser) => {
+                if (this.id !== null && this.id !== undefined && this.id !== "") {
+                    this.basequery = { _id: this.id };
+                    this.loadData();
+                } else {
+                    this.model = new openflow.Form();
+                    this.renderform();
+                }
+
+            });
+        }
+        async loadData(): Promise<void> {
+            this.loading = true;
+            this.charts = [];
+            var res = await this.api.Query(this.collection, this.basequery, null, { _created: -1 }, 1);
+            if (res.length > 0) { this.model = res[0]; } else { console.error(this.id + " not found!"); }
+            this.renderform();
+        }
+        async Save() {
+            this.model.formData = this.formBuilder.actions.getData(this.model.dataType);
+            if (this.model._id) {
+                this.model = await this.api.Update(this.collection, this.model);
+            } else {
+                this.model = await this.api.Insert(this.collection, this.model);
+            }
+            this.$location.path("/Forms");
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        async renderform() {
+            // https://www.npmjs.com/package/angular2-json-schema-form
+            // http://www.alpacajs.org/demos/form-builder/form-builder.html
+            // https://github.com/kevinchappell/formBuilder - https://formbuilder.online/ - https://kevinchappell.github.io/formBuilder/
+            var ele: any;
+            var roles: any = {};
+            this.WebSocketClient.user.roles.forEach(role => {
+                roles[role._id] = role.name;
+            });
+
+            var fbOptions = {
+                formData: this.model.formData,
+                dataType: this.model.dataType,
+                roles: roles,
+                disabledActionButtons: ['data', 'clear'],
+                onSave: this.Save.bind(this),
+            };
+            ele = $(document.getElementById('fb-editor'));
+            this.formBuilder = await ele.formBuilder(fbOptions).promise;
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+    }
+    export class FormCtrl extends entityCtrl<openflow.WorkflowInstance> {
+        public message: string = "";
+        public formRender: any;
+        public workflow: openflow.Workflow;
+        public form: openflow.Form;
+        public instanceid: string;
+
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public WebSocketClient: WebSocketClient,
+            public api: api
+        ) {
+            super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("FormCtrl");
+            this.collection = "workflow";
+            this.basequery = {};
+            this.id = $routeParams.id;
+            this.instanceid = $routeParams.instance;
+
+            this.basequery = { _id: this.id };
+            WebSocketClient.onSignedin(async (user: TokenUser) => {
+                $(document).on('submit', '.render-wrap', () => {
+                    this.Save();
+                });
+                await api.RegisterQueue();
+                if (this.id !== null && this.id !== undefined && this.id !== "") {
+                    this.basequery = { _id: this.id };
+                    this.loadData();
+                } else {
+                    console.error("missing id");
+                }
+            });
+        }
+        async loadData(): Promise<void> {
+            this.loading = true;
+            var res = await this.api.Query(this.collection, this.basequery, null, { _created: -1 }, 1);
+            if (res.length > 0) { this.workflow = res[0]; } else { console.error(this.id + " workflow not found!"); return; }
+            if (this.instanceid !== null && this.instanceid !== undefined && this.instanceid !== "") {
+                var res = await this.api.Query("workflow_instances", { _id: this.instanceid }, null, { _created: -1 }, 1);
+                if (res.length > 0) { this.model = res[0]; } else { console.error(this.id + " workflow instances not found!"); return; }
+
+                // await this.SendOne(this.workflow.queue, this.message);
+                if (this.model.form !== "") {
+                    var res = await this.api.Query("forms", { _id: this.model.form }, null, { _created: -1 }, 1);
+                    if (res.length > 0) { this.form = res[0]; } else { console.error(this.id + " form not found!"); return; }
+                } else {
+                    console.log("Model contains no form");
+                }
+                this.renderform();
+            } else {
+                console.log("No instance id found, send empty message");
+                await this.SendOne(this.workflow.queue, {});
+                this.loadData();
+            }
+        }
+        async SendOne(queuename: string, message: any): Promise<void> {
+            var result: any = await this.api.QueueMessage(queuename, message);
+            try {
+                // result = JSON.parse(result);
+            } catch (error) {
+            }
+            this.instanceid = result._id;
+        }
+        async Save() {
+            var userData: any[] = this.formRender.userData;
+            if (this.model.payload === null || this.model.payload === undefined) { this.model.payload = {}; }
+            for (var i = 0; i < userData.length; i++) {
+                this.model.payload[userData[i].name] = "";
+                var val = userData[i].userData;
+                if (val !== undefined && val !== null) {
+                    if (Array.isArray(val)) {
+                        this.model.payload[userData[i].name] = val[0];
+                    } else {
+                        this.model.payload[userData[i].name] = val;
+                    }
+
+                }
+            }
+            var ele = $('.render-wrap');
+            ele.hide();
+            await this.SendOne(this.workflow.queue, this.model);
+            this.loadData();
+        }
+        async renderform() {
+            console.log("renderform");
+            var ele: any;
+            var roles: any = {};
+            this.WebSocketClient.user.roles.forEach(role => {
+                roles[role._id] = role.name;
+            });
+            if (typeof this.form.formData === 'string' || this.form.formData instanceof String) {
+                this.form.formData = JSON.parse((this.form.formData as any));
+            }
+            for (var i = 0; i < this.form.formData.length; i++) {
+                console.log(this.form.formData[i]);
+                this.form.formData[i].userData = [this.model.payload[this.form.formData[i].name]];
+                if (this.model.payload[this.form.formData[i].label] !== null && this.model.payload[this.form.formData[i].label] !== undefined) {
+                    this.form.formData[i].label = this.model.payload[this.form.formData[i].label];
+                }
+            }
+            var formRenderOpts = {
+                formData: this.form.formData,
+                dataType: this.form.dataType,
+                roles: roles,
+                disabledActionButtons: ['data', 'clear'],
+                onSave: this.Save.bind(this),
+            };
+            if (this.model.userData !== null && this.model.userData !== undefined && this.model.userData !== "") {
+                formRenderOpts.formData = this.model.userData;
+            }
+            ele = $('.render-wrap');
+            ele.show();
+            this.formRender = ele.formRender(formRenderOpts);
+        }
+
+        // async loadData(): Promise<void> {
+        //     this.loading = true;
+        //     this.charts = [];
+        //     // var res = await this.api.Query(this.collection, this.basequery, null, { _created: -1 }, 1);
+        //     // if (res.length > 0) { this.model = res[0]; } else { console.error(this.id + " instance not found!"); return; }
+        //     // res = await this.api.Query(this.collection, { _id: this.model.form }, null, { _created: -1 }, 1);
+        //     // if (res.length > 0) { this.form = res[0]; } else { console.error(this.model.form + " form not found!"); return; }
+
+        //     var res = await this.api.Query(this.collection, {}, null, { _created: -1 }, 1);
+        //     if (res.length > 0) { this.form = res[0]; } else { console.error(this.id + " not found!"); return; }
+
+        //     this.renderform();
+        // }
+        // async Save() {
+        //     console.log(this.formRender.userData);
+        //     this.model.userData = this.formRender.userData;
+        //     // this.model.formData = this.formBuilder.actions.getData(this.model.dataType);
+        //     // if (this.model._id) {
+        //     //     this.model = await this.api.Update(this.collection, this.model);
+        //     // } else {
+        //     //     this.model = await this.api.Insert(this.collection, this.model);
+        //     // }
+        //     // var formRenderOpts = {
+        //     //     formData: this.model.formData,
+        //     //     dataType: this.model.dataType
+        //     // };
+        //     // var ele: any = $('.render-wrap');
+        //     // ele.formRender(formRenderOpts);
+        // }
+        // async renderform() {
+        //     // https://www.npmjs.com/package/angular2-json-schema-form
+        //     // http://www.alpacajs.org/demos/form-builder/form-builder.html
+        //     // https://github.com/kevinchappell/formBuilder - https://formbuilder.online/ - https://kevinchappell.github.io/formBuilder/
+        //     var ele: any;
+        //     var roles: any = {};
+        //     this.WebSocketClient.user.roles.forEach(role => {
+        //         roles[role._id] = role.name;
+        //     });
+        //     var formRenderOpts = {
+        //         formData: this.form.formData,
+        //         dataType: this.form.dataType,
+        //         roles: roles,
+        //         disabledActionButtons: ['data', 'clear'],
+        //         onSave: this.Save.bind(this),
+        //     };
+        //     if (this.model.userData !== null && this.model.userData !== undefined && this.model.userData !== "") {
+        //         formRenderOpts.formData = this.model.userData;
+        //     }
+        //     ele = $('.render-wrap');
+        //     this.formRender = ele.formRender(formRenderOpts);
+        // }
+
+    }
+    export class jslogCtrl extends entitiesCtrl<openflow.Base> {
+        public message: string = "";
+        public charts: chartset[] = [];
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public WebSocketClient: WebSocketClient,
+            public api: api
+        ) {
+            super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("jslogCtrl");
+            this.collection = "jslog";
+            this.basequery = {};
+            WebSocketClient.onSignedin((user: TokenUser) => {
+                this.loadData();
+            });
+        }
+
+        async loadData(): Promise<void> {
+            this.loading = true;
+            this.charts = [];
+            var chart: chartset = null;
+            console.log("get log");
+            this.models = await this.api.Query("jslog", {}, null, { _created: -1 });
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        async DeleteMany(): Promise<void> {
+            this.loading = true;
+            var Promises: Promise<DeleteOneMessage>[] = [];
+            var q: DeleteOneMessage = new DeleteOneMessage();
+            this.models.forEach(model => {
+                q.collectionname = this.collection; q._id = (model as any)._id;
+                var msg: Message = new Message(); msg.command = "deleteone"; msg.data = JSON.stringify(q);
+                Promises.push(this.WebSocketClient.Send(msg));
+            });
+            const results: any = await Promise.all(Promises.map(p => p.catch(e => e)));
+            const values: DeleteOneMessage[] = results.filter(result => !(result instanceof Error));
+            var ids: string[] = [];
+            values.forEach((x: DeleteOneMessage) => ids.push(x._id));
+            this.models = this.models.filter(function (m: any): boolean { return ids.indexOf(m._id) === -1; });
+            this.loading = false;
+            this.loadData();
+            //if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+
+    }
+
+
     export class EntityCtrl extends entityCtrl<openflow.Base> {
         public addthis: any = "";
         public users: any[] = null;
@@ -668,6 +1335,7 @@ module openflow {
             public api: api
         ) {
             super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("EntityCtrl");
             this.collection = $routeParams.collection;
             WebSocketClient.onSignedin(async (user: TokenUser) => {
                 if (this.id !== null && this.id !== undefined) {
@@ -701,6 +1369,7 @@ module openflow {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async submit(): Promise<void> {
+            console.log(this.model);
             if (this.showjson) {
                 this.model = JSON.parse(this.jsonmodel);
             }
@@ -822,4 +1491,49 @@ module openflow {
 
     }
 
+    export class HistoryCtrl extends entitiesCtrl<openflow.Base> {
+        public id: string = "";
+        public model: openflow.Base;
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public WebSocketClient: WebSocketClient,
+            public api: api
+        ) {
+            super($scope, $location, $routeParams, WebSocketClient, api);
+            console.debug("HistoryCtrl");
+            console.log("HistoryCtrl");
+            this.id = $routeParams.id;
+            this.basequery = { id: this.id };
+            this.collection = $routeParams.collection;
+            this.baseprojection = null;
+            WebSocketClient.onSignedin((user: TokenUser) => {
+                console.log("onSignedin");
+                this.LoadData();
+            });
+        }
+        async LoadData() {
+            this.models = await this.api.Query(this.collection, { _id: this.id }, null, null);
+            console.log(this.models);
+            this.model = this.models[0];
+            console.log(this.model);
+            this.models = await this.api.Query(this.collection + "_hist", { id: this.id }, null, { _version: -1 });
+            console.log(this.models);
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        CompareNow(model) {
+            var modal: any = $("#exampleModal");
+            modal.modal()
+            // console.log(model.item);
+            // var delta = jsondiffpatch.diff(this.model, model.item);
+            var delta = jsondiffpatch.diff(model.item, this.model);
+            document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(delta, this.model);
+        }
+        CompareThen(model) {
+            var modal: any = $("#exampleModal");
+            modal.modal()
+            document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(model.delta, model.item);
+        }
+    }
 }
