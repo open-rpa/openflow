@@ -431,21 +431,21 @@ module openflow {
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 setTimeout(this.scanForQRScanner.bind(this), 200);
 
-                var domain = window.location.hostname;
-                try {
-                    console.log("get mobiledomain.txt");
-                    var value = await this.readfile("mobiledomain.txt");
-                    if (value !== null && value !== undefined && value !== "") {
-                        console.log(value);
-                        var config = JSON.parse(value);
-                        if (config.loginurl.indexOf(domain) === -1) {
-                            console.log("Login url different from current domain, redirect to " + config.url);
-                            window.location.replace(config.url);
-                            return;
-                        }
-                    }
-                } catch (error) {
-                }
+                // var domain = window.location.hostname;
+                // try {
+                //     console.log("get mobiledomain.txt");
+                //     var value = await this.readfile("mobiledomain.txt");
+                //     if (value !== null && value !== undefined && value !== "") {
+                //         console.log(value);
+                //         var config = JSON.parse(value);
+                //         if (config.loginurl.indexOf(domain) === -1) {
+                //             console.log("Login url different from current domain, redirect to " + config.url);
+                //             window.location.replace(config.url);
+                //             return;
+                //         }
+                //     }
+                // } catch (error) {
+                // }
             });
         }
         readfile(filename: string) {
