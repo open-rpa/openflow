@@ -40,6 +40,9 @@ export class DatabaseConnection {
             return;
         }
         this.cli = await MongoClient.connect(this.mongodburl, { autoReconnect: false, useNewUrlParser: true });
+        this.cli.on("error", (error) => {
+            this._logger.error(error);
+        });
         this.db = this.cli.db(this._dbname);
     }
 
