@@ -402,7 +402,7 @@ export class Message {
                 user = await Auth.ValidateByPassword(msg.username, msg.password);
                 tuser = new TokenUser(user);
             }
-            if (user === null || user === undefined) {
+            if (user === null || user === undefined || tuser === null || tuser === undefined) {
                 msg.error = "Unknown username or password";
                 Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip);
                 cli._logger.debug(tuser.username + " failed logging in using " + type);
