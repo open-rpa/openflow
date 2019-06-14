@@ -66,6 +66,13 @@ export class WebServer {
                         options.passphrase = Config.tls_passphrase;
                     }
                     server = https.createServer(options, this.app);
+
+                    var redirapp = express();
+                    var _http = http.createServer(redirapp);
+                    redirapp.get('*', function (req, res) {
+                        res.redirect('https://' + req.headers.host + req.url);
+                    })
+                    _http.listen(80);
                 } else {
                     server = http.createServer(this.app);
                 }

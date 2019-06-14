@@ -2,7 +2,7 @@ import * as path from "path";
 import * as winston from "winston";
 import * as http from "http";
 import * as https from "https";
-import * as express  from "express";
+import * as express from "express";
 import * as compression from "compression";
 import * as bodyParser from "body-parser";
 import * as cookieParser from "cookie-parser";
@@ -18,9 +18,9 @@ import { Config } from "./Config";
 
 export class WebServer {
     private static _logger: winston.Logger;
-    private static app:express.Express;
+    private static app: express.Express;
 
-    static async configure(logger: winston.Logger, baseurl:string): Promise<http.Server> {
+    static async configure(logger: winston.Logger, baseurl: string): Promise<http.Server> {
         this._logger = logger;
 
         this.app = express();
@@ -34,23 +34,23 @@ export class WebServer {
         }));
         this.app.use(flash());
 
-        
+
         // Add headers
         this.app.use(function (req, res, next) {
 
             // Website you wish to allow to connect
             res.setHeader('Access-Control-Allow-Origin', '*');
-        
+
             // Request methods you wish to allow
             res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
-        
+
             // Request headers you wish to allow
             res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
-        
+
             // Set to true if you need the website to include cookies in the requests sent
             // to the API (e.g. in case you use sessions)
             res.setHeader('Access-Control-Allow-Credentials', "true");
-        
+
             // Pass to next layer of middleware
             next();
         });
@@ -58,9 +58,9 @@ export class WebServer {
 
         await LoginProvider.configure(this._logger, this.app, baseurl);
         await SamlProvider.configure(this._logger, this.app, baseurl);
-        var server:http.Server = null;
+        var server: http.Server = null;
         if (Config.tls_crt != '' && Config.tls_key != '') {
-            var options:any = {
+            var options: any = {
                 cert: Config.tls_crt,
                 key: Config.tls_key
             };
@@ -70,20 +70,27 @@ export class WebServer {
                     key: Buffer.from(Config.tls_key, 'base64').toString('ascii')
                 };
             }
-            var ca:string = Config.tls_ca;
-            if (ca!== "") {
-                if(ca.indexOf("---") === -1) {
+            var ca: string = Config.tls_ca;
+            if (ca !== "") {
+                if (ca.indexOf("---") === -1) {
                     ca = Buffer.from(Config.tls_ca, 'base64').toString('ascii');
                 }
                 options.ca = ca;
                 // options.cert += "\n" + ca;
             }
-            if(Config.tls_passphrase!=="") {
+            if (Config.tls_passphrase !== "") {
                 // options.cert = [options.cert, Config.tls_passphrase];
                 // options.key = [options.key, Config.tls_passphrase];
                 options.passphrase = Config.tls_passphrase;
             }
             server = https.createServer(options, this.app);
+
+            var redirapp = express();
+            var _http = http.createServer(redirapp);
+            redirapp.get('*', function (req, res) {
+                res.redirect('https://' + req.headers.host + req.url);
+            })
+            _http.listen(80);
         } else {
             server = http.createServer(this.app);
         }
