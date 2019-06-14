@@ -9,6 +9,7 @@ import * as cookieParser from "cookie-parser";
 import * as cookieSession from "cookie-session";
 import * as crypto from "crypto";
 import * as flash from "flash";
+import * as morgan from "morgan";
 
 import * as samlp from "samlp";
 import { SamlProvider } from "./SamlProvider";
@@ -24,6 +25,7 @@ export class WebServer {
         this._logger = logger;
 
         this.app = express();
+        this.app.use(morgan('combined', { stream: (winston.stream as any).write }));
         this.app.use(compression());
         this.app.use(bodyParser.urlencoded({ extended: true }));
         this.app.use(bodyParser.json());
@@ -85,13 +87,17 @@ export class WebServer {
             }
             server = https.createServer(options, this.app);
 
-            var redirapp = express();
-            var _http = http.createServer(redirapp);
-            redirapp.get('*', function (req, res) {
-                //res.redirect('https://' + req.headers.host + req.url);
-                res.status(200).json({ status: "ok" });
-            })
+
+            var _http = http.createServer(this.app);
             _http.listen(80);
+
+            // var redirapp = express();
+            // var _http = http.createServer(redirapp);
+            // redirapp.get('*', function (req, res) {
+            //     //res.redirect('https://' + req.headers.host + req.url);
+            //     res.status(200).json({ status: "ok" });
+            // })
+            // _http.listen(80);
         } else {
             server = http.createServer(this.app);
         }

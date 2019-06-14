@@ -7,6 +7,7 @@ import * as compression from "compression";
 import * as bodyParser from "body-parser";
 import * as cookieParser from "cookie-parser";
 import * as nodered from "node-red";
+import * as morgan from "morgan";
 
 import * as samlauth from "node-red-contrib-auth-saml";
 import * as cookieSession from "cookie-session";
@@ -35,6 +36,7 @@ export class WebServer {
             this._logger.debug("WebServer.configure::begin");
             if (this.app === null) {
                 this.app = express();
+                this.app.use(morgan('combined', { stream: (winston.stream as any).write }));
                 this.app.use(compression());
                 this.app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }))
                 this.app.use(bodyParser.json({ limit: '10mb' }))
