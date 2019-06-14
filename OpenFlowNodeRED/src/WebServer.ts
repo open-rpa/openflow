@@ -70,7 +70,8 @@ export class WebServer {
                     var redirapp = express();
                     var _http = http.createServer(redirapp);
                     redirapp.get('*', function (req, res) {
-                        res.redirect('https://' + req.headers.host + req.url);
+                        // res.redirect('https://' + req.headers.host + req.url);
+                        res.status(200).json({ status: "ok" });
                     })
                     _http.listen(80);
                 } else {
