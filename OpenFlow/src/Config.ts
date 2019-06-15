@@ -23,6 +23,7 @@ export class Config {
     public static tls_passphrase: string = Config.getEnv("tls_passphrase", "");
     public static port: number = parseInt(Config.getEnv("port", "3000"));
     public static domain: string = Config.getEnv("domain", "localhost");
+    public static protocol: string = Config.getEnv("protocol", "http");
     public static saml_issuer: string = Config.getEnv("saml_issuer", "the-issuer");
 
     // public static login_providers:Provider[] = [];
@@ -34,10 +35,16 @@ export class Config {
     public static skip_history_collections: string = Config.getEnv("skip_history_collections", "");
 
     public static baseurl(): string {
+        var result: string = "";
         if (Config.tls_crt != '' && Config.tls_key != '') {
-            return "https://" + Config.domain + ":" + Config.port + "/";
+            result = "https://" + Config.domain;
+        } else {
+            result = Config.protocol + "://" + Config.domain;
         }
-        return "http://" + Config.domain + ":" + Config.port + "/";
+        if (Config.port != 80 && Config.port != 443) {
+            result = result + ":" + Config.port + "/";
+        }
+        return result;
     }
     // public static async get_login_providers():Promise<void> {
     //     this.login_providers = await Config.db.query<Provider>({_type: "provider"}, null, 1, 0, null, "config", TokenUser.rootToken());

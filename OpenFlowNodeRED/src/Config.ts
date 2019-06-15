@@ -18,6 +18,7 @@ export class Config {
     public static tls_passphrase: string = Config.getEnv("tls_passphrase", "");
     public static port: number = parseInt(Config.getEnv("port", "1880"));
     public static domain: string = Config.getEnv("domain", "localhost");
+    public static protocol: string = Config.getEnv("protocol", "http");
     public static nodered_domain_schema: string = Config.getEnv("nodered_domain_schema", "");
 
     public static api_ws_url: string = Config.getEnv("api_ws_url", "ws://localhost:3000");
@@ -34,10 +35,20 @@ export class Config {
         if (Config.nodered_domain_schema != "") {
             Config.domain = Config.nodered_domain_schema.replace("$nodered_id$", Config.nodered_id)
         }
+        // if (Config.tls_crt != '' && Config.tls_key != '') {
+        //     return "https://" + Config.domain + ":" + Config.port + "/";
+        // }
+        // return "http://" + Config.domain + ":" + Config.port + "/";
+        var result: string = "";
         if (Config.tls_crt != '' && Config.tls_key != '') {
-            return "https://" + Config.domain + ":" + Config.port + "/";
+            result = "https://" + Config.domain;
+        } else {
+            result = Config.protocol + "://" + Config.domain;
         }
-        return "http://" + Config.domain + ":" + Config.port + "/";
+        if (Config.port != 80 && Config.port != 443) {
+            result = result + ":" + Config.port + "/";
+        }
+        return result;
     }
 
     public static getEnv(name: string, defaultvalue: string): string {
