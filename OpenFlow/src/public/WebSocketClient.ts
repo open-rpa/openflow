@@ -168,12 +168,31 @@ module openflow {
         }
         init() {
             this.getJSON("/config", async (error: any, data: any) => {
-                if (location.protocol == 'https:' && data.wshost.startsWith("ws://")) {
-                    data.wshost = data.wshost.replace("ws://", "wss://");
+                var parser = document.createElement('a');
+                parser.href = data.wshost;
+                parser.protocol; // => "http:"
+                parser.hostname; // => "example.com"
+                parser.port;     // => "3000"
+                parser.pathname; // => "/pathname/"
+                parser.search;   // => "?search=test"
+                parser.hash;     // => "#hash"
+                parser.host;     // => "example.com:3000"
+                console.log(location.protocol);
+                console.log(parser.protocol);
+                console.log(data.wshost);
+                if (location.protocol == 'https:' && data.wshost == "ws:") {
+                    data.wshost = "wss://" + parser.hostname;
+                    if (parser.port != "80") {
+                        data.wshost = "wss://" + parser.hostname + parser.port;
+                    }
                 }
-                if (location.protocol == 'http:' && data.wshost.startsWith("wss://")) {
-                    data.wshost = data.wshost.replace("wss://", "ws://");
+                if (location.protocol == 'http:' && data.wshost == "wss:") {
+                    data.wshost = "ws://" + parser.hostname;
+                    if (parser.port != "443") {
+                        data.wshost = "ws://" + parser.hostname + parser.port;
+                    }
                 }
+                console.log(data.wshost);
                 console.debug("WebSocketClient::onopen: connecting to " + data.wshost);
                 this._socketObject = new ReconnectingWebSocket(data.wshost);
                 this._socketObject.onopen = (this.onopen).bind(this);
