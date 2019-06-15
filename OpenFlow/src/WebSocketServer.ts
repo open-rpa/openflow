@@ -19,7 +19,7 @@ export class WebSocketServer {
         this._clients = [];
         this._logger = logger;
         this._server = server;
-        this._socketserver = new WebSocket.Server({ server: server });
+        this._socketserver = new WebSocket.Server({ server: server, path: "/ws" });
         this._socketserver.on("connection", (socketObject: WebSocket): void => {
             this._clients.push(new WebSocketClient(logger, socketObject));
         });
