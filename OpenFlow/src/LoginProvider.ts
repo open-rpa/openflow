@@ -134,9 +134,9 @@ export class LoginProvider {
         app.get("/config", (req: any, res: any, next: any): void => {
             var _url: string = "";
             if (url.parse(baseurl).protocol == "http:") {
-                _url = "ws://" + url.parse(baseurl).host + "/ws";
+                _url = "ws://" + url.parse(baseurl).host;
             } else {
-                _url = "wss://" + url.parse(baseurl).host + "/ws";
+                _url = "wss://" + url.parse(baseurl).host;
             }
             _url += "/";
             var res2 = {
