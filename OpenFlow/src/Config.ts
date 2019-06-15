@@ -43,7 +43,7 @@ export class Config {
         }
         if (Config.port != 80 && Config.port != 443) {
             result = result + ":" + Config.port + "/";
-        }
+        } else { result = result + "/"; }
         return result;
     }
     // public static async get_login_providers():Promise<void> {
