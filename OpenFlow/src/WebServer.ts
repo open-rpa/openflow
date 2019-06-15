@@ -87,10 +87,6 @@ export class WebServer {
             }
             server = https.createServer(options, this.app);
 
-
-            var _http = http.createServer(this.app);
-            _http.listen(80);
-
             // var redirapp = express();
             // var _http = http.createServer(redirapp);
             // redirapp.get('*', function (req, res) {

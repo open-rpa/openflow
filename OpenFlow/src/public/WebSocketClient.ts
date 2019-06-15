@@ -168,6 +168,12 @@ module openflow {
         }
         init() {
             this.getJSON("/config", async (error: any, data: any) => {
+                if (location.protocol == 'https:' && data.wshost.startsWith("ws://")) {
+                    data.wshost = data.wshost.replace("ws://", "wss://");
+                }
+                if (location.protocol == 'http:' && data.wshost.startsWith("wss://")) {
+                    data.wshost = data.wshost.replace("wss://", "ws://");
+                }
                 console.debug("WebSocketClient::onopen: connecting to " + data.wshost);
                 this._socketObject = new ReconnectingWebSocket(data.wshost);
                 this._socketObject.onopen = (this.onopen).bind(this);
