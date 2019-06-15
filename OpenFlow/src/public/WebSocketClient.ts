@@ -177,27 +177,24 @@ module openflow {
                 parser.search;   // => "?search=test"
                 parser.hash;     // => "#hash"
                 parser.host;     // => "example.com:3000"
-                if (location.protocol == 'https:' && data.wshost == "ws:") {
+                if (location.protocol == 'https:' && parser.protocol == "ws:") {
                     data.wshost = "wss://" + parser.hostname;
                     console.log("new wshost: " + data.wshost);
-                    // if (parser.port != "80") {
-                    //     data.wshost = "wss://" + parser.hostname + parser.port;
-                    // }
+                    if (parser.port != "80") {
+                        data.wshost = "wss://" + parser.hostname + parser.port;
+                    }
                 } else {
                     console.log("location.protocol: " + location.protocol);
+                    console.log("parser.protocol: " + parser.protocol);
                     console.log("data.wshost: " + data.wshost);
                     console.log(data.wshost);
                 }
-                if (location.protocol == 'http:' && data.wshost == "wss:") {
+                if (location.protocol == 'http:' && parser.protocol == "wss:") {
                     data.wshost = "ws://" + parser.hostname;
                     console.log("new wshost: " + data.wshost);
-                    // if (parser.port != "443") {
-                    //     data.wshost = "ws://" + parser.hostname + parser.port;
-                    // }
-                } else {
-                    console.log("location.protocol: " + location.protocol);
-                    console.log("data.wshost: " + data.wshost);
-                    console.log(data.wshost);
+                    if (parser.port != "443") {
+                        data.wshost = "ws://" + parser.hostname + parser.port;
+                    }
                 }
                 console.log(data.wshost);
                 console.debug("WebSocketClient::onopen: connecting to " + data.wshost);
