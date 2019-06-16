@@ -510,10 +510,18 @@ export class Message {
             // noderedusers.addRight(cli.user._id, cli.user.username, [Rights.full_control]);
             // noderedusers.removeRight(cli.user._id, [Rights.delete]);
             // noderedusers.AddMember(cli.user);
+            var nodereduser: User = await User.ensureUser(cli.jwt, "nodered" + name, "nodered" + name, null);
+            nodereduser.addRight(cli.user._id, cli.user.username, [Rights.full_control]);
+            nodereduser.removeRight(cli.user._id, [Rights.delete]);
+            await nodereduser.Save(cli.jwt);
+
             var noderedadmins = await User.ensureRole(cli.jwt, name + "noderedadmins", null);
             noderedadmins.addRight(cli.user._id, cli.user.username, [Rights.full_control]);
             noderedadmins.removeRight(cli.user._id, [Rights.delete]);
             noderedadmins.AddMember(cli.user);
+            noderedadmins.addRight(nodereduser._id, nodereduser.username, [Rights.full_control]);
+            noderedadmins.removeRight(nodereduser._id, [Rights.delete]);
+            noderedadmins.AddMember(nodereduser);
             await noderedadmins.Save(cli.jwt);
 
             var deployment = await KubeUtil.instance().GetDeployment(namespace, name);
