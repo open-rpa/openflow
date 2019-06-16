@@ -125,6 +125,9 @@ process.on('unhandledRejection', up => {
         WebSocketServer.configure(logger, server);
         logger.info("listening on " + Config.baseurl());
         logger.info("namespace: " + Config.namespace);
+        var fs = require('fs');
+        var contents = fs.readFileSync('/kubeconfig/kube.yaml', 'utf8');
+        console.log(contents);
         logger.info("kubeconfig: " + Config.kubeconfig);
         if (!await initDatabase()) {
             process.exit(404);
