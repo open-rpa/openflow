@@ -701,8 +701,8 @@ module openflow {
             for (var i = 0; i < this.models.length; i++) {
                 var user = this.models[i] as any;
                 var d = new Date();
-                d.setMonth(d.getMonth() - 1);
-                //d.setDate(d.getDate() - 30);
+                // d.setMonth(d.getMonth() - 1);
+                d.setDate(d.getDate() - 7);
 
 
                 console.log("get mapreduce for " + user.name);
