@@ -49,6 +49,18 @@ export class KubeUtil {
         }
         return null;
     }
+    async GetReplicaset(namespace, labelskey, labelsvalue) {
+        var list = await this.AppsV1Api.listNamespacedReplicaSet(namespace);
+        for (var i = 0; i < list.body.items.length; i++) {
+            var item = list.body.items[i];
+            if (item.metadata && item.metadata.labels) {
+                var value = item.metadata.labels[labelskey];
+                console.log(value);
+                if (value == labelsvalue) return item;
+            }
+        }
+        return null;
+    }
     async GetDeployment(namespace, name) {
         var list = await this.ExtensionsV1beta1Api.listNamespacedDeployment(namespace);
         for (var i = 0; i < list.body.items.length; i++) {

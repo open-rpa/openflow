@@ -544,6 +544,7 @@ export class Message {
                                             { name: "saml_issuer", value: Config.saml_issuer },
                                             { name: "nodered_id", value: name },
                                             { name: "api_ws_url", value: Config.api_ws_url },
+                                            { name: "amqp_url", value: Config.amqp_url },
                                             { name: "nodered_domain_schema", value: hostname },
                                             { name: "protocol", value: Config.protocol },
                                             { name: "port", value: Config.port.toString() },
@@ -635,14 +636,18 @@ export class Message {
             if (service != null) {
                 await KubeUtil.instance().CoreV1Api.deleteNamespacedService(name, namespace);
             }
-            var list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
-            for (var i = 0; i < list.body.items.length; i++) {
-                var item = list.body.items[i];
-                // if (item.metadata.labels.app === (name + "nodered") || item.metadata.labels.name === name) {
-                if (item.metadata.labels.app === (name + "nodered")) {
-                    await KubeUtil.instance().CoreV1Api.deleteNamespacedPod(item.metadata.name, namespace);
-                }
+            var replicaset = await KubeUtil.instance().GetReplicaset(namespace, "app", (name + "nodered"));
+            if (replicaset !== null) {
+                KubeUtil.instance().AppsV1Api.deleteNamespacedReplicaSet(replicaset.metadata.name, namespace);
             }
+            // var list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
+            // for (var i = 0; i < list.body.items.length; i++) {
+            //     var item = list.body.items[i];
+            //     // if (item.metadata.labels.app === (name + "nodered") || item.metadata.labels.name === name) {
+            //     if (item.metadata.labels.app === (name + "nodered")) {
+            //         await KubeUtil.instance().CoreV1Api.deleteNamespacedPod(item.metadata.name, namespace);
+            //     }
+            // }
             var ingress = await KubeUtil.instance().GetIngress(namespace, "useringress");
             var updated = false;
             for (var i = ingress.spec.rules.length - 1; i >= 0; i--) {
