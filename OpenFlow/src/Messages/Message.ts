@@ -514,6 +514,7 @@ export class Message {
             noderedadmins.addRight(cli.user._id, cli.user.username, [Rights.full_control]);
             noderedadmins.removeRight(cli.user._id, [Rights.delete]);
             noderedadmins.AddMember(cli.user);
+            await noderedadmins.Save(cli.jwt);
 
             var deployment = await KubeUtil.instance().GetDeployment(namespace, name);
             if (deployment == null) {
