@@ -136,11 +136,14 @@ export class NoderedUtil {
         } else {
             if (Crypt.encryption_key === "") { throw new Error("root signin not allowed"); }
             var user = new TokenUser();
+            Logger.instanse.debug("GetToken::nodered_id: " + Config.nodered_id);
+            Logger.instanse.debug("GetToken::isNumeric: " + this.isNumeric(Config.nodered_id));
             if (this.isNumeric(Config.nodered_id)) {
                 user.name = "nodered" + Config.nodered_id;
             } else {
                 user.name = Config.nodered_id;
             }
+            user.username = user.name;
             q.jwt = Crypt.createToken(user);
         }
         var _msg: Message = new Message();
