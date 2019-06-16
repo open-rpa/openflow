@@ -46,8 +46,8 @@ export class WebSocketClient {
         this._socketObject = socketObject;
         this._receiveQueue = [];
         this._sendQueue = [];
-        if (socketObject._socket != undefined) {
-            this.remoteip = socketObject._socket.remoteAddress;
+        if ((socketObject as any)._socket != undefined) {
+            this.remoteip = (socketObject as any)._socket.remoteAddress;
         }
         logger.info("new client ");;
         socketObject.on("open", (e: Event): void => this.open(e));
