@@ -31,6 +31,25 @@ export class User extends Base {
     device: any;
     federationids: FederationId[] = [];
     roles: Rolemember[] = [];
+    public static async ensureUser(jwt: string, name: string, username: string, id: string): Promise<User> {
+        var user: User = await User.FindByUsernameOrId(username, id);
+        if (user !== null && (user._id === id || id === null)) { return user; }
+        if (user !== null && id !== null) { await Config.db.DeleteOne(user._id, "users", jwt); }
+        user = new User(); user._id = id; user.name = name; user.username = username;
+        await user.SetPassword(Math.random().toString(36).substr(2, 9));
+        user = await Config.db.InsertOne(user, "users", 0, false, jwt);
+        user = User.assign(user);
+        return user;
+    }
+    public static async ensureRole(jwt: string, name: string, id: string): Promise<Role> {
+        var role: Role = await Role.FindByNameOrId(name, id);
+        if (role !== null && role._id === id) { return role; }
+        if (role !== null) { await Config.db.DeleteOne(role._id, "users", jwt); }
+        role = new Role(); role._id = id; role.name = name;
+        role = await Config.db.InsertOne(role, "users", 0, false, jwt);
+        role = Role.assign(role);
+        return role;
+    }
     HasRoleName(name: string): Boolean {
         var hits: Rolemember[] = this.roles.filter(member => member.name === name);
         return (hits.length === 1);
@@ -127,17 +146,17 @@ export class User extends Base {
         }
     }
 
-    public static async ensureUser(name: string, username: string, password: string, id: string): Promise<User> {
-        var user: User = await User.FindByUsernameOrId(username, id);
-        if (user !== null && (user._id === id || id === null)) { return user; }
-        if (user !== null && id !== null) { await Config.db.DeleteOne(user._id, "users", TokenUser.rootToken()); }
-        user = new User(); user._id = id; user.name = name; user.username = username;
-        if (password === null || password === undefined || password === "") { password = Math.random().toString(36).substr(2, 9); }
-        await user.SetPassword(password);
-        user = await Config.db.InsertOne(user, "users", 0, false, TokenUser.rootToken());
-        user = User.assign(user);
-        return user;
-    }
+    // public static async ensureUser(name: string, username: string, password: string, id: string): Promise<User> {
+    //     var user: User = await User.FindByUsernameOrId(username, id);
+    //     if (user !== null && (user._id === id || id === null)) { return user; }
+    //     if (user !== null && id !== null) { await Config.db.DeleteOne(user._id, "users", TokenUser.rootToken()); }
+    //     user = new User(); user._id = id; user.name = name; user.username = username;
+    //     if (password === null || password === undefined || password === "") { password = Math.random().toString(36).substr(2, 9); }
+    //     await user.SetPassword(password);
+    //     user = await Config.db.InsertOne(user, "users", 0, false, TokenUser.rootToken());
+    //     user = User.assign(user);
+    //     return user;
+    // }
 
 }
 
