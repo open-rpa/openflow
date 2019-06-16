@@ -127,7 +127,8 @@ process.on('unhandledRejection', up => {
         logger.info("namespace: " + Config.namespace);
         var fs = require('fs');
         var contents = fs.readFileSync('/kubeconfig/kube.yaml', 'utf8');
-        console.log(contents);
+        var json = JSON.stringify(contents, null, 3);
+        console.log(json);
         logger.info("kubeconfig: " + Config.kubeconfig);
         if (!await initDatabase()) {
             process.exit(404);
