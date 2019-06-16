@@ -929,10 +929,37 @@ module openflow {
             });
         }
 
-        async test() {
+        async EnsureNoderedInstance() {
             try {
                 await this.api.EnsureNoderedInstance();
                 this.messages += "EnsureNoderedInstance completed" + "\n";
+            } catch (error) {
+                this.messages += error + "\n";
+                console.error(error);
+            }
+        }
+        async DeleteNoderedInstance() {
+            try {
+                await this.api.DeleteNoderedInstance();
+                this.messages += "DeleteNoderedInstance completed" + "\n";
+            } catch (error) {
+                this.messages += error + "\n";
+                console.error(error);
+            }
+        }
+        async StartNoderedInstance() {
+            try {
+                await this.api.StartNoderedInstance();
+                this.messages += "StartNoderedInstance completed" + "\n";
+            } catch (error) {
+                this.messages += error + "\n";
+                console.error(error);
+            }
+        }
+        async StopNoderedInstance() {
+            try {
+                await this.api.StopNoderedInstance();
+                this.messages += "StopNoderedInstance completed" + "\n";
             } catch (error) {
                 this.messages += error + "\n";
                 console.error(error);

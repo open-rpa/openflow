@@ -1,10 +1,10 @@
 import { Base } from "../base";
 
-export class StartNoderedInstanceMessage<T extends Base> implements IReplyMessage {
+export class StartNoderedInstanceMessage implements IReplyMessage {
     public error: string;
     public jwt: any;
 
-    static assign<T extends Base>(o: any): StartNoderedInstanceMessage<T> {
+    static assign(o: any): StartNoderedInstanceMessage {
         if (typeof o === "string" || o instanceof String) {
             return Object.assign(new StartNoderedInstanceMessage(), JSON.parse(o.toString()));
         }

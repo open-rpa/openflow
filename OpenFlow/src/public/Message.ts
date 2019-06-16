@@ -198,6 +198,16 @@ module openflow {
             return Object.assign(new DeleteNoderedInstanceMessage(), o);
         }
     }
+    export class RestartNoderedInstanceMessage {
+        public error: string;
+        public jwt: any;
+        static assign(o: any): RestartNoderedInstanceMessage {
+            if (typeof o === "string" || o instanceof String) {
+                return Object.assign(new RestartNoderedInstanceMessage(), JSON.parse(o.toString()));
+            }
+            return Object.assign(new RestartNoderedInstanceMessage(), o);
+        }
+    }
     export class StartNoderedInstanceMessage {
         public error: string;
         public jwt: any;
@@ -208,14 +218,14 @@ module openflow {
             return Object.assign(new StartNoderedInstanceMessage(), o);
         }
     }
-    export class StopNoderedMessage {
+    export class StopNoderedInstanceMessage {
         public error: string;
         public jwt: any;
-        static assign(o: any): StopNoderedMessage {
+        static assign(o: any): StopNoderedInstanceMessage {
             if (typeof o === "string" || o instanceof String) {
-                return Object.assign(new StopNoderedMessage(), JSON.parse(o.toString()));
+                return Object.assign(new StopNoderedInstanceMessage(), JSON.parse(o.toString()));
             }
-            return Object.assign(new StopNoderedMessage(), o);
+            return Object.assign(new StopNoderedInstanceMessage(), o);
         }
     }
 

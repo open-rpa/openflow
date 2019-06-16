@@ -24,6 +24,8 @@ import { RegisterUserMessage } from "./RegisterUserMessage";
 import { UpdateManyMessage } from "./UpdateManyMessage";
 import { EnsureNoderedInstanceMessage } from "./EnsureNoderedInstanceMessage";
 import { KubeUtil } from "../KubeUtil";
+import { Role } from "../Role";
+import { RestartNoderedInstanceMessage } from "./RestartNoderedInstanceMessage";
 
 export class Message {
     public id: string;
@@ -128,6 +130,9 @@ export class Message {
                     break;
                 case "deletenoderedinstance":
                     this.DeleteNoderedInstance(cli);
+                    break;
+                case "restartnoderedinstance":
+                    this.RestartNoderedInstance(cli);
                     break;
                 case "startnoderedinstance":
                     this.StartNoderedInstance(cli);
@@ -600,6 +605,70 @@ export class Message {
     }
     private async DeleteNoderedInstance(cli: WebSocketClient): Promise<void> {
         this.Reply();
+        var msg: EnsureNoderedInstanceMessage;
+        var user: User;
+        try {
+            msg = EnsureNoderedInstanceMessage.assign(this.data);
+            var role: Role = await Role.FindByNameOrId(name, null);
+            if (role !== null) {
+                var jwt: string = TokenUser.rootToken();
+                await Config.db.DeleteOne(role._id, "users", jwt);
+            }
+            var name = cli.user.username;
+            var namespace = Config.namespace;
+            var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
+            var deployment = await KubeUtil.instance().GetDeployment(namespace, name);
+            if (deployment != null) {
+                await KubeUtil.instance().ExtensionsV1beta1Api.deleteNamespacedDeployment(name, namespace);
+            }
+            var service = await KubeUtil.instance().GetService(namespace, name);
+            if (service != null) {
+                await KubeUtil.instance().CoreV1Api.deleteNamespacedService(name, namespace);
+            }
+            var ingress = await KubeUtil.instance().GetIngress(namespace, "ingress");
+            var updated = false;
+            for (var i = ingress.spec.rules.length - 1; i >= 0; i--) {
+                if (ingress.spec.rules[i].host == hostname) {
+                    ingress.spec.rules.splice(i, 1);
+                    updated = true;
+                }
+            }
+            if (updated) {
+                delete ingress.metadata.creationTimestamp;
+                await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("ingress", namespace, ingress);
+            }
+        } catch (error) {
+            msg.error = JSON.stringify(error, null, 2);
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            msg.error = JSON.stringify(error, null, 2);
+        }
+        this.Send(cli);
+    }
+    private async RestartNoderedInstance(cli: WebSocketClient): Promise<void> {
+        this.Reply();
+        var msg: RestartNoderedInstanceMessage;
+        try {
+            msg = RestartNoderedInstanceMessage.assign(this.data);
+            var name = cli.user.username;
+            var namespace = Config.namespace;
+            // var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
+
+            var list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
+            for (var i = 0; i < list.body.items.length; i++) {
+                var item = list.body.items[i];
+                // if (item.metadata.labels.app === (name + "nodered") || item.metadata.labels.name === name) {
+                if (item.metadata.labels.app === (name + "nodered")) {
+                    await KubeUtil.instance().CoreV1Api.deleteNamespacedPod(item.metadata.name, namespace);
+                }
+            }
+        } catch (error) {
+            this.data = "";
+            msg.error = JSON.stringify(error, null, 2);
+        }
         this.Send(cli);
     }
     private async StartNoderedInstance(cli: WebSocketClient): Promise<void> {
@@ -610,10 +679,6 @@ export class Message {
         this.Reply();
         this.Send(cli);
     }
-
-
-
-
 
 }
 
