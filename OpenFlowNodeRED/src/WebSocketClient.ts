@@ -53,10 +53,11 @@ export class WebSocketClient {
                 this._socketObject = null;
             }
             if (this._socketObject === null) {
-                this._socketObject = new WebSocket(this._url, {
+                var options: any = {
                     rejectUnauthorized: false,
                     strictSSL: false
-                });
+                };
+                this._socketObject = new WebSocket(this._url, options);
                 this._socketObject.onopen = (this.onopen).bind(this);
                 this._socketObject.onmessage = (this.onmessage).bind(this);
                 this._socketObject.onclose = (this.onclose).bind(this);
