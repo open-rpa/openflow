@@ -502,6 +502,9 @@ export class Message {
         var user: User;
         try {
             msg = EnsureNoderedInstanceMessage.assign(this.data);
+            var name = cli.user.username;
+            var namespace = Config.namespace;
+            var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
             // var noderedusers = await User.ensureRole(cli.jwt, name + "noderedusers", null);
             // noderedusers.addRight(cli.user._id, cli.user.username, [Rights.full_control]);
@@ -512,9 +515,6 @@ export class Message {
             noderedadmins.removeRight(cli.user._id, [Rights.delete]);
             noderedadmins.AddMember(cli.user);
 
-            var name = cli.user.username;
-            var namespace = Config.namespace;
-            var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
             var deployment = await KubeUtil.instance().GetDeployment(namespace, name);
             if (deployment == null) {
                 console.log("Deployment " + name + " not found in " + namespace);
@@ -528,7 +528,7 @@ export class Message {
                                 containers: [
                                     {
                                         name: 'nodered',
-                                        image: 'cloudhack/openflownodered:0.0.185',
+                                        image: 'cloudhack/openflownodered:0.0.187',
                                         imagePullPolicy: "Always",
                                         env: [
                                             { name: "saml_federation_metadata", value: Config.saml_federation_metadata },
@@ -609,14 +609,15 @@ export class Message {
         var user: User;
         try {
             msg = EnsureNoderedInstanceMessage.assign(this.data);
-            var role: Role = await Role.FindByNameOrId(name, null);
+            var name = cli.user.username;
+            var namespace = Config.namespace;
+            var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
+
+            var role: Role = await Role.FindByNameOrId(name + "noderedadmins", null);
             if (role !== null) {
                 var jwt: string = TokenUser.rootToken();
                 await Config.db.DeleteOne(role._id, "users", jwt);
             }
-            var name = cli.user.username;
-            var namespace = Config.namespace;
-            var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
             var deployment = await KubeUtil.instance().GetDeployment(namespace, name);
             if (deployment != null) {
                 await KubeUtil.instance().ExtensionsV1beta1Api.deleteNamespacedDeployment(name, namespace);
