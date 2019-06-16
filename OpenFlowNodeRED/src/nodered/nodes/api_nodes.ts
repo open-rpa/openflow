@@ -6,6 +6,7 @@ import { WebSocketClient } from "../../WebSocketClient";
 import { NoderedUtil } from "./NoderedUtil";
 import { Base } from "../../Base";
 import { Config } from "../../Config";
+import { Logger } from "../../Logger";
 
 
 
@@ -73,6 +74,7 @@ export class api_get_jwt {
                 }
                 user.username = user.name;
                 q.jwt = Crypt.createToken(user);
+                Logger.instanse.debug("api_get_jwt: Created token as " + result.user.username);
             }
             this.node.status({ fill: "blue", shape: "dot", text: "Requesting token" });
             var _msg: Message = new Message();

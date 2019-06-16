@@ -3,6 +3,7 @@ import { QueryMessage, Message, InsertOneMessage, UpdateOneMessage, DeleteOneMes
 import { WebSocketClient } from "../../WebSocketClient";
 import { Crypt } from "../../Crypt";
 import { Config } from "../../Config";
+import { Logger } from "../../Logger";
 
 export class NoderedUtil {
     public static IsNullUndefinded(obj: any) {
@@ -145,6 +146,7 @@ export class NoderedUtil {
         var _msg: Message = new Message();
         _msg.command = "signin"; _msg.data = JSON.stringify(q);
         var result: SigninMessage = await WebSocketClient.instance.Send<SigninMessage>(_msg);
+        Logger.instanse.debug("Created token as " + result.user.username);
         return result;
     }
 
