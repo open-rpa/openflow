@@ -23,6 +23,7 @@ import { QueueMessage } from "./QueueMessage";
 import { RegisterUserMessage } from "./RegisterUserMessage";
 import { UpdateManyMessage } from "./UpdateManyMessage";
 import { EnsureNoderedInstanceMessage } from "./EnsureNoderedInstanceMessage";
+import { KubeUtil } from "../KubeUtil";
 
 export class Message {
     public id: string;
@@ -496,6 +497,85 @@ export class Message {
         var user: User;
         try {
             msg = EnsureNoderedInstanceMessage.assign(this.data);
+            var name = cli.user.username;
+            var namespace = Config.namespace;
+            var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
+            var deployment = await KubeUtil.instance().GetDeployment(namespace, name);
+            if (deployment == null) {
+                console.log("Deployment " + name + " not found in " + namespace);
+                var _deployment = {
+                    metadata: { name: name, namespace: namespace, app: (name + "nodered") },
+                    spec: {
+                        replicas: 1,
+                        template: {
+                            metadata: { labels: { name: name, app: (name + "nodered") } },
+                            spec: {
+                                containers: [
+                                    {
+                                        name: 'nodered',
+                                        image: 'cloudhack/openflownodered:0.0.180',
+                                        imagePullPolicy: "Always",
+                                        env: [
+                                            { name: "saml_federation_metadata", value: Config.saml_federation_metadata },
+                                            { name: "saml_issuer", value: Config.saml_issuer },
+                                            { name: "nodered_id", value: name },
+                                            { name: "api_ws_url", value: Config.api_ws_url },
+                                            { name: "nodered_domain_schema", value: hostname },
+                                            { name: "protocol", value: Config.protocol },
+                                            { name: "port", value: (Config.port as any) },
+                                            { name: "aes_secret", value: Config.aes_secret },
+
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+                await KubeUtil.instance().ExtensionsV1beta1Api.createNamespacedDeployment(namespace, _deployment);
+            }
+            var service = await KubeUtil.instance().GetService(namespace, name);
+            if (service == null) {
+                console.log("Service " + name + " not found in " + namespace);
+                var _service = {
+                    metadata: { name: name, namespace: namespace },
+                    spec: {
+                        type: "NodePort",
+                        sessionAffinity: "ClientIP",
+                        selector: { app: (name + "nodered") },
+                        ports: [
+                            { port: 80, name: "www" }
+                        ]
+                    }
+                }
+                await KubeUtil.instance().CoreV1Api.createNamespacedService(namespace, _service);
+            }
+            var ingress = await KubeUtil.instance().GetIngress(namespace, "ingress");
+            // console.log(ingress);
+            var rule = null;
+            for (var i = 0; i < ingress.spec.rules.length; i++) {
+                if (ingress.spec.rules[i].host == hostname) {
+                    rule = ingress.spec.rules[i];
+                }
+            }
+            if (rule == null) {
+                rule = {
+                    host: hostname,
+                    http: {
+                        paths: [{
+                            path: "/",
+                            backend: {
+                                serviceName: name,
+                                servicePort: "www"
+                            }
+                        }]
+                    }
+                }
+                delete ingress.metadata.creationTimestamp;
+                delete ingress.status;
+                ingress.spec.rules.push(rule);
+                await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("ingress", namespace, ingress);
+            }
         } catch (error) {
             msg.error = error.toString();
         }

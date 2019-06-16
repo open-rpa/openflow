@@ -3,9 +3,9 @@ import { CoreV1Api, AppsV1Api, ExtensionsV1beta1Api } from "@kubernetes/client-n
 import { Config } from "./Config";
 
 export class KubeUtil {
-    private CoreV1Api: CoreV1Api = null; // kc.makeApiClient(k8s.CoreV1Api);
-    private AppsV1Api: AppsV1Api = null; // kc.makeApiClient(k8s.AppsV1Api);
-    private ExtensionsV1beta1Api: ExtensionsV1beta1Api = null; // kc.makeApiClient(k8s.ExtensionsV1beta1Api);
+    public CoreV1Api: CoreV1Api = null; // kc.makeApiClient(k8s.CoreV1Api);
+    public AppsV1Api: AppsV1Api = null; // kc.makeApiClient(k8s.AppsV1Api);
+    public ExtensionsV1beta1Api: ExtensionsV1beta1Api = null; // kc.makeApiClient(k8s.ExtensionsV1beta1Api);
 
     private static _instance: KubeUtil = null;
     public static instance(): KubeUtil {

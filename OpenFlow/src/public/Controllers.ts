@@ -929,6 +929,14 @@ module openflow {
             });
         }
 
+        async test() {
+            try {
+                await this.api.EnsureNoderedInstance();
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
         async submit() {
             await this.SendOne(this.queuename, this.message);
         }

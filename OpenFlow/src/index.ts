@@ -129,15 +129,6 @@ process.on('unhandledRejection', up => {
         if (!await initDatabase()) {
             process.exit(404);
         }
-
-
-        var res = await KubeUtil.instance().GetDeployment("demo3", "api");
-        if (res != null) {
-            var json = JSON.stringify(res, null, 3);
-            console.log(json);
-        } else {
-            console.log("demo3/api not found!");
-        }
     } catch (error) {
         // logger.error(error.message);
         var json = JSON.stringify(error, null, 3);

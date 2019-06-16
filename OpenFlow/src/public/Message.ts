@@ -178,6 +178,46 @@ module openflow {
             return Object.assign(new QueueMessage(), o);
         }
     }
+    export class EnsureNoderedInstanceMessage {
+        public error: string;
+        public jwt: any;
+        static assign(o: any): EnsureNoderedInstanceMessage {
+            if (typeof o === "string" || o instanceof String) {
+                return Object.assign(new EnsureNoderedInstanceMessage(), JSON.parse(o.toString()));
+            }
+            return Object.assign(new EnsureNoderedInstanceMessage(), o);
+        }
+    }
+    export class DeleteNoderedInstanceMessage {
+        public error: string;
+        public jwt: any;
+        static assign(o: any): DeleteNoderedInstanceMessage {
+            if (typeof o === "string" || o instanceof String) {
+                return Object.assign(new DeleteNoderedInstanceMessage(), JSON.parse(o.toString()));
+            }
+            return Object.assign(new DeleteNoderedInstanceMessage(), o);
+        }
+    }
+    export class StartNoderedInstanceMessage {
+        public error: string;
+        public jwt: any;
+        static assign(o: any): StartNoderedInstanceMessage {
+            if (typeof o === "string" || o instanceof String) {
+                return Object.assign(new StartNoderedInstanceMessage(), JSON.parse(o.toString()));
+            }
+            return Object.assign(new StartNoderedInstanceMessage(), o);
+        }
+    }
+    export class StopNoderedMessage {
+        public error: string;
+        public jwt: any;
+        static assign(o: any): StopNoderedMessage {
+            if (typeof o === "string" || o instanceof String) {
+                return Object.assign(new StopNoderedMessage(), JSON.parse(o.toString()));
+            }
+            return Object.assign(new StopNoderedMessage(), o);
+        }
+    }
 
 
     export class Message {
