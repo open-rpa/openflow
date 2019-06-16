@@ -38,8 +38,6 @@ export class Config {
     public static aes_secret: string = Config.getEnv("aes_secret", "");
     public static skip_history_collections: string = Config.getEnv("skip_history_collections", "");
 
-    public static kubeconfig: string = Config.getEnv("kubeconfig", "");
-
     public static baseurl(): string {
         var result: string = "";
         if (Config.tls_crt != '' && Config.tls_key != '') {

@@ -15,9 +15,8 @@ export class KubeUtil {
         return this._instance;
     }
     constructor() {
-        var config = Config.kubeconfig;
         const kc = new k8s.KubeConfig();
-        kc.loadFromString(config);
+        kc.loadFromCluster();
         this.CoreV1Api = kc.makeApiClient(k8s.CoreV1Api);
         this.AppsV1Api = kc.makeApiClient(k8s.AppsV1Api);
         this.ExtensionsV1beta1Api = kc.makeApiClient(k8s.ExtensionsV1beta1Api);

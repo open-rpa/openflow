@@ -17,6 +17,7 @@ import { TokenUser } from "./TokenUser";
 import { Auth } from "./Auth";
 import { Role } from "./Role";
 import { Config } from "./Config";
+import { KubeUtil } from "./KubeUtil";
 
 const logger: winston.Logger = Logger.configure();
 Config.db = new DatabaseConnection(logger, Config.mongodb_url, Config.mongodb_db);
@@ -125,13 +126,17 @@ process.on('unhandledRejection', up => {
         WebSocketServer.configure(logger, server);
         logger.info("listening on " + Config.baseurl());
         logger.info("namespace: " + Config.namespace);
-        var fs = require('fs');
-        var contents = fs.readFileSync('/kubeconfig/kube.yaml', 'utf8');
-        var json = JSON.stringify(contents, null, 3);
-        console.log(json);
-        logger.info("kubeconfig: " + Config.kubeconfig);
         if (!await initDatabase()) {
             process.exit(404);
+        }
+
+
+        var res = await KubeUtil.instance().GetDeployment("demo3", "api");
+        if (res != null) {
+            var json = JSON.stringify(res, null, 3);
+            console.log(json);
+        } else {
+            console.log("demo3/api not found!");
         }
     } catch (error) {
         logger.error(error.message);
