@@ -5,6 +5,7 @@ import { Crypt } from "../../Crypt";
 import { WebSocketClient } from "../../WebSocketClient";
 import { NoderedUtil } from "./NoderedUtil";
 import { Base } from "../../Base";
+import { Config } from "../../Config";
 
 
 
@@ -40,6 +41,9 @@ export class api_get_jwt {
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
     }
+    isNumeric(num) {
+        return !isNaN(num)
+    }
     async oninput(msg: any) {
         try {
             this.node.status({});
@@ -61,7 +65,13 @@ export class api_get_jwt {
                 q.username = username; q.password = password;
             } else {
                 if (Crypt.encryption_key === "") { return NoderedUtil.HandleError(this, "root signin not allowed"); }
-                var user = new TokenUser(); user.name = "root"; user.username = "root";
+                var user = new TokenUser();
+                if (this.isNumeric(Config.nodered_id)) {
+                    user.name = "nodered" + Config.nodered_id;
+                } else {
+                    user.name = Config.nodered_id;
+                }
+                user.username = user.name;
                 q.jwt = Crypt.createToken(user);
             }
             this.node.status({ fill: "blue", shape: "dot", text: "Requesting token" });
