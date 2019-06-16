@@ -577,13 +577,13 @@ export class Message {
                 await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("ingress", namespace, ingress);
             }
         } catch (error) {
-            msg.error = error.toString();
+            msg.error = JSON.stringify(error, null, 2);
         }
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            msg.error = error.toString();
+            msg.error = JSON.stringify(error, null, 2);
         }
         this.Send(cli);
     }
