@@ -124,6 +124,7 @@ process.on('unhandledRejection', up => {
         const server: http.Server = await WebServer.configure(logger, Config.baseurl());
         WebSocketServer.configure(logger, server);
         logger.info("listening on " + Config.baseurl());
+        logger.info("namespace: " + Config.namespace);
         if (!await initDatabase()) {
             process.exit(404);
         }

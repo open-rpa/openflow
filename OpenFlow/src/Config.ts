@@ -23,6 +23,8 @@ export class Config {
     public static tls_passphrase: string = Config.getEnv("tls_passphrase", "");
     public static port: number = parseInt(Config.getEnv("port", "3000"));
     public static domain: string = Config.getEnv("domain", "localhost");
+    public static namespace: string = Config.getEnv("namespace", "");
+
     public static protocol: string = Config.getEnv("protocol", "http");
     public static saml_issuer: string = Config.getEnv("saml_issuer", "the-issuer");
 
