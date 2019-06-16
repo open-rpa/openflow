@@ -386,13 +386,18 @@ export class Message {
                 if (user !== null && user !== undefined) {
                     // refresh, for roles and stuff
                     tuser = new TokenUser(user);
-                } else if (tuser.username.startsWith("nodered")) {
+                } else { // Autocreate user .... safe ?? we use this for autocreating nodered service accounts
                     user = new User(); user.name = tuser.name; user.username = tuser.username;
                     await user.Save(TokenUser.rootToken());
                     tuser = new TokenUser(user);
-                } else {
-                    msg.error = "Unknown username or password";
                 }
+                // } else if (tuser.username.startsWith("nodered")) {
+                //     user = new User(); user.name = tuser.name; user.username = tuser.username;
+                //     await user.Save(TokenUser.rootToken());
+                //     tuser = new TokenUser(user);
+                // } else {
+                //     msg.error = "Unknown username or password";
+                // }
             } else if (msg.rawAssertion !== null && msg.rawAssertion !== undefined) {
                 type = "samltoken";
                 user = await LoginProvider.validateToken(msg.rawAssertion);
