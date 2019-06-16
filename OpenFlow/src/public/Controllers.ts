@@ -932,7 +932,9 @@ module openflow {
         async test() {
             try {
                 await this.api.EnsureNoderedInstance();
+                this.messages += "EnsureNoderedInstance completed" + "\n";
             } catch (error) {
+                this.messages += error + "\n";
                 console.error(error);
             }
         }
