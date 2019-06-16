@@ -12,6 +12,7 @@ export class Config {
     public static auto_create_users: boolean = Config.parseBoolean(Config.getEnv("auto_create_users", "false"));
     public static auto_create_domains: string[] = Config.parseArray(Config.getEnv("auto_create_domains", ""));
     public static allow_user_registration: boolean = Config.parseBoolean(Config.getEnv("allow_user_registration", "false"));
+    public static allow_personal_nodered: boolean = Config.parseBoolean(Config.getEnv("allow_personal_nodered", "false"));
 
     public static api_bypass_perm_check: boolean = Config.parseBoolean(Config.getEnv("api_bypass_perm_check", "false"));
     public static websocket_package_size: number = parseInt(Config.getEnv("websocket_package_size", "1024"), 10);
@@ -24,6 +25,7 @@ export class Config {
     public static port: number = parseInt(Config.getEnv("port", "3000"));
     public static domain: string = Config.getEnv("domain", "localhost");
     public static namespace: string = Config.getEnv("namespace", "");
+    public static nodered_domain_schema: string = Config.getEnv("nodered_domain_schema", "");
 
     public static protocol: string = Config.getEnv("protocol", "http");
     public static saml_issuer: string = Config.getEnv("saml_issuer", "the-issuer");
@@ -35,6 +37,8 @@ export class Config {
 
     public static aes_secret: string = Config.getEnv("aes_secret", "");
     public static skip_history_collections: string = Config.getEnv("skip_history_collections", "");
+
+    public static kubeconfig: string = Config.getEnv("kubeconfig", "");
 
     public static baseurl(): string {
         var result: string = "";

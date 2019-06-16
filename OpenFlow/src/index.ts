@@ -125,6 +125,7 @@ process.on('unhandledRejection', up => {
         WebSocketServer.configure(logger, server);
         logger.info("listening on " + Config.baseurl());
         logger.info("namespace: " + Config.namespace);
+        logger.info("kubeconfig: " + Config.kubeconfig);
         if (!await initDatabase()) {
             process.exit(404);
         }

@@ -22,6 +22,7 @@ import { RegisterQueueMessage } from "./RegisterQueueMessage";
 import { QueueMessage } from "./QueueMessage";
 import { RegisterUserMessage } from "./RegisterUserMessage";
 import { UpdateManyMessage } from "./UpdateManyMessage";
+import { EnsureNoderedInstanceMessage } from "./EnsureNoderedInstanceMessage";
 
 export class Message {
     public id: string;
@@ -120,6 +121,18 @@ export class Message {
                     break;
                 case "closequeue":
                     this.CloseQueue(cli);
+                    break;
+                case "ensurenoderedinstance":
+                    this.EnsureNoderedInstance(cli);
+                    break;
+                case "deletenoderedinstance":
+                    this.DeleteNoderedInstance(cli);
+                    break;
+                case "startnoderedinstance":
+                    this.StartNoderedInstance(cli);
+                    break;
+                case "stopnoderedinstance":
+                    this.StopNoderedInstance(cli);
                     break;
                 default:
                     this.UnknownCommand(cli);
@@ -476,6 +489,41 @@ export class Message {
         }
         this.Send(cli);
     }
+
+    private async EnsureNoderedInstance(cli: WebSocketClient): Promise<void> {
+        this.Reply();
+        var msg: EnsureNoderedInstanceMessage;
+        var user: User;
+        try {
+            msg = EnsureNoderedInstanceMessage.assign(this.data);
+        } catch (error) {
+            msg.error = error.toString();
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            msg.error = error.toString();
+        }
+        this.Send(cli);
+    }
+    private async DeleteNoderedInstance(cli: WebSocketClient): Promise<void> {
+        this.Reply();
+        this.Send(cli);
+    }
+    private async StartNoderedInstance(cli: WebSocketClient): Promise<void> {
+        this.Reply();
+        this.Send(cli);
+    }
+    private async StopNoderedInstance(cli: WebSocketClient): Promise<void> {
+        this.Reply();
+        this.Send(cli);
+    }
+
+
+
+
+
 }
 
 export class JSONfn {

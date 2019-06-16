@@ -23,6 +23,12 @@ module openflow {
     }
     export class WebSocketClient {
         private _socketObject: ReconnectingWebSocket = null;
+
+        public domain: string = null;
+        public allow_personal_nodered: boolean = false;
+        public namespace: string = null;
+        public nodered_domain_schema: string = null;
+
         private _url: string = null;
         private static instance: WebSocketClient = null;
         private _receiveQueue: SocketMessage[] = [];
@@ -198,6 +204,10 @@ module openflow {
                 }
                 console.log(data.wshost);
                 console.debug("WebSocketClient::onopen: connecting to " + data.wshost);
+                this.domain = data.domain;
+                this.allow_personal_nodered = data.allow_personal_nodered;
+                this.namespace = data.namespace;
+                this.nodered_domain_schema = data.nodered_domain_schema;
                 this._socketObject = new ReconnectingWebSocket(data.wshost);
                 this._socketObject.onopen = (this.onopen).bind(this);
                 this._socketObject.onmessage = (this.onmessage).bind(this);

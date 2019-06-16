@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/open-rpa/openflow",
   "dependencies": {
+    "@kubernetes/client-node": "^0.10.1",
     "@types/angular": "^1.6.54",
     "@types/angular-route": "^1.7.0",
     "@types/jquery": "^3.3.29",

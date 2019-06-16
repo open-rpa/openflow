@@ -140,7 +140,11 @@ export class LoginProvider {
             }
             _url += "/";
             var res2 = {
-                wshost: _url
+                wshost: _url,
+                domain: Config.domain,
+                allow_personal_nodered: Config.allow_personal_nodered,
+                namespace: Config.namespace,
+                nodered_domain_schema: Config.nodered_domain_schema
             }
             res.end(JSON.stringify(res2));
         });
