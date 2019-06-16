@@ -528,7 +528,7 @@ export class Message {
                                 containers: [
                                     {
                                         name: 'nodered',
-                                        image: 'cloudhack/openflownodered:0.0.183',
+                                        image: 'cloudhack/openflownodered:0.0.185',
                                         imagePullPolicy: "Always",
                                         env: [
                                             { name: "saml_federation_metadata", value: Config.saml_federation_metadata },

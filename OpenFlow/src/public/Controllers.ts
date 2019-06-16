@@ -937,6 +937,7 @@ module openflow {
                 this.messages += error + "\n";
                 console.error(error);
             }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async DeleteNoderedInstance() {
             try {
@@ -946,6 +947,7 @@ module openflow {
                 this.messages += error + "\n";
                 console.error(error);
             }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async StartNoderedInstance() {
             try {
@@ -955,6 +957,7 @@ module openflow {
                 this.messages += error + "\n";
                 console.error(error);
             }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async StopNoderedInstance() {
             try {
@@ -964,6 +967,7 @@ module openflow {
                 this.messages += error + "\n";
                 console.error(error);
             }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
 
         async submit() {
