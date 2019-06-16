@@ -566,7 +566,7 @@ export class Message {
                 }
                 await KubeUtil.instance().CoreV1Api.createNamespacedService(namespace, _service);
             }
-            var ingress = await KubeUtil.instance().GetIngress(namespace, "ingress");
+            var ingress = await KubeUtil.instance().GetIngress(namespace, "useringress");
             // console.log(ingress);
             var rule = null;
             for (var i = 0; i < ingress.spec.rules.length; i++) {
@@ -590,7 +590,7 @@ export class Message {
                 delete ingress.metadata.creationTimestamp;
                 delete ingress.status;
                 ingress.spec.rules.push(rule);
-                await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("ingress", namespace, ingress);
+                await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("useringress", namespace, ingress);
             }
         } catch (error) {
             msg.error = JSON.stringify(error, null, 2);
@@ -625,7 +625,7 @@ export class Message {
             if (service != null) {
                 await KubeUtil.instance().CoreV1Api.deleteNamespacedService(name, namespace);
             }
-            var ingress = await KubeUtil.instance().GetIngress(namespace, "ingress");
+            var ingress = await KubeUtil.instance().GetIngress(namespace, "useringress");
             var updated = false;
             for (var i = ingress.spec.rules.length - 1; i >= 0; i--) {
                 if (ingress.spec.rules[i].host == hostname) {
@@ -635,7 +635,7 @@ export class Message {
             }
             if (updated) {
                 delete ingress.metadata.creationTimestamp;
-                await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("ingress", namespace, ingress);
+                await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("useringress", namespace, ingress);
             }
         } catch (error) {
             msg.error = JSON.stringify(error, null, 2);

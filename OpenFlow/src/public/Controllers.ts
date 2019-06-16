@@ -949,6 +949,16 @@ module openflow {
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
+        async RestartNoderedInstance() {
+            try {
+                await this.api.RestartNoderedInstance();
+                this.messages += "RestartNoderedInstance completed" + "\n";
+            } catch (error) {
+                this.messages += error + "\n";
+                console.error(error);
+            }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
         async StartNoderedInstance() {
             try {
                 await this.api.StartNoderedInstance();
