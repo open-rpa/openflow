@@ -2,6 +2,7 @@ import { Red } from "node-red";
 import { QueryMessage, Message, InsertOneMessage, UpdateOneMessage, DeleteOneMessage, InsertOrUpdateOneMessage, SigninMessage, TokenUser, mapFunc, reduceFunc, finalizeFunc, MapReduceMessage, JSONfn, UpdateManyMessage } from "../../Message";
 import { WebSocketClient } from "../../WebSocketClient";
 import { Crypt } from "../../Crypt";
+import { Config } from "../../Config";
 
 export class NoderedUtil {
     public static IsNullUndefinded(obj: any) {
@@ -124,14 +125,21 @@ export class NoderedUtil {
         var result: QueryMessage = await WebSocketClient.instance.Send<QueryMessage>(msg);
         return result.result;
     }
-
+    static isNumeric(num) {
+        return !isNaN(num)
+    }
     public static async GetToken(username: string, password: string): Promise<SigninMessage> {
         var q: SigninMessage = new SigninMessage(); q.validate_only = true;
         if (!NoderedUtil.IsNullEmpty(username) && !NoderedUtil.IsNullEmpty(password)) {
             q.username = username; q.password = password;
         } else {
             if (Crypt.encryption_key === "") { throw new Error("root signin not allowed"); }
-            var user = new TokenUser(); user.name = "root"; user.username = "root";
+            var user = new TokenUser();
+            if (this.isNumeric(Config.nodered_id)) {
+                user.name = "nodered" + Config.nodered_id;
+            } else {
+                user.name = Config.nodered_id;
+            }
             q.jwt = Crypt.createToken(user);
         }
         var _msg: Message = new Message();
