@@ -522,7 +522,7 @@ export class Message {
                                             { name: "api_ws_url", value: Config.api_ws_url },
                                             { name: "nodered_domain_schema", value: hostname },
                                             { name: "protocol", value: Config.protocol },
-                                            { name: "port", value: (Config.port as any) },
+                                            { name: "port", value: Config.port.toString() },
                                             { name: "aes_secret", value: Config.aes_secret },
 
                                         ]
