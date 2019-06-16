@@ -635,6 +635,14 @@ export class Message {
             if (service != null) {
                 await KubeUtil.instance().CoreV1Api.deleteNamespacedService(name, namespace);
             }
+            var list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
+            for (var i = 0; i < list.body.items.length; i++) {
+                var item = list.body.items[i];
+                // if (item.metadata.labels.app === (name + "nodered") || item.metadata.labels.name === name) {
+                if (item.metadata.labels.app === (name + "nodered")) {
+                    await KubeUtil.instance().CoreV1Api.deleteNamespacedPod(item.metadata.name, namespace);
+                }
+            }
             var ingress = await KubeUtil.instance().GetIngress(namespace, "useringress");
             var updated = false;
             for (var i = ingress.spec.rules.length - 1; i >= 0; i--) {
