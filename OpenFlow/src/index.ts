@@ -139,6 +139,9 @@ process.on('unhandledRejection', up => {
             console.log("demo3/api not found!");
         }
     } catch (error) {
-        logger.error(error.message);
+        // logger.error(error.message);
+        var json = JSON.stringify(error, null, 3);
+        console.error(json);
+
     }
 })();
