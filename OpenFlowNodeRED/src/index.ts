@@ -35,8 +35,8 @@ process.on('unhandledRejection', up => {
 // function isNumeric(n) {
 //     return !isNaN(parseFloat(n)) && isFinite(n);
 // }
-function isNumeric(val) {
-    return Number(parseFloat(val)) === val;
+function isNumeric(num) {
+    return !isNaN(num)
 }
 (async function (): Promise<void> {
     try {
