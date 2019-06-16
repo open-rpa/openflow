@@ -652,8 +652,11 @@ export class DatabaseConnection {
             finalor.push(q2);
         }
         // 
-        if (bits.length == 1 && bits[0] == Rights.read) {
+        if (bits.length > 0 && bits[0] == Rights.read) {
+            this._logger.debug("Include isme in base query");
             return { $or: finalor.concat(isme) };
+        } else {
+            this._logger.debug("Skip isme in base query");
         }
         return { $or: finalor.concat() };
     }
