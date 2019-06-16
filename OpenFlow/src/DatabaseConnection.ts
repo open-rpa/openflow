@@ -652,7 +652,7 @@ export class DatabaseConnection {
             finalor.push(q2);
         }
         // 
-        if (bits.length > 0 && bits[0] == Rights.read) {
+        if (bits.length > 0 && (bits[0] + 1) == Rights.read) {
             this._logger.debug("[" + user.username + "] Include isme in base query");
             return { $or: finalor.concat(isme) };
         } else if (bits.length > 0) {
