@@ -440,10 +440,10 @@ export class DatabaseConnection {
         var _query: Object = {};
         if (q.collectionname === "files") { q.collectionname = "fs.files"; }
         if (q.collectionname === "fs.files") {
-            _query = { $and: [q.query, this.getbasequery(q.jwt, "metadata._acl", [Rights.read])] };
+            _query = { $and: [q.query, this.getbasequery(q.jwt, "metadata._acl", [Rights.update])] };
         } else {
             if (!q.collectionname.endsWith("_hist")) {
-                _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.read])] };
+                _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.update])] };
             } else {
                 // todo: enforcer permissions when fetching _hist ?
                 _query = q.query;
@@ -653,10 +653,12 @@ export class DatabaseConnection {
         }
         // 
         if (bits.length > 0 && bits[0] == Rights.read) {
-            this._logger.debug("Include isme in base query");
+            this._logger.debug("[" + user.username + "] Include isme in base query");
             return { $or: finalor.concat(isme) };
+        } else if (bits.length > 0) {
+            this._logger.debug("[" + user.username + "] Skip isme in base query, not read (" + bits[0] + ")");
         } else {
-            this._logger.debug("Skip isme in base query");
+            this._logger.debug("[" + user.username + "] Skip isme in base query, bits missing!");
         }
         return { $or: finalor.concat() };
     }
