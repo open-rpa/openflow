@@ -1,0 +1,19 @@
+<div class="starter-template">
+  <h1 translate lib="web">sockets</h1>
+</div>
+
+<a ng-href="ctrl.noderedurl" target="nodered">Open Nodered</a>
+<form ng-submit="ctrl.submit()" class="form-horizontal" role="form" autocomplete="off" ng-hide="ctrl.showjson==true">
+  <section>
+    <div class="form-group">
+      <div class="col-sm-offset-2 col-sm-10">
+        <button type="button" class="btn btn-secondary" ng-click="ctrl.EnsureNoderedInstance()">Create Nodered</button>
+        <button type="button" class="btn btn-secondary" ng-click="ctrl.RestartNoderedInstance()">Restart
+          Nodered</button>
+        <button type="button" class="btn btn-secondary" ng-click="ctrl.DeleteNoderedInstance()">Delete Nodered</button>
+      </div>
+    </div>
+  </section>
+</form>
+
+<pre>{{ ctrl.messages }}</pre>

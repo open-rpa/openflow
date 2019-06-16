@@ -1545,4 +1545,97 @@ module openflow {
             document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(model.delta, model.item);
         }
     }
+
+    export class NoderedCtrl {
+        public static $inject = [
+            "$scope",
+            "$location",
+            "$routeParams",
+            "WebSocketClient",
+            "api"
+        ];
+        public messages: string = "";
+        public queuename: string = "webtest";
+        public message: string = "Hi mom";
+        public noderedurl: string = "";
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public WebSocketClient: WebSocketClient,
+            public api: api
+        ) {
+            console.debug("NoderedCtrl");
+            WebSocketClient.onSignedin(async (user: TokenUser) => {
+                await api.RegisterQueue();
+                this.noderedurl = WebSocketClient.nodered_domain_schema.replace("$nodered_id$", WebSocketClient.user.username);
+            });
+        }
+
+        async EnsureNoderedInstance() {
+            try {
+                await this.api.EnsureNoderedInstance();
+                this.messages += "EnsureNoderedInstance completed" + "\n";
+            } catch (error) {
+                this.messages += error + "\n";
+                console.error(error);
+            }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        async DeleteNoderedInstance() {
+            try {
+                await this.api.DeleteNoderedInstance();
+                this.messages += "DeleteNoderedInstance completed" + "\n";
+            } catch (error) {
+                this.messages += error + "\n";
+                console.error(error);
+            }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        async RestartNoderedInstance() {
+            try {
+                await this.api.RestartNoderedInstance();
+                this.messages += "RestartNoderedInstance completed" + "\n";
+            } catch (error) {
+                this.messages += error + "\n";
+                console.error(error);
+            }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        async StartNoderedInstance() {
+            try {
+                await this.api.StartNoderedInstance();
+                this.messages += "StartNoderedInstance completed" + "\n";
+            } catch (error) {
+                this.messages += error + "\n";
+                console.error(error);
+            }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        async StopNoderedInstance() {
+            try {
+                await this.api.StopNoderedInstance();
+                this.messages += "StopNoderedInstance completed" + "\n";
+            } catch (error) {
+                this.messages += error + "\n";
+                console.error(error);
+            }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+
+        async submit() {
+            await this.SendOne(this.queuename, this.message);
+        }
+        async SendOne(queuename: string, message: any): Promise<void> {
+            var result: any = await this.api.QueueMessage(queuename, message);
+            try {
+                // result = JSON.parse(result);
+            } catch (error) {
+            }
+            this.messages += result + "\n";
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+    }
+
+
 }
