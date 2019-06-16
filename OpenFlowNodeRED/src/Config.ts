@@ -31,7 +31,9 @@ export class Config {
 
     public static baseurl(): string {
         var matches = Config.nodered_id.match(/\d+/);
-        Config.nodered_id = matches[matches.length - 1]; // Just grab the last number
+        if (matches.length > 0) {
+            Config.nodered_id = matches[matches.length - 1]; // Just grab the last number
+        }
         if (Config.nodered_domain_schema != "") {
             Config.domain = Config.nodered_domain_schema.replace("$nodered_id$", Config.nodered_id)
         }

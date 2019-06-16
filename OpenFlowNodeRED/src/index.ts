@@ -32,14 +32,21 @@ process.on('unhandledRejection', up => {
     console.error(up);
     throw up
 });
-
+function isNumeric(n) {
+    return !isNaN(parseFloat(n)) && isFinite(n);
+}
 (async function (): Promise<void> {
     try {
         var socket: WebSocketClient = new WebSocketClient(logger, Config.api_ws_url);
         socket.events.on("onopen", async () => {
 
             var q: SigninMessage = new SigninMessage();
-            var user = new TokenUser(); user.name = "nodered" + Config.nodered_id; user.username = user.name;
+            var user = new TokenUser();
+            user.name = "nodered" + Config.nodered_id;
+            if (!isNumeric(Config.nodered_id)) {
+                user.name = Config.nodered_id;
+            }
+            user.username = user.name;
             q.jwt = Crypt.createToken(user);
             var msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
             var result: SigninMessage = await socket.Send<SigninMessage>(msg);
