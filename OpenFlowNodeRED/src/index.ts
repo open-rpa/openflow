@@ -32,8 +32,11 @@ process.on('unhandledRejection', up => {
     console.error(up);
     throw up
 });
-function isNumeric(n) {
-    return !isNaN(parseFloat(n)) && isFinite(n);
+// function isNumeric(n) {
+//     return !isNaN(parseFloat(n)) && isFinite(n);
+// }
+function isNumeric(val) {
+    return Number(parseFloat(val)) === val;
 }
 (async function (): Promise<void> {
     try {
@@ -42,8 +45,9 @@ function isNumeric(n) {
 
             var q: SigninMessage = new SigninMessage();
             var user = new TokenUser();
-            user.name = "nodered" + Config.nodered_id;
-            if (!isNumeric(Config.nodered_id)) {
+            if (isNumeric(Config.nodered_id)) {
+                user.name = "nodered" + Config.nodered_id;
+            } else {
                 user.name = Config.nodered_id;
             }
             user.username = user.name;
