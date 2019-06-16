@@ -96,6 +96,15 @@ export class WebServer {
                 // });
                 this.settings.adminAuth = await samlauth.noderedcontribauthsaml.configure(Config.baseurl(), Config.saml_federation_metadata, Config.saml_issuer,
                     (profile: string | any, done: any) => {
+                        var roles: string[] = profile["http://schemas.xmlsoap.org/claims/Group"];
+                        if (roles !== undefined) {
+                            if (Config.noderedusers !== "") {
+                                if (roles.indexOf(Config.noderedusers) !== -1 || roles.indexOf(Config.noderedusers) !== -1) { profile.permissions = "read"; }
+                            }
+                            if (Config.noderedadmins !== "") {
+                                if (roles.indexOf(Config.noderedadmins) !== -1 || roles.indexOf(Config.noderedadmins) !== -1) { profile.permissions = "*"; }
+                            }
+                        }
                         // profile.permissions = "*";
                         done(profile);
                     }, "");

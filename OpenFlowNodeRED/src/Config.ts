@@ -20,6 +20,11 @@ export class Config {
     public static domain: string = Config.getEnv("domain", "localhost");
     public static protocol: string = Config.getEnv("protocol", "http");
     public static nodered_domain_schema: string = Config.getEnv("nodered_domain_schema", "");
+    public static noderedusers: string = Config.getEnv("noderedusers", "");
+    public static noderedadmins: string = Config.getEnv("noderedadmins", "");
+
+
+
 
     public static api_ws_url: string = Config.getEnv("api_ws_url", "ws://localhost:3000");
     public static amqp_url: string = Config.getEnv("amqp_url", "amqp://localhost");

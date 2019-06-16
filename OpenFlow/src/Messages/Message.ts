@@ -2,7 +2,7 @@ import * as crypto from "crypto";
 import { SocketMessage } from "../SocketMessage";
 import { WebSocketClient, QueuedMessage } from "../WebSocketClient";
 import { QueryMessage } from "./QueryMessage";
-import { Base } from "../base";
+import { Base, Rights } from "../base";
 import { SigninMessage } from "./SigninMessage";
 import { User } from "../User";
 import { Auth } from "../Auth";
@@ -497,6 +497,16 @@ export class Message {
         var user: User;
         try {
             msg = EnsureNoderedInstanceMessage.assign(this.data);
+
+            // var noderedusers = await User.ensureRole(cli.jwt, name + "noderedusers", null);
+            // noderedusers.addRight(cli.user._id, cli.user.username, [Rights.full_control]);
+            // noderedusers.removeRight(cli.user._id, [Rights.delete]);
+            // noderedusers.AddMember(cli.user);
+            var noderedadmins = await User.ensureRole(cli.jwt, name + "noderedadmins", null);
+            noderedadmins.addRight(cli.user._id, cli.user.username, [Rights.full_control]);
+            noderedadmins.removeRight(cli.user._id, [Rights.delete]);
+            noderedadmins.AddMember(cli.user);
+
             var name = cli.user.username;
             var namespace = Config.namespace;
             var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
@@ -513,7 +523,7 @@ export class Message {
                                 containers: [
                                     {
                                         name: 'nodered',
-                                        image: 'cloudhack/openflownodered:0.0.180',
+                                        image: 'cloudhack/openflownodered:0.0.183',
                                         imagePullPolicy: "Always",
                                         env: [
                                             { name: "saml_federation_metadata", value: Config.saml_federation_metadata },
@@ -524,7 +534,8 @@ export class Message {
                                             { name: "protocol", value: Config.protocol },
                                             { name: "port", value: Config.port.toString() },
                                             { name: "aes_secret", value: Config.aes_secret },
-
+                                            { name: "noderedusers", value: (name + "noderedusers") },
+                                            { name: "noderedadmins", value: (name + "noderedadmins") },
                                         ]
                                     }
                                 ]
