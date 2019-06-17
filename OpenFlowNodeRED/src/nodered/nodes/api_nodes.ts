@@ -67,10 +67,10 @@ export class api_get_jwt {
             } else {
                 if (Crypt.encryption_key === "") { return NoderedUtil.HandleError(this, "root signin not allowed"); }
                 var user = new TokenUser();
-                if (this.isNumeric(Config.nodered_id)) {
+                if (NoderedUtil.IsNullEmpty(Config.nodered_sa)) {
                     user.name = "nodered" + Config.nodered_id;
                 } else {
-                    user.name = Config.nodered_id;
+                    user.name = Config.nodered_sa;
                 }
                 user.username = user.name;
                 q.jwt = Crypt.createToken(user);

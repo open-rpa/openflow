@@ -11,6 +11,8 @@ import { WebSocketClient } from "./WebSocketClient";
 import { SigninMessage, Message, TokenUser } from "./Message";
 import { Config } from "./Config";
 import { Crypt } from "./Crypt";
+import { stringify } from "querystring";
+import { NoderedUtil } from "./nodered/nodes/NoderedUtil";
 
 const logger: winston.Logger = Logger.configure();
 
@@ -45,10 +47,11 @@ function isNumeric(num) {
 
             var q: SigninMessage = new SigninMessage();
             var user = new TokenUser();
-            if (isNumeric(Config.nodered_id)) {
+            console.log("nodered_id: " + Config.nodered_id + " nodered_sa: " + Config.nodered_sa);
+            if (NoderedUtil.IsNullEmpty(Config.nodered_sa)) {
                 user.name = "nodered" + Config.nodered_id;
             } else {
-                user.name = Config.nodered_id;
+                user.name = Config.nodered_sa;
             }
             user.username = user.name;
             q.jwt = Crypt.createToken(user);

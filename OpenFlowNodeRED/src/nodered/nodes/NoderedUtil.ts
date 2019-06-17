@@ -148,10 +148,10 @@ export class NoderedUtil {
             var user = new TokenUser();
             Logger.instanse.debug("GetToken::nodered_id: " + Config.nodered_id);
             Logger.instanse.debug("GetToken::isNumeric: " + this.isNumeric(Config.nodered_id));
-            if (this.isNumeric(Config.nodered_id)) {
+            if (NoderedUtil.IsNullEmpty(Config.nodered_sa)) {
                 user.name = "nodered" + Config.nodered_id;
             } else {
-                user.name = Config.nodered_id;
+                user.name = Config.nodered_sa;
             }
             user.username = user.name;
             q.jwt = Crypt.createToken(user);

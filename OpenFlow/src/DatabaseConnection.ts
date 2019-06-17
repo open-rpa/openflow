@@ -73,8 +73,11 @@ export class DatabaseConnection {
         for (let key in query) {
             if (key === "_id") {
                 var id: string = query._id;
-                delete query._id;
-                query.$or = [{ _id: id }, { _id: safeObjectID(id) }];
+                var safeid = safeObjectID(id);
+                if (safeid !== null && safeid !== undefined) {
+                    delete query._id;
+                    query.$or = [{ _id: id }, { _id: safeObjectID(id) }];
+                }
             }
         }
 
@@ -98,6 +101,7 @@ export class DatabaseConnection {
                     return value; // leave any other value as-is
             });
         }
+        var user: TokenUser = Crypt.verityToken(jwt);
         var _query: Object = {};
         if (collectionname === "files") { collectionname = "fs.files"; }
         if (collectionname === "fs.files") {
@@ -124,6 +128,7 @@ export class DatabaseConnection {
         }
         for (var i: number = 0; i < arr.length; i++) { arr[i] = this.decryptentity(arr[i]); }
         this.traversejsondecode(arr);
+        this._logger.debug("[" + user.username + "] query gave " + arr.length + " results " + JSON.stringify(query));
         return arr;
     }
     /**
@@ -346,6 +351,10 @@ export class DatabaseConnection {
                     }
                 }
             }
+            if (q.item._acl === null || q.item._acl === undefined) {
+                q.item._acl = original._acl;
+                q.item._version = original._version;
+            }
             q.item = this.ensureResource(q.item);
             this.traversejsonencode(q.item);
             q.item = this.encryptentity<T>(q.item);
@@ -507,6 +516,7 @@ export class DatabaseConnection {
             query = { _id: q.item._id };
         }
         var exists = await this.query(query, { name: 1 }, 2, 0, null, q.collectionname, q.jwt);
+        console.log(JSON.stringify(query, null, 2));
         if (exists.length == 1) {
             q.item._id = exists[0]._id;
         }
@@ -515,13 +525,17 @@ export class DatabaseConnection {
         }
         var user: TokenUser = Crypt.verityToken(q.jwt);
         if (!this.hasAuthorization(user, q.item, "update")) { throw new Error("Access denied"); }
-        if (q.item._id !== null && q.item._id !== undefined && q.item._id !== "") {
+        // if (q.item._id !== null && q.item._id !== undefined && q.item._id !== "") {
+        if (exists.length == 1) {
+            this._logger.debug("[" + user.username + "] InsertOrUpdateOne, Updating found one in database");
             var uq = new UpdateOneMessage<T>();
-            uq.query = query; uq.item = q.item; uq.collectionname = q.collectionname; uq.w = q.w; uq.j; uq.jwt = q.jwt;
+            // uq.query = query; 
+            uq.item = q.item; uq.collectionname = q.collectionname; uq.w = q.w; uq.j; uq.jwt = q.jwt;
             uq = await this.UpdateOne(uq);
             q.opresult = uq.opresult;
             q.result = uq.result;
         } else {
+            this._logger.debug("[" + user.username + "] InsertOrUpdateOne, Inserting as new in database");
             q.result = await this.InsertOne(q.item, q.collectionname, q.w, q.j, q.jwt);
         }
         return q;
@@ -803,10 +817,13 @@ export class DatabaseConnection {
         _skip_array.forEach(x => skip_array.push(x.trim()));
         if (skip_array.indexOf(q.collectionname) > -1) { return 0; }
         var res = await this.query<T>(q.query, null, 1, 0, null, q.collectionname, q.jwt);
+        var name: string = "unknown";
+        var _id: string = "";
         if (res.length > 0) {
             var _version = 1;
             var original = res[0];
-
+            name = original.name;
+            _id = original._id;
             delete original._modifiedby;
             delete original._modifiedbyid;
             delete original._modified;
@@ -821,8 +838,8 @@ export class DatabaseConnection {
             _created: new Date(new Date().toISOString()),
             _createdby: user.name,
             _createdbyid: user._id,
-            name: original.name,
-            id: original._id,
+            name: name,
+            id: _id,
             update: q.item,
             _version: _version,
             reason: ""

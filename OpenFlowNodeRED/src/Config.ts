@@ -3,6 +3,7 @@ import * as retry from "async-retry";
 import { fetch, toPassportConfig } from "passport-saml-metadata";
 export class Config {
     public static nodered_id: string = Config.getEnv("nodered_id", "1");
+    public static nodered_sa: string = Config.getEnv("nodered_sa", "");
 
     public static consumer_key: string = Config.getEnv("consumer_key", "");
     public static consumer_secret: string = Config.getEnv("consumer_secret", "");
