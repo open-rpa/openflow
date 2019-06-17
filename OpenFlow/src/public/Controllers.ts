@@ -1571,7 +1571,8 @@ module openflow {
             WebSocketClient.onSignedin(async (user: TokenUser) => {
                 await api.RegisterQueue();
                 this.noderedurl = "https://" + WebSocketClient.nodered_domain_schema.replace("$nodered_id$", WebSocketClient.user.username);
-                this.GetNoderedInstance();
+                // this.GetNoderedInstance();
+                setTimeout(this.GetNoderedInstance.bind(this), 2000);
             });
         }
         async GetNoderedInstance() {
@@ -1579,11 +1580,11 @@ module openflow {
                 this.instance = await this.api.GetNoderedInstance();
                 console.log("GetNoderedInstance:");
                 console.log(this.instance);
-                if (this.instance !== null && this.instance !== undefined) {
-                    this.messages += "GetNoderedInstance completed, status " + this.instance.status.phase + "\n";
-                } else {
-                    this.messages += "GetNoderedInstance completed, status unknown/not existing" + "\n";
-                }
+                // if (this.instance !== null && this.instance !== undefined) {
+                //     this.messages += "GetNoderedInstance completed, status " + this.instance.status.phase + "\n";
+                // } else {
+                //     this.messages += "GetNoderedInstance completed, status unknown/non existent" + "\n";
+                // }
             } catch (error) {
                 this.messages += error + "\n";
                 console.error(error);
