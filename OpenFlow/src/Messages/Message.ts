@@ -732,10 +732,12 @@ export class Message {
             var list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
 
             if (list.body.items.length > 0) {
-                var item = list.body.items[i];
-                if (item.metadata.labels.app === (name + "nodered")) {
-                    msg.result = item;
-                    cli._logger.debug("GetNoderedInstance:" + name + " found one");
+                for (var i = 0; i < list.body.items.length; i++) {
+                    var item = list.body.items[i];
+                    if (item.metadata.labels.app === (name + "nodered")) {
+                        msg.result = item;
+                        cli._logger.debug("GetNoderedInstance:" + name + " found one");
+                    }
                 }
             } else {
                 cli._logger.warn("GetNoderedInstance: found NO Namespaced Pods ???");
