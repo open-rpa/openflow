@@ -131,9 +131,11 @@ export class WebSocketClient {
     async OnMessage(sender: amqp_consumer, msg: amqplib.ConsumeMessage) {
         try {
             this._logger.debug("WebSocketclient::WebSocket Send message to socketclient, from " + msg.properties.replyTo + " correlationId: " + msg.properties.correlationId);
-            var data = await this.Queue(msg.content.toString(), msg.properties.replyTo, msg.properties.correlationId, sender.queue);
+            var _data = msg.content.toString();
+            console.log("Queue message queue response with data: " + _data);
+            var data = await this.Queue(_data, msg.properties.replyTo, msg.properties.correlationId, sender.queue);
             console.log("*******************************************");
-            console.log(data);
+            console.log("queue response: " + data);
             this._logger.debug("WebSocketclient::WebSocket ack message in queue " + sender.queue);
             sender.channel.ack(msg);
         } catch (error) {
@@ -245,6 +247,7 @@ export class WebSocketClient {
         var d: any = JSON.parse(data);
         var q: QueueMessage = new QueueMessage();
         q.data = d.payload; q.replyto = replyTo;
+        q.error = d.error;
         q.correlationId = correlationId; q.queuename = queuename;
         let m: Message = Message.fromcommand("queuemessage");
         if (q.correlationId === undefined || q.correlationId === null || q.correlationId === "") { q.correlationId = m.id; }

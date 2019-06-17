@@ -247,10 +247,10 @@ export class DatabaseConnection {
         item._modified = item._created;
         var hasUser: Ace = item._acl.find(e => e._id === user._id);
         if ((hasUser === null || hasUser === undefined)) {
-            if (collectionname != "audit") { this._logger.debug("Adding self " + user.username + " to object " + (item.name || item._name)); }
+            if (collectionname != "audit") { this._logger.debug("[" + user.username + "] Adding self " + user.username + " to object " + (item.name || item._name)); }
             item.addRight(user._id, user.name, [Rights.full_control]);
         }
-        if (collectionname != "audit") { this._logger.debug("adding " + (item.name || item._name) + " to database"); }
+        if (collectionname != "audit") { this._logger.debug("[" + user.username + "] Adding " + (item.name || item._name) + " to database"); }
 
         item = this.encryptentity<T>(item);
         if (!item._id) { item._id = new ObjectID().toHexString(); }
@@ -269,8 +269,9 @@ export class DatabaseConnection {
         //var options: CollectionInsertOneOptions = { w: "majority" };
         var result: InsertOneWriteOpResult = await this.db.collection(collectionname).insertOne(item, options);
         item = result.ops[0];
-
-
+        if (item !== null && item !== undefined) {
+            this._logger.debug("[" + user.username + "] Inserted " + (item.name || item._name) + " with id " + item._id);
+        }
         if (collectionname === "users" && item._type === "user") {
             var users: Role = await Role.FindByNameOrId("users", jwt);
             users.AddMember(item);
@@ -350,7 +351,7 @@ export class DatabaseConnection {
             q.item = this.encryptentity<T>(q.item);
             var hasUser: Ace = q.item._acl.find(e => e._id === user._id);
             if ((hasUser === null || hasUser === undefined) && q.item._acl.length == 0) {
-                if (q.collectionname != "audit") { this._logger.debug("Adding self " + user.username + " to object " + (q.item.name || q.item._name)); }
+                if (q.collectionname != "audit") { this._logger.debug("[" + user.username + "] Adding self " + user.username + " to object " + (q.item.name || q.item._name)); }
                 q.item.addRight(user._id, user.name, [Rights.full_control]);
             }
             q.item._version = await this.SaveDiff(q.collectionname, original, q.item);
@@ -365,7 +366,7 @@ export class DatabaseConnection {
             (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
             delete (q.item as any).newpassword;
         }
-        this._logger.debug("updating " + (q.item.name || q.item._name) + " in database");
+        this._logger.debug("[" + user.username + "] Updating " + (q.item.name || q.item._name) + " in database");
         // await this.db.collection(collectionname).replaceOne({ _id: item._id }, item, options);
 
         if (q.query === null || q.query === undefined) {
@@ -456,7 +457,7 @@ export class DatabaseConnection {
         (q.item["$set"])._modified = new Date(new Date().toISOString());
 
 
-        this._logger.debug("updateMany " + (q.item.name || q.item._name) + " in database");
+        this._logger.debug("[" + user.username + "] UpdateMany " + (q.item.name || q.item._name) + " in database");
 
         q.j = ((q.j as any) === 'true' || q.j === true);
         if ((q.w as any) !== "majority") q.w = parseInt((q.w as any));
@@ -550,7 +551,7 @@ export class DatabaseConnection {
 
         // var arr = await this.db.collection(collectionname).find(_query).toArray();
 
-        this._logger.debug("deleting " + id + " in database");
+        this._logger.debug("[" + user.username + "] Deleting " + id + " in database");
         var res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne(_query);
 
         // var res:DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne({_id:id});
@@ -720,7 +721,7 @@ export class DatabaseConnection {
         if (item.userid === user.username || item.userid === user._id || item.user === user.username) {
             return true;
         } else if (item._id === user._id) {
-            if (action === "delete") { this._logger.error("hasAuthorization, cannot delete self!"); return false; }
+            if (action === "delete") { this._logger.error("[" + user.username + "] hasAuthorization, cannot delete self!"); return false; }
             return true;
         }
         return true;

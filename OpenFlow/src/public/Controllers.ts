@@ -66,6 +66,7 @@ module openflow {
                 workflowid: this.model._id,
                 data: this.arguments
             }
+            if (this.arguments === null || this.arguments === undefined) { this.arguments = {}; }
             // var message = {
             //     jwt: this.WebSocketClient.jwt,
             //     payload: rpacommand

@@ -171,7 +171,9 @@ module openflow {
                     resolve(msgresult);
                     delete this.messageQueue[q.correlationId];
                 });
-                await this.WebSocketClient.Send(msg);
+                var res = await this.WebSocketClient.Send(msg);
+                console.log("_QueueMessage");
+                console.log(res);
             });
         }
         async QueueMessage(queuename: string, data: any): Promise<any> {

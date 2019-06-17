@@ -54,13 +54,25 @@ export class workflow_in_node {
         this.workflow = await NoderedUtil._UpdateOne("workflow", null, this.workflow, 0, false, null);
     }
     nestedassign(target, source) {
-        Object.keys(source).forEach(sourcekey => {
-            if (Object.keys(source).find(targetkey => targetkey === sourcekey) !== undefined && typeof source[sourcekey] === "object") {
+        if (source === null || source === undefined) return null;
+        var keys = Object.keys(source);
+        for (var i = 0; i < keys.length; i++) {
+            var sourcekey = keys[i];
+            if (Object.keys(source).find(targetkey => targetkey === sourcekey) !== undefined &&
+                Object.keys(source).find(targetkey => targetkey === sourcekey) !== null
+                && typeof source === "object" && typeof source[sourcekey] === "object") {
                 target[sourcekey] = this.nestedassign(target[sourcekey], source[sourcekey]);
             } else {
                 target[sourcekey] = source[sourcekey];
             }
-        });
+        }
+        // Object.keys(source).forEach(sourcekey => {
+        //     if (Object.keys(source).find(targetkey => targetkey === sourcekey) !== undefined && typeof source[sourcekey] === "object") {
+        //         target[sourcekey] = this.nestedassign(target[sourcekey], source[sourcekey]);
+        //     } else {
+        //         target[sourcekey] = source[sourcekey];
+        //     }
+        // });
         return target;
     }
     async OnMessage(msg: any, ack: any) {
@@ -108,8 +120,16 @@ export class workflow_in_node {
         } catch (error) {
             NoderedUtil.HandleError(this, error);
             try {
-                msg.error = error;
-                ack(JSON.stringify(msg));
+
+                var data: any = {};
+                data.error = error;
+                data.payload = msg.payload;
+                data.jwt = msg.jwt;
+                if (data.payload === null || data.payload === undefined) {
+                    data.payload = {};
+                }
+                data.payload._id = msg._id;
+                ack(JSON.stringify(data));
             } catch (error) {
 
             }
@@ -154,6 +174,8 @@ export class workflow_out_node {
                     var res = await NoderedUtil._UpdateOne("workflow_instances", null, msg, 1, false, msg.jwt);
                 }
                 var data: any = {};
+                data.state = msg.state;
+                data.error = msg.error;
                 data.payload = msg.payload;
                 data.jwt = msg.jwt;
                 data.payload._id = msg._id;

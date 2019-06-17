@@ -48,14 +48,24 @@ export class NoderedUtil {
     public static HandleError(node: Red, error: any): void {
         console.error(error);
         var message: string = error;
-        if (error.message) {
-            message = error.message;
-            node.error(error.message, message);
-        } else {
-            node.error(error, message);
+        try {
+            if (error.message) {
+                message = error.message;
+                //node.error(error, message);
+                node.error(message, error);
+            } else {
+                //node.error(error, message);
+                node.error(message, error);
+            }
+        } catch (error) {
+            console.error(error);
         }
-        if (NoderedUtil.IsNullUndefinded(message)) { message = ""; }
-        node.status({ fill: "red", shape: "dot", text: message.substr(0, 32) });
+        try {
+            if (NoderedUtil.IsNullUndefinded(message)) { message = ""; }
+            node.status({ fill: "red", shape: "dot", text: message.substr(0, 32) });
+        } catch (error) {
+            console.error(error);
+        }
     }
 
 
