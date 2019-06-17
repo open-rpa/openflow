@@ -1,7 +1,6 @@
 import * as https from "https";
 import * as retry from "async-retry";
 import { fetch, toPassportConfig } from "passport-saml-metadata";
-import { NoderedUtil } from "./nodered/nodes/NoderedUtil";
 export class Config {
     public static nodered_id: string = Config.getEnv("nodered_id", "1");
     public static nodered_sa: string = Config.getEnv("nodered_sa", "");
@@ -37,7 +36,7 @@ export class Config {
     public static aes_secret: string = Config.getEnv("aes_secret", "");
 
     public static baseurl(): string {
-        if (NoderedUtil.IsNullEmpty(Config.nodered_sa)) {
+        if (Config.nodered_sa === null || Config.nodered_sa === undefined || Config.nodered_sa === "") {
             var matches = Config.nodered_id.match(/\d+/);
             if (matches !== null && matches !== undefined) {
                 if (matches.length > 0) {
