@@ -111,7 +111,7 @@ export class DatabaseConnection {
                 _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
             } else {
                 // todo: enforcer permissions when fetching _hist ?
-                _query = query;
+                _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
             }
         }
         if (!top) { top = 500; }
@@ -390,7 +390,7 @@ export class DatabaseConnection {
                 _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.update])] };
             } else {
                 // todo: enforcer permissions when fetching _hist ?
-                _query = q.query;
+                _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.update])] };
             }
         }
 
@@ -456,7 +456,7 @@ export class DatabaseConnection {
                 _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.update])] };
             } else {
                 // todo: enforcer permissions when fetching _hist ?
-                _query = q.query;
+                _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.update])] };
             }
         }
 
