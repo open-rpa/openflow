@@ -730,8 +730,15 @@ export class Message {
             // var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
             var list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
+
             if (list.body.items.length > 0) {
-                msg.result = list.body.items[0];
+                var item = list.body.items[i];
+                if (item.metadata.labels.app === (name + "nodered")) {
+                    msg.result = item;
+                    cli._logger.debug("GetNoderedInstance:" + name + " found one");
+                }
+            } else {
+                cli._logger.warn("GetNoderedInstance: found NO Namespaced Pods ???");
             }
         } catch (error) {
             this.data = "";

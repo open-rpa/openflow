@@ -1572,6 +1572,7 @@ module openflow {
                 await api.RegisterQueue();
                 this.noderedurl = "https://" + WebSocketClient.nodered_domain_schema.replace("$nodered_id$", WebSocketClient.user.username);
                 this.instance = await api.GetNoderedInstance();
+                console.log("GetNoderedInstance:");
                 console.log(this.instance);
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
             });
