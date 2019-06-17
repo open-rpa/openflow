@@ -189,7 +189,6 @@ module openflow {
             var q: GetNoderedInstanceMessage = new GetNoderedInstanceMessage();
             var msg: Message = new Message(); msg.command = "getnoderedinstance"; msg.data = JSON.stringify(q);
             q = await this.WebSocketClient.Send<GetNoderedInstanceMessage>(msg);
-            console.log(q);
             return q.result;
         }
         async EnsureNoderedInstance(): Promise<void> {

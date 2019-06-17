@@ -547,7 +547,7 @@ export class Message {
                                 containers: [
                                     {
                                         name: 'nodered',
-                                        image: 'cloudhack/openflownodered:0.0.202',
+                                        image: 'cloudhack/openflownodered:0.0.206',
                                         imagePullPolicy: "Always",
                                         env: [
                                             { name: "saml_federation_metadata", value: Config.saml_federation_metadata },
@@ -713,6 +713,12 @@ export class Message {
             this.data = "";
             msg.error = JSON.stringify(error, null, 2);
         }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            msg.error = error.toString();
+        }
         this.Send(cli);
     }
     private async GetNoderedInstance(cli: WebSocketClient): Promise<void> {
@@ -745,6 +751,12 @@ export class Message {
         } catch (error) {
             this.data = "";
             msg.error = JSON.stringify(error, null, 2);
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            msg.error = error.toString();
         }
         this.Send(cli);
     }
