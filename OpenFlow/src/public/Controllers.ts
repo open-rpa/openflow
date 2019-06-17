@@ -1572,12 +1572,25 @@ module openflow {
                 await api.RegisterQueue();
                 this.noderedurl = "https://" + WebSocketClient.nodered_domain_schema.replace("$nodered_id$", WebSocketClient.user.username);
                 this.instance = await api.GetNoderedInstance();
-                console.log("GetNoderedInstance:");
-                console.log(this.instance);
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
             });
         }
-
+        async GetNoderedInstance() {
+            try {
+                this.instance = await this.api.GetNoderedInstance();
+                console.log("GetNoderedInstance:");
+                console.log(this.instance);
+                if (this.instance !== null || this.instance !== undefined) {
+                    this.messages += "GetNoderedInstance completed, status " + this.instance.status.phase + "\n";
+                } else {
+                    this.messages += "GetNoderedInstance completed, status unknown/not existing" + "\n";
+                }
+            } catch (error) {
+                this.messages += error + "\n";
+                console.error(error);
+            }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
         async EnsureNoderedInstance() {
             try {
                 await this.api.EnsureNoderedInstance();
