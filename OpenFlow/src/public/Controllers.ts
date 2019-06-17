@@ -1579,7 +1579,7 @@ module openflow {
                 this.instance = await this.api.GetNoderedInstance();
                 console.log("GetNoderedInstance:");
                 console.log(this.instance);
-                if (this.instance !== null || this.instance !== undefined) {
+                if (this.instance !== null && this.instance !== undefined) {
                     this.messages += "GetNoderedInstance completed, status " + this.instance.status.phase + "\n";
                 } else {
                     this.messages += "GetNoderedInstance completed, status unknown/not existing" + "\n";
