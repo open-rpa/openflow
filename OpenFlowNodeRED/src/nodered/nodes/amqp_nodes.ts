@@ -4,6 +4,7 @@ import { NoderedUtil } from "./NoderedUtil";
 import { Logger } from "../../Logger";
 import { amqp_consumer } from "../../amqp_consumer";
 import { amqp_publisher } from "../../amqp_publisher";
+import { Config } from "../../Config";
 
 export interface Iamqp_connection {
     host: string;
@@ -59,7 +60,8 @@ export class amqp_consumer_node {
             if (!NoderedUtil.IsNullEmpty(username) && !NoderedUtil.IsNullEmpty(password)) {
                 this.host = "amqp://" + username + ":" + password + "@" + this.host;
             } else {
-                this.host = "amqp://" + this.host;
+                // this.host = "amqp://" + this.host;
+                this.host = Config.amqp_url;
             }
             this.connect();
         } catch (error) {
@@ -140,7 +142,8 @@ export class amqp_publisher_node {
             if (!NoderedUtil.IsNullEmpty(username) && !NoderedUtil.IsNullEmpty(password)) {
                 this.host = "amqp://" + username + ":" + password + "@" + this.host;
             } else {
-                this.host = "amqp://" + this.host;
+                // this.host = "amqp://" + this.host;
+                this.host = Config.amqp_url;
             }
             this.connect();
         } catch (error) {
