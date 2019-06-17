@@ -25,6 +25,15 @@
     </div>
   </div>
 </section>
+<section>
+  <div class="form-group">
+    <label class="col-sm-3 control-label"><span translate lib="web">image</span>: </label>
+    <div class="col-sm-9">
+      <span ng-show="ctrl.instance==null"></span>
+      <span ng-show="ctrl.instance!=null">{{ ctrl.instance.spec.containers[0].image }}</span>
+    </div>
+  </div>
+</section>
 
 <pre>{{ ctrl.messages }}</pre>
 <p>If this is your first time creating a NodeRed instance, plaease signout and signin again, to refresh group
