@@ -74,7 +74,6 @@ export class api_get_jwt {
                 }
                 user.username = user.name;
                 q.jwt = Crypt.createToken(user);
-                Logger.instanse.debug("api_get_jwt: Created token as " + result.user.username);
             }
             this.node.status({ fill: "blue", shape: "dot", text: "Requesting token" });
             var _msg: Message = new Message();
@@ -82,6 +81,11 @@ export class api_get_jwt {
             var result: SigninMessage = await WebSocketClient.instance.Send<SigninMessage>(_msg);
             msg.jwt = result.jwt;
             msg.user = result.user;
+            if (result !== null && result !== undefined && result.user !== null && result.user !== undefined) {
+                Logger.instanse.debug("api_get_jwt: Created token as " + result.user.username);
+            } else {
+                Logger.instanse.debug("api_get_jwt: Created token failed ?");
+            }
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
