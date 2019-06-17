@@ -185,6 +185,12 @@ module openflow {
             }
             return msg;
         }
+        async GetNoderedInstance(): Promise<any> {
+            var q: GetNoderedInstanceMessage = new GetNoderedInstanceMessage();
+            var msg: Message = new Message(); msg.command = "getnoderedinstance"; msg.data = JSON.stringify(q);
+            q = await this.WebSocketClient.Send<GetNoderedInstanceMessage>(msg);
+            return q.result;
+        }
         async EnsureNoderedInstance(): Promise<void> {
             var q: EnsureNoderedInstanceMessage = new EnsureNoderedInstanceMessage();
             var msg: Message = new Message(); msg.command = "ensurenoderedinstance"; msg.data = JSON.stringify(q);

@@ -76,12 +76,13 @@ export class User extends Base {
         await result.DecorateWithRoles();
         return result;
     }
-    public static async FindByUsername(username: string): Promise<User> {
+    public static async FindByUsername(username: string, jwt: string = null): Promise<User> {
         var byuser = { username: new RegExp(["^", username, "$"].join(""), "i") };
         //var byid = { federationids: { $elemMatch: new RegExp(["^", username, "$"].join(""), "i") } }
         var byid = { federationids: new RegExp(["^", username, "$"].join(""), "i") }
         var q = { $or: [byuser, byid] };
-        var items: User[] = await Config.db.query<User>(q, null, 1, 0, null, "users", TokenUser.rootToken());
+        if (jwt === null || jwt == undefined || jwt == "") { jwt = TokenUser.rootToken(); }
+        var items: User[] = await Config.db.query<User>(q, null, 1, 0, null, "users", jwt);
         if (items === null || items === undefined || items.length === 0) { return null; }
         var result: User = User.assign(items[0]);
         await result.DecorateWithRoles();

@@ -26,6 +26,8 @@ import { EnsureNoderedInstanceMessage } from "./EnsureNoderedInstanceMessage";
 import { KubeUtil } from "../KubeUtil";
 import { Role } from "../Role";
 import { RestartNoderedInstanceMessage } from "./RestartNoderedInstanceMessage";
+import { DeleteNoderedInstanceMessage } from "./DeleteNoderedInstanceMessage";
+import { GetNoderedInstanceMessage } from "./GetNoderedInstanceMessage";
 
 export class Message {
     public id: string;
@@ -133,6 +135,9 @@ export class Message {
                     break;
                 case "restartnoderedinstance":
                     this.RestartNoderedInstance(cli);
+                    break;
+                case "getnoderedinstance":
+                    this.GetNoderedInstance(cli);
                     break;
                 case "startnoderedinstance":
                     this.StartNoderedInstance(cli);
@@ -503,6 +508,11 @@ export class Message {
         try {
             msg = EnsureNoderedInstanceMessage.assign(this.data);
             var name = cli.user.username;
+            if (msg.name !== null && msg.name !== undefined && msg.name !== "" && msg.name != cli.user.username) {
+                var exists = User.FindByUsername(msg.name, cli.jwt);
+                if (exists == null) { throw new Error("Unknown name " + msg.name) }
+                name = msg.name;
+            }
             var namespace = Config.namespace;
             var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
@@ -616,11 +626,16 @@ export class Message {
     }
     private async DeleteNoderedInstance(cli: WebSocketClient): Promise<void> {
         this.Reply();
-        var msg: EnsureNoderedInstanceMessage;
+        var msg: DeleteNoderedInstanceMessage;
         var user: User;
         try {
-            msg = EnsureNoderedInstanceMessage.assign(this.data);
+            msg = DeleteNoderedInstanceMessage.assign(this.data);
             var name = cli.user.username;
+            if (msg.name !== null && msg.name !== undefined && msg.name !== "" && msg.name != cli.user.username) {
+                var exists = User.FindByUsername(msg.name, cli.jwt);
+                if (exists == null) { throw new Error("Unknown name " + msg.name) }
+                name = msg.name;
+            }
             var namespace = Config.namespace;
             var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
@@ -678,6 +693,11 @@ export class Message {
         try {
             msg = RestartNoderedInstanceMessage.assign(this.data);
             var name = cli.user.username;
+            if (msg.name !== null && msg.name !== undefined && msg.name !== "" && msg.name != cli.user.username) {
+                var exists = User.FindByUsername(msg.name, cli.jwt);
+                if (exists == null) { throw new Error("Unknown name " + msg.name) }
+                name = msg.name;
+            }
             var namespace = Config.namespace;
             // var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
@@ -688,6 +708,30 @@ export class Message {
                 if (item.metadata.labels.app === (name + "nodered")) {
                     await KubeUtil.instance().CoreV1Api.deleteNamespacedPod(item.metadata.name, namespace);
                 }
+            }
+        } catch (error) {
+            this.data = "";
+            msg.error = JSON.stringify(error, null, 2);
+        }
+        this.Send(cli);
+    }
+    private async GetNoderedInstance(cli: WebSocketClient): Promise<void> {
+        this.Reply();
+        var msg: GetNoderedInstanceMessage;
+        try {
+            msg = GetNoderedInstanceMessage.assign(this.data);
+            var name = cli.user.username;
+            if (msg.name !== null && msg.name !== undefined && msg.name !== "" && msg.name != cli.user.username) {
+                var exists = User.FindByUsername(msg.name, cli.jwt);
+                if (exists == null) { throw new Error("Unknown name " + msg.name) }
+                name = msg.name;
+            }
+            var namespace = Config.namespace;
+            // var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
+
+            var list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
+            if (list.body.items.length > 0) {
+                msg.result = list.body.items[0];
             }
         } catch (error) {
             this.data = "";

@@ -1559,6 +1559,7 @@ module openflow {
         public queuename: string = "webtest";
         public message: string = "Hi mom";
         public noderedurl: string = "";
+        public instance: any = null;
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -1570,6 +1571,8 @@ module openflow {
             WebSocketClient.onSignedin(async (user: TokenUser) => {
                 await api.RegisterQueue();
                 this.noderedurl = "https://" + WebSocketClient.nodered_domain_schema.replace("$nodered_id$", WebSocketClient.user.username);
+                this.instance = await api.GetNoderedInstance();
+                console.log(this.instance);
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
             });
         }

@@ -1,10 +1,11 @@
 import { Base } from "../base";
 
-export class DeleteNoderedInstanceMessage<T extends Base> implements IReplyMessage {
+export class DeleteNoderedInstanceMessage implements IReplyMessage {
     public error: string;
     public jwt: any;
+    public name: string;
 
-    static assign<T extends Base>(o: any): DeleteNoderedInstanceMessage<T> {
+    static assign(o: any): DeleteNoderedInstanceMessage {
         if (typeof o === "string" || o instanceof String) {
             return Object.assign(new DeleteNoderedInstanceMessage(), JSON.parse(o.toString()));
         }

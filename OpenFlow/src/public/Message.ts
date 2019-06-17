@@ -178,9 +178,22 @@ module openflow {
             return Object.assign(new QueueMessage(), o);
         }
     }
+    export class GetNoderedInstanceMessage {
+        public error: string;
+        public jwt: any;
+        public name: string;
+        public result: any;
+        static assign(o: any): GetNoderedInstanceMessage {
+            if (typeof o === "string" || o instanceof String) {
+                return Object.assign(new GetNoderedInstanceMessage(), JSON.parse(o.toString()));
+            }
+            return Object.assign(new GetNoderedInstanceMessage(), o);
+        }
+    }
     export class EnsureNoderedInstanceMessage {
         public error: string;
         public jwt: any;
+        public name: string;
         static assign(o: any): EnsureNoderedInstanceMessage {
             if (typeof o === "string" || o instanceof String) {
                 return Object.assign(new EnsureNoderedInstanceMessage(), JSON.parse(o.toString()));
@@ -191,6 +204,7 @@ module openflow {
     export class DeleteNoderedInstanceMessage {
         public error: string;
         public jwt: any;
+        public name: string;
         static assign(o: any): DeleteNoderedInstanceMessage {
             if (typeof o === "string" || o instanceof String) {
                 return Object.assign(new DeleteNoderedInstanceMessage(), JSON.parse(o.toString()));
@@ -201,6 +215,7 @@ module openflow {
     export class RestartNoderedInstanceMessage {
         public error: string;
         public jwt: any;
+        public name: string;
         static assign(o: any): RestartNoderedInstanceMessage {
             if (typeof o === "string" || o instanceof String) {
                 return Object.assign(new RestartNoderedInstanceMessage(), JSON.parse(o.toString()));
@@ -211,6 +226,7 @@ module openflow {
     export class StartNoderedInstanceMessage {
         public error: string;
         public jwt: any;
+        public name: string;
         static assign(o: any): StartNoderedInstanceMessage {
             if (typeof o === "string" || o instanceof String) {
                 return Object.assign(new StartNoderedInstanceMessage(), JSON.parse(o.toString()));
@@ -221,6 +237,7 @@ module openflow {
     export class StopNoderedInstanceMessage {
         public error: string;
         public jwt: any;
+        public name: string;
         static assign(o: any): StopNoderedInstanceMessage {
             if (typeof o === "string" || o instanceof String) {
                 return Object.assign(new StopNoderedInstanceMessage(), JSON.parse(o.toString()));
