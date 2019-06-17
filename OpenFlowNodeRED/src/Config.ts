@@ -1,6 +1,7 @@
 import * as https from "https";
 import * as retry from "async-retry";
 import { fetch, toPassportConfig } from "passport-saml-metadata";
+import { NoderedUtil } from "./nodered/nodes/NoderedUtil";
 export class Config {
     public static nodered_id: string = Config.getEnv("nodered_id", "1");
     public static nodered_sa: string = Config.getEnv("nodered_sa", "");
@@ -36,14 +37,20 @@ export class Config {
     public static aes_secret: string = Config.getEnv("aes_secret", "");
 
     public static baseurl(): string {
-        var matches = Config.nodered_id.match(/\d+/);
-        if (matches !== null && matches !== undefined) {
-            if (matches.length > 0) {
-                Config.nodered_id = matches[matches.length - 1]; // Just grab the last number
+        if (NoderedUtil.IsNullEmpty(Config.nodered_sa)) {
+            var matches = Config.nodered_id.match(/\d+/);
+            if (matches !== null && matches !== undefined) {
+                if (matches.length > 0) {
+                    Config.nodered_id = matches[matches.length - 1]; // Just grab the last number
+                }
             }
-        }
-        if (Config.nodered_domain_schema != "") {
-            Config.domain = Config.nodered_domain_schema.replace("$nodered_id$", Config.nodered_id)
+            if (Config.nodered_domain_schema != "") {
+                Config.domain = Config.nodered_domain_schema.replace("$nodered_id$", Config.nodered_id)
+            }
+        } else {
+            if (Config.nodered_domain_schema != "") {
+                Config.domain = Config.nodered_domain_schema.replace("$nodered_id$", Config.nodered_id)
+            }
         }
         // if (Config.tls_crt != '' && Config.tls_key != '') {
         //     return "https://" + Config.domain + ":" + Config.port + "/";

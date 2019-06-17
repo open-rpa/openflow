@@ -1572,7 +1572,7 @@ module openflow {
                 await api.RegisterQueue();
                 this.noderedurl = "https://" + WebSocketClient.nodered_domain_schema.replace("$nodered_id$", WebSocketClient.user.username);
                 // // this.GetNoderedInstance();
-                setTimeout(this.GetNoderedInstance.bind(this), 2000);
+                this.GetNoderedInstance();
             });
         }
         async GetNoderedInstance() {
@@ -1590,7 +1590,6 @@ module openflow {
                 console.error(error);
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            setTimeout(this.GetNoderedInstance.bind(this), 2000);
         }
         async EnsureNoderedInstance() {
             try {
