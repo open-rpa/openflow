@@ -389,7 +389,7 @@ module openflow {
             public api: api
         ) {
         }
-        async loadData(): Promise<void> {
+        async _loadData(): Promise<void> {
             this.loading = true;
             this.models = await this.api.Query(this.collection, this.basequery, this.baseprojection, this.orderby);
             this.loading = false;
@@ -408,7 +408,7 @@ module openflow {
             if (field === '_type') {
                 this.orderby["type"] = this.orderby[field];
             }
-            this.loadData();
+            this._loadData();
         }
     }
 

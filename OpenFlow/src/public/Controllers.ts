@@ -99,14 +99,13 @@ module openflow {
                 this.loadData();
             });
         }
-
         async loadData(): Promise<void> {
             this.loading = true;
             this.charts = [];
             var chart: chartset = null;
             console.log("get workflows");
             this.models = await this.api.Query("openrpa", { _type: "workflow" }, null, null);
-
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
             for (var i = 0; i < this.models.length; i++) {
                 var workflow = this.models[i] as any;
                 var d = new Date();
@@ -194,20 +193,12 @@ module openflow {
             public api: api
         ) {
             super($scope, $location, $routeParams, WebSocketClient, api);
+            this.collection = "workflow";
+            this.basequery = { _type: "workflow", web: true };
             console.debug("WorkflowsCtrl");
             WebSocketClient.onSignedin((user: TokenUser) => {
-                this.loadData();
+                this._loadData();
             });
-        }
-
-        async loadData(): Promise<void> {
-            this.loading = true;
-            this.charts = [];
-            var chart: chartset = null;
-            console.log("get workflows");
-            this.models = await this.api.Query("workflow", { _type: "workflow", web: true }, null, null);
-            this.loading = false;
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
     }
 
@@ -243,7 +234,6 @@ module openflow {
                 this.loadData();
             });
         }
-
         async loadData(): Promise<void> {
             this.loading = true;
             this.charts = [];
@@ -393,7 +383,7 @@ module openflow {
             this.collection = "workflow_instances"
             this.basequery = { state: { $ne: "completed" }, form: { $exists: true } };
             WebSocketClient.onSignedin((_user: TokenUser) => {
-                this.loadData();
+                this._loadData();
             });
         }
     }
@@ -629,7 +619,7 @@ module openflow {
             this.basequery = { _type: "provider" };
             this.collection = "config";
             WebSocketClient.onSignedin((user: TokenUser) => {
-                this.loadData();
+                this._loadData();
             });
         }
         async DeleteOne(model: any): Promise<any> {
@@ -689,23 +679,19 @@ module openflow {
             this.collection = "users";
             WebSocketClient.onSignedin((user: TokenUser) => {
                 this.loadData();
-                this._loadData();
             });
-
         }
-        async _loadData(): Promise<void> {
+        async loadData(): Promise<void> {
             this.loading = true;
             var chart: chartset = null;
             console.log("get users");
             this.models = await this.api.Query("users", { _type: "user" }, null, null);
-
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
             for (var i = 0; i < this.models.length; i++) {
                 var user = this.models[i] as any;
                 var d = new Date();
                 // d.setMonth(d.getMonth() - 1);
                 d.setDate(d.getDate() - 7);
-
-
                 console.log("get mapreduce for " + user.name);
                 var stats = await this.api.MapReduce("audit",
                     function map() {
@@ -828,7 +814,7 @@ module openflow {
             this.basequery = { _type: "role" };
             this.collection = "users";
             WebSocketClient.onSignedin((user: TokenUser) => {
-                this.loadData();
+                this._loadData();
             });
         }
         async DeleteOne(model: any): Promise<any> {
@@ -999,7 +985,6 @@ module openflow {
 
 
     export class EntitiesCtrl extends entitiesCtrl<openflow.Base> {
-
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -1013,7 +998,7 @@ module openflow {
             this.collection = $routeParams.collection;
             this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
             WebSocketClient.onSignedin((user: TokenUser) => {
-                this.loadData();
+                this._loadData();
             });
         }
         async DeleteOne(model: any): Promise<any> {
@@ -1055,7 +1040,7 @@ module openflow {
             this.collection = "forms";
             this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
             WebSocketClient.onSignedin((user: TokenUser) => {
-                this.loadData();
+                this._loadData();
             });
         }
         async DeleteOne(model: any): Promise<any> {
@@ -1293,19 +1278,10 @@ module openflow {
             console.debug("jslogCtrl");
             this.collection = "jslog";
             this.basequery = {};
+            this.orderby = { _created: -1 };
             WebSocketClient.onSignedin((user: TokenUser) => {
-                this.loadData();
+                this._loadData();
             });
-        }
-
-        async loadData(): Promise<void> {
-            this.loading = true;
-            this.charts = [];
-            var chart: chartset = null;
-            console.log("get log");
-            this.models = await this.api.Query("jslog", {}, null, { _created: -1 });
-            this.loading = false;
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async DeleteMany(): Promise<void> {
             this.loading = true;
@@ -1322,7 +1298,7 @@ module openflow {
             values.forEach((x: DeleteOneMessage) => ids.push(x._id));
             this.models = this.models.filter(function (m: any): boolean { return ids.indexOf(m._id) === -1; });
             this.loading = false;
-            this.loadData();
+            this._loadData();
             //if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
 
