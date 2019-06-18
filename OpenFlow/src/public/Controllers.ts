@@ -1547,7 +1547,7 @@ module openflow {
             WebSocketClient.onSignedin(async (user: TokenUser) => {
                 await api.RegisterQueue();
                 var name = WebSocketClient.user.username;
-                name = name.replace("@", "_").replace(".", "_");
+                name = name.replace(new RegExp("@", 'g'), "_").replace(new RegExp(".", 'g'), "_");
                 this.noderedurl = "https://" + WebSocketClient.nodered_domain_schema.replace("$nodered_id$", name);
                 // // this.GetNoderedInstance();
                 this.GetNoderedInstance();

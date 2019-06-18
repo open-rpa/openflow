@@ -513,7 +513,7 @@ export class Message {
                 if (exists == null) { throw new Error("Unknown name " + msg.name) }
                 name = msg.name;
             }
-            name = name.replace("@", "_").replace(".", "_");
+            name = name.replace(new RegExp("@", 'g'), "_").replace(new RegExp(".", 'g'), "_");
             var namespace = Config.namespace;
             var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
@@ -637,7 +637,7 @@ export class Message {
                 if (exists == null) { throw new Error("Unknown name " + msg.name) }
                 name = msg.name;
             }
-            name = name.replace("@", "_").replace(".", "_");
+            name = name.replace(new RegExp("@", 'g'), "_").replace(new RegExp(".", 'g'), "_");
             var namespace = Config.namespace;
             var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
@@ -700,7 +700,7 @@ export class Message {
                 if (exists == null) { throw new Error("Unknown name " + msg.name) }
                 name = msg.name;
             }
-            name = name.replace("@", "_").replace(".", "_");
+            name = name.replace(new RegExp("@", 'g'), "_").replace(new RegExp(".", 'g'), "_");
             var namespace = Config.namespace;
             // var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
@@ -735,7 +735,7 @@ export class Message {
                 if (exists == null) { throw new Error("Unknown name " + msg.name) }
                 name = msg.name;
             }
-            name = name.replace("@", "_").replace(".", "_");
+            name = name.replace(new RegExp("@", 'g'), "_").replace(new RegExp(".", 'g'), "_");
             var namespace = Config.namespace;
             // var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
