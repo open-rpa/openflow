@@ -43,8 +43,8 @@ export class User extends Base {
     }
     public static async ensureRole(jwt: string, name: string, id: string): Promise<Role> {
         var role: Role = await Role.FindByNameOrId(name, id);
-        if (role !== null && role._id === id) { return role; }
-        if (role !== null) { await Config.db.DeleteOne(role._id, "users", jwt); }
+        if (role !== null && (role._id === id || id === null)) { return role; }
+        if (role !== null && id !== null) { await Config.db.DeleteOne(role._id, "users", jwt); }
         role = new Role(); role._id = id; role.name = name;
         role = await Config.db.InsertOne(role, "users", 0, false, jwt);
         role = Role.assign(role);

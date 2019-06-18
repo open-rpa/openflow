@@ -528,6 +528,7 @@ export class Message {
             // nodereduser.removeRight(cli.user._id, [Rights.delete]);
             // await nodereduser.Save(cli.jwt);
 
+            cli._logger.debug("[" + cli.user.username + "] ensure nodered role " + name + "noderedadmins");
             var noderedadmins = await User.ensureRole(cli.jwt, name + "noderedadmins", null);
             noderedadmins.addRight(cli.user._id, cli.user.username, [Rights.full_control]);
             noderedadmins.removeRight(cli.user._id, [Rights.delete]);
@@ -535,11 +536,13 @@ export class Message {
             // noderedadmins.addRight(nodereduser._id, nodereduser.username, [Rights.full_control]);
             // noderedadmins.removeRight(nodereduser._id, [Rights.delete]);
             // noderedadmins.AddMember(nodereduser);
+            cli._logger.debug("[" + cli.user.username + "] update nodered role " + name + "noderedadmins");
             await noderedadmins.Save(cli.jwt);
 
+            cli._logger.debug("[" + cli.user.username + "] GetDeployments");
             var deployment = await KubeUtil.instance().GetDeployment(namespace, name);
             if (deployment == null) {
-                console.log("Deployment " + name + " not found in " + namespace);
+                cli._logger.debug("[" + cli.user.username + "] Deployment " + name + " not found in " + namespace + " so creating it");
                 var _deployment = {
                     metadata: { name: name, namespace: namespace, app: (name + "nodered") },
                     spec: {
@@ -574,9 +577,10 @@ export class Message {
                 }
                 await KubeUtil.instance().ExtensionsV1beta1Api.createNamespacedDeployment(namespace, _deployment);
             }
+            cli._logger.debug("[" + cli.user.username + "] GetService");
             var service = await KubeUtil.instance().GetService(namespace, name);
             if (service == null) {
-                console.log("Service " + name + " not found in " + namespace);
+                cli._logger.debug("[" + cli.user.username + "] Service " + name + " not found in " + namespace + " creating it");
                 var _service = {
                     metadata: { name: name, namespace: namespace },
                     spec: {
@@ -590,6 +594,7 @@ export class Message {
                 }
                 await KubeUtil.instance().CoreV1Api.createNamespacedService(namespace, _service);
             }
+            cli._logger.debug("[" + cli.user.username + "] GetIngress useringress");
             var ingress = await KubeUtil.instance().GetIngress(namespace, "useringress");
             // console.log(ingress);
             var rule = null;
@@ -599,6 +604,7 @@ export class Message {
                 }
             }
             if (rule == null) {
+                cli._logger.debug("[" + cli.user.username + "] ingress " + hostname + " not found in useringress creating it");
                 rule = {
                     host: hostname,
                     http: {
@@ -614,6 +620,7 @@ export class Message {
                 delete ingress.metadata.creationTimestamp;
                 delete ingress.status;
                 ingress.spec.rules.push(rule);
+                cli._logger.debug("[" + cli.user.username + "] replaceNamespacedIngress");
                 await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("useringress", namespace, ingress);
             }
         } catch (error) {
