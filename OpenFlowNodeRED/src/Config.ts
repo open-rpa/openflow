@@ -4,6 +4,7 @@ import { fetch, toPassportConfig } from "passport-saml-metadata";
 export class Config {
     public static nodered_id: string = Config.getEnv("nodered_id", "1");
     public static nodered_sa: string = Config.getEnv("nodered_sa", "");
+    public static queue_prefix: string = Config.getEnv("queue_prefix", "");
 
     public static consumer_key: string = Config.getEnv("consumer_key", "");
     public static consumer_secret: string = Config.getEnv("consumer_secret", "");
@@ -34,6 +35,8 @@ export class Config {
     public static api_allow_anonymous: boolean = Config.parseBoolean(Config.getEnv("api_allow_anonymous", "false"));
 
     public static aes_secret: string = Config.getEnv("aes_secret", "");
+    public static jwt: string = Config.getEnv("jwt", "");
+
 
     public static baseurl(): string {
         if (Config.nodered_sa === null || Config.nodered_sa === undefined || Config.nodered_sa === "") {

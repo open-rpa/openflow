@@ -90,7 +90,9 @@ export class rpa_workflow_node {
     async connect() {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
-            this.con = new amqp_publisher(Logger.instanse, this.host, this.config.localqueue);
+            var localqueue = this.config.localqueue;
+            if (localqueue !== null && localqueue !== undefined && localqueue !== "") { localqueue = Config.queue_prefix + localqueue; }
+            this.con = new amqp_publisher(Logger.instanse, this.host, localqueue);
             this.con.OnMessage = this.OnMessage.bind(this);
             await this.con.connect();
             this.node.status({ fill: "green", shape: "dot", text: "Connected" });

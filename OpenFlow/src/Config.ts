@@ -13,6 +13,7 @@ export class Config {
     public static auto_create_domains: string[] = Config.parseArray(Config.getEnv("auto_create_domains", ""));
     public static allow_user_registration: boolean = Config.parseBoolean(Config.getEnv("allow_user_registration", "false"));
     public static allow_personal_nodered: boolean = Config.parseBoolean(Config.getEnv("allow_personal_nodered", "false"));
+    public static force_queue_prefix: boolean = Config.parseBoolean(Config.getEnv("force_queue_prefix", "true"));
     public static saml_federation_metadata: string = Config.getEnv("saml_federation_metadata", "");
     public static api_ws_url: string = Config.getEnv("api_ws_url", "ws://localhost:3000");
 

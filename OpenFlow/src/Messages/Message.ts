@@ -452,7 +452,7 @@ export class Message {
                     user.device = msg.device;
                 }
                 Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip);
-                msg.jwt = Crypt.createToken(user);
+                msg.jwt = Crypt.createToken(user, "1h");
                 msg.user = tuser;
                 if (msg.validate_only !== true) {
                     cli._logger.debug(tuser.username + " signed in using " + type);
@@ -518,6 +518,13 @@ export class Message {
             name = name.toLowerCase();
             var namespace = Config.namespace;
             var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
+            var queue_prefix: string = "";
+            if (Config.force_queue_prefix) {
+                queue_prefix = cli.user.username;
+            }
+
+            var tuser: TokenUser = new TokenUser(cli.user);
+            var nodered_jwt: string = Crypt.createToken(tuser, "365d");
 
             // var noderedusers = await User.ensureRole(cli.jwt, name + "noderedusers", null);
             // noderedusers.addRight(cli.user._id, cli.user.username, [Rights.full_control]);
@@ -560,12 +567,13 @@ export class Message {
                                             { name: "saml_issuer", value: Config.saml_issuer },
                                             { name: "nodered_id", value: name },
                                             { name: "nodered_sa", value: cli.user.username },
+                                            { name: "jwt", value: nodered_jwt },
+                                            { name: "queue_prefix", value: queue_prefix },
                                             { name: "api_ws_url", value: Config.api_ws_url },
                                             { name: "amqp_url", value: Config.amqp_url },
                                             { name: "nodered_domain_schema", value: hostname },
                                             { name: "protocol", value: Config.protocol },
                                             { name: "port", value: Config.port.toString() },
-                                            { name: "aes_secret", value: Config.aes_secret },
                                             { name: "noderedusers", value: (name + "noderedusers") },
                                             { name: "noderedadmins", value: (name + "noderedadmins") },
                                         ]

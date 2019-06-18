@@ -144,17 +144,23 @@ export class NoderedUtil {
         if (!NoderedUtil.IsNullEmpty(username) && !NoderedUtil.IsNullEmpty(password)) {
             q.username = username; q.password = password;
         } else {
-            if (Crypt.encryption_key === "") { throw new Error("root signin not allowed"); }
             var user = new TokenUser();
             Logger.instanse.debug("GetToken::nodered_id: " + Config.nodered_id);
             Logger.instanse.debug("GetToken::isNumeric: " + this.isNumeric(Config.nodered_id));
-            if (NoderedUtil.IsNullEmpty(Config.nodered_sa)) {
-                user.name = "nodered" + Config.nodered_id;
+            if (Config.jwt !== "") {
+                q.jwt = Config.jwt;
+            } else if (Crypt.encryption_key !== "") {
+                var user = new TokenUser();
+                if (NoderedUtil.IsNullEmpty(Config.nodered_sa)) {
+                    user.name = "nodered" + Config.nodered_id;
+                } else {
+                    user.name = Config.nodered_sa;
+                }
+                user.username = user.name;
+                q.jwt = Crypt.createToken(user);
             } else {
-                user.name = Config.nodered_sa;
+                throw new Error("root signin not allowed");
             }
-            user.username = user.name;
-            q.jwt = Crypt.createToken(user);
         }
         var _msg: Message = new Message();
         _msg.command = "signin"; _msg.data = JSON.stringify(q);

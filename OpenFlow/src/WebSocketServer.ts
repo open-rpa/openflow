@@ -45,7 +45,7 @@ export class WebSocketServer {
                     if ((clockTimestamp - payload.iat) > 180) {
                         WebSocketServer._logger.silly("Send new jwt to client");
                         var l: SigninMessage = new SigninMessage();
-                        cli.jwt = Crypt.createToken(tuser);
+                        cli.jwt = Crypt.createToken(tuser, "1h");
                         l.jwt = cli.jwt;
                         l.user = tuser;
                         var m: Message = new Message(); m.command = "refreshtoken";
