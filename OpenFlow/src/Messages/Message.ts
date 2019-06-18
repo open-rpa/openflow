@@ -514,6 +514,7 @@ export class Message {
                 name = msg.name;
             }
             name = name.split("@").join("").split(".").join("");
+            name = name.toLowerCase();
             var namespace = Config.namespace;
             var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
@@ -638,6 +639,7 @@ export class Message {
                 name = msg.name;
             }
             name = name.split("@").join("").split(".").join("");
+            name = name.toLowerCase();
             var namespace = Config.namespace;
             var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
@@ -701,6 +703,7 @@ export class Message {
                 name = msg.name;
             }
             name = name.split("@").join("").split(".").join("");
+            name = name.toLowerCase();
             var namespace = Config.namespace;
             // var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
@@ -736,6 +739,7 @@ export class Message {
                 name = msg.name;
             }
             name = name.split("@").join("").split(".").join("");
+            name = name.toLowerCase();
             var namespace = Config.namespace;
             // var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
