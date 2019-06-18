@@ -506,6 +506,7 @@ export class Message {
         var msg: EnsureNoderedInstanceMessage;
         var user: User;
         try {
+            cli._logger.debug("[" + cli.user.username + "] EnsureNoderedInstance");
             msg = EnsureNoderedInstanceMessage.assign(this.data);
             var name = cli.user.username;
             if (msg.name !== null && msg.name !== undefined && msg.name !== "" && msg.name != cli.user.username) {
@@ -549,7 +550,7 @@ export class Message {
                                 containers: [
                                     {
                                         name: 'nodered',
-                                        image: 'cloudhack/openflownodered:0.0.218',
+                                        image: 'cloudhack/openflownodered:0.0.225',
                                         imagePullPolicy: "Always",
                                         env: [
                                             { name: "saml_federation_metadata", value: Config.saml_federation_metadata },
@@ -634,6 +635,7 @@ export class Message {
         var msg: DeleteNoderedInstanceMessage;
         var user: User;
         try {
+            cli._logger.debug("[" + cli.user.username + "] DeleteNoderedInstance");
             msg = DeleteNoderedInstanceMessage.assign(this.data);
             var name = cli.user.username;
             if (msg.name !== null && msg.name !== undefined && msg.name !== "" && msg.name != cli.user.username) {
@@ -701,6 +703,7 @@ export class Message {
         this.Reply();
         var msg: RestartNoderedInstanceMessage;
         try {
+            cli._logger.debug("[" + cli.user.username + "] RestartNoderedInstance");
             msg = RestartNoderedInstanceMessage.assign(this.data);
             var name = cli.user.username;
             if (msg.name !== null && msg.name !== undefined && msg.name !== "" && msg.name != cli.user.username) {
@@ -739,6 +742,7 @@ export class Message {
         this.Reply();
         var msg: GetNoderedInstanceMessage;
         try {
+            cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance");
             msg = GetNoderedInstanceMessage.assign(this.data);
             var name = cli.user.username;
             if (msg.name !== null && msg.name !== undefined && msg.name !== "" && msg.name != cli.user.username) {
@@ -758,11 +762,11 @@ export class Message {
                     var item = list.body.items[i];
                     if (item.metadata.labels.app === (name + "nodered")) {
                         msg.result = item;
-                        cli._logger.debug("GetNoderedInstance:" + name + " found one");
+                        cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance:" + name + " found one");
                     }
                 }
             } else {
-                cli._logger.warn("GetNoderedInstance: found NO Namespaced Pods ???");
+                cli._logger.warn("[" + cli.user.username + "] GetNoderedInstance: found NO Namespaced Pods ???");
             }
         } catch (error) {
             this.data = "";
