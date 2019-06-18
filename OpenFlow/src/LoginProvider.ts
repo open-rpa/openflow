@@ -129,6 +129,7 @@ export class LoginProvider {
                 res.end(JSON.stringify({ jwt: Crypt.createToken(tuser) }));
             } catch (error) {
                 res.end(error);
+                console.error(error);
             }
         });
         app.get("/config", (req: any, res: any, next: any): void => {
@@ -149,22 +150,30 @@ export class LoginProvider {
             res.end(JSON.stringify(res2));
         });
         app.get("/loginproviders", async (req: any, res: any, next: any): Promise<void> => {
-            LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", TokenUser.rootToken());
-            var result: any[] = [];
-            LoginProvider.login_providers.forEach(provider => {
-                var item: any = { name: provider.name, id: provider.id, provider: provider.provider, logo: "fa-question-circle" };
-                if (provider.provider === "google") { item.logo = "fa-google"; }
-                if (provider.provider === "saml") { item.logo = "fa-windows"; }
-                result.push(item);
-            });
-            if (result.length === 0) {
-                var item: any = { name: "Local", id: "local", provider: "local", logo: "fa-question-circle" };
-                result.push(item);
+            try {
+                LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", TokenUser.rootToken());
+                var result: any[] = [];
+                LoginProvider.login_providers.forEach(provider => {
+                    var item: any = { name: provider.name, id: provider.id, provider: provider.provider, logo: "fa-question-circle" };
+                    if (provider.provider === "google") { item.logo = "fa-google"; }
+                    if (provider.provider === "saml") { item.logo = "fa-windows"; }
+                    result.push(item);
+                });
+                if (result.length === 0) {
+                    var item: any = { name: "Local", id: "local", provider: "local", logo: "fa-question-circle" };
+                    result.push(item);
+                }
+                res.setHeader("Content-Type", "application/json");
+                res.end(JSON.stringify(result));
+                res.end();
+            } catch (error) {
+                res.end(error);
+                console.error(error);
             }
-            res.setHeader("Content-Type", "application/json");
-            res.end(JSON.stringify(result));
-            res.end();
-            LoginProvider.RegisterProviders(app, baseurl);
+            try {
+                LoginProvider.RegisterProviders(app, baseurl);
+            } catch (error) {
+            }
         });
     }
     static async RegisterProviders(app: express.Express, baseurl: string) {
@@ -294,6 +303,7 @@ export class LoginProvider {
                 return done(null, tuser);
             } catch (error) {
                 done(error);
+                console.error(error);
             }
         });
         passport.use("local", strategy);
