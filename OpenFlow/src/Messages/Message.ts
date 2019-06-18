@@ -616,7 +616,10 @@ export class Message {
                 await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("useringress", namespace, ingress);
             }
         } catch (error) {
-            msg.error = JSON.stringify(error, null, 2);
+            this.data = "";
+            console.error(error);
+            //msg.error = JSON.stringify(error, null, 2);
+            msg.error = "Request failed!"
         }
         try {
             this.data = JSON.stringify(msg);
@@ -681,7 +684,10 @@ export class Message {
                 await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("useringress", namespace, ingress);
             }
         } catch (error) {
-            msg.error = JSON.stringify(error, null, 2);
+            this.data = "";
+            console.error(error);
+            //msg.error = JSON.stringify(error, null, 2);
+            msg.error = "Request failed!"
         }
         try {
             this.data = JSON.stringify(msg);
@@ -717,7 +723,9 @@ export class Message {
             }
         } catch (error) {
             this.data = "";
-            msg.error = JSON.stringify(error, null, 2);
+            console.error(error);
+            //msg.error = JSON.stringify(error, null, 2);
+            msg.error = "Request failed!"
         }
         try {
             this.data = JSON.stringify(msg);
@@ -758,7 +766,9 @@ export class Message {
             }
         } catch (error) {
             this.data = "";
-            msg.error = JSON.stringify(error, null, 2);
+            console.error(error);
+            //msg.error = JSON.stringify(error, null, 2);
+            msg.error = "Request failed!"
         }
         try {
             this.data = JSON.stringify(msg);
