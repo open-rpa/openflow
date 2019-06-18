@@ -513,7 +513,7 @@ export class Message {
                 if (exists == null) { throw new Error("Unknown name " + msg.name) }
                 name = msg.name;
             }
-            name = name.split("@").join("_").split(".").join("_");
+            name = name.split("@").join("").split(".").join("");
             var namespace = Config.namespace;
             var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
@@ -637,7 +637,7 @@ export class Message {
                 if (exists == null) { throw new Error("Unknown name " + msg.name) }
                 name = msg.name;
             }
-            name = name.split("@").join("_").split(".").join("_");
+            name = name.split("@").join("").split(".").join("");
             var namespace = Config.namespace;
             var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
@@ -700,7 +700,7 @@ export class Message {
                 if (exists == null) { throw new Error("Unknown name " + msg.name) }
                 name = msg.name;
             }
-            name = name.split("@").join("_").split(".").join("_");
+            name = name.split("@").join("").split(".").join("");
             var namespace = Config.namespace;
             // var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
@@ -735,7 +735,7 @@ export class Message {
                 if (exists == null) { throw new Error("Unknown name " + msg.name) }
                 name = msg.name;
             }
-            name = name.split("@").join("_").split(".").join("_");
+            name = name.split("@").join("").split(".").join("");
             var namespace = Config.namespace;
             // var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
