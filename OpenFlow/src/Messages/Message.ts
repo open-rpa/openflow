@@ -564,7 +564,7 @@ export class Message {
                                 containers: [
                                     {
                                         name: 'nodered',
-                                        image: 'cloudhack/openflownodered:0.0.240',
+                                        image: 'cloudhack/openflownodered:0.0.241',
                                         imagePullPolicy: "Always",
                                         ports: [{ containerPort: 80 }],
                                         env: [
