@@ -1585,6 +1585,7 @@ module openflow {
                 this.instancestatus = "fetching log";
                 console.log("GetNoderedInstanceLog:");
                 this.instancelog = await this.api.GetNoderedInstanceLog();
+                this.instancelog = this.instancelog.split("\n").reverse().join("\n");
                 this.messages += "GetNoderedInstanceLog completed\n";
             } catch (error) {
                 this.messages += error + "\n";
