@@ -34,7 +34,12 @@ export class workflow_in_node {
         try {
             await this.init();
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
-            this.con = new amqp_consumer(Logger.instanse, this.host, Config.queue_prefix + this.config.queue);
+
+            if (!NoderedUtil.IsNullUndefinded(Config.queue_prefix)) {
+                this.config.queue = Config.queue_prefix + this.config.queue;
+            }
+
+            this.con = new amqp_consumer(Logger.instanse, this.host, this.config.queue);
             this.con.OnMessage = this.OnMessage.bind(this);
             await this.con.connect(false);
             this.node.status({ fill: "green", shape: "dot", text: "Connected" });
@@ -43,9 +48,9 @@ export class workflow_in_node {
         }
     }
     async init() {
-        var res = await NoderedUtil.Query("workflow", { "queue": Config.queue_prefix + this.config.queue }, null, null, 1, 0, null);
+        var res = await NoderedUtil.Query("workflow", { "queue": this.config.queue }, null, null, 1, 0, null);
         if (res.length == 0) {
-            this.workflow = await NoderedUtil.InsertOne("workflow", { _type: "workflow", "queue": Config.queue_prefix + this.config.queue, "name": this.config.name }, 0, false, null);
+            this.workflow = await NoderedUtil.InsertOne("workflow", { _type: "workflow", "queue": this.config.queue, "name": this.config.name }, 0, false, null);
         } else {
             this.workflow = res[0];
         }
@@ -109,7 +114,7 @@ export class workflow_in_node {
                 //result = result.payload;
             } else {
                 var res2 = await NoderedUtil.InsertOne("workflow_instances",
-                    { _type: "instance", "queue": Config.queue_prefix + this.config.queue, "name": this.workflow.name, payload: data.payload, workflow: this.workflow._id }, 1, true, data.jwt);
+                    { _type: "instance", "queue": this.config.queue, "name": this.workflow.name, payload: data.payload, workflow: this.workflow._id }, 1, true, data.jwt);
                 //result = Object.assign(res2, result);
                 result = this.nestedassign(res2, result);
             }

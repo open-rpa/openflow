@@ -21,6 +21,7 @@ export class User extends Base {
         var newo: User = new User();
         return Object.assign(newo, o);
     }
+    noderedname: string;
     lastseen: Date;
     username: string;
     passwordhash: string;
