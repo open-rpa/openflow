@@ -17,20 +17,12 @@
         <button type="button" class="btn btn-secondary" ng-show="ctrl.instance!=null"
           ng-click="ctrl.GetNoderedInstanceLog()">Get Console</button>
 
-        <a ng-href="{{ctrl.noderedurl}}" class="btn btn-secondary" target="nodered" ng-show="ctrl.instance!=null">Open
+        <a ng-href="{{ctrl.noderedurl}}" class="btn btn-danger" target="nodered" ng-show="ctrl.instance!=null">Open
           Nodered</a>
       </div>
     </div>
   </section>
 </form>
-<section ng-show="ctrl.instancelog!=""">
-  <div class="form-group">
-    <label class="col-sm-3 control-label"><span translate lib="web">console</span>: </label>
-    <div class="col-sm-9">
-      <pre>{{ ctrl.instancelog }}</pre>
-    </div>
-  </div>
-</section>
 <section>
   <div class="form-group">
     <label class="col-sm-3 control-label"><span translate lib="web">status</span>: </label>
@@ -45,6 +37,14 @@
     <div class="col-sm-9">
       <span ng-show="ctrl.instance==null"></span>
       <span ng-show="ctrl.instance!=null">{{ ctrl.instance.spec.containers[0].image }}</span>
+    </div>
+  </div>
+</section>
+<section ng-show="ctrl.instancelog!=''">
+  <div class="form-group">
+    <label class="col-sm-3 control-label"><span translate lib="web">console</span>: </label>
+    <div class="col-sm-9">
+      <pre>{{ ctrl.instancelog }}</pre>
     </div>
   </div>
 </section>
