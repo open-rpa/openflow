@@ -564,8 +564,9 @@ export class Message {
                                 containers: [
                                     {
                                         name: 'nodered',
-                                        image: 'cloudhack/openflownodered:0.0.239',
+                                        image: 'cloudhack/openflownodered:0.0.240',
                                         imagePullPolicy: "Always",
+                                        ports: [{ containerPort: 80 }],
                                         env: [
                                             { name: "saml_federation_metadata", value: Config.saml_federation_metadata },
                                             { name: "saml_issuer", value: Config.saml_issuer },
@@ -580,7 +581,18 @@ export class Message {
                                             { name: "port", value: Config.port.toString() },
                                             { name: "noderedusers", value: (name + "noderedusers") },
                                             { name: "noderedadmins", value: (name + "noderedadmins") },
-                                        ]
+                                        ],
+                                        livenessProbe: {
+                                            httpGet: {
+                                                path: "/",
+                                                port: 80,
+                                                scheme: "HTTP"
+                                            },
+                                            initialDelaySeconds: 30,
+                                            periodSeconds: 5,
+                                            failureThreshold: 5,
+                                            timeoutSeconds: 5
+                                        },
                                     }
                                 ]
                             }
