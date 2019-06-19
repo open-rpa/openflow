@@ -55,6 +55,7 @@ export class SigninMessage {
     public password: string;
     public user: TokenUser;
     public jwt: string;
+    public rawAssertion: string;
     static assign(o: any): SigninMessage {
         if (typeof o === "string" || o instanceof String) {
             return Object.assign(new SigninMessage(), JSON.parse(o.toString()));

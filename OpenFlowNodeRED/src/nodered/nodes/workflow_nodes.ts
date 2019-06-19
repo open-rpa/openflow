@@ -197,7 +197,8 @@ export class workflow_out_node {
 }
 
 export async function get_workflow_forms(req, res) {
-    var token = await NoderedUtil.GetToken(null, null);
+    var rawAssertion = req.user.getAssertionXml();
+    var token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
     var result: any[] = await NoderedUtil.Query('forms', { _type: "form" },
         { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
     res.json(result);

@@ -494,7 +494,9 @@ export class api_map_reduce {
 }
 
 export async function get_api_roles(req, res) {
-    var token = await NoderedUtil.GetToken(null, null);
+    // var token = await NoderedUtil.GetToken(null, null);
+    var rawAssertion = req.user.getAssertionXml();
+    var token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
     var result: any[] = await NoderedUtil.Query('users', { _type: "role" },
         { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
     res.json(result);

@@ -168,5 +168,13 @@ export class NoderedUtil {
         Logger.instanse.debug("Created token as " + result.user.username);
         return result;
     }
-
+    public static async GetTokenFromSAML(rawAssertion: string): Promise<SigninMessage> {
+        var q: SigninMessage = new SigninMessage(); q.validate_only = true;
+        q.rawAssertion = rawAssertion;
+        var _msg: Message = new Message();
+        _msg.command = "signin"; _msg.data = JSON.stringify(q);
+        var result: SigninMessage = await WebSocketClient.instance.Send<SigninMessage>(_msg);
+        Logger.instanse.debug("Created token as " + result.user.username);
+        return result;
+    }
 }
