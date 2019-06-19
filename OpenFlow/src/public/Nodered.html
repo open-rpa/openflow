@@ -20,8 +20,7 @@
   <div class="form-group">
     <label class="col-sm-3 control-label"><span translate lib="web">status</span>: </label>
     <div class="col-sm-9">
-      <span ng-show="ctrl.instance==null">unknown/non existent</span>
-      <span ng-show="ctrl.instance!=null">{{ ctrl.instance.status.phase }}</span>
+      <span ng-show="ctrl.instance!=null">{{ ctrl.instancestatus }}</span>
     </div>
   </div>
 </section>

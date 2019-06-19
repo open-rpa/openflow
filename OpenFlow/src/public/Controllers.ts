@@ -1536,6 +1536,7 @@ module openflow {
         public message: string = "Hi mom";
         public noderedurl: string = "";
         public instance: any = null;
+        public instancestatus: string = "";
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -1556,14 +1557,22 @@ module openflow {
         }
         async GetNoderedInstance() {
             try {
+                this.instancestatus = "fetching status";
+
                 this.instance = await this.api.GetNoderedInstance();
                 console.log("GetNoderedInstance:");
                 console.log(this.instance);
                 if (this.instance !== null && this.instance !== undefined) {
-                    this.messages += "GetNoderedInstance completed, status " + this.instance.status.phase + "\n";
+                    if (this.instance.metadata.deletionTimestamp !== undefined) {
+                        this.instancestatus = "pending deletion (" + this.instance.status.phase + ")";
+                    } else {
+                        this.instancestatus = this.instance.status.phase;
+                    }
                 } else {
-                    this.messages += "GetNoderedInstance completed, status unknown/non existent" + "\n";
+                    this.instancestatus = "non existent";
+                    // this.messages += "GetNoderedInstance completed, status unknown/non existent" + "\n";
                 }
+                this.messages += "GetNoderedInstance completed, status " + this.instancestatus + "\n";
             } catch (error) {
                 this.messages += error + "\n";
                 console.error(error);
