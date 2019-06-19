@@ -555,11 +555,11 @@ export class Message {
             if (deployment == null) {
                 cli._logger.debug("[" + cli.user.username + "] Deployment " + name + " not found in " + namespace + " so creating it");
                 var _deployment = {
-                    metadata: { name: name, namespace: namespace, app: (name + "nodered") },
+                    metadata: { name: name, namespace: namespace, app: name },
                     spec: {
                         replicas: 1,
                         template: {
-                            metadata: { labels: { name: name, app: (name + "nodered") } },
+                            metadata: { labels: { name: name, app: name } },
                             spec: {
                                 containers: [
                                     {
@@ -610,7 +610,7 @@ export class Message {
                     spec: {
                         type: "NodePort",
                         sessionAffinity: "ClientIP",
-                        selector: { app: (name + "nodered") },
+                        selector: { app: name },
                         ports: [
                             { port: 80, name: "www" }
                         ]
@@ -693,15 +693,15 @@ export class Message {
             if (service != null) {
                 await KubeUtil.instance().CoreV1Api.deleteNamespacedService(name, namespace);
             }
-            var replicaset = await KubeUtil.instance().GetReplicaset(namespace, "app", (name + "nodered"));
+            var replicaset = await KubeUtil.instance().GetReplicaset(namespace, "app", name);
             if (replicaset !== null) {
                 KubeUtil.instance().AppsV1Api.deleteNamespacedReplicaSet(replicaset.metadata.name, namespace);
             }
             // var list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
             // for (var i = 0; i < list.body.items.length; i++) {
             //     var item = list.body.items[i];
-            //     // if (item.metadata.labels.app === (name + "nodered") || item.metadata.labels.name === name) {
-            //     if (item.metadata.labels.app === (name + "nodered")) {
+            //     // if (item.metadata.labels.app === name || item.metadata.labels.name === name) {
+            //     if (item.metadata.labels.app === name) {
             //         await KubeUtil.instance().CoreV1Api.deleteNamespacedPod(item.metadata.name, namespace);
             //     }
             // }
@@ -751,8 +751,8 @@ export class Message {
             var list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
             for (var i = 0; i < list.body.items.length; i++) {
                 var item = list.body.items[i];
-                // if (item.metadata.labels.app === (name + "nodered") || item.metadata.labels.name === name) {
-                if (item.metadata.labels.app === (name + "nodered")) {
+                // if (item.metadata.labels.app === name || item.metadata.labels.name === name) {
+                if (item.metadata.labels.app === name) {
                     await KubeUtil.instance().CoreV1Api.deleteNamespacedPod(item.metadata.name, namespace);
                 }
             }
@@ -792,7 +792,7 @@ export class Message {
             if (list.body.items.length > 0) {
                 for (var i = 0; i < list.body.items.length; i++) {
                     var item = list.body.items[i];
-                    if (item.metadata.labels.app === (name + "nodered")) {
+                    if (item.metadata.labels.app === name) {
                         msg.result = item;
                         cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance:" + name + " found one");
                     }
@@ -836,7 +836,7 @@ export class Message {
             if (list.body.items.length > 0) {
                 for (var i = 0; i < list.body.items.length; i++) {
                     var item = list.body.items[i];
-                    if (item.metadata.labels.app === (name + "nodered")) {
+                    if (item.metadata.labels.app === name) {
                         cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance:" + name + " found one as " + item.metadata.name);
                         var obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
                         msg.result = obj.body;
