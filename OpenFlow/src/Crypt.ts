@@ -58,7 +58,7 @@ export class Crypt {
     static createToken(item: User | TokenUser, expiresIn: string): string {
         var user: TokenUser = new TokenUser(item);
         var token: string = jsonwebtoken.sign({ data: user }, Crypt.encryption_key,
-            { expiresIn: "1h" }); // 60 (seconds), "2 days", "10h", "7d"
+            { expiresIn: expiresIn }); // 60 (seconds), "2 days", "10h", "7d"
         return token;
     }
 
