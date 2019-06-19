@@ -36,7 +36,13 @@ export class WebServer {
             this._logger.debug("WebServer.configure::begin");
             if (this.app === null) {
                 this.app = express();
-                this.app.use(morgan('combined', { stream: (winston.stream as any).write }));
+                // this.app.use(morgan('combined', { stream: (winston.stream as any).write }));
+                var loggerstream = {
+                    write: function (message, encoding) {
+                        logger.silly(message);
+                    }
+                };
+                this.app.use(morgan('combined', { stream: loggerstream }));
                 this.app.use(compression());
                 this.app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }))
                 this.app.use(bodyParser.json({ limit: '10mb' }))
