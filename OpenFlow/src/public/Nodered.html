@@ -15,10 +15,20 @@
         <button type="button" class="btn btn-secondary" ng-click="ctrl.DeleteNoderedInstance()"
           ng-show="ctrl.instance!=null">Delete Nodered</button>
         <button type="button" class="btn btn-secondary" ng-click="ctrl.GetNoderedInstance()">Get status</button>
+        <button type="button" class="btn btn-secondary" ng-show="ctrl.instance!=null"
+          ng-click="ctrl.GetNoderedInstanceLog()">Get Console</button>
       </div>
     </div>
   </section>
 </form>
+<section ng-show="ctrl.instancelog!=""">
+  <div class="form-group">
+    <label class="col-sm-3 control-label"><span translate lib="web">console</span>: </label>
+    <div class="col-sm-9">
+      <pre>{{ ctrl.instancelog }}</pre>
+    </div>
+  </div>
+</section>
 <section>
   <div class="form-group">
     <label class="col-sm-3 control-label"><span translate lib="web">status</span>: </label>

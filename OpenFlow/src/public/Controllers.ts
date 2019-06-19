@@ -1537,6 +1537,7 @@ module openflow {
         public noderedurl: string = "";
         public instance: any = null;
         public instancestatus: string = "";
+        public instancelog: string = "";
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -1573,6 +1574,18 @@ module openflow {
                     // this.messages += "GetNoderedInstance completed, status unknown/non existent" + "\n";
                 }
                 this.messages += "GetNoderedInstance completed, status " + this.instancestatus + "\n";
+            } catch (error) {
+                this.messages += error + "\n";
+                console.error(error);
+            }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        async GetNoderedInstanceLog() {
+            try {
+                this.instancestatus = "fetching log";
+                console.log("GetNoderedInstanceLog:");
+                this.instancelog = await this.api.GetNoderedInstanceLog();
+                this.messages += "GetNoderedInstanceLog completed\n";
             } catch (error) {
                 this.messages += error + "\n";
                 console.error(error);

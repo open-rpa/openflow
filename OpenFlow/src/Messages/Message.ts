@@ -28,6 +28,7 @@ import { Role } from "../Role";
 import { RestartNoderedInstanceMessage } from "./RestartNoderedInstanceMessage";
 import { DeleteNoderedInstanceMessage } from "./DeleteNoderedInstanceMessage";
 import { GetNoderedInstanceMessage } from "./GetNoderedInstanceMessage";
+import { GetNoderedInstanceLogMessage } from "./GetNoderedInstanceLogMessage";
 
 export class Message {
     public id: string;
@@ -138,6 +139,9 @@ export class Message {
                     break;
                 case "getnoderedinstance":
                     this.GetNoderedInstance(cli);
+                    break;
+                case "getnoderedinstancelog":
+                    this.GetNoderedInstanceLog(cli);
                     break;
                 case "startnoderedinstance":
                     this.StartNoderedInstance(cli);
@@ -560,7 +564,7 @@ export class Message {
                                 containers: [
                                     {
                                         name: 'nodered',
-                                        image: 'cloudhack/openflownodered:0.0.233',
+                                        image: 'cloudhack/openflownodered:0.0.235',
                                         imagePullPolicy: "Always",
                                         env: [
                                             { name: "saml_federation_metadata", value: Config.saml_federation_metadata },
@@ -783,6 +787,52 @@ export class Message {
             } else {
                 cli._logger.warn("[" + cli.user.username + "] GetNoderedInstance: found NO Namespaced Pods ???");
             }
+        } catch (error) {
+            this.data = "";
+            console.error(error);
+            //msg.error = JSON.stringify(error, null, 2);
+            msg.error = "Request failed!"
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            msg.error = error.toString();
+        }
+        this.Send(cli);
+    }
+    private async GetNoderedInstanceLog(cli: WebSocketClient): Promise<void> {
+        this.Reply();
+        var msg: GetNoderedInstanceLogMessage;
+        try {
+            cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance");
+            msg = GetNoderedInstanceLogMessage.assign(this.data);
+            var name = cli.user.username;
+            if (msg.name !== null && msg.name !== undefined && msg.name !== "" && msg.name != cli.user.username) {
+                var exists = User.FindByUsername(msg.name, cli.jwt);
+                if (exists == null) { throw new Error("Unknown name " + msg.name) }
+                name = msg.name;
+            }
+            name = name.split("@").join("").split(".").join("");
+            name = name.toLowerCase();
+            var namespace = Config.namespace;
+
+
+            var list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
+
+            if (list.body.items.length > 0) {
+                for (var i = 0; i < list.body.items.length; i++) {
+                    var item = list.body.items[i];
+                    if (item.metadata.labels.app === (name + "nodered")) {
+                        cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance:" + name + " found one as " + item.metadata.name);
+                        var obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
+                        msg.result = obj.body;
+                    }
+                }
+            }
+
+
+
         } catch (error) {
             this.data = "";
             console.error(error);
