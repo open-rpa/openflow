@@ -564,7 +564,7 @@ export class Message {
                                 containers: [
                                     {
                                         name: 'nodered',
-                                        image: 'cloudhack/openflownodered:0.0.238',
+                                        image: 'cloudhack/openflownodered:0.0.239',
                                         imagePullPolicy: "Always",
                                         env: [
                                             { name: "saml_federation_metadata", value: Config.saml_federation_metadata },
@@ -667,11 +667,12 @@ export class Message {
             var namespace = Config.namespace;
             var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
-            var role: Role = await Role.FindByNameOrId(name + "noderedadmins", null);
-            if (role !== null) {
-                var jwt: string = TokenUser.rootToken();
-                await Config.db.DeleteOne(role._id, "users", jwt);
-            }
+            // for now, lets not delete role
+            // var role: Role = await Role.FindByNameOrId(name + "noderedadmins", null);
+            // if (role !== null) {
+            //     var jwt: string = TokenUser.rootToken();
+            //     await Config.db.DeleteOne(role._id, "users", jwt);
+            // }
             var deployment = await KubeUtil.instance().GetDeployment(namespace, name);
             if (deployment != null) {
                 await KubeUtil.instance().ExtensionsV1beta1Api.deleteNamespacedDeployment(name, namespace);
