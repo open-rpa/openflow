@@ -395,7 +395,6 @@ module openflow {
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
-
         ToggleOrder(field: string) {
             if (this.orderby[field] == undefined) {
                 this.orderby = {};
@@ -409,6 +408,13 @@ module openflow {
                 this.orderby["type"] = this.orderby[field];
             }
             this._loadData();
+        }
+        async DeleteOne(model: any): Promise<any> {
+            this.loading = true;
+            await this.api.Delete(this.collection, model);
+            this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
     }
 
