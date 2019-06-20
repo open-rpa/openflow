@@ -38,7 +38,7 @@ async function initDatabase(): Promise<boolean> {
         var jwt: string = TokenUser.rootToken();
         var admins: Role = await User.ensureRole(jwt, "admins", WellknownIds.admins);
         var users: Role = await User.ensureRole(jwt, "users", WellknownIds.users);
-        var root: User = await User.ensureUser(jwt, "root", "root", WellknownIds.root);
+        var root: User = await User.ensureUser(jwt, "root", "root", WellknownIds.root, null);
         root.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
         root.removeRight(WellknownIds.admins, [Rights.delete]);
         root.addRight(WellknownIds.root, "root", [Rights.full_control]);

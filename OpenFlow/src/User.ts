@@ -32,12 +32,16 @@ export class User extends Base {
     device: any;
     federationids: FederationId[] = [];
     roles: Rolemember[] = [];
-    public static async ensureUser(jwt: string, name: string, username: string, id: string): Promise<User> {
+    public static async ensureUser(jwt: string, name: string, username: string, id: string, password: string): Promise<User> {
         var user: User = await User.FindByUsernameOrId(username, id);
         if (user !== null && (user._id === id || id === null)) { return user; }
         if (user !== null && id !== null) { await Config.db.DeleteOne(user._id, "users", jwt); }
         user = new User(); user._id = id; user.name = name; user.username = username;
-        await user.SetPassword(Math.random().toString(36).substr(2, 9));
+        if (password !== null && password !== undefined && password !== "") {
+            await user.SetPassword(password);
+        } else {
+            await user.SetPassword(Math.random().toString(36).substr(2, 9));
+        }
         user = await Config.db.InsertOne(user, "users", 0, false, jwt);
         user = User.assign(user);
         return user;

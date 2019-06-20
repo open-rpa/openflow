@@ -491,8 +491,24 @@ export class Message {
             if (msg.password == null || msg.password == undefined || msg.password == "") { throw new Error("Password cannot be null"); }
             user = await User.FindByUsername(msg.username);
             if (user !== null && user !== undefined) { throw new Error("Illegal username"); }
-            user = await User.ensureUser(msg.name, msg.username, msg.password, null);
+            var jwt: string = TokenUser.rootToken();
+            user = await User.ensureUser(jwt, msg.name, msg.username, null, msg.password);
             msg.user = new TokenUser(user);
+
+            jwt = Crypt.createToken(msg.user, "1h");
+            var name = user.username;
+            name = name.split("@").join("").split(".").join("");
+            name = name.toLowerCase();
+
+            cli._logger.debug("[" + user.username + "] ensure nodered role " + name + "noderedadmins");
+            var noderedadmins = await User.ensureRole(jwt, name + "noderedadmins", null);
+            noderedadmins.addRight(user._id, user.username, [Rights.full_control]);
+            noderedadmins.removeRight(user._id, [Rights.delete]);
+            noderedadmins.AddMember(user);
+            cli._logger.debug("[" + user.username + "] update nodered role " + name + "noderedadmins");
+            await noderedadmins.Save(jwt);
+
+
         } catch (error) {
             msg.error = error.toString();
         }
@@ -564,7 +580,7 @@ export class Message {
                                 containers: [
                                     {
                                         name: 'nodered',
-                                        image: 'cloudhack/openflownodered:0.0.242',
+                                        image: 'cloudhack/openflownodered:0.0.243',
                                         imagePullPolicy: "Always",
                                         ports: [{ containerPort: 80 }],
                                         env: [
