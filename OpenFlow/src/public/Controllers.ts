@@ -95,16 +95,18 @@ module openflow {
         ) {
             super($scope, $location, $routeParams, WebSocketClient, api);
             console.debug("RPAWorkflowsCtrl");
+            this.collection = "openrpa";
+            this.basequery = { _type: "workflow" };
             WebSocketClient.onSignedin((user: TokenUser) => {
-                this.loadData();
+                this._loadData();
             });
         }
-        async loadData(): Promise<void> {
+        async _loadData(): Promise<void> {
             this.loading = true;
             this.charts = [];
             var chart: chartset = null;
             console.log("get workflows");
-            this.models = await this.api.Query("openrpa", { _type: "workflow" }, null, null);
+            this.models = await this.api.Query(this.collection, this.basequery, null, null);
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             for (var i = 0; i < this.models.length; i++) {
                 var workflow = this.models[i] as any;

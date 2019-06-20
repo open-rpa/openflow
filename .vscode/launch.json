@@ -4,8 +4,8 @@
         {
             "type": "node",
             "request": "attach",
-            "name": "Attach to demo2red0.openrpa.dk",
-            "address": "demo2red0.openrpa.dk",
+            "name": "Attach to localhost",
+            "address": "localhost",
             "port": 5858,
             "localRoot": "${workspaceFolder}/OpenFlowNodeRED/dist",
             "remoteRoot": "/data"
