@@ -57,9 +57,9 @@ gulp.task("compose", shell.task([
     'tsc -p OpenFlow/tsconfig.json',
     'echo "Build cloudhack/openflow"',
     'docker build -t cloudhack/openflow:edge .',
-    'docker tag cloudhack/openflow:edge',  // 'docker tag cloudhack/openflow:' + version,
+    'docker tag cloudhack/openflow:edge cloudhack/openflow:' + version,
     'echo "Push cloudhack/openflow"',
-    'docker push cloudhack/openflow:' + version
+    'docker push cloudhack/openflow:edge'
 ]));
 
 gulp.task("bumpflow", function () {
