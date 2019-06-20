@@ -636,32 +636,37 @@ export class Message {
             }
             cli._logger.debug("[" + cli.user.username + "] GetIngress useringress");
             var ingress = await KubeUtil.instance().GetIngress(namespace, "useringress");
-            // console.log(ingress);
-            var rule = null;
-            for (var i = 0; i < ingress.spec.rules.length; i++) {
-                if (ingress.spec.rules[i].host == hostname) {
-                    rule = ingress.spec.rules[i];
-                }
-            }
-            if (rule == null) {
-                cli._logger.debug("[" + cli.user.username + "] ingress " + hostname + " not found in useringress creating it");
-                rule = {
-                    host: hostname,
-                    http: {
-                        paths: [{
-                            path: "/",
-                            backend: {
-                                serviceName: name,
-                                servicePort: "www"
-                            }
-                        }]
+            if (ingress !== null) {
+                // console.log(ingress);
+                var rule = null;
+                for (var i = 0; i < ingress.spec.rules.length; i++) {
+                    if (ingress.spec.rules[i].host == hostname) {
+                        rule = ingress.spec.rules[i];
                     }
                 }
-                delete ingress.metadata.creationTimestamp;
-                delete ingress.status;
-                ingress.spec.rules.push(rule);
-                cli._logger.debug("[" + cli.user.username + "] replaceNamespacedIngress");
-                await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("useringress", namespace, ingress);
+                if (rule == null) {
+                    cli._logger.debug("[" + cli.user.username + "] ingress " + hostname + " not found in useringress creating it");
+                    rule = {
+                        host: hostname,
+                        http: {
+                            paths: [{
+                                path: "/",
+                                backend: {
+                                    serviceName: name,
+                                    servicePort: "www"
+                                }
+                            }]
+                        }
+                    }
+                    delete ingress.metadata.creationTimestamp;
+                    delete ingress.status;
+                    ingress.spec.rules.push(rule);
+                    cli._logger.debug("[" + cli.user.username + "] replaceNamespacedIngress");
+                    await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("useringress", namespace, ingress);
+                }
+            } else {
+                cli._logger.error("[" + cli.user.username + "] failed locating useringress");
+                msg.error = "failed locating useringress";
             }
         } catch (error) {
             this.data = "";
@@ -722,16 +727,21 @@ export class Message {
             //     }
             // }
             var ingress = await KubeUtil.instance().GetIngress(namespace, "useringress");
-            var updated = false;
-            for (var i = ingress.spec.rules.length - 1; i >= 0; i--) {
-                if (ingress.spec.rules[i].host == hostname) {
-                    ingress.spec.rules.splice(i, 1);
-                    updated = true;
+            if (ingress !== null) {
+                var updated = false;
+                for (var i = ingress.spec.rules.length - 1; i >= 0; i--) {
+                    if (ingress.spec.rules[i].host == hostname) {
+                        ingress.spec.rules.splice(i, 1);
+                        updated = true;
+                    }
                 }
-            }
-            if (updated) {
-                delete ingress.metadata.creationTimestamp;
-                await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("useringress", namespace, ingress);
+                if (updated) {
+                    delete ingress.metadata.creationTimestamp;
+                    await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("useringress", namespace, ingress);
+                }
+            } else {
+                cli._logger.error("[" + cli.user.username + "] failed locating useringress");
+                msg.error = "failed locating useringress";
             }
         } catch (error) {
             this.data = "";
