@@ -52,14 +52,14 @@ gulp.task("compose", shell.task([
     'cd OpenFlowNodeRED && docker build -t cloudhack/openflownodered:edge .',
     'docker tag cloudhack/openflownodered:edge cloudhack/openflownodered:' + version,
     'echo "Push cloudhack/openflownodered"',
-    'docker push cloudhack/openflownodered:' + version + ' cloudhack/openflownodered:edge',
+    'docker push cloudhack/openflownodered:edge', //'docker push cloudhack/openflownodered:' + version,
     'echo "compile OpenFlow"',
     'tsc -p OpenFlow/tsconfig.json',
     'echo "Build cloudhack/openflow"',
     'docker build -t cloudhack/openflow:edge .',
-    'docker tag cloudhack/openflow:edge cloudhack/openflow:' + version,
+    'docker tag cloudhack/openflow:edge',  // 'docker tag cloudhack/openflow:' + version,
     'echo "Push cloudhack/openflow"',
-    'docker push cloudhack/openflow:' + version + ' cloudhack/openflow:edge'
+    'docker push cloudhack/openflow:' + version
 ]));
 
 gulp.task("bumpflow", function () {
