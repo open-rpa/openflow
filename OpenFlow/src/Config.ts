@@ -19,6 +19,7 @@ export class Config {
 
     public static api_bypass_perm_check: boolean = Config.parseBoolean(Config.getEnv("api_bypass_perm_check", "false"));
     public static websocket_package_size: number = parseInt(Config.getEnv("websocket_package_size", "1024"), 10);
+    public static websocket_max_package_count: number = parseInt(Config.getEnv("websocket_max_package_count", "1024"), 10);
     public static signing_crt: string = Config.getEnv("signing_crt", "");
     public static singing_key: string = Config.getEnv("singing_key", "");
     public static tls_crt: string = Config.getEnv("tls_crt", "");

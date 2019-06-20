@@ -14,6 +14,7 @@ export class Logger {
             // },
             console: {
                 level: "debug",
+                //level: "silly",
                 handleExceptions: false,
                 json: false,
                 colorize: true

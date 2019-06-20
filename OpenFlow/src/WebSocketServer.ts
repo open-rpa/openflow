@@ -32,7 +32,7 @@ export class WebSocketServer {
         // this._socketserver.on("headers", (headers: string[], request: http.IncomingMessage):void => {
         //     this._logger.debug("headers" + headers.join(","));
         // });
-        setInterval(this.pingClients, 3000);
+        setInterval(this.pingClients, 10000);
     }
     private static pingClients(): void {
         let count: number = WebSocketServer._clients.length;

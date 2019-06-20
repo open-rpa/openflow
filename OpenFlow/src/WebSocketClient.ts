@@ -66,8 +66,9 @@ export class WebSocketClient {
     }
     private message(message: string): void { // e: MessageEvent
         try {
-            this._logger.silly("WebSocket message received " + message);
+            //this._logger.silly("WebSocket message received " + message);
             let msg: SocketMessage = SocketMessage.fromjson(message);
+            this._logger.silly("WebSocket message received id: " + msg.id + " index: " + msg.index + " count: " + msg.count);
             this._receiveQueue.push(msg);
             this.ProcessQueue();
         } catch (error) {
@@ -168,8 +169,8 @@ export class WebSocketClient {
         });
         ids.forEach(id => {
             var msgs: SocketMessage[] = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id === id; });
-            if (this._receiveQueue.length > 100) {
-                this._logger.error("_receiveQueue containers more than 100 messages for id '" + id + "' so discarding all !!!!!!!");
+            if (this._receiveQueue.length > Config.websocket_max_package_count) {
+                this._logger.error("_receiveQueue containers more than " + Config.websocket_max_package_count + " messages for id '" + id + "' so discarding all !!!!!!!");
                 this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
             }
             msgs.sort((a, b) => a.index - b.index);

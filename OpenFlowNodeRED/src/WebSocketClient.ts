@@ -39,7 +39,7 @@ export class WebSocketClient {
             WebSocketClient.instance = this;
         }
 
-        setInterval(this.pingServer, 250);
+        setInterval(this.pingServer, 10000);
     }
     public connect(): void {
         try {
