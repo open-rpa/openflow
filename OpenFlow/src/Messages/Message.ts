@@ -159,8 +159,9 @@ export class Message {
     }
     async RegisterQueue(cli: WebSocketClient) {
         this.Reply();
-        var msg: RegisterQueueMessage<Base> = RegisterQueueMessage.assign(this.data);
+        var msg: RegisterQueueMessage<Base>
         try {
+            msg = RegisterQueueMessage.assign(this.data);
             var jwt = cli.jwt;
             if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
             await cli.CreateConsumer(msg.queuename);
@@ -180,9 +181,9 @@ export class Message {
     }
     async QueueMessage(cli: WebSocketClient) {
         this.Reply();
-        var msg: QueueMessage = QueueMessage.assign(this.data);
+        var msg: QueueMessage
         try {
-            //
+            msg = QueueMessage.assign(this.data);
             if (msg.replyto === null || msg.replyto === undefined || msg.replyto === "") {
                 await cli.sendToQueue(msg);
             } else {
@@ -211,8 +212,9 @@ export class Message {
     }
     async CloseQueue(cli: WebSocketClient) {
         this.Reply();
-        var msg: CloseQueueMessage<Base> = CloseQueueMessage.assign(this.data);
+        var msg: CloseQueueMessage<Base>
         try {
+            msg = CloseQueueMessage.assign(this.data);
             var jwt = cli.jwt;
             if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
             await cli.CloseConsumer(msg.queuename);
@@ -245,8 +247,9 @@ export class Message {
     }
     private async Query(cli: WebSocketClient): Promise<void> {
         this.Reply();
-        var msg: QueryMessage<Base> = QueryMessage.assign(this.data);
+        var msg: QueryMessage<Base>
         try {
+            msg = QueryMessage.assign(this.data);
             var jwt = cli.jwt;
             if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
             msg.result = await Config.db.query(msg.query, msg.projection, msg.top, msg.skip, msg.orderby, msg.collectionname, jwt);
@@ -266,8 +269,9 @@ export class Message {
     }
     private async Aggregate(cli: WebSocketClient): Promise<void> {
         this.Reply();
-        var msg: AggregateMessage<Base> = AggregateMessage.assign(this.data);
+        var msg: AggregateMessage<Base>
         try {
+            msg = AggregateMessage.assign(this.data);
             var jwt = cli.jwt;
             if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
             msg.result = await Config.db.aggregate(msg.aggregates, msg.collectionname, jwt);
@@ -286,8 +290,9 @@ export class Message {
     }
     private async InsertOne(cli: WebSocketClient): Promise<void> {
         this.Reply();
-        var msg: InsertOneMessage<Base> = InsertOneMessage.assign(this.data);
+        var msg: InsertOneMessage<Base>
         try {
+            msg = InsertOneMessage.assign(this.data);
             var jwt = cli.jwt;
             var w: number = 0;
             var j: boolean = false;
@@ -311,8 +316,9 @@ export class Message {
     }
     private async UpdateOne(cli: WebSocketClient): Promise<void> {
         this.Reply();
-        var msg: UpdateOneMessage<Base> = UpdateOneMessage.assign(this.data);
+        var msg: UpdateOneMessage<Base>
         try {
+            msg = UpdateOneMessage.assign(this.data);
             if (msg.jwt === null || msg.jwt === undefined) { msg.jwt = cli.jwt; }
             if ((msg.w as any) === undefined || (msg.w as any) === null) msg.w = 0;
             if ((msg.j as any) === undefined || (msg.j as any) === null) msg.j = false;
@@ -332,8 +338,9 @@ export class Message {
     }
     private async UpdateMany(cli: WebSocketClient): Promise<void> {
         this.Reply();
-        var msg: UpdateManyMessage<Base> = UpdateManyMessage.assign(this.data);
+        var msg: UpdateManyMessage<Base>;
         try {
+            msg = UpdateManyMessage.assign(this.data);
             if (msg.jwt === null || msg.jwt === undefined) { msg.jwt = cli.jwt; }
             if ((msg.w as any) === undefined || (msg.w as any) === null) msg.w = 0;
             if ((msg.j as any) === undefined || (msg.j as any) === null) msg.j = false;
@@ -354,8 +361,9 @@ export class Message {
 
     private async InsertOrUpdateOne(cli: WebSocketClient): Promise<void> {
         this.Reply();
-        var msg: InsertOrUpdateOneMessage<Base> = InsertOrUpdateOneMessage.assign(this.data);
+        var msg: InsertOrUpdateOneMessage<Base>
         try {
+            msg = InsertOrUpdateOneMessage.assign(this.data);
             if (msg.jwt === null || msg.jwt === undefined) { msg.jwt = cli.jwt; }
             if ((msg.w as any) === undefined || (msg.w as any) === null) msg.w = 0;
             if ((msg.j as any) === undefined || (msg.j as any) === null) msg.j = false;
@@ -375,8 +383,9 @@ export class Message {
     }
     private async DeleteOne(cli: WebSocketClient): Promise<void> {
         this.Reply();
-        var msg: DeleteOneMessage = DeleteOneMessage.assign(this.data);
+        var msg: DeleteOneMessage
         try {
+            msg = DeleteOneMessage.assign(this.data);
             var jwt = cli.jwt;
             if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
             await Config.db.DeleteOne(msg._id, msg.collectionname, jwt);
@@ -395,8 +404,9 @@ export class Message {
     }
     private async MapReduce(cli: WebSocketClient): Promise<void> {
         this.Reply();
-        var msg: MapReduceMessage<any> = MapReduceMessage.assign(this.data);
+        var msg: MapReduceMessage<any>
         try {
+            msg = MapReduceMessage.assign(this.data);
             var jwt = cli.jwt;
             if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
             msg.result = await Config.db.MapReduce(msg.map, msg.reduce, msg.finalize, msg.query, msg.out, msg.collectionname, msg.scope, jwt);
@@ -416,8 +426,9 @@ export class Message {
 
     private async Signin(cli: WebSocketClient): Promise<void> {
         this.Reply();
-        var msg: SigninMessage = SigninMessage.assign(this.data);
+        var msg: SigninMessage
         try {
+            msg = SigninMessage.assign(this.data);
             var tuser: TokenUser = null;
             var user: User = null;
             var type: string = "local";
