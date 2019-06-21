@@ -154,7 +154,7 @@ export class Message {
                     break;
             }
         } catch (error) {
-            console.error(error);
+            cli._logger.error(error);
         }
     }
     async RegisterQueue(cli: WebSocketClient) {
@@ -166,13 +166,15 @@ export class Message {
             await cli.CreateConsumer(msg.queuename);
         } catch (error) {
             cli._logger.error(error);
+            if (msg === null || msg === undefined) { (msg as any) = {}; }
             msg.error = error.toString();
+            cli._logger.error(error);
         }
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            msg.error = error.toString();
+            cli._logger.error(error);
         }
         this.Send(cli);
     }
@@ -193,13 +195,15 @@ export class Message {
             }
         } catch (error) {
             cli._logger.error(error);
+            if (msg === null || msg === undefined) { (msg as any) = {}; }
             msg.error = error.toString();
+            cli._logger.error(error);
         }
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            msg.error = error.toString();
+            cli._logger.error(error);
         }
         this.Send(cli);
         // if(this.replyto !== null && this.replyto !== undefined && this.replyto !== "") {  
@@ -214,13 +218,15 @@ export class Message {
             await cli.CloseConsumer(msg.queuename);
         } catch (error) {
             cli._logger.error(error);
+            if (msg === null || msg === undefined) { (msg as any) = {}; }
             msg.error = error.toString();
+            cli._logger.error(error);
         }
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            msg.error = error.toString();
+            cli._logger.error(error);
         }
         this.Send(cli);
     }
@@ -246,13 +252,15 @@ export class Message {
             msg.result = await Config.db.query(msg.query, msg.projection, msg.top, msg.skip, msg.orderby, msg.collectionname, jwt);
         } catch (error) {
             cli._logger.error(error);
+            if (msg === null || msg === undefined) { (msg as any) = {}; }
             msg.error = error.toString();
+            cli._logger.error(error);
         }
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            msg.error = error.toString();
+            cli._logger.error(error);
         }
         this.Send(cli);
     }
@@ -264,6 +272,7 @@ export class Message {
             if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
             msg.result = await Config.db.aggregate(msg.aggregates, msg.collectionname, jwt);
         } catch (error) {
+            if (msg === null || msg === undefined) { (msg as any) = {}; }
             msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -271,7 +280,7 @@ export class Message {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            msg.error = error.toString();
+            cli._logger.error(error);
         }
         this.Send(cli);
     }
@@ -288,6 +297,7 @@ export class Message {
             if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
             msg.result = await Config.db.InsertOne(msg.item, msg.collectionname, w, j, jwt);
         } catch (error) {
+            if (msg === null || msg === undefined) { (msg as any) = {}; }
             msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -295,7 +305,7 @@ export class Message {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            msg.error = error.toString();
+            cli._logger.error(error);
         }
         this.Send(cli);
     }
@@ -308,6 +318,7 @@ export class Message {
             if ((msg.j as any) === undefined || (msg.j as any) === null) msg.j = false;
             msg = await Config.db.UpdateOne(msg);
         } catch (error) {
+            if (msg === null || msg === undefined) { (msg as any) = {}; }
             msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -315,7 +326,7 @@ export class Message {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            msg.error = error.toString();
+            cli._logger.error(error);
         }
         this.Send(cli);
     }
@@ -328,6 +339,7 @@ export class Message {
             if ((msg.j as any) === undefined || (msg.j as any) === null) msg.j = false;
             msg = await Config.db.UpdateMany(msg);
         } catch (error) {
+            if (msg === null || msg === undefined) { (msg as any) = {}; }
             msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -335,7 +347,7 @@ export class Message {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            msg.error = error.toString();
+            cli._logger.error(error);
         }
         this.Send(cli);
     }
@@ -349,6 +361,7 @@ export class Message {
             if ((msg.j as any) === undefined || (msg.j as any) === null) msg.j = false;
             msg = await Config.db.InsertOrUpdateOne(msg);
         } catch (error) {
+            if (msg === null || msg === undefined) { (msg as any) = {}; }
             msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -356,7 +369,7 @@ export class Message {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            msg.error = error.toString();
+            cli._logger.error(error);
         }
         this.Send(cli);
     }
@@ -368,15 +381,15 @@ export class Message {
             if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
             await Config.db.DeleteOne(msg._id, msg.collectionname, jwt);
         } catch (error) {
+            if (msg === null || msg === undefined) { (msg as any) = {}; }
             msg.error = error.toString();
             cli._logger.error(error);
-            //cli._logger.error(JSON.stringify(error));
         }
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            msg.error = error.toString();
+            cli._logger.error(error);
         }
         this.Send(cli);
     }
@@ -388,6 +401,7 @@ export class Message {
             if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
             msg.result = await Config.db.MapReduce(msg.map, msg.reduce, msg.finalize, msg.query, msg.out, msg.collectionname, msg.scope, jwt);
         } catch (error) {
+            if (msg === null || msg === undefined) { (msg as any) = {}; }
             msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -395,7 +409,7 @@ export class Message {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            msg.error = error.toString();
+            cli._logger.error(error);
         }
         this.Send(cli);
     }
@@ -469,6 +483,7 @@ export class Message {
                 await user.Save(TokenUser.rootToken());
             }
         } catch (error) {
+            if (msg === null || msg === undefined) { (msg as any) = {}; }
             msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -476,7 +491,7 @@ export class Message {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            msg.error = error.toString();
+            cli._logger.error(error);
         }
         this.Send(cli);
     }
@@ -510,13 +525,15 @@ export class Message {
 
 
         } catch (error) {
+            if (msg === null || msg === undefined) { (msg as any) = {}; }
             msg.error = error.toString();
+            cli._logger.error(error);
         }
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            msg.error = error.toString();
+            cli._logger.error(error);
         }
         this.Send(cli);
     }
@@ -670,7 +687,7 @@ export class Message {
             }
         } catch (error) {
             this.data = "";
-            console.error(error);
+            cli._logger.error(error);
             //msg.error = JSON.stringify(error, null, 2);
             msg.error = "Request failed!"
         }
@@ -678,7 +695,7 @@ export class Message {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            msg.error = JSON.stringify(error, null, 2);
+            cli._logger.error(error);
         }
         this.Send(cli);
     }
@@ -745,7 +762,7 @@ export class Message {
             }
         } catch (error) {
             this.data = "";
-            console.error(error);
+            cli._logger.error(error);
             //msg.error = JSON.stringify(error, null, 2);
             msg.error = "Request failed!"
         }
@@ -753,7 +770,7 @@ export class Message {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            msg.error = JSON.stringify(error, null, 2);
+            cli._logger.error(error);
         }
         this.Send(cli);
     }
@@ -784,7 +801,7 @@ export class Message {
             }
         } catch (error) {
             this.data = "";
-            console.error(error);
+            cli._logger.error(error);
             //msg.error = JSON.stringify(error, null, 2);
             msg.error = "Request failed!"
         }
@@ -792,7 +809,7 @@ export class Message {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            msg.error = error.toString();
+            cli._logger.error(error);
         }
         this.Send(cli);
     }
@@ -828,7 +845,7 @@ export class Message {
             }
         } catch (error) {
             this.data = "";
-            console.error(error);
+            cli._logger.error(error);
             //msg.error = JSON.stringify(error, null, 2);
             msg.error = "Request failed!"
         }
@@ -836,7 +853,7 @@ export class Message {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            msg.error = error.toString();
+            cli._logger.error(error);
         }
         this.Send(cli);
     }
@@ -874,7 +891,7 @@ export class Message {
 
         } catch (error) {
             this.data = "";
-            console.error(error);
+            cli._logger.error(error);
             //msg.error = JSON.stringify(error, null, 2);
             msg.error = "Request failed!"
         }
@@ -882,7 +899,7 @@ export class Message {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            msg.error = error.toString();
+            cli._logger.error(error);
         }
         this.Send(cli);
     }

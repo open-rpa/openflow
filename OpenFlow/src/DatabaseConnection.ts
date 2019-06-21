@@ -366,9 +366,10 @@ export class DatabaseConnection {
             q.item._version = await this.SaveDiff(q.collectionname, original, q.item);
         } else {
             itemReplace = false;
-            var _version = await this.SaveUpdateDiff(q, user);
-            if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };
-            (q.item["$set"])._version = _version;
+            this.SaveUpdateDiff(q, user);
+            // var _version = await this.SaveUpdateDiff(q, user);
+            // if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };
+            // (q.item["$set"])._version = _version;
         }
 
         if (q.collectionname === "users" && q.item._type === "user" && q.item.hasOwnProperty("newpassword")) {
@@ -812,39 +813,43 @@ export class DatabaseConnection {
     }
 
     async SaveUpdateDiff<T extends Base>(q: UpdateOneMessage<T>, user: TokenUser) {
-        var _skip_array: string[] = Config.skip_history_collections.split(",");
-        var skip_array: string[] = [];
-        _skip_array.forEach(x => skip_array.push(x.trim()));
-        if (skip_array.indexOf(q.collectionname) > -1) { return 0; }
-        var res = await this.query<T>(q.query, null, 1, 0, null, q.collectionname, q.jwt);
-        var name: string = "unknown";
-        var _id: string = "";
-        if (res.length > 0) {
-            var _version = 1;
-            var original = res[0];
-            name = original.name;
-            _id = original._id;
-            delete original._modifiedby;
-            delete original._modifiedbyid;
-            delete original._modified;
-            if (original._version != undefined && original._version != null) {
-                _version = original._version + 1;
+        try {
+            var _skip_array: string[] = Config.skip_history_collections.split(",");
+            var skip_array: string[] = [];
+            _skip_array.forEach(x => skip_array.push(x.trim()));
+            if (skip_array.indexOf(q.collectionname) > -1) { return 0; }
+            var res = await this.query<T>(q.query, null, 1, 0, null, q.collectionname, q.jwt);
+            var name: string = "unknown";
+            var _id: string = "";
+            if (res.length > 0) {
+                var _version = 1;
+                var original = res[0];
+                name = original.name;
+                _id = original._id;
+                delete original._modifiedby;
+                delete original._modifiedbyid;
+                delete original._modified;
+                if (original._version != undefined && original._version != null) {
+                    _version = original._version + 1;
+                }
             }
+            var updatehist = {
+                _modified: new Date(new Date().toISOString()),
+                _modifiedby: user.name,
+                _modifiedbyid: user._id,
+                _created: new Date(new Date().toISOString()),
+                _createdby: user.name,
+                _createdbyid: user._id,
+                name: name,
+                id: _id,
+                update: JSON.stringify(q.item),
+                _version: _version,
+                reason: ""
+            }
+            await this.db.collection(q.collectionname + '_hist').insertOne(updatehist);
+        } catch (error) {
+            this._logger.error(error);
         }
-        var updatehist = {
-            _modified: new Date(new Date().toISOString()),
-            _modifiedby: user.name,
-            _modifiedbyid: user._id,
-            _created: new Date(new Date().toISOString()),
-            _createdby: user.name,
-            _createdbyid: user._id,
-            name: name,
-            id: _id,
-            update: q.item,
-            _version: _version,
-            reason: ""
-        }
-        await this.db.collection(q.collectionname + '_hist').insertOne(updatehist);
     }
     async SaveDiff(collectionname: string, original: any, item: any) {
         if (item._type == 'instance' && collectionname == 'workflows') return 0;
