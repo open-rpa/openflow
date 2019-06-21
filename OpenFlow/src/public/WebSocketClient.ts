@@ -91,8 +91,8 @@ module openflow {
         getids(oneSignal: any): Promise<string> {
             return new Promise<string>(async (resolve, reject) => {
                 oneSignal.getIds(function (ids) {
+                    console.log("oneSignal.getIds: " + ids.userId);
                     resolve(ids.userId);
-                    console.log(ids.userId);
                 });
             });
         }
@@ -298,6 +298,7 @@ module openflow {
                                     handleNotificationReceived(this.notificationReceivedCallback).
                                     endInit();
                                 this.oneSignalId = await this.getids(oneSignal);
+                                console.log("oneSignalId: " + this.oneSignalId);
 
                             } catch (error) {
                                 console.error(error);

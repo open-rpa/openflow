@@ -62,7 +62,7 @@ export class NoderedUtil {
         }
         try {
             if (NoderedUtil.IsNullUndefinded(message)) { message = ""; }
-            node.status({ fill: "red", shape: "dot", text: message.substr(0, 32) });
+            node.status({ fill: "red", shape: "dot", text: message.toString().substr(0, 32) });
         } catch (error) {
             console.error(error);
         }
