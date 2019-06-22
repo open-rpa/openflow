@@ -19,7 +19,6 @@ export class workflow_in_node {
     public con: amqp_consumer;
     public host: string = null;
     public workflow: any;
-    public queue: string = "";
     constructor(public config: Iworkflow_in_node) {
         RED.nodes.createNode(this, config);
         try {
@@ -36,11 +35,12 @@ export class workflow_in_node {
             await this.init();
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
 
-            this.queue = this.config.queue;
+
+            var queue: string = this.config.queue;
             if (!NoderedUtil.IsNullUndefinded(Config.queue_prefix)) {
-                this.queue = Config.queue_prefix + this.config.queue;
+                queue = Config.queue_prefix + this.config.queue;
             }
-            this.con = new amqp_consumer(Logger.instanse, this.host, this.queue);
+            this.con = new amqp_consumer(Logger.instanse, this.host, queue);
             this.con.OnMessage = this.OnMessage.bind(this);
             await this.con.connect(false);
             this.node.status({ fill: "green", shape: "dot", text: "Connected" });
@@ -49,9 +49,13 @@ export class workflow_in_node {
         }
     }
     async init() {
-        var res = await NoderedUtil.Query("workflow", { "queue": this.queue }, null, null, 1, 0, null);
+        var queue: string = this.config.queue;
+        if (!NoderedUtil.IsNullUndefinded(Config.queue_prefix)) {
+            queue = Config.queue_prefix + this.config.queue;
+        }
+        var res = await NoderedUtil.Query("workflow", { "queue": queue }, null, null, 1, 0, null);
         if (res.length == 0) {
-            this.workflow = await NoderedUtil.InsertOne("workflow", { _type: "workflow", "queue": this.queue, "name": this.config.name }, 0, false, null);
+            this.workflow = await NoderedUtil.InsertOne("workflow", { _type: "workflow", "queue": queue, "name": this.config.name }, 0, false, null);
         } else {
             this.workflow = res[0];
         }
@@ -114,8 +118,13 @@ export class workflow_in_node {
                 // await NoderedUtil._UpdateOne("workflow_instances", null, result, 0, false, data.jwt);
                 //result = result.payload;
             } else {
+                var queue: string = this.config.queue;
+                if (!NoderedUtil.IsNullUndefinded(Config.queue_prefix)) {
+                    queue = Config.queue_prefix + this.config.queue;
+                }
+
                 var res2 = await NoderedUtil.InsertOne("workflow_instances",
-                    { _type: "instance", "queue": this.queue, "name": this.workflow.name, payload: data.payload, workflow: this.workflow._id }, 1, true, data.jwt);
+                    { _type: "instance", "queue": queue, "name": this.workflow.name, payload: data.payload, workflow: this.workflow._id }, 1, true, data.jwt);
                 //result = Object.assign(res2, result);
                 result = this.nestedassign(res2, result);
             }
