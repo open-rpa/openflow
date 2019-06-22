@@ -143,6 +143,7 @@ export class LoginProvider {
             var res2 = {
                 wshost: _url,
                 domain: Config.domain,
+                allow_user_registration: Config.allow_user_registration,
                 allow_personal_nodered: Config.allow_personal_nodered,
                 namespace: Config.namespace,
                 nodered_domain_schema: Config.nodered_domain_schema
@@ -293,10 +294,21 @@ export class LoginProvider {
                     return done(null, tuser);
                 }
                 user = await User.FindByUsername(username);
-                if (user === undefined || user === null) { return done(null, false); }
-                if (!(await user.ValidatePassword(password))) {
-                    Audit.LoginFailed(username, "weblogin", "local", "");
-                    return done(null, false);
+                if (user === undefined || user === null) {
+                    if (!Config.allow_user_registration) {
+                        return done(null, false);
+                    }
+                    user = new User(); user.name = username; user.username = username;
+                    await user.SetPassword(password);
+                    user = await Config.db.InsertOne(user, "users", 0, false, TokenUser.rootToken());
+                    var users: Role = await Role.FindByNameOrId("users", TokenUser.rootToken());
+                    users.AddMember(user);
+                    await users.Save(TokenUser.rootToken())
+                } else {
+                    if (!(await user.ValidatePassword(password))) {
+                        Audit.LoginFailed(username, "weblogin", "local", "");
+                        return done(null, false);
+                    }
                 }
                 tuser = new TokenUser(user);
                 Audit.LoginSuccess(tuser, "weblogin", "local", "");

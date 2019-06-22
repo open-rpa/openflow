@@ -26,6 +26,8 @@ module openflow {
 
         public domain: string = null;
         public allow_personal_nodered: boolean = false;
+        public allow_user_registration: boolean = false;
+
         public namespace: string = null;
         public nodered_domain_schema: string = null;
 
@@ -206,6 +208,7 @@ module openflow {
                 console.debug("WebSocketClient::onopen: connecting to " + data.wshost);
                 this.domain = data.domain;
                 this.allow_personal_nodered = data.allow_personal_nodered;
+                this.allow_user_registration = data.allow_user_registration;
                 this.namespace = data.namespace;
                 this.nodered_domain_schema = data.nodered_domain_schema;
                 this._socketObject = new ReconnectingWebSocket(data.wshost);

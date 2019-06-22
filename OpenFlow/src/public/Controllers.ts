@@ -399,6 +399,7 @@ module openflow {
         public password: string = "";
         public message: string = "";
         public domain: string = "";
+        public allow_user_registration: boolean = false;
         public static $inject = [
             "$scope",
             "$location",
@@ -415,6 +416,7 @@ module openflow {
             this.domain = window.location.hostname;
             WebSocketClient.getJSON("/loginproviders", async (error: any, data: any) => {
                 this.providers = data;
+                this.allow_user_registration = WebSocketClient.allow_user_registration;
                 for (var i: number = this.providers.length - 1; i >= 0; i--) {
                     if (this.providers[i].provider == "local") {
                         this.providers.splice(i, 1);
