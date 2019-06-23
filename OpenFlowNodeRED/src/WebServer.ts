@@ -142,15 +142,16 @@ export class WebServer {
                 this.settings.ui.path = "ui";
                 // this.settings.ui.middleware = new dashboardAuth();
                 this.settings.ui.middleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-                    if (req.isAuthenticated()) {
-                        next();
-                    } else {
-                        passport.authenticate("uisaml", {
-                            successRedirect: '/ui/',
-                            failureRedirect: '/uisaml/',
-                            failureFlash: false
-                        })(req, res, next);
-                    }
+                    noderedcontribmiddlewareauth.process(socket, req, res, next);
+                    // if (req.isAuthenticated()) {
+                    //     next();
+                    // } else {
+                    //     passport.authenticate("uisaml", {
+                    //         successRedirect: '/ui/',
+                    //         failureRedirect: '/uisaml/',
+                    //         failureFlash: false
+                    //     })(req, res, next);
+                    // }
                 };
 
 
