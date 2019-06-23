@@ -18,6 +18,7 @@ import { WebSocketClient } from "./WebSocketClient";
 import { noderedcontribopenflowstorage } from "./node-red-contrib-openflow-storage";
 import { SigninMessage, Message } from "./Message";
 import { noderedcontribmiddlewareauth } from "./node-red-contrib-middleware-auth";
+import { dashboardAuth } from "./dashboardAuth";
 
 export class WebServer {
     private static _logger: winston.Logger;
@@ -123,6 +124,8 @@ export class WebServer {
                 };
 
                 this.settings.storageModule = new noderedcontribopenflowstorage(logger, socket);
+
+                this.settings.ui.middleware = new dashboardAuth();
 
                 // initialise the runtime with a server and settings
                 await (RED as any).init(server, this.settings);

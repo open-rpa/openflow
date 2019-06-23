@@ -56,7 +56,8 @@ export class noderedcontribopenflowstorage {
             this._logger.debug("creating new packageFile " + packageFile);
             fs.writeFileSync(packageFile, JSON.stringify(defaultPackage, null, 4));
         }
-        var dbsettings = await this._getSettings();
+        // var dbsettings = await this._getSettings();
+        // spawn gettings, so it starts installing
         return true;
     }
     public async _getFlows(): Promise<any[]> {
@@ -132,7 +133,7 @@ export class noderedcontribopenflowstorage {
             console.error(error);
         }
     }
-    private firstrun: boolean = true;
+    // private firstrun: boolean = true;
     public async _getSettings(): Promise<any> {
         try {
             this._logger.silly("noderedcontribopenflowstorage::_getSettings");
@@ -140,25 +141,28 @@ export class noderedcontribopenflowstorage {
             if (result.length === 0) { return {}; }
 
             var settings = JSON.parse(result[0].settings);
-            if (this.firstrun) {
-                var child_process = require("child_process");
-                var keys = Object.keys(settings.nodes);
-                var modules = "";
-                for (var i = 0; i < keys.length; i++) {
-                    var key = keys[i];
-                    var val = settings.nodes[key];
-                    if (["node-red", "node-red-node-email", "node-red-node-feedparser", "node-red-node-rbe",
-                        "node-red-node-sentiment", "node-red-node-tail", "node-red-node-twitter"].indexOf(key) === -1) {
-                        var pname = val.name + "@" + val.version;
-                        // this._logger.info("Installing " + pname);
-                        // child_process.execSync("npm install " + pname, { stdio: [0, 1, 2], cwd: this.settings.userDir });
-                        modules += (" " + pname);
+            //if (this.firstrun) {
+            var child_process = require("child_process");
+            var keys = Object.keys(settings.nodes);
+            var modules = "";
+            for (var i = 0; i < keys.length; i++) {
+                var key = keys[i];
+                var val = settings.nodes[key];
+                if (["node-red", "node-red-node-email", "node-red-node-feedparser", "node-red-node-rbe",
+                    "node-red-node-sentiment", "node-red-node-tail", "node-red-node-twitter"].indexOf(key) === -1) {
+                    var pname: string = val.name + "@" + val.version;
+                    if (val.pending_version) {
+                        pname = val.name + "@" + val.pending_version;
                     }
+                    // this._logger.info("Installing " + pname);
+                    // child_process.execSync("npm install " + pname, { stdio: [0, 1, 2], cwd: this.settings.userDir });
+                    modules += (" " + pname);
                 }
-                this._logger.info("Installing " + modules);
-                child_process.execSync("npm install " + modules, { stdio: [0, 1, 2], cwd: this.settings.userDir });
-                this.firstrun = false;
             }
+            this._logger.info("Installing " + modules);
+            child_process.execSync("npm install " + modules, { stdio: [0, 1, 2], cwd: this.settings.userDir });
+            //this.firstrun = false;
+            //}
             this._logger.silly("noderedcontribopenflowstorage::_getSettings: return result");
             return settings;
         } catch (error) {
