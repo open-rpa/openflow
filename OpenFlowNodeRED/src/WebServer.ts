@@ -20,6 +20,8 @@ import { SigninMessage, Message } from "./Message";
 import { noderedcontribmiddlewareauth } from "./node-red-contrib-middleware-auth";
 import { dashboardAuth } from "./dashboardAuth";
 
+import * as passport from "passport";
+
 export class WebServer {
     private static _logger: winston.Logger;
     private static app: express.Express = null;
@@ -49,6 +51,18 @@ export class WebServer {
                 this.app.use(bodyParser.json({ limit: '10mb' }))
                 this.app.use(cookieParser());
                 this.app.use("/", express.static(path.join(__dirname, "/public")));
+
+                this.app.use(passport.initialize());
+                this.app.use(passport.session());
+                passport.serializeUser(async function (user: any, done: any): Promise<void> {
+                    done(null, user);
+                });
+                passport.deserializeUser(function (user: any, done: any): void {
+                    done(null, user);
+                });
+                var saml = await dashboardAuth.RegisterProvider(this.app, Config.baseurl() + "ui/");
+
+
                 var server: http.Server = null;
                 if (Config.tls_crt != '' && Config.tls_key != '') {
                     var options: any = {
@@ -125,7 +139,25 @@ export class WebServer {
 
                 this.settings.storageModule = new noderedcontribopenflowstorage(logger, socket);
 
-                this.settings.ui.middleware = new dashboardAuth();
+                this.settings.ui.path = "ui";
+                // this.settings.ui.middleware = new dashboardAuth();
+                this.settings.ui.middleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+                    if (req.isAuthenticated()) {
+                        next();
+                    } else {
+                        passport.authenticate("uisaml", {
+                            successRedirect: '/ui/',
+                            failureRedirect: '/uisaml/',
+                            failureFlash: false
+                        })(req, res, next);
+                    }
+                };
+
+
+                this.app.use(cookieSession({
+                    name: 'session',
+                    keys: ['key1', 'key2']
+                }))
 
                 // initialise the runtime with a server and settings
                 await (RED as any).init(server, this.settings);
