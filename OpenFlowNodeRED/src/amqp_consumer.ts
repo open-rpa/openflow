@@ -21,7 +21,7 @@ export class amqp_consumer {
         this.noAck = noAck;
         var me: amqp_consumer = this;
         this.conn = await amqplib.connect(this.connectionstring);
-        this.conn.on("error", () => null);
+        this.conn.on("error", (error) => this._logger.error(error));
         this.channel = await this.conn.createChannel();
         this._ok = await this.channel.assertQueue(this.queue, { durable: false });
         await this.channel.consume(this.queue, (msg) => { this._OnMessage(me, msg); }, { noAck: noAck });

@@ -107,7 +107,13 @@ export class amqp_consumer_node {
     }
     onclose() {
         if (!NoderedUtil.IsNullUndefinded(this.con)) {
-            this.con.close();
+            try {
+                this.con.close().catch((error) => {
+                    Logger.instanse.error(error);
+                });
+            } catch (error) {
+                Logger.instanse.error(error);
+            }
         }
     }
 }
@@ -205,7 +211,13 @@ export class amqp_publisher_node {
     }
     onclose() {
         if (!NoderedUtil.IsNullUndefinded(this.con)) {
-            this.con.close();
+            try {
+                this.con.close().catch((error) => {
+                    Logger.instanse.error(error);
+                });
+            } catch (error) {
+                Logger.instanse.error(error);
+            }
         }
     }
 }

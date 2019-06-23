@@ -146,13 +146,19 @@ export class workflow_in_node {
                 data.payload._id = msg._id;
                 ack(JSON.stringify(data));
             } catch (error) {
-
+                Logger.instanse.error(error);
             }
         }
     }
     onclose() {
         if (!NoderedUtil.IsNullUndefinded(this.con)) {
-            this.con.close();
+            try {
+                this.con.close().catch((error) => {
+                    Logger.instanse.error(error);
+                });
+            } catch (error) {
+                Logger.instanse.error(error);
+            }
         }
     }
 }
@@ -190,7 +196,13 @@ export class workflow_out_node {
                 }
                 var data: any = {};
                 data.state = msg.state;
-                data.error = msg.error;
+                if (msg.error) {
+                    data.error = "error";
+                    if (msg.error.message) {
+                        data.error = msg.error.message;
+                    }
+                }
+                //data.error = msg.error;
                 data.payload = msg.payload;
                 data.jwt = msg.jwt;
                 data.payload._id = msg._id;
