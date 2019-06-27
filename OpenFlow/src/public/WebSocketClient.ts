@@ -1,8 +1,6 @@
 /// <reference path='ReconnectingWebSocket.ts' />
 module openflow {
     // "use strict";
-
-    var doLoadMobileData: boolean = false;
     interface IHashTable<T> {
         [key: string]: T;
     }
@@ -39,6 +37,7 @@ module openflow {
         public jwt: string = null;
         public device: any = null;
         public usingCordova: boolean = false;
+        public scanCount: number = 0;
         public oneSignalId: string = null;
         public location: any;
         static $inject = ["$rootScope", "$location", "$window"];
@@ -174,7 +173,92 @@ module openflow {
                 });
             });
         }
+        scanForCordova() {
+            try {
+                if (cordova !== undefined) {
+                    console.log("Found cordova");
+                    this.usingCordova = true;
+                    document.addEventListener("deviceready", async () => {
+                        console.log("deviceready");
+                        if ((window as any).plugins) {
+                            var oneSignal = (window as any).plugins.OneSignal;
+                            if (oneSignal) {
+                                try {
+                                    console.debug("window.plugins.OneSignal exists");
+
+                                    const sender_id = "906036108091";  // google_project_number
+                                    const oneSignalAppId = "cfdefd08-d4ad-4593-8173-4ba4ebf4d67a";  // onesignal_app_id
+                                    var iosSettings = {};
+                                    iosSettings["kOSSettingsKeyAutoPrompt"] = true;
+                                    iosSettings["kOSSettingsKeyInAppLaunchURL"] = true;
+
+                                    console.debug("oneSignal.startInit");
+                                    oneSignal.startInit(oneSignalAppId, sender_id).
+                                        iOSSettings(iosSettings).
+                                        inFocusDisplaying(oneSignal.OSInFocusDisplayOption.Notification).
+                                        handleNotificationOpened(this.notificationOpenedCallback).
+                                        handleNotificationReceived(this.notificationReceivedCallback).
+                                        endInit();
+                                    this.oneSignalId = await this.getids(oneSignal);
+                                    console.log("oneSignalId: " + this.oneSignalId);
+
+                                } catch (error) {
+                                    console.error(error);
+                                }
+                            } else {
+                                console.log("Missing oneSignal plugin");
+                            }
+                        }
+                        try {
+                            if (device) {
+                                console.debug("device exists");
+                                this.device = device;
+                            } else {
+                                console.debug("device does NOT exists");
+                            }
+                        } catch (error) {
+                            console.error(error);
+                        }
+                        document.addEventListener("pause", this.onPause, false);
+                        document.addEventListener("resume", this.onResume, false);
+                        document.addEventListener("menubutton", this.onMenuKeyDown, false);
+                        document.addEventListener("backbutton", this.onbackbutton, false);
+
+
+                        if (cordova.plugins && cordova.plugins.diagnostic) {
+                            console.debug("Check if authorized for location");
+                            var isAuthorized = await this.isLocationAuthorized();
+                            if (!isAuthorized) {
+                                console.debug("Not authorized for location is not , request authorization");
+                                await this.requestLocationAuthorization();
+                            }
+
+                            var isAvailable = await this.isLocationAvailable();
+                            if (!isAvailable) {
+                                console.debug("Location is not available");
+                            } else {
+                                console.debug("Location is available, get current location");
+                                this.location = await this.getLocation();
+                            }
+                        } else {
+                            console.debug("diagnostic is missing");
+                        }
+                        this.gettoken();
+                    });
+                } else {
+                    console.debug("cordova not definded");
+                    if (this.scanCount < (5 * 4)) {
+                        this.scanCount++;
+                        setTimeout(this.scanForCordova, 200);
+                    }
+                }
+            } catch (error) {
+                console.error(error);
+                console.debug("Failed locating cordova");
+            }
+        }
         init() {
+            setTimeout(this.scanForCordova.bind(this), 200);
             this.getJSON("/config", async (error: any, data: any) => {
                 var parser = document.createElement('a');
                 parser.href = data.wshost;
@@ -185,6 +269,7 @@ module openflow {
                 parser.search;   // => "?search=test"
                 parser.hash;     // => "#hash"
                 parser.host;     // => "example.com:3000"
+                console.log(data);
                 if (location.protocol == 'https:' && parser.protocol == "ws:") {
                     data.wshost = "wss://" + parser.hostname;
                     console.log("new wshost: " + data.wshost);
@@ -265,88 +350,6 @@ module openflow {
         timeout(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
         }
-        private async LoadMobileData() {
-            console.log("this.usingCordova: " + this.usingCordova);
-            if (!this.usingCordova) {
-                console.log("wait 1 seconds and test for Cordova again");
-                let counter: number = 0;
-                while (!this.usingCordova && counter < 15) {
-                    counter++;
-                    await this.timeout(100);
-                    var win: any = window;
-                    this.usingCordova = !!win.cordova;
-                }
-                console.log("this.usingCordova: " + this.usingCordova);
-            }
-            if (this.usingCordova) {
-                document.addEventListener("deviceready", async () => {
-                    console.log("deviceready");
-                    if ((window as any).plugins) {
-                        var oneSignal = (window as any).plugins.OneSignal;
-                        if (oneSignal) {
-                            try {
-                                console.debug("window.plugins.OneSignal exists");
-
-                                const sender_id = "906036108091";  // google_project_number
-                                const oneSignalAppId = "cfdefd08-d4ad-4593-8173-4ba4ebf4d67a";  // onesignal_app_id
-                                var iosSettings = {};
-                                iosSettings["kOSSettingsKeyAutoPrompt"] = true;
-                                iosSettings["kOSSettingsKeyInAppLaunchURL"] = true;
-
-                                console.debug("oneSignal.startInit");
-                                oneSignal.startInit(oneSignalAppId, sender_id).
-                                    iOSSettings(iosSettings).
-                                    inFocusDisplaying(oneSignal.OSInFocusDisplayOption.Notification).
-                                    handleNotificationOpened(this.notificationOpenedCallback).
-                                    handleNotificationReceived(this.notificationReceivedCallback).
-                                    endInit();
-                                this.oneSignalId = await this.getids(oneSignal);
-                                console.log("oneSignalId: " + this.oneSignalId);
-
-                            } catch (error) {
-                                console.error(error);
-                            }
-                        } else {
-                            console.log("Missing oneSignal plugin");
-                        }
-                    }
-                    try {
-                        if (device) {
-                            console.debug("device exists");
-                            this.device = device;
-                        } else {
-                            console.debug("device does NOT exists");
-                        }
-                    } catch (error) {
-                        console.error(error);
-                    }
-                    document.addEventListener("pause", this.onPause, false);
-                    document.addEventListener("resume", this.onResume, false);
-                    document.addEventListener("menubutton", this.onMenuKeyDown, false);
-                    document.addEventListener("backbutton", this.onbackbutton, false);
-
-
-                    if (cordova.plugins && cordova.plugins.diagnostic) {
-                        console.debug("Check if authorized for location");
-                        var isAuthorized = await this.isLocationAuthorized();
-                        if (!isAuthorized) {
-                            console.debug("Not authorized for location is not , request authorization");
-                            await this.requestLocationAuthorization();
-                        }
-
-                        var isAvailable = await this.isLocationAvailable();
-                        if (!isAvailable) {
-                            console.debug("Location is not available");
-                        } else {
-                            console.debug("Location is available, get current location");
-                            this.location = await this.getLocation();
-                        }
-                    } else {
-                        console.debug("diagnostic is missing");
-                    }
-                });
-            }
-        }
         private onopen(evt: Event) {
             console.log("WebSocketClient::onopen: connected");
             this.gettoken();
@@ -374,9 +377,6 @@ module openflow {
                             this.$rootScope.$apply();
                         }
                         return;
-                    }
-                    if (doLoadMobileData == true) {
-                        await this.LoadMobileData()
                     }
                     q.jwt = data.jwt;
                     q.rawAssertion = data.rawAssertion;

@@ -27,12 +27,6 @@ module openflow {
         static $inject = ["$rootScope", "$location", "WebSocketClient"];
         public messageQueue: IHashTable<messagequeue> = {};
         constructor(public $rootScope: ng.IRootScopeService, public $location, public WebSocketClient: WebSocketClient) {
-            var isChrome = navigator.userAgent.indexOf("Chrome") !== -1;
-            var formerlog = console.log.bind(console);
-            var formerwarn = console.warn.bind(console);
-            var formerdebug = console.debug.bind(console);
-            var me = this;
-
             ['log', 'warn', 'debug', 'error'].forEach((methodName) => {
                 //['error'].forEach((methodName) => {
                 const originalMethod = console[methodName];
@@ -350,7 +344,7 @@ module openflow {
                     // attrs.$observe('i18n', function (newVal, oldVal) {
                     // });
                     //scope.$watch(watchFunction, () => {
-                    if (attr.value !== null && attr.value !== undefined) {
+                    if (attr.value !== null && attr.value !== undefined && element[0].tagName !== "OPTION") {
                         value = calculateValue(attr.value);
                         attr.$set('value', value);
                     } else {

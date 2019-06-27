@@ -542,14 +542,16 @@ module openflow {
                 QRScanner.hide();
                 QRScanner.destroy();
 
-                console.log("set mobiledomain to " + value);
-                await this.writefile("mobiledomain.txt", value);
-
                 this.scanning = false;
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
-                if (value !== null && value !== undefined && value !== "") {
-                    console.log(value);
-                    var config = JSON.parse(value);
+                if (value === null || value === undefined || value === "") {
+                    console.log("QRCode had null value"); return;
+                }
+                console.log("QRCode value: " + value);
+                var config = JSON.parse(value);
+                if (config.url !== null || config.url !== undefined || config.url !== "" || config.loginurl !== null || config.loginurl !== undefined || config.loginurl !== "") {
+                    console.log("set mobiledomain to " + value);
+                    await this.writefile("mobiledomain.txt", value);
                     window.location.replace(config.url);
                 }
             } catch (error) {
@@ -1580,6 +1582,7 @@ module openflow {
                 this.messages += "GetNoderedInstance completed, status " + this.instancestatus + "\n";
             } catch (error) {
                 this.messages += error + "\n";
+                this.instancestatus = "";
                 console.error(error);
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -1591,8 +1594,10 @@ module openflow {
                 this.instancelog = await this.api.GetNoderedInstanceLog();
                 this.instancelog = this.instancelog.split("\n").reverse().join("\n");
                 this.messages += "GetNoderedInstanceLog completed\n";
+                this.instancestatus = "";
             } catch (error) {
                 this.messages += error + "\n";
+                this.instancestatus = "";
                 console.error(error);
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
