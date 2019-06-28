@@ -583,7 +583,6 @@ module openflow {
             return (hits.length == 1)
         }
         hascordova() {
-            console.log("hascordova: " + this.WebSocketClient.usingCordova);
             return this.WebSocketClient.usingCordova;
         }
     }
