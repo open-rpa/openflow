@@ -577,6 +577,15 @@ module openflow {
         routeChangeStart(event: any, next: any, current: any) {
             this.path = this.$location.path();
         }
+        hasrole(role: string) {
+            if (this.WebSocketClient.user === null || this.WebSocketClient.user === undefined) return false;
+            var hits = this.WebSocketClient.user.roles.filter(member => member.name == role);
+            return (hits.length == 1)
+        }
+        hascordova() {
+            console.log("hascordova: " + this.WebSocketClient.usingCordova);
+            return this.WebSocketClient.usingCordova;
+        }
     }
 
     export class ProvidersCtrl extends entitiesCtrl<openflow.Provider> {

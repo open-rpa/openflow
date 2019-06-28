@@ -121,10 +121,7 @@ module openflow {
                 }
             });
         }
-
         gettoken() {
-            // var me: WebSocketClient = WebSocketClient.instance;
-
             this.WebSocketClient.getJSON("/jwt", async (error: any, data: any) => {
                 try {
                     if (data !== null && data !== undefined) {
