@@ -50,30 +50,6 @@ module openflow {
             }
             this.init();
         }
-        setCookie(cname, cvalue, exdays) {
-            var d = new Date();
-            d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
-            var expires = "expires=" + d.toUTCString();
-            document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
-        }
-        getCookie(cname) {
-            var name = cname + "=";
-            var decodedCookie = decodeURIComponent(document.cookie);
-            var ca = decodedCookie.split(';');
-            for (var i = 0; i < ca.length; i++) {
-                var c = ca[i];
-                while (c.charAt(0) == ' ') {
-                    c = c.substring(1);
-                }
-                if (c.indexOf(name) == 0) {
-                    return c.substring(name.length, c.length);
-                }
-            }
-            return "";
-        }
-        deleteCookie(cname) {
-            document.cookie = cname + "=;Thu, 01 Jan 1970 00:00:00 UTC;path=/";
-        }
         onbackbutton() {
             console.log("Handle the onbackbutton event");
         }
@@ -243,7 +219,7 @@ module openflow {
                         } else {
                             console.debug("diagnostic is missing");
                         }
-                        this.gettoken();
+                        this.$rootScope.$broadcast("cordovadetected");
                     });
                 } else {
                     console.debug("cordova not definded");
@@ -253,8 +229,7 @@ module openflow {
                     }
                 }
             } catch (error) {
-                console.error(error);
-                console.debug("Failed locating cordova");
+                console.debug("Failed locating cordova. " + error);
             }
         }
         init() {
@@ -352,54 +327,7 @@ module openflow {
         }
         private onopen(evt: Event) {
             console.log("WebSocketClient::onopen: connected");
-            this.gettoken();
-        }
-        gettoken() {
-            var me: WebSocketClient = WebSocketClient.instance;
-            var q: SigninMessage = new SigninMessage();
-            this.getJSON("/jwt", async (error: any, data: any) => {
-                try {
-                    if (data !== null && data !== undefined) {
-                        if (data.jwt === null || data.jwt === undefined || data.jwt.trim() === "") { data.jwt = null; }
-                        if (data.rawAssertion === null || data.rawAssertion === undefined || data.rawAssertion.trim() === "") { data.rawAssertion = null; }
-                        if (data.jwt === null && data.rawAssertion === null) {
-                            console.log("data.jwt or data.rawAssertion is null");
-                            data = null;
-                        }
-                    }
-                    if (data === null || data === undefined) {
-                        if (this.$location.path() !== "/Login") {
-                            console.log("path: " + this.$location.path());
-                            console.log("WebSocketClient::onopen: Not signed in, redirect /Login");
-                            var _url = this.$location.absUrl();
-                            this.setCookie("url", _url, 365);
-                            this.$location.path("/Login");
-                            this.$rootScope.$apply();
-                        }
-                        return;
-                    }
-                    q.jwt = data.jwt;
-                    q.rawAssertion = data.rawAssertion;
-                    q.realm = "browser";
-                    q.onesignalid = this.oneSignalId;
-                    q.device = this.device;
-                    q.gpslocation = this.location;
-                    console.debug("onesignalid: " + q.onesignalid);
-                    console.debug("device: " + JSON.stringify(q.device));
-                    console.debug("gpslocation: " + JSON.stringify(q.gpslocation));
-                    console.debug("signing in with token");
-                    var msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
-                    var a: any = await this.Send(msg);
-                    var result: SigninMessage = a;
-                    this.user = result.user;
-                    this.$rootScope.$broadcast(msg.command, result);
-                } catch (error) {
-                    this.user = null;
-                    console.error(error);
-                    this.$location.path("/Login");
-                    this.$rootScope.$apply();
-                }
-            });
+            this.$rootScope.$broadcast("socketopen");
         }
         private onclose(evt: CloseEvent): void {
             var me: WebSocketClient = WebSocketClient.instance;

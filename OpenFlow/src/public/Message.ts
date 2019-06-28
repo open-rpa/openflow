@@ -42,6 +42,7 @@ module openflow {
     export class SigninMessage {
         public error: string;
 
+        public impersonate: string;
         public realm: string;
         public firebasetoken: string;
         public onesignalid: string;

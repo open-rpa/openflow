@@ -9,6 +9,7 @@ export class TokenUser {
     name: string;
     username: string;
     roles: Rolemember[] = [];
+    impostor: string;
     constructor(user: User | TokenUser) {
         if (user === null || user === undefined) { return; }
         this._type = user._type;

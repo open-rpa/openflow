@@ -27,6 +27,20 @@ module openflow {
         static $inject = ["$rootScope", "$location", "WebSocketClient"];
         public messageQueue: IHashTable<messagequeue> = {};
         constructor(public $rootScope: ng.IRootScopeService, public $location, public WebSocketClient: WebSocketClient) {
+            var cleanup1 = this.$rootScope.$on('socketopen', (event, data) => {
+                if (event && data) { }
+                this.gettoken();
+                // cleanup();
+            });
+            var cleanup2 = this.$rootScope.$on('cordovadetected', (event, data) => {
+                if (event && data) { }
+                console.log("cordovadetected, reload token");
+                this.gettoken();
+                cleanup2();
+            });
+
+
+
             ['log', 'warn', 'debug', 'error'].forEach((methodName) => {
                 //['error'].forEach((methodName) => {
                 const originalMethod = console[methodName];
@@ -109,6 +123,74 @@ module openflow {
                     delete this.messageQueue[data.correlationId];
                 }
             });
+        }
+
+        gettoken() {
+            // var me: WebSocketClient = WebSocketClient.instance;
+
+            this.WebSocketClient.getJSON("/jwt", async (error: any, data: any) => {
+                try {
+                    if (data !== null && data !== undefined) {
+                        if (data.jwt === null || data.jwt === undefined || data.jwt.trim() === "") { data.jwt = null; }
+                        if (data.rawAssertion === null || data.rawAssertion === undefined || data.rawAssertion.trim() === "") { data.rawAssertion = null; }
+                        if (data.jwt === null && data.rawAssertion === null) {
+                            console.log("data.jwt and data.rawAssertion is null");
+                            data = null;
+                        }
+                    }
+                    if (data === null || data === undefined) {
+                        if (this.$location.path() !== "/Login") {
+                            console.log("path: " + this.$location.path());
+                            console.log("WebSocketClient::onopen: Not signed in, redirect /Login");
+                            var _url = this.$location.absUrl();
+                            this.setCookie("url", _url, 365);
+                            this.$location.path("/Login");
+                            this.$rootScope.$apply();
+                        }
+                        return;
+                    }
+                    this.SigninWithToken(data.jwt, data.rawAssertion, null);
+                } catch (error) {
+                    this.WebSocketClient.user = null;
+                    console.error(error);
+                    this.$location.path("/Login");
+                    this.$rootScope.$apply();
+                }
+            });
+        }
+        async SigninWithToken(jwt: string, rawAssertion: string, impersonate: string): Promise<void> {
+            var q: SigninMessage = new SigninMessage();
+            q.jwt = jwt;
+            q.rawAssertion = rawAssertion;
+            q.realm = "browser";
+            if (this.WebSocketClient.usingCordova) {
+                q.realm = "mobile";
+            }
+            q.impersonate = impersonate;
+            q.onesignalid = this.WebSocketClient.oneSignalId;
+            q.device = this.WebSocketClient.device;
+            q.gpslocation = this.WebSocketClient.location;
+            var msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
+            q = await this.WebSocketClient.Send<SigninMessage>(msg);
+            this.WebSocketClient.user = q.user;
+            this.$rootScope.$broadcast("signin", q);
+        }
+        async SigninWithUsername(username: string, password: string, impersonate: string): Promise<void> {
+            var q: SigninMessage = new SigninMessage();
+            q.username = username;
+            q.password = password;
+            q.realm = "browser";
+            if (this.WebSocketClient.usingCordova) {
+                q.realm = "mobile";
+            }
+            q.impersonate = impersonate;
+            q.onesignalid = this.WebSocketClient.oneSignalId;
+            q.device = this.WebSocketClient.device;
+            q.gpslocation = this.WebSocketClient.location;
+            var msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
+            q = await this.WebSocketClient.Send<SigninMessage>(msg);
+            this.WebSocketClient.user = q.user;
+            this.$rootScope.$broadcast("signin", q);
         }
         async Query(collection: string, query: any, projection: any = null, orderby: any = { _created: -1 }, top: number = 500, skip: number = 0): Promise<any[]> {
             var q: QueryMessage = new QueryMessage();
@@ -215,6 +297,30 @@ module openflow {
             var q: StopNoderedInstanceMessage = new StopNoderedInstanceMessage();
             var msg: Message = new Message(); msg.command = "stopnoderedinstance"; msg.data = JSON.stringify(q);
             q = await this.WebSocketClient.Send<StopNoderedInstanceMessage>(msg);
+        }
+        setCookie(cname, cvalue, exdays) {
+            var d = new Date();
+            d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
+            var expires = "expires=" + d.toUTCString();
+            document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+        }
+        getCookie(cname) {
+            var name = cname + "=";
+            var decodedCookie = decodeURIComponent(document.cookie);
+            var ca = decodedCookie.split(';');
+            for (var i = 0; i < ca.length; i++) {
+                var c = ca[i];
+                while (c.charAt(0) == ' ') {
+                    c = c.substring(1);
+                }
+                if (c.indexOf(name) == 0) {
+                    return c.substring(name.length, c.length);
+                }
+            }
+            return "";
+        }
+        deleteCookie(cname) {
+            document.cookie = cname + "=;Thu, 01 Jan 1970 00:00:00 UTC;path=/";
         }
 
     }

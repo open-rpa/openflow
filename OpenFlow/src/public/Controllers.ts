@@ -745,7 +745,10 @@ module openflow {
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
-        async DeleteOne(model: any): Promise<any> {
+        async Impersonate(model: openflow.TokenUser): Promise<any> {
+            console.log(model);
+        }
+        async DeleteOne(model: openflow.TokenUser): Promise<any> {
             this.loading = true;
             await this.api.Delete(this.collection, model);
             this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
@@ -1304,7 +1307,13 @@ module openflow {
             values.forEach((x: DeleteOneMessage) => ids.push(x._id));
             this.models = this.models.filter(function (m: any): boolean { return ids.indexOf(m._id) === -1; });
             this.loading = false;
-            this._loadData();
+
+            this.models = await this.api.Query(this.collection, this.basequery, this.baseprojection, this.orderby);
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            if (this.models.length > 0) {
+                await this.DeleteMany();
+            }
+            //this._loadData();
             //if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
 

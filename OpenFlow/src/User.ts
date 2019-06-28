@@ -30,6 +30,7 @@ export class User extends Base {
     onesignalid: string;
     gpslocation: any;
     device: any;
+    impersonating: string;
     federationids: FederationId[] = [];
     roles: Rolemember[] = [];
     public static async ensureUser(jwt: string, name: string, username: string, id: string, password: string): Promise<User> {
