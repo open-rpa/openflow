@@ -42,10 +42,11 @@ export class WebSocketServer {
                     var tuser = Crypt.verityToken(cli.jwt);
                     var payload = Crypt.decryptToken(cli.jwt);
                     var clockTimestamp = Math.floor(Date.now() / 1000);
-                    if ((clockTimestamp - payload.iat) > 180) {
-                        WebSocketServer._logger.silly("Send new jwt to client");
+                    // WebSocketServer._logger.silly((payload.exp - clockTimestamp))
+                    if ((payload.exp - clockTimestamp) < 60) {
+                        WebSocketServer._logger.debug("Token for " + tuser.username + " expires in less than 1 minute, send new jwt to client");
                         var l: SigninMessage = new SigninMessage();
-                        cli.jwt = Crypt.createToken(tuser, "1h");
+                        cli.jwt = Crypt.createToken(tuser, "5m");
                         l.jwt = cli.jwt;
                         l.user = tuser;
                         var m: Message = new Message(); m.command = "refreshtoken";

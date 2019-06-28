@@ -14,6 +14,7 @@ export class TokenUser {
         if (user === null || user === undefined) { return; }
         this._type = user._type;
         this._id = user._id;
+        this.impostor = (user as TokenUser).impostor;
         this.name = user.name;
         this.username = user.username;
         this.roles = user.roles;
@@ -29,7 +30,7 @@ export class TokenUser {
         return result;
     }
     static rootToken(): string {
-        return Crypt.createToken(TokenUser.rootUser(), "1h");
+        return Crypt.createToken(TokenUser.rootUser(), "5m");
     }
     hasrolename(name: string): Boolean {
         var hits: Rolemember[] = this.roles.filter(member => member.name === name);

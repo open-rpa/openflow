@@ -42,7 +42,7 @@ module openflow {
 
 
             ['log', 'warn', 'debug', 'error'].forEach((methodName) => {
-                //['error'].forEach((methodName) => {
+                //['error2'].forEach((methodName) => {
                 const originalMethod = console[methodName];
                 console[methodName] = (...args) => {
                     let initiator = 'unknown place';
@@ -149,7 +149,7 @@ module openflow {
                         }
                         return;
                     }
-                    this.SigninWithToken(data.jwt, data.rawAssertion, null);
+                    await this.SigninWithToken(data.jwt, data.rawAssertion, null);
                 } catch (error) {
                     this.WebSocketClient.user = null;
                     console.error(error);
@@ -158,7 +158,7 @@ module openflow {
                 }
             });
         }
-        async SigninWithToken(jwt: string, rawAssertion: string, impersonate: string): Promise<void> {
+        async SigninWithToken(jwt: string, rawAssertion: string, impersonate: string): Promise<SigninMessage> {
             var q: SigninMessage = new SigninMessage();
             q.jwt = jwt;
             q.rawAssertion = rawAssertion;
@@ -173,9 +173,11 @@ module openflow {
             var msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
             q = await this.WebSocketClient.Send<SigninMessage>(msg);
             this.WebSocketClient.user = q.user;
+            this.WebSocketClient.jwt = q.jwt;
             this.$rootScope.$broadcast("signin", q);
+            return q;
         }
-        async SigninWithUsername(username: string, password: string, impersonate: string): Promise<void> {
+        async SigninWithUsername(username: string, password: string, impersonate: string): Promise<SigninMessage> {
             var q: SigninMessage = new SigninMessage();
             q.username = username;
             q.password = password;
@@ -190,7 +192,9 @@ module openflow {
             var msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
             q = await this.WebSocketClient.Send<SigninMessage>(msg);
             this.WebSocketClient.user = q.user;
+            this.WebSocketClient.jwt = q.jwt;
             this.$rootScope.$broadcast("signin", q);
+            return q;
         }
         async Query(collection: string, query: any, projection: any = null, orderby: any = { _created: -1 }, top: number = 500, skip: number = 0): Promise<any[]> {
             var q: QueryMessage = new QueryMessage();

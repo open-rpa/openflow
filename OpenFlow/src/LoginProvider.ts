@@ -114,7 +114,7 @@ export class LoginProvider {
             res.setHeader("Content-Type", "application/json");
             if (req.user) {
                 var user: TokenUser = new TokenUser(req.user);
-                res.end(JSON.stringify({ jwt: Crypt.createToken(user, "1h") }));
+                res.end(JSON.stringify({ jwt: Crypt.createToken(user, "5m") }));
             } else {
                 res.end(JSON.stringify({ jwt: "" }));
             }
@@ -126,7 +126,7 @@ export class LoginProvider {
                 var user: User = await LoginProvider.validateToken(rawAssertion);
                 var tuser: TokenUser = new TokenUser(user);
                 res.setHeader("Content-Type", "application/json");
-                res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, "1h") }));
+                res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, "5m") }));
             } catch (error) {
                 res.end(error);
                 console.error(error);

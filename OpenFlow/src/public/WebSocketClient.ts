@@ -244,27 +244,19 @@ module openflow {
                 parser.search;   // => "?search=test"
                 parser.hash;     // => "#hash"
                 parser.host;     // => "example.com:3000"
-                console.log(data);
                 if (location.protocol == 'https:' && parser.protocol == "ws:") {
                     data.wshost = "wss://" + parser.hostname;
                     console.log("new wshost: " + data.wshost);
                     if (parser.port != "80") {
                         data.wshost = "wss://" + parser.hostname + parser.port;
                     }
-                } else {
-                    console.log("location.protocol: " + location.protocol);
-                    console.log("parser.protocol: " + parser.protocol);
-                    console.log("data.wshost: " + data.wshost);
-                    console.log(data.wshost);
                 }
                 if (location.protocol == 'http:' && parser.protocol == "wss:") {
                     data.wshost = "ws://" + parser.hostname;
-                    console.log("new wshost: " + data.wshost);
                     if (parser.port != "443") {
                         data.wshost = "ws://" + parser.hostname + parser.port;
                     }
                 }
-                console.log(data.wshost);
                 console.debug("WebSocketClient::onopen: connecting to " + data.wshost);
                 this.domain = data.domain;
                 this.allow_personal_nodered = data.allow_personal_nodered;
@@ -326,7 +318,7 @@ module openflow {
             return new Promise(resolve => setTimeout(resolve, ms));
         }
         private onopen(evt: Event) {
-            console.log("WebSocketClient::onopen: connected");
+            // console.debug("WebSocketClient::onopen: connected");
             this.$rootScope.$broadcast("socketopen");
         }
         private onclose(evt: CloseEvent): void {

@@ -36,9 +36,7 @@ module openflow {
                     await this.loadUsers();
                     $scope.$on('queuemessage', (event, data: QueueMessage) => {
                         if (event && data) { }
-                        // console.log("queuemessage");
-                        // console.log(event);
-                        console.log(data);
+                        console.debug(data);
                         this.messages += data.data.command + "\n";
                         if (data.data.command == "invokecompleted") {
                             this.arguments = data.data.data;
@@ -71,11 +69,7 @@ module openflow {
             //     jwt: this.WebSocketClient.jwt,
             //     payload: rpacommand
             // }
-            console.log("QueueMessage");
-            console.log(rpacommand);
             var result: any = await this.api.QueueMessage(this.user._id, rpacommand);
-            console.log("result:");
-            console.log(result);
             try {
                 // result = JSON.parse(result);
             } catch (error) {
@@ -105,7 +99,6 @@ module openflow {
             this.loading = true;
             this.charts = [];
             var chart: chartset = null;
-            console.log("get workflows");
             this.models = await this.api.Query(this.collection, this.basequery, null, null);
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             for (var i = 0; i < this.models.length; i++) {
@@ -113,10 +106,7 @@ module openflow {
                 var d = new Date();
                 //d.setMonth(d.getMonth() - 1);
                 d.setDate(d.getDate() - 7);
-                console.log(d);
-
-
-                console.log("get mapreduce of instances");
+                console.debug("get mapreduce of instances");
                 var stats = await this.api.MapReduce("openrpa_instances",
                     function map() {
                         var startDate = new Date(this._created);
@@ -158,7 +148,6 @@ module openflow {
                 chart.data = [];
                 var lastdate = "";
                 var days = daysBetween(d, new Date());
-                console.log(stats);
                 for (var y = 0; y < days; y++) {
                     var startDate = new Date(d);
                     startDate.setDate(d.getDate() + y);
@@ -241,7 +230,7 @@ module openflow {
             this.charts = [];
             var chart: chartset = null;
 
-            console.log("get mapreduce of instances");
+            console.debug("get mapreduce of instances");
             var stats = await this.api.MapReduce("openrpa_instances",
                 function map() {
                     this.count = 1;
@@ -269,9 +258,7 @@ module openflow {
                 }, {}, { inline: 1 }, null);
 
 
-            console.log("get workflows");
             var workflows = await this.api.Query("openrpa", { _type: "workflow" }, null, null);
-            console.log("get workflow instances");
             var workflowids = [];
             workflows.forEach(workflow => {
                 workflowids.push(workflow._id);
@@ -404,15 +391,17 @@ module openflow {
             "$scope",
             "$location",
             "$routeParams",
-            "WebSocketClient"
+            "WebSocketClient",
+            "api"
         ];
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
-            public WebSocketClient: WebSocketClient
+            public WebSocketClient: WebSocketClient,
+            public api: api
         ) {
-            console.log("LoginCtrl::constructor");
+            console.debug("LoginCtrl::constructor");
             this.domain = window.location.hostname;
             WebSocketClient.getJSON("/loginproviders", async (error: any, data: any) => {
                 this.providers = data;
@@ -425,22 +414,6 @@ module openflow {
                 }
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 setTimeout(this.scanForQRScanner.bind(this), 200);
-
-                // var domain = window.location.hostname;
-                // try {
-                //     console.log("get mobiledomain.txt");
-                //     var value = await this.readfile("mobiledomain.txt");
-                //     if (value !== null && value !== undefined && value !== "") {
-                //         console.log(value);
-                //         var config = JSON.parse(value);
-                //         if (config.loginurl.indexOf(domain) === -1) {
-                //             console.log("Login url different from current domain, redirect to " + config.url);
-                //             window.location.replace(config.url);
-                //             return;
-                //         }
-                //     }
-                // } catch (error) {
-                // }
             });
         }
         readfile(filename: string) {
@@ -463,7 +436,7 @@ module openflow {
                     }, errorCallback);
                 }
                 function errorCallback(error) {
-                    console.log(error);
+                    console.debug(error);
                     resolve();
                 }
             });
@@ -479,7 +452,7 @@ module openflow {
                     fs.root.getFile(filename, { create: true }, function (fileEntry) {
                         fileEntry.createWriter(function (fileWriter) {
                             fileWriter.onwriteend = function (e) {
-                                console.log('Write completed.');
+                                console.debug('Write completed.');
                                 resolve();
                             };
                             fileWriter.onerror = function (e) {
@@ -500,7 +473,7 @@ module openflow {
         scanForQRScanner() {
             try {
                 if (QRScanner !== undefined) {
-                    console.log("Found QRScanner!!!!");
+                    console.debug("Found QRScanner!!!!");
                     this.qrcodescan = true;
                     if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 } else {
@@ -514,7 +487,7 @@ module openflow {
         }
         Scan() {
             try {
-                console.log("Scan");
+                console.debug("Scan");
                 if (this.scanning) {
                     this.scanning = false;
                     QRScanner.destroy();
@@ -532,25 +505,25 @@ module openflow {
         }
         async QRScannerHit(err, value) {
             try {
-                console.log("QRScannerHit");
+                console.debug("QRScannerHit");
                 if (err) {
                     // console.error(err._message);
                     console.error(err);
                     return;
                 }
-                console.log(value);
+                console.debug(value);
                 QRScanner.hide();
                 QRScanner.destroy();
 
                 this.scanning = false;
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 if (value === null || value === undefined || value === "") {
-                    console.log("QRCode had null value"); return;
+                    console.debug("QRCode had null value"); return;
                 }
-                console.log("QRCode value: " + value);
+                console.debug("QRCode value: " + value);
                 var config = JSON.parse(value);
                 if (config.url !== null || config.url !== undefined || config.url !== "" || config.loginurl !== null || config.loginurl !== undefined || config.loginurl !== "") {
-                    console.log("set mobiledomain to " + value);
+                    console.debug("set mobiledomain to " + value);
                     await this.writefile("mobiledomain.txt", value);
                     window.location.replace(config.url);
                 }
@@ -562,16 +535,10 @@ module openflow {
         }
         async submit(): Promise<void> {
             this.message = "";
-            var q: SigninMessage = new SigninMessage();
-            q.username = this.username; q.password = this.password;
-            var msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
             try {
                 console.debug("signing in with username/password");
-                var a: any = await this.WebSocketClient.Send(msg);
-                var result: SigninMessage = a;
+                var result: SigninMessage = await this.api.SigninWithUsername(this.username, this.password, null);
                 if (result.user == null) { return; }
-                this.$scope.$root.$broadcast(msg.command, result);
-                this.WebSocketClient.user = result.user;
                 this.$location.path("/");
             } catch (error) {
                 this.message = error;
@@ -596,7 +563,7 @@ module openflow {
             public $routeParams: ng.route.IRouteParamsService,
             public WebSocketClient: WebSocketClient
         ) {
-            console.log("MenuCtrl::constructor");
+            console.debug("MenuCtrl::constructor");
             $scope.$root.$on('$routeChangeStart', (...args) => { this.routeChangeStart.apply(this, args); });
             this.path = this.$location.path();
             var cleanup = this.$scope.$on('signin', (event, data) => {
@@ -690,7 +657,6 @@ module openflow {
         async loadData(): Promise<void> {
             this.loading = true;
             var chart: chartset = null;
-            console.log("get users");
             this.models = await this.api.Query("users", { _type: "user" }, null, null);
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             for (var i = 0; i < this.models.length; i++) {
@@ -698,7 +664,7 @@ module openflow {
                 var d = new Date();
                 // d.setMonth(d.getMonth() - 1);
                 d.setDate(d.getDate() - 7);
-                console.log("get mapreduce for " + user.name);
+                console.debug("get mapreduce for " + user.name);
                 var stats = await this.api.MapReduce("audit",
                     function map() {
                         var startDate = new Date(this._created);
@@ -746,7 +712,11 @@ module openflow {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async Impersonate(model: openflow.TokenUser): Promise<any> {
-            console.log(model);
+            this.loading = true;
+            var result = await this.api.SigninWithToken(this.WebSocketClient.jwt, null, model._id);
+            console.log(result);
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async DeleteOne(model: openflow.TokenUser): Promise<any> {
             this.loading = true;
@@ -1193,24 +1163,24 @@ module openflow {
                     var res = await this.api.Query("forms", { _id: this.model.form }, null, { _created: -1 }, 1);
                     if (res.length > 0) { this.form = res[0]; } else { console.error(this.id + " form not found!"); return; }
                 } else {
-                    console.log("Model contains no form");
+                    console.debug("Model contains no form");
                 }
                 this.renderform();
             } else {
-                console.log("No instance id found, send empty message");
-                console.log("SendOne: " + this.workflow._id + " / " + this.workflow.queue);
+                console.debug("No instance id found, send empty message");
+                console.debug("SendOne: " + this.workflow._id + " / " + this.workflow.queue);
                 await this.SendOne(this.workflow.queue, {});
                 this.loadData();
             }
         }
         async SendOne(queuename: string, message: any): Promise<void> {
-            console.log("SendOne: queuename " + queuename + " / " + this.myid);
+            console.debug("SendOne: queuename " + queuename + " / " + this.myid);
             var result: any = await this.api.QueueMessage(queuename, message);
             try {
                 result = JSON.parse(result);
             } catch (error) {
             }
-            console.log(result);
+            console.debug(result);
             if ((this.instanceid === undefined || this.instanceid === null) && (result !== null && result !== unescape)) {
                 this.instanceid = result._id;
                 this.$location.path("/Form/" + this.id + "/" + this.instanceid);
@@ -1234,12 +1204,12 @@ module openflow {
             }
             var ele = $('.render-wrap');
             ele.hide();
-            console.log("SendOne: " + this.workflow._id + " / " + this.workflow.queue);
+            console.debug("SendOne: " + this.workflow._id + " / " + this.workflow.queue);
             await this.SendOne(this.workflow.queue, this.model);
             this.loadData();
         }
         async renderform() {
-            console.log("renderform");
+            console.debug("renderform");
             var ele: any;
             var roles: any = {};
             this.WebSocketClient.user.roles.forEach(role => {
@@ -1370,7 +1340,6 @@ module openflow {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async submit(): Promise<void> {
-            console.log(this.model);
             if (this.showjson) {
                 this.model = JSON.parse(this.jsonmodel);
             }
@@ -1410,14 +1379,12 @@ module openflow {
             }
         }
         adduser() {
-            console.log(this.newuser);
             var ace = {
                 deny: false,
                 _id: this.newuser._id,
                 name: this.newuser.name,
                 rights: "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8="
             }
-            console.log(this.model._acl);
             this.model._acl.push(ace);
         }
         isBitSet(base64: string, bit: number): boolean {
@@ -1455,10 +1422,6 @@ module openflow {
             return this._arrayBufferToBase64(view);
         }
         toogleBit(a: any, bit: number) {
-            //console.log('toogleBit: ' + bit);
-            // var buf = this._base64ToArrayBuffer(a.rights);
-            // var view = new Uint8Array(buf);
-            // console.log(view);
             if (this.isBitSet(a.rights, bit)) {
                 a.rights = this.unsetBit(a.rights, bit);
             } else {
@@ -1466,7 +1429,6 @@ module openflow {
             }
             var buf2 = this._base64ToArrayBuffer(a.rights);
             var view2 = new Uint8Array(buf2);
-            console.log(view2);
         }
         _base64ToArrayBuffer(string_base64): ArrayBuffer {
             var binary_string = window.atob(string_base64);
@@ -1504,23 +1466,18 @@ module openflow {
         ) {
             super($scope, $location, $routeParams, WebSocketClient, api);
             console.debug("HistoryCtrl");
-            console.log("HistoryCtrl");
             this.id = $routeParams.id;
             this.basequery = { id: this.id };
             this.collection = $routeParams.collection;
             this.baseprojection = null;
             WebSocketClient.onSignedin((user: TokenUser) => {
-                console.log("onSignedin");
                 this.LoadData();
             });
         }
         async LoadData() {
             this.models = await this.api.Query(this.collection, { _id: this.id }, null, null);
-            console.log(this.models);
             this.model = this.models[0];
-            console.log(this.model);
             this.models = await this.api.Query(this.collection + "_hist", { id: this.id }, null, { _version: -1 });
-            console.log(this.models);
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         CompareNow(model) {
@@ -1576,8 +1533,7 @@ module openflow {
                 this.instancestatus = "fetching status";
 
                 this.instance = await this.api.GetNoderedInstance();
-                console.log("GetNoderedInstance:");
-                console.log(this.instance);
+                console.debug("GetNoderedInstance:");
                 if (this.instance !== null && this.instance !== undefined) {
                     if (this.instance.metadata.deletionTimestamp !== undefined) {
                         this.instancestatus = "pending deletion (" + this.instance.status.phase + ")";
@@ -1599,7 +1555,7 @@ module openflow {
         async GetNoderedInstanceLog() {
             try {
                 this.instancestatus = "fetching log";
-                console.log("GetNoderedInstanceLog:");
+                console.debug("GetNoderedInstanceLog:");
                 this.instancelog = await this.api.GetNoderedInstanceLog();
                 this.instancelog = this.instancelog.split("\n").reverse().join("\n");
                 this.messages += "GetNoderedInstanceLog completed\n";

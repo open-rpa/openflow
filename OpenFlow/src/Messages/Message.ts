@@ -427,6 +427,7 @@ export class Message {
     private async Signin(cli: WebSocketClient): Promise<void> {
         this.Reply();
         var msg: SigninMessage
+        var impostor: string = "";
         try {
             msg = SigninMessage.assign(this.data);
             var tuser: TokenUser = null;
@@ -435,6 +436,9 @@ export class Message {
             if (msg.jwt !== null && msg.jwt !== undefined) {
                 type = "jwtsignin";
                 tuser = Crypt.verityToken(msg.jwt);
+                if (tuser.impostor !== null && tuser.impostor !== undefined && tuser.impostor !== "") {
+                    impostor = tuser.impostor;
+                }
                 user = await User.FindByUsername(tuser.username);
                 if (user !== null && user !== undefined) {
                     // refresh, for roles and stuff
@@ -447,6 +451,9 @@ export class Message {
                     } else {
                         msg.error = "Unknown username or password";
                     }
+                }
+                if (impostor !== "") {
+                    tuser.impostor = msg.impersonate;
                 }
                 // } else if (tuser.username.startsWith("nodered")) {
                 //     user = new User(); user.name = tuser.name; user.username = tuser.username;
@@ -485,8 +492,20 @@ export class Message {
                     user.device = msg.device;
                 }
                 Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip);
-                msg.jwt = Crypt.createToken(user, "1h");
+                var userid: string = user._id;
+                msg.jwt = Crypt.createToken(tuser, "5m");
                 msg.user = tuser;
+                if (msg.impersonate !== undefined && msg.impersonate !== null && msg.impersonate !== "") {
+                    var items = await Config.db.query({ _id: msg.impersonate }, null, 1, 0, null, "users", msg.jwt);
+                    if (items.length == 0) throw new Error("Permission denied, impersonating " + msg.impersonate);
+                    user = User.assign(items[0] as User);
+                    // Check we have update rights
+                    await user.Save(msg.jwt);
+                    tuser = new TokenUser(user);
+                    tuser.impostor = userid;
+                    msg.jwt = Crypt.createToken(tuser, "5m");
+                    msg.user = tuser;
+                }
                 if (msg.validate_only !== true) {
                     cli._logger.debug(tuser.username + " signed in using " + type);
                     cli.jwt = msg.jwt;
@@ -525,7 +544,7 @@ export class Message {
             user = await User.ensureUser(jwt, msg.name, msg.username, null, msg.password);
             msg.user = new TokenUser(user);
 
-            jwt = Crypt.createToken(msg.user, "1h");
+            jwt = Crypt.createToken(msg.user, "5m");
             var name = user.username;
             name = name.split("@").join("").split(".").join("");
             name = name.toLowerCase();
