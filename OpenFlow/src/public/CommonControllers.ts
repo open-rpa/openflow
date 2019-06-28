@@ -32,15 +32,12 @@ module openflow {
                 this.gettoken();
                 // cleanup();
             });
-            var cleanup2 = this.$rootScope.$on('cordovadetected', (event, data) => {
-                if (event && data) { }
-                console.log("cordovadetected, reload token");
-                this.gettoken();
-                cleanup2();
-            });
-
-
-
+            // var cleanup2 = this.$rootScope.$on('cordovadetected', (event, data) => {
+            //     if (event && data) { }
+            //     console.log("cordovadetected, reload token");
+            //     this.gettoken();
+            //     cleanup2();
+            // });
             ['log', 'warn', 'debug', 'error'].forEach((methodName) => {
                 //['error2'].forEach((methodName) => {
                 const originalMethod = console[methodName];

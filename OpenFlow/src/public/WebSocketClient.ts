@@ -150,6 +150,7 @@ module openflow {
             });
         }
         scanForCordova() {
+            if (this.usingCordova == true) return;
             try {
                 if (cordova !== undefined) {
                     console.log("Found cordova");
@@ -233,7 +234,6 @@ module openflow {
             }
         }
         init() {
-            setTimeout(this.scanForCordova.bind(this), 200);
             this.getJSON("/config", async (error: any, data: any) => {
                 var parser = document.createElement('a');
                 parser.href = data.wshost;
@@ -320,6 +320,7 @@ module openflow {
         private onopen(evt: Event) {
             // console.debug("WebSocketClient::onopen: connected");
             this.$rootScope.$broadcast("socketopen");
+            setTimeout(this.scanForCordova.bind(this), 200);
         }
         private onclose(evt: CloseEvent): void {
             var me: WebSocketClient = WebSocketClient.instance;
