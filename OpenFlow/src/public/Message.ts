@@ -332,8 +332,7 @@ module openflow {
             var msg: SigninMessage = SigninMessage.assign(this.data);
             cli.jwt = msg.jwt;
             cli.user = msg.user;
-            console.log("Message::RefreshToken: Updated jwt");
-            console.log(cli.user);
+            console.debug("Message::RefreshToken: Updated jwt");
         }
         private QueueMessage(cli: WebSocketClient): void {
             var msg: QueueMessage = QueueMessage.assign(this.data);
