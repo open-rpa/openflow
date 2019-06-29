@@ -14,7 +14,6 @@
       <th></th>
       <th></th>
       <th></th>
-      <th></th>
     </tr>
   </thead>
   <tbody>
@@ -27,11 +26,11 @@
       <td>
         <timesince ng-model="model.lastseen" />
       </td>
-      <td class="btn-cell" height="40px" width="200">
+      <!-- <td class="btn-cell" height="40px" width="200">
         <canvas id="bar" class="model.chart-base" chart-type="model.chart.charttype" chart-data="model.chart.data"
           chart-labels="model.chart.labels" chart-series="model.chart.series" height="40px" width="200">
         </canvas>
-      </td>
+      </td> -->
       <td class="btn-cell">
         <a ng-href ng-click="ctrl.Impersonate(model)" ng-show="model._id != ctrl.WebSocketClient.user._id"><i
             class="fas fa-user-secret"></i></a>
