@@ -667,55 +667,55 @@ module openflow {
             var chart: chartset = null;
             this.models = await this.api.Query("users", { _type: "user" }, null, null);
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            for (var i = 0; i < this.models.length; i++) {
-                var user = this.models[i] as any;
-                var d = new Date();
-                // d.setMonth(d.getMonth() - 1);
-                d.setDate(d.getDate() - 7);
-                console.debug("get mapreduce for " + user.name);
-                var stats = await this.api.MapReduce("audit",
-                    function map() {
-                        var startDate = new Date(this._created);
-                        this.count = 1;
-                        emit(startDate.toISOString().split('T')[0], this);
-                    }, function reduce(key, values) {
-                        var reducedObject = { count: 0, value: 0, avg: 0, minrun: 0, maxrun: 0, run: 0, _acl: [] };
-                        values.forEach(function (value) {
-                            reducedObject.count += value.count;
-                            reducedObject._acl = value._acl;
-                        });
-                        return reducedObject;
-                    }, function finalize(key, reducedValue) {
-                        if (reducedValue.count > 0) {
-                            reducedValue.avg = reducedValue.value / reducedValue.count;
-                        }
-                        return reducedValue;
-                    }, { userid: user._id, "_created": { "$gte": new Date(d.toISOString()) } }, { inline: 1 }, null);
+            // for (var i = 0; i < this.models.length; i++) {
+            //     var user = this.models[i] as any;
+            //     var d = new Date();
+            //     // d.setMonth(d.getMonth() - 1);
+            //     d.setDate(d.getDate() - 7);
+            //     console.debug("get mapreduce for " + user.name);
+            //     var stats = await this.api.MapReduce("audit",
+            //         function map() {
+            //             var startDate = new Date(this._created);
+            //             this.count = 1;
+            //             emit(startDate.toISOString().split('T')[0], this);
+            //         }, function reduce(key, values) {
+            //             var reducedObject = { count: 0, value: 0, avg: 0, minrun: 0, maxrun: 0, run: 0, _acl: [] };
+            //             values.forEach(function (value) {
+            //                 reducedObject.count += value.count;
+            //                 reducedObject._acl = value._acl;
+            //             });
+            //             return reducedObject;
+            //         }, function finalize(key, reducedValue) {
+            //             if (reducedValue.count > 0) {
+            //                 reducedValue.avg = reducedValue.value / reducedValue.count;
+            //             }
+            //             return reducedValue;
+            //         }, { userid: user._id, "_created": { "$gte": new Date(d.toISOString()) } }, { inline: 1 }, null);
 
-                chart = new chartset();
-                chart.charttype = "line"
-                chart.data = [];
-                var days = daysBetween(d, new Date());
-                for (var y = 0; y < days; y++) {
-                    var startDate = new Date(d);
-                    startDate.setDate(d.getDate() + y);
-                    var datestring = startDate.toISOString().split('T')[0];
-                    var exists = stats.filter(m => m._id == datestring);
-                    if (exists.length > 0) {
-                        chart.data.push(exists[0].value.count);
-                    } else {
-                        chart.data.push(0);
-                    }
-                    //chart.labels.push(datestring);
-                    if ((y % 2) == 0 || (days == 30 && y == 30)) {
-                        chart.labels.push(startDate.getDate().toString());
-                    } else {
-                        chart.labels.push("");
-                    }
-                }
-                user.chart = chart;
+            //     chart = new chartset();
+            //     chart.charttype = "line"
+            //     chart.data = [];
+            //     var days = daysBetween(d, new Date());
+            //     for (var y = 0; y < days; y++) {
+            //         var startDate = new Date(d);
+            //         startDate.setDate(d.getDate() + y);
+            //         var datestring = startDate.toISOString().split('T')[0];
+            //         var exists = stats.filter(m => m._id == datestring);
+            //         if (exists.length > 0) {
+            //             chart.data.push(exists[0].value.count);
+            //         } else {
+            //             chart.data.push(0);
+            //         }
+            //         //chart.labels.push(datestring);
+            //         if ((y % 2) == 0 || (days == 30 && y == 30)) {
+            //             chart.labels.push(startDate.getDate().toString());
+            //         } else {
+            //             chart.labels.push("");
+            //         }
+            //     }
+            //     user.chart = chart;
 
-            }
+            // }
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
