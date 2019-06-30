@@ -1202,7 +1202,9 @@ module openflow {
                 this.model.payload[userData[i].name] = "";
                 var val = userData[i].userData;
                 if (val !== undefined && val !== null) {
-                    if (Array.isArray(val)) {
+                    if (userData[i].type == "checkbox-group") {
+                        this.model.payload[userData[i].name] = val;
+                    } else if (Array.isArray(val)) {
                         this.model.payload[userData[i].name] = val[0];
                     } else {
                         this.model.payload[userData[i].name] = val;
@@ -1230,6 +1232,9 @@ module openflow {
                 var value = this.model.payload[this.form.formData[i].name];
                 if (value == undefined || value == null) { value = ""; }
                 this.form.formData[i].userData = [value];
+                if (Array.isArray(value)) {
+                    this.form.formData[i].userData = value;
+                }
                 if (this.model.payload[this.form.formData[i].label] !== null && this.model.payload[this.form.formData[i].label] !== undefined) {
                     value = this.model.payload[this.form.formData[i].label];
                     if (value == undefined || value == null) { value = ""; }
