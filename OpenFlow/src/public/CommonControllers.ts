@@ -477,11 +477,16 @@ module openflow {
         public collection: string = "entities";
         public models: T[] = [];
         public orderby: any = { _created: -1 };
+        public autorefresh: boolean = false;
+        public autorefreshinterval: number = 2000;
+        public autorefreshpromise: any = null;
+        public postloadData: any = null;
 
         public static $inject = [
             "$scope",
             "$location",
             "$routeParams",
+            "$interval",
             "WebSocketClient",
             "api"
         ];
@@ -489,15 +494,31 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
             public api: api
         ) {
         }
-        async _loadData(): Promise<void> {
+        async loadData(): Promise<void> {
+            if (this.loading == true) { console.log("allready loading data, exit"); return; }
             this.loading = true;
             this.models = await this.api.Query(this.collection, this.basequery, this.baseprojection, this.orderby);
             this.loading = false;
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            if (this.autorefresh) {
+                if (this.autorefreshpromise == null) {
+                    this.autorefreshpromise = this.$interval(() => {
+                        this.loadData();
+                    }, this.autorefreshinterval);
+                    this.$scope.$on('$destroy', () => {
+                        this.$interval.cancel(this.autorefreshpromise);
+                    });
+                }
+            }
+            if (this.postloadData != null) {
+                this.postloadData();
+            } else {
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            }
         }
         ToggleOrder(field: string) {
             if (this.orderby[field] == undefined) {
@@ -511,7 +532,7 @@ module openflow {
             if (field === '_type') {
                 this.orderby["type"] = this.orderby[field];
             }
-            this._loadData();
+            this.loadData();
         }
         async DeleteOne(model: any): Promise<any> {
             this.loading = true;
@@ -522,7 +543,21 @@ module openflow {
         }
     }
 
-
+    export function nestedassign(target, source) {
+        if (source === null || source === undefined) return null;
+        var keys = Object.keys(source);
+        for (var i = 0; i < keys.length; i++) {
+            var sourcekey = keys[i];
+            if (Object.keys(source).find(targetkey => targetkey === sourcekey) !== undefined &&
+                Object.keys(source).find(targetkey => targetkey === sourcekey) !== null
+                && typeof source === "object" && typeof source[sourcekey] === "object") {
+                target[sourcekey] = nestedassign(target[sourcekey], source[sourcekey]);
+            } else {
+                target[sourcekey] = source[sourcekey];
+            }
+        }
+        return target;
+    }
     export class entityCtrl<T> {
         public loading: boolean = false;
         public basequery: any = {};
@@ -531,11 +566,16 @@ module openflow {
         public model: T = null;
         public id: string = null;
         public keys: string[] = [];
+        public autorefresh: boolean = false;
+        public autorefreshinterval: number = 2000;
+        public autorefreshpromise: any = null;
+        public postloadData: any = null;
 
         public static $inject = [
             "$scope",
             "$location",
             "$routeParams",
+            "$interval",
             "WebSocketClient",
             "api"
         ];
@@ -543,6 +583,7 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
             public api: api
         ) {
@@ -550,12 +591,44 @@ module openflow {
             this.basequery = { _id: this.id };
         }
         async loadData(): Promise<void> {
+            if (this.loading == true) { console.log("allready loading data, exit"); return; }
+            var updated: boolean = false;
             this.loading = true;
             var result = await this.api.Query(this.collection, this.basequery, this.baseprojection, null, 1);
-            if (result.length > 0) { this.model = result[0]; }
-            this.keys = Object.keys(this.model);
+            if (result.length > 0) {
+                if (this.model == null) {
+                    this.model = result[0];
+                    updated = true;
+                } else {
+                    if (!angular.equals(this.model, result[0])) {
+                        this.model = result[0];
+                        updated = true;
+                    }
+                }
+
+            }
+            if (updated) {
+                this.keys = Object.keys(this.model);
+                for (var i: number = this.keys.length - 1; i >= 0; i--) {
+                    if (this.keys[i].startsWith('_')) this.keys.splice(i, 1);
+                }
+            }
             this.loading = false;
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            if (this.postloadData != null) {
+                this.postloadData();
+            } else {
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            }
+            if (this.autorefresh) {
+                if (this.autorefreshpromise == null) {
+                    this.autorefreshpromise = this.$interval(() => {
+                        this.loadData();
+                    }, this.autorefreshinterval);
+                    this.$scope.$on('$destroy', () => {
+                        this.$interval.cancel(this.autorefreshpromise);
+                    });
+                }
+            }
         }
     }
 }

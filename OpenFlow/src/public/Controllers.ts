@@ -22,10 +22,11 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
             public api: api
         ) {
-            super($scope, $location, $routeParams, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             console.debug("RPAWorkflowCtrl");
             this.collection = "openrpa";
             this.messages = "";
@@ -84,18 +85,19 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
             public api: api
         ) {
-            super($scope, $location, $routeParams, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             console.debug("RPAWorkflowsCtrl");
             this.collection = "openrpa";
             this.basequery = { _type: "workflow" };
             WebSocketClient.onSignedin((user: TokenUser) => {
-                this._loadData();
+                this.loadData();
             });
         }
-        async _loadData(): Promise<void> {
+        async loadData(): Promise<void> {
             this.loading = true;
             this.charts = [];
             var chart: chartset = null;
@@ -180,15 +182,16 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
             public api: api
         ) {
-            super($scope, $location, $routeParams, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             this.collection = "workflow";
             this.basequery = { _type: "workflow", web: true };
             console.debug("WorkflowsCtrl");
             WebSocketClient.onSignedin((user: TokenUser) => {
-                this._loadData();
+                this.loadData();
             });
         }
     }
@@ -216,16 +219,17 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
             public api: api
         ) {
-            super($scope, $location, $routeParams, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             console.debug("ReportsCtrl");
             WebSocketClient.onSignedin((user: TokenUser) => {
-                this.loadData();
+                this.processData();
             });
         }
-        async loadData(): Promise<void> {
+        async processData(): Promise<void> {
             this.loading = true;
             this.charts = [];
             var chart: chartset = null;
@@ -364,15 +368,16 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
             public api: api,
         ) {
-            super($scope, $location, $routeParams, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             console.debug("MainCtrl");
             this.collection = "workflow_instances"
             this.basequery = { state: { $ne: "completed" }, form: { $exists: true } };
             WebSocketClient.onSignedin((_user: TokenUser) => {
-                this._loadData();
+                this.loadData();
             });
         }
     }
@@ -592,15 +597,16 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
             public api
         ) {
-            super($scope, $location, $routeParams, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             console.debug("ProvidersCtrl");
             this.basequery = { _type: "provider" };
             this.collection = "config";
             WebSocketClient.onSignedin((user: TokenUser) => {
-                this._loadData();
+                this.loadData();
             });
         }
         async DeleteOne(model: any): Promise<any> {
@@ -617,10 +623,11 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
             public api: api
         ) {
-            super($scope, $location, $routeParams, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             console.debug("ProviderCtrl");
             this.collection = "config";
             WebSocketClient.onSignedin((user: TokenUser) => {
@@ -651,22 +658,22 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
             public api: api
         ) {
-            super($scope, $location, $routeParams, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
+            this.autorefresh = true;
             console.debug("UsersCtrl");
             this.basequery = { _type: "user" };
             this.collection = "users";
+            this.postloadData = this.processData;
             WebSocketClient.onSignedin((user: TokenUser) => {
                 this.loadData();
             });
         }
-        async loadData(): Promise<void> {
-            this.loading = true;
+        async processData(): Promise<void> {
             var chart: chartset = null;
-            this.models = await this.api.Query("users", { _type: "user" }, null, null);
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
             // for (var i = 0; i < this.models.length; i++) {
             //     var user = this.models[i] as any;
             //     var d = new Date();
@@ -740,10 +747,11 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
             public api: api
         ) {
-            super($scope, $location, $routeParams, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             console.debug("UserCtrl");
             this.collection = "users";
             WebSocketClient.onSignedin((user: TokenUser) => {
@@ -793,15 +801,17 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
             public api: api
         ) {
-            super($scope, $location, $routeParams, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
+            this.autorefresh = true;
             console.debug("RolesCtrl");
             this.basequery = { _type: "role" };
             this.collection = "users";
             WebSocketClient.onSignedin((user: TokenUser) => {
-                this._loadData();
+                this.loadData();
             });
         }
         async DeleteOne(model: any): Promise<any> {
@@ -819,10 +829,11 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
             public api: api
         ) {
-            super($scope, $location, $routeParams, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             console.debug("RoleCtrl");
             this.collection = "users";
             WebSocketClient.onSignedin(async (user: TokenUser) => {
@@ -976,16 +987,18 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
             public api: api
         ) {
-            super($scope, $location, $routeParams, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             console.debug("EntitiesCtrl");
+            this.autorefresh = true;
             this.basequery = {};
             this.collection = $routeParams.collection;
             this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
             WebSocketClient.onSignedin((user: TokenUser) => {
-                this._loadData();
+                this.loadData();
             });
         }
         async DeleteOne(model: any): Promise<any> {
@@ -1019,15 +1032,16 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
             public api: api
         ) {
-            super($scope, $location, $routeParams, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             console.debug("FormsCtrl");
             this.collection = "forms";
             this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
             WebSocketClient.onSignedin((user: TokenUser) => {
-                this._loadData();
+                this.loadData();
             });
         }
         async DeleteOne(model: any): Promise<any> {
@@ -1063,15 +1077,17 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
             public api: api
         ) {
-            super($scope, $location, $routeParams, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             console.debug("EditFormCtrl");
             this.collection = "forms";
             this.basequery = {};
             this.id = $routeParams.id;
             this.basequery = { _id: this.id };
+            this.postloadData = this.renderform;
             WebSocketClient.onSignedin(async (user: TokenUser) => {
                 if (this.id !== null && this.id !== undefined && this.id !== "") {
                     this.basequery = { _id: this.id };
@@ -1082,13 +1098,6 @@ module openflow {
                 }
 
             });
-        }
-        async loadData(): Promise<void> {
-            this.loading = true;
-            this.charts = [];
-            var res = await this.api.Query(this.collection, this.basequery, null, { _created: -1 }, 1);
-            if (res.length > 0) { this.model = res[0]; } else { console.error(this.id + " not found!"); }
-            this.renderform();
         }
         async Save() {
             this.model.formData = this.formBuilder.actions.getData(this.model.dataType);
@@ -1135,10 +1144,11 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
             public api: api
         ) {
-            super($scope, $location, $routeParams, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             this.myid = new Date().toISOString();
             console.debug("FormCtrl");
             this.collection = "workflow";
@@ -1148,9 +1158,6 @@ module openflow {
 
             this.basequery = { _id: this.id };
             WebSocketClient.onSignedin(async (user: TokenUser) => {
-                // $(document).on('submit', '.render-wrap', () => {
-                //     this.Save();
-                // });
                 await api.RegisterQueue();
                 if (this.id !== null && this.id !== undefined && this.id !== "") {
                     this.basequery = { _id: this.id };
@@ -1263,16 +1270,18 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
             public api: api
         ) {
-            super($scope, $location, $routeParams, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
+            this.autorefresh = true;
             console.debug("jslogCtrl");
             this.collection = "jslog";
             this.basequery = {};
             this.orderby = { _created: -1 };
             WebSocketClient.onSignedin((user: TokenUser) => {
-                this._loadData();
+                this.loadData();
             });
         }
         async DeleteMany(): Promise<void> {
@@ -1296,8 +1305,6 @@ module openflow {
             if (this.models.length > 0) {
                 await this.DeleteMany();
             }
-            //this._loadData();
-            //if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
 
     }
@@ -1315,20 +1322,26 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
             public api: api
         ) {
-            super($scope, $location, $routeParams, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             console.debug("EntityCtrl");
             this.collection = $routeParams.collection;
             WebSocketClient.onSignedin(async (user: TokenUser) => {
+                this.usergroups = await this.api.Query("users", {});
                 if (this.id !== null && this.id !== undefined) {
-                    await this._loadData();
+                    await this.loadData();
                 } else {
                     this.model = new openflow.Base();
                     this.model._type = "role";
                     this.model.name = "";
                     this.keys = Object.keys(this.model);
+                    for (var i: number = this.keys.length - 1; i >= 0; i--) {
+                        if (this.keys[i].startsWith('_')) this.keys.splice(i, 1);
+                    }
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 }
             });
         }
@@ -1339,18 +1352,6 @@ module openflow {
             } else {
                 this.model = JSON.parse(this.jsonmodel);
             }
-        }
-        async _loadData(): Promise<void> {
-            this.usergroups = await this.api.Query("users", {});
-
-            var results = await this.api.Query(this.collection, this.basequery, this.baseprojection, null, 1);
-            if (results.length == 0) { return; }
-            this.model = results[0];
-            this.keys = Object.keys(this.model);
-            for (var i: number = this.keys.length - 1; i >= 0; i--) {
-                if (this.keys[i].startsWith('_')) this.keys.splice(i, 1);
-            }
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async submit(): Promise<void> {
             if (this.showjson) {
@@ -1364,7 +1365,6 @@ module openflow {
             this.$location.path("/Entities/" + this.collection);
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
-
         removekey(key) {
             if (this.keys.indexOf(key) > -1) {
                 this.keys.splice(this.keys.indexOf(key), 1);
@@ -1474,21 +1474,24 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
             public api: api
         ) {
-            super($scope, $location, $routeParams, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
+            this.autorefresh = true;
             console.debug("HistoryCtrl");
             this.id = $routeParams.id;
             this.basequery = { id: this.id };
             this.collection = $routeParams.collection;
             this.baseprojection = null;
+            this.postloadData = this.ProcessData;
             WebSocketClient.onSignedin((user: TokenUser) => {
-                this.LoadData();
+                this.loadData();
             });
         }
-        async LoadData() {
-            this.models = await this.api.Query(this.collection, { _id: this.id }, null, null);
+        async ProcessData() {
+            // this.models = await this.api.Query(this.collection, { _id: this.id }, null, null);
             this.model = this.models[0];
             this.models = await this.api.Query(this.collection + "_hist", { id: this.id }, null, { _version: -1 });
             if (!this.$scope.$$phase) { this.$scope.$apply(); }

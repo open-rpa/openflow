@@ -14,7 +14,7 @@
 </head>
 
 <body ng-controller="MenuCtrl as menuctrl">
-  <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top" ng-show="menuctrl.signedin">
+  <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top" ng-show="menuctrl.signedin" ng-cloak>
     <a class="navbar-brand" href="#"><span translate lib="web">sitename</span></a>
     <button class="navbar-toggler" type="button" data-toggle="collapse" aria-expanded="false"
       data-target=".navbar-collapse" aria-label="Toggle navigation">
@@ -59,7 +59,7 @@
     </div>
   </nav>
 
-  <main role="main" class="container" ng-show="menuctrl.signedin || menuctrl.path=='/Login'">
+  <main role="main" class="container" ng-show="menuctrl.signedin || menuctrl.path=='/Login'" ng-cloak>
     <div ng-view class="starter-template">
     </div>
   </main>
