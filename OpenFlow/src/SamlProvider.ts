@@ -128,16 +128,31 @@ export class SamlProvider {
 
         // TODO: FIX !!!!
         app.get('/logout', (req: any, res: any, next: any): void => {
+            var referer: string = req.headers.referer;
             req.logout();
-            res.redirect("/");
+            if (referer !== null && referer !== undefined && referer !== "") {
+                res.redirect(referer);
+            } else {
+                res.redirect("/");
+            }
+            // samlp.logout({
+            //     issuer: Config.saml_issuer,
+            //     protocolBinding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
+            //     cert: cert,
+            //     key: key
+            // })(req, res, next);
         });
 
-        app.post('/logout', samlp.logout({
-            issuer: Config.saml_issuer,
-            protocolBinding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
-            cert: cert,
-            key: key
-        }));
+        app.post('/logout', (req: any, res: any, next: any): void => {
+
+            samlp.logout({
+                issuer: Config.saml_issuer,
+                protocolBinding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
+                cert: cert,
+                key: key
+            })(req, res, next);
+
+        });
 
 
 

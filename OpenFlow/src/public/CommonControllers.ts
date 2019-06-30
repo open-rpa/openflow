@@ -480,6 +480,7 @@ module openflow {
         public autorefresh: boolean = false;
         public autorefreshinterval: number = 2000;
         public autorefreshpromise: any = null;
+        public preloadData: any = null;
         public postloadData: any = null;
 
         public static $inject = [
@@ -502,6 +503,9 @@ module openflow {
         async loadData(): Promise<void> {
             if (this.loading == true) { console.log("allready loading data, exit"); return; }
             this.loading = true;
+            if (this.preloadData != null) {
+                this.preloadData();
+            }
             this.models = await this.api.Query(this.collection, this.basequery, this.baseprojection, this.orderby);
             this.loading = false;
             if (this.autorefresh) {
@@ -569,6 +573,7 @@ module openflow {
         public autorefresh: boolean = false;
         public autorefreshinterval: number = 2000;
         public autorefreshpromise: any = null;
+        public preloadData: any = null;
         public postloadData: any = null;
 
         public static $inject = [
@@ -594,6 +599,10 @@ module openflow {
             if (this.loading == true) { console.log("allready loading data, exit"); return; }
             var updated: boolean = false;
             this.loading = true;
+            if (this.preloadData != null) {
+                this.preloadData();
+            }
+
             var result = await this.api.Query(this.collection, this.basequery, this.baseprojection, null, 1);
             if (result.length > 0) {
                 if (this.model == null) {
