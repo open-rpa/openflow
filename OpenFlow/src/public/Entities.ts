@@ -38,11 +38,11 @@ module openflow {
     }
 
     export class TokenUser extends Base {
-
         public roles: Rolemember[] = [];
         public newpassword: string;
         public sid: string;
         public federationids: string[];
+        impostor: string;
         constructor(name: string, public username: string) {
             super();
             this.name = name;

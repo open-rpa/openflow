@@ -61,6 +61,7 @@ module openflow {
                             }
                         }
                     }
+                    initiator = (initiator.length > 100) ? initiator.substr(0, 100 - 1) : initiator;
                     var _type = "message";
                     if (methodName == "warn") _type = "warning";
                     if (methodName == "debug") _type = "debug";

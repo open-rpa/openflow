@@ -26,7 +26,7 @@
         <td class="btn-cell">
           {{model.message}}
         </td>
-        <td>{{model.initiator}}</td>
+        <td>{{(model.initiator.length > 100) ? model.initiator.substr(0, 100 - 1) : model.initiator }}</td>
       </tr>
     </tbody>
   </table>

@@ -1280,6 +1280,7 @@ module openflow {
             this.collection = "jslog";
             this.basequery = {};
             this.orderby = { _created: -1 };
+            this.baseprojection = { _type: 1, type: 1, host: 1, message: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
             WebSocketClient.onSignedin((user: TokenUser) => {
                 this.loadData();
             });
