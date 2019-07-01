@@ -128,7 +128,7 @@ export class DatabaseConnection {
         }
         for (var i: number = 0; i < arr.length; i++) { arr[i] = this.decryptentity(arr[i]); }
         this.traversejsondecode(arr);
-        this._logger.debug("[" + user.username + "] query gave " + arr.length + " results " + JSON.stringify(query));
+        this._logger.debug("[" + user.username + "][" + collectionname + "] query gave " + arr.length + " results " + JSON.stringify(query));
         return arr;
     }
     /**
@@ -252,10 +252,9 @@ export class DatabaseConnection {
         item._modified = item._created;
         var hasUser: Ace = item._acl.find(e => e._id === user._id);
         if ((hasUser === null || hasUser === undefined)) {
-            if (collectionname != "audit") { this._logger.debug("[" + user.username + "] Adding self " + user.username + " to object " + (item.name || item._name)); }
             item.addRight(user._id, user.name, [Rights.full_control]);
         }
-        if (collectionname != "audit") { this._logger.debug("[" + user.username + "] Adding " + (item.name || item._name) + " to database"); }
+        if (collectionname != "audit") { this._logger.debug("[" + user.username + "][" + collectionname + "] Adding " + item._type + " " + (item.name || item._name) + " to database"); }
 
         item = this.encryptentity<T>(item);
         if (!item._id) { item._id = new ObjectID().toHexString(); }
@@ -274,9 +273,6 @@ export class DatabaseConnection {
         //var options: CollectionInsertOneOptions = { w: "majority" };
         var result: InsertOneWriteOpResult = await this.db.collection(collectionname).insertOne(item, options);
         item = result.ops[0];
-        if (item !== null && item !== undefined) {
-            this._logger.debug("[" + user.username + "] Inserted " + (item.name || item._name) + " with id " + item._id);
-        }
         if (collectionname === "users" && item._type === "user") {
             var users: Role = await Role.FindByNameOrId("users", jwt);
             users.AddMember(item);
@@ -360,7 +356,6 @@ export class DatabaseConnection {
             q.item = this.encryptentity<T>(q.item);
             var hasUser: Ace = q.item._acl.find(e => e._id === user._id);
             if ((hasUser === null || hasUser === undefined) && q.item._acl.length == 0) {
-                if (q.collectionname != "audit") { this._logger.debug("[" + user.username + "] Adding self " + user.username + " to object " + (q.item.name || q.item._name)); }
                 q.item.addRight(user._id, user.name, [Rights.full_control]);
             }
             q.item._version = await this.SaveDiff(q.collectionname, original, q.item);
@@ -376,7 +371,7 @@ export class DatabaseConnection {
             (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
             delete (q.item as any).newpassword;
         }
-        this._logger.debug("[" + user.username + "] Updating " + (q.item.name || q.item._name) + " in database");
+        this._logger.debug("[" + user.username + "][" + q.collectionname + "] Updating " + (q.item.name || q.item._name) + " in database");
         // await this.db.collection(collectionname).replaceOne({ _id: item._id }, item, options);
 
         if (q.query === null || q.query === undefined) {
@@ -467,7 +462,7 @@ export class DatabaseConnection {
         (q.item["$set"])._modified = new Date(new Date().toISOString());
 
 
-        this._logger.debug("[" + user.username + "] UpdateMany " + (q.item.name || q.item._name) + " in database");
+        this._logger.debug("[" + user.username + "][" + q.collectionname + "] UpdateMany " + (q.item.name || q.item._name) + " in database");
 
         q.j = ((q.j as any) === 'true' || q.j === true);
         if ((q.w as any) !== "majority") q.w = parseInt((q.w as any));
@@ -528,7 +523,7 @@ export class DatabaseConnection {
         if (!this.hasAuthorization(user, q.item, "update")) { throw new Error("Access denied"); }
         // if (q.item._id !== null && q.item._id !== undefined && q.item._id !== "") {
         if (exists.length == 1) {
-            this._logger.debug("[" + user.username + "] InsertOrUpdateOne, Updating found one in database");
+            this._logger.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Updating found one in database");
             var uq = new UpdateOneMessage<T>();
             // uq.query = query; 
             uq.item = q.item; uq.collectionname = q.collectionname; uq.w = q.w; uq.j; uq.jwt = q.jwt;
@@ -536,7 +531,7 @@ export class DatabaseConnection {
             q.opresult = uq.opresult;
             q.result = uq.result;
         } else {
-            this._logger.debug("[" + user.username + "] InsertOrUpdateOne, Inserting as new in database");
+            this._logger.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Inserting as new in database");
             q.result = await this.InsertOne(q.item, q.collectionname, q.w, q.j, q.jwt);
         }
         return q;
@@ -566,7 +561,7 @@ export class DatabaseConnection {
 
         // var arr = await this.db.collection(collectionname).find(_query).toArray();
 
-        this._logger.debug("[" + user.username + "] Deleting " + id + " in database");
+        this._logger.debug("[" + user.username + "][" + collectionname + "] Deleting " + id + " in database");
         var res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne(_query);
 
         // var res:DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne({_id:id});
@@ -668,14 +663,14 @@ export class DatabaseConnection {
             finalor.push(q2);
         }
         // 
-        if (bits.length > 0 && (bits[0] + 1) == Rights.read) {
-            this._logger.debug("[" + user.username + "] Include isme in base query");
-            return { $or: finalor.concat(isme) };
-        } else if (bits.length > 0) {
-            this._logger.debug("[" + user.username + "] Skip isme in base query, not read (" + bits[0] + ")");
-        } else {
-            this._logger.debug("[" + user.username + "] Skip isme in base query, bits missing!");
-        }
+        // if (bits.length > 0 && (bits[0] + 1) == Rights.read) {
+        //     this._logger.debug("[" + user.username + "] Include isme in base query");
+        //     return { $or: finalor.concat(isme) };
+        // } else if (bits.length > 0) {
+        //     this._logger.debug("[" + user.username + "] Skip isme in base query, not read (" + bits[0] + ")");
+        // } else {
+        //     this._logger.debug("[" + user.username + "] Skip isme in base query, bits missing!");
+        // }
         return { $or: finalor.concat() };
     }
     /**
