@@ -37,6 +37,7 @@ module openflow {
         public jwt: string = null;
         public device: any = null;
         public usingCordova: boolean = false;
+        public plugins: any = null;
         public scanCount: number = 0;
         public oneSignalId: string = null;
         public location: any;
@@ -45,7 +46,7 @@ module openflow {
         constructor(public $rootScope: ng.IRootScopeService, public $location, public $window: any) {
             try {
                 var path = this.$location.absUrl().split('#')[0];
-                this.usingCordova = (path.indexOf("/android/") > -1 || path.indexOf("/ios/") > -1);
+                // this.usingCordova = (path.indexOf("/android/") > -1 || path.indexOf("/ios/") > -1);
             } catch (error) {
             }
             this.init();
@@ -158,6 +159,7 @@ module openflow {
                     document.addEventListener("deviceready", async () => {
                         console.log("deviceready");
                         if ((window as any).plugins) {
+                            this.plugins = (window as any).plugins;
                             var oneSignal = (window as any).plugins.OneSignal;
                             if (oneSignal) {
                                 try {
