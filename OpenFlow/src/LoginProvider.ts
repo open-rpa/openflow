@@ -253,8 +253,58 @@ export class LoginProvider {
         app.get("/" + key + "/FederationMetadata/2007-06/FederationMetadata.xml",
             wsfed.metadata({
                 cert: Buffer.from(Config.signing_crt, "base64").toString("ascii"),
-                issuer: Config.saml_issuer + ":" + key
+                issuer: issuer
             }));
+        var CertPEM = Buffer.from(Config.signing_crt, "base64").toString("ascii").replace(/(-----(BEGIN|END) CERTIFICATE-----|\n)/g, '');
+        app.get("/" + key + "2/FederationMetadata/2007-06/FederationMetadata.xml",
+            (req: express.Request, res: express.Response, next: express.NextFunction) => {
+                res.set("Content-Type", "text/xml");
+                res.send(`
+            <EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="` + issuer + `">
+            <RoleDescriptor xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:fed="http://docs.oasis-open.org/wsfed/federation/200706" xsi:type="fed:SecurityTokenServiceType" protocolSupportEnumeration="http://docs.oasis-open.org/wsfed/federation/200706" 
+            ServiceDisplayName="` + issuer + `">
+            <KeyDescriptor use="signing">
+            <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+            <X509Data>
+            <X509Certificate>` + CertPEM + `</X509Certificate>
+            </X509Data>
+            </KeyInfo>
+            </KeyDescriptor>
+            <fed:TokenTypesOffered>
+            <fed:TokenType Uri="urn:oasis:names:tc:SAML:2.0:assertion"/>
+            <fed:TokenType Uri="urn:oasis:names:tc:SAML:1.0:assertion"/>
+            </fed:TokenTypesOffered>
+            <fed:ClaimTypesOffered>
+            <auth:ClaimType xmlns:auth="http://docs.oasis-open.org/wsfed/authorization/200706" Uri="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" Optional="true">
+            <auth:DisplayName>E-Mail Address</auth:DisplayName>
+            <auth:Description>The e-mail address of the user</auth:Description>
+            </auth:ClaimType>
+            <auth:ClaimType xmlns:auth="http://docs.oasis-open.org/wsfed/authorization/200706" Uri="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname" Optional="true">
+            <auth:DisplayName>Given Name</auth:DisplayName>
+            <auth:Description>The given name of the user</auth:Description>
+            </auth:ClaimType>
+            <auth:ClaimType xmlns:auth="http://docs.oasis-open.org/wsfed/authorization/200706" Uri="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name" Optional="true">
+            <auth:DisplayName>Name</auth:DisplayName>
+            <auth:Description>The unique name of the user</auth:Description>
+            </auth:ClaimType>
+            <auth:ClaimType xmlns:auth="http://docs.oasis-open.org/wsfed/authorization/200706" Uri="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname" Optional="true">
+            <auth:DisplayName>Surname</auth:DisplayName>
+            <auth:Description>The surname of the user</auth:Description>
+            </auth:ClaimType>
+            <auth:ClaimType xmlns:auth="http://docs.oasis-open.org/wsfed/authorization/200706" Uri="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier" Optional="true">
+            <auth:DisplayName>Name ID</auth:DisplayName>
+            <auth:Description>The SAML name identifier of the user</auth:Description>
+            </auth:ClaimType>
+            </fed:ClaimTypesOffered>
+            <fed:PassiveRequestorEndpoint>
+            <EndpointReference xmlns="http://www.w3.org/2005/08/addressing">
+            <Address>` + options.callbackUrl + `</Address>
+            </EndpointReference>
+            </fed:PassiveRequestorEndpoint>
+            </RoleDescriptor>
+            </EntityDescriptor>
+            `);
+            });
         app.use("/" + key,
             bodyParser.urlencoded({ extended: false }),
             passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),

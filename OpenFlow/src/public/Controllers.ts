@@ -635,7 +635,7 @@ module openflow {
                 if (this.id !== null && this.id !== undefined) {
                     this.loadData();
                 } else {
-                    this.model = new Provider("", "", "", "",
+                    this.model = new Provider("", "", "", "uri:" + this.WebSocketClient.domain,
                         "")
                 }
 
