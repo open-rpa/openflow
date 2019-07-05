@@ -1,6 +1,6 @@
 import * as winston from "winston";
 import * as express from "express";
-import * as passport from "passport";
+// import * as passport from "passport";
 
 import * as samlp from "samlp";
 import { Config } from "./Config";
@@ -113,7 +113,7 @@ export class SamlProvider {
             issuer: Config.saml_issuer,
             cert: cert,
         }));
-        var SessionParticipants = require('samlp/lib/sessionParticipants');
+        // var SessionParticipants = require('samlp/lib/sessionParticipants');
 
         // https://github.com/mcguinness/saml-idp/blob/master/app.js
         // https://www.diycode.cc/projects/auth0/node-samlp
@@ -153,8 +153,6 @@ export class SamlProvider {
             })(req, res, next);
 
         });
-
-
 
     }
 }

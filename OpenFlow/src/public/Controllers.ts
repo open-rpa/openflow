@@ -630,6 +630,7 @@ module openflow {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             console.debug("ProviderCtrl");
             this.collection = "config";
+            console.log(WebSocketClient);
             WebSocketClient.onSignedin((user: TokenUser) => {
                 if (this.id !== null && this.id !== undefined) {
                     this.loadData();
