@@ -42,15 +42,17 @@
         <li class="nav-item">
           <a class="nav-link" href="#/Nodered"><span translate lib="web">nodered</span></a>
         </li>
-        <li class="nav-item dropdown" ng-show="menuctrl.hasrole('admins')">
+        <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
             translate lib="web">admin</a>
           <div class="dropdown-menu">
             <a class="dropdown-item" href="#/Users"><span translate lib="web">users</span></a>
             <a class="dropdown-item" href="#/Roles"><span translate lib="web">roles</span></a>
             <a class="dropdown-item" href="#/Forms"><span translate lib="web">forms</span></a>
-            <a class="dropdown-item" href="#/Providers"><span translate lib="web">providers</span></a>
-            <a class="dropdown-item" href="#/jslog"><span translate lib="web">jslog</span></a>
+            <a class="dropdown-item" href="#/Providers" ng-show="menuctrl.hasrole('admins')"><span translate
+                lib="web">providers</span></a>
+            <a class="dropdown-item" href="#/jslog" ng-show="menuctrl.hasrole('admins')"><span translate
+                lib="web">jslog</span></a>
           </div>
         </li>
       </ul>
