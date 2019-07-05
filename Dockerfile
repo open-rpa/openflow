@@ -3,7 +3,7 @@ EXPOSE 80
 EXPOSE 5858
 WORKDIR /data
 COPY package*.json ./
-RUN apt install node-gyp -y && npm install
+RUN apt update && apt install node-gyp -y && npm install
 COPY dist ./
 
 ENTRYPOINT ["/usr/local/bin/node", "--inspect=0.0.0.0:5858", "index.js"]
