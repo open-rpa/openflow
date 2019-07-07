@@ -200,6 +200,11 @@ export class WebSocketClient {
             }
             this._sendQueue = this._sendQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
         });
+        if (this._receiveQueue.length > 1 || this._sendQueue.length > 1) {
+            if (this.user !== null && this.user !== undefined) {
+                this._logger.debug("[" + this.user.username + "] WebSocketclient::ProcessQueue receiveQueue: " + this._receiveQueue.length + " sendQueue: " + this._sendQueue.length);
+            }
+        }
     }
     public async Send<T>(message: Message): Promise<T> {
         return new Promise<T>(async (resolve, reject) => {
