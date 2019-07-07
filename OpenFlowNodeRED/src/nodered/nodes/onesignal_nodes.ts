@@ -93,7 +93,7 @@ export class create_notification {
                 },
                 (error, response, body) => {
                     if (!body.errors) {
-                        console.log(body);
+                        Logger.instanse.debug(body);
                         msg.payload = body;
                         this.node.status({});
                         this.node.send(msg);

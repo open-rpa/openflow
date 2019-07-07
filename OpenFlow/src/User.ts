@@ -74,7 +74,6 @@ export class User extends Base {
     }
 
     public static async FindByUsernameOrId(username: string, id: string): Promise<User> {
-        console.log({ $or: [{ username: username }, { _id: id }] });
         var items: User[] = await Config.db.query<User>({ $or: [{ username: new RegExp(["^", username, "$"].join(""), "i") }, { _id: id }] },
             null, 1, 0, null, "users", TokenUser.rootToken());
         if (items === null || items === undefined || items.length === 0) { return null; }
@@ -115,10 +114,8 @@ export class User extends Base {
     public async SetPassword(password: string): Promise<void> {
         this.passwordhash = await Crypt.hash(password);
         if (!(this.ValidatePassword(password))) { throw new Error("Failed validating password after hasing"); }
-        console.log(password + " / " + this.passwordhash);
     }
     public async ValidatePassword(password: string): Promise<boolean> {
-        console.log(password + " / " + this.passwordhash);
         return await Crypt.compare(password, this.passwordhash);
     }
     public async DecorateWithRoles(): Promise<void> {

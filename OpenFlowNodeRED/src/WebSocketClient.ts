@@ -87,15 +87,6 @@ export class WebSocketClient {
             console.error(error);
             me.connect();
         }
-        var date: Date = new Date;
-        var seconds: number = date.getSeconds();
-        var minutes: number = date.getMinutes();
-        var hour: number = date.getHours();
-        if (me._receiveQueue.length > 0 || me._sendQueue.length > 1) {
-            // tslint:disable-next-line: max-line-length
-            // console.log("[" + hour + ":" + minutes + "." + seconds + "] pingServer: " + me._receiveQueue.length + "/" + me._sendQueue.length);
-        }
-        // setInterval(me.pingServer, 250);
     }
     private async onopen(evt: Event): Promise<void> {
         var me: WebSocketClient = WebSocketClient.instance;

@@ -133,10 +133,7 @@ export class WebSocketClient {
         try {
             this._logger.debug("WebSocketclient::WebSocket Send message to socketclient, from " + msg.properties.replyTo + " correlationId: " + msg.properties.correlationId);
             var _data = msg.content.toString();
-            console.log("Queue message queue response with data: " + _data);
             var data = await this.Queue(_data, msg.properties.replyTo, msg.properties.correlationId, sender.queue);
-            console.log("*******************************************");
-            console.log("queue response: " + data);
             this._logger.debug("WebSocketclient::WebSocket ack message in queue " + sender.queue);
             sender.channel.ack(msg);
         } catch (error) {

@@ -128,38 +128,4 @@ export class Config {
         return metadata;
     }
 
-
-    static DumpConfig() {
-        console.log("baseurl" + Config.baseurl());
-
-        console.log("nodered_id: " + Config.nodered_id);
-
-        console.log("consumer_key: " + Config.consumer_key);
-        console.log("consumer_secret: " + Config.consumer_secret);
-
-        console.log("saml_federation_metadata: " + Config.saml_federation_metadata);
-        console.log("saml_issuer: " + Config.saml_issuer);
-        console.log("saml_entrypoint: " + Config.saml_entrypoint);
-        console.log("saml_crt: " + Config.saml_crt);
-
-
-        console.log("port: " + Config.port);
-        console.log("domain: " + Config.domain);
-        console.log("nodered_domain_schema: " + Config.nodered_domain_schema);
-
-        console.log("api_ws_url: " + Config.api_ws_url);
-        console.log("amqp_url: " + Config.amqp_url);
-
-        console.log("api_credential_cache_seconds: " + Config.api_credential_cache_seconds);
-        console.log("api_allow_anonymous: " + Config.api_allow_anonymous);
-
-        // console.log("tls_crt: " + Config.tls_crt);
-        // console.log("tls_key: " + Config.tls_key);
-        // console.log("tls_ca: " + Config.tls_ca);
-        // console.log("tls_passphrase: " + Config.tls_passphrase);
-        // console.log("aes_secret: " + Config.aes_secret);
-
-
-    }
-
 }

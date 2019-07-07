@@ -512,7 +512,7 @@ export class DatabaseConnection {
             query = { _id: q.item._id };
         }
         var exists = await this.query(query, { name: 1 }, 2, 0, null, q.collectionname, q.jwt);
-        console.log(JSON.stringify(query, null, 2));
+        this._logger.debug("[" + user.username + "][" + q.collectionname + "] query gave " + arr.length + " results " + JSON.stringify(query));
         if (exists.length == 1) {
             q.item._id = exists[0]._id;
         }

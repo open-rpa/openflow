@@ -136,7 +136,6 @@ Create notification <a href="https://documentation.onesignal.com/reference#creat
             var annot = this.contentseditor.getSession().getAnnotations();
             $("#node-input-noerr-contents").val(0);
             for (var k = 0; k < annot.length; k++) {
-                console.log(annot[k].type, ":", annot[k].text, "on line", annot[k].row);
                 if (annot[k].type === "error") {
                     $("#node-input-noerr-contents").val(annot.length);
                     this.noerr = annot.length;
