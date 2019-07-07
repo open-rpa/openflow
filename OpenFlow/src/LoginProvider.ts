@@ -7,7 +7,7 @@ import * as bodyParser from "body-parser";
 import * as SAMLStrategy from "passport-saml";
 import * as GoogleStrategy from "passport-google-oauth20";
 import * as LocalStrategy from "passport-local";
-import * as wsfed from "wsfed";
+// import * as wsfed from "wsfed";
 
 import * as passport from "passport";
 import { Config } from "./Config";
@@ -250,13 +250,13 @@ export class LoginProvider {
         strategy.name = key;
         this._logger.info(options.callbackUrl);
 
-        app.get("/" + key + "/FederationMetadata/2007-06/FederationMetadata.xml",
-            wsfed.metadata({
-                cert: Buffer.from(Config.signing_crt, "base64").toString("ascii"),
-                issuer: issuer
-            }));
+        // app.get("/" + key + "/FederationMetadata/2007-06/FederationMetadata.xml",
+        //     wsfed.metadata({
+        //         cert: Buffer.from(Config.signing_crt, "base64").toString("ascii"),
+        //         issuer: issuer
+        //     }));
         var CertPEM = Buffer.from(Config.signing_crt, "base64").toString("ascii").replace(/(-----(BEGIN|END) CERTIFICATE-----|\n)/g, '');
-        app.get("/" + key + "2/FederationMetadata/2007-06/FederationMetadata.xml",
+        app.get("/" + key + "/FederationMetadata/2007-06/FederationMetadata.xml",
             (req: express.Request, res: express.Response, next: express.NextFunction) => {
                 res.set("Content-Type", "text/xml");
                 res.send(`

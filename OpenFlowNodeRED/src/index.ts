@@ -16,8 +16,6 @@ import { NoderedUtil } from "./nodered/nodes/NoderedUtil";
 
 const logger: winston.Logger = Logger.configure();
 
-Config.DumpConfig();
-
 process.on('unhandledRejection', up => {
     console.error(up);
     throw up
