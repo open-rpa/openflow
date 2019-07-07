@@ -511,6 +511,7 @@ export class DatabaseConnection {
         } else {
             query = { _id: q.item._id };
         }
+        var user: TokenUser = Crypt.verityToken(q.jwt);
         var exists = await this.query(query, { name: 1 }, 2, 0, null, q.collectionname, q.jwt);
         this._logger.debug("[" + user.username + "][" + q.collectionname + "] query gave " + arr.length + " results " + JSON.stringify(query));
         if (exists.length == 1) {
@@ -519,7 +520,6 @@ export class DatabaseConnection {
         else if (exists.length > 1) {
             throw JSON.stringify(query) + " is not uniqe, more than 1 item in collection matches this";
         }
-        var user: TokenUser = Crypt.verityToken(q.jwt);
         if (!this.hasAuthorization(user, q.item, "update")) { throw new Error("Access denied"); }
         // if (q.item._id !== null && q.item._id !== undefined && q.item._id !== "") {
         if (exists.length == 1) {
