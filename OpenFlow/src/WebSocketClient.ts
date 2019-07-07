@@ -200,7 +200,7 @@ export class WebSocketClient {
             }
             this._sendQueue = this._sendQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
         });
-        if (this._receiveQueue.length > 1 || this._sendQueue.length > 1) {
+        if (this._receiveQueue.length > 25 || this._sendQueue.length > 25) {
             if (this.user !== null && this.user !== undefined) {
                 this._logger.debug("[" + this.user.username + "] WebSocketclient::ProcessQueue receiveQueue: " + this._receiveQueue.length + " sendQueue: " + this._sendQueue.length);
             }
