@@ -29,6 +29,7 @@ import { RestartNoderedInstanceMessage } from "./RestartNoderedInstanceMessage";
 import { DeleteNoderedInstanceMessage } from "./DeleteNoderedInstanceMessage";
 import { GetNoderedInstanceMessage } from "./GetNoderedInstanceMessage";
 import { GetNoderedInstanceLogMessage } from "./GetNoderedInstanceLogMessage";
+import { Util } from "../Util";
 
 export class Message {
     public id: string;
@@ -50,25 +51,25 @@ export class Message {
         return result;
     }
     public Reply(command: string = null): void {
-        if (command !== null && command !== undefined) { this.command = command; }
+        if (!Util.IsNullEmpty(command)) { this.command = command; }
         this.replyto = this.id;
         this.id = crypto.randomBytes(16).toString("hex");
     }
     public Process(cli: WebSocketClient): void {
         try {
-            var command: string = "";
-            if (this.command !== null && this.command !== undefined) { command = this.command.toLowerCase(); }
+            if (!Util.IsNullEmpty(this.command)) { this.command = this.command.toLowerCase(); }
+            var command: string = this.command;
             if (this.command !== "ping" && this.command !== "pong") {
-                if (this.replyto !== null && this.replyto !== undefined) {
+
+                if (!Util.IsNullEmpty(this.replyto)) {
                     var qmsg: QueuedMessage = cli.messageQueue[this.replyto];
-                    if (qmsg !== undefined && qmsg !== null) {
+                    if (!Util.IsNullUndefinded(qmsg)) {
                         try {
                             qmsg.message = Object.assign(qmsg.message, JSON.parse(this.data));
                         } catch (error) {
                             // TODO: should we set message to data ?
                         }
-                        //if (qmsg.cb !== undefined && qmsg.cb !== null) { qmsg.cb(qmsg.message); }
-                        if (qmsg.cb !== undefined && qmsg.cb !== null) { qmsg.cb(this); }
+                        if (!Util.IsNullUndefinded(qmsg.cb)) { qmsg.cb(this); }
                         delete cli.messageQueue[this.id];
                     }
                     return;
@@ -167,7 +168,7 @@ export class Message {
             await cli.CreateConsumer(msg.queuename);
         } catch (error) {
             cli._logger.error(error);
-            if (msg === null || msg === undefined) { (msg as any) = {}; }
+            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
             msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -184,7 +185,7 @@ export class Message {
         var msg: QueueMessage
         try {
             msg = QueueMessage.assign(this.data);
-            if (msg.replyto === null || msg.replyto === undefined || msg.replyto === "") {
+            if (Util.IsNullEmpty(msg.replyto)) {
                 await cli.sendToQueue(msg);
             } else {
                 if (msg.queuename === msg.replyto) {
@@ -196,7 +197,7 @@ export class Message {
             }
         } catch (error) {
             cli._logger.error(error);
-            if (msg === null || msg === undefined) { (msg as any) = {}; }
+            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
             msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -207,8 +208,6 @@ export class Message {
             cli._logger.error(error);
         }
         this.Send(cli);
-        // if(this.replyto !== null && this.replyto !== undefined && this.replyto !== "") {  
-        // }
     }
     async CloseQueue(cli: WebSocketClient) {
         this.Reply();
@@ -220,7 +219,7 @@ export class Message {
             await cli.CloseConsumer(msg.queuename);
         } catch (error) {
             cli._logger.error(error);
-            if (msg === null || msg === undefined) { (msg as any) = {}; }
+            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
             msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -255,7 +254,7 @@ export class Message {
             msg.result = await Config.db.query(msg.query, msg.projection, msg.top, msg.skip, msg.orderby, msg.collectionname, jwt);
         } catch (error) {
             cli._logger.error(error);
-            if (msg === null || msg === undefined) { (msg as any) = {}; }
+            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
             msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -276,7 +275,7 @@ export class Message {
             if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
             msg.result = await Config.db.aggregate(msg.aggregates, msg.collectionname, jwt);
         } catch (error) {
-            if (msg === null || msg === undefined) { (msg as any) = {}; }
+            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
             msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -294,15 +293,13 @@ export class Message {
         try {
             msg = InsertOneMessage.assign(this.data);
             var jwt = cli.jwt;
-            var w: number = 0;
-            var j: boolean = false;
-            if ((msg.w as any) !== undefined && (msg.w as any) !== null) w = msg.w;
-            if ((msg.j as any) !== undefined && (msg.j as any) !== null) j = msg.j;
+            if (Util.IsNullEmpty(msg.jwt)) { jwt = msg.jwt; }
+            if (Util.IsNullEmpty(msg.w as any)) { msg.w = 0; }
+            if (Util.IsNullEmpty(msg.j as any)) { msg.j = false; }
 
-            if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
-            msg.result = await Config.db.InsertOne(msg.item, msg.collectionname, w, j, jwt);
+            msg.result = await Config.db.InsertOne(msg.item, msg.collectionname, msg.w, msg.j, jwt);
         } catch (error) {
-            if (msg === null || msg === undefined) { (msg as any) = {}; }
+            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
             msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -319,12 +316,12 @@ export class Message {
         var msg: UpdateOneMessage<Base>
         try {
             msg = UpdateOneMessage.assign(this.data);
-            if (msg.jwt === null || msg.jwt === undefined) { msg.jwt = cli.jwt; }
-            if ((msg.w as any) === undefined || (msg.w as any) === null) msg.w = 0;
-            if ((msg.j as any) === undefined || (msg.j as any) === null) msg.j = false;
+            if (Util.IsNullEmpty(msg.jwt)) { jwt = msg.jwt; }
+            if (Util.IsNullEmpty(msg.w as any)) { msg.w = 0; }
+            if (Util.IsNullEmpty(msg.j as any)) { msg.j = false; }
             msg = await Config.db.UpdateOne(msg);
         } catch (error) {
-            if (msg === null || msg === undefined) { (msg as any) = {}; }
+            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
             msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -341,12 +338,12 @@ export class Message {
         var msg: UpdateManyMessage<Base>;
         try {
             msg = UpdateManyMessage.assign(this.data);
-            if (msg.jwt === null || msg.jwt === undefined) { msg.jwt = cli.jwt; }
-            if ((msg.w as any) === undefined || (msg.w as any) === null) msg.w = 0;
-            if ((msg.j as any) === undefined || (msg.j as any) === null) msg.j = false;
+            if (Util.IsNullEmpty(msg.jwt)) { jwt = msg.jwt; }
+            if (Util.IsNullEmpty(msg.w as any)) { msg.w = 0; }
+            if (Util.IsNullEmpty(msg.j as any)) { msg.j = false; }
             msg = await Config.db.UpdateMany(msg);
         } catch (error) {
-            if (msg === null || msg === undefined) { (msg as any) = {}; }
+            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
             msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -364,12 +361,12 @@ export class Message {
         var msg: InsertOrUpdateOneMessage<Base>
         try {
             msg = InsertOrUpdateOneMessage.assign(this.data);
-            if (msg.jwt === null || msg.jwt === undefined) { msg.jwt = cli.jwt; }
-            if ((msg.w as any) === undefined || (msg.w as any) === null) msg.w = 0;
-            if ((msg.j as any) === undefined || (msg.j as any) === null) msg.j = false;
+            if (Util.IsNullEmpty(msg.jwt)) { jwt = msg.jwt; }
+            if (Util.IsNullEmpty(msg.w as any)) { msg.w = 0; }
+            if (Util.IsNullEmpty(msg.j as any)) { msg.j = false; }
             msg = await Config.db.InsertOrUpdateOne(msg);
         } catch (error) {
-            if (msg === null || msg === undefined) { (msg as any) = {}; }
+            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
             msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -390,7 +387,7 @@ export class Message {
             if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
             await Config.db.DeleteOne(msg._id, msg.collectionname, jwt);
         } catch (error) {
-            if (msg === null || msg === undefined) { (msg as any) = {}; }
+            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
             msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -411,7 +408,7 @@ export class Message {
             if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
             msg.result = await Config.db.MapReduce(msg.map, msg.reduce, msg.finalize, msg.query, msg.out, msg.collectionname, msg.scope, jwt);
         } catch (error) {
-            if (msg === null || msg === undefined) { (msg as any) = {}; }
+            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
             msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -517,7 +514,7 @@ export class Message {
                 await user.Save(TokenUser.rootToken());
             }
         } catch (error) {
-            if (msg === null || msg === undefined) { (msg as any) = {}; }
+            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
             msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -559,7 +556,7 @@ export class Message {
 
 
         } catch (error) {
-            if (msg === null || msg === undefined) { (msg as any) = {}; }
+            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
             msg.error = error.toString();
             cli._logger.error(error);
         }

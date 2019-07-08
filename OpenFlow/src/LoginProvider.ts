@@ -20,6 +20,7 @@ import { Audit } from "./Audit";
 
 import * as saml from "saml20";
 import { SamlProvider } from "./SamlProvider";
+import { Util } from "./Util";
 
 interface IVerifyFunction { (error: any, profile: any): void; }
 export class Provider extends Base {
@@ -186,7 +187,7 @@ export class LoginProvider {
         if (LoginProvider.login_providers.length === 0) { hasLocal = true; }
         LoginProvider.login_providers.forEach(async (provider) => {
             try {
-                if (LoginProvider._providers[provider.id] === undefined) {
+                if (Util.IsNullUndefinded(LoginProvider._providers[provider.id])) {
                     if (provider.provider === "saml") {
                         var metadata: any = await Config.parse_federation_metadata(provider.saml_federation_metadata);
                         LoginProvider._providers[provider.id] =
@@ -204,7 +205,7 @@ export class LoginProvider {
             }
         });
         if (hasLocal === true) {
-            if (LoginProvider._providers.local === undefined) {
+            if (Util.IsNullUndefinded(LoginProvider._providers.local)) {
                 LoginProvider._providers.local = LoginProvider.CreateLocalStrategy(app, baseurl);
             }
         }
@@ -225,7 +226,7 @@ export class LoginProvider {
             passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),
             function (req: any, res: any): void {
                 var originalUrl: any = req.cookies.originalUrl;
-                if (originalUrl !== undefined && originalUrl !== null) {
+                if (!Util.IsNullEmpty(originalUrl)) {
                     res.cookie("originalUrl", "", { expires: new Date() });
                     res.redirect(originalUrl);
                 } else {
@@ -310,7 +311,7 @@ export class LoginProvider {
             passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),
             function (req: any, res: any): void {
                 var originalUrl: any = req.cookies.originalUrl;
-                if (originalUrl !== undefined && originalUrl !== null) {
+                if (!Util.IsNullEmpty(originalUrl)) {
                     res.cookie("originalUrl", "", { expires: new Date() });
                     res.redirect(originalUrl);
                 } else {
@@ -351,7 +352,7 @@ export class LoginProvider {
                     return done(null, tuser);
                 }
                 user = await User.FindByUsername(username);
-                if (user === undefined || user === null) {
+                if (Util.IsNullUndefinded(user)) {
                     if (!Config.allow_user_registration) {
                         return done(null, false);
                     }
@@ -382,7 +383,7 @@ export class LoginProvider {
             passport.authenticate("local", { failureRedirect: "/" }),
             function (req: any, res: any): void {
                 var originalUrl: any = req.cookies.originalUrl;
-                if (originalUrl !== undefined && originalUrl !== null) {
+                if (!Util.IsNullEmpty(originalUrl)) {
                     res.cookie("originalUrl", "", { expires: new Date() });
                     res.redirect(originalUrl);
                 } else {
@@ -397,20 +398,22 @@ export class LoginProvider {
         if (username !== null && username != undefined) { username = username.toLowerCase(); }
         this._logger.debug("verify: " + username);
         var _user: User = await User.FindByUsernameOrFederationid(username);
-        if (_user === undefined || _user === null) {
+
+        if (Util.IsNullUndefinded(_user)) {
             var createUser: boolean = Config.auto_create_users;
             if (Config.auto_create_domains.map(x => username.endsWith(x)).length == -1) { createUser = false; }
             if (createUser) {
                 _user = new User(); _user.name = profile.name;
-                if (profile["http://schemas.microsoft.com/identity/claims/displayname"] !== undefined) {
+                if (!Util.IsNullEmpty(profile["http://schemas.microsoft.com/identity/claims/displayname"])) {
                     _user.name = profile["http://schemas.microsoft.com/identity/claims/displayname"];
                 }
                 _user.username = username;
+                if (Util.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty, please add displayname to claims", null); return; }
                 _user = await Config.db.InsertOne(_user, "users", 0, false, TokenUser.rootToken());
             }
         }
 
-        if (_user === undefined || _user === null) {
+        if (Util.IsNullUndefinded(_user)) {
             Audit.LoginFailed(username, "weblogin", "saml", "");
             done("unknown user " + username, null); return;
         }
@@ -428,21 +431,22 @@ export class LoginProvider {
         if (username !== null && username != undefined) { username = username.toLowerCase(); }
         this._logger.debug("verify: " + username);
         var _user: User = await User.FindByUsernameOrFederationid(username);
-        if (_user === undefined || _user === null) {
+        if (Util.IsNullUndefinded(_user)) {
             var createUser: boolean = Config.auto_create_users;
             if (Config.auto_create_domains.map(x => username.endsWith(x)).length == -1) { createUser = false; }
             if (createUser) {
                 var jwt: string = TokenUser.rootToken();
                 _user = new User(); _user.name = profile.name;
-                if (profile.displayName !== undefined) { _user.name = profile.displayName; }
+                if (!Util.IsNullEmpty(profile.displayName)) { _user.name = profile.displayName; }
                 _user.username = username;
+                if (Util.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty.", null); return; }
                 _user = await Config.db.InsertOne(_user, "users", 0, false, jwt);
                 var users: Role = await Role.FindByNameOrId("users", jwt);
                 users.AddMember(_user);
                 await users.Save(jwt)
             }
         }
-        if (_user === undefined || _user === null) {
+        if (Util.IsNullUndefinded(_user)) {
             Audit.LoginFailed(username, "weblogin", "google", "");
             done("unknown user " + username, null); return;
         }
