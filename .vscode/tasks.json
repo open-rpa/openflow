@@ -6,7 +6,7 @@
         {
             "label": "openflow-tsc-watch",
             "type": "typescript",
-            "tsconfig": "../../../c:/code/OpenFlow/OpenFlow/tsconfig.json",
+            "tsconfig": "OpenFlow/tsconfig.json",
             "option": "watch",
             "problemMatcher": [
                 "$tsc-watch"
@@ -15,7 +15,7 @@
         {
             "label": "openflownodered-tsc-watch",
             "type": "typescript",
-            "tsconfig": "../../../c:/code/OpenFlow/OpenFlowNodeRED/tsconfig.json",
+            "tsconfig": "OpenFlowNodeRED/tsconfig.json",
             "option": "watch",
             "problemMatcher": [
                 "$tsc-watch"

@@ -32,8 +32,8 @@ module openflow {
                 this.gettoken();
                 // cleanup();
             });
-            ['log', 'warn', 'debug', 'error'].forEach((methodName) => {
-                //['error2'].forEach((methodName) => {
+            //['log', 'warn', 'debug', 'error'].forEach((methodName) => {
+            ['error2'].forEach((methodName) => {
                 const originalMethod = console[methodName];
                 console[methodName] = (...args) => {
                     let initiator = 'unknown place';
@@ -319,12 +319,12 @@ module openflow {
     }
     export class JSONfn {
         public static stringify(obj) {
-            return JSON.stringify(obj, function(key, value) {
+            return JSON.stringify(obj, function (key, value) {
                 return (typeof value === 'function') ? value.toString() : value;
             });
         }
         public static parse(str) {
-            return JSON.parse(str, function(key, value) {
+            return JSON.parse(str, function (key, value) {
                 if (typeof value != 'string') return value;
                 return (value.substring(0, 8) == 'function') ? eval('(' + value + ')') : value;
             });
@@ -377,7 +377,7 @@ module openflow {
         return new Promise((resolve) => {
             try {
                 if (locale === null || locale === undefined) { return resolve(); }
-                locale.ready(lib).then(function() {
+                locale.ready(lib).then(function () {
                     var value = locale.getString(lib + "." + key);
                     if (value !== null && value !== undefined && value !== "") {
                         resolve(value);
@@ -419,7 +419,7 @@ module openflow {
             this.locale.ready(lib).then(() => {
                 var value: string = null;
                 if (ngModelCtrl !== null) {
-                    ngModelCtrl.$formatters.push(function(value) {
+                    ngModelCtrl.$formatters.push(function (value) {
                         return calculateValue(value);
                     });
                     // value = calculateValue(ngModelCtrl.$viewValue);
@@ -427,7 +427,7 @@ module openflow {
                     // ngModelCtrl.$render();
                 } else {
                     var hashCode = (s: string) => {
-                        return s.split("").reduce(function(a, b) { a = ((a << 5) - a) + b.charCodeAt(0); return a & a }, 0);
+                        return s.split("").reduce(function (a, b) { a = ((a << 5) - a) + b.charCodeAt(0); return a & a }, 0);
                     }
                     var watchFunction = () => {
                         if (attr.value !== null && attr.value !== undefined) {
@@ -536,7 +536,7 @@ module openflow {
         async DeleteOne(model: any): Promise<any> {
             this.loading = true;
             await this.api.Delete(this.collection, model);
-            this.models = this.models.filter(function(m: any): boolean { return m._id !== model._id; });
+            this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }

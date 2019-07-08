@@ -5,6 +5,7 @@ import { Base } from "./base";
 import { TokenUser } from "./TokenUser";
 import { User } from "./User";
 import { Config } from "./Config";
+import { Util } from "./Util";
 
 export class Crypt {
     static encryption_key: string = Config.aes_secret.substr(0, 32); // must be 256 bytes (32 characters)
@@ -41,10 +42,11 @@ export class Crypt {
             }
         });
     }
-
     static async compare(password: string, passwordhash: string): Promise<boolean> {
         return new Promise<boolean>(async (resolve, reject) => {
             try {
+                if (Util.IsNullEmpty(password)) { return reject("Password cannot be empty"); }
+                if (Util.IsNullEmpty(passwordhash)) { return reject("Passwordhash cannot be empty"); }
                 bcrypt.compare(password, passwordhash, async (error, res) => {
                     if (error) { return reject(error); }
                     resolve(res);
@@ -54,14 +56,12 @@ export class Crypt {
             }
         });
     }
-
     static createToken(item: User | TokenUser, expiresIn: string): string {
         var user: TokenUser = new TokenUser(item);
         var token: string = jsonwebtoken.sign({ data: user }, Crypt.encryption_key,
             { expiresIn: expiresIn }); // 60 (seconds), "2 days", "10h", "7d"
         return token;
     }
-
     static verityToken(token: string): TokenUser {
         var o: any = jsonwebtoken.verify(token, Crypt.encryption_key);
         o.data = TokenUser.assign(o.data);

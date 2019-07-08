@@ -6,6 +6,7 @@ import { DatabaseConnection } from "./DatabaseConnection";
 import { Provider } from "./LoginProvider";
 import { TokenUser } from "./TokenUser";
 import { Logger } from "./Logger";
+import { Util } from "./Util";
 
 export class Config {
     public static db: DatabaseConnection = null;
@@ -72,7 +73,7 @@ export class Config {
         // if anything throws, we retry
         var metadata: any = await retry(async bail => {
             var reader: any = await fetch({ url });
-            if (reader === null || reader === undefined) { bail(new Error("Failed getting result")); return; }
+            if (Util.IsNullUndefinded(reader)) { bail(new Error("Failed getting result")); return; }
             var config: any = toPassportConfig(reader);
             // we need this, for Office 365 :-/
             if (reader.signingCerts && reader.signingCerts.length > 1) {

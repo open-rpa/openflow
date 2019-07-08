@@ -7,6 +7,7 @@ import { Crypt } from "./Crypt";
 import { SigninMessage } from "./Messages/SigninMessage";
 import { SocketMessage } from "./SocketMessage";
 import { Message } from "./Messages/Message";
+import { Util } from "./Util";
 
 export class WebSocketServer {
     private static _logger: winston.Logger;
@@ -38,7 +39,7 @@ export class WebSocketServer {
         let count: number = WebSocketServer._clients.length;
         WebSocketServer._clients = WebSocketServer._clients.filter(function (cli: WebSocketClient): boolean {
             try {
-                if (cli.jwt !== null && cli.jwt !== undefined) {
+                if (!Util.IsNullEmpty(cli.jwt)) {
                     var tuser = Crypt.verityToken(cli.jwt);
                     var payload = Crypt.decryptToken(cli.jwt);
                     var clockTimestamp = Math.floor(Date.now() / 1000);

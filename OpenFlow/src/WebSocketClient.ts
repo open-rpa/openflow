@@ -15,6 +15,7 @@ import { UpdateOneMessage } from "./Messages/UpdateOneMessage";
 import { DeleteOneMessage } from "./Messages/DeleteOneMessage";
 import { Base } from "./base";
 import { UpdateManyMessage } from "./Messages/UpdateManyMessage";
+import { Util } from "./Util";
 
 interface IHashTable<T> {
     [key: string]: T;
@@ -90,7 +91,8 @@ export class WebSocketClient {
     }
     public async CreateConsumer(queuename: string): Promise<void> {
         var autoDelete: boolean = false;
-        if (queuename === null || queuename === undefined || queuename === "") { queuename = "web." + Math.random().toString(36).substr(2, 9); autoDelete = true; }
+
+        if (Util.IsNullEmpty(queuename)) { queuename = "web." + Math.random().toString(36).substr(2, 9); autoDelete = true; }
         var consumer = new amqp_consumer(this._logger, Config.amqp_url, queuename);
         consumer.OnMessage = this.OnMessage.bind(this);
         this.consumers.push(consumer);
@@ -120,7 +122,7 @@ export class WebSocketClient {
         }
     }
     public async sendToQueue(msg: QueueMessage) {
-        if (msg.queuename === null || msg.queuename === undefined || msg.queuename === "") { throw new Error("sendToQueue, queuename is mandatory") }
+        if (Util.IsNullEmpty(msg.queuename)) { throw new Error("sendToQueue, queuename is mandatory") }
         if (this.consumers.length === 0) { throw new Error("No consumers for client available to send message through") }
         var result = this.consumers[0].sendToQueue(msg.queuename, msg.correlationId, { payload: msg.data, jwt: this.jwt });
     }
@@ -155,6 +157,8 @@ export class WebSocketClient {
             return true;
         } catch (error) {
             this._logger.error("WebSocketclient::WebSocket error encountered " + error);
+            this._receiveQueue = [];
+            this._sendQueue = [];
             this.CloseConsumers();
             return false;
         }
@@ -180,7 +184,7 @@ export class WebSocketClient {
                 } else {
                     var buffer: string = "";
                     msgs.forEach(msg => {
-                        if (msg.data !== null && msg.data !== undefined) { buffer += msg.data; }
+                        if (!Util.IsNullUndefinded(msg.data)) { buffer += msg.data; }
                     });
                     this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
                     var result: Message = Message.frommessage(first, buffer);
@@ -201,7 +205,7 @@ export class WebSocketClient {
             this._sendQueue = this._sendQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
         });
         if (this._receiveQueue.length > 25 || this._sendQueue.length > 25) {
-            if (this.user !== null && this.user !== undefined) {
+            if (!Util.IsNullUndefinded(this.user)) {
                 this._logger.debug("[" + this.user.username + "] WebSocketclient::ProcessQueue receiveQueue: " + this._receiveQueue.length + " sendQueue: " + this._sendQueue.length);
             }
         }
@@ -209,27 +213,27 @@ export class WebSocketClient {
     public async Send<T>(message: Message): Promise<T> {
         return new Promise<T>(async (resolve, reject) => {
             this._Send(message, ((msg) => {
-                if (msg.error !== null && msg.error !== undefined) { return reject(msg.error); }
+                if (!Util.IsNullUndefinded(msg.error)) { return reject(msg.error); }
                 resolve(msg);
             }).bind(this));
         });
     }
     private _Send(message: Message, cb: QueuedMessageCallback): void {
         var messages: string[] = this.chunkString(message.data, 500);
-        if (messages === null || messages === undefined || messages.length === 0) {
+        if (Util.IsNullUndefinded(messages) || messages.length === 0) {
             var singlemessage: SocketMessage = SocketMessage.frommessage(message, "", 1, 0);
-            if (message.replyto === null || message.replyto === undefined) {
+            if (Util.IsNullEmpty(message.replyto)) {
                 this.messageQueue[singlemessage.id] = new QueuedMessage(singlemessage, cb);
             }
             this._sendQueue.push(singlemessage);
             return;
         }
-        if (message.id === null || message.id === undefined) { message.id = Math.random().toString(36).substr(2, 9); }
+        if (Util.IsNullEmpty(message.id)) { message.id = Math.random().toString(36).substr(2, 9); }
         for (let i: number = 0; i < messages.length; i++) {
             var _message: SocketMessage = SocketMessage.frommessage(message, messages[i], messages.length, i);
             this._sendQueue.push(_message);
         }
-        if (message.replyto === null || message.replyto === undefined) {
+        if (Util.IsNullEmpty(message.replyto)) {
             this.messageQueue[message.id] = new QueuedMessage(message, cb);
         }
         // setTimeout(() => {
@@ -238,14 +242,10 @@ export class WebSocketClient {
         this.ProcessQueue();
     }
     public chunkString(str: string, length: number): string[] {
-        if (str === null || str === undefined) { return null; }
+        if (Util.IsNullEmpty(str)) { return null; }
         // tslint:disable-next-line: quotemark
         return str.match(new RegExp('.{1,' + length + '}', 'g'));
     }
-
-
-
-
     async Queue(data: string, replyTo: string, correlationId: string, queuename: string): Promise<any[]> {
         var d: any = JSON.parse(data);
         var q: QueueMessage = new QueueMessage();
@@ -253,17 +253,12 @@ export class WebSocketClient {
         q.error = d.error;
         q.correlationId = correlationId; q.queuename = queuename;
         let m: Message = Message.fromcommand("queuemessage");
-        if (q.correlationId === undefined || q.correlationId === null || q.correlationId === "") { q.correlationId = m.id; }
+        if (Util.IsNullEmpty(q.correlationId)) { q.correlationId = m.id; }
         m.data = JSON.stringify(q);
         q = await this.Send<QueueMessage>(m);
         if ((q as any).command == "error") throw new Error(q.data);
         return q.data;
     }
-
-
-
-
-
 
     async Query<T extends Base>(collection: string, query: any, projection: any = null, orderby: any = { _created: -1 }, top: number = 500, skip: number = 0): Promise<any[]> {
         var q: QueryMessage<T> = new QueryMessage<T>();

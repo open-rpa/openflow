@@ -1,5 +1,6 @@
 import * as winston from "winston";
 import * as amqplib from "amqplib";
+import { Util } from "./Util";
 
 
 interface IHashTable<T> {
@@ -80,7 +81,7 @@ export class amqp_rpc_publisher {
     OnMessage(sender: amqp_rpc_publisher, msg: amqplib.ConsumeMessage): void {
         sender._logger.info("OnMessage " + msg.content.toString());
         var corr: string = msg.properties.correlationId;
-        if (this.activecalls[corr] !== null && this.activecalls[corr] !== undefined) {
+        if (!Util.IsNullUndefinded(this.activecalls[corr])) {
             this.activecalls[corr].resolve(msg.content.toString());
             this.activecalls[corr] = null;
         } else {
