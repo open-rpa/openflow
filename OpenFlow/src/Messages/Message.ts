@@ -163,8 +163,6 @@ export class Message {
         var msg: RegisterQueueMessage<Base>
         try {
             msg = RegisterQueueMessage.assign(this.data);
-            var jwt = cli.jwt;
-            if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
             await cli.CreateConsumer(msg.queuename);
         } catch (error) {
             cli._logger.error(error);
@@ -214,8 +212,6 @@ export class Message {
         var msg: CloseQueueMessage<Base>
         try {
             msg = CloseQueueMessage.assign(this.data);
-            var jwt = cli.jwt;
-            if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
             await cli.CloseConsumer(msg.queuename);
         } catch (error) {
             cli._logger.error(error);
@@ -249,9 +245,8 @@ export class Message {
         var msg: QueryMessage<Base>
         try {
             msg = QueryMessage.assign(this.data);
-            var jwt = cli.jwt;
-            if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
-            msg.result = await Config.db.query(msg.query, msg.projection, msg.top, msg.skip, msg.orderby, msg.collectionname, jwt);
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            msg.result = await Config.db.query(msg.query, msg.projection, msg.top, msg.skip, msg.orderby, msg.collectionname, msg.jwt);
         } catch (error) {
             cli._logger.error(error);
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -271,9 +266,8 @@ export class Message {
         var msg: AggregateMessage<Base>
         try {
             msg = AggregateMessage.assign(this.data);
-            var jwt = cli.jwt;
-            if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
-            msg.result = await Config.db.aggregate(msg.aggregates, msg.collectionname, jwt);
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            msg.result = await Config.db.aggregate(msg.aggregates, msg.collectionname, msg.jwt);
         } catch (error) {
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
             msg.error = error.toString();
@@ -292,12 +286,11 @@ export class Message {
         var msg: InsertOneMessage<Base>
         try {
             msg = InsertOneMessage.assign(this.data);
-            var jwt = cli.jwt;
-            if (Util.IsNullEmpty(msg.jwt)) { jwt = msg.jwt; }
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (Util.IsNullEmpty(msg.w as any)) { msg.w = 0; }
             if (Util.IsNullEmpty(msg.j as any)) { msg.j = false; }
 
-            msg.result = await Config.db.InsertOne(msg.item, msg.collectionname, msg.w, msg.j, jwt);
+            msg.result = await Config.db.InsertOne(msg.item, msg.collectionname, msg.w, msg.j, msg.jwt);
         } catch (error) {
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
             msg.error = error.toString();
@@ -316,7 +309,7 @@ export class Message {
         var msg: UpdateOneMessage<Base>
         try {
             msg = UpdateOneMessage.assign(this.data);
-            if (Util.IsNullEmpty(msg.jwt)) { jwt = msg.jwt; }
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (Util.IsNullEmpty(msg.w as any)) { msg.w = 0; }
             if (Util.IsNullEmpty(msg.j as any)) { msg.j = false; }
             msg = await Config.db.UpdateOne(msg);
@@ -338,7 +331,7 @@ export class Message {
         var msg: UpdateManyMessage<Base>;
         try {
             msg = UpdateManyMessage.assign(this.data);
-            if (Util.IsNullEmpty(msg.jwt)) { jwt = msg.jwt; }
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (Util.IsNullEmpty(msg.w as any)) { msg.w = 0; }
             if (Util.IsNullEmpty(msg.j as any)) { msg.j = false; }
             msg = await Config.db.UpdateMany(msg);
@@ -361,7 +354,7 @@ export class Message {
         var msg: InsertOrUpdateOneMessage<Base>
         try {
             msg = InsertOrUpdateOneMessage.assign(this.data);
-            if (Util.IsNullEmpty(msg.jwt)) { jwt = msg.jwt; }
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (Util.IsNullEmpty(msg.w as any)) { msg.w = 0; }
             if (Util.IsNullEmpty(msg.j as any)) { msg.j = false; }
             msg = await Config.db.InsertOrUpdateOne(msg);
@@ -383,9 +376,8 @@ export class Message {
         var msg: DeleteOneMessage
         try {
             msg = DeleteOneMessage.assign(this.data);
-            var jwt = cli.jwt;
-            if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
-            await Config.db.DeleteOne(msg._id, msg.collectionname, jwt);
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            await Config.db.DeleteOne(msg._id, msg.collectionname, msg.jwt);
         } catch (error) {
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
             msg.error = error.toString();
@@ -404,9 +396,8 @@ export class Message {
         var msg: MapReduceMessage<any>
         try {
             msg = MapReduceMessage.assign(this.data);
-            var jwt = cli.jwt;
-            if (msg.jwt != null && msg.jwt != undefined) { jwt = msg.jwt; }
-            msg.result = await Config.db.MapReduce(msg.map, msg.reduce, msg.finalize, msg.query, msg.out, msg.collectionname, msg.scope, jwt);
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            msg.result = await Config.db.MapReduce(msg.map, msg.reduce, msg.finalize, msg.query, msg.out, msg.collectionname, msg.scope, msg.jwt);
         } catch (error) {
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
             msg.error = error.toString();

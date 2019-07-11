@@ -188,8 +188,15 @@ module openflow {
         async Query(collection: string, query: any, projection: any = null, orderby: any = { _created: -1 }, top: number = 500, skip: number = 0): Promise<any[]> {
             var q: QueryMessage = new QueryMessage();
             q.collectionname = collection; q.query = query;
+            q.query = JSON.stringify(query, (key, value) => {
+                if (value instanceof RegExp)
+                    return ("__REGEXP " + value.toString());
+                else
+                    return value;
+            });
             q.projection = projection; q.orderby = orderby; q.top = top; q.skip = skip;
             var msg: Message = new Message(); msg.command = "query"; msg.data = JSON.stringify(q);
+
             q = await this.WebSocketClient.Send<QueryMessage>(msg);
             return q.result;
         }
@@ -477,6 +484,8 @@ module openflow {
         public autorefreshpromise: any = null;
         public preloadData: any = null;
         public postloadData: any = null;
+        public searchstring: string = "";
+        public searchfields: string[] = ["name"];
 
         public static $inject = [
             "$scope",
@@ -501,16 +510,41 @@ module openflow {
             if (this.preloadData != null) {
                 this.preloadData();
             }
-            this.models = await this.api.Query(this.collection, this.basequery, this.baseprojection, this.orderby);
+            var query = this.basequery;
+            if (this.searchstring !== "") {
+                var finalor = [];
+                for (var i = 0; i < this.searchfields.length; i++) {
+                    var newq: any = {};
+                    // exact match case sensitive
+                    // newq[this.searchfields[i]] = this.searchstring;
+                    // exact match case insensitive
+                    newq[this.searchfields[i]] = new RegExp(["^", this.searchstring, "$"].join(""), "i");
+
+                    // exact match string contains
+                    newq[this.searchfields[i]] = new RegExp([this.searchstring].join(""), "i");
+
+                    finalor.push(newq);
+                }
+                if (Object.keys(query).length == 0) {
+                    query = { $or: finalor.concat() };
+                } else {
+                    query = { $and: [query, { $or: finalor.concat() }] };
+                }
+            }
+            this.models = await this.api.Query(this.collection, query, this.baseprojection, this.orderby);
             this.loading = false;
             if (this.autorefresh) {
-                if (this.autorefreshpromise == null) {
-                    this.autorefreshpromise = this.$interval(() => {
-                        this.loadData();
-                    }, this.autorefreshinterval);
-                    this.$scope.$on('$destroy', () => {
-                        this.$interval.cancel(this.autorefreshpromise);
-                    });
+                if (this.models.length > 100) {
+                    console.warn("Disabling auto refresh, result has more than 100 entries");
+                } else {
+                    if (this.autorefreshpromise == null) {
+                        this.autorefreshpromise = this.$interval(() => {
+                            this.loadData();
+                        }, this.autorefreshinterval);
+                        this.$scope.$on('$destroy', () => {
+                            this.$interval.cancel(this.autorefreshpromise);
+                        });
+                    }
                 }
             }
             if (this.postloadData != null) {
@@ -539,6 +573,10 @@ module openflow {
             this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        async Search() {
+            console.log("Search");
+            await this.loadData();
         }
     }
 

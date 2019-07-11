@@ -1,7 +1,17 @@
-<div class="starter-template">
+<div class="row">
   <h1 translate lib="web">sitename</h1>
-  <p class="lead"></p>
+  <p class="col-md-7 lead"></p>
+
+  <div class="form-group col-sm-3 form-horizontal">
+    <label class="sr-only">Filter</label>
+    <div class="input-group unframed-addons">
+      <div class="input-group-addon"><i class="fas fa-search"></i></div>
+      <input ng-model="ctrl.searchstring" ng-change="ctrl.Search()" class="form-control input-md"
+        ng-model-options="{debounce: 400}" />
+    </div>
+  </div>
 </div>
+
 
 <table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;">
   <thead class="thead-dark">
