@@ -865,6 +865,7 @@ export class DatabaseConnection {
                 delete original._modifiedby;
                 delete original._modifiedbyid;
                 delete original._modified;
+                delete original.lastseen;
                 if (original._version != undefined && original._version != null) {
                     _version = original._version + 1;
                 }
@@ -887,6 +888,7 @@ export class DatabaseConnection {
             delete item._modifiedbyid;
             delete item._modified;
             delete item._updatereason;
+            delete item.lastseen;
 
             // if (original != null && _version > 0 && delta_collections.indexOf(collectionname) > -1) {
             if (original != null && _version > 0) {

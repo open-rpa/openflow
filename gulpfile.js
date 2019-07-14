@@ -55,6 +55,7 @@ gulp.task("compose", shell.task([
     'docker push cloudhack/openflownodered:edge',       //'docker push cloudhack/openflownodered:' + version,
     'docker push cloudhack/openflownodered:' + version,       //'docker push cloudhack/openflownodered:' + version,
     'echo "compile OpenFlow"',
+    'npx webpack',
     'tsc -p OpenFlow/tsconfig.json',
     'echo "Build cloudhack/openflow"',
     'docker build -t cloudhack/openflow:edge .',
