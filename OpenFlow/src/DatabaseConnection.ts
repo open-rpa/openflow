@@ -894,23 +894,26 @@ export class DatabaseConnection {
             if (original != null && _version > 0) {
                 delta = jsondiffpatch.diff(original, item);
                 if (delta == undefined || delta == null) return 0;
-                var deltahist = {
-                    _acl: _acl,
-                    _type: _type,
-                    _modified: _modified,
-                    _modifiedby: _modifiedby,
-                    _modifiedbyid: _modifiedbyid,
-                    _created: _modified,
-                    _createdby: _modifiedby,
-                    _createdbyid: _modifiedbyid,
-                    name: item.name,
-                    id: item._id,
-                    item: original,
-                    delta: delta,
-                    _version: _version,
-                    reason: reason
+                var keys = Object.keys(delta);
+                if (keys.length > 1) {
+                    var deltahist = {
+                        _acl: _acl,
+                        _type: _type,
+                        _modified: _modified,
+                        _modifiedby: _modifiedby,
+                        _modifiedbyid: _modifiedbyid,
+                        _created: _modified,
+                        _createdby: _modifiedby,
+                        _createdbyid: _modifiedbyid,
+                        name: item.name,
+                        id: item._id,
+                        item: original,
+                        delta: delta,
+                        _version: _version,
+                        reason: reason
+                    }
+                    await this.db.collection(collectionname + '_hist').insertOne(deltahist);
                 }
-                await this.db.collection(collectionname + '_hist').insertOne(deltahist);
             }
             else {
                 var fullhist = {
