@@ -100,6 +100,7 @@ module openflow {
         }
         public queue: string;
         public payload: any;
+        public values: any;
         public jwt: string;
         public state: string;
         public form: string;

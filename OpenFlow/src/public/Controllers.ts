@@ -1177,7 +1177,15 @@ module openflow {
                 if (res.length > 0) { this.model = res[0]; } else { console.error(this.id + " workflow instances not found!"); return; }
                 if (this.model.form !== "") {
                     var res = await this.api.Query("forms", { _id: this.model.form }, null, { _created: -1 }, 1);
-                    if (res.length > 0) { this.form = res[0]; } else { console.error(this.id + " form not found!"); return; }
+                    if (res.length > 0) { this.form = res[0]; } else {
+                        if (this.model.state == "completed") {
+                            this.$location.path("/main");
+                            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                            return;
+                        } else {
+                            console.error(this.id + " form not found! " + this.model.state); return;
+                        }
+                    }
                 } else {
                     console.debug("Model contains no form");
                 }
@@ -1237,6 +1245,7 @@ module openflow {
                 this.form.formData = JSON.parse((this.form.formData as any));
             }
             for (var i = 0; i < this.form.formData.length; i++) {
+                console.log(this.form.formData[i]);
                 var value = this.model.payload[this.form.formData[i].name];
                 if (value == undefined || value == null) { value = ""; }
                 this.form.formData[i].userData = [value];
@@ -1247,6 +1256,15 @@ module openflow {
                     value = this.model.payload[this.form.formData[i].label];
                     if (value == undefined || value == null) { value = ""; }
                     this.form.formData[i].label = value;
+                }
+                if (this.model.values[this.form.formData[i].name] !== null && this.model.values[this.form.formData[i].name] !== undefined) {
+                    console.log("set values for " + this.form.formData[i].name);
+                    value = this.model.values[this.form.formData[i].name];
+                    console.log(value);
+                    if (value == undefined || value == null) { value = []; }
+                    this.form.formData[i].values = value;
+                } else {
+                    console.log("No values for " + this.form.formData[i].name);
                 }
             }
             var formRenderOpts = {

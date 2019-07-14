@@ -96,6 +96,7 @@ export class workflow_in_node {
             } catch (error) {
             }
             result.payload = data.payload;
+            result.values = data.values;
             if (data.payload._id !== null && data.payload._id !== undefined && data.payload._id !== "") {
                 var res = await NoderedUtil.Query("workflow_instances", { "_id": data.payload._id }, null, null, 1, 0, data.jwt);
                 if (res.length == 0) {
@@ -191,6 +192,7 @@ export class workflow_out_node {
                 if (typeof msg.payload === 'string' || msg.payload instanceof String) {
                     msg.payload = { data: msg.payload };
                 }
+
                 if (msg._id !== null && msg._id !== undefined && msg._id !== "") {
                     var res = await NoderedUtil._UpdateOne("workflow_instances", null, msg, 1, false, msg.jwt);
                 }
@@ -204,6 +206,7 @@ export class workflow_out_node {
                 }
                 //data.error = msg.error;
                 data.payload = msg.payload;
+                data.values = msg.values;
                 data.jwt = msg.jwt;
                 data.payload._id = msg._id;
                 msg.amqpacknowledgment(JSON.stringify(data));
