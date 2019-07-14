@@ -1258,13 +1258,9 @@ module openflow {
                     this.form.formData[i].label = value;
                 }
                 if (this.model.values[this.form.formData[i].name] !== null && this.model.values[this.form.formData[i].name] !== undefined) {
-                    console.log("set values for " + this.form.formData[i].name);
                     value = this.model.values[this.form.formData[i].name];
-                    console.log(value);
                     if (value == undefined || value == null) { value = []; }
                     this.form.formData[i].values = value;
-                } else {
-                    console.log("No values for " + this.form.formData[i].name);
                 }
             }
             var formRenderOpts = {
