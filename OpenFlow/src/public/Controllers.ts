@@ -377,6 +377,7 @@ module openflow {
             this.collection = "workflow_instances"
             this.basequery = { state: { $ne: "completed" }, form: { $exists: true } };
             WebSocketClient.onSignedin((_user: TokenUser) => {
+                console.log(_user);
                 this.loadData();
             });
         }
