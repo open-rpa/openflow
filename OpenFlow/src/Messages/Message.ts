@@ -487,6 +487,7 @@ export class Message {
                     var items = await Config.db.query({ _id: msg.impersonate }, null, 1, 0, null, "users", msg.jwt);
                     if (items.length == 0) throw new Error("Permission denied, impersonating " + msg.impersonate);
                     user = User.assign(items[0] as User);
+                    await user.DecorateWithRoles();
                     // Check we have update rights
                     await user.Save(msg.jwt);
                     tuser = new TokenUser(user);
