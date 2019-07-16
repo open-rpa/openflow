@@ -93,6 +93,7 @@ module openflow {
             console.debug("RPAWorkflowsCtrl");
             this.collection = "openrpa";
             this.basequery = { _type: "workflow" };
+            this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
             WebSocketClient.onSignedin((user: TokenUser) => {
                 this.loadData();
             });
@@ -167,7 +168,7 @@ module openflow {
                     }
                 }
                 workflow.chart = chart;
-
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
