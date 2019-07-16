@@ -25,18 +25,14 @@ module openflow {
             this._type = "provider";
         }
     }
-
     export class Role extends Base {
-
         public members: Rolemember[] = [];
         constructor(name: string) {
             super();
             this.name = name;
             this._type = "role";
         }
-
     }
-
     export class TokenUser extends Base {
         public roles: Rolemember[] = [];
         public newpassword: string;
@@ -48,7 +44,6 @@ module openflow {
             this.name = name;
             this._type = "user";
         }
-
     }
     export class Rolemember {
         constructor(name: string, _id: string) {

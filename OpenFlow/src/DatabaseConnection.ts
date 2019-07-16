@@ -855,6 +855,7 @@ export class DatabaseConnection {
         var _acl = item._acl;
         var _type = item._type;
         var reason = item._updatereason;
+        var lastseen = item.lastseen;
         try {
             var _skip_array: string[] = Config.skip_history_collections.split(",");
             var skip_array: string[] = [];
@@ -914,8 +915,7 @@ export class DatabaseConnection {
                     }
                     await this.db.collection(collectionname + '_hist').insertOne(deltahist);
                 }
-            }
-            else {
+            } else {
                 var fullhist = {
                     _acl: _acl,
                     _type: _type,
@@ -936,6 +936,7 @@ export class DatabaseConnection {
             item._modifiedby = _modifiedby;
             item._modifiedbyid = _modifiedbyid;
             item._modified = _modified;
+            item.lastseen = lastseen;
         } catch (error) {
             this._logger.error(error);
         }
