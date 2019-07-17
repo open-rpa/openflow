@@ -848,6 +848,12 @@ export class DatabaseConnection {
     async SaveDiff(collectionname: string, original: any, item: any) {
         if (item._type == 'instance' && collectionname == 'workflows') return 0;
         if (item._type == 'instance' && collectionname == 'workflows') return 0;
+        if (item.skiphistory === true || item.skiphistory === "true") {
+            if (item._version === undefined || item._version === null) {
+                item._version = 0;
+            }
+            if (Config.allow_skiphistory) return item._version;
+        }
         var _modified = item._modified;
         var _modifiedby = item._modifiedby;
         var _modifiedbyid = item._modifiedbyid;

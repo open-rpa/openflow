@@ -44,6 +44,7 @@ export class Config {
 
     public static aes_secret: string = Config.getEnv("aes_secret", "");
     public static skip_history_collections: string = Config.getEnv("skip_history_collections", "");
+    public static allow_skiphistory: boolean = Config.parseBoolean(Config.getEnv("allow_skiphistory", "true"));
 
     public static baseurl(): string {
         var result: string = "";
