@@ -1502,7 +1502,7 @@ module openflow {
             this.autorefreshinterval = 10000;
             console.debug("HistoryCtrl");
             this.id = $routeParams.id;
-            this.basequery = { id: this.id };
+            this.basequery = { _id: this.id };
             this.collection = $routeParams.collection;
             this.baseprojection = null;
             this.postloadData = this.ProcessData;
@@ -1513,14 +1513,26 @@ module openflow {
         async ProcessData() {
             // this.models = await this.api.Query(this.collection, { _id: this.id }, null, null);
             this.model = this.models[0];
+            var keys = Object.keys(this.model);
+            keys.forEach(key => {
+                if (key.startsWith("_")) {
+                    delete this.model[key];
+                }
+            });
             this.models = await this.api.Query(this.collection + "_hist", { id: this.id }, null, { _version: -1 });
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         CompareNow(model) {
             var modal: any = $("#exampleModal");
             modal.modal()
-            // console.log(model.item);
             // var delta = jsondiffpatch.diff(this.model, model.item);
+            var keys = Object.keys(model.item);
+            keys.forEach(key => {
+                if (key.startsWith("_")) {
+                    delete model.item[key];
+                }
+            });
+
             var delta = jsondiffpatch.diff(model.item, this.model);
             document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(delta, this.model);
         }
