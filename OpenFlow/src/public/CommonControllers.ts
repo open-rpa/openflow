@@ -537,7 +537,8 @@ module openflow {
                 if (this.models.length > 100) {
                     console.warn("Disabling auto refresh, result has more than 100 entries");
                 } else {
-                    if (this.autorefreshpromise == null) {
+                    if (this.autorefreshpromise == null && this.searchstring === "") {
+                        //if (this.autorefreshpromise == null) {
                         this.autorefreshpromise = this.$interval(() => {
                             this.loadData();
                         }, this.autorefreshinterval);

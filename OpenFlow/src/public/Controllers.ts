@@ -94,16 +94,16 @@ module openflow {
             this.collection = "openrpa";
             this.basequery = { _type: "workflow" };
             this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
+            this.postloadData = this.processdata;
             WebSocketClient.onSignedin((user: TokenUser) => {
                 this.loadData();
             });
         }
-        async loadData(): Promise<void> {
+        async processdata() {
             this.loading = true;
             this.charts = [];
-            var chart: chartset = null;
-            this.models = await this.api.Query(this.collection, this.basequery, null, null);
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            var chart: chartset = null;
             for (var i = 0; i < this.models.length; i++) {
                 var workflow = this.models[i] as any;
                 var d = new Date();
@@ -136,15 +136,6 @@ module openflow {
                         }
                         return reducedValue;
                     }, { _type: "workflowinstance", WorkflowId: workflow._id, "_created": { "$gte": new Date(d.toISOString()) } }, { inline: 1 }, null);
-
-
-
-                // // {$where : function() { return this.date.getMonth() == 11} }
-                // var q = { _type: "workflowinstance", WorkflowId: workflow._id, "_created": { "$gte": new Date(d.toISOString()) } };
-                // // var q = { _type: "workflowinstance", WorkflowId: workflow._id, "_created": { "$gte": new Date("2010-04-30T00:00:00.000Z") } };
-
-                // workflow.instances = await this.api.Query("openrpa_instances", q, null, null, 100);
-
 
                 chart = new chartset();
                 chart.charttype = "line"
@@ -1302,6 +1293,7 @@ module openflow {
             this.autorefresh = true;
             this.autorefreshinterval = 5000;
             console.debug("jslogCtrl");
+            this.searchfields = ["_createdby", "host", "message"];
             this.collection = "jslog";
             this.basequery = {};
             this.orderby = { _created: -1 };

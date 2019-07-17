@@ -1,6 +1,16 @@
-<div class="starter-template">
-  <h1 translate lib="web">entities</h1>
+<div class="row">
+  <h1 translate lib="web">forms</h1>
+  <p class="col-md-5 lead"></p>
+  <div class="form-group col-sm-3 form-horizontal">
+    <label class="sr-only">Filter</label>
+    <div class="input-group unframed-addons">
+      <div class="input-group-addon"><i class="fas fa-search"></i></div>
+      <input ng-model="ctrl.searchstring" ng-change="ctrl.Search()" class="form-control input-md"
+        ng-model-options="{debounce: 400}" />
+    </div>
+  </div>
 </div>
+
 <div class="row">
   <div class=" col-md-6 text-right">
     <a ng-href="#/EditForm" class="btn btn-info" translate lib="web">addform</a>
