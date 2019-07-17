@@ -89,6 +89,7 @@ Send payload as data to a robot, requesting it to run the selected Workflow
         },
         oneditprepare: function () {
             $.getJSON('workflow_forms', function (data) {
+                $('#node-input-form-select').empty();
                 $('#node-input-form-select').append($('<option>', {
                     value: null,
                     text: "none"

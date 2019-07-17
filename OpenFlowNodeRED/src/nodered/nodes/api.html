@@ -472,6 +472,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
     <div class="form-row">
         <label for="node-input-targetid"><i class="fa fa-tasks"></i> Target</label>
         <select id="node-input-targetid-select">
+            <option>Loading...</option>
         </select>
         <input id="node-input-targetid" type="hidden">
     </div>
@@ -518,6 +519,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 
 
             $.getJSON('api_roles', function (data) {
+                $('#node-input-targetid-select').empty();
                 $.each(data, function (i, ele) {
                     $('#node-input-targetid-select').append($('<option>', {
                         value: ele._id,
@@ -554,6 +556,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
     <div class="form-row">
         <label for="node-input-targetid"><i class="fa fa-tasks"></i> Target</label>
         <select id="node-input-targetid-select">
+            <option>Loading...</option>
         </select>
         <input id="node-input-targetid" type="hidden">
     </div>
@@ -600,6 +603,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 
 
             $.getJSON('api_roles', function (data) {
+                $('#node-input-targetid-select').empty();
                 $.each(data, function (i, ele) {
                     $('#node-input-targetid-select').append($('<option>', {
                         value: ele._id,

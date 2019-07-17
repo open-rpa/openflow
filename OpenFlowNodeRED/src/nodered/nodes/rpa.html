@@ -2,6 +2,7 @@
     <div class="form-row">
         <label ><i class="fa fa-tag"></i> Detector</label>
         <select id="node-input-queue-select">
+            <option>Loading...</option>
         </select>
         <input id="node-input-queue" type="hidden">
     </div>
@@ -37,6 +38,7 @@ Active everytime a trigger gets triggered on a robot
         },
         oneditprepare: function () {
             $.getJSON('rpa_detectors', function (data) {
+                $('#node-input-targetid-select').empty();
                 $.each(data, function (i, ele) {
                     $('#node-input-queue-select').append($('<option>', {
                         value: ele._id,
@@ -63,12 +65,14 @@ Active everytime a trigger gets triggered on a robot
     <div class="form-row">
         <label ><i class="fa fa-tag"></i> Robot</label>
         <select id="node-input-queue-select">
+            <option>Loading...</option>
         </select>
         <input id="node-input-queue" type="hidden">
     </div>
     <div class="form-row">
         <label ><i class="fa fa-tag"></i> Workflow</label>
         <select id="node-input-workflow-select">
+            <option>Loading...</option>
         </select>
         <input id="node-input-workflow" type="hidden">
     </div>
@@ -106,6 +110,7 @@ Send payload as data to a robot, requesting it to run the selected Workflow
         },
         oneditprepare: function () {
             $.getJSON('rpa_robots', function (data) {
+                $('#node-input-queue-select').empty();
                 $('#node-input-queue-select').append($('<option>', {
                     value: null,
                     text: "none"
@@ -127,8 +132,12 @@ Send payload as data to a robot, requesting it to run the selected Workflow
                 alert("error:" + jqXHR.responseText);
             });
             var reloadWorkflows = function (firstrun) {
+                $('#node-input-workflow-select').append($('<option>', {
+                    value: null,
+                    text: "Loading..."
+                }));
                 $.getJSON('rpa_workflows', { queue: $('#node-input-queue-select').val() }, function (data) {
-                    $('#node-input-workflow-select').find('option').remove()
+                    $('#node-input-workflow-select').empty();
                     $.each(data, function (i, ele) {
                         $('#node-input-workflow-select').append($('<option>', {
                             value: ele._id,
