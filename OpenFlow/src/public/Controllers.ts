@@ -1259,10 +1259,12 @@ module openflow {
                     if (value == undefined || value == null) { value = ""; }
                     this.form.formData[i].label = value;
                 }
-                if (this.model.values[this.form.formData[i].name] !== null && this.model.values[this.form.formData[i].name] !== undefined) {
-                    value = this.model.values[this.form.formData[i].name];
-                    if (value == undefined || value == null) { value = []; }
-                    this.form.formData[i].values = value;
+                if (this.model.values !== null && this.model.values !== undefined) {
+                    if (this.model.values[this.form.formData[i].name] !== null && this.model.values[this.form.formData[i].name] !== undefined) {
+                        value = this.model.values[this.form.formData[i].name];
+                        if (value == undefined || value == null) { value = []; }
+                        this.form.formData[i].values = value;
+                    }
                 }
             }
             var formRenderOpts = {

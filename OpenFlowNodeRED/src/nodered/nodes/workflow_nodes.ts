@@ -112,6 +112,7 @@ export class workflow_in_node {
                 result._modifiedby = res[0]._modifiedby;
                 result._modifiedbyid = res[0]._modifiedbyid;
                 result.payload = this.nestedassign(res[0].payload, result.payload.payload);
+                result.workflow = this.workflow._id;
 
                 // result = this.nestedassign(res[0], result);
                 // result.payload = Object.assign(res[0].payload, result.payload);
