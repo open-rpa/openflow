@@ -848,7 +848,7 @@ export class DatabaseConnection {
     async SaveDiff(collectionname: string, original: any, item: any) {
         if (item._type == 'instance' && collectionname == 'workflows') return 0;
         if (item._type == 'instance' && collectionname == 'workflows') return 0;
-        if (item.skiphistory === true || item.skiphistory === "true") {
+        if (item._skiphistory === true || item._skiphistory === "true") {
             if (item._version === undefined || item._version === null) {
                 item._version = 0;
             }
