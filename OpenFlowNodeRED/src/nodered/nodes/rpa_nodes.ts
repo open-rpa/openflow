@@ -167,30 +167,39 @@ export class rpa_workflow_node {
 }
 
 export async function get_rpa_detectors(req, res) {
-    //var token = await NoderedUtil.GetToken(null, null);
-    var rawAssertion = req.user.getAssertionXml();
-    var token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
-    var result: any[] = await NoderedUtil.Query('openrpa', { _type: "detector" },
-        { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
-    res.json(result);
+    try {
+        var rawAssertion = req.user.getAssertionXml();
+        var token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
+        var result: any[] = await NoderedUtil.Query('openrpa', { _type: "detector" },
+            { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
+        res.json(result);
+    } catch (error) {
+        res.status(500).json(error);
+    }
 }
 export async function get_rpa_robots(req, res) {
-    //var token = await NoderedUtil.GetToken(null, null);
-    var rawAssertion = req.user.getAssertionXml();
-    var token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
-    var result: any[] = await NoderedUtil.Query('users', { _type: "user" },
-        { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
-    res.json(result);
+    try {
+        var rawAssertion = req.user.getAssertionXml();
+        var token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
+        var result: any[] = await NoderedUtil.Query('users', { _type: "user" },
+            { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
+        res.json(result);
+    } catch (error) {
+        res.status(500).json(error);
+    }
 }
 export async function get_rpa_workflows(req, res) {
-    //var token = await NoderedUtil.GetToken(null, null);
-    var rawAssertion = req.user.getAssertionXml();
-    var token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
-    var q: any = { _type: "workflow" };
-    if (req.query.queue != null && req.query.queue != undefined && req.query.queue != "" && req.query.queue != "none") {
-        q = { _type: "workflow", $or: [{ _createdbyid: req.query.queue }, { _modifiedbyid: req.query.queue }] };
+    try {
+        var rawAssertion = req.user.getAssertionXml();
+        var token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
+        var q: any = { _type: "workflow" };
+        if (req.query.queue != null && req.query.queue != undefined && req.query.queue != "" && req.query.queue != "none") {
+            q = { _type: "workflow", $or: [{ _createdbyid: req.query.queue }, { _modifiedbyid: req.query.queue }] };
+        }
+        var result: any[] = await NoderedUtil.Query('openrpa', q,
+            { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
+        res.json(result);
+    } catch (error) {
+        res.status(500).json(error);
     }
-    var result: any[] = await NoderedUtil.Query('openrpa', q,
-        { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
-    res.json(result);
 }
