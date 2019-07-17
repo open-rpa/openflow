@@ -662,6 +662,7 @@ module openflow {
             console.debug("UsersCtrl");
             this.basequery = { _type: "user" };
             this.collection = "users";
+            this.searchfields = ["name", "username"];
             this.postloadData = this.processData;
             WebSocketClient.onSignedin((user: TokenUser) => {
                 this.loadData();
