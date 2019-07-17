@@ -667,6 +667,7 @@ module openflow {
         ) {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             this.autorefresh = true;
+            this.autorefreshinterval = 10000;
             console.debug("UsersCtrl");
             this.basequery = { _type: "user" };
             this.collection = "users";
@@ -810,6 +811,7 @@ module openflow {
         ) {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             this.autorefresh = true;
+            this.autorefreshinterval = 10000;
             console.debug("RolesCtrl");
             this.basequery = { _type: "role" };
             this.collection = "users";
@@ -997,6 +999,7 @@ module openflow {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             console.debug("EntitiesCtrl");
             this.autorefresh = true;
+            this.autorefreshinterval = 15000;
             this.basequery = {};
             this.collection = $routeParams.collection;
             this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
@@ -1041,6 +1044,8 @@ module openflow {
         ) {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             console.debug("FormsCtrl");
+            this.autorefresh = true;
+            this.autorefreshinterval = 15000;
             this.collection = "forms";
             this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
             WebSocketClient.onSignedin((user: TokenUser) => {
@@ -1295,6 +1300,7 @@ module openflow {
         ) {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             this.autorefresh = true;
+            this.autorefreshinterval = 5000;
             console.debug("jslogCtrl");
             this.collection = "jslog";
             this.basequery = {};
@@ -1500,6 +1506,7 @@ module openflow {
         ) {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             this.autorefresh = true;
+            this.autorefreshinterval = 10000;
             console.debug("HistoryCtrl");
             this.id = $routeParams.id;
             this.basequery = { id: this.id };
