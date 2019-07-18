@@ -2,7 +2,7 @@ import * as crypto from "crypto";
 import { SocketMessage } from "../SocketMessage";
 import { WebSocketClient, QueuedMessage } from "../WebSocketClient";
 import { QueryMessage } from "./QueryMessage";
-import { Base, Rights } from "../base";
+import { Base, Rights, WellknownIds } from "../base";
 import { SigninMessage } from "./SigninMessage";
 import { User } from "../User";
 import { Auth } from "../Auth";
@@ -532,6 +532,12 @@ export class Message {
             var jwt: string = TokenUser.rootToken();
             user = await User.ensureUser(jwt, msg.name, msg.username, null, msg.password);
             msg.user = new TokenUser(user);
+
+            user.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
+            user.removeRight(WellknownIds.admins, [Rights.delete]);
+            user.addRight(user._id, user.name, [Rights.full_control]);
+            user.removeRight(user._id, [Rights.delete]);
+            await user.Save(jwt);
 
             jwt = Crypt.createToken(msg.user, "5m");
             var name = user.username;
