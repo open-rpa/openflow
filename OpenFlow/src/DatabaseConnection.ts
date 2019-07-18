@@ -266,7 +266,15 @@ export class DatabaseConnection {
         j = ((j as any) === 'true' || j === true);
         w = parseInt((w as any));
 
-        item._version = await this.SaveDiff(collectionname, null, item);
+        if (item.hasOwnProperty("_skiphistory")) {
+            delete (item as any)._skiphistory;
+            if (!Config.allow_skiphistory) {
+                item._version = await this.SaveDiff(collectionname, null, item);
+            }
+        } else {
+            item._version = await this.SaveDiff(collectionname, null, item);
+        }
+
 
         // var options:CollectionInsertOneOptions = { writeConcern: { w: parseInt((w as any)), j: j } };
         var options: CollectionInsertOneOptions = { w: w, j: j };
@@ -358,10 +366,24 @@ export class DatabaseConnection {
             if ((hasUser === null || hasUser === undefined) && q.item._acl.length == 0) {
                 q.item.addRight(user._id, user.name, [Rights.full_control]);
             }
-            q.item._version = await this.SaveDiff(q.collectionname, original, q.item);
+            if (q.item.hasOwnProperty("_skiphistory")) {
+                delete (q.item as any)._skiphistory;
+                if (!Config.allow_skiphistory) {
+                    q.item._version = await this.SaveDiff(q.collectionname, original, q.item);
+                }
+            } else {
+                q.item._version = await this.SaveDiff(q.collectionname, original, q.item);
+            }
         } else {
             itemReplace = false;
-            this.SaveUpdateDiff(q, user);
+            if (q.item["$set"] !== null && q.item["$set"] !== undefined) {
+                if (q.item["$set"].hasOwnProperty("_skiphistory")) {
+                    delete q.item["$set"]._skiphistory;
+                    if (Config.allow_skiphistory) this.SaveUpdateDiff(q, user);
+                }
+            } else {
+                this.SaveUpdateDiff(q, user);
+            }
             // var _version = await this.SaveUpdateDiff(q, user);
             // if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };
             // (q.item["$set"])._version = _version;
@@ -848,12 +870,7 @@ export class DatabaseConnection {
     async SaveDiff(collectionname: string, original: any, item: any) {
         if (item._type == 'instance' && collectionname == 'workflows') return 0;
         if (item._type == 'instance' && collectionname == 'workflows') return 0;
-        if (item._skiphistory === true || item._skiphistory === "true") {
-            if (item._version === undefined || item._version === null) {
-                item._version = 0;
-            }
-            if (Config.allow_skiphistory) return item._version;
-        }
+        delete item._skiphistory;
         var _modified = item._modified;
         var _modifiedby = item._modifiedby;
         var _modifiedbyid = item._modifiedbyid;
@@ -942,7 +959,9 @@ export class DatabaseConnection {
             item._modifiedby = _modifiedby;
             item._modifiedbyid = _modifiedbyid;
             item._modified = _modified;
-            item.lastseen = lastseen;
+            if (lastseen !== null && lastseen !== undefined) {
+                item.lastseen = lastseen;
+            }
         } catch (error) {
             this._logger.error(error);
         }
