@@ -60,9 +60,6 @@ export class WebServer {
                 passport.deserializeUser(function (user: any, done: any): void {
                     done(null, user);
                 });
-                var saml = await dashboardAuth.RegisterProvider(this.app, Config.baseurl() + "ui/");
-
-
                 var server: http.Server = null;
                 if (Config.tls_crt != '' && Config.tls_key != '') {
                     var options: any = {

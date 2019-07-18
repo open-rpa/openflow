@@ -53,7 +53,7 @@ export class noderedcontribmiddlewareauth {
                 var result: SigninMessage = await socket.Send<SigninMessage>(msg);
                 if (result.user != null) {
                     var user: TokenUser = TokenUser.assign(result.user);
-                    var allowed = user.roles.filter(x => x.name == "nodered api users");
+                    var allowed = user.roles.filter(x => x.name == "nodered api users" || x.name == Config.noderedadmins);
                     if (allowed.length === 1) {
                         cacheduser = new CachedUser(result.user, result.jwt);
                         this.authorizationCache[req.headers.authorization] = cacheduser;
