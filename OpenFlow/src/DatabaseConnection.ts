@@ -379,7 +379,7 @@ export class DatabaseConnection {
             if (q.item["$set"] !== null && q.item["$set"] !== undefined) {
                 if (q.item["$set"].hasOwnProperty("_skiphistory")) {
                     delete q.item["$set"]._skiphistory;
-                    if (Config.allow_skiphistory) this.SaveUpdateDiff(q, user);
+                    if (!Config.allow_skiphistory) this.SaveUpdateDiff(q, user);
                 }
             } else {
                 this.SaveUpdateDiff(q, user);
