@@ -83,11 +83,23 @@ async function initDatabase(): Promise<boolean> {
         robot_users.removeRight(WellknownIds.admins, [Rights.delete]);
         await robot_users.Save(jwt);
 
-
         if (!admins.IsMember(root._id)) {
             admins.AddMember(root);
             await admins.Save(jwt);
         }
+
+        var filestore_admins: Role = await User.ensureRole(jwt, "filestore admins", WellknownIds.filestore_admins);
+        filestore_admins.AddMember(admins);
+        filestore_admins.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
+        filestore_admins.removeRight(WellknownIds.admins, [Rights.delete]);
+        await filestore_admins.Save(jwt);
+        var filestore_users: Role = await User.ensureRole(jwt, "filestore users", WellknownIds.filestore_users);
+        filestore_users.AddMember(admins);
+        filestore_users.AddMember(users);
+        filestore_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
+        filestore_users.removeRight(WellknownIds.admins, [Rights.delete]);
+        await filestore_users.Save(jwt);
+
         return true;
     } catch (error) {
         logger.error(error);

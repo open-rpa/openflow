@@ -1,5 +1,5 @@
 import {
-    ObjectID, Db, Binary, InsertOneWriteOpResult, DeleteWriteOpResultObject, ObjectId, MapReduceOptions, CollectionInsertOneOptions, UpdateWriteOpResult, WriteOpResult
+    ObjectID, Db, Binary, InsertOneWriteOpResult, DeleteWriteOpResultObject, ObjectId, MapReduceOptions, CollectionInsertOneOptions, UpdateWriteOpResult, WriteOpResult, GridFSBucket
 } from "mongodb";
 import { MongoClient } from "mongodb";
 import { Base, Rights, WellknownIds } from "./base";
@@ -23,7 +23,7 @@ const isoDatePattern = new RegExp(/\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\
 export class DatabaseConnection {
     private mongodburl: string;
     private cli: MongoClient;
-    private db: Db;
+    public db: Db;
     private _logger: winston.Logger;
     private _dbname: string;
     constructor(logger: winston.Logger, mongodburl: string, dbname: string) {
@@ -106,6 +106,7 @@ export class DatabaseConnection {
         if (collectionname === "files") { collectionname = "fs.files"; }
         if (collectionname === "fs.files") {
             _query = { $and: [query, this.getbasequery(jwt, "metadata._acl", [Rights.read])] };
+            projection = null;
         } else {
             if (!collectionname.endsWith("_hist")) {
                 _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
@@ -557,6 +558,21 @@ export class DatabaseConnection {
         }
         return q;
     }
+    private async _DeleteFile(id: string): Promise<string> {
+        return new Promise<string>(async (resolve, reject) => {
+            try {
+                var _id = new ObjectID(id);
+                var bucket = new GridFSBucket(this.db);
+                bucket.delete(_id, (error) => {
+                    if (error) return reject(error);
+                    resolve();
+                })
+            } catch (err) {
+                reject(err);
+            }
+        });
+    }
+
     /**
      * @param  {string} id id of object to delete
      * @param  {string} collectionname collectionname Collection containing item
@@ -577,6 +593,18 @@ export class DatabaseConnection {
         } else {
             _query = { $and: [{ id }, this.getbasequery(jwt, "_acl", [Rights.delete])] };
             //_query = { $and: [{ _id: { $ne: user._id } }, _query] };
+        }
+
+        if (collectionname === "files") { collectionname = "fs.files"; }
+        if (collectionname === "fs.files") {
+            _query = { $and: [{ _id: safeObjectID(id) }, this.getbasequery(jwt, "metadata._acl", [Rights.delete])] };
+            var arr = await this.db.collection(collectionname).find(_query).toArray();
+            if (arr.length == 1) {
+                await this._DeleteFile(id);
+                return;
+            } else {
+                throw Error("item not found!");
+            }
         }
 
 

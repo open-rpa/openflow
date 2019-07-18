@@ -978,7 +978,51 @@ module openflow {
 
 
 
-
+    export class FilesCtrl extends entitiesCtrl<openflow.Base> {
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
+            public WebSocketClient: WebSocketClient,
+            public api: api
+        ) {
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
+            console.debug("EntitiesCtrl");
+            this.autorefresh = true;
+            this.autorefreshinterval = 15000;
+            this.basequery = {};
+            this.collection = "files";
+            this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
+            WebSocketClient.onSignedin((user: TokenUser) => {
+                this.loadData();
+            });
+        }
+        async DeleteOne(model: any): Promise<any> {
+            this.loading = true;
+            await this.api.Delete(this.collection, model);
+            this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        async DeleteMany(): Promise<void> {
+            this.loading = true;
+            var Promises: Promise<DeleteOneMessage>[] = [];
+            var q: DeleteOneMessage = new DeleteOneMessage();
+            this.models.forEach(model => {
+                q.collectionname = this.collection; q._id = (model as any)._id;
+                var msg: Message = new Message(); msg.command = "deleteone"; msg.data = JSON.stringify(q);
+                Promises.push(this.WebSocketClient.Send(msg));
+            });
+            const results: any = await Promise.all(Promises.map(p => p.catch(e => e)));
+            const values: DeleteOneMessage[] = results.filter(result => !(result instanceof Error));
+            var ids: string[] = [];
+            values.forEach((x: DeleteOneMessage) => ids.push(x._id));
+            this.models = this.models.filter(function (m: any): boolean { return ids.indexOf(m._id) === -1; });
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+    }
     export class EntitiesCtrl extends entitiesCtrl<openflow.Base> {
         constructor(
             public $scope: ng.IScope,
