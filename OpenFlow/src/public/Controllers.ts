@@ -992,6 +992,7 @@ module openflow {
             this.autorefresh = true;
             this.autorefreshinterval = 15000;
             this.basequery = {};
+            this.searchfields = ["metadata.name", "metadata.path"];
             this.collection = "files";
             this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
             WebSocketClient.onSignedin((user: TokenUser) => {

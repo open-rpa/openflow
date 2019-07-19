@@ -156,6 +156,9 @@ export class Message {
                 case "savefile":
                     this.SaveFile(cli);
                     break;
+                case "getfile":
+                    this.GetFile(cli);
+                    break;
                 default:
                     this.UnknownCommand(cli);
                     break;
@@ -946,7 +949,6 @@ export class Message {
         this.Reply();
         this.Send(cli);
     }
-
     private async _SaveFile(stream: Stream, filename: string, contentType: string, metadata: Base): Promise<string> {
         return new Promise<string>(async (resolve, reject) => {
             try {
@@ -1020,6 +1022,80 @@ export class Message {
         }
         this.Send(cli);
     }
+    private async _GetFile(stream: Stream, filename: string, contentType: string, metadata: Base): Promise<string> {
+        return new Promise<string>(async (resolve, reject) => {
+            try {
+                var bucket = new GridFSBucket(Config.db.db);
+                let uploadStream = bucket.openUploadStream(filename, { contentType: contentType, metadata: metadata });
+                let id = uploadStream.id;
+                stream.pipe(uploadStream);
+                uploadStream.on('error', function (error) {
+                    reject(error);
+                }).
+                    on('finish', function () {
+                        resolve(id.toString());
+                    });
+            } catch (err) {
+                reject(err);
+            }
+        });
+    }
+    private async GetFile(cli: WebSocketClient): Promise<void> {
+        this.Reply();
+        var msg: SaveFileMessage
+        try {
+            msg = SaveFileMessage.assign(this.data);
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (Util.IsNullEmpty(msg.filename)) throw new Error("Filename is mandatory");
+            if (Util.IsNullEmpty(msg.mimeType)) throw new Error("mimeTypes is mandatory");
+            if (Util.IsNullEmpty(msg.file)) throw new Error("file is mandatory");
+
+            var buf = Buffer.from(msg.file, 'base64');
+            var readable = new Readable();
+            readable._read = () => { }; // _read is required but you can noop it
+            readable.push(buf);
+            readable.push(null);
+            if (msg.metadata == null) { msg.metadata = new Base(); }
+            msg.metadata = Base.assign(msg.metadata);
+            if (Util.IsNullUndefinded(msg.metadata._acl)) { msg.metadata._acl = []; }
+            var user: TokenUser = Crypt.verityToken(msg.jwt);
+            if (!Config.db.hasAuthorization(user, msg.metadata, "create")) { throw new Error("Access denied"); }
+            msg.metadata._createdby = user.name;
+            msg.metadata._createdbyid = user._id;
+            msg.metadata._created = new Date(new Date().toISOString());
+            msg.metadata._modifiedby = user.name;
+            msg.metadata._modifiedbyid = user._id;
+            msg.metadata._modified = msg.metadata._created;
+            if (Util.IsNullEmpty(msg.metadata.name)) {
+                msg.metadata.name = msg.filename;
+            }
+            var hasUser: any = msg.metadata._acl.find(e => e._id === user._id);
+            if ((hasUser === null || hasUser === undefined)) {
+                msg.metadata.addRight(user._id, user.name, [Rights.full_control]);
+            }
+            hasUser = msg.metadata._acl.find(e => e._id === WellknownIds.filestore_admins);
+            if ((hasUser === null || hasUser === undefined)) {
+                msg.metadata.addRight(WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
+            }
+            hasUser = msg.metadata._acl.find(e => e._id === WellknownIds.filestore_users);
+            if ((hasUser === null || hasUser === undefined)) {
+                msg.metadata.addRight(WellknownIds.filestore_users, "filestore users", [Rights.read]);
+            }
+            msg.id = await this._SaveFile(readable, msg.filename, msg.mimeType, msg.metadata);
+        } catch (error) {
+            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            msg.error = error.toString();
+            cli._logger.error(error);
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            cli._logger.error(error);
+        }
+        this.Send(cli);
+    }
+
 }
 
 export class JSONfn {
