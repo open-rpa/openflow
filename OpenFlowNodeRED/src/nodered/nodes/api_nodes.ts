@@ -132,6 +132,18 @@ export class api_get {
             if (NoderedUtil.IsNullEmpty(this.config.top)) { this.config.top = 500; }
             if (NoderedUtil.IsNullEmpty(this.config.skip)) { this.config.skip = 0; }
             if (!NoderedUtil.IsNullEmpty(this.config.orderby) && NoderedUtil.IsString(this.config.orderby)) {
+                if (this.config.orderby.indexOf("{") > -1) {
+                    try {
+                        this.config.orderby = JSON.parse(this.config.orderby);
+                    } catch (error) {
+                        (this as Red).error("Error parsing orderby", error);
+                        // this.node.er
+                        // NoderedUtil.HandleError(this, error);
+                        return;
+                    }
+                }
+            }
+            if (!NoderedUtil.IsNullEmpty(this.config.orderby) && NoderedUtil.IsString(this.config.orderby)) {
                 var field: string = this.config.orderby;
                 this.config.orderby = {};
                 this.config.orderby[field] = -1;
@@ -144,7 +156,14 @@ export class api_get {
             if (NoderedUtil.IsNullEmpty(this.config.projection)) {
                 this.config.projection = {};
             } else if (NoderedUtil.IsString(this.config.projection)) {
-                this.config.projection = JSON.parse(this.config.projection);
+                try {
+                    this.config.projection = JSON.parse(this.config.projection);
+                } catch (error) {
+                    (this as Red).error("Error parsing projection", error);
+                    // this.node.er
+                    // NoderedUtil.HandleError(this, error);
+                    return;
+                }
             }
             if (NoderedUtil.IsNullEmpty(this.config.projection)) { this.config.projection = null; }
 
