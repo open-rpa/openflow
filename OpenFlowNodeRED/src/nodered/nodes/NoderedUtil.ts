@@ -74,7 +74,23 @@ export class NoderedUtil {
     public static async Query(collection: string, query: any, projection: any, orderby: any, top: number, skip: number, jwt: string): Promise<any[]> {
         var q: QueryMessage = new QueryMessage(); q.collectionname = collection;
         q.orderby = orderby; q.projection = projection;
-        q.query = query; q.skip = skip; q.top = top; q.jwt = jwt;
+        //q.query = query;
+        q.query = JSON.stringify(query, (key, value) => {
+            var t = typeof value;
+            console.log("key: " + key + " type: " + t);
+            if (value instanceof RegExp)
+                return ("__REGEXP " + value.toString());
+            else if (t == "object") {
+                if (value.constructor != null && value.constructor.name === "RegExp") {
+                    return ("__REGEXP " + value.toString());
+                }
+                return value;
+            }
+            else
+                return value;
+
+        });
+        q.skip = skip; q.top = top; q.jwt = jwt;
         var _msg: Message = new Message();
         _msg.command = "query"; _msg.data = JSON.stringify(q);
         var result: QueryMessage = await WebSocketClient.instance.Send<QueryMessage>(_msg);
