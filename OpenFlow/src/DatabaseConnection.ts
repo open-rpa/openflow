@@ -244,7 +244,6 @@ export class DatabaseConnection {
             jwt = TokenUser.rootToken();
         }
         var user: TokenUser = Crypt.verityToken(jwt);
-        if (!this.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied"); }
         item._createdby = user.name;
         item._createdbyid = user._id;
         item._created = new Date(new Date().toISOString());
@@ -256,6 +255,7 @@ export class DatabaseConnection {
             item.addRight(user._id, user.name, [Rights.full_control]);
         }
         if (collectionname != "audit") { this._logger.debug("[" + user.username + "][" + collectionname + "] Adding " + item._type + " " + (item.name || item._name) + " to database"); }
+        if (!this.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied"); }
 
         item = this.encryptentity<T>(item);
         if (!item._id) { item._id = new ObjectID().toHexString(); }
