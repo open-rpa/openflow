@@ -987,7 +987,7 @@ export class Message {
             msg.metadata = Base.assign(msg.metadata);
             if (Util.IsNullUndefinded(msg.metadata._acl)) { msg.metadata._acl = []; }
             var user: TokenUser = Crypt.verityToken(msg.jwt);
-            if (!Config.db.hasAuthorization(user, msg.metadata, "create")) { throw new Error("Access denied"); }
+            if (!Config.db.hasAuthorization(user, msg.metadata, Rights.create)) { throw new Error("Access denied"); }
             msg.metadata._createdby = user.name;
             msg.metadata._createdbyid = user._id;
             msg.metadata._created = new Date(new Date().toISOString());

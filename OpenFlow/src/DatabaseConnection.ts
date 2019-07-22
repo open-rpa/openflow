@@ -244,7 +244,7 @@ export class DatabaseConnection {
             jwt = TokenUser.rootToken();
         }
         var user: TokenUser = Crypt.verityToken(jwt);
-        if (!this.hasAuthorization(user, item, "create")) { throw new Error("Access denied"); }
+        if (!this.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied"); }
         item._createdby = user.name;
         item._createdbyid = user._id;
         item._created = new Date(new Date().toISOString());
@@ -322,7 +322,7 @@ export class DatabaseConnection {
         if (q.item === null || q.item === undefined) { throw Error("Cannot update null item"); }
         await this.connect();
         var user: TokenUser = Crypt.verityToken(q.jwt);
-        if (!this.hasAuthorization(user, q.item, "update")) { throw new Error("Access denied"); }
+        if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied"); }
 
         var original: T = null;
         // assume empty query, means full document, else update document
@@ -333,6 +333,7 @@ export class DatabaseConnection {
             }
             original = await this.getbyid<T>(q.item._id, q.collectionname, q.jwt);
             if (!original) { throw Error("item not found!"); }
+            if (!this.hasAuthorization(user, original, Rights.update)) { throw new Error("Access denied"); }
             q.item._modifiedby = user.name;
             q.item._modifiedbyid = user._id;
             q.item._modified = new Date(new Date().toISOString());
@@ -453,7 +454,7 @@ export class DatabaseConnection {
         if (q.item === null || q.item === undefined) { throw Error("Cannot update null item"); }
         await this.connect();
         var user: TokenUser = Crypt.verityToken(q.jwt);
-        if (!this.hasAuthorization(user, q.item, "update")) { throw new Error("Access denied"); }
+        if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied"); }
 
         if (q.collectionname === "users" && q.item._type === "user" && q.item.hasOwnProperty("newpassword")) {
             (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
@@ -542,7 +543,7 @@ export class DatabaseConnection {
         else if (exists.length > 1) {
             throw JSON.stringify(query) + " is not uniqe, more than 1 item in collection matches this";
         }
-        if (!this.hasAuthorization(user, q.item, "update")) { throw new Error("Access denied"); }
+        if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied"); }
         // if (q.item._id !== null && q.item._id !== undefined && q.item._id !== "") {
         if (exists.length == 1) {
             this._logger.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Updating found one in database");
@@ -750,13 +751,13 @@ export class DatabaseConnection {
      * Validated user has rights to perform the requested action ( create is missing! )
      * @param  {TokenUser} user User requesting permission
      * @param  {any} item Item permission is needed on
-     * @param  {string} action Permission wanted (create, update, delete)
+     * @param  {Rights} action Permission wanted (create, update, delete)
      * @returns boolean Is allowed
      */
-    hasAuthorization(user: TokenUser, item: any, action: string): boolean {
+    hasAuthorization(user: TokenUser, item: Base, action: number): boolean {
         if (Config.api_bypass_perm_check) { return true; }
         if (user._id === WellknownIds.root) { return true; }
-        if (action === "create" || action === "delete") {
+        if (action === Rights.create || action === Rights.delete) {
             if (item._type === "role") {
                 if (item.name.toLowerCase() === "users" || item.name.toLowerCase() === "admins" || item.name.toLowerCase() === "workflow") {
                     return false;
@@ -768,22 +769,35 @@ export class DatabaseConnection {
                 }
             }
         }
-        if (action === "update" && item._id === WellknownIds.admins && item.name.toLowerCase() !== "admins") {
+        if (action === Rights.update && item._id === WellknownIds.admins && item.name.toLowerCase() !== "admins") {
             return false;
         }
-        if (action === "update" && item._id === WellknownIds.users && item.name.toLowerCase() !== "users") {
+        if (action === Rights.update && item._id === WellknownIds.users && item.name.toLowerCase() !== "users") {
             return false;
         }
-        if (action === "update" && item._id === WellknownIds.root && item.name.toLowerCase() !== "root") {
+        if (action === Rights.update && item._id === WellknownIds.root && item.name.toLowerCase() !== "root") {
             return false;
         }
-        if (item.userid === user.username || item.userid === user._id || item.user === user.username) {
+        if ((item as any).userid === user.username || (item as any).userid === user._id || (item as any).user === user.username) {
             return true;
         } else if (item._id === user._id) {
-            if (action === "delete") { this._logger.error("[" + user.username + "] hasAuthorization, cannot delete self!"); return false; }
+            if (action === Rights.delete) { this._logger.error("[" + user.username + "] hasAuthorization, cannot delete self!"); return false; }
             return true;
         }
-        return true;
+
+        var a = item._acl.filter(x => x._id == user._id);
+        if (a.length > 0) {
+            let _ace = Ace.assign(a[0]);
+            if (_ace.getBit(action)) return true;
+        }
+        for (var i = 0; i < user.roles.length; i++) {
+            a = item._acl.filter(x => x._id == user.roles[i]._id);
+            if (a.length > 0) {
+                let _ace = Ace.assign(a[0]);
+                if (_ace.getBit(action)) return true;
+            }
+        }
+        return false;
     }
     replaceAll(target, search, replacement) {
         //var target = this;
