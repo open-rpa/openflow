@@ -785,19 +785,22 @@ export class DatabaseConnection {
             return true;
         }
 
-        var a = item._acl.filter(x => x._id == user._id);
-        if (a.length > 0) {
-            let _ace = Ace.assign(a[0]);
-            if (_ace.getBit(action)) return true;
-        }
-        for (var i = 0; i < user.roles.length; i++) {
-            a = item._acl.filter(x => x._id == user.roles[i]._id);
+        if (item._acl != null && item._acl != undefined) {
+            var a = item._acl.filter(x => x._id == user._id);
             if (a.length > 0) {
                 let _ace = Ace.assign(a[0]);
                 if (_ace.getBit(action)) return true;
             }
+            for (var i = 0; i < user.roles.length; i++) {
+                a = item._acl.filter(x => x._id == user.roles[i]._id);
+                if (a.length > 0) {
+                    let _ace = Ace.assign(a[0]);
+                    if (_ace.getBit(action)) return true;
+                }
+            }
+            return false;
         }
-        return false;
+        return true;
     }
     replaceAll(target, search, replacement) {
         //var target = this;
