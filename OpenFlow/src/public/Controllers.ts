@@ -658,7 +658,6 @@ module openflow {
         ) {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             this.autorefresh = true;
-            this.autorefreshinterval = 10000;
             console.debug("UsersCtrl");
             this.basequery = { _type: "user" };
             this.collection = "users";
@@ -803,7 +802,6 @@ module openflow {
         ) {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             this.autorefresh = true;
-            this.autorefreshinterval = 10000;
             console.debug("RolesCtrl");
             this.basequery = { _type: "role" };
             this.collection = "users";
@@ -990,7 +988,6 @@ module openflow {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             console.debug("EntitiesCtrl");
             this.autorefresh = true;
-            this.autorefreshinterval = 15000;
             this.basequery = {};
             this.searchfields = ["metadata.name", "metadata.path"];
             this.collection = "files";
@@ -1036,7 +1033,6 @@ module openflow {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             console.debug("EntitiesCtrl");
             this.autorefresh = true;
-            this.autorefreshinterval = 15000;
             this.basequery = {};
             this.collection = $routeParams.collection;
             this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
@@ -1082,7 +1078,6 @@ module openflow {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             console.debug("FormsCtrl");
             this.autorefresh = true;
-            this.autorefreshinterval = 15000;
             this.collection = "forms";
             this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
             WebSocketClient.onSignedin((user: TokenUser) => {
@@ -1184,6 +1179,7 @@ module openflow {
         public form: openflow.Form;
         public instanceid: string;
         public myid: string;
+        public submitbutton: string;
 
         constructor(
             public $scope: ng.IScope,
@@ -1269,9 +1265,9 @@ module openflow {
                     } else {
                         this.model.payload[userData[i].name] = val;
                     }
-
                 }
             }
+            this.model.payload.submitbutton = this.submitbutton;
             var ele = $('.render-wrap');
             ele.hide();
             console.debug("SendOne: " + this.workflow._id + " / " + this.workflow.queue);
@@ -1289,22 +1285,34 @@ module openflow {
                 this.form.formData = JSON.parse((this.form.formData as any));
             }
             for (var i = 0; i < this.form.formData.length; i++) {
-                console.log(this.form.formData[i]);
                 var value = this.model.payload[this.form.formData[i].name];
                 if (value == undefined || value == null) { value = ""; }
-                this.form.formData[i].userData = [value];
+                if (value != "" || this.form.formData[i].type != "button") {
+                    // console.log("0:" + this.form.formData[i].label + " -> " + value);
+                    this.form.formData[i].userData = [value];
+                }
                 if (Array.isArray(value)) {
+                    // console.log("1:" + this.form.formData[i].userData + " -> " + value);
                     this.form.formData[i].userData = value;
                 }
                 if (this.model.payload[this.form.formData[i].label] !== null && this.model.payload[this.form.formData[i].label] !== undefined) {
                     value = this.model.payload[this.form.formData[i].label];
                     if (value == undefined || value == null) { value = ""; }
-                    this.form.formData[i].label = value;
+                    if (this.form.formData[i].type != "button") {
+                        // console.log("2:" + this.form.formData[i].label + " -> " + value);
+                        this.form.formData[i].label = value;
+                    } else if (value != "") {
+                        // console.log("2button:" + this.form.formData[i].label + " -> " + value);
+                        this.form.formData[i].label = value;
+                    } else {
+                        // console.log("skip " + this.form.formData[i].label);
+                    }
                 }
                 if (this.model.values !== null && this.model.values !== undefined) {
                     if (this.model.values[this.form.formData[i].name] !== null && this.model.values[this.form.formData[i].name] !== undefined) {
                         value = this.model.values[this.form.formData[i].name];
                         if (value == undefined || value == null) { value = []; }
+                        // console.log("3:" + this.form.formData[i].values + " -> " + value);
                         this.form.formData[i].values = value;
                     }
                 }
@@ -1319,6 +1327,73 @@ module openflow {
             if (this.model.userData !== null && this.model.userData !== undefined && this.model.userData !== "") {
                 formRenderOpts.formData = this.model.userData;
             }
+            var concatHashToString = function (hash) {
+                var emptyStr = '';
+                $.each(hash, function (index) {
+                    emptyStr += ' ' + hash[index].name + '="' + hash[index].value + '"';
+                });
+                return emptyStr;
+            }
+            var replaceElem = function (targetId, replaceWith) {
+                $(targetId).each(function () {
+                    var attributes = concatHashToString(this.attributes);
+                    var replacingStartTag = '<' + replaceWith + attributes + '>';
+                    var replacingEndTag = '</' + replaceWith + '>';
+                    $(this).replaceWith(replacingStartTag + $(this).html() + replacingEndTag);
+                });
+            }
+            var replaceElementTag = function (targetSelector, newTagString) {
+                $(targetSelector).each(function () {
+                    var newElem = $(newTagString, { html: $(this).html() });
+                    $.each(this.attributes, function () {
+                        newElem.attr(this.name, this.value);
+                    });
+                    $(this).replaceWith(newElem);
+                });
+            }
+
+            // 
+            // replaceElem('div', 'span');
+            setTimeout(() => {
+                // $('button[type="button"]').contents().unwrap().wrap('<input/>');
+                // replaceElem('button', 'input');
+                // replaceElementTag('button[type="button"]', '<input></input>');
+
+                console.log("Attach buttons! 2");
+                // $('button[type="button"]').bind("click", function () {
+
+                $('button[type="button"]').each(function () {
+                    var cur: any = $(this)[0];
+                    console.log("set submit");
+                    console.log(cur);
+                    cur.type = "submit";
+                });
+                // $('input[type="button"]').click(function (evt) {
+                //     // var input = $("<input>").attr("type", "hidden").attr("name", evt.target.id).val((evt.target as any).value);
+                //     // $('#workflowform').append(input);
+                //     // $('button[type="button"]').replaceWith('<input>' + $('target').html() +'</newTag>')
+                //     // evt.preventDefault();
+                //     console.log(evt);
+                //     console.log("button clicked!");
+                //     $('#workflowform').submit();
+                // });
+                // $('button[type="button"]').click(function (evt) {
+                //     var input = $("<input>").attr("type", "hidden").attr("name", "clicked").val(evt.target.id);
+                //     $('#workflowform').append(input);
+                //     $('#workflowform').submit();
+                // });
+
+                var click = function (evt) {
+                    this.submitbutton = evt.target.id;
+                    // console.log(this);
+                    // var input = $("<input>").attr("type", "hidden").attr("name", "clicked").val(evt.target.id);
+                    // $('#workflowform').append(input);
+                    // evt.preventDefault();
+                    // $('#workflowform').submit();
+                }
+                $('button[type="submit"]').click(click.bind(this));
+
+            }, 500);
             ele = $('.render-wrap');
             ele.show();
             this.formRender = ele.formRender(formRenderOpts);
@@ -1337,7 +1412,6 @@ module openflow {
         ) {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             this.autorefresh = true;
-            this.autorefreshinterval = 5000;
             console.debug("jslogCtrl");
             this.searchfields = ["_createdby", "host", "message"];
             this.collection = "jslog";
@@ -1544,7 +1618,6 @@ module openflow {
         ) {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             this.autorefresh = true;
-            this.autorefreshinterval = 10000;
             console.debug("HistoryCtrl");
             this.id = $routeParams.id;
             this.basequery = { _id: this.id };

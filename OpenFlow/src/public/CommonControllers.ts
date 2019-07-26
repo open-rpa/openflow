@@ -480,7 +480,7 @@ module openflow {
         public models: T[] = [];
         public orderby: any = { _created: -1 };
         public autorefresh: boolean = false;
-        public autorefreshinterval: number = 5000;
+        public autorefreshinterval: number = 30 * 1000;
         public autorefreshpromise: any = null;
         public preloadData: any = null;
         public postloadData: any = null;
