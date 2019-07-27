@@ -34,6 +34,8 @@ import { SaveFileMessage } from "./SaveFileMessage";
 import { Readable, Stream } from "stream";
 import { GridFSBucket, ObjectID, Db } from "mongodb";
 import { GetFileMessage } from "./GetFileMessage";
+import { ListCollectionsMessage } from "./ListCollectionsMessage";
+import { DropCollectionMessage } from "./DropCollectionMessage";
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 export class Message {
     public id: string;
@@ -88,6 +90,12 @@ export class Message {
                     this.Ping(cli);
                     break;
                 case "pong":
+                    break;
+                case "listcollections":
+                    this.ListCollections(cli);
+                    break;
+                case "dropcollection":
+                    this.DropCollection(cli);
                     break;
                 case "query":
                     this.Query(cli);
@@ -242,7 +250,7 @@ export class Message {
     }
     private UnknownCommand(cli: WebSocketClient): void {
         this.Reply("error");
-        this.data = "Unknown command";
+        this.data = "Unknown command " + this.command;
         cli._logger.error(this.data);
         this.Send(cli);
     }
@@ -250,6 +258,54 @@ export class Message {
         this.Reply("pong");
         this.Send(cli);
     }
+    private async ListCollections(cli: WebSocketClient): Promise<void> {
+        this.Reply();
+        var msg: ListCollectionsMessage
+        try {
+            msg = ListCollectionsMessage.assign(this.data);
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            msg.result = await Config.db.ListCollections(msg.jwt);
+            if (msg.includehist !== true) {
+                msg.result = msg.result.filter(x => !x.name.endsWith("_hist"));
+            }
+            msg.result = msg.result.filter(x => x.name != "fs.chunks");
+            msg.result = msg.result.filter(x => x.name != "fs.files");
+        } catch (error) {
+            cli._logger.error(error);
+            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            msg.error = error.toString();
+            cli._logger.error(error);
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            cli._logger.error(error);
+        }
+        this.Send(cli);
+    }
+    private async DropCollection(cli: WebSocketClient): Promise<void> {
+        this.Reply();
+        var msg: DropCollectionMessage
+        try {
+            msg = DropCollectionMessage.assign(this.data);
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            await Config.db.DropCollection(msg.collectionname, msg.jwt);
+        } catch (error) {
+            cli._logger.error(error);
+            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            msg.error = error.toString();
+            cli._logger.error(error);
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            cli._logger.error(error);
+        }
+        this.Send(cli);
+    }
+
     private async Query(cli: WebSocketClient): Promise<void> {
         this.Reply();
         var msg: QueryMessage<Base>

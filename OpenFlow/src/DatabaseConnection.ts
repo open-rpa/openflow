@@ -31,6 +31,17 @@ export class DatabaseConnection {
         this._dbname = dbname;
         this.mongodburl = mongodburl;
     }
+    static toArray(iterator): Promise<any[]> {
+        return new Promise((resolve, reject) => {
+            iterator.toArray((err, res) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(res);
+                }
+            });
+        });
+    }
     /**
      * Connect to MongoDB
      * @returns Promise<void>
@@ -45,7 +56,17 @@ export class DatabaseConnection {
         });
         this.db = this.cli.db(this._dbname);
     }
-
+    async ListCollections(jwt: string): Promise<any[]> {
+        var result = await DatabaseConnection.toArray(this.db.listCollections());
+        Crypt.verityToken(jwt);
+        return result;
+    }
+    async DropCollection(collectionname: string, jwt: string): Promise<void> {
+        var user: TokenUser = Crypt.verityToken(jwt);
+        if (!user.hasrolename("admins")) throw new Error("Access denied");
+        if (["workflow", "entities", "config", "audit", "jslog", "openrpa", "nodered", "openrpa_instances", "forms", "workflow_instances", "users"].indexOf(collectionname) > -1) throw new Error("Access denied");
+        await this.db.dropCollection(collectionname);
+    }
 
     /**
      * Send a query to the database.

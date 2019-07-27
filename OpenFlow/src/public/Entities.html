@@ -16,20 +16,11 @@
   <div class="col-md-6">
     <div className="btn-group-justified">
       <div class="btn-group" role="group">
-        <a ng-href="#/Entities/entities" class="btn btn-info" ng-disabled="ctrl.loading==true" translate
-          lib="web">entities</a>
-        <a ng-href="#/Entities/config" class="btn btn-info" ng-disabled="ctrl.loading==true" translate
-          lib="web">config</a>
-        <a ng-href="#/Entities/nodered" class="btn btn-info" ng-disabled="ctrl.loading==true" translate
-          lib="web">nodered</a>
-        <a ng-href="#/Entities/openrpa" class="btn btn-info" ng-disabled="ctrl.loading==true" translate
-          lib="web">openrpa</a>
-        <a ng-href="#/Entities/users" class="btn btn-info" ng-disabled="ctrl.loading==true" translate
-          lib="web">users</a>
-        <a ng-href="#/Entities/audit" class="btn btn-info" ng-disabled="ctrl.loading==true" translate
-          lib="web">audit</a>
-        <a ng-href="#/Entities/workflow_instances" class="btn btn-info" ng-disabled="ctrl.loading==true" translate
-          lib="web">wfinst</a>
+        <select ng-model="ctrl.collection" ng-options="item.name as item.name for item in ctrl.collections"
+          ng-change="ctrl.SelectCollection()">
+        </select>
+        <a href ng-click="ctrl.DropCollection()" class="btn btn-secondary" translate lib="web"
+          ng-show="ctrl.WebSocketClient.user.username=='az'"" ng-disabled=" ctrl.loading==true">Drop</a>
         <a href ng-click="ctrl.DeleteMany()" class="btn btn-secondary" translate lib="web"
           ng-show="ctrl.WebSocketClient.user.username=='az'"" ng-disabled=" ctrl.loading==true">empty</a>
       </div>

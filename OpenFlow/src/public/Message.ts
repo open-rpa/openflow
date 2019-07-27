@@ -60,6 +60,16 @@ module openflow {
             return Object.assign(new SigninMessage(), o);
         }
     }
+    export class ListCollectionsMessage {
+        public error: string;
+        public jwt: string;
+        public result: any;
+    }
+    export class DropCollectionMessage {
+        public error: string;
+        public jwt: string;
+        public collectionname: string;
+    }
     export class QueryMessage {
         public error: string;
 
@@ -308,7 +318,9 @@ module openflow {
                         break;
                 }
             } catch (error) {
+                console.log(this);
                 console.error(error);
+
             }
         }
         public async Send(cli: WebSocketClient): Promise<void> {

@@ -369,7 +369,6 @@ module openflow {
             this.collection = "workflow_instances"
             this.basequery = { state: { $ne: "completed" }, form: { $exists: true } };
             WebSocketClient.onSignedin((_user: TokenUser) => {
-                console.log(_user);
                 this.loadData();
             });
         }
@@ -1022,6 +1021,7 @@ module openflow {
         }
     }
     export class EntitiesCtrl extends entitiesCtrl<openflow.Base> {
+        public collections: any;
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -1036,9 +1036,22 @@ module openflow {
             this.basequery = {};
             this.collection = $routeParams.collection;
             this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
-            WebSocketClient.onSignedin((user: TokenUser) => {
+            WebSocketClient.onSignedin(async (user: TokenUser) => {
+                this.collections = await api.ListCollections();
                 this.loadData();
             });
+        }
+        SelectCollection() {
+            // this.$location.path("/Entities/" + this.collection);
+            //this.$location.hash("#/Entities/" + this.collection);
+            // if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            this.loadData();
+        }
+        async DropCollection() {
+            await this.api.DropCollection(this.collection);
+            this.collections = await this.api.ListCollections();
+            this.collection = "entities";
+            this.loadData();
         }
         async DeleteOne(model: any): Promise<any> {
             this.loading = true;
@@ -1049,6 +1062,7 @@ module openflow {
         }
         async DeleteMany(): Promise<void> {
             this.loading = true;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
             var Promises: Promise<DeleteOneMessage>[] = [];
             var q: DeleteOneMessage = new DeleteOneMessage();
             this.models.forEach(model => {
@@ -1062,7 +1076,8 @@ module openflow {
             values.forEach((x: DeleteOneMessage) => ids.push(x._id));
             this.models = this.models.filter(function (m: any): boolean { return ids.indexOf(m._id) === -1; });
             this.loading = false;
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            this.loadData();
+            // if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
     }
 

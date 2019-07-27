@@ -185,7 +185,19 @@ module openflow {
             this.$rootScope.$broadcast("signin", q);
             return q;
         }
-        async Query(collection: string, query: any, projection: any = null, orderby: any = { _created: -1 }, top: number = 500, skip: number = 0): Promise<any[]> {
+        async ListCollections(): Promise<any[]> {
+            var q: ListCollectionsMessage = new ListCollectionsMessage();
+            var msg: Message = new Message(); msg.command = "listcollections"; msg.data = JSON.stringify(q);
+            q = await this.WebSocketClient.Send<ListCollectionsMessage>(msg);
+            return q.result;
+        }
+        async DropCollection(collectionname: string): Promise<void> {
+            var q: DropCollectionMessage = new DropCollectionMessage();
+            q.collectionname = collectionname;
+            var msg: Message = new Message(); msg.command = "dropcollection"; msg.data = JSON.stringify(q);
+            q = await this.WebSocketClient.Send<DropCollectionMessage>(msg);
+        }
+        async Query(collection: string, query: any, projection: any = null, orderby: any = { _created: -1 }, top: number = 100, skip: number = 0): Promise<any[]> {
             var q: QueryMessage = new QueryMessage();
             q.collectionname = collection; q.query = query;
             q.query = JSON.stringify(query, (key, value) => {
