@@ -392,6 +392,75 @@ module openflow {
         }
     }
 
+
+    export class textarea implements ng.IDirective {
+        // restrict = 'E';
+        // require = 'ngModel';
+        replace = true;
+        constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService) {
+
+        }
+
+        link: ng.IDirectiveLinkFn = (scope: ng.IScope, element: ng.IAugmentedJQuery, attr: ng.IAttributes, ngModelCtrl: any) => {
+            if (!element.hasClass("autogrow")) {
+                console.log("no autogrow for you today");
+                // no autogrow for you today
+                return;
+            }
+
+            // get possible minimum height style
+            var minHeight = parseInt(window.getComputedStyle(element[0]).getPropertyValue("min-height")) || 0;
+
+            // prevent newlines in textbox
+            // element.on("keydown", function (evt) {
+            //     if (evt.which === 13) {
+            //         evt.preventDefault();
+            //     }
+            // });
+
+            element.on("input", function (evt) {
+                var contentHeight2 = (this as any).scrollHeight;
+                var firstrun = element.attr("firstrun");
+                if (contentHeight2 > 1000) {
+                    if (firstrun === null || firstrun === undefined) {
+                        element.attr("firstrun", "false");
+                    } else {
+                        return;
+                    }
+                }
+                element.css({
+                    paddingTop: 0,
+                    height: 0,
+                    minHeight: 0
+                });
+
+                var contentHeight = (this as any).scrollHeight;
+                var borderHeight = (this as any).offsetHeight;
+
+                element.css({
+                    paddingTop: ~~Math.max(0, minHeight - contentHeight) / 2 + "px",
+                    minHeight: null, // remove property
+                    height: contentHeight + borderHeight + "px" // because we're using border-box
+                });
+            });
+
+            // watch model changes from the outside to adjust height
+            scope.$watch(attr.ngModel, trigger);
+
+            // set initial size
+            trigger();
+
+            function trigger() {
+                setTimeout(element.triggerHandler.bind(element, "input"), 1);
+            }
+        }
+        static factory(): ng.IDirectiveFactory {
+            const directive = ($location: ng.ILocationService, $timeout: ng.ITimeoutService) => new textarea($location, $timeout);
+            directive.$inject = ['$location', '$timeout'];
+            return directive;
+        }
+    }
+
     async function getString(locale: any, lib: string, key: string): Promise<any> {
         return new Promise((resolve) => {
             try {
@@ -617,7 +686,7 @@ module openflow {
         public id: string = null;
         public keys: string[] = [];
         public autorefresh: boolean = false;
-        public autorefreshinterval: number = 2000;
+        public autorefreshinterval: number = 30 * 1000;
         public autorefreshpromise: any = null;
         public preloadData: any = null;
         public postloadData: any = null;

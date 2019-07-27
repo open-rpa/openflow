@@ -8,6 +8,7 @@ module openflow {
         .controller("Providers", ProvidersCtrl)
         .directive("timesince", timesince.factory())
         .directive("translate", translate.factory())
+        .directive("textarea", textarea.factory())
         .service("WebSocketClient", WebSocketClient)
         .service("api", api);
     // .directive("todoBlur", todoBlur)

@@ -1482,6 +1482,7 @@ module openflow {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             console.debug("EntityCtrl");
             this.collection = $routeParams.collection;
+            this.postloadData = this.processdata;
             WebSocketClient.onSignedin(async (user: TokenUser) => {
                 this.usergroups = await this.api.Query("users", {});
                 if (this.id !== null && this.id !== undefined) {
@@ -1497,6 +1498,29 @@ module openflow {
                     if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 }
             });
+        }
+        processdata() {
+            // $(document)
+            //     .one('focus.autoExpand', 'textarea.autoExpand', function () {
+            //         var savedValue = this.value;
+            //         this.value = '';
+            //         this.baseScrollHeight = this.scrollHeight;
+            //         this.value = savedValue;
+
+            //         var minRows = this.getAttribute('data-min-rows') | 0, rows;
+            //         this.rows = minRows;
+            //         rows = Math.ceil((this.scrollHeight - this.baseScrollHeight) / 16);
+            //         this.rows = minRows + rows;
+            //     })
+            //     .on('input.autoExpand', 'textarea.autoExpand', function () {
+            //         var minRows = this.getAttribute('data-min-rows') | 0, rows;
+            //         // this.rows = minRows;
+            //         rows = Math.ceil((this.scrollHeight - this.baseScrollHeight) / 16);
+            //         if (this.rows < (minRows + rows)) {
+            //             this.rows = minRows + rows;
+            //         }
+            //     });
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         togglejson() {
             this.showjson = !this.showjson;

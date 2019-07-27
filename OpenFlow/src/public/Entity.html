@@ -49,7 +49,11 @@
             <label class="col-sm-3 control-label"><span translate lib="web">{{ key }}</span>: <a href=""
                     ng-click="ctrl.removekey(key)" translate lib="web">delete</a></label>
             <div class="col-sm-9">
+                <textarea class='autogrow form-control' rows='3' data-min-rows='3'
+                    ng-model="ctrl.model[key]"></textarea>
+                <!-- 
                 <input ng-model="ctrl.model[key]" class="form-control input-md" ng-disabled="ctrl.loading==true" />
+                -->
             </div>
         </div>
     </section>
@@ -68,7 +72,9 @@
         <div class="form-group">
             <label class="col-sm-3 control-label" translate lib="web">json</label>
             <div class="col-sm-9">
-                <textarea class="form-control" rows="5" ng-model="ctrl.jsonmodel" style="max-width: 100%;"></textarea>
+                <!-- <textarea class="form-control" rows="5" ng-model="ctrl.jsonmodel" style="max-width: 100%;"></textarea> -->
+
+                <textarea class='autogrow form-control' rows='3' data-min-rows='3' ng-model="ctrl.jsonmodel"></textarea>
 
                 <!-- <textarea msd-elastic  class="form-control" ></textarea> -->
             </div>
