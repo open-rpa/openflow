@@ -530,21 +530,6 @@ export class Message {
                 Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip);
                 cli._logger.debug(tuser.username + " failed logging in using " + type);
             } else {
-                if (msg.firebasetoken != null && msg.firebasetoken != undefined && msg.firebasetoken != "") {
-                    user.firebasetoken = msg.firebasetoken;
-                }
-                if (msg.onesignalid != null && msg.onesignalid != undefined && msg.onesignalid != "") {
-                    user.onesignalid = msg.onesignalid;
-                }
-                if ((msg.onesignalid != null && msg.onesignalid != undefined && msg.onesignalid != "") ||
-                    (msg.onesignalid != null && msg.onesignalid != undefined && msg.onesignalid != "")) {
-                }
-                if (msg.gpslocation != null && msg.gpslocation != undefined && msg.gpslocation != "") {
-                    user.gpslocation = msg.gpslocation;
-                }
-                if (msg.device != null && msg.device != undefined && msg.device != "") {
-                    user.device = msg.device;
-                }
                 Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip);
                 var userid: string = user._id;
                 msg.jwt = Crypt.createToken(tuser, "5m");
@@ -560,6 +545,21 @@ export class Message {
                     tuser.impostor = userid;
                     msg.jwt = Crypt.createToken(tuser, "5m");
                     msg.user = tuser;
+                }
+                if (msg.firebasetoken != null && msg.firebasetoken != undefined && msg.firebasetoken != "") {
+                    user.firebasetoken = msg.firebasetoken;
+                }
+                if (msg.onesignalid != null && msg.onesignalid != undefined && msg.onesignalid != "") {
+                    user.onesignalid = msg.onesignalid;
+                }
+                if ((msg.onesignalid != null && msg.onesignalid != undefined && msg.onesignalid != "") ||
+                    (msg.onesignalid != null && msg.onesignalid != undefined && msg.onesignalid != "")) {
+                }
+                if (msg.gpslocation != null && msg.gpslocation != undefined && msg.gpslocation != "") {
+                    user.gpslocation = msg.gpslocation;
+                }
+                if (msg.device != null && msg.device != undefined && msg.device != "") {
+                    user.device = msg.device;
                 }
                 if (msg.validate_only !== true) {
                     cli._logger.debug(tuser.username + " signed in using " + type);
