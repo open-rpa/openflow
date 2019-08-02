@@ -499,8 +499,8 @@ export class Message {
                     tuser = new TokenUser(user);
                 } else { // Autocreate user .... safe ?? we use this for autocreating nodered service accounts
                     if (Config.auto_create_users == true) {
-                        user = new User(); user.name = tuser.name; user.username = tuser.username;
-                        await user.Save(TokenUser.rootToken());
+                        var jwt: string = TokenUser.rootToken();
+                        user = await User.ensureUser(jwt, tuser.name, tuser.username, null, msg.password);
                         tuser = new TokenUser(user);
                     } else {
                         msg.error = "Unknown username or password";
@@ -598,12 +598,6 @@ export class Message {
             var jwt: string = TokenUser.rootToken();
             user = await User.ensureUser(jwt, msg.name, msg.username, null, msg.password);
             msg.user = new TokenUser(user);
-
-            user.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
-            user.removeRight(WellknownIds.admins, [Rights.delete]);
-            user.addRight(user._id, user.name, [Rights.full_control]);
-            user.removeRight(user._id, [Rights.delete]);
-            await user.Save(jwt);
 
             jwt = Crypt.createToken(msg.user, "5m");
             var name = user.username;

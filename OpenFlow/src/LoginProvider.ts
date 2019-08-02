@@ -409,7 +409,9 @@ export class LoginProvider {
                 }
                 _user.username = username;
                 if (Util.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty, please add displayname to claims", null); return; }
-                _user = await Config.db.InsertOne(_user, "users", 0, false, TokenUser.rootToken());
+                // _user = await Config.db.InsertOne(_user, "users", 0, false, TokenUser.rootToken());
+                var jwt: string = TokenUser.rootToken();
+                _user = await User.ensureUser(jwt, _user.name, _user.username, null, null);
             }
         }
 
@@ -440,10 +442,8 @@ export class LoginProvider {
                 if (!Util.IsNullEmpty(profile.displayName)) { _user.name = profile.displayName; }
                 _user.username = username;
                 if (Util.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty.", null); return; }
-                _user = await Config.db.InsertOne(_user, "users", 0, false, jwt);
-                var users: Role = await Role.FindByNameOrId("users", jwt);
-                users.AddMember(_user);
-                await users.Save(jwt)
+                var jwt: string = TokenUser.rootToken();
+                _user = await User.ensureUser(jwt, _user.name, _user.username, null, null);
             }
         }
         if (Util.IsNullUndefinded(_user)) {
