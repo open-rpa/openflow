@@ -203,7 +203,7 @@ export class amqp_publisher_node {
             data.payload = msg.payload;
             data.jwt = msg.jwt;
             data._id = msg._id;
-            this.con.SendMessage(JSON.stringify(data), this.config.queue);
+            this.con.SendMessage(JSON.stringify(data), this.config.queue, null);
             this.node.status({});
         } catch (error) {
             NoderedUtil.HandleError(this, error);
