@@ -39,6 +39,7 @@ async function initDatabase(): Promise<boolean> {
         var admins: Role = await User.ensureRole(jwt, "admins", WellknownIds.admins);
         var users: Role = await User.ensureRole(jwt, "users", WellknownIds.users);
         var root: User = await User.ensureUser(jwt, "root", "root", WellknownIds.root, null);
+
         root.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
         root.removeRight(WellknownIds.admins, [Rights.delete]);
         root.addRight(WellknownIds.root, "root", [Rights.full_control]);
@@ -55,6 +56,12 @@ async function initDatabase(): Promise<boolean> {
         users.AddMember(root);
         await users.Save(jwt);
 
+
+        var personal_nodered_users: Role = await User.ensureRole(jwt, "personal nodered users", WellknownIds.personal_nodered_users);
+        personal_nodered_users.AddMember(admins);
+        personal_nodered_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
+        personal_nodered_users.removeRight(WellknownIds.admins, [Rights.delete]);
+        await personal_nodered_users.Save(jwt);
         var nodered_admins: Role = await User.ensureRole(jwt, "nodered admins", WellknownIds.nodered_admins);
         nodered_admins.AddMember(admins);
         nodered_admins.addRight(WellknownIds.admins, "admins", [Rights.full_control]);

@@ -27,22 +27,23 @@
           <a class="nav-link" href="#/main"><span translate lib="web">home</span> <span
               class="sr-only">(current)</span></a>
         </li>
-        <li class="nav-item">
+        <li class="nav-item" ng-show="menuctrl.hasrole('users')">
           <a class="nav-link" href="#/Entities/entities"><span translate lib="web">entities</span></a>
         </li>
         <li class="nav-item">
           <a class="nav-link" href="#/Workflows"><span translate lib="web">workflows</span></a>
         </li>
-        <li class="nav-item">
+        <li class="nav-item" ng-show="menuctrl.hasrole('users')">
           <a class="nav-link" href="#/RPAWorkflows"><span translate lib="web">RPA workflows</span></a>
         </li>
-        <li class="nav-item">
+        <li class="nav-item" ng-show="menuctrl.hasrole('users')">
           <a class="nav-link" href="#/Reports"><span translate lib="web">reports</span></a>
         </li>
-        <li class="nav-item" ng-show="menuctrl.WebSocketClient.allow_personal_nodered == true">
+        <li class="nav-item"
+          ng-show="menuctrl.WebSocketClient.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')">
           <a class="nav-link" href="#/Nodered"><span translate lib="web">nodered</span></a>
         </li>
-        <li class="nav-item dropdown">
+        <li class="nav-item dropdown" ng-show="menuctrl.hasrole('users') || menuctrl.hasrole('admins')">
           <a class="nav-link dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
             translate lib="web">admin</a>
           <div class="dropdown-menu">

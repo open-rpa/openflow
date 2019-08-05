@@ -15,6 +15,8 @@ export class WellknownIds {
     static robot_users: string = "5aef0142f3683977b0aa3dd3";
     static robot_admins: string = "5aef0142f3683977b0aa3dd2";
 
+    static personal_nodered_users: string = "5a23f18a2e8987292ddbe062";
+
 }
 export class Rights {
     static create = 1;

@@ -63,6 +63,11 @@ export class User extends Base {
         role = new Role(); role._id = id; role.name = name;
         role = await Config.db.InsertOne(role, "users", 0, false, jwt);
         role = Role.assign(role);
+        role.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
+        role.removeRight(WellknownIds.admins, [Rights.delete]);
+        role.addRight(role._id, role.name, [Rights.full_control]);
+        role.removeRight(role._id, [Rights.delete]);
+        await role.Save(jwt);
         return role;
     }
     HasRoleName(name: string): Boolean {
