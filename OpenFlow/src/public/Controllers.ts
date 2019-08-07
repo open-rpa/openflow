@@ -842,7 +842,7 @@ module openflow {
             });
         }
         async loadUsers(): Promise<void> {
-            this.allusers = await this.api.Query(this.collection, { $or: [{ _type: "user" }, { _type: "role" }] }, null, { _type: -1, name: 1 });
+            this.allusers = await this.api.Query("users", { $or: [{ _type: "user" }, { _type: "role" }] }, null, { _type: -1, name: 1 });
             if (this.model.members === undefined) { this.model.members = []; }
             var ids: string[] = [];
             for (var i: number = 0; i < this.model.members.length; i++) {
@@ -1480,6 +1480,7 @@ module openflow {
         public jsonmodel: string = "";
         public newuser: openflow.TokenUser;
         public usergroups: openflow.TokenUser[] = [];
+        public allusergroups: openflow.TokenUser[] = [];
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -1493,7 +1494,8 @@ module openflow {
             this.collection = $routeParams.collection;
             this.postloadData = this.processdata;
             WebSocketClient.onSignedin(async (user: TokenUser) => {
-                this.usergroups = await this.api.Query("users", {});
+                // this.usergroups = await this.api.Query("users", {});
+                this.allusergroups = await this.api.Query("users", { $or: [{ _type: "user" }, { _type: "role" }] }, null, { _type: -1, name: 1 });
                 if (this.id !== null && this.id !== undefined) {
                     await this.loadData();
                 } else {
@@ -1509,26 +1511,12 @@ module openflow {
             });
         }
         processdata() {
-            // $(document)
-            //     .one('focus.autoExpand', 'textarea.autoExpand', function () {
-            //         var savedValue = this.value;
-            //         this.value = '';
-            //         this.baseScrollHeight = this.scrollHeight;
-            //         this.value = savedValue;
-
-            //         var minRows = this.getAttribute('data-min-rows') | 0, rows;
-            //         this.rows = minRows;
-            //         rows = Math.ceil((this.scrollHeight - this.baseScrollHeight) / 16);
-            //         this.rows = minRows + rows;
-            //     })
-            //     .on('input.autoExpand', 'textarea.autoExpand', function () {
-            //         var minRows = this.getAttribute('data-min-rows') | 0, rows;
-            //         // this.rows = minRows;
-            //         rows = Math.ceil((this.scrollHeight - this.baseScrollHeight) / 16);
-            //         if (this.rows < (minRows + rows)) {
-            //             this.rows = minRows + rows;
-            //         }
-            //     });
+            var ids: string[] = [];
+            for (var i: number = 0; i < this.model._acl.length; i++) {
+                ids.push(this.model._acl[i]._id);
+            }
+            this.usergroups = this.allusergroups.filter(x => ids.indexOf(x._id) == -1);
+            this.newuser = this.usergroups[0];
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         togglejson() {
@@ -1576,6 +1564,13 @@ module openflow {
                     //this.model._acl = this.model._acl.splice(index, 1);
                 }
             }
+            var ids: string[] = [];
+            for (var i: number = 0; i < this.model._acl.length; i++) {
+                ids.push(this.model._acl[i]._id);
+            }
+            this.usergroups = this.allusergroups.filter(x => ids.indexOf(x._id) == -1);
+            this.newuser = this.usergroups[0];
+
         }
         adduser() {
             var ace = new Ace();
@@ -1584,6 +1579,13 @@ module openflow {
             ace.name = this.newuser.name;
             ace.rights = "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=";
             this.model._acl.push(ace);
+            var ids: string[] = [];
+            for (var i: number = 0; i < this.model._acl.length; i++) {
+                ids.push(this.model._acl[i]._id);
+            }
+            this.usergroups = this.allusergroups.filter(x => ids.indexOf(x._id) == -1);
+            this.newuser = this.usergroups[0];
+
         }
         isBitSet(base64: string, bit: number): boolean {
             bit--;

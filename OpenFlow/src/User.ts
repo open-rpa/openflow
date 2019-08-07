@@ -46,7 +46,6 @@ export class User extends Base {
         user = await Config.db.InsertOne(user, "users", 0, false, jwt);
         user = User.assign(user);
         user.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
-        user.removeRight(WellknownIds.admins, [Rights.delete]);
         user.addRight(user._id, user.name, [Rights.full_control]);
         user.removeRight(user._id, [Rights.delete]);
         await user.Save(jwt);
