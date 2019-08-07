@@ -50,17 +50,17 @@ export class Role extends Base {
         var result: Role = Role.assign(items[0]);
         result = Role.assign(result);
         // Temp hack to update all existing users and roles
-        if (result._type == "user") {
-            result.addRight(result._id, result.name, [Rights.full_control]);
-            result.removeRight(result._id, [Rights.delete]);
-        } else {
-            result.removeRight(result._id, [Rights.full_control]);
-            if (result.name != "users") {
-                result.addRight(result._id, result.name, [Rights.read]);
-            }
-        }
-        result.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
-        await result.Save(jwt);
+        // if (result._type == "user") {
+        //     result.addRight(result._id, result.name, [Rights.full_control]);
+        //     result.removeRight(result._id, [Rights.delete]);
+        // } else {
+        //     result.removeRight(result._id, [Rights.full_control]);
+        //     if (result.name != "users") {
+        //         result.addRight(result._id, result.name, [Rights.read]);
+        //     }
+        // }
+        // result.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
+        // await result.Save(jwt);
         return result;
     }
     public async Save(jwt: string): Promise<void> {
