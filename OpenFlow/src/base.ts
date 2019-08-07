@@ -122,7 +122,8 @@ export class Base implements IBase {
         var right: Ace = this.getRight(_id, deny);
         if (!right) { return; }
         rights.forEach(bit => {
-            right.unsetBit(bit);
+            if (bit == Rights.full_control) { this._acl = this._acl.filter(x => x._id != _id); } else { right.unsetBit(bit); }
+
         });
         this.setRight(right);
     }

@@ -819,6 +819,7 @@ module openflow {
     export class RoleCtrl extends entityCtrl<openflow.Role> {
         public addthis: any = "";
         public users: TokenUser[] = null;
+        public allusers: TokenUser[] = null;
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -836,22 +837,18 @@ module openflow {
                     await this.loadUsers();
                 } else {
                     this.model = new openflow.Role("");
+                    await this.loadUsers();
                 }
-
             });
         }
         async loadUsers(): Promise<void> {
-            this.users = await this.api.Query(this.collection, { $or: [{ _type: "user" }, { _type: "role" }] }, null, null);
-            var ids: string[] = [];
+            this.allusers = await this.api.Query(this.collection, { $or: [{ _type: "user" }, { _type: "role" }] }, null, { _type: -1, name: 1 });
             if (this.model.members === undefined) { this.model.members = []; }
+            var ids: string[] = [];
             for (var i: number = 0; i < this.model.members.length; i++) {
                 ids.push(this.model.members[i]._id);
             }
-            for (var i: number = this.users.length - 1; i >= 0; i--) {
-                if (ids.indexOf(this.users[i]._id) > -1) {
-                    this.users.splice(i, 1);
-                }
-            }
+            this.users = this.allusers.filter(x => ids.indexOf(x._id) == -1);
             this.addthis = this.users[0]._id;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
@@ -871,6 +868,12 @@ module openflow {
                     this.model.members.splice(i, 1);
                 }
             }
+            var ids: string[] = [];
+            for (var i: number = 0; i < this.model.members.length; i++) {
+                ids.push(this.model.members[i]._id);
+            }
+            this.users = this.allusers.filter(x => ids.indexOf(x._id) == -1);
+            this.addthis = this.users[0]._id;
         }
         AddMember(model: any) {
             if (this.model.members === undefined) { this.model.members = []; }
@@ -879,6 +882,12 @@ module openflow {
                 if (u._id === this.addthis) { user = u; }
             });
             this.model.members.push({ name: user.name, _id: user._id });
+            var ids: string[] = [];
+            for (var i: number = 0; i < this.model.members.length; i++) {
+                ids.push(this.model.members[i]._id);
+            }
+            this.users = this.allusers.filter(x => ids.indexOf(x._id) == -1);
+            this.addthis = this.users[0]._id;
         }
     }
 
@@ -1569,12 +1578,11 @@ module openflow {
             }
         }
         adduser() {
-            var ace = {
-                deny: false,
-                _id: this.newuser._id,
-                name: this.newuser.name,
-                rights: "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8="
-            }
+            var ace = new Ace();
+            ace.deny = false;
+            ace._id = this.newuser._id;
+            ace.name = this.newuser.name;
+            ace.rights = "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=";
             this.model._acl.push(ace);
         }
         isBitSet(base64: string, bit: number): boolean {

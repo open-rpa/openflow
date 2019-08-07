@@ -107,6 +107,13 @@ async function initDatabase(): Promise<boolean> {
         filestore_users.removeRight(WellknownIds.admins, [Rights.delete]);
         await filestore_users.Save(jwt);
 
+
+        // Temp hack to update all existing users and roles
+        var _users = await Config.db.query<Role>({ $or: [{ _type: "user" }, { _type: "role" }] }, null, 1000, 0, null, "users", jwt);
+        for (var i = 0; i < _users.length; i++) {
+            var u = await Role.FindByNameOrId(null, _users[i]._id);
+        }
+
         return true;
     } catch (error) {
         logger.error(error);

@@ -1,4 +1,4 @@
-import { Base } from "./base";
+import { Base, Rights, WellknownIds } from "./base";
 import { DatabaseConnection } from "./DatabaseConnection";
 import { TokenUser } from "./TokenUser";
 import { Config } from "./Config";
@@ -44,9 +44,23 @@ export class Role extends Base {
         return result;
     }
     public static async FindByNameOrId(name: string, id: string): Promise<Role> {
-        var items: Role[] = await Config.db.query<Role>({ $or: [{ name: name }, { _id: id }] }, null, 1, 0, null, "users", TokenUser.rootToken());
+        var jwt = TokenUser.rootToken();
+        var items: Role[] = await Config.db.query<Role>({ $or: [{ name: name }, { _id: id }] }, null, 1, 0, null, "users", jwt);
         if (items === null || items === undefined || items.length === 0) { return null; }
         var result: Role = Role.assign(items[0]);
+        result = Role.assign(result);
+        // Temp hack to update all existing users and roles
+        if (result._type == "user") {
+            result.addRight(result._id, result.name, [Rights.full_control]);
+            result.removeRight(result._id, [Rights.delete]);
+        } else {
+            result.removeRight(result._id, [Rights.full_control]);
+            if (result.name != "users") {
+                result.addRight(result._id, result.name, [Rights.read]);
+            }
+        }
+        result.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
+        await result.Save(jwt);
         return result;
     }
     public async Save(jwt: string): Promise<void> {

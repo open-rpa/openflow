@@ -68,6 +68,36 @@ export class DatabaseConnection {
         await this.db.dropCollection(collectionname);
     }
 
+    async CleanACL<T extends Base>(item: T): Promise<T> {
+        for (var i = item._acl.length - 1; i >= 0; i--) {
+            {
+                var ace = item._acl[i];
+                var arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1 }).limit(1).toArray();
+                if (arr.length == 0) {
+                    item._acl.splice(i, 1);
+                } else { ace.name = arr[0].name; }
+            }
+        }
+        return item;
+    }
+    async Cleanmembers<T extends Role>(item: T): Promise<T> {
+        for (var i = item.members.length - 1; i >= 0; i--) {
+            {
+                var ace = item.members[i];
+                var exists = item.members.filter(x => x._id == ace._id);
+                if (exists.length > 1) {
+                    item.members.splice(i, 1);
+                } else {
+                    var arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1 }).limit(1).toArray();
+                    if (arr.length == 0) {
+                        item.members.splice(i, 1);
+                    } else { ace.name = arr[0].name; }
+                }
+            }
+        }
+        return item;
+    }
+
     /**
      * Send a query to the database.
      * @param {any} query MongoDB Query
@@ -298,6 +328,11 @@ export class DatabaseConnection {
         }
 
 
+        item = await this.CleanACL(item);
+        if (item._type === "role" && collectionname === "users") {
+            item = await this.Cleanmembers(item as any);
+        }
+
         // var options:CollectionInsertOneOptions = { writeConcern: { w: parseInt((w as any)), j: j } };
         var options: CollectionInsertOneOptions = { w: w, j: j };
         //var options: CollectionInsertOneOptions = { w: "majority" };
@@ -307,6 +342,10 @@ export class DatabaseConnection {
             var users: Role = await Role.FindByNameOrId("users", jwt);
             users.AddMember(item);
             await users.Save(jwt)
+        }
+        if (collectionname === "users" && item._type === "role") {
+            item.addRight(item._id, item.name, [Rights.read]);
+            await this.db.collection(collectionname).replaceOne({ _id: item._id }, item);
         }
         this.traversejsondecode(item);
         return item;
@@ -442,6 +481,10 @@ export class DatabaseConnection {
         q.opresult = null;
         try {
             if (itemReplace) {
+                q.item = await this.CleanACL(q.item);
+                if (q.item._type === "role" && q.collectionname === "users") {
+                    q.item = await this.Cleanmembers(q.item as any);
+                }
                 q.opresult = await this.db.collection(q.collectionname).replaceOne(_query, q.item, options);
             } else {
                 if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };

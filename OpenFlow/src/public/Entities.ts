@@ -9,13 +9,144 @@ module openflow {
         public _modifiedbyid: string;
         public _modifiedby: string;
         public _modified: Date;
-        public _acl: ace[];
+        public _acl: Ace[];
+
+        /**
+ * Enumerate ACL for specefic ID
+ * @param  {string} _id Id to search for
+ * @param  {boolean=false} deny look for deny or allow permission
+ * @returns Ace Ace if found, else null
+ */
+        getRight(_id: string, deny: boolean = false): Ace {
+            var result: Ace = null;
+            if (!this._acl) { this._acl = []; }
+            this._acl.forEach((a, index) => {
+                if (a._id === _id && a.deny === deny) {
+                    this._acl[index] = Ace.assign(a);
+                    result = this._acl[index];
+                }
+            });
+            if (result) {
+                result = Ace.assign(result);
+            }
+            return result;
+        }
+        /**
+         * Set right for specefic id, if exists
+         * @param  {Ace} x
+         * @returns void
+         */
+        setRight(x: Ace): void {
+            if (!this._acl) { this._acl = []; }
+            this._acl.forEach((a, index) => {
+                if (a._id === x._id && a.deny === x.deny) {
+                    this._acl[index] = x;
+                }
+            });
+        }
+        /**
+         * Add/update right for user/role
+         * @param  {string} _id user/role id
+         * @param  {string} name Displayname for user/role
+         * @param  {number[]} rights Right to set
+         * @param  {boolean=false} deny Deny the right
+         * @returns void
+         */
+        addRight(_id: string, name: string, rights: number[], deny: boolean = false): void {
+            var right: Ace = this.getRight(_id, deny);
+            if (!right) { right = new Ace(); this._acl.push(right); }
+            right.deny = deny; right._id = _id; right.name = name;
+            rights.forEach(bit => {
+                right.setBit(bit);
+            });
+            this.setRight(right);
+        }
+        /**
+         * Remove a right from user/role
+         * @param  {string} _id user/role id
+         * @param  {number[]=null} rights Right to revoke
+         * @param  {boolean=false} deny Deny right
+         * @returns void
+         */
+        removeRight(_id: string, rights: number[] = null, deny: boolean = false): void {
+            if (!this._acl) { this._acl = []; }
+            var right: Ace = this.getRight(_id, deny);
+            if (!right) { return; }
+            rights.forEach(bit => {
+                right.unsetBit(bit);
+            });
+            this.setRight(right);
+        }
     }
-    export class ace {
+    export class Ace {
         public deny: boolean;
         public _id: string;
         public name: string;
         public rights: string = "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=";
+        static assign(o: any): Ace {
+            return Object.assign(new Base(), o);
+        }
+        _base64ToArrayBuffer(string_base64): ArrayBuffer {
+            var binary_string = window.atob(string_base64);
+            var len = binary_string.length;
+            var bytes = new Uint8Array(len);
+            for (var i = 0; i < len; i++) {
+                //var ascii = string_base64.charCodeAt(i);
+                var ascii = binary_string.charCodeAt(i);
+                bytes[i] = ascii;
+            }
+            return bytes.buffer;
+        }
+        _arrayBufferToBase64(array_buffer): string {
+            var binary = '';
+            var bytes = new Uint8Array(array_buffer);
+            var len = bytes.byteLength;
+            for (var i = 0; i < len; i++) {
+                binary += String.fromCharCode(bytes[i])
+            }
+            return window.btoa(binary);
+        }
+        isBitSet(bit: number): boolean {
+            bit--;
+            var buf = this._base64ToArrayBuffer(this.rights);
+            var view = new Uint8Array(buf);
+            var octet = Math.floor(bit / 8);
+            var currentValue = view[octet];
+            var _bit = (bit % 8);
+            var mask = Math.pow(2, _bit);
+            return (currentValue & mask) != 0;
+        }
+        setBit(bit: number) {
+            bit--;
+            var buf = this._base64ToArrayBuffer(this.rights);
+            var view = new Uint8Array(buf);
+            var octet = Math.floor(bit / 8);
+            var currentValue = view[octet];
+            var _bit = (bit % 8);
+            var mask = Math.pow(2, _bit);
+            var newValue = currentValue | mask;
+            view[octet] = newValue;
+            return this._arrayBufferToBase64(view);
+        }
+        unsetBit(bit: number) {
+            bit--;
+            var buf = this._base64ToArrayBuffer(this.rights);
+            var view = new Uint8Array(buf);
+            var octet = Math.floor(bit / 8);
+            var currentValue = view[octet];
+            var _bit = (bit % 8);
+            var mask = Math.pow(2, _bit);
+            var newValue = currentValue &= ~mask;
+            view[octet] = newValue;
+            return this._arrayBufferToBase64(view);
+        }
+        toogleBit(bit: number) {
+            if (this.isBitSet(bit)) {
+                this.unsetBit(bit);
+            } else {
+                this.setBit(bit);
+            }
+        }
     }
 
     export class Provider extends Base {
