@@ -13,20 +13,21 @@
             <input ng-model="ctrl.model.name" class="form-control input-md" ng-disabled="ctrl.loading==true" />
         </div>
     </div>
+    <div class="form-group ">
+        <label for="add" class="col-sm-2 control-label" translate lib="web">add</label>
+        <div class="col-sm-4 input-group">
+            <select ng-model='ctrl.addthis' class="form-control"
+                ng-options='item._id as (item.name + " " + item.username) for item in ctrl.users'></select>
+            <button ng-click="ctrl.AddMember(ctrl.addthis)" type="button" ng-disabled="ctrl.loading==true"
+                class="btn btn-success " translate lib="web">add</button>
+        </div>
+    </div>
     <div class="form-group" ng-repeat="m in ctrl.model.members">
         <label class="col-sm-2 control-label" translate lib="web">member</label>
         {{ m.name }} {{ m._id }}
         <button ng-click="ctrl.RemoveMember(m)" type="button" ng-disabled="ctrl.loading==true" class="btn btn-success"
             translate lib="web">remove</button>
 
-    </div>
-    <div class="form-group">
-        <label for="add" class="col-sm-2 control-label" translate lib="web">add</label>
-        <div class="col-sm-4">
-            <select ng-model='ctrl.addthis' ng-options='item._id as item.name for item in ctrl.users'></select>
-            <button ng-click="ctrl.AddMember(ctrl.addthis)" type="button" ng-disabled="ctrl.loading==true"
-                class="btn btn-success" translate lib="web">add</button>
-        </div>
     </div>
 
     <div class="form-group">

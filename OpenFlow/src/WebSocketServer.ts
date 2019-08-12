@@ -7,6 +7,7 @@ import { Crypt } from "./Crypt";
 import { SigninMessage } from "./Messages/SigninMessage";
 import { SocketMessage } from "./SocketMessage";
 import { Message } from "./Messages/Message";
+import { Util } from "./Util";
 
 export class WebSocketServer {
     private static _logger: winston.Logger;
@@ -32,20 +33,21 @@ export class WebSocketServer {
         // this._socketserver.on("headers", (headers: string[], request: http.IncomingMessage):void => {
         //     this._logger.debug("headers" + headers.join(","));
         // });
-        setInterval(this.pingClients, 3000);
+        setInterval(this.pingClients, 10000);
     }
     private static pingClients(): void {
         let count: number = WebSocketServer._clients.length;
         WebSocketServer._clients = WebSocketServer._clients.filter(function (cli: WebSocketClient): boolean {
             try {
-                if (cli.jwt !== null && cli.jwt !== undefined) {
+                if (!Util.IsNullEmpty(cli.jwt)) {
                     var tuser = Crypt.verityToken(cli.jwt);
                     var payload = Crypt.decryptToken(cli.jwt);
                     var clockTimestamp = Math.floor(Date.now() / 1000);
-                    if ((clockTimestamp - payload.iat) > 180) {
-                        WebSocketServer._logger.silly("Send new jwt to client");
+                    // WebSocketServer._logger.silly((payload.exp - clockTimestamp))
+                    if ((payload.exp - clockTimestamp) < 60) {
+                        WebSocketServer._logger.debug("Token for " + tuser.username + " expires in less than 1 minute, send new jwt to client");
                         var l: SigninMessage = new SigninMessage();
-                        cli.jwt = Crypt.createToken(tuser);
+                        cli.jwt = Crypt.createToken(tuser, "5m");
                         l.jwt = cli.jwt;
                         l.user = tuser;
                         var m: Message = new Message(); m.command = "refreshtoken";

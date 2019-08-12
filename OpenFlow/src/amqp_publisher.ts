@@ -1,5 +1,6 @@
 import * as winston from "winston";
 import * as amqplib from "amqplib";
+import { Util } from "./Util";
 
 
 interface IHashTable<T> {
@@ -15,7 +16,7 @@ export class Deferred<T> {
         this.promise = new Promise<T>((resolve, reject) => {
             me.reject = reject;
             me.resolve = resolve;
-          });
+        });
     }
 }
 
@@ -37,7 +38,7 @@ export class amqp_publisher {
         this.conn = await amqplib.connect(this.connectionstring);
         this.channel = await this.conn.createChannel();
         this._ok = await this.channel.assertQueue(this.queue, { durable: false });
-        this._logger.info("Connected to " + this.connectionstring);
+        this._logger.info("Connected to " + new URL(this.connectionstring).hostname);
     }
     SendMessage(msg: string): void {
         this._logger.info("SendMessage " + msg);
@@ -46,7 +47,7 @@ export class amqp_publisher {
 }
 
 // tslint:disable-next-line: class-name
-export class amqp_rpc_publisher  {
+export class amqp_rpc_publisher {
     conn: amqplib.Connection;
     channel: amqplib.Channel; // channel: amqplib.ConfirmChannel;
     private _logger: winston.Logger;
@@ -61,16 +62,16 @@ export class amqp_rpc_publisher  {
         this.connectionstring = connectionstring;
     }
     async connect(): Promise<void> {
-        var me:amqp_rpc_publisher = this;
+        var me: amqp_rpc_publisher = this;
         this.conn = await amqplib.connect(this.connectionstring);
         this.conn.on("error", () => null);
         this.channel = await this.conn.createChannel();
         this._ok = await this.channel.assertQueue("", { exclusive: true });
-        await this.channel.consume(this._ok.queue, (msg)=> { this.OnMessage(me, msg); }, { noAck: true });
-        this._logger.info("Connected to " + this.connectionstring);
+        await this.channel.consume(this._ok.queue, (msg) => { this.OnMessage(me, msg); }, { noAck: true });
+        this._logger.info("Connected to " + new URL(this.connectionstring).hostname);
     }
     async SendMessage(msg: string, queue: string): Promise<string> {
-        var corr:string = this.generateUuid();
+        var corr: string = this.generateUuid();
         this.activecalls[corr] = new Deferred();
         this._logger.info("SendMessage " + msg);
         this.channel.sendToQueue(queue, Buffer.from(msg), { correlationId: corr, replyTo: this._ok.queue });
@@ -80,7 +81,7 @@ export class amqp_rpc_publisher  {
     OnMessage(sender: amqp_rpc_publisher, msg: amqplib.ConsumeMessage): void {
         sender._logger.info("OnMessage " + msg.content.toString());
         var corr: string = msg.properties.correlationId;
-        if(this.activecalls[corr] !== null && this.activecalls[corr] !== undefined) {
+        if (!Util.IsNullUndefinded(this.activecalls[corr])) {
             this.activecalls[corr].resolve(msg.content.toString());
             this.activecalls[corr] = null;
         } else {
@@ -89,7 +90,7 @@ export class amqp_rpc_publisher  {
     }
     generateUuid(): string {
         return Math.random().toString() +
-               Math.random().toString() +
-               Math.random().toString();
-      }
+            Math.random().toString() +
+            Math.random().toString();
+    }
 }

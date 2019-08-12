@@ -39,7 +39,7 @@ export class WebSocketClient {
             WebSocketClient.instance = this;
         }
 
-        setInterval(this.pingServer, 250);
+        setInterval(this.pingServer, 10000);
     }
     public connect(): void {
         try {
@@ -53,10 +53,11 @@ export class WebSocketClient {
                 this._socketObject = null;
             }
             if (this._socketObject === null) {
-                this._socketObject = new WebSocket(this._url, {
+                var options: any = {
                     rejectUnauthorized: false,
                     strictSSL: false
-                });
+                };
+                this._socketObject = new WebSocket(this._url, options);
                 this._socketObject.onopen = (this.onopen).bind(this);
                 this._socketObject.onmessage = (this.onmessage).bind(this);
                 this._socketObject.onclose = (this.onclose).bind(this);
@@ -86,15 +87,6 @@ export class WebSocketClient {
             console.error(error);
             me.connect();
         }
-        var date: Date = new Date;
-        var seconds: number = date.getSeconds();
-        var minutes: number = date.getMinutes();
-        var hour: number = date.getHours();
-        if (me._receiveQueue.length > 0 || me._sendQueue.length > 1) {
-            // tslint:disable-next-line: max-line-length
-            // console.log("[" + hour + ":" + minutes + "." + seconds + "] pingServer: " + me._receiveQueue.length + "/" + me._sendQueue.length);
-        }
-        // setInterval(me.pingServer, 250);
     }
     private async onopen(evt: Event): Promise<void> {
         var me: WebSocketClient = WebSocketClient.instance;

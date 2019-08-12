@@ -3,6 +3,8 @@ import * as retry from "async-retry";
 import { fetch, toPassportConfig } from "passport-saml-metadata";
 export class Config {
     public static nodered_id: string = Config.getEnv("nodered_id", "1");
+    public static nodered_sa: string = Config.getEnv("nodered_sa", "");
+    public static queue_prefix: string = Config.getEnv("queue_prefix", "");
 
     public static consumer_key: string = Config.getEnv("consumer_key", "");
     public static consumer_secret: string = Config.getEnv("consumer_secret", "");
@@ -18,7 +20,13 @@ export class Config {
     public static tls_passphrase: string = Config.getEnv("tls_passphrase", "");
     public static port: number = parseInt(Config.getEnv("port", "1880"));
     public static domain: string = Config.getEnv("domain", "localhost");
+    public static protocol: string = Config.getEnv("protocol", "http");
     public static nodered_domain_schema: string = Config.getEnv("nodered_domain_schema", "");
+    public static noderedusers: string = Config.getEnv("noderedusers", "");
+    public static noderedadmins: string = Config.getEnv("noderedadmins", "");
+
+
+
 
     public static api_ws_url: string = Config.getEnv("api_ws_url", "ws://localhost:3000");
     public static amqp_url: string = Config.getEnv("amqp_url", "amqp://localhost");
@@ -27,17 +35,39 @@ export class Config {
     public static api_allow_anonymous: boolean = Config.parseBoolean(Config.getEnv("api_allow_anonymous", "false"));
 
     public static aes_secret: string = Config.getEnv("aes_secret", "");
+    public static jwt: string = Config.getEnv("jwt", "");
+
 
     public static baseurl(): string {
-        var matches = Config.nodered_id.match(/\d+/);
-        Config.nodered_id = matches[matches.length - 1]; // Just grab the last number
-        if (Config.nodered_domain_schema != "") {
-            Config.domain = Config.nodered_domain_schema.replace("$nodered_id$", Config.nodered_id)
+        if (Config.nodered_sa === null || Config.nodered_sa === undefined || Config.nodered_sa === "") {
+            var matches = Config.nodered_id.match(/\d+/);
+            if (matches !== null && matches !== undefined) {
+                if (matches.length > 0) {
+                    Config.nodered_id = matches[matches.length - 1]; // Just grab the last number
+                }
+            }
+            if (Config.nodered_domain_schema != "") {
+                Config.domain = Config.nodered_domain_schema.replace("$nodered_id$", Config.nodered_id)
+            }
+        } else {
+            if (Config.nodered_domain_schema != "") {
+                Config.domain = Config.nodered_domain_schema.replace("$nodered_id$", Config.nodered_id)
+            }
         }
+        // if (Config.tls_crt != '' && Config.tls_key != '') {
+        //     return "https://" + Config.domain + ":" + Config.port + "/";
+        // }
+        // return "http://" + Config.domain + ":" + Config.port + "/";
+        var result: string = "";
         if (Config.tls_crt != '' && Config.tls_key != '') {
-            return "https://" + Config.domain + ":" + Config.port + "/";
+            result = "https://" + Config.domain;
+        } else {
+            result = Config.protocol + "://" + Config.domain;
         }
-        return "http://" + Config.domain + ":" + Config.port + "/";
+        if (Config.port != 80 && Config.port != 443) {
+            result = result + ":" + Config.port + "/";
+        } else { result = result + "/"; }
+        return result;
     }
 
     public static getEnv(name: string, defaultvalue: string): string {
@@ -96,40 +126,6 @@ export class Config {
                 }
             });
         return metadata;
-    }
-
-
-    static DumpConfig() {
-        console.log("baseurl" + Config.baseurl());
-
-        console.log("nodered_id: " + Config.nodered_id);
-
-        console.log("consumer_key: " + Config.consumer_key);
-        console.log("consumer_secret: " + Config.consumer_secret);
-
-        console.log("saml_federation_metadata: " + Config.saml_federation_metadata);
-        console.log("saml_issuer: " + Config.saml_issuer);
-        console.log("saml_entrypoint: " + Config.saml_entrypoint);
-        console.log("saml_crt: " + Config.saml_crt);
-
-
-        console.log("port: " + Config.port);
-        console.log("domain: " + Config.domain);
-        console.log("nodered_domain_schema: " + Config.nodered_domain_schema);
-
-        console.log("api_ws_url: " + Config.api_ws_url);
-        console.log("amqp_url: " + Config.amqp_url);
-
-        console.log("api_credential_cache_seconds: " + Config.api_credential_cache_seconds);
-        console.log("api_allow_anonymous: " + Config.api_allow_anonymous);
-
-        // console.log("tls_crt: " + Config.tls_crt);
-        // console.log("tls_key: " + Config.tls_key);
-        // console.log("tls_ca: " + Config.tls_ca);
-        // console.log("tls_passphrase: " + Config.tls_passphrase);
-        // console.log("aes_secret: " + Config.aes_secret);
-
-
     }
 
 }

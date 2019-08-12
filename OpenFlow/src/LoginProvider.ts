@@ -7,6 +7,7 @@ import * as bodyParser from "body-parser";
 import * as SAMLStrategy from "passport-saml";
 import * as GoogleStrategy from "passport-google-oauth20";
 import * as LocalStrategy from "passport-local";
+// import * as wsfed from "wsfed";
 
 import * as passport from "passport";
 import { Config } from "./Config";
@@ -19,6 +20,7 @@ import { Audit } from "./Audit";
 
 import * as saml from "saml20";
 import { SamlProvider } from "./SamlProvider";
+import { Util } from "./Util";
 
 interface IVerifyFunction { (error: any, profile: any): void; }
 export class Provider extends Base {
@@ -114,7 +116,7 @@ export class LoginProvider {
             res.setHeader("Content-Type", "application/json");
             if (req.user) {
                 var user: TokenUser = new TokenUser(req.user);
-                res.end(JSON.stringify({ jwt: Crypt.createToken(user) }));
+                res.end(JSON.stringify({ jwt: Crypt.createToken(user, "5m") }));
             } else {
                 res.end(JSON.stringify({ jwt: "" }));
             }
@@ -126,9 +128,10 @@ export class LoginProvider {
                 var user: User = await LoginProvider.validateToken(rawAssertion);
                 var tuser: TokenUser = new TokenUser(user);
                 res.setHeader("Content-Type", "application/json");
-                res.end(JSON.stringify({ jwt: Crypt.createToken(tuser) }));
+                res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, "5m") }));
             } catch (error) {
                 res.end(error);
+                console.error(error);
             }
         });
         app.get("/config", (req: any, res: any, next: any): void => {
@@ -140,27 +143,40 @@ export class LoginProvider {
             }
             _url += "/";
             var res2 = {
-                wshost: _url
+                wshost: _url,
+                domain: Config.domain,
+                allow_user_registration: Config.allow_user_registration,
+                allow_personal_nodered: Config.allow_personal_nodered,
+                namespace: Config.namespace,
+                nodered_domain_schema: Config.nodered_domain_schema
             }
             res.end(JSON.stringify(res2));
         });
         app.get("/loginproviders", async (req: any, res: any, next: any): Promise<void> => {
-            LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", TokenUser.rootToken());
-            var result: any[] = [];
-            LoginProvider.login_providers.forEach(provider => {
-                var item: any = { name: provider.name, id: provider.id, provider: provider.provider, logo: "fa-question-circle" };
-                if (provider.provider === "google") { item.logo = "fa-google"; }
-                if (provider.provider === "saml") { item.logo = "fa-windows"; }
-                result.push(item);
-            });
-            if (result.length === 0) {
-                var item: any = { name: "Local", id: "local", provider: "local", logo: "fa-question-circle" };
-                result.push(item);
+            try {
+                LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", TokenUser.rootToken());
+                var result: any[] = [];
+                LoginProvider.login_providers.forEach(provider => {
+                    var item: any = { name: provider.name, id: provider.id, provider: provider.provider, logo: "fa-question-circle" };
+                    if (provider.provider === "google") { item.logo = "fa-google"; }
+                    if (provider.provider === "saml") { item.logo = "fa-windows"; }
+                    result.push(item);
+                });
+                if (result.length === 0) {
+                    var item: any = { name: "Local", id: "local", provider: "local", logo: "fa-question-circle" };
+                    result.push(item);
+                }
+                res.setHeader("Content-Type", "application/json");
+                res.end(JSON.stringify(result));
+                res.end();
+            } catch (error) {
+                res.end(error);
+                console.error(error);
             }
-            res.setHeader("Content-Type", "application/json");
-            res.end(JSON.stringify(result));
-            res.end();
-            LoginProvider.RegisterProviders(app, baseurl);
+            try {
+                LoginProvider.RegisterProviders(app, baseurl);
+            } catch (error) {
+            }
         });
     }
     static async RegisterProviders(app: express.Express, baseurl: string) {
@@ -171,7 +187,7 @@ export class LoginProvider {
         if (LoginProvider.login_providers.length === 0) { hasLocal = true; }
         LoginProvider.login_providers.forEach(async (provider) => {
             try {
-                if (LoginProvider._providers[provider.id] === undefined) {
+                if (Util.IsNullUndefinded(LoginProvider._providers[provider.id])) {
                     if (provider.provider === "saml") {
                         var metadata: any = await Config.parse_federation_metadata(provider.saml_federation_metadata);
                         LoginProvider._providers[provider.id] =
@@ -189,7 +205,7 @@ export class LoginProvider {
             }
         });
         if (hasLocal === true) {
-            if (LoginProvider._providers.local === undefined) {
+            if (Util.IsNullUndefinded(LoginProvider._providers.local)) {
                 LoginProvider._providers.local = LoginProvider.CreateLocalStrategy(app, baseurl);
             }
         }
@@ -210,7 +226,7 @@ export class LoginProvider {
             passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),
             function (req: any, res: any): void {
                 var originalUrl: any = req.cookies.originalUrl;
-                if (originalUrl !== undefined && originalUrl !== null) {
+                if (!Util.IsNullEmpty(originalUrl)) {
                     res.cookie("originalUrl", "", { expires: new Date() });
                     res.redirect(originalUrl);
                 } else {
@@ -235,12 +251,67 @@ export class LoginProvider {
         strategy.name = key;
         this._logger.info(options.callbackUrl);
 
+        // app.get("/" + key + "/FederationMetadata/2007-06/FederationMetadata.xml",
+        //     wsfed.metadata({
+        //         cert: Buffer.from(Config.signing_crt, "base64").toString("ascii"),
+        //         issuer: issuer
+        //     }));
+        var CertPEM = Buffer.from(Config.signing_crt, "base64").toString("ascii").replace(/(-----(BEGIN|END) CERTIFICATE-----|\n)/g, '');
+        app.get("/" + key + "/FederationMetadata/2007-06/FederationMetadata.xml",
+            (req: express.Request, res: express.Response, next: express.NextFunction) => {
+                res.set("Content-Type", "text/xml");
+                res.send(`
+            <EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="` + issuer + `">
+            <RoleDescriptor xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:fed="http://docs.oasis-open.org/wsfed/federation/200706" xsi:type="fed:SecurityTokenServiceType" protocolSupportEnumeration="http://docs.oasis-open.org/wsfed/federation/200706" 
+            ServiceDisplayName="` + issuer + `">
+            <KeyDescriptor use="signing">
+            <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+            <X509Data>
+            <X509Certificate>` + CertPEM + `</X509Certificate>
+            </X509Data>
+            </KeyInfo>
+            </KeyDescriptor>
+            <fed:TokenTypesOffered>
+            <fed:TokenType Uri="urn:oasis:names:tc:SAML:2.0:assertion"/>
+            <fed:TokenType Uri="urn:oasis:names:tc:SAML:1.0:assertion"/>
+            </fed:TokenTypesOffered>
+            <fed:ClaimTypesOffered>
+            <auth:ClaimType xmlns:auth="http://docs.oasis-open.org/wsfed/authorization/200706" Uri="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" Optional="true">
+            <auth:DisplayName>E-Mail Address</auth:DisplayName>
+            <auth:Description>The e-mail address of the user</auth:Description>
+            </auth:ClaimType>
+            <auth:ClaimType xmlns:auth="http://docs.oasis-open.org/wsfed/authorization/200706" Uri="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname" Optional="true">
+            <auth:DisplayName>Given Name</auth:DisplayName>
+            <auth:Description>The given name of the user</auth:Description>
+            </auth:ClaimType>
+            <auth:ClaimType xmlns:auth="http://docs.oasis-open.org/wsfed/authorization/200706" Uri="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name" Optional="true">
+            <auth:DisplayName>Name</auth:DisplayName>
+            <auth:Description>The unique name of the user</auth:Description>
+            </auth:ClaimType>
+            <auth:ClaimType xmlns:auth="http://docs.oasis-open.org/wsfed/authorization/200706" Uri="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname" Optional="true">
+            <auth:DisplayName>Surname</auth:DisplayName>
+            <auth:Description>The surname of the user</auth:Description>
+            </auth:ClaimType>
+            <auth:ClaimType xmlns:auth="http://docs.oasis-open.org/wsfed/authorization/200706" Uri="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier" Optional="true">
+            <auth:DisplayName>Name ID</auth:DisplayName>
+            <auth:Description>The SAML name identifier of the user</auth:Description>
+            </auth:ClaimType>
+            </fed:ClaimTypesOffered>
+            <fed:PassiveRequestorEndpoint>
+            <EndpointReference xmlns="http://www.w3.org/2005/08/addressing">
+            <Address>` + options.callbackUrl + `</Address>
+            </EndpointReference>
+            </fed:PassiveRequestorEndpoint>
+            </RoleDescriptor>
+            </EntityDescriptor>
+            `);
+            });
         app.use("/" + key,
             bodyParser.urlencoded({ extended: false }),
             passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),
             function (req: any, res: any): void {
                 var originalUrl: any = req.cookies.originalUrl;
-                if (originalUrl !== undefined && originalUrl !== null) {
+                if (!Util.IsNullEmpty(originalUrl)) {
                     res.cookie("originalUrl", "", { expires: new Date() });
                     res.redirect(originalUrl);
                 } else {
@@ -248,6 +319,7 @@ export class LoginProvider {
                 }
             }
         );
+
         return strategy;
     }
 
@@ -280,16 +352,28 @@ export class LoginProvider {
                     return done(null, tuser);
                 }
                 user = await User.FindByUsername(username);
-                if (user === undefined || user === null) { return done(null, false); }
-                if (!(await user.ValidatePassword(password))) {
-                    Audit.LoginFailed(username, "weblogin", "local", "");
-                    return done(null, false);
+                if (Util.IsNullUndefinded(user)) {
+                    if (!Config.allow_user_registration) {
+                        return done(null, false);
+                    }
+                    user = new User(); user.name = username; user.username = username;
+                    await user.SetPassword(password);
+                    user = await Config.db.InsertOne(user, "users", 0, false, TokenUser.rootToken());
+                    var users: Role = await Role.FindByNameOrId("users", TokenUser.rootToken());
+                    users.AddMember(user);
+                    await users.Save(TokenUser.rootToken())
+                } else {
+                    if (!(await user.ValidatePassword(password))) {
+                        Audit.LoginFailed(username, "weblogin", "local", "");
+                        return done(null, false);
+                    }
                 }
                 tuser = new TokenUser(user);
                 Audit.LoginSuccess(tuser, "weblogin", "local", "");
                 return done(null, tuser);
             } catch (error) {
                 done(error);
+                console.error(error);
             }
         });
         passport.use("local", strategy);
@@ -299,7 +383,7 @@ export class LoginProvider {
             passport.authenticate("local", { failureRedirect: "/" }),
             function (req: any, res: any): void {
                 var originalUrl: any = req.cookies.originalUrl;
-                if (originalUrl !== undefined && originalUrl !== null) {
+                if (!Util.IsNullEmpty(originalUrl)) {
                     res.cookie("originalUrl", "", { expires: new Date() });
                     res.redirect(originalUrl);
                 } else {
@@ -314,20 +398,24 @@ export class LoginProvider {
         if (username !== null && username != undefined) { username = username.toLowerCase(); }
         this._logger.debug("verify: " + username);
         var _user: User = await User.FindByUsernameOrFederationid(username);
-        if (_user === undefined || _user === null) {
+
+        if (Util.IsNullUndefinded(_user)) {
             var createUser: boolean = Config.auto_create_users;
             if (Config.auto_create_domains.map(x => username.endsWith(x)).length == -1) { createUser = false; }
             if (createUser) {
                 _user = new User(); _user.name = profile.name;
-                if (profile["http://schemas.microsoft.com/identity/claims/displayname"] !== undefined) {
+                if (!Util.IsNullEmpty(profile["http://schemas.microsoft.com/identity/claims/displayname"])) {
                     _user.name = profile["http://schemas.microsoft.com/identity/claims/displayname"];
                 }
                 _user.username = username;
-                _user = await Config.db.InsertOne(_user, "users", 0, false, TokenUser.rootToken());
+                if (Util.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty, please add displayname to claims", null); return; }
+                // _user = await Config.db.InsertOne(_user, "users", 0, false, TokenUser.rootToken());
+                var jwt: string = TokenUser.rootToken();
+                _user = await User.ensureUser(jwt, _user.name, _user.username, null, null);
             }
         }
 
-        if (_user === undefined || _user === null) {
+        if (Util.IsNullUndefinded(_user)) {
             Audit.LoginFailed(username, "weblogin", "saml", "");
             done("unknown user " + username, null); return;
         }
@@ -345,21 +433,20 @@ export class LoginProvider {
         if (username !== null && username != undefined) { username = username.toLowerCase(); }
         this._logger.debug("verify: " + username);
         var _user: User = await User.FindByUsernameOrFederationid(username);
-        if (_user === undefined || _user === null) {
+        if (Util.IsNullUndefinded(_user)) {
             var createUser: boolean = Config.auto_create_users;
             if (Config.auto_create_domains.map(x => username.endsWith(x)).length == -1) { createUser = false; }
             if (createUser) {
                 var jwt: string = TokenUser.rootToken();
                 _user = new User(); _user.name = profile.name;
-                if (profile.displayName !== undefined) { _user.name = profile.displayName; }
+                if (!Util.IsNullEmpty(profile.displayName)) { _user.name = profile.displayName; }
                 _user.username = username;
-                _user = await Config.db.InsertOne(_user, "users", 0, false, jwt);
-                var users: Role = await Role.FindByNameOrId("users", jwt);
-                users.AddMember(_user);
-                await users.Save(jwt)
+                if (Util.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty.", null); return; }
+                var jwt: string = TokenUser.rootToken();
+                _user = await User.ensureUser(jwt, _user.name, _user.username, null, null);
             }
         }
-        if (_user === undefined || _user === null) {
+        if (Util.IsNullUndefinded(_user)) {
             Audit.LoginFailed(username, "weblogin", "google", "");
             done("unknown user " + username, null); return;
         }

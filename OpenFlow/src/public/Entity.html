@@ -4,12 +4,24 @@
     </div>
 </div>
 
+<section>
+    <div class="form-group">
+        <div class="col-sm-9">
+            <label class="control-label"><span translate lib="web">adduser</span>
+                <select ng-model="ctrl.newuser"
+                    ng-options="item as (item.name + ' ' + item.username) for item in ctrl.usergroups">
+                </select>
+                <button type="button" ng-click="ctrl.adduser()" ng-disabled="ctrl.loading || ctrl.newuser==null"
+                    translate lib="web">insert</button>
+
+        </div>
+    </div>
+</section>
 
 <section ng-repeat="ace in ctrl.model._acl" ng-show="ctrl.collection!='files'">
     <div class="form-group">
-        <div class="col-sm-9">
-            <label class="col-sm-3 control-label">{{ace.name}}: <a href="" ng-click="ctrl.removeuser(ace._id)" translate
-                    lib="web">delete</a></label>
+        <div class="col-sm-9 input-group">
+            <label class="col-sm-3 control-label">{{ace.name}}: </label>
             <input ng-disabled="ctrl.loading==true" type="checkbox" ng-checked="ctrl.isBitSet(ace.rights, 1)"
                 ng-click="ctrl.toogleBit(ace, 1)" value="1" id="{{ace._id}}" /> create
             <input ng-disabled="ctrl.loading==true" type="checkbox" ng-checked="ctrl.isBitSet(ace.rights, 2)"
@@ -25,18 +37,6 @@
         </div>
     </div>
 </section>
-<section>
-    <div class="form-group">
-        <div class="col-sm-9">
-            <label class="control-label"><span translate lib="web">adduser</span>
-                <select ng-model="ctrl.newuser" ng-options="item as item.name for item in ctrl.usergroups">
-                </select>
-                <button type="button" ng-click="ctrl.adduser()" ng-disabled="ctrl.loading || ctrl.newuser==null"
-                    translate lib="web">insert</button>
-
-        </div>
-    </div>
-</section>
 
 
 <pre ng-show="ErrorMessage!=null">{{ ErrorMessage }}</pre>
@@ -49,7 +49,11 @@
             <label class="col-sm-3 control-label"><span translate lib="web">{{ key }}</span>: <a href=""
                     ng-click="ctrl.removekey(key)" translate lib="web">delete</a></label>
             <div class="col-sm-9">
+                <textarea class='autogrow form-control' rows='3' data-min-rows='3'
+                    ng-model="ctrl.model[key]"></textarea>
+                <!-- 
                 <input ng-model="ctrl.model[key]" class="form-control input-md" ng-disabled="ctrl.loading==true" />
+                -->
             </div>
         </div>
     </section>
@@ -68,7 +72,9 @@
         <div class="form-group">
             <label class="col-sm-3 control-label" translate lib="web">json</label>
             <div class="col-sm-9">
-                <textarea class="form-control" rows="5" ng-model="ctrl.jsonmodel" style="max-width: 100%;"></textarea>
+                <!-- <textarea class="form-control" rows="5" ng-model="ctrl.jsonmodel" style="max-width: 100%;"></textarea> -->
+
+                <textarea class='autogrow form-control' rows='3' data-min-rows='3' ng-model="ctrl.jsonmodel"></textarea>
 
                 <!-- <textarea msd-elastic  class="form-control" ></textarea> -->
             </div>

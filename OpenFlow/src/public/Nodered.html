@@ -1,0 +1,56 @@
+<div class="starter-template">
+  <h1 translate lib="web">sockets</h1>
+</div>
+
+<form ng-submit="ctrl.submit()" class="form-horizontal" role="form" autocomplete="off" ng-hide="ctrl.showjson==true">
+  <section>
+    <div class="form-group">
+      <div class="col-sm-offset-2 col-sm-10">
+        <button type="button" class="btn btn-secondary" ng-click="ctrl.EnsureNoderedInstance()"
+          ng-show="ctrl.instance==null">Create Nodered</button>
+        <button type="button" class="btn btn-secondary" ng-click="ctrl.GetNoderedInstance()">Get status</button>
+        <button type="button" class="btn btn-secondary" ng-click="ctrl.RestartNoderedInstance()"
+          ng-show="ctrl.instance!=null">Restart
+          Nodered</button>
+        <button type="button" class="btn btn-secondary" ng-click="ctrl.DeleteNoderedInstance()"
+          ng-show="ctrl.instance!=null">Delete Nodered</button>
+        <button type="button" class="btn btn-secondary" ng-show="ctrl.instance!=null"
+          ng-click="ctrl.GetNoderedInstanceLog()">Get Console</button>
+
+        <a ng-href="{{ctrl.noderedurl}}" class="btn btn-danger" target="nodered" ng-show="ctrl.instance!=null">Open
+          Nodered</a>
+      </div>
+    </div>
+  </section>
+</form>
+<section>
+  <div class="form-group">
+    <label class="col-sm-3 control-label"><span translate lib="web">status</span>: </label>
+    <div class="col-sm-9">
+      <span ng-show="ctrl.instance!=null">{{ ctrl.instancestatus }}</span>
+    </div>
+  </div>
+</section>
+<section>
+  <div class="form-group">
+    <label class="col-sm-3 control-label"><span translate lib="web">image</span>: </label>
+    <div class="col-sm-9">
+      <span ng-show="ctrl.instance==null"></span>
+      <span ng-show="ctrl.instance!=null">{{ ctrl.instance.spec.containers[0].image }}</span>
+    </div>
+  </div>
+</section>
+<section ng-show="ctrl.instancelog!=''">
+  <div class="form-group">
+    <label class="col-sm-3 control-label"><span translate lib="web">console</span>: </label>
+    <div class="col-sm-9">
+      <pre>{{ ctrl.instancelog }}</pre>
+    </div>
+  </div>
+</section>
+
+<pre>{{ ctrl.messages }}</pre>
+<p>If this is your first time creating a NodeRed instance, please signout and signin again, to refresh group
+  memberships for your user</p>
+<p>It can take a few minutes from you order a deletion of NodeRed, til it stops running. If accessing nodered in a
+  browser reports 404, you can safely assume it will be gone soon.</p>

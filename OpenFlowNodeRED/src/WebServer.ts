@@ -7,6 +7,7 @@ import * as compression from "compression";
 import * as bodyParser from "body-parser";
 import * as cookieParser from "cookie-parser";
 import * as nodered from "node-red";
+import * as morgan from "morgan";
 
 import * as samlauth from "node-red-contrib-auth-saml";
 import * as cookieSession from "cookie-session";
@@ -17,6 +18,9 @@ import { WebSocketClient } from "./WebSocketClient";
 import { noderedcontribopenflowstorage } from "./node-red-contrib-openflow-storage";
 import { SigninMessage, Message } from "./Message";
 import { noderedcontribmiddlewareauth } from "./node-red-contrib-middleware-auth";
+import { dashboardAuth } from "./dashboardAuth";
+
+import * as passport from "passport";
 
 export class WebServer {
     private static _logger: winston.Logger;
@@ -35,11 +39,27 @@ export class WebServer {
             this._logger.debug("WebServer.configure::begin");
             if (this.app === null) {
                 this.app = express();
+                // this.app.use(morgan('combined', { stream: (winston.stream as any).write }));
+                var loggerstream = {
+                    write: function (message, encoding) {
+                        logger.silly(message);
+                    }
+                };
+                this.app.use(morgan('combined', { stream: loggerstream }));
                 this.app.use(compression());
                 this.app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }))
                 this.app.use(bodyParser.json({ limit: '10mb' }))
                 this.app.use(cookieParser());
                 this.app.use("/", express.static(path.join(__dirname, "/public")));
+
+                this.app.use(passport.initialize());
+                this.app.use(passport.session());
+                passport.serializeUser(async function (user: any, done: any): Promise<void> {
+                    done(null, user);
+                });
+                passport.deserializeUser(function (user: any, done: any): void {
+                    done(null, user);
+                });
                 var server: http.Server = null;
                 if (Config.tls_crt != '' && Config.tls_key != '') {
                     var options: any = {
@@ -66,6 +86,14 @@ export class WebServer {
                         options.passphrase = Config.tls_passphrase;
                     }
                     server = https.createServer(options, this.app);
+
+                    var redirapp = express();
+                    var _http = http.createServer(redirapp);
+                    redirapp.get('*', function (req, res) {
+                        // res.redirect('https://' + req.headers.host + req.url);
+                        res.status(200).json({ status: "ok" });
+                    })
+                    _http.listen(80);
                 } else {
                     server = http.createServer(this.app);
                 }
@@ -86,6 +114,15 @@ export class WebServer {
                 // });
                 this.settings.adminAuth = await samlauth.noderedcontribauthsaml.configure(Config.baseurl(), Config.saml_federation_metadata, Config.saml_issuer,
                     (profile: string | any, done: any) => {
+                        var roles: string[] = profile["http://schemas.xmlsoap.org/claims/Group"];
+                        if (roles !== undefined) {
+                            if (Config.noderedusers !== "") {
+                                if (roles.indexOf(Config.noderedusers) !== -1 || roles.indexOf(Config.noderedusers) !== -1) { profile.permissions = "read"; }
+                            }
+                            if (Config.noderedadmins !== "") {
+                                if (roles.indexOf(Config.noderedadmins) !== -1 || roles.indexOf(Config.noderedadmins) !== -1) { profile.permissions = "*"; }
+                            }
+                        }
                         // profile.permissions = "*";
                         done(profile);
                     }, "");
@@ -98,6 +135,27 @@ export class WebServer {
                 };
 
                 this.settings.storageModule = new noderedcontribopenflowstorage(logger, socket);
+
+                this.settings.ui.path = "ui";
+                // this.settings.ui.middleware = new dashboardAuth();
+                this.settings.ui.middleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+                    noderedcontribmiddlewareauth.process(socket, req, res, next);
+                    // if (req.isAuthenticated()) {
+                    //     next();
+                    // } else {
+                    //     passport.authenticate("uisaml", {
+                    //         successRedirect: '/ui/',
+                    //         failureRedirect: '/uisaml/',
+                    //         failureFlash: false
+                    //     })(req, res, next);
+                    // }
+                };
+
+
+                this.app.use(cookieSession({
+                    name: 'session',
+                    keys: ['key1', 'key2']
+                }))
 
                 // initialise the runtime with a server and settings
                 await (RED as any).init(server, this.settings);

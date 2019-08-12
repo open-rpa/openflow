@@ -59,7 +59,7 @@ AMQP consumer, listening for messages
             queue: { value: "", required: true },
             noack: { value: true, required: true },
             name: { value: "" },
-            config: { value: "", type: "amqp-connection", required: true }
+            config: { value: "", type: "amqp-connection", required: false }
         },
         inputs: 0,
         outputs: 1,
@@ -107,7 +107,7 @@ localqueue is this nodes personal queue, leave blank for auto generated ( will c
         defaults: {
             queue: { value: "", required: true },
             localqueue: { value: "" },
-            config: { value: "", type: "amqp-connection", required: true }
+            config: { value: "", type: "amqp-connection", required: false }
         },
         inputs: 1,
         outputs: 1,

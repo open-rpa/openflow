@@ -1,8 +1,6 @@
 /// <reference path='ReconnectingWebSocket.ts' />
 module openflow {
     // "use strict";
-
-    var doLoadMobileData: boolean = false;
     interface IHashTable<T> {
         [key: string]: T;
     }
@@ -23,6 +21,14 @@ module openflow {
     }
     export class WebSocketClient {
         private _socketObject: ReconnectingWebSocket = null;
+
+        public domain: string = null;
+        public allow_personal_nodered: boolean = false;
+        public allow_user_registration: boolean = false;
+
+        public namespace: string = null;
+        public nodered_domain_schema: string = null;
+
         private _url: string = null;
         private static instance: WebSocketClient = null;
         private _receiveQueue: SocketMessage[] = [];
@@ -31,6 +37,8 @@ module openflow {
         public jwt: string = null;
         public device: any = null;
         public usingCordova: boolean = false;
+        public plugins: any = null;
+        public scanCount: number = 0;
         public oneSignalId: string = null;
         public location: any;
         static $inject = ["$rootScope", "$location", "$window"];
@@ -38,34 +46,10 @@ module openflow {
         constructor(public $rootScope: ng.IRootScopeService, public $location, public $window: any) {
             try {
                 var path = this.$location.absUrl().split('#')[0];
-                this.usingCordova = (path.indexOf("/android/") > -1 || path.indexOf("/ios/") > -1);
+                // this.usingCordova = (path.indexOf("/android/") > -1 || path.indexOf("/ios/") > -1);
             } catch (error) {
             }
             this.init();
-        }
-        setCookie(cname, cvalue, exdays) {
-            var d = new Date();
-            d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
-            var expires = "expires=" + d.toUTCString();
-            document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
-        }
-        getCookie(cname) {
-            var name = cname + "=";
-            var decodedCookie = decodeURIComponent(document.cookie);
-            var ca = decodedCookie.split(';');
-            for (var i = 0; i < ca.length; i++) {
-                var c = ca[i];
-                while (c.charAt(0) == ' ') {
-                    c = c.substring(1);
-                }
-                if (c.indexOf(name) == 0) {
-                    return c.substring(name.length, c.length);
-                }
-            }
-            return "";
-        }
-        deleteCookie(cname) {
-            document.cookie = cname + "=;Thu, 01 Jan 1970 00:00:00 UTC;path=/";
         }
         onbackbutton() {
             console.log("Handle the onbackbutton event");
@@ -85,8 +69,8 @@ module openflow {
         getids(oneSignal: any): Promise<string> {
             return new Promise<string>(async (resolve, reject) => {
                 oneSignal.getIds(function (ids) {
+                    console.log("oneSignal.getIds: " + ids.userId);
                     resolve(ids.userId);
-                    console.log(ids.userId);
                 });
             });
         }
@@ -166,9 +150,121 @@ module openflow {
                 });
             });
         }
+        scanForCordova() {
+            if (this.usingCordova == true) return;
+            try {
+                if (cordova !== undefined) {
+                    console.log("Found cordova");
+                    this.usingCordova = true;
+                    document.addEventListener("deviceready", async () => {
+                        console.log("deviceready");
+                        if ((window as any).plugins) {
+                            this.plugins = (window as any).plugins;
+                            var oneSignal = (window as any).plugins.OneSignal;
+                            if (oneSignal) {
+                                try {
+                                    console.debug("window.plugins.OneSignal exists");
+
+                                    const sender_id = "906036108091";  // google_project_number
+                                    const oneSignalAppId = "cfdefd08-d4ad-4593-8173-4ba4ebf4d67a";  // onesignal_app_id
+                                    var iosSettings = {};
+                                    iosSettings["kOSSettingsKeyAutoPrompt"] = true;
+                                    iosSettings["kOSSettingsKeyInAppLaunchURL"] = true;
+
+                                    console.debug("oneSignal.startInit");
+                                    oneSignal.startInit(oneSignalAppId, sender_id).
+                                        iOSSettings(iosSettings).
+                                        inFocusDisplaying(oneSignal.OSInFocusDisplayOption.Notification).
+                                        handleNotificationOpened(this.notificationOpenedCallback).
+                                        handleNotificationReceived(this.notificationReceivedCallback).
+                                        endInit();
+                                    this.oneSignalId = await this.getids(oneSignal);
+                                    console.log("oneSignalId: " + this.oneSignalId);
+
+                                } catch (error) {
+                                    console.error(error);
+                                }
+                            } else {
+                                console.log("Missing oneSignal plugin");
+                            }
+                        }
+                        try {
+                            if (device) {
+                                console.debug("device exists");
+                                this.device = device;
+                            } else {
+                                console.debug("device does NOT exists");
+                            }
+                        } catch (error) {
+                            console.error(error);
+                        }
+                        document.addEventListener("pause", this.onPause, false);
+                        document.addEventListener("resume", this.onResume, false);
+                        document.addEventListener("menubutton", this.onMenuKeyDown, false);
+                        document.addEventListener("backbutton", this.onbackbutton, false);
+
+
+                        if (cordova.plugins && cordova.plugins.diagnostic) {
+                            console.debug("Check if authorized for location");
+                            var isAuthorized = await this.isLocationAuthorized();
+                            if (!isAuthorized) {
+                                console.debug("Not authorized for location is not , request authorization");
+                                await this.requestLocationAuthorization();
+                            }
+
+                            var isAvailable = await this.isLocationAvailable();
+                            if (!isAvailable) {
+                                console.debug("Location is not available");
+                            } else {
+                                console.debug("Location is available, get current location");
+                                this.location = await this.getLocation();
+                            }
+                        } else {
+                            console.debug("diagnostic is missing");
+                        }
+                        this.$rootScope.$broadcast("cordovadetected");
+                    });
+                } else {
+                    console.debug("cordova not definded");
+                    if (this.scanCount < (5 * 4)) {
+                        this.scanCount++;
+                        setTimeout(this.scanForCordova, 200);
+                    }
+                }
+            } catch (error) {
+                console.debug("Failed locating cordova. " + error);
+            }
+        }
         init() {
             this.getJSON("/config", async (error: any, data: any) => {
+                var parser = document.createElement('a');
+                parser.href = data.wshost;
+                parser.protocol; // => "http:"
+                parser.hostname; // => "example.com"
+                parser.port;     // => "3000"
+                parser.pathname; // => "/pathname/"
+                parser.search;   // => "?search=test"
+                parser.hash;     // => "#hash"
+                parser.host;     // => "example.com:3000"
+                if (location.protocol == 'https:' && parser.protocol == "ws:") {
+                    data.wshost = "wss://" + parser.hostname;
+                    console.log("new wshost: " + data.wshost);
+                    if (parser.port != "80") {
+                        data.wshost = "wss://" + parser.hostname + parser.port;
+                    }
+                }
+                if (location.protocol == 'http:' && parser.protocol == "wss:") {
+                    data.wshost = "ws://" + parser.hostname;
+                    if (parser.port != "443") {
+                        data.wshost = "ws://" + parser.hostname + parser.port;
+                    }
+                }
                 console.debug("WebSocketClient::onopen: connecting to " + data.wshost);
+                this.domain = data.domain;
+                this.allow_personal_nodered = data.allow_personal_nodered;
+                this.allow_user_registration = data.allow_user_registration;
+                this.namespace = data.namespace;
+                this.nodered_domain_schema = data.nodered_domain_schema;
                 this._socketObject = new ReconnectingWebSocket(data.wshost);
                 this._socketObject.onopen = (this.onopen).bind(this);
                 this._socketObject.onmessage = (this.onmessage).bind(this);
@@ -223,140 +319,10 @@ module openflow {
         timeout(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
         }
-        private async LoadMobileData() {
-            console.log("this.usingCordova: " + this.usingCordova);
-            if (!this.usingCordova) {
-                console.log("wait 1 seconds and test for Cordova again");
-                let counter: number = 0;
-                while (!this.usingCordova && counter < 15) {
-                    counter++;
-                    await this.timeout(100);
-                    var win: any = window;
-                    this.usingCordova = !!win.cordova;
-                }
-                console.log("this.usingCordova: " + this.usingCordova);
-            }
-            if (this.usingCordova) {
-                document.addEventListener("deviceready", async () => {
-                    console.log("deviceready");
-                    if ((window as any).plugins) {
-                        var oneSignal = (window as any).plugins.OneSignal;
-                        if (oneSignal) {
-                            try {
-                                console.debug("window.plugins.OneSignal exists");
-
-                                const sender_id = "906036108091";  // google_project_number
-                                const oneSignalAppId = "cfdefd08-d4ad-4593-8173-4ba4ebf4d67a";  // onesignal_app_id
-                                var iosSettings = {};
-                                iosSettings["kOSSettingsKeyAutoPrompt"] = true;
-                                iosSettings["kOSSettingsKeyInAppLaunchURL"] = true;
-
-                                console.debug("oneSignal.startInit");
-                                oneSignal.startInit(oneSignalAppId, sender_id).
-                                    iOSSettings(iosSettings).
-                                    inFocusDisplaying(oneSignal.OSInFocusDisplayOption.Notification).
-                                    handleNotificationOpened(this.notificationOpenedCallback).
-                                    handleNotificationReceived(this.notificationReceivedCallback).
-                                    endInit();
-                                this.oneSignalId = await this.getids(oneSignal);
-
-                            } catch (error) {
-                                console.error(error);
-                            }
-                        } else {
-                            console.log("Missing oneSignal plugin");
-                        }
-                    }
-                    try {
-                        if (device) {
-                            console.debug("device exists");
-                            this.device = device;
-                        } else {
-                            console.debug("device does NOT exists");
-                        }
-                    } catch (error) {
-                        console.error(error);
-                    }
-                    document.addEventListener("pause", this.onPause, false);
-                    document.addEventListener("resume", this.onResume, false);
-                    document.addEventListener("menubutton", this.onMenuKeyDown, false);
-                    document.addEventListener("backbutton", this.onbackbutton, false);
-
-
-                    if (cordova.plugins && cordova.plugins.diagnostic) {
-                        console.debug("Check if authorized for location");
-                        var isAuthorized = await this.isLocationAuthorized();
-                        if (!isAuthorized) {
-                            console.debug("Not authorized for location is not , request authorization");
-                            await this.requestLocationAuthorization();
-                        }
-
-                        var isAvailable = await this.isLocationAvailable();
-                        if (!isAvailable) {
-                            console.debug("Location is not available");
-                        } else {
-                            console.debug("Location is available, get current location");
-                            this.location = await this.getLocation();
-                        }
-                    } else {
-                        console.debug("diagnostic is missing");
-                    }
-                });
-            }
-        }
         private onopen(evt: Event) {
-            console.log("WebSocketClient::onopen: connected");
-            this.gettoken();
-        }
-        gettoken() {
-            var me: WebSocketClient = WebSocketClient.instance;
-            var q: SigninMessage = new SigninMessage();
-            this.getJSON("/jwt", async (error: any, data: any) => {
-                try {
-                    if (data !== null && data !== undefined) {
-                        if (data.jwt === null || data.jwt === undefined || data.jwt.trim() === "") { data.jwt = null; }
-                        if (data.rawAssertion === null || data.rawAssertion === undefined || data.rawAssertion.trim() === "") { data.rawAssertion = null; }
-                        if (data.jwt === null && data.rawAssertion === null) {
-                            console.log("data.jwt or data.rawAssertion is null");
-                            data = null;
-                        }
-                    }
-                    if (data === null || data === undefined) {
-                        if (this.$location.path() !== "/Login") {
-                            console.log("path: " + this.$location.path());
-                            console.log("WebSocketClient::onopen: Not signed in, redirect /Login");
-                            var _url = this.$location.absUrl();
-                            this.setCookie("url", _url, 365);
-                            this.$location.path("/Login");
-                            this.$rootScope.$apply();
-                        }
-                        return;
-                    }
-                    if (doLoadMobileData == true) {
-                        await this.LoadMobileData()
-                    }
-                    q.jwt = data.jwt;
-                    q.rawAssertion = data.rawAssertion;
-                    q.realm = "browser";
-                    q.onesignalid = this.oneSignalId;
-                    q.device = this.device;
-                    q.gpslocation = this.location;
-                    console.debug("onesignalid: " + q.onesignalid);
-                    console.debug("device: " + JSON.stringify(q.device));
-                    console.debug("gpslocation: " + JSON.stringify(q.gpslocation));
-                    console.debug("signing in with token");
-                    var msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
-                    var a: any = await this.Send(msg);
-                    var result: SigninMessage = a;
-                    this.user = result.user;
-                    this.$rootScope.$broadcast(msg.command, result);
-                } catch (error) {
-                    this.user = null;
-                    console.error(error);
-                    this.$location.path("/Login");
-                    this.$rootScope.$apply();
-                }
-            });
+            // console.debug("WebSocketClient::onopen: connected");
+            this.$rootScope.$broadcast("socketopen");
+            setTimeout(this.scanForCordova.bind(this), 200);
         }
         private onclose(evt: CloseEvent): void {
             var me: WebSocketClient = WebSocketClient.instance;

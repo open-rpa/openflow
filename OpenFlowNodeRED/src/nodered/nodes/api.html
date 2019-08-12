@@ -26,14 +26,14 @@
 
 <script type="text/x-red" data-template-name="api get jwt">
     <!-- readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" -->
-    <div class="form-row">
-        <label for="node-input-config"><i class="fa fa-globe"></i> Config</label>
-        <input type="text" id="node-input-config">
-    </div>
-    <div class="form-row">
-        <label ><i class="fa fa-tag"></i> Name</label>
-        <input type="text" id="node-input-name" placeholder="Node name">
-    </div>
+<div class="form-row">
+    <label for="node-input-config"><i class="fa fa-globe"></i> Config</label>
+    <input type="text" id="node-input-config">
+</div>
+<div class="form-row">
+    <label><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" placeholder="Node name">
+</div>
 </script>
 <script type="text/x-red" data-help-name="api get jwt">
 Request a JWT token for talking with API. Leave config blank to impersonate root.
@@ -472,6 +472,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
     <div class="form-row">
         <label for="node-input-targetid"><i class="fa fa-tasks"></i> Target</label>
         <select id="node-input-targetid-select">
+            <option>Loading...</option>
         </select>
         <input id="node-input-targetid" type="hidden">
     </div>
@@ -518,6 +519,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 
 
             $.getJSON('api_roles', function (data) {
+                $('#node-input-targetid-select').empty();
                 $.each(data, function (i, ele) {
                     $('#node-input-targetid-select').append($('<option>', {
                         value: ele._id,
@@ -525,6 +527,10 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
                     }));
                 });
                 $('#node-input-targetid-select').val($('#node-input-targetid').val());
+            }).error(function (jqXHR, textStatus, errorThrown) {
+                console.log("error " + textStatus);
+                console.log("incoming Text " + jqXHR.responseText);
+                alert("error:" + jqXHR.responseText);
             });
 
         },
@@ -550,6 +556,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
     <div class="form-row">
         <label for="node-input-targetid"><i class="fa fa-tasks"></i> Target</label>
         <select id="node-input-targetid-select">
+            <option>Loading...</option>
         </select>
         <input id="node-input-targetid" type="hidden">
     </div>
@@ -596,6 +603,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 
 
             $.getJSON('api_roles', function (data) {
+                $('#node-input-targetid-select').empty();
                 $.each(data, function (i, ele) {
                     $('#node-input-targetid-select').append($('<option>', {
                         value: ele._id,
@@ -603,6 +611,10 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
                     }));
                 });
                 $('#node-input-targetid-select').val($('#node-input-targetid').val());
+            }).error(function (jqXHR, textStatus, errorThrown) {
+                console.log("error " + textStatus);
+                console.log("incoming Text " + jqXHR.responseText);
+                alert("error:" + jqXHR.responseText);
             });
 
         },
@@ -875,7 +887,6 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             var annot = this.mapeditor.getSession().getAnnotations();
             $("#node-input-noerr-map").val(0);
             for (var k = 0; k < annot.length; k++) {
-                console.log(annot[k].type, ":", annot[k].text, "on line", annot[k].row);
                 if (annot[k].type === "error") {
                     $("#node-input-noerr-map").val(annot.length);
                     this.noerr = annot.length;
@@ -885,7 +896,6 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             annot = this.reduceeditor.getSession().getAnnotations();
             $("#node-input-noerr-reduce").val(0);
             for (var k = 0; k < annot.length; k++) {
-                console.log(annot[k].type, ":", annot[k].text, "on line", annot[k].row);
                 if (annot[k].type === "error") {
                     $("#node-input-noerr-reduce").val(annot.length);
                     this.noerr = annot.length;
@@ -895,7 +905,6 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             annot = this.finalizeeditor.getSession().getAnnotations();
             $("#node-input-noerr-finalize").val(0);
             for (var k = 0; k < annot.length; k++) {
-                console.log(annot[k].type, ":", annot[k].text, "on line", annot[k].row);
                 if (annot[k].type === "error") {
                     $("#node-input-noerr-finalize").val(annot.length);
                     this.noerr = annot.length;
@@ -1070,7 +1079,6 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             annot = this.updatedocumenteditor.getSession().getAnnotations();
             $("#node-input-noerr-updatedocument").val(0);
             for (var k = 0; k < annot.length; k++) {
-                console.log(annot[k].type, ":", annot[k].text, "on line", annot[k].row);
                 if (annot[k].type === "error") {
                     $("#node-input-noerr-updatedocument").val(annot.length);
                     this.noerr = annot.length;

@@ -27,27 +27,83 @@ module openflow {
         static $inject = ["$rootScope", "$location", "WebSocketClient"];
         public messageQueue: IHashTable<messagequeue> = {};
         constructor(public $rootScope: ng.IRootScopeService, public $location, public WebSocketClient: WebSocketClient) {
-            var formerlog = console.log.bind(window.console);
-            var formerwarn = console.warn.bind(window.console);
-            var formerdebug = console.debug.bind(window.console);
-            console.log = (msg) => {
-                //formerlog.apply(console, { arguments: arguments });
-                formerlog(msg);
-                var log = { message: msg, _type: "message", host: window.location.hostname };
-                this.Insert("jslog", log).catch(() => { });
-            }
-            console.warn = (msg) => {
-                //formerwarn.apply(console, { arguments: arguments });
-                formerwarn(msg);
-                var log = { message: msg, _type: "warning", host: window.location.hostname };
-                this.Insert("jslog", log).catch(() => { });
-            }
-            console.debug = (msg) => {
-                //formerdebug.apply(console, { arguments: arguments });
-                formerdebug(msg);
-                var log = { message: msg, _type: "debug", host: window.location.hostname };
-                this.Insert("jslog", log).catch(() => { });
-            }
+            var cleanup1 = this.$rootScope.$on('socketopen', (event, data) => {
+                if (event && data) { }
+                this.gettoken();
+                // cleanup();
+            });
+            //['log', 'warn', 'debug', 'error'].forEach((methodName) => {
+            ['error2'].forEach((methodName) => {
+                const originalMethod = console[methodName];
+                console[methodName] = (...args) => {
+                    let initiator = 'unknown place';
+                    try {
+                        throw new Error();
+                    } catch (e) {
+                        if (typeof e.stack === 'string') {
+                            let isFirst = true;
+                            for (const line of e.stack.split('\n')) {
+                                const matches = line.match(/^\s+at\s+(.*)/);
+                                if (matches) {
+                                    if (!isFirst) { // first line - current function
+                                        // second line - caller (what we are looking for)
+                                        initiator = matches[1];
+                                        break;
+                                    }
+                                    isFirst = false;
+                                }
+                            }
+                        }
+                    }
+                    initiator = (initiator.length > 100) ? initiator.substr(0, 100 - 1) : initiator;
+                    var _type = "message";
+                    if (methodName == "warn") _type = "warning";
+                    if (methodName == "debug") _type = "debug";
+                    if (methodName == "error") _type = "error";
+                    var a = args[0];
+                    try {
+                        if (a == "[object Object]") {
+                            a = JSON.stringify(args[0]);
+                        }
+                    } catch (error) {
+                    }
+                    var log = { message: a, _type: _type, host: window.location.hostname, initiator: initiator };
+                    this.Insert("jslog", log).catch(() => { });
+                    //originalMethod.apply(console, [...args, `\n  at ${initiator}`]);
+                    originalMethod.apply(console, [...args]);
+                };
+            });
+
+            // console.log = (msg) => {
+            //     var log = { message: msg, _type: "message", host: window.location.hostname };
+            //     this.Insert("jslog", log).catch(() => { });
+            // }
+
+            // (function () {
+            //     var oldLog = console.log;
+            //     console.log = function (msg) {
+            //         var log = { message: msg, _type: "message", host: window.location.hostname };
+            //         me.Insert("jslog", log).catch(() => { });
+            //         // oldLog.apply(console, arguments);
+            //         console.trace.apply(console, arguments);
+            //     };
+            // })();
+            // console.log = function (test) {
+            //     // var log = { message: arguments, _type: "message", host: window.location.hostname };
+            //     // me.Insert("jslog", log).catch(() => { });
+            //     console.warn(test)
+            //     return Function.prototype.bind.call(console.log, console, "test");
+            // }();
+            // console.warn = (msg) => {
+            //     var log = { message: msg, _type: "warning", host: window.location.hostname };
+            //     this.Insert("jslog", log).catch(() => { });
+            // }
+            // console.debug = (msg) => {
+            //     formerdebug.apply(console, { arguments: arguments });
+            //     // formerdebug(msg);
+            //     var log = { message: msg, _type: "debug", host: window.location.hostname };
+            //     this.Insert("jslog", log).catch(() => { });
+            // }
             window.onerror = (message, url, linenumber) => {
                 var log = { message: message, url: url, linenumber: linenumber, _type: "error", host: window.location.hostname };
                 this.Insert("jslog", log).catch(() => { });
@@ -60,11 +116,99 @@ module openflow {
                 }
             });
         }
-        async Query(collection: string, query: any, projection: any = null, orderby: any = { _created: -1 }, top: number = 500, skip: number = 0): Promise<any[]> {
+        gettoken() {
+            this.WebSocketClient.getJSON("/jwt", async (error: any, data: any) => {
+                try {
+                    if (data !== null && data !== undefined) {
+                        if (data.jwt === null || data.jwt === undefined || data.jwt.trim() === "") { data.jwt = null; }
+                        if (data.rawAssertion === null || data.rawAssertion === undefined || data.rawAssertion.trim() === "") { data.rawAssertion = null; }
+                        if (data.jwt === null && data.rawAssertion === null) {
+                            console.log("data.jwt and data.rawAssertion is null");
+                            data = null;
+                        }
+                    }
+                    if (data === null || data === undefined) {
+                        if (this.$location.path() !== "/Login") {
+                            console.log("path: " + this.$location.path());
+                            console.log("WebSocketClient::onopen: Not signed in, redirect /Login");
+                            var _url = this.$location.absUrl();
+                            this.setCookie("url", _url, 365);
+                            this.$location.path("/Login");
+                            this.$rootScope.$apply();
+                        }
+                        return;
+                    }
+                    await this.SigninWithToken(data.jwt, data.rawAssertion, null);
+                } catch (error) {
+                    this.WebSocketClient.user = null;
+                    console.error(error);
+                    this.$location.path("/Login");
+                    this.$rootScope.$apply();
+                }
+            });
+        }
+        async SigninWithToken(jwt: string, rawAssertion: string, impersonate: string): Promise<SigninMessage> {
+            var q: SigninMessage = new SigninMessage();
+            q.jwt = jwt;
+            q.rawAssertion = rawAssertion;
+            q.realm = "browser";
+            if (this.WebSocketClient.usingCordova) {
+                q.realm = "mobile";
+            }
+            q.impersonate = impersonate;
+            q.onesignalid = this.WebSocketClient.oneSignalId;
+            q.device = this.WebSocketClient.device;
+            q.gpslocation = this.WebSocketClient.location;
+            var msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
+            q = await this.WebSocketClient.Send<SigninMessage>(msg);
+            this.WebSocketClient.user = q.user;
+            this.WebSocketClient.jwt = q.jwt;
+            this.$rootScope.$broadcast("signin", q);
+            return q;
+        }
+        async SigninWithUsername(username: string, password: string, impersonate: string): Promise<SigninMessage> {
+            var q: SigninMessage = new SigninMessage();
+            q.username = username;
+            q.password = password;
+            q.realm = "browser";
+            if (this.WebSocketClient.usingCordova) {
+                q.realm = "mobile";
+            }
+            q.impersonate = impersonate;
+            q.onesignalid = this.WebSocketClient.oneSignalId;
+            q.device = this.WebSocketClient.device;
+            q.gpslocation = this.WebSocketClient.location;
+            var msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
+            q = await this.WebSocketClient.Send<SigninMessage>(msg);
+            this.WebSocketClient.user = q.user;
+            this.WebSocketClient.jwt = q.jwt;
+            this.$rootScope.$broadcast("signin", q);
+            return q;
+        }
+        async ListCollections(): Promise<any[]> {
+            var q: ListCollectionsMessage = new ListCollectionsMessage();
+            var msg: Message = new Message(); msg.command = "listcollections"; msg.data = JSON.stringify(q);
+            q = await this.WebSocketClient.Send<ListCollectionsMessage>(msg);
+            return q.result;
+        }
+        async DropCollection(collectionname: string): Promise<void> {
+            var q: DropCollectionMessage = new DropCollectionMessage();
+            q.collectionname = collectionname;
+            var msg: Message = new Message(); msg.command = "dropcollection"; msg.data = JSON.stringify(q);
+            q = await this.WebSocketClient.Send<DropCollectionMessage>(msg);
+        }
+        async Query(collection: string, query: any, projection: any = null, orderby: any = { _created: -1 }, top: number = 100, skip: number = 0): Promise<any[]> {
             var q: QueryMessage = new QueryMessage();
             q.collectionname = collection; q.query = query;
+            q.query = JSON.stringify(query, (key, value) => {
+                if (value instanceof RegExp)
+                    return ("__REGEXP " + value.toString());
+                else
+                    return value;
+            });
             q.projection = projection; q.orderby = orderby; q.top = top; q.skip = skip;
             var msg: Message = new Message(); msg.command = "query"; msg.data = JSON.stringify(q);
+
             q = await this.WebSocketClient.Send<QueryMessage>(msg);
             return q.result;
         }
@@ -110,10 +254,14 @@ module openflow {
                 q.correlationId = Math.random().toString(36).substr(2, 9);
                 q.queuename = queuename; q.data = JSON.stringify(data);
                 var msg: Message = new Message(); msg.command = "queuemessage"; msg.data = JSON.stringify(q);
+                console.log("_QueueMessage: correlationId " + q.correlationId);
                 this.messageQueue[q.correlationId] = new messagequeue(q, (msgresult: QueueMessage) => {
                     resolve(msgresult);
+                    delete this.messageQueue[q.correlationId];
                 });
-                await this.WebSocketClient.Send(msg);
+                var res = await this.WebSocketClient.Send(msg);
+                console.log("_QueueMessage");
+                console.log(res);
             });
         }
         async QueueMessage(queuename: string, data: any): Promise<any> {
@@ -125,6 +273,68 @@ module openflow {
             }
             return msg;
         }
+        async GetNoderedInstance(): Promise<any> {
+            var q: GetNoderedInstanceMessage = new GetNoderedInstanceMessage();
+            var msg: Message = new Message(); msg.command = "getnoderedinstance"; msg.data = JSON.stringify(q);
+            q = await this.WebSocketClient.Send<GetNoderedInstanceMessage>(msg);
+            return q.result;
+        }
+        async GetNoderedInstanceLog(): Promise<string> {
+            var q: GetNoderedInstanceLogMessage = new GetNoderedInstanceLogMessage();
+            var msg: Message = new Message(); msg.command = "getnoderedinstancelog"; msg.data = JSON.stringify(q);
+            q = await this.WebSocketClient.Send<GetNoderedInstanceLogMessage>(msg);
+            return q.result;
+        }
+        async EnsureNoderedInstance(): Promise<void> {
+            var q: EnsureNoderedInstanceMessage = new EnsureNoderedInstanceMessage();
+            var msg: Message = new Message(); msg.command = "ensurenoderedinstance"; msg.data = JSON.stringify(q);
+            q = await this.WebSocketClient.Send<EnsureNoderedInstanceMessage>(msg);
+        }
+        async DeleteNoderedInstance(): Promise<void> {
+            var q: DeleteNoderedInstanceMessage = new DeleteNoderedInstanceMessage();
+            var msg: Message = new Message(); msg.command = "deletenoderedinstance"; msg.data = JSON.stringify(q);
+            q = await this.WebSocketClient.Send<DeleteNoderedInstanceMessage>(msg);
+        }
+        async RestartNoderedInstance(): Promise<void> {
+            var q: RestartNoderedInstanceMessage = new RestartNoderedInstanceMessage();
+            var msg: Message = new Message(); msg.command = "restartnoderedinstance"; msg.data = JSON.stringify(q);
+            q = await this.WebSocketClient.Send<RestartNoderedInstanceMessage>(msg);
+        }
+        async StartNoderedInstance(): Promise<void> {
+            var q: StartNoderedInstanceMessage = new StartNoderedInstanceMessage();
+            var msg: Message = new Message(); msg.command = "startnoderedinstance"; msg.data = JSON.stringify(q);
+            q = await this.WebSocketClient.Send<StartNoderedInstanceMessage>(msg);
+        }
+        async StopNoderedInstance(): Promise<void> {
+            var q: StopNoderedInstanceMessage = new StopNoderedInstanceMessage();
+            var msg: Message = new Message(); msg.command = "stopnoderedinstance"; msg.data = JSON.stringify(q);
+            q = await this.WebSocketClient.Send<StopNoderedInstanceMessage>(msg);
+        }
+        setCookie(cname, cvalue, exdays) {
+            var d = new Date();
+            d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
+            var expires = "expires=" + d.toUTCString();
+            document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+        }
+        getCookie(cname) {
+            var name = cname + "=";
+            var decodedCookie = decodeURIComponent(document.cookie);
+            var ca = decodedCookie.split(';');
+            for (var i = 0; i < ca.length; i++) {
+                var c = ca[i];
+                while (c.charAt(0) == ' ') {
+                    c = c.substring(1);
+                }
+                if (c.indexOf(name) == 0) {
+                    return c.substring(name.length, c.length);
+                }
+            }
+            return "";
+        }
+        deleteCookie(cname) {
+            document.cookie = cname + "=;Thu, 01 Jan 1970 00:00:00 UTC;path=/";
+        }
+
     }
     export class JSONfn {
         public static stringify(obj) {
@@ -177,6 +387,75 @@ module openflow {
         }
         static factory(): ng.IDirectiveFactory {
             const directive = ($location: ng.ILocationService, $timeout: ng.ITimeoutService) => new timesince($location, $timeout);
+            directive.$inject = ['$location', '$timeout'];
+            return directive;
+        }
+    }
+
+
+    export class textarea implements ng.IDirective {
+        // restrict = 'E';
+        // require = 'ngModel';
+        replace = true;
+        constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService) {
+
+        }
+
+        link: ng.IDirectiveLinkFn = (scope: ng.IScope, element: ng.IAugmentedJQuery, attr: ng.IAttributes, ngModelCtrl: any) => {
+            if (!element.hasClass("autogrow")) {
+                console.log("no autogrow for you today");
+                // no autogrow for you today
+                return;
+            }
+
+            // get possible minimum height style
+            var minHeight = parseInt(window.getComputedStyle(element[0]).getPropertyValue("min-height")) || 0;
+
+            // prevent newlines in textbox
+            // element.on("keydown", function (evt) {
+            //     if (evt.which === 13) {
+            //         evt.preventDefault();
+            //     }
+            // });
+
+            element.on("input", function (evt) {
+                var contentHeight2 = (this as any).scrollHeight;
+                var firstrun = element.attr("firstrun");
+                if (contentHeight2 > 1000) {
+                    if (firstrun === null || firstrun === undefined) {
+                        element.attr("firstrun", "false");
+                    } else {
+                        return;
+                    }
+                }
+                element.css({
+                    paddingTop: 0,
+                    height: 0,
+                    minHeight: 0
+                });
+
+                var contentHeight = (this as any).scrollHeight;
+                var borderHeight = (this as any).offsetHeight;
+
+                element.css({
+                    paddingTop: ~~Math.max(0, minHeight - contentHeight) / 2 + "px",
+                    minHeight: null, // remove property
+                    height: contentHeight + borderHeight + "px" // because we're using border-box
+                });
+            });
+
+            // watch model changes from the outside to adjust height
+            scope.$watch(attr.ngModel, trigger);
+
+            // set initial size
+            trigger();
+
+            function trigger() {
+                setTimeout(element.triggerHandler.bind(element, "input"), 1);
+            }
+        }
+        static factory(): ng.IDirectiveFactory {
+            const directive = ($location: ng.ILocationService, $timeout: ng.ITimeoutService) => new textarea($location, $timeout);
             directive.$inject = ['$location', '$timeout'];
             return directive;
         }
@@ -252,7 +531,7 @@ module openflow {
                     // attrs.$observe('i18n', function (newVal, oldVal) {
                     // });
                     //scope.$watch(watchFunction, () => {
-                    if (attr.value !== null && attr.value !== undefined) {
+                    if (attr.value !== null && attr.value !== undefined && element[0].tagName !== "OPTION") {
                         value = calculateValue(attr.value);
                         attr.$set('value', value);
                     } else {
@@ -281,11 +560,19 @@ module openflow {
         public collection: string = "entities";
         public models: T[] = [];
         public orderby: any = { _created: -1 };
+        public autorefresh: boolean = false;
+        public autorefreshinterval: number = 30 * 1000;
+        public autorefreshpromise: any = null;
+        public preloadData: any = null;
+        public postloadData: any = null;
+        public searchstring: string = "";
+        public searchfields: string[] = ["name"];
 
         public static $inject = [
             "$scope",
             "$location",
             "$routeParams",
+            "$interval",
             "WebSocketClient",
             "api"
         ];
@@ -293,17 +580,61 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
             public api: api
         ) {
         }
         async loadData(): Promise<void> {
+            if (this.loading == true) { console.log("allready loading data, exit"); return; }
             this.loading = true;
-            this.models = await this.api.Query(this.collection, this.basequery, this.baseprojection, this.orderby);
-            this.loading = false;
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
-        }
+            if (this.preloadData != null) {
+                this.preloadData();
+            }
+            var query = this.basequery;
+            if (this.searchstring !== "") {
+                var finalor = [];
+                for (var i = 0; i < this.searchfields.length; i++) {
+                    var newq: any = {};
+                    // exact match case sensitive
+                    // newq[this.searchfields[i]] = this.searchstring;
+                    // exact match case insensitive
+                    newq[this.searchfields[i]] = new RegExp(["^", this.searchstring, "$"].join(""), "i");
 
+                    // exact match string contains
+                    newq[this.searchfields[i]] = new RegExp([this.searchstring].join(""), "i");
+
+                    finalor.push(newq);
+                }
+                if (Object.keys(query).length == 0) {
+                    query = { $or: finalor.concat() };
+                } else {
+                    query = { $and: [query, { $or: finalor.concat() }] };
+                }
+            }
+            this.models = await this.api.Query(this.collection, query, this.baseprojection, this.orderby);
+            this.loading = false;
+            if (this.autorefresh) {
+                if (this.models.length > 100) {
+                    console.warn("Disabling auto refresh, result has more than 100 entries");
+                } else {
+                    if (this.autorefreshpromise == null && this.searchstring === "") {
+                        //if (this.autorefreshpromise == null) {
+                        this.autorefreshpromise = this.$interval(() => {
+                            this.loadData();
+                        }, this.autorefreshinterval);
+                        this.$scope.$on('$destroy', () => {
+                            this.$interval.cancel(this.autorefreshpromise);
+                        });
+                    }
+                }
+            }
+            if (this.postloadData != null) {
+                this.postloadData();
+            } else {
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            }
+        }
         ToggleOrder(field: string) {
             if (this.orderby[field] == undefined) {
                 this.orderby = {};
@@ -318,9 +649,34 @@ module openflow {
             }
             this.loadData();
         }
+        async DeleteOne(model: any): Promise<any> {
+            this.loading = true;
+            await this.api.Delete(this.collection, model);
+            this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        async Search() {
+            console.log("Search");
+            await this.loadData();
+        }
     }
 
-
+    export function nestedassign(target, source) {
+        if (source === null || source === undefined) return null;
+        var keys = Object.keys(source);
+        for (var i = 0; i < keys.length; i++) {
+            var sourcekey = keys[i];
+            if (Object.keys(source).find(targetkey => targetkey === sourcekey) !== undefined &&
+                Object.keys(source).find(targetkey => targetkey === sourcekey) !== null
+                && typeof source === "object" && typeof source[sourcekey] === "object") {
+                target[sourcekey] = nestedassign(target[sourcekey], source[sourcekey]);
+            } else {
+                target[sourcekey] = source[sourcekey];
+            }
+        }
+        return target;
+    }
     export class entityCtrl<T> {
         public loading: boolean = false;
         public basequery: any = {};
@@ -329,11 +685,17 @@ module openflow {
         public model: T = null;
         public id: string = null;
         public keys: string[] = [];
+        public autorefresh: boolean = false;
+        public autorefreshinterval: number = 30 * 1000;
+        public autorefreshpromise: any = null;
+        public preloadData: any = null;
+        public postloadData: any = null;
 
         public static $inject = [
             "$scope",
             "$location",
             "$routeParams",
+            "$interval",
             "WebSocketClient",
             "api"
         ];
@@ -341,6 +703,7 @@ module openflow {
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
             public api: api
         ) {
@@ -348,12 +711,48 @@ module openflow {
             this.basequery = { _id: this.id };
         }
         async loadData(): Promise<void> {
+            if (this.loading == true) { console.log("allready loading data, exit"); return; }
+            var updated: boolean = false;
             this.loading = true;
+            if (this.preloadData != null) {
+                this.preloadData();
+            }
+
             var result = await this.api.Query(this.collection, this.basequery, this.baseprojection, null, 1);
-            if (result.length > 0) { this.model = result[0]; }
-            this.keys = Object.keys(this.model);
+            if (result.length > 0) {
+                if (this.model == null) {
+                    this.model = result[0];
+                    updated = true;
+                } else {
+                    if (!angular.equals(this.model, result[0])) {
+                        this.model = result[0];
+                        updated = true;
+                    }
+                }
+
+            }
+            if (updated) {
+                this.keys = Object.keys(this.model);
+                for (var i: number = this.keys.length - 1; i >= 0; i--) {
+                    if (this.keys[i].startsWith('_')) this.keys.splice(i, 1);
+                }
+            }
             this.loading = false;
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            if (this.postloadData != null) {
+                this.postloadData();
+            } else {
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            }
+            if (this.autorefresh) {
+                if (this.autorefreshpromise == null) {
+                    this.autorefreshpromise = this.$interval(() => {
+                        this.loadData();
+                    }, this.autorefreshinterval);
+                    this.$scope.$on('$destroy', () => {
+                        this.$interval.cancel(this.autorefreshpromise);
+                    });
+                }
+            }
         }
     }
 }

@@ -57,7 +57,13 @@ export class rpa_detector_node {
     }
     onclose() {
         if (!NoderedUtil.IsNullUndefinded(this.con)) {
-            this.con.close();
+            try {
+                this.con.close().catch((error) => {
+                    Logger.instanse.error(error);
+                });
+            } catch (error) {
+                Logger.instanse.error(error);
+            }
         }
     }
 }
@@ -90,7 +96,9 @@ export class rpa_workflow_node {
     async connect() {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
-            this.con = new amqp_publisher(Logger.instanse, this.host, this.config.localqueue);
+            var localqueue = this.config.localqueue;
+            if (localqueue !== null && localqueue !== undefined && localqueue !== "") { localqueue = Config.queue_prefix + localqueue; }
+            this.con = new amqp_publisher(Logger.instanse, this.host, localqueue);
             this.con.OnMessage = this.OnMessage.bind(this);
             await this.con.connect();
             this.node.status({ fill: "green", shape: "dot", text: "Connected" });
@@ -105,6 +113,13 @@ export class rpa_workflow_node {
             var json: string = msg.content.toString();
             var data = JSON.parse(json);
             result.jwt = data.jwt;
+            var correlationId = msg.properties.correlationId;
+            if (correlationId != null && this.messages[correlationId] != null) {
+                result = this.messages[correlationId];
+                if (data.payload.command == "invokecompleted" || data.payload.command == "invokefailed" || data.payload.command == "invokeaborted" || data.payload.command == "error") {
+                    delete this.messages[correlationId];
+                }
+            }
 
             if (data.payload.command == "invokecompleted") {
                 result.payload = data.payload.data;
@@ -123,9 +138,15 @@ export class rpa_workflow_node {
             NoderedUtil.HandleError(this, error);
         }
     }
+    messages: any[] = [];
     async oninput(msg: any) {
         try {
             this.node.status({});
+            var correlationId = Math.random().toString(36).substr(2, 9);
+            this.messages[correlationId] = msg;
+            if (msg.payload == null || typeof msg.payload == "string" || typeof msg.payload == "number") {
+                msg.payload = { "data": msg.payload };
+            }
             var rpacommand = {
                 command: "invoke",
                 workflowid: this.config.workflow,
@@ -135,7 +156,7 @@ export class rpa_workflow_node {
                 jwt: msg.jwt,
                 payload: rpacommand
             }
-            this.con.SendMessage(JSON.stringify(data), this.config.queue);
+            this.con.SendMessage(JSON.stringify(data), this.config.queue, correlationId);
             // var data: any = {};
             // data.payload = msg.payload;
             // data.jwt = msg.jwt;
@@ -147,30 +168,51 @@ export class rpa_workflow_node {
     }
     onclose() {
         if (!NoderedUtil.IsNullUndefinded(this.con)) {
-            this.con.close();
+            try {
+                this.con.close().catch((error) => {
+                    Logger.instanse.error(error);
+                });
+            } catch (error) {
+                Logger.instanse.error(error);
+            }
         }
     }
 }
 
 export async function get_rpa_detectors(req, res) {
-    var token = await NoderedUtil.GetToken(null, null);
-    var result: any[] = await NoderedUtil.Query('openrpa', { _type: "detector" },
-        { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
-    res.json(result);
+    try {
+        var rawAssertion = req.user.getAssertionXml();
+        var token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
+        var result: any[] = await NoderedUtil.Query('openrpa', { _type: "detector" },
+            { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
+        res.json(result);
+    } catch (error) {
+        res.status(500).json(error);
+    }
 }
 export async function get_rpa_robots(req, res) {
-    var token = await NoderedUtil.GetToken(null, null);
-    var result: any[] = await NoderedUtil.Query('users', { _type: "user" },
-        { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
-    res.json(result);
+    try {
+        var rawAssertion = req.user.getAssertionXml();
+        var token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
+        var result: any[] = await NoderedUtil.Query('users', { _type: "user" },
+            { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
+        res.json(result);
+    } catch (error) {
+        res.status(500).json(error);
+    }
 }
 export async function get_rpa_workflows(req, res) {
-    var token = await NoderedUtil.GetToken(null, null);
-    var q: any = { _type: "workflow" };
-    if (req.query.queue != null && req.query.queue != undefined && req.query.queue != "" && req.query.queue != "none") {
-        q = { _type: "workflow", $or: [{ _createdbyid: req.query.queue }, { _modifiedbyid: req.query.queue }] };
+    try {
+        var rawAssertion = req.user.getAssertionXml();
+        var token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
+        var q: any = { _type: "workflow" };
+        if (req.query.queue != null && req.query.queue != undefined && req.query.queue != "" && req.query.queue != "none") {
+            q = { _type: "workflow", $or: [{ _createdbyid: req.query.queue }, { _modifiedbyid: req.query.queue }] };
+        }
+        var result: any[] = await NoderedUtil.Query('openrpa', q,
+            { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
+        res.json(result);
+    } catch (error) {
+        res.status(500).json(error);
     }
-    var result: any[] = await NoderedUtil.Query('openrpa', q,
-        { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
-    res.json(result);
 }

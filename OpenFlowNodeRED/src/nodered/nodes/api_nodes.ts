@@ -5,6 +5,8 @@ import { Crypt } from "../../Crypt";
 import { WebSocketClient } from "../../WebSocketClient";
 import { NoderedUtil } from "./NoderedUtil";
 import { Base } from "../../Base";
+import { Config } from "../../Config";
+import { Logger } from "../../Logger";
 
 
 
@@ -40,6 +42,9 @@ export class api_get_jwt {
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
     }
+    isNumeric(num) {
+        return !isNaN(num)
+    }
     async oninput(msg: any) {
         try {
             this.node.status({});
@@ -60,9 +65,20 @@ export class api_get_jwt {
             if (!NoderedUtil.IsNullEmpty(username) && !NoderedUtil.IsNullEmpty(password)) {
                 q.username = username; q.password = password;
             } else {
-                if (Crypt.encryption_key === "") { return NoderedUtil.HandleError(this, "root signin not allowed"); }
-                var user = new TokenUser(); user.name = "root"; user.username = "root";
-                q.jwt = Crypt.createToken(user);
+                if (Config.jwt !== "") {
+                    q.jwt = Config.jwt;
+                } else if (Crypt.encryption_key !== "") {
+                    var user = new TokenUser();
+                    if (NoderedUtil.IsNullEmpty(Config.nodered_sa)) {
+                        user.name = "nodered" + Config.nodered_id;
+                    } else {
+                        user.name = Config.nodered_sa;
+                    }
+                    user.username = user.name;
+                    q.jwt = Crypt.createToken(user);
+                } else {
+                    return NoderedUtil.HandleError(this, "root signin not allowed");
+                }
             }
             this.node.status({ fill: "blue", shape: "dot", text: "Requesting token" });
             var _msg: Message = new Message();
@@ -70,6 +86,11 @@ export class api_get_jwt {
             var result: SigninMessage = await WebSocketClient.instance.Send<SigninMessage>(_msg);
             msg.jwt = result.jwt;
             msg.user = result.user;
+            if (result !== null && result !== undefined && result.user !== null && result.user !== undefined) {
+                Logger.instanse.debug("api_get_jwt: Created token as " + result.user.username);
+            } else {
+                Logger.instanse.debug("api_get_jwt: Created token failed ?");
+            }
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
@@ -101,7 +122,7 @@ export class api_get {
     async oninput(msg: any) {
         try {
             this.node.status({});
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) return NoderedUtil.HandleError(this, "Missing jwt token");
+            // if (NoderedUtil.IsNullEmpty(msg.jwt)) return NoderedUtil.HandleError(this, "Missing jwt token");
             if (!NoderedUtil.IsNullUndefinded(msg.query)) { this.config.query = msg.query; }
             if (!NoderedUtil.IsNullUndefinded(msg.projection)) { this.config.projection = msg.projection; }
             if (!NoderedUtil.IsNullUndefinded(msg.orderby)) { this.config.orderby = msg.orderby; }
@@ -110,6 +131,18 @@ export class api_get {
 
             if (NoderedUtil.IsNullEmpty(this.config.top)) { this.config.top = 500; }
             if (NoderedUtil.IsNullEmpty(this.config.skip)) { this.config.skip = 0; }
+            if (!NoderedUtil.IsNullEmpty(this.config.orderby) && NoderedUtil.IsString(this.config.orderby)) {
+                if (this.config.orderby.indexOf("{") > -1) {
+                    try {
+                        this.config.orderby = JSON.parse(this.config.orderby);
+                    } catch (error) {
+                        (this as Red).error("Error parsing orderby", error);
+                        // this.node.er
+                        // NoderedUtil.HandleError(this, error);
+                        return;
+                    }
+                }
+            }
             if (!NoderedUtil.IsNullEmpty(this.config.orderby) && NoderedUtil.IsString(this.config.orderby)) {
                 var field: string = this.config.orderby;
                 this.config.orderby = {};
@@ -123,7 +156,14 @@ export class api_get {
             if (NoderedUtil.IsNullEmpty(this.config.projection)) {
                 this.config.projection = {};
             } else if (NoderedUtil.IsString(this.config.projection)) {
-                this.config.projection = JSON.parse(this.config.projection);
+                try {
+                    this.config.projection = JSON.parse(this.config.projection);
+                } catch (error) {
+                    (this as Red).error("Error parsing projection", error);
+                    // this.node.er
+                    // NoderedUtil.HandleError(this, error);
+                    return;
+                }
             }
             if (NoderedUtil.IsNullEmpty(this.config.projection)) { this.config.projection = null; }
 
@@ -162,7 +202,7 @@ export class api_add {
     async oninput(msg: any) {
         try {
             this.node.status({});
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
+            // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
 
             if (!NoderedUtil.IsNullEmpty(msg.entitytype)) { this.config.entitytype = msg.entitytype; }
             if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
@@ -234,7 +274,7 @@ export class api_update {
     async oninput(msg: any) {
         try {
             this.node.status({});
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
+            // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
 
             if (!NoderedUtil.IsNullEmpty(msg.entitytype)) { this.config.entitytype = msg.entitytype; }
             if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
@@ -306,7 +346,7 @@ export class api_addorupdate {
     async oninput(msg: any) {
         try {
             this.node.status({});
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
+            // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
 
             if (!NoderedUtil.IsNullEmpty(msg.entitytype)) { this.config.entitytype = msg.entitytype; }
             if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
@@ -377,7 +417,7 @@ export class api_delete {
     async oninput(msg: any) {
         try {
             this.node.status({});
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
+            // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
 
             if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
             if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { this.config.inputfield = msg.inputfield; }
@@ -442,7 +482,7 @@ export class api_map_reduce {
     async oninput(msg: any) {
         try {
             this.node.status({});
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
+            // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
 
             if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
             if (!NoderedUtil.IsNullUndefinded(msg.map)) { this.config.map = msg.map; }
@@ -473,10 +513,15 @@ export class api_map_reduce {
 }
 
 export async function get_api_roles(req, res) {
-    var token = await NoderedUtil.GetToken(null, null);
-    var result: any[] = await NoderedUtil.Query('users', { _type: "role" },
-        { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
-    res.json(result);
+    try {
+        var rawAssertion = req.user.getAssertionXml();
+        var token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
+        var result: any[] = await NoderedUtil.Query('users', { _type: "role" },
+            { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
+        res.json(result);
+    } catch (error) {
+        res.status(500).json(error);
+    }
 }
 
 
@@ -506,7 +551,7 @@ export class api_updatedocument {
     async oninput(msg: any) {
         try {
             this.node.status({});
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
+            // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
 
             if (!NoderedUtil.IsNullUndefinded(msg.name)) { this.config.name = msg.name; }
             if (!NoderedUtil.IsNullUndefinded(msg.action)) { this.config.action = msg.action; }
@@ -578,7 +623,7 @@ export class grant_permission {
         try {
             this.node.status({});
 
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
+            // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
             if (!NoderedUtil.IsNullEmpty(msg.targetid)) { this.config.targetid = msg.targetid; }
             if (!NoderedUtil.IsNullUndefinded(msg.bits)) { this.config.bits = msg.bits; }
 
@@ -637,7 +682,7 @@ export class revoke_permission {
         try {
             this.node.status({});
 
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
+            // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
             if (!NoderedUtil.IsNullEmpty(msg.targetid)) { this.config.targetid = msg.targetid; }
             if (!NoderedUtil.IsNullUndefinded(msg.bits)) { this.config.bits = msg.bits; }
 

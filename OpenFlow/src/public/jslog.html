@@ -1,5 +1,14 @@
-<div class="starter-template">
-  <h1 translate lib="web">entities</h1>
+<div class="row">
+  <h1 translate lib="web">jslog</h1>
+  <p class="col-md-5 lead"></p>
+  <div class="form-group col-sm-3 form-horizontal">
+    <label class="sr-only">Filter</label>
+    <div class="input-group unframed-addons">
+      <div class="input-group-addon"><i class="fas fa-search"></i></div>
+      <input ng-model="ctrl.searchstring" ng-change="ctrl.Search()" class="form-control input-md"
+        ng-model-options="{debounce: 400}" />
+    </div>
+  </div>
 </div>
 <button type="button" ng-click="ctrl.loadData()" ng-disabled="ctrl.loading" translate lib="web">reload</button>
 <button type="button" ng-click="ctrl.DeleteMany()" ng-disabled="ctrl.loading" translate lib="web">empty</button>
@@ -11,6 +20,7 @@
         <th ng-click="ctrl.ToggleOrder('_createdby')"><b translate lib="web">createdby</b></th>
         <th ng-click="ctrl.ToggleOrder('host')"><b translate lib="web">host</b></th>
         <th ng-click="ctrl.ToggleOrder('_created')"><b translate lib="web">created</b></th>
+        <th></th>
         <th></th>
       </tr>
     </thead>
@@ -25,6 +35,7 @@
         <td class="btn-cell">
           {{model.message}}
         </td>
+        <td>{{(model.initiator.length > 100) ? model.initiator.substr(0, 100 - 1) : model.initiator }}</td>
       </tr>
     </tbody>
   </table>

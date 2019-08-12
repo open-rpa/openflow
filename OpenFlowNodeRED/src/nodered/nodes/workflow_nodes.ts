@@ -32,20 +32,30 @@ export class workflow_in_node {
     }
     async connect() {
         try {
+            await this.init();
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
-            this.con = new amqp_consumer(Logger.instanse, this.host, this.config.queue);
+
+
+            var queue: string = this.config.queue;
+            if (!NoderedUtil.IsNullUndefinded(Config.queue_prefix)) {
+                queue = Config.queue_prefix + this.config.queue;
+            }
+            this.con = new amqp_consumer(Logger.instanse, this.host, queue);
             this.con.OnMessage = this.OnMessage.bind(this);
             await this.con.connect(false);
             this.node.status({ fill: "green", shape: "dot", text: "Connected" });
-            this.init();
         } catch (error) {
             NoderedUtil.HandleError(this, error);
         }
     }
     async init() {
-        var res = await NoderedUtil.Query("workflow", { "queue": this.config.queue }, null, null, 1, 0, null);
+        var queue: string = this.config.queue;
+        if (!NoderedUtil.IsNullUndefinded(Config.queue_prefix)) {
+            queue = Config.queue_prefix + this.config.queue;
+        }
+        var res = await NoderedUtil.Query("workflow", { "queue": queue }, null, null, 1, 0, null);
         if (res.length == 0) {
-            this.workflow = await NoderedUtil.InsertOne("workflow", { _type: "workflow", "queue": this.config.queue, "name": this.config.name }, 0, false, null);
+            this.workflow = await NoderedUtil.InsertOne("workflow", { _type: "workflow", "queue": queue, "name": this.config.name }, 0, false, null);
         } else {
             this.workflow = res[0];
         }
@@ -54,13 +64,25 @@ export class workflow_in_node {
         this.workflow = await NoderedUtil._UpdateOne("workflow", null, this.workflow, 0, false, null);
     }
     nestedassign(target, source) {
-        Object.keys(source).forEach(sourcekey => {
-            if (Object.keys(source).find(targetkey => targetkey === sourcekey) !== undefined && typeof source[sourcekey] === "object") {
+        if (source === null || source === undefined) return null;
+        var keys = Object.keys(source);
+        for (var i = 0; i < keys.length; i++) {
+            var sourcekey = keys[i];
+            if (Object.keys(source).find(targetkey => targetkey === sourcekey) !== undefined &&
+                Object.keys(source).find(targetkey => targetkey === sourcekey) !== null
+                && typeof source === "object" && typeof source[sourcekey] === "object") {
                 target[sourcekey] = this.nestedassign(target[sourcekey], source[sourcekey]);
             } else {
                 target[sourcekey] = source[sourcekey];
             }
-        });
+        }
+        // Object.keys(source).forEach(sourcekey => {
+        //     if (Object.keys(source).find(targetkey => targetkey === sourcekey) !== undefined && typeof source[sourcekey] === "object") {
+        //         target[sourcekey] = this.nestedassign(target[sourcekey], source[sourcekey]);
+        //     } else {
+        //         target[sourcekey] = source[sourcekey];
+        //     }
+        // });
         return target;
     }
     async OnMessage(msg: any, ack: any) {
@@ -74,12 +96,14 @@ export class workflow_in_node {
             } catch (error) {
             }
             result.payload = data.payload;
+            result.values = data.values;
             if (data.payload._id !== null && data.payload._id !== undefined && data.payload._id !== "") {
                 var res = await NoderedUtil.Query("workflow_instances", { "_id": data.payload._id }, null, null, 1, 0, data.jwt);
                 if (res.length == 0) {
                     NoderedUtil.HandleError(this, "Unknown workflow_instances id " + data.payload._id);
                     return;
                 }
+                result.name = res[0].name;
                 result._id = res[0]._id;
                 result._created = res[0]._created;
                 result._createdby = res[0]._createdby;
@@ -88,6 +112,7 @@ export class workflow_in_node {
                 result._modifiedby = res[0]._modifiedby;
                 result._modifiedbyid = res[0]._modifiedbyid;
                 result.payload = this.nestedassign(res[0].payload, result.payload.payload);
+                result.workflow = this.workflow._id;
 
                 // result = this.nestedassign(res[0], result);
                 // result.payload = Object.assign(res[0].payload, result.payload);
@@ -95,8 +120,13 @@ export class workflow_in_node {
                 // await NoderedUtil._UpdateOne("workflow_instances", null, result, 0, false, data.jwt);
                 //result = result.payload;
             } else {
+                var queue: string = this.config.queue;
+                if (!NoderedUtil.IsNullUndefinded(Config.queue_prefix)) {
+                    queue = Config.queue_prefix + this.config.queue;
+                }
+
                 var res2 = await NoderedUtil.InsertOne("workflow_instances",
-                    { _type: "instance", "queue": this.config.queue, "name": this.config.name, payload: data.payload, workflow: this.workflow._id }, 1, false, data.jwt);
+                    { _type: "instance", "queue": queue, "name": this.workflow.name, payload: data.payload, workflow: this.workflow._id }, 1, true, data.jwt);
                 //result = Object.assign(res2, result);
                 result = this.nestedassign(res2, result);
             }
@@ -107,16 +137,30 @@ export class workflow_in_node {
         } catch (error) {
             NoderedUtil.HandleError(this, error);
             try {
-                msg.error = error;
-                ack(JSON.stringify(msg));
-            } catch (error) {
 
+                var data: any = {};
+                data.error = error;
+                data.payload = msg.payload;
+                data.jwt = msg.jwt;
+                if (data.payload === null || data.payload === undefined) {
+                    data.payload = {};
+                }
+                data.payload._id = msg._id;
+                ack(JSON.stringify(data));
+            } catch (error) {
+                Logger.instanse.error(error);
             }
         }
     }
     onclose() {
         if (!NoderedUtil.IsNullUndefinded(this.con)) {
-            this.con.close();
+            try {
+                this.con.close().catch((error) => {
+                    Logger.instanse.error(error);
+                });
+            } catch (error) {
+                Logger.instanse.error(error);
+            }
         }
     }
 }
@@ -149,11 +193,21 @@ export class workflow_out_node {
                 if (typeof msg.payload === 'string' || msg.payload instanceof String) {
                     msg.payload = { data: msg.payload };
                 }
+
                 if (msg._id !== null && msg._id !== undefined && msg._id !== "") {
                     var res = await NoderedUtil._UpdateOne("workflow_instances", null, msg, 1, false, msg.jwt);
                 }
                 var data: any = {};
+                data.state = msg.state;
+                if (msg.error) {
+                    data.error = "error";
+                    if (msg.error.message) {
+                        data.error = msg.error.message;
+                    }
+                }
+                //data.error = msg.error;
                 data.payload = msg.payload;
+                data.values = msg.values;
                 data.jwt = msg.jwt;
                 data.payload._id = msg._id;
                 msg.amqpacknowledgment(JSON.stringify(data));
@@ -169,8 +223,13 @@ export class workflow_out_node {
 }
 
 export async function get_workflow_forms(req, res) {
-    var token = await NoderedUtil.GetToken(null, null);
-    var result: any[] = await NoderedUtil.Query('forms', { _type: "form" },
-        { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
-    res.json(result);
+    try {
+        var rawAssertion = req.user.getAssertionXml();
+        var token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
+        var result: any[] = await NoderedUtil.Query('forms', { _type: "form" },
+            { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
+        res.json(result);
+    } catch (error) {
+        res.status(500).json(error);
+    }
 }

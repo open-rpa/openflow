@@ -42,6 +42,7 @@ module openflow {
     export class SigninMessage {
         public error: string;
 
+        public impersonate: string;
         public realm: string;
         public firebasetoken: string;
         public onesignalid: string;
@@ -58,6 +59,16 @@ module openflow {
             }
             return Object.assign(new SigninMessage(), o);
         }
+    }
+    export class ListCollectionsMessage {
+        public error: string;
+        public jwt: string;
+        public result: any;
+    }
+    export class DropCollectionMessage {
+        public error: string;
+        public jwt: string;
+        public collectionname: string;
     }
     export class QueryMessage {
         public error: string;
@@ -178,6 +189,85 @@ module openflow {
             return Object.assign(new QueueMessage(), o);
         }
     }
+    export class GetNoderedInstanceMessage {
+        public error: string;
+        public jwt: any;
+        public name: string;
+        public result: any;
+        static assign(o: any): GetNoderedInstanceMessage {
+            if (typeof o === "string" || o instanceof String) {
+                return Object.assign(new GetNoderedInstanceMessage(), JSON.parse(o.toString()));
+            }
+            return Object.assign(new GetNoderedInstanceMessage(), o);
+        }
+    }
+    export class GetNoderedInstanceLogMessage {
+        public error: string;
+        public jwt: any;
+        public name: string;
+        public result: string;
+        static assign(o: any): GetNoderedInstanceMessage {
+            if (typeof o === "string" || o instanceof String) {
+                return Object.assign(new GetNoderedInstanceMessage(), JSON.parse(o.toString()));
+            }
+            return Object.assign(new GetNoderedInstanceMessage(), o);
+        }
+    }
+    export class EnsureNoderedInstanceMessage {
+        public error: string;
+        public jwt: any;
+        public name: string;
+        static assign(o: any): EnsureNoderedInstanceMessage {
+            if (typeof o === "string" || o instanceof String) {
+                return Object.assign(new EnsureNoderedInstanceMessage(), JSON.parse(o.toString()));
+            }
+            return Object.assign(new EnsureNoderedInstanceMessage(), o);
+        }
+    }
+    export class DeleteNoderedInstanceMessage {
+        public error: string;
+        public jwt: any;
+        public name: string;
+        static assign(o: any): DeleteNoderedInstanceMessage {
+            if (typeof o === "string" || o instanceof String) {
+                return Object.assign(new DeleteNoderedInstanceMessage(), JSON.parse(o.toString()));
+            }
+            return Object.assign(new DeleteNoderedInstanceMessage(), o);
+        }
+    }
+    export class RestartNoderedInstanceMessage {
+        public error: string;
+        public jwt: any;
+        public name: string;
+        static assign(o: any): RestartNoderedInstanceMessage {
+            if (typeof o === "string" || o instanceof String) {
+                return Object.assign(new RestartNoderedInstanceMessage(), JSON.parse(o.toString()));
+            }
+            return Object.assign(new RestartNoderedInstanceMessage(), o);
+        }
+    }
+    export class StartNoderedInstanceMessage {
+        public error: string;
+        public jwt: any;
+        public name: string;
+        static assign(o: any): StartNoderedInstanceMessage {
+            if (typeof o === "string" || o instanceof String) {
+                return Object.assign(new StartNoderedInstanceMessage(), JSON.parse(o.toString()));
+            }
+            return Object.assign(new StartNoderedInstanceMessage(), o);
+        }
+    }
+    export class StopNoderedInstanceMessage {
+        public error: string;
+        public jwt: any;
+        public name: string;
+        static assign(o: any): StopNoderedInstanceMessage {
+            if (typeof o === "string" || o instanceof String) {
+                return Object.assign(new StopNoderedInstanceMessage(), JSON.parse(o.toString()));
+            }
+            return Object.assign(new StopNoderedInstanceMessage(), o);
+        }
+    }
 
 
     export class Message {
@@ -228,7 +318,9 @@ module openflow {
                         break;
                 }
             } catch (error) {
+                console.log(this);
                 console.error(error);
+
             }
         }
         public async Send(cli: WebSocketClient): Promise<void> {
@@ -252,7 +344,7 @@ module openflow {
             var msg: SigninMessage = SigninMessage.assign(this.data);
             cli.jwt = msg.jwt;
             cli.user = msg.user;
-            console.log("Message::RefreshToken: Updated jwt");
+            console.debug("Message::RefreshToken: Updated jwt");
         }
         private QueueMessage(cli: WebSocketClient): void {
             var msg: QueueMessage = QueueMessage.assign(this.data);

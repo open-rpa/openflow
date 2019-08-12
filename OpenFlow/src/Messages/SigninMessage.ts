@@ -4,6 +4,7 @@ import { TokenUser } from "../TokenUser";
 export class SigninMessage implements IReplyMessage {
     public error: string;
 
+    public impersonate: string;
     public realm: string;
     public firebasetoken: string;
     public onesignalid: string;

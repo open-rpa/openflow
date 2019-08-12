@@ -1,6 +1,7 @@
 import { Readable } from "stream";
 import { SMTPServerSession, SMTPServer } from "smtp-server";
 import { EventEmitter } from "events";
+import { Logger } from "../../Logger";
 
 var test = require('@nodemailer/mailparser2');
 const simpleParser = test.SimpleParser;
@@ -14,12 +15,11 @@ export class libmailserver extends EventEmitter {
         try {
             //config.log(4, 'XFORWARD ADDR=%s', session.xForward.get('ADDR'));
         } catch (err) {
-            console.log(err);
+            Logger.instanse.error(err);
         }
         callback();
     }
     onRcptTo(address, session, callback) {
-        //console.log(address.address);
         //config.log(4, address.address);
         // if (address.address !== 'allan@zenamic.dk') {
         //     return callback(new Error('Non-existent email address'));
@@ -42,7 +42,7 @@ export class libmailserver extends EventEmitter {
     static setupSMTP(port: number) {
         return new Promise<libmailserver>(async (resolve, reject) => {
             if (libmailserver.current) {
-                console.log('Smtpserver is allready listening on %s', port);
+                Logger.instanse.debug('Smtpserver is allready listening on ' + port);
                 return resolve(libmailserver.current);
             }
 
@@ -61,7 +61,7 @@ export class libmailserver extends EventEmitter {
                     onAuth: libmailserver.current.onAuth,
                     onData: libmailserver.current.onData
                 });
-                console.log('Smtpserver listening on %s', port);
+                Logger.instanse.info('Smtpserver listening on ' + port);
                 await libmailserver.current.server.listen(port);
                 resolve(libmailserver.current);
             } catch (err) {

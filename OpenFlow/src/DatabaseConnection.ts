@@ -1,5 +1,5 @@
 import {
-    ObjectID, Db, Binary, InsertOneWriteOpResult, DeleteWriteOpResultObject, ObjectId, MapReduceOptions, CollectionInsertOneOptions, UpdateWriteOpResult, WriteOpResult
+    ObjectID, Db, Binary, InsertOneWriteOpResult, DeleteWriteOpResultObject, ObjectId, MapReduceOptions, CollectionInsertOneOptions, UpdateWriteOpResult, WriteOpResult, GridFSBucket
 } from "mongodb";
 import { MongoClient } from "mongodb";
 import { Base, Rights, WellknownIds } from "./base";
@@ -23,13 +23,24 @@ const isoDatePattern = new RegExp(/\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\
 export class DatabaseConnection {
     private mongodburl: string;
     private cli: MongoClient;
-    private db: Db;
+    public db: Db;
     private _logger: winston.Logger;
     private _dbname: string;
     constructor(logger: winston.Logger, mongodburl: string, dbname: string) {
         this._logger = logger;
         this._dbname = dbname;
         this.mongodburl = mongodburl;
+    }
+    static toArray(iterator): Promise<any[]> {
+        return new Promise((resolve, reject) => {
+            iterator.toArray((err, res) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(res);
+                }
+            });
+        });
     }
     /**
      * Connect to MongoDB
@@ -40,9 +51,52 @@ export class DatabaseConnection {
             return;
         }
         this.cli = await MongoClient.connect(this.mongodburl, { autoReconnect: false, useNewUrlParser: true });
+        this.cli.on("error", (error) => {
+            this._logger.error(error);
+        });
         this.db = this.cli.db(this._dbname);
     }
+    async ListCollections(jwt: string): Promise<any[]> {
+        var result = await DatabaseConnection.toArray(this.db.listCollections());
+        Crypt.verityToken(jwt);
+        return result;
+    }
+    async DropCollection(collectionname: string, jwt: string): Promise<void> {
+        var user: TokenUser = Crypt.verityToken(jwt);
+        if (!user.hasrolename("admins")) throw new Error("Access denied");
+        if (["workflow", "entities", "config", "audit", "jslog", "openrpa", "nodered", "openrpa_instances", "forms", "workflow_instances", "users"].indexOf(collectionname) > -1) throw new Error("Access denied");
+        await this.db.dropCollection(collectionname);
+    }
 
+    async CleanACL<T extends Base>(item: T): Promise<T> {
+        for (var i = item._acl.length - 1; i >= 0; i--) {
+            {
+                var ace = item._acl[i];
+                var arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1 }).limit(1).toArray();
+                if (arr.length == 0) {
+                    item._acl.splice(i, 1);
+                } else { ace.name = arr[0].name; }
+            }
+        }
+        return item;
+    }
+    async Cleanmembers<T extends Role>(item: T): Promise<T> {
+        for (var i = item.members.length - 1; i >= 0; i--) {
+            {
+                var ace = item.members[i];
+                var exists = item.members.filter(x => x._id == ace._id);
+                if (exists.length > 1) {
+                    item.members.splice(i, 1);
+                } else {
+                    var arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1 }).limit(1).toArray();
+                    if (arr.length == 0) {
+                        item.members.splice(i, 1);
+                    } else { ace.name = arr[0].name; }
+                }
+            }
+        }
+        return item;
+    }
 
     /**
      * Send a query to the database.
@@ -70,8 +124,11 @@ export class DatabaseConnection {
         for (let key in query) {
             if (key === "_id") {
                 var id: string = query._id;
-                delete query._id;
-                query.$or = [{ _id: id }, { _id: safeObjectID(id) }];
+                var safeid = safeObjectID(id);
+                if (safeid !== null && safeid !== undefined) {
+                    delete query._id;
+                    query.$or = [{ _id: id }, { _id: safeObjectID(id) }];
+                }
             }
         }
 
@@ -95,16 +152,18 @@ export class DatabaseConnection {
                     return value; // leave any other value as-is
             });
         }
+        var user: TokenUser = Crypt.verityToken(jwt);
         var _query: Object = {};
         if (collectionname === "files") { collectionname = "fs.files"; }
         if (collectionname === "fs.files") {
             _query = { $and: [query, this.getbasequery(jwt, "metadata._acl", [Rights.read])] };
+            projection = null;
         } else {
             if (!collectionname.endsWith("_hist")) {
                 _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
             } else {
                 // todo: enforcer permissions when fetching _hist ?
-                _query = query;
+                _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
             }
         }
         if (!top) { top = 500; }
@@ -121,6 +180,7 @@ export class DatabaseConnection {
         }
         for (var i: number = 0; i < arr.length; i++) { arr[i] = this.decryptentity(arr[i]); }
         this.traversejsondecode(arr);
+        this._logger.debug("[" + user.username + "][" + collectionname + "] query gave " + arr.length + " results " + JSON.stringify(query));
         return arr;
     }
     /**
@@ -235,7 +295,6 @@ export class DatabaseConnection {
             jwt = TokenUser.rootToken();
         }
         var user: TokenUser = Crypt.verityToken(jwt);
-        if (!this.hasAuthorization(user, item, "create")) { throw new Error("Access denied"); }
         item._createdby = user.name;
         item._createdbyid = user._id;
         item._created = new Date(new Date().toISOString());
@@ -244,10 +303,10 @@ export class DatabaseConnection {
         item._modified = item._created;
         var hasUser: Ace = item._acl.find(e => e._id === user._id);
         if ((hasUser === null || hasUser === undefined)) {
-            if (collectionname != "audit") { this._logger.debug("Adding self " + user.username + " to object " + (item.name || item._name)); }
             item.addRight(user._id, user.name, [Rights.full_control]);
         }
-        if (collectionname != "audit") { this._logger.debug("adding " + (item.name || item._name) + " to database"); }
+        if (collectionname != "audit") { this._logger.debug("[" + user.username + "][" + collectionname + "] Adding " + item._type + " " + (item.name || item._name) + " to database"); }
+        if (!this.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied"); }
 
         item = this.encryptentity<T>(item);
         if (!item._id) { item._id = new ObjectID().toHexString(); }
@@ -259,19 +318,34 @@ export class DatabaseConnection {
         j = ((j as any) === 'true' || j === true);
         w = parseInt((w as any));
 
-        item._version = await this.SaveDiff(collectionname, null, item);
+        if (item.hasOwnProperty("_skiphistory")) {
+            delete (item as any)._skiphistory;
+            if (!Config.allow_skiphistory) {
+                item._version = await this.SaveDiff(collectionname, null, item);
+            }
+        } else {
+            item._version = await this.SaveDiff(collectionname, null, item);
+        }
+
+
+        item = await this.CleanACL(item);
+        if (item._type === "role" && collectionname === "users") {
+            item = await this.Cleanmembers(item as any);
+        }
 
         // var options:CollectionInsertOneOptions = { writeConcern: { w: parseInt((w as any)), j: j } };
         var options: CollectionInsertOneOptions = { w: w, j: j };
         //var options: CollectionInsertOneOptions = { w: "majority" };
         var result: InsertOneWriteOpResult = await this.db.collection(collectionname).insertOne(item, options);
         item = result.ops[0];
-
-
         if (collectionname === "users" && item._type === "user") {
             var users: Role = await Role.FindByNameOrId("users", jwt);
             users.AddMember(item);
             await users.Save(jwt)
+        }
+        if (collectionname === "users" && item._type === "role") {
+            item.addRight(item._id, item.name, [Rights.read]);
+            await this.db.collection(collectionname).replaceOne({ _id: item._id }, item);
         }
         this.traversejsondecode(item);
         return item;
@@ -308,7 +382,7 @@ export class DatabaseConnection {
         if (q.item === null || q.item === undefined) { throw Error("Cannot update null item"); }
         await this.connect();
         var user: TokenUser = Crypt.verityToken(q.jwt);
-        if (!this.hasAuthorization(user, q.item, "update")) { throw new Error("Access denied"); }
+        if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied"); }
 
         var original: T = null;
         // assume empty query, means full document, else update document
@@ -319,6 +393,7 @@ export class DatabaseConnection {
             }
             original = await this.getbyid<T>(q.item._id, q.collectionname, q.jwt);
             if (!original) { throw Error("item not found!"); }
+            if (!this.hasAuthorization(user, original, Rights.update)) { throw new Error("Access denied"); }
             q.item._modifiedby = user.name;
             q.item._modifiedbyid = user._id;
             q.item._modified = new Date(new Date().toISOString());
@@ -342,27 +417,45 @@ export class DatabaseConnection {
                     }
                 }
             }
+            if (q.item._acl === null || q.item._acl === undefined) {
+                q.item._acl = original._acl;
+                q.item._version = original._version;
+            }
             q.item = this.ensureResource(q.item);
             this.traversejsonencode(q.item);
             q.item = this.encryptentity<T>(q.item);
             var hasUser: Ace = q.item._acl.find(e => e._id === user._id);
             if ((hasUser === null || hasUser === undefined) && q.item._acl.length == 0) {
-                if (q.collectionname != "audit") { this._logger.debug("Adding self " + user.username + " to object " + (q.item.name || q.item._name)); }
                 q.item.addRight(user._id, user.name, [Rights.full_control]);
             }
-            q.item._version = await this.SaveDiff(q.collectionname, original, q.item);
+            if (q.item.hasOwnProperty("_skiphistory")) {
+                delete (q.item as any)._skiphistory;
+                if (!Config.allow_skiphistory) {
+                    q.item._version = await this.SaveDiff(q.collectionname, original, q.item);
+                }
+            } else {
+                q.item._version = await this.SaveDiff(q.collectionname, original, q.item);
+            }
         } else {
             itemReplace = false;
-            var _version = await this.SaveUpdateDiff(q, user);
-            if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };
-            (q.item["$set"])._version = _version;
+            if (q.item["$set"] !== null && q.item["$set"] !== undefined) {
+                if (q.item["$set"].hasOwnProperty("_skiphistory")) {
+                    delete q.item["$set"]._skiphistory;
+                    if (!Config.allow_skiphistory) this.SaveUpdateDiff(q, user);
+                }
+            } else {
+                this.SaveUpdateDiff(q, user);
+            }
+            // var _version = await this.SaveUpdateDiff(q, user);
+            // if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };
+            // (q.item["$set"])._version = _version;
         }
 
         if (q.collectionname === "users" && q.item._type === "user" && q.item.hasOwnProperty("newpassword")) {
             (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
             delete (q.item as any).newpassword;
         }
-        this._logger.debug("updating " + (q.item.name || q.item._name) + " in database");
+        this._logger.debug("[" + user.username + "][" + q.collectionname + "] Updating " + (q.item.name || q.item._name) + " in database");
         // await this.db.collection(collectionname).replaceOne({ _id: item._id }, item, options);
 
         if (q.query === null || q.query === undefined) {
@@ -377,7 +470,7 @@ export class DatabaseConnection {
                 _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.update])] };
             } else {
                 // todo: enforcer permissions when fetching _hist ?
-                _query = q.query;
+                _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.update])] };
             }
         }
 
@@ -388,6 +481,10 @@ export class DatabaseConnection {
         q.opresult = null;
         try {
             if (itemReplace) {
+                q.item = await this.CleanACL(q.item);
+                if (q.item._type === "role" && q.collectionname === "users") {
+                    q.item = await this.Cleanmembers(q.item as any);
+                }
                 q.opresult = await this.db.collection(q.collectionname).replaceOne(_query, q.item, options);
             } else {
                 if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };
@@ -421,7 +518,7 @@ export class DatabaseConnection {
         if (q.item === null || q.item === undefined) { throw Error("Cannot update null item"); }
         await this.connect();
         var user: TokenUser = Crypt.verityToken(q.jwt);
-        if (!this.hasAuthorization(user, q.item, "update")) { throw new Error("Access denied"); }
+        if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied"); }
 
         if (q.collectionname === "users" && q.item._type === "user" && q.item.hasOwnProperty("newpassword")) {
             (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
@@ -437,13 +534,13 @@ export class DatabaseConnection {
         var _query: Object = {};
         if (q.collectionname === "files") { q.collectionname = "fs.files"; }
         if (q.collectionname === "fs.files") {
-            _query = { $and: [q.query, this.getbasequery(q.jwt, "metadata._acl", [Rights.read])] };
+            _query = { $and: [q.query, this.getbasequery(q.jwt, "metadata._acl", [Rights.update])] };
         } else {
             if (!q.collectionname.endsWith("_hist")) {
-                _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.read])] };
+                _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.update])] };
             } else {
                 // todo: enforcer permissions when fetching _hist ?
-                _query = q.query;
+                _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.update])] };
             }
         }
 
@@ -453,7 +550,7 @@ export class DatabaseConnection {
         (q.item["$set"])._modified = new Date(new Date().toISOString());
 
 
-        this._logger.debug("updateMany " + (q.item.name || q.item._name) + " in database");
+        this._logger.debug("[" + user.username + "][" + q.collectionname + "] UpdateMany " + (q.item.name || q.item._name) + " in database");
 
         q.j = ((q.j as any) === 'true' || q.j === true);
         if ((q.w as any) !== "majority") q.w = parseInt((q.w as any));
@@ -502,6 +599,7 @@ export class DatabaseConnection {
         } else {
             query = { _id: q.item._id };
         }
+        var user: TokenUser = Crypt.verityToken(q.jwt);
         var exists = await this.query(query, { name: 1 }, 2, 0, null, q.collectionname, q.jwt);
         if (exists.length == 1) {
             q.item._id = exists[0]._id;
@@ -509,19 +607,37 @@ export class DatabaseConnection {
         else if (exists.length > 1) {
             throw JSON.stringify(query) + " is not uniqe, more than 1 item in collection matches this";
         }
-        var user: TokenUser = Crypt.verityToken(q.jwt);
-        if (!this.hasAuthorization(user, q.item, "update")) { throw new Error("Access denied"); }
-        if (q.item._id !== null && q.item._id !== undefined && q.item._id !== "") {
+        if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied"); }
+        // if (q.item._id !== null && q.item._id !== undefined && q.item._id !== "") {
+        if (exists.length == 1) {
+            this._logger.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Updating found one in database");
             var uq = new UpdateOneMessage<T>();
-            uq.query = query; uq.item = q.item; uq.collectionname = q.collectionname; uq.w = q.w; uq.j; uq.jwt = q.jwt;
+            // uq.query = query; 
+            uq.item = q.item; uq.collectionname = q.collectionname; uq.w = q.w; uq.j; uq.jwt = q.jwt;
             uq = await this.UpdateOne(uq);
             q.opresult = uq.opresult;
             q.result = uq.result;
         } else {
+            this._logger.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Inserting as new in database");
             q.result = await this.InsertOne(q.item, q.collectionname, q.w, q.j, q.jwt);
         }
         return q;
     }
+    private async _DeleteFile(id: string): Promise<string> {
+        return new Promise<string>(async (resolve, reject) => {
+            try {
+                var _id = new ObjectID(id);
+                var bucket = new GridFSBucket(this.db);
+                bucket.delete(_id, (error) => {
+                    if (error) return reject(error);
+                    resolve();
+                })
+            } catch (err) {
+                reject(err);
+            }
+        });
+    }
+
     /**
      * @param  {string} id id of object to delete
      * @param  {string} collectionname collectionname Collection containing item
@@ -544,10 +660,22 @@ export class DatabaseConnection {
             //_query = { $and: [{ _id: { $ne: user._id } }, _query] };
         }
 
+        if (collectionname === "files") { collectionname = "fs.files"; }
+        if (collectionname === "fs.files") {
+            _query = { $and: [{ _id: safeObjectID(id) }, this.getbasequery(jwt, "metadata._acl", [Rights.delete])] };
+            var arr = await this.db.collection(collectionname).find(_query).toArray();
+            if (arr.length == 1) {
+                await this._DeleteFile(id);
+                return;
+            } else {
+                throw Error("item not found!");
+            }
+        }
+
 
         // var arr = await this.db.collection(collectionname).find(_query).toArray();
 
-        this._logger.debug("deleting " + id + " in database");
+        this._logger.debug("[" + user.username + "][" + collectionname + "] Deleting " + id + " in database");
         var res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne(_query);
 
         // var res:DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne({_id:id});
@@ -649,9 +777,14 @@ export class DatabaseConnection {
             finalor.push(q2);
         }
         // 
-        if (bits.length == 1 && bits[0] == Rights.read) {
-            return { $or: finalor.concat(isme) };
-        }
+        // if (bits.length > 0 && (bits[0] + 1) == Rights.read) {
+        //     this._logger.debug("[" + user.username + "] Include isme in base query");
+        //     return { $or: finalor.concat(isme) };
+        // } else if (bits.length > 0) {
+        //     this._logger.debug("[" + user.username + "] Skip isme in base query, not read (" + bits[0] + ")");
+        // } else {
+        //     this._logger.debug("[" + user.username + "] Skip isme in base query, bits missing!");
+        // }
         return { $or: finalor.concat() };
     }
     /**
@@ -682,13 +815,13 @@ export class DatabaseConnection {
      * Validated user has rights to perform the requested action ( create is missing! )
      * @param  {TokenUser} user User requesting permission
      * @param  {any} item Item permission is needed on
-     * @param  {string} action Permission wanted (create, update, delete)
+     * @param  {Rights} action Permission wanted (create, update, delete)
      * @returns boolean Is allowed
      */
-    hasAuthorization(user: TokenUser, item: any, action: string): boolean {
+    hasAuthorization(user: TokenUser, item: Base, action: number): boolean {
         if (Config.api_bypass_perm_check) { return true; }
         if (user._id === WellknownIds.root) { return true; }
-        if (action === "create" || action === "delete") {
+        if (action === Rights.create || action === Rights.delete) {
             if (item._type === "role") {
                 if (item.name.toLowerCase() === "users" || item.name.toLowerCase() === "admins" || item.name.toLowerCase() === "workflow") {
                     return false;
@@ -700,20 +833,36 @@ export class DatabaseConnection {
                 }
             }
         }
-        if (action === "update" && item._id === WellknownIds.admins && item.name.toLowerCase() !== "admins") {
+        if (action === Rights.update && item._id === WellknownIds.admins && item.name.toLowerCase() !== "admins") {
             return false;
         }
-        if (action === "update" && item._id === WellknownIds.users && item.name.toLowerCase() !== "users") {
+        if (action === Rights.update && item._id === WellknownIds.users && item.name.toLowerCase() !== "users") {
             return false;
         }
-        if (action === "update" && item._id === WellknownIds.root && item.name.toLowerCase() !== "root") {
+        if (action === Rights.update && item._id === WellknownIds.root && item.name.toLowerCase() !== "root") {
             return false;
         }
-        if (item.userid === user.username || item.userid === user._id || item.user === user.username) {
+        if ((item as any).userid === user.username || (item as any).userid === user._id || (item as any).user === user.username) {
             return true;
         } else if (item._id === user._id) {
-            if (action === "delete") { this._logger.error("hasAuthorization, cannot delete self!"); return false; }
+            if (action === Rights.delete) { this._logger.error("[" + user.username + "] hasAuthorization, cannot delete self!"); return false; }
             return true;
+        }
+
+        if (item._acl != null && item._acl != undefined) {
+            var a = item._acl.filter(x => x._id == user._id);
+            if (a.length > 0) {
+                let _ace = Ace.assign(a[0]);
+                if (_ace.getBit(action)) return true;
+            }
+            for (var i = 0; i < user.roles.length; i++) {
+                a = item._acl.filter(x => x._id == user.roles[i]._id);
+                if (a.length > 0) {
+                    let _ace = Ace.assign(a[0]);
+                    if (_ace.getBit(action)) return true;
+                }
+            }
+            return false;
         }
         return true;
     }
@@ -728,9 +877,25 @@ export class DatabaseConnection {
      * @returns void Clean object
      */
     traversejsonencode(o) {
+        var reISO = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(?:\.\d*))(?:Z|(\+|-)([\d|:]*))?$/;
+        var reMsAjax = /^\/Date\((d|-|.*)\)[\/|\\]$/;
+
         var keys = Object.keys(o);
         for (let i = 0; i < keys.length; i++) {
             let key = keys[i];
+            let value = o[key];
+            if (typeof value === 'string') {
+                var a = reISO.exec(value);
+                if (a) {
+                    o[key] = new Date(value);
+                } else {
+                    a = reMsAjax.exec(value);
+                    if (a) {
+                        var b = a[1].split(/[-+,.]/);
+                        o[key] = new Date(b[0] ? +b[0] : 0 - +b[1]);
+                    }
+                }
+            }
             if (key.indexOf('.') > -1) {
                 try {
                     // var newkey = key.replace(new RegExp('.', 'g'), '____');
@@ -789,40 +954,48 @@ export class DatabaseConnection {
     }
 
     async SaveUpdateDiff<T extends Base>(q: UpdateOneMessage<T>, user: TokenUser) {
-        var _skip_array: string[] = Config.skip_history_collections.split(",");
-        var skip_array: string[] = [];
-        _skip_array.forEach(x => skip_array.push(x.trim()));
-        if (skip_array.indexOf(q.collectionname) > -1) { return 0; }
-        var res = await this.query<T>(q.query, null, 1, 0, null, q.collectionname, q.jwt);
-        if (res.length > 0) {
-            var _version = 1;
-            var original = res[0];
-
-            delete original._modifiedby;
-            delete original._modifiedbyid;
-            delete original._modified;
-            if (original._version != undefined && original._version != null) {
-                _version = original._version + 1;
+        try {
+            var _skip_array: string[] = Config.skip_history_collections.split(",");
+            var skip_array: string[] = [];
+            _skip_array.forEach(x => skip_array.push(x.trim()));
+            if (skip_array.indexOf(q.collectionname) > -1) { return 0; }
+            var res = await this.query<T>(q.query, null, 1, 0, null, q.collectionname, q.jwt);
+            var name: string = "unknown";
+            var _id: string = "";
+            if (res.length > 0) {
+                var _version = 1;
+                var original = res[0];
+                name = original.name;
+                _id = original._id;
+                delete original._modifiedby;
+                delete original._modifiedbyid;
+                delete original._modified;
+                if (original._version != undefined && original._version != null) {
+                    _version = original._version + 1;
+                }
             }
+            var updatehist = {
+                _modified: new Date(new Date().toISOString()),
+                _modifiedby: user.name,
+                _modifiedbyid: user._id,
+                _created: new Date(new Date().toISOString()),
+                _createdby: user.name,
+                _createdbyid: user._id,
+                name: name,
+                id: _id,
+                update: JSON.stringify(q.item),
+                _version: _version,
+                reason: ""
+            }
+            await this.db.collection(q.collectionname + '_hist').insertOne(updatehist);
+        } catch (error) {
+            this._logger.error(error);
         }
-        var updatehist = {
-            _modified: new Date(new Date().toISOString()),
-            _modifiedby: user.name,
-            _modifiedbyid: user._id,
-            _created: new Date(new Date().toISOString()),
-            _createdby: user.name,
-            _createdbyid: user._id,
-            name: original.name,
-            id: original._id,
-            update: q.item,
-            _version: _version,
-            reason: ""
-        }
-        await this.db.collection(q.collectionname + '_hist').insertOne(updatehist);
     }
     async SaveDiff(collectionname: string, original: any, item: any) {
         if (item._type == 'instance' && collectionname == 'workflows') return 0;
         if (item._type == 'instance' && collectionname == 'workflows') return 0;
+        delete item._skiphistory;
         var _modified = item._modified;
         var _modifiedby = item._modifiedby;
         var _modifiedbyid = item._modifiedbyid;
@@ -830,6 +1003,7 @@ export class DatabaseConnection {
         var _acl = item._acl;
         var _type = item._type;
         var reason = item._updatereason;
+        var lastseen = item.lastseen;
         try {
             var _skip_array: string[] = Config.skip_history_collections.split(",");
             var skip_array: string[] = [];
@@ -840,6 +1014,7 @@ export class DatabaseConnection {
                 delete original._modifiedby;
                 delete original._modifiedbyid;
                 delete original._modified;
+                delete original.lastseen;
                 if (original._version != undefined && original._version != null) {
                     _version = original._version + 1;
                 }
@@ -862,30 +1037,33 @@ export class DatabaseConnection {
             delete item._modifiedbyid;
             delete item._modified;
             delete item._updatereason;
+            delete item.lastseen;
 
             // if (original != null && _version > 0 && delta_collections.indexOf(collectionname) > -1) {
             if (original != null && _version > 0) {
                 delta = jsondiffpatch.diff(original, item);
                 if (delta == undefined || delta == null) return 0;
-                var deltahist = {
-                    _acl: _acl,
-                    _type: _type,
-                    _modified: _modified,
-                    _modifiedby: _modifiedby,
-                    _modifiedbyid: _modifiedbyid,
-                    _created: _modified,
-                    _createdby: _modifiedby,
-                    _createdbyid: _modifiedbyid,
-                    name: item.name,
-                    id: item._id,
-                    item: original,
-                    delta: delta,
-                    _version: _version,
-                    reason: reason
+                var keys = Object.keys(delta);
+                if (keys.length > 1) {
+                    var deltahist = {
+                        _acl: _acl,
+                        _type: _type,
+                        _modified: _modified,
+                        _modifiedby: _modifiedby,
+                        _modifiedbyid: _modifiedbyid,
+                        _created: _modified,
+                        _createdby: _modifiedby,
+                        _createdbyid: _modifiedbyid,
+                        name: item.name,
+                        id: item._id,
+                        item: original,
+                        delta: delta,
+                        _version: _version,
+                        reason: reason
+                    }
+                    await this.db.collection(collectionname + '_hist').insertOne(deltahist);
                 }
-                await this.db.collection(collectionname + '_hist').insertOne(deltahist);
-            }
-            else {
+            } else {
                 var fullhist = {
                     _acl: _acl,
                     _type: _type,
@@ -906,6 +1084,9 @@ export class DatabaseConnection {
             item._modifiedby = _modifiedby;
             item._modifiedbyid = _modifiedbyid;
             item._modified = _modified;
+            if (lastseen !== null && lastseen !== undefined) {
+                item.lastseen = lastseen;
+            }
         } catch (error) {
             this._logger.error(error);
         }

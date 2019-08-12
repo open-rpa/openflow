@@ -2,6 +2,8 @@ import { Red } from "node-red";
 import { QueryMessage, Message, InsertOneMessage, UpdateOneMessage, DeleteOneMessage, InsertOrUpdateOneMessage, SigninMessage, TokenUser, mapFunc, reduceFunc, finalizeFunc, MapReduceMessage, JSONfn, UpdateManyMessage } from "../../Message";
 import { WebSocketClient } from "../../WebSocketClient";
 import { Crypt } from "../../Crypt";
+import { Config } from "../../Config";
+import { Logger } from "../../Logger";
 
 export class NoderedUtil {
     public static IsNullUndefinded(obj: any) {
@@ -46,14 +48,24 @@ export class NoderedUtil {
     public static HandleError(node: Red, error: any): void {
         console.error(error);
         var message: string = error;
-        if (error.message) {
-            message = error.message;
-            node.error(error.message, message);
-        } else {
-            node.error(error, message);
+        try {
+            if (error.message) {
+                message = error.message;
+                //node.error(error, message);
+                node.error(message, error);
+            } else {
+                //node.error(error, message);
+                node.error(message, error);
+            }
+        } catch (error) {
+            console.error(error);
         }
-        if (NoderedUtil.IsNullUndefinded(message)) { message = ""; }
-        node.status({ fill: "red", shape: "dot", text: message.substr(0, 32) });
+        try {
+            if (NoderedUtil.IsNullUndefinded(message)) { message = ""; }
+            node.status({ fill: "red", shape: "dot", text: message.toString().substr(0, 32) });
+        } catch (error) {
+            console.error(error);
+        }
     }
 
 
@@ -62,7 +74,23 @@ export class NoderedUtil {
     public static async Query(collection: string, query: any, projection: any, orderby: any, top: number, skip: number, jwt: string): Promise<any[]> {
         var q: QueryMessage = new QueryMessage(); q.collectionname = collection;
         q.orderby = orderby; q.projection = projection;
-        q.query = query; q.skip = skip; q.top = top; q.jwt = jwt;
+        //q.query = query;
+        q.query = JSON.stringify(query, (key, value) => {
+            var t = typeof value;
+            console.log("key: " + key + " type: " + t);
+            if (value instanceof RegExp)
+                return ("__REGEXP " + value.toString());
+            else if (t == "object") {
+                if (value.constructor != null && value.constructor.name === "RegExp") {
+                    return ("__REGEXP " + value.toString());
+                }
+                return value;
+            }
+            else
+                return value;
+
+        });
+        q.skip = skip; q.top = top; q.jwt = jwt;
         var _msg: Message = new Message();
         _msg.command = "query"; _msg.data = JSON.stringify(q);
         var result: QueryMessage = await WebSocketClient.instance.Send<QueryMessage>(_msg);
@@ -124,20 +152,45 @@ export class NoderedUtil {
         var result: QueryMessage = await WebSocketClient.instance.Send<QueryMessage>(msg);
         return result.result;
     }
-
+    static isNumeric(num) {
+        return !isNaN(num)
+    }
     public static async GetToken(username: string, password: string): Promise<SigninMessage> {
         var q: SigninMessage = new SigninMessage(); q.validate_only = true;
         if (!NoderedUtil.IsNullEmpty(username) && !NoderedUtil.IsNullEmpty(password)) {
             q.username = username; q.password = password;
         } else {
-            if (Crypt.encryption_key === "") { throw new Error("root signin not allowed"); }
-            var user = new TokenUser(); user.name = "root"; user.username = "root";
-            q.jwt = Crypt.createToken(user);
+            var user = new TokenUser();
+            Logger.instanse.debug("GetToken::nodered_id: " + Config.nodered_id);
+            Logger.instanse.debug("GetToken::isNumeric: " + this.isNumeric(Config.nodered_id));
+            if (Config.jwt !== "") {
+                q.jwt = Config.jwt;
+            } else if (Crypt.encryption_key !== "") {
+                var user = new TokenUser();
+                if (NoderedUtil.IsNullEmpty(Config.nodered_sa)) {
+                    user.name = "nodered" + Config.nodered_id;
+                } else {
+                    user.name = Config.nodered_sa;
+                }
+                user.username = user.name;
+                q.jwt = Crypt.createToken(user);
+            } else {
+                throw new Error("root signin not allowed");
+            }
         }
         var _msg: Message = new Message();
         _msg.command = "signin"; _msg.data = JSON.stringify(q);
         var result: SigninMessage = await WebSocketClient.instance.Send<SigninMessage>(_msg);
+        Logger.instanse.debug("Created token as " + result.user.username);
         return result;
     }
-
+    public static async GetTokenFromSAML(rawAssertion: string): Promise<SigninMessage> {
+        var q: SigninMessage = new SigninMessage(); q.validate_only = true;
+        q.rawAssertion = rawAssertion;
+        var _msg: Message = new Message();
+        _msg.command = "signin"; _msg.data = JSON.stringify(q);
+        var result: SigninMessage = await WebSocketClient.instance.Send<SigninMessage>(_msg);
+        Logger.instanse.debug("Created token as " + result.user.username);
+        return result;
+    }
 }

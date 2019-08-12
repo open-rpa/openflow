@@ -15,6 +15,8 @@ export class WellknownIds {
     static robot_users: string = "5aef0142f3683977b0aa3dd3";
     static robot_admins: string = "5aef0142f3683977b0aa3dd2";
 
+    static personal_nodered_users: string = "5a23f18a2e8987292ddbe062";
+
 }
 export class Rights {
     static create = 1;
@@ -120,7 +122,8 @@ export class Base implements IBase {
         var right: Ace = this.getRight(_id, deny);
         if (!right) { return; }
         rights.forEach(bit => {
-            right.unsetBit(bit);
+            if (bit == Rights.full_control) { this._acl = this._acl.filter(x => x._id != _id); } else { right.unsetBit(bit); }
+
         });
         this.setRight(right);
     }

@@ -1,7 +1,14 @@
 import { Config } from "./Config";
 
+export class dashboard_settings {
+    public path: string = "ui";
+    public middleware: any;
+}
 // tslint:disable-next-line: class-name
 export class nodered_settings {
+    constructor() {
+        this.ui = new dashboard_settings();
+    }
     public flowFile: string = "flows.json";
     public settingsFile: string = "nodered_settings.js";
     public nodesDir: string = ".";
@@ -12,6 +19,8 @@ export class nodered_settings {
     public httpNodeAuth: any = null;
     public httpStaticAuth: any = null;
     public httpNodeMiddleware: any;
+
+    public ui: dashboard_settings;
 
     public httpAdminRoot: string = "/";
     public httpNodeRoot: string = "/";

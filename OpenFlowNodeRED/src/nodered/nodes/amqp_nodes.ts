@@ -4,6 +4,7 @@ import { NoderedUtil } from "./NoderedUtil";
 import { Logger } from "../../Logger";
 import { amqp_consumer } from "../../amqp_consumer";
 import { amqp_publisher } from "../../amqp_publisher";
+import { Config } from "../../Config";
 
 export interface Iamqp_connection {
     host: string;
@@ -59,7 +60,13 @@ export class amqp_consumer_node {
             if (!NoderedUtil.IsNullEmpty(username) && !NoderedUtil.IsNullEmpty(password)) {
                 this.host = "amqp://" + username + ":" + password + "@" + this.host;
             } else {
-                this.host = "amqp://" + this.host;
+                if (!NoderedUtil.IsNullUndefinded(Config.queue_prefix)) {
+                    if (NoderedUtil.IsNullUndefinded(_config) || NoderedUtil.IsNullEmpty(_config.username)) {
+                        this.config.queue = Config.queue_prefix + this.config.queue;
+                    }
+                }
+                // this.host = "amqp://" + this.host;
+                this.host = Config.amqp_url;
             }
             this.connect();
         } catch (error) {
@@ -81,8 +88,12 @@ export class amqp_consumer_node {
         try {
             var result: any = {};
             result.amqpacknowledgment = ack;
+            var data: any = null;
+            try {
+                data = JSON.parse(msg.content.toString());
+            } catch (error) {
 
-            var data = JSON.parse(msg.content.toString());
+            }
             try {
                 data.payload = JSON.parse(data.payload);
             } catch (error) {
@@ -96,7 +107,13 @@ export class amqp_consumer_node {
     }
     onclose() {
         if (!NoderedUtil.IsNullUndefinded(this.con)) {
-            this.con.close();
+            try {
+                this.con.close().catch((error) => {
+                    Logger.instanse.error(error);
+                });
+            } catch (error) {
+                Logger.instanse.error(error);
+            }
         }
     }
 }
@@ -140,8 +157,16 @@ export class amqp_publisher_node {
             if (!NoderedUtil.IsNullEmpty(username) && !NoderedUtil.IsNullEmpty(password)) {
                 this.host = "amqp://" + username + ":" + password + "@" + this.host;
             } else {
-                this.host = "amqp://" + this.host;
+                // this.host = "amqp://" + this.host;
+                this.host = Config.amqp_url;
             }
+            if (!NoderedUtil.IsNullUndefinded(Config.queue_prefix)) {
+                if (NoderedUtil.IsNullUndefinded(_config) || NoderedUtil.IsNullEmpty(_config.username)) {
+                    this.config.queue = Config.queue_prefix + this.config.queue;
+                    this.config.localqueue = Config.queue_prefix + this.config.localqueue;
+                }
+            }
+
             this.connect();
         } catch (error) {
             NoderedUtil.HandleError(this, error);
@@ -178,7 +203,7 @@ export class amqp_publisher_node {
             data.payload = msg.payload;
             data.jwt = msg.jwt;
             data._id = msg._id;
-            this.con.SendMessage(JSON.stringify(data), this.config.queue);
+            this.con.SendMessage(JSON.stringify(data), this.config.queue, null);
             this.node.status({});
         } catch (error) {
             NoderedUtil.HandleError(this, error);
@@ -186,7 +211,13 @@ export class amqp_publisher_node {
     }
     onclose() {
         if (!NoderedUtil.IsNullUndefinded(this.con)) {
-            this.con.close();
+            try {
+                this.con.close().catch((error) => {
+                    Logger.instanse.error(error);
+                });
+            } catch (error) {
+                Logger.instanse.error(error);
+            }
         }
     }
 }
