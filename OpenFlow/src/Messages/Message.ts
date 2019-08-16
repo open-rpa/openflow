@@ -536,7 +536,11 @@ export class Message {
                 msg.user = tuser;
                 if (msg.impersonate !== undefined && msg.impersonate !== null && msg.impersonate !== "") {
                     var items = await Config.db.query({ _id: msg.impersonate }, null, 1, 0, null, "users", msg.jwt);
-                    if (items.length == 0) throw new Error("Permission denied, impersonating " + msg.impersonate);
+                    if (items.length == 0) {
+                        Audit.ImpersonateFailed(tuser);
+                        throw new Error("Permission denied, impersonating " + msg.impersonate);
+                    }
+                    var tuserimpostor = tuser;
                     user = User.assign(items[0] as User);
                     await user.DecorateWithRoles();
                     // Check we have update rights
@@ -545,6 +549,7 @@ export class Message {
                     tuser.impostor = userid;
                     msg.jwt = Crypt.createToken(tuser, "5m");
                     msg.user = tuser;
+                    Audit.ImpersonateSuccess(tuser, tuserimpostor);
                 }
                 if (msg.firebasetoken != null && msg.firebasetoken != undefined && msg.firebasetoken != "") {
                     user.firebasetoken = msg.firebasetoken;
