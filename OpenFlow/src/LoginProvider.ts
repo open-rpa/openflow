@@ -413,11 +413,32 @@ export class LoginProvider {
                     _user.name = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"];
                 }
                 _user.username = username;
-                (_user as any).mobile = profile.mobile;
+                if (!Util.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
+                    (_user as any).mobile = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"];
+                }
                 if (Util.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty, please add displayname to claims", null); return; }
                 // _user = await Config.db.InsertOne(_user, "users", 0, false, TokenUser.rootToken());
                 var jwt: string = TokenUser.rootToken();
                 _user = await User.ensureUser(jwt, _user.name, _user.username, null, null);
+            }
+        } else {
+            if (!Util.IsNullUndefinded(_user)) {
+                if (!Util.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
+                    (_user as any).mobile = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"];
+                }
+                await _user.Save(jwt);
+            }
+        }
+
+        if (!Util.IsNullUndefinded(_user)) {
+            if (!Util.IsNullEmpty(profile["http://schemas.xmlsoap.org/claims/Group"])) {
+                var strroles: string[] = profile["http://schemas.xmlsoap.org/claims/Group"];
+                for (var i = 0; i < strroles.length; i++) {
+                    var role: Role = await Role.FindByNameOrId(strroles[i], jwt);
+                    role.AddMember(_user);
+                    await role.Save(jwt);
+                }
+                await _user.DecorateWithRoles();
             }
         }
 
