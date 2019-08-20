@@ -435,8 +435,10 @@ export class LoginProvider {
                 var strroles: string[] = profile["http://schemas.xmlsoap.org/claims/Group"];
                 for (var i = 0; i < strroles.length; i++) {
                     var role: Role = await Role.FindByNameOrId(strroles[i], jwt);
-                    role.AddMember(_user);
-                    await role.Save(jwt);
+                    if (!Util.IsNullUndefinded(role)) {
+                        role.AddMember(_user);
+                        await role.Save(jwt);
+                    }
                 }
                 await _user.DecorateWithRoles();
             }
