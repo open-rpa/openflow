@@ -409,6 +409,9 @@ export class LoginProvider {
                 if (!Util.IsNullEmpty(profile["http://schemas.microsoft.com/identity/claims/displayname"])) {
                     _user.name = profile["http://schemas.microsoft.com/identity/claims/displayname"];
                 }
+                if (!Util.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"])) {
+                    _user.name = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"];
+                }
                 _user.username = username;
                 (_user as any).mobile = profile.mobile;
                 if (Util.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty, please add displayname to claims", null); return; }
