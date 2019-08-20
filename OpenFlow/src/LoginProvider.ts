@@ -394,6 +394,8 @@ export class LoginProvider {
         return strategy;
     }
     static async samlverify(profile: any, done: IVerifyFunction): Promise<void> {
+        console.log("samlverify");
+        console.log(JSON.stringify(profile));
         var username: string = (profile.nameID || profile.username);
         if (username !== null && username != undefined) { username = username.toLowerCase(); }
         this._logger.debug("verify: " + username);
@@ -408,6 +410,7 @@ export class LoginProvider {
                     _user.name = profile["http://schemas.microsoft.com/identity/claims/displayname"];
                 }
                 _user.username = username;
+                (_user as any).mobile = profile.mobile;
                 if (Util.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty, please add displayname to claims", null); return; }
                 // _user = await Config.db.InsertOne(_user, "users", 0, false, TokenUser.rootToken());
                 var jwt: string = TokenUser.rootToken();
@@ -437,10 +440,13 @@ export class LoginProvider {
             var createUser: boolean = Config.auto_create_users;
             if (Config.auto_create_domains.map(x => username.endsWith(x)).length == -1) { createUser = false; }
             if (createUser) {
+                console.log("createUser");
+                console.log(JSON.stringify(profile));
                 var jwt: string = TokenUser.rootToken();
                 _user = new User(); _user.name = profile.name;
                 if (!Util.IsNullEmpty(profile.displayName)) { _user.name = profile.displayName; }
                 _user.username = username;
+                (_user as any).mobile = profile.mobile;
                 if (Util.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty.", null); return; }
                 var jwt: string = TokenUser.rootToken();
                 _user = await User.ensureUser(jwt, _user.name, _user.username, null, null);

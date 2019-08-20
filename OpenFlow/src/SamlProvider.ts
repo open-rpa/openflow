@@ -28,6 +28,8 @@ export class SamlProvider {
                                 claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] = this.pu[key]; break;
                             case "name":
                                 claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] = this.pu[key]; break;
+                            case "mobile":
+                                claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"] = this.pu[key]; break;
                             case "username":
                                 claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] = this.pu[key]; break;
                             case "emails":
