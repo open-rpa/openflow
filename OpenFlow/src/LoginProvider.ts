@@ -426,12 +426,14 @@ export class LoginProvider {
                 if (!Util.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
                     (_user as any).mobile = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"];
                 }
+                var jwt: string = TokenUser.rootToken();
                 await _user.Save(jwt);
             }
         }
 
         if (!Util.IsNullUndefinded(_user)) {
             if (!Util.IsNullEmpty(profile["http://schemas.xmlsoap.org/claims/Group"])) {
+                var jwt: string = TokenUser.rootToken();
                 var strroles: string[] = profile["http://schemas.xmlsoap.org/claims/Group"];
                 for (var i = 0; i < strroles.length; i++) {
                     var role: Role = await Role.FindByNameOrId(strroles[i], jwt);
