@@ -62,7 +62,7 @@ export class SamlProvider {
         var cert: string = Buffer.from(Config.signing_crt, "base64").toString("ascii");
         var key: string = Buffer.from(Config.singing_key, "base64").toString("ascii");
 
-        var samlpoptions: any = {
+        var samlpoptions: any  = {
             issuer: Config.saml_issuer,
             cert: cert,
             key: key,
@@ -82,7 +82,8 @@ export class SamlProvider {
                 Audit.LoginSuccess(tuser, "tokenissued", "saml", remoteip);
                 return req.user;
             },
-            profileMapper: SamlProvider.profileMapper
+            profileMapper: SamlProvider.profileMapper,
+            lifetimeInSeconds: (3600*24)
         };
 
         app.get("/issue/", (req: any, res: any, next: any): void => {
