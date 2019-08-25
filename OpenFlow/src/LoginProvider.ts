@@ -356,12 +356,7 @@ export class LoginProvider {
                     if (!Config.allow_user_registration) {
                         return done(null, false);
                     }
-                    user = new User(); user.name = username; user.username = username;
-                    await user.SetPassword(password);
-                    user = await Config.db.InsertOne(user, "users", 0, false, TokenUser.rootToken());
-                    var users: Role = await Role.FindByNameOrId("users", TokenUser.rootToken());
-                    users.AddMember(user);
-                    await users.Save(TokenUser.rootToken())
+                    user = await User.ensureUser(TokenUser.rootToken(), username, username, null, password);
                 } else {
                     if (!(await user.ValidatePassword(password))) {
                         Audit.LoginFailed(username, "weblogin", "local", "");
