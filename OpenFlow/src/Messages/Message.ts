@@ -37,7 +37,7 @@ import { GridFSBucket, ObjectID, Db, Cursor } from "mongodb";
 import { GetFileMessage } from "./GetFileMessage";
 import { ListCollectionsMessage } from "./ListCollectionsMessage";
 import { DropCollectionMessage } from "./DropCollectionMessage";
-import { basename, dirname } from "path";
+import * as path from "path";
 import { UpdateFileMessage } from "./UpdateFileMessage";
 import { DatabaseConnection } from "../DatabaseConnection";
 
@@ -1046,9 +1046,9 @@ export class Message {
             }
 
             if (msg.metadata === null || msg.metadata === undefined) { msg.metadata = new Base(); }
-            msg.metadata.name = basename(msg.filename);
+            msg.metadata.name = path.basename(msg.filename);
             (msg.metadata as any).filename = msg.filename;
-            (msg.metadata as any).path = dirname(msg.filename);
+            (msg.metadata as any).path = path.dirname(msg.filename);
             if ((msg.metadata as any).path == ".") (msg.metadata as any).path = "";
 
             var buf = Buffer.from(msg.file, 'base64');
