@@ -1566,16 +1566,21 @@ module openflow {
             if (this.showjson) {
                 this.model = JSON.parse(this.jsonmodel);
             }
-            if (this.collection == "files") {
-                await this.api.UpdateFile(this.model._id, (this.model as any).metadata);
-                this.$location.path("/Files");
-                if (!this.$scope.$$phase) { this.$scope.$apply(); }
-                return;
-            }
+            // if (this.collection == "files") {
+            //     await this.api.UpdateFile(this.model._id, (this.model as any).metadata);
+            //     this.$location.path("/Files");
+            //     if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            //     return;
+            // }
             if (this.model._id) {
                 await this.api.Update(this.collection, this.model);
             } else {
                 await this.api.Insert(this.collection, this.model);
+            }
+            if (this.collection == "files") {
+                this.$location.path("/Files");
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                return;
             }
             this.$location.path("/Entities/" + this.collection);
             if (!this.$scope.$$phase) { this.$scope.$apply(); }

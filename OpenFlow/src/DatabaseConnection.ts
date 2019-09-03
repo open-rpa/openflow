@@ -532,7 +532,13 @@ export class DatabaseConnection {
                 if (q.item._type === "role" && q.collectionname === "users") {
                     q.item = await this.Cleanmembers(q.item as any);
                 }
-                q.opresult = await this.db.collection(q.collectionname).replaceOne(_query, q.item, options);
+
+                if (q.collectionname != "fs.files") {
+                    q.opresult = await this.db.collection(q.collectionname).replaceOne(_query, q.item, options);
+                } else {
+                    var fsc = Config.db.db.collection("fs.files");
+                    q.opresult = await fsc.updateOne(_query, { $set: { metadata: (q.item as any).metadata } });
+                }
             } else {
                 if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };
                 (q.item["$set"])._modifiedby = user.name;
