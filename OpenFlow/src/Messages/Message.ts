@@ -1040,6 +1040,12 @@ export class Message {
             if (Util.IsNullEmpty(msg.filename)) throw new Error("Filename is mandatory");
             // if (Util.IsNullEmpty(msg.mimeType)) throw new Error("mimeTypes is mandatory");
             if (Util.IsNullEmpty(msg.file)) throw new Error("file is mandatory");
+            if (process.platform === "win32") {
+                msg.filename = msg.filename.replace(/\//g, "\\");
+            }
+            else {
+                msg.filename = msg.filename.replace(/\\/g, "/");
+            }
 
             if (Util.IsNullEmpty(msg.mimeType)) {
                 msg.mimeType = lookup(msg.filename);
