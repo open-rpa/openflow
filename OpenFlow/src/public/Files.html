@@ -31,6 +31,7 @@
       <th scope="col" ng-click="ctrl.ToggleOrder('metadata._created')"><b translate lib="web">created</b></th>
       <th></th>
       <th></th>
+      <th></th>
     </tr>
   </thead>
   <tbody>
@@ -41,6 +42,11 @@
       <td>{{model.metadata._createdby}}</td>
       <td>
         <timesince ng-model="model.metadata._created" />
+      </td>
+      <td class="btn-cell">
+        <a ng-href="" class="table-btn" ng-click="ctrl.Download(model._id)">
+          <i class="fas fa-file-download" style="color: #007bff;"></i>
+        </a>
       </td>
       <td class="btn-cell">
         <a ng-href="#/Entity/{{ctrl.collection}}/{{model._id}}" class="table-btn"><i class="az-edit"></i></a>

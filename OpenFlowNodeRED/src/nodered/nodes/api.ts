@@ -24,6 +24,9 @@ export = function (RED: Red) {
     RED.nodes.registerType("grant permission", api.grant_permission);
     RED.nodes.registerType("revoke permission", api.revoke_permission);
 
+    RED.nodes.registerType("api download file", api.download_file);
+    RED.nodes.registerType("api upload file", api.upload_file);
+
     RED.httpAdmin.get("/api_roles", RED.auth.needsPermission('serial.read'), api.get_api_roles);
 
 }

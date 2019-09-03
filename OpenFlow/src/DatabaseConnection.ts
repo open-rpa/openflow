@@ -121,17 +121,7 @@ export class DatabaseConnection {
                 mysort = orderby;
             }
         }
-        for (let key in query) {
-            if (key === "_id") {
-                var id: string = query._id;
-                var safeid = safeObjectID(id);
-                if (safeid !== null && safeid !== undefined) {
-                    delete query._id;
-                    query.$or = [{ _id: id }, { _id: safeObjectID(id) }];
-                }
-            }
-        }
-
+        // for (let key in query) {
         if (query !== null && query !== undefined) {
             var json: any = query;
             if (typeof json !== 'string' && !(json instanceof String)) {
@@ -151,6 +141,18 @@ export class DatabaseConnection {
                 } else
                     return value; // leave any other value as-is
             });
+        }
+        var keys: string[] = Object.keys(query);
+        for (let i: number = 0; i < keys.length; i++) {
+            let key: string = keys[i];
+            if (key === "_id") {
+                var id: string = query._id;
+                var safeid = safeObjectID(id);
+                if (safeid !== null && safeid !== undefined) {
+                    delete query._id;
+                    query.$or = [{ _id: id }, { _id: safeObjectID(id) }];
+                }
+            }
         }
         var user: TokenUser = Crypt.verityToken(jwt);
         var _query: Object = {};
@@ -179,7 +181,7 @@ export class DatabaseConnection {
             arr = await this.db.collection(collectionname).find(_query).sort(mysort).limit(top).skip(skip).toArray();
         }
         for (var i: number = 0; i < arr.length; i++) { arr[i] = this.decryptentity(arr[i]); }
-        this.traversejsondecode(arr);
+        DatabaseConnection.traversejsondecode(arr);
         this._logger.debug("[" + user.username + "][" + collectionname + "] query gave " + arr.length + " results " + JSON.stringify(query));
         return arr;
     }
@@ -208,7 +210,7 @@ export class DatabaseConnection {
         // todo: add permissions check on aggregates
         // aggregates.unshift(this.getbasequery(jwt, [Rights.read]));
         var items: T[] = await this.db.collection(collectionname).aggregate(aggregates).toArray();
-        this.traversejsondecode(items);
+        DatabaseConnection.traversejsondecode(items);
         return items;
     }
     /**
@@ -290,7 +292,7 @@ export class DatabaseConnection {
         if (item === null || item === undefined) { throw Error("Cannot create null item"); }
         await this.connect();
         item = this.ensureResource(item);
-        this.traversejsonencode(item);
+        DatabaseConnection.traversejsonencode(item);
         if (jwt === null || jwt === undefined && collectionname === "jslog") {
             jwt = TokenUser.rootToken();
         }
@@ -347,7 +349,7 @@ export class DatabaseConnection {
             item.addRight(item._id, item.name, [Rights.read]);
             await this.db.collection(collectionname).replaceOne({ _id: item._id }, item);
         }
-        this.traversejsondecode(item);
+        DatabaseConnection.traversejsondecode(item);
         return item;
     }
     /**
@@ -383,6 +385,7 @@ export class DatabaseConnection {
         await this.connect();
         var user: TokenUser = Crypt.verityToken(q.jwt);
         if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied"); }
+        if (q.collectionname === "files") { q.collectionname = "fs.files"; }
 
         var original: T = null;
         // assume empty query, means full document, else update document
@@ -394,40 +397,79 @@ export class DatabaseConnection {
             original = await this.getbyid<T>(q.item._id, q.collectionname, q.jwt);
             if (!original) { throw Error("item not found!"); }
             if (!this.hasAuthorization(user, original, Rights.update)) { throw new Error("Access denied"); }
-            q.item._modifiedby = user.name;
-            q.item._modifiedbyid = user._id;
-            q.item._modified = new Date(new Date().toISOString());
-            // now add all _ fields to the new object
-            var keys: string[] = Object.keys(original);
-            for (let i: number = 0; i < keys.length; i++) {
-                let key: string = keys[i];
-                if (key === "_created") {
-                    q.item[key] = new Date(original[key]);
-                } else if (key === "_createdby" || key === "_createdbyid") {
-                    q.item[key] = original[key];
-                } else if (key === "_modifiedby" || key === "_modifiedbyid" || key === "_modified") {
-                    // allready updated
-                } else if (key.indexOf("_") === 0) {
-                    if (!q.item.hasOwnProperty(key)) {
-                        q.item[key] = original[key]; // add missing key
-                    } else if (q.item[key] === null) {
-                        delete q.item[key]; // remove key
-                    } else {
-                        // key allready exists, might been updated since last save
+            if (q.collectionname != "fs.files") {
+                q.item._modifiedby = user.name;
+                q.item._modifiedbyid = user._id;
+                q.item._modified = new Date(new Date().toISOString());
+                // now add all _ fields to the new object
+                var keys: string[] = Object.keys(original);
+                for (let i: number = 0; i < keys.length; i++) {
+                    let key: string = keys[i];
+                    if (key === "_created") {
+                        q.item[key] = new Date(original[key]);
+                    } else if (key === "_createdby" || key === "_createdbyid") {
+                        q.item[key] = original[key];
+                    } else if (key === "_modifiedby" || key === "_modifiedbyid" || key === "_modified") {
+                        // allready updated
+                    } else if (key.indexOf("_") === 0) {
+                        if (!q.item.hasOwnProperty(key)) {
+                            q.item[key] = original[key]; // add missing key
+                        } else if (q.item[key] === null) {
+                            delete q.item[key]; // remove key
+                        } else {
+                            // key allready exists, might been updated since last save
+                        }
                     }
                 }
+                if (q.item._acl === null || q.item._acl === undefined) {
+                    q.item._acl = original._acl;
+                    q.item._version = original._version;
+                }
+                q.item = this.ensureResource(q.item);
+                DatabaseConnection.traversejsonencode(q.item);
+                q.item = this.encryptentity<T>(q.item);
+                var hasUser: Ace = q.item._acl.find(e => e._id === user._id);
+                if ((hasUser === null || hasUser === undefined) && q.item._acl.length == 0) {
+                    q.item.addRight(user._id, user.name, [Rights.full_control]);
+                }
+            } else {
+                (q.item as any).metadata = Base.assign((q.item as any).metadata);
+                (q.item as any).metadata._modifiedby = user.name;
+                (q.item as any).metadata._modifiedbyid = user._id;
+                (q.item as any).metadata._modified = new Date(new Date().toISOString());
+                // now add all _ fields to the new object
+                var keys: string[] = Object.keys((original as any).metadata);
+                for (let i: number = 0; i < keys.length; i++) {
+                    let key: string = keys[i];
+                    if (key === "_created") {
+                        (q.item as any).metadata[key] = new Date((original as any).metadata[key]);
+                    } else if (key === "_createdby" || key === "_createdbyid") {
+                        (q.item as any).metadata[key] = (original as any).metadata[key];
+                    } else if (key === "_modifiedby" || key === "_modifiedbyid" || key === "_modified") {
+                        // allready updated
+                    } else if (key.indexOf("_") === 0) {
+                        if (!(q.item as any).metadata.hasOwnProperty(key)) {
+                            (q.item as any).metadata[key] = (original as any).metadata[key]; // add missing key
+                        } else if ((q.item as any).metadata[key] === null) {
+                            delete (q.item as any).metadata[key]; // remove key
+                        } else {
+                            // key allready exists, might been updated since last save
+                        }
+                    }
+                }
+                if ((q.item as any).metadata._acl === null || (q.item as any).metadata._acl === undefined) {
+                    (q.item as any).metadata._acl = (original as any).metadata._acl;
+                    (q.item as any).metadata._version = (original as any).metadata._version;
+                }
+                (q.item as any).metadata = this.ensureResource((q.item as any).metadata);
+                DatabaseConnection.traversejsonencode(q.item);
+                (q.item as any).metadata = this.encryptentity<T>((q.item as any).metadata);
+                var hasUser: Ace = (q.item as any).metadata._acl.find(e => e._id === user._id);
+                if ((hasUser === null || hasUser === undefined) && (q.item as any).metadata._acl.length == 0) {
+                    (q.item as any).metadata.addRight(user._id, user.name, [Rights.full_control]);
+                }
             }
-            if (q.item._acl === null || q.item._acl === undefined) {
-                q.item._acl = original._acl;
-                q.item._version = original._version;
-            }
-            q.item = this.ensureResource(q.item);
-            this.traversejsonencode(q.item);
-            q.item = this.encryptentity<T>(q.item);
-            var hasUser: Ace = q.item._acl.find(e => e._id === user._id);
-            if ((hasUser === null || hasUser === undefined) && q.item._acl.length == 0) {
-                q.item.addRight(user._id, user.name, [Rights.full_control]);
-            }
+
             if (q.item.hasOwnProperty("_skiphistory")) {
                 delete (q.item as any)._skiphistory;
                 if (!Config.allow_skiphistory) {
@@ -459,10 +501,11 @@ export class DatabaseConnection {
         // await this.db.collection(collectionname).replaceOne({ _id: item._id }, item, options);
 
         if (q.query === null || q.query === undefined) {
-            q.query = { _id: q.item._id };
+            var id: string = q.item._id;
+            var safeid = safeObjectID(id);
+            q.query = { $or: [{ _id: id }, { _id: safeObjectID(id) }] };
         }
         var _query: Object = {};
-        if (q.collectionname === "files") { q.collectionname = "fs.files"; }
         if (q.collectionname === "fs.files") {
             _query = { $and: [q.query, this.getbasequery(q.jwt, "metadata._acl", [Rights.update])] };
         } else {
@@ -481,7 +524,11 @@ export class DatabaseConnection {
         q.opresult = null;
         try {
             if (itemReplace) {
-                q.item = await this.CleanACL(q.item);
+                if (q.collectionname != "fs.files") {
+                    q.item = await this.CleanACL(q.item);
+                } else {
+                    (q.item as any).metadata = await this.CleanACL((q.item as any).metadata);
+                }
                 if (q.item._type === "role" && q.collectionname === "users") {
                     q.item = await this.Cleanmembers(q.item as any);
                 }
@@ -495,8 +542,12 @@ export class DatabaseConnection {
                 (q.item["$inc"])._version = 1;
                 q.opresult = await this.db.collection(q.collectionname).updateOne(_query, q.item, options);
             }
-            q.item = this.decryptentity<T>(q.item);
-            this.traversejsondecode(q.item);
+            if (q.collectionname != "fs.files") {
+                q.item = this.decryptentity<T>(q.item);
+            } else {
+                (q.item as any).metadata = this.decryptentity<T>((q.item as any).metadata);
+            }
+            DatabaseConnection.traversejsondecode(q.item);
             q.result = q.item;
         } catch (error) {
             throw error;
@@ -866,7 +917,7 @@ export class DatabaseConnection {
         }
         return true;
     }
-    replaceAll(target, search, replacement) {
+    public static replaceAll(target, search, replacement) {
         //var target = this;
         // return target.replace(new RegExp(search, 'g'), replacement);
         return target.split(search).join(replacement);
@@ -876,7 +927,7 @@ export class DatabaseConnection {
      * @param  {object} o Item to clean
      * @returns void Clean object
      */
-    traversejsonencode(o) {
+    public static traversejsonencode(o) {
         var reISO = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(?:\.\d*))(?:Z|(\+|-)([\d|:]*))?$/;
         var reMsAjax = /^\/Date\((d|-|.*)\)[\/|\\]$/;
 
@@ -922,7 +973,7 @@ export class DatabaseConnection {
         }
 
     }
-    traversejsondecode(o) {
+    public static traversejsondecode(o) {
         var keys = Object.keys(o);
         for (let i = 0; i < keys.length; i++) {
             let key = keys[i];

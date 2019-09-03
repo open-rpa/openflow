@@ -1028,6 +1028,34 @@ module openflow {
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
+        async Download(id: string) {
+            var fileinfo = await this.api.GetFile(null, id);
+            const blob = this.b64toBlob(fileinfo.file, fileinfo.mimeType);
+            // const blobUrl = URL.createObjectURL(blob);
+            // (window.location as any) = blobUrl;
+            var anchor = document.createElement('a');
+            anchor.download = fileinfo.metadata.name;
+            anchor.href = ((window as any).webkitURL || window.URL).createObjectURL(blob);
+            anchor.dataset.downloadurl = [fileinfo.mimeType, anchor.download, anchor.href].join(':');
+            anchor.click();
+        }
+        b64toBlob(b64Data: string, contentType: string, sliceSize: number = 512) {
+            contentType = contentType || '';
+            sliceSize = sliceSize || 512;
+            var byteCharacters = atob(b64Data);
+            var byteArrays = [];
+            for (var offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+                var slice = byteCharacters.slice(offset, offset + sliceSize);
+                var byteNumbers = new Array(slice.length);
+                for (var i = 0; i < slice.length; i++) {
+                    byteNumbers[i] = slice.charCodeAt(i);
+                }
+                var byteArray = new Uint8Array(byteNumbers);
+                byteArrays.push(byteArray);
+            }
+            var blob = new Blob(byteArrays, { type: contentType });
+            return blob;
+        }
     }
     export class EntitiesCtrl extends entitiesCtrl<openflow.Base> {
         public collections: any;
@@ -1512,8 +1540,15 @@ module openflow {
         }
         processdata() {
             var ids: string[] = [];
-            for (var i: number = 0; i < this.model._acl.length; i++) {
-                ids.push(this.model._acl[i]._id);
+            if (this.collection == "files") {
+                console.log(this.model);
+                for (var i: number = 0; i < (this.model as any).metadata._acl.length; i++) {
+                    ids.push((this.model as any).metadata._acl[i]._id);
+                }
+            } else {
+                for (var i: number = 0; i < this.model._acl.length; i++) {
+                    ids.push(this.model._acl[i]._id);
+                }
             }
             this.usergroups = this.allusergroups.filter(x => ids.indexOf(x._id) == -1);
             this.newuser = this.usergroups[0];
@@ -1530,6 +1565,12 @@ module openflow {
         async submit(): Promise<void> {
             if (this.showjson) {
                 this.model = JSON.parse(this.jsonmodel);
+            }
+            if (this.collection == "files") {
+                await this.api.UpdateFile(this.model._id, (this.model as any).metadata);
+                this.$location.path("/Files");
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                return;
             }
             if (this.model._id) {
                 await this.api.Update(this.collection, this.model);
@@ -1554,22 +1595,33 @@ module openflow {
             this.model[this.newkey] = '';
             this.newkey = '';
         }
-
-
-
         removeuser(_id) {
-            for (var i = 0; i < this.model._acl.length; i++) {
-                if (this.model._acl[i]._id == _id) {
-                    this.model._acl.splice(i, 1);
-                    //this.model._acl = this.model._acl.splice(index, 1);
+            if (this.collection == "files") {
+                for (var i = 0; i < (this.model as any).metadata._acl.length; i++) {
+                    if ((this.model as any).metadata._acl[i]._id == _id) {
+                        (this.model as any).metadata._acl.splice(i, 1);
+                    }
                 }
+                var ids: string[] = [];
+                for (var i: number = 0; i < (this.model as any).metadata._acl.length; i++) {
+                    ids.push((this.model as any).metadata._acl[i]._id);
+                }
+                this.usergroups = this.allusergroups.filter(x => ids.indexOf(x._id) == -1);
+                this.newuser = this.usergroups[0];
+            } else {
+                for (var i = 0; i < this.model._acl.length; i++) {
+                    if (this.model._acl[i]._id == _id) {
+                        this.model._acl.splice(i, 1);
+                        //this.model._acl = this.model._acl.splice(index, 1);
+                    }
+                }
+                var ids: string[] = [];
+                for (var i: number = 0; i < this.model._acl.length; i++) {
+                    ids.push(this.model._acl[i]._id);
+                }
+                this.usergroups = this.allusergroups.filter(x => ids.indexOf(x._id) == -1);
+                this.newuser = this.usergroups[0];
             }
-            var ids: string[] = [];
-            for (var i: number = 0; i < this.model._acl.length; i++) {
-                ids.push(this.model._acl[i]._id);
-            }
-            this.usergroups = this.allusergroups.filter(x => ids.indexOf(x._id) == -1);
-            this.newuser = this.usergroups[0];
 
         }
         adduser() {
@@ -1578,15 +1630,26 @@ module openflow {
             ace._id = this.newuser._id;
             ace.name = this.newuser.name;
             ace.rights = "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=";
-            this.model._acl.push(ace);
-            var ids: string[] = [];
-            for (var i: number = 0; i < this.model._acl.length; i++) {
-                ids.push(this.model._acl[i]._id);
-            }
-            this.usergroups = this.allusergroups.filter(x => ids.indexOf(x._id) == -1);
-            this.newuser = this.usergroups[0];
 
+            if (this.collection == "files") {
+                (this.model as any).metadata._acl.push(ace);
+                var ids: string[] = [];
+                for (var i: number = 0; i < (this.model as any).metadata._acl.length; i++) {
+                    ids.push((this.model as any).metadata._acl[i]._id);
+                }
+                this.usergroups = this.allusergroups.filter(x => ids.indexOf(x._id) == -1);
+                this.newuser = this.usergroups[0];
+            } else {
+                this.model._acl.push(ace);
+                var ids: string[] = [];
+                for (var i: number = 0; i < this.model._acl.length; i++) {
+                    ids.push(this.model._acl[i]._id);
+                }
+                this.usergroups = this.allusergroups.filter(x => ids.indexOf(x._id) == -1);
+                this.newuser = this.usergroups[0];
+            }
         }
+
         isBitSet(base64: string, bit: number): boolean {
             bit--;
             var buf = this._base64ToArrayBuffer(base64);

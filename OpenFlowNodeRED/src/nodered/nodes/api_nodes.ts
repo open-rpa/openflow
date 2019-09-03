@@ -719,3 +719,86 @@ export class revoke_permission {
     onclose() {
     }
 }
+
+
+
+export interface Idownload_file {
+    fileid: string;
+    filename: string;
+    name: string;
+}
+export class download_file {
+    public node: Red = null;
+
+    constructor(public config: Idownload_file) {
+        RED.nodes.createNode(this, config);
+        this.node = this;
+        this.node.on("input", this.oninput);
+        this.node.on("close", this.onclose);
+    }
+    async oninput(msg: any) {
+        try {
+            this.node.status({});
+
+            // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
+            if (!NoderedUtil.IsNullEmpty(msg.fileid)) { this.config.fileid = msg.fileid; }
+            if (!NoderedUtil.IsNullEmpty(msg.filename)) { this.config.filename = msg.filename; }
+
+            this.node.status({ fill: "blue", shape: "dot", text: "Getting file" });
+            var file = await NoderedUtil.GetFile(this.config.filename, this.config.fileid, msg.jwt);
+            msg.payload = file.file;
+            msg.error = file.error;
+            msg.filename = file.filename;
+            msg.id = file.id;
+            msg.mimeType = file.mimeType;
+            msg.metadata = file.metadata;
+
+            this.node.send(msg);
+            this.node.status({});
+        } catch (error) {
+            NoderedUtil.HandleError(this, error);
+        }
+    }
+    onclose() {
+    }
+}
+
+
+export interface Iuploadload_file {
+    filename: string;
+    mimeType: string;
+}
+export class upload_file {
+    public node: Red = null;
+
+    constructor(public config: Iuploadload_file) {
+        RED.nodes.createNode(this, config);
+        this.node = this;
+        this.node.on("input", this.oninput);
+        this.node.on("close", this.onclose);
+    }
+    async oninput(msg: any) {
+        try {
+            this.node.status({});
+
+            // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
+            if (!NoderedUtil.IsNullEmpty(msg.filename)) { this.config.filename = msg.filename; }
+            if (!NoderedUtil.IsNullEmpty(msg.mimeType)) { this.config.mimeType = msg.mimeType; }
+
+            this.node.status({ fill: "blue", shape: "dot", text: "Saving file" });
+            var file = await NoderedUtil.SaveFile(this.config.filename, this.config.mimeType, msg.metadata, msg.payload, msg.jwt);
+            if (!NoderedUtil.IsNullEmpty(file.error)) { throw new Error(file.error); }
+            msg.filename = file.filename;
+            msg.id = file.id;
+            msg.mimeType = file.mimeType;
+            msg.metadata = file.metadata;
+
+            this.node.send(msg);
+            this.node.status({});
+        } catch (error) {
+            NoderedUtil.HandleError(this, error);
+        }
+    }
+    onclose() {
+    }
+}

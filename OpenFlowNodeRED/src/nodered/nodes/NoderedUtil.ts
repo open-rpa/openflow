@@ -1,5 +1,5 @@
 import { Red } from "node-red";
-import { QueryMessage, Message, InsertOneMessage, UpdateOneMessage, DeleteOneMessage, InsertOrUpdateOneMessage, SigninMessage, TokenUser, mapFunc, reduceFunc, finalizeFunc, MapReduceMessage, JSONfn, UpdateManyMessage } from "../../Message";
+import { QueryMessage, Message, InsertOneMessage, UpdateOneMessage, DeleteOneMessage, InsertOrUpdateOneMessage, SigninMessage, TokenUser, mapFunc, reduceFunc, finalizeFunc, MapReduceMessage, JSONfn, UpdateManyMessage, GetFileMessage, SaveFileMessage } from "../../Message";
 import { WebSocketClient } from "../../WebSocketClient";
 import { Crypt } from "../../Crypt";
 import { Config } from "../../Config";
@@ -77,7 +77,6 @@ export class NoderedUtil {
         //q.query = query;
         q.query = JSON.stringify(query, (key, value) => {
             var t = typeof value;
-            console.log("key: " + key + " type: " + t);
             if (value instanceof RegExp)
                 return ("__REGEXP " + value.toString());
             else if (t == "object") {
@@ -152,6 +151,27 @@ export class NoderedUtil {
         var result: QueryMessage = await WebSocketClient.instance.Send<QueryMessage>(msg);
         return result.result;
     }
+
+    public static async GetFile(filename: string, id: string, jwt: string): Promise<GetFileMessage> {
+        var q: GetFileMessage = new GetFileMessage(); q.filename = filename;
+        q.id = id; q.jwt = jwt;
+        var msg: Message = new Message(); msg.command = "getfile";
+        msg.data = JSONfn.stringify(q);
+        var result: GetFileMessage = await WebSocketClient.instance.Send<GetFileMessage>(msg);
+        return result;
+    }
+
+    public static async SaveFile(filename: string, mimeType: string, metadata: any, file: string, jwt: string): Promise<SaveFileMessage> {
+        var q: SaveFileMessage = new SaveFileMessage();
+        q.filename = filename;
+        q.mimeType = mimeType; q.file = file; q.jwt = jwt;
+        q.metadata = metadata;
+        var msg: Message = new Message(); msg.command = "savefile";
+        msg.data = JSONfn.stringify(q);
+        var result: SaveFileMessage = await WebSocketClient.instance.Send<SaveFileMessage>(msg);
+        return result;
+    }
+
     static isNumeric(num) {
         return !isNaN(num)
     }

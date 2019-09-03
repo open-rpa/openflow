@@ -1,4 +1,5 @@
 import * as crypto from "crypto";
+import { lookup } from "mimetype";
 import { SocketMessage } from "../SocketMessage";
 import { WebSocketClient, QueuedMessage } from "../WebSocketClient";
 import { QueryMessage } from "./QueryMessage";
@@ -32,10 +33,14 @@ import { GetNoderedInstanceLogMessage } from "./GetNoderedInstanceLogMessage";
 import { Util } from "../Util";
 import { SaveFileMessage } from "./SaveFileMessage";
 import { Readable, Stream } from "stream";
-import { GridFSBucket, ObjectID, Db } from "mongodb";
+import { GridFSBucket, ObjectID, Db, Cursor } from "mongodb";
 import { GetFileMessage } from "./GetFileMessage";
 import { ListCollectionsMessage } from "./ListCollectionsMessage";
 import { DropCollectionMessage } from "./DropCollectionMessage";
+import { basename, dirname } from "path";
+import { UpdateFileMessage } from "./UpdateFileMessage";
+import { DatabaseConnection } from "../DatabaseConnection";
+
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 export class Message {
     public id: string;
@@ -167,6 +172,9 @@ export class Message {
                     break;
                 case "getfile":
                     this.GetFile(cli);
+                    break;
+                case "updatefile":
+                    this.UpdateFile(cli);
                     break;
                 default:
                     this.UnknownCommand(cli);
@@ -1030,8 +1038,18 @@ export class Message {
             msg = SaveFileMessage.assign(this.data);
             if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (Util.IsNullEmpty(msg.filename)) throw new Error("Filename is mandatory");
-            if (Util.IsNullEmpty(msg.mimeType)) throw new Error("mimeTypes is mandatory");
+            // if (Util.IsNullEmpty(msg.mimeType)) throw new Error("mimeTypes is mandatory");
             if (Util.IsNullEmpty(msg.file)) throw new Error("file is mandatory");
+
+            if (Util.IsNullEmpty(msg.mimeType)) {
+                msg.mimeType = lookup(msg.filename);
+            }
+
+            if (msg.metadata === null || msg.metadata === undefined) { msg.metadata = new Base(); }
+            msg.metadata.name = basename(msg.filename);
+            (msg.metadata as any).filename = msg.filename;
+            (msg.metadata as any).path = dirname(msg.filename);
+            if ((msg.metadata as any).path == ".") (msg.metadata as any).path = "";
 
             var buf = Buffer.from(msg.file, 'base64');
             var readable = new Readable();
@@ -1042,7 +1060,6 @@ export class Message {
             msg.metadata = Base.assign(msg.metadata);
             if (Util.IsNullUndefinded(msg.metadata._acl)) { msg.metadata._acl = []; }
             var user: TokenUser = Crypt.verityToken(msg.jwt);
-            if (!Config.db.hasAuthorization(user, msg.metadata, Rights.create)) { throw new Error("Access denied"); }
             msg.metadata._createdby = user.name;
             msg.metadata._createdbyid = user._id;
             msg.metadata._created = new Date(new Date().toISOString());
@@ -1064,6 +1081,7 @@ export class Message {
             if ((hasUser === null || hasUser === undefined)) {
                 msg.metadata.addRight(WellknownIds.filestore_users, "filestore users", [Rights.read]);
             }
+            if (!Config.db.hasAuthorization(user, msg.metadata, Rights.create)) { throw new Error("Access denied"); }
             msg.id = await this._SaveFile(readable, msg.filename, msg.mimeType, msg.metadata);
         } catch (error) {
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -1140,7 +1158,73 @@ export class Message {
         }
         this.Send(cli);
     }
+    private async filescount(files: Cursor<any>): Promise<number> {
+        return new Promise<number>(async (resolve, reject) => {
+            files.count((error, result) => {
+                if (error) return reject(error);
+                resolve(result);
+            });
+        });
+    }
+    private async filesnext(files: Cursor<any>): Promise<any> {
+        return new Promise<number>(async (resolve, reject) => {
+            files.next((error, result) => {
+                if (error) return reject(error);
+                resolve(result);
+            });
+        });
+    }
+    private async UpdateFile(cli: WebSocketClient): Promise<void> {
+        this.Reply();
+        var msg: UpdateFileMessage
+        try {
+            msg = UpdateFileMessage.assign(this.data);
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
 
+            var bucket = new GridFSBucket(Config.db.db);
+            var q = { $or: [{ _id: msg.id }, { _id: safeObjectID(msg.id) }] };
+            var files = bucket.find(q);
+            var count = await this.filescount(files);
+            if (count == 0) { throw new Error("Not found"); }
+            var file = await this.filesnext(files);
+            msg.metadata._createdby = file.metadata._createdby;
+            msg.metadata._createdbyid = file.metadata._createdbyid;
+            msg.metadata._created = file.metadata._created;
+            msg.metadata.name = file.metadata.name;
+            (msg.metadata as any).filename = file.metadata.filename;
+            (msg.metadata as any).path = file.metadata.path;
+
+            var user: TokenUser = Crypt.verityToken(msg.jwt);
+            msg.metadata._modifiedby = user.name;
+            msg.metadata._modifiedbyid = user._id;
+            msg.metadata._modified = new Date(new Date().toISOString());;
+
+            msg.metadata = Base.assign(msg.metadata);
+
+            var hasUser: any = msg.metadata._acl.find(e => e._id === user._id);
+            if ((hasUser === null || hasUser === undefined)) {
+                msg.metadata.addRight(user._id, user.name, [Rights.full_control]);
+            }
+            msg.metadata.addRight(WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
+            if (!Config.db.hasAuthorization(user, msg.metadata, Rights.update)) { throw new Error("Access denied"); }
+
+            var fsc = Config.db.db.collection("fs.files");
+            DatabaseConnection.traversejsonencode(msg.metadata);
+            var res = await fsc.updateOne(q, { $set: { metadata: msg.metadata } });
+
+        } catch (error) {
+            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            msg.error = error.toString();
+            cli._logger.error(error);
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            cli._logger.error(error);
+        }
+        this.Send(cli);
+    }
 }
 
 export class JSONfn {

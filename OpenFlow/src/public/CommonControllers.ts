@@ -310,6 +310,34 @@ module openflow {
             var msg: Message = new Message(); msg.command = "stopnoderedinstance"; msg.data = JSON.stringify(q);
             q = await this.WebSocketClient.Send<StopNoderedInstanceMessage>(msg);
         }
+
+        async GetFile(filename: string, id: string): Promise<GetFileMessage> {
+            var q: GetFileMessage = new GetFileMessage(); q.filename = filename;
+            q.id = id;
+            var msg: Message = new Message(); msg.command = "getfile";
+            msg.data = JSONfn.stringify(q);
+            var result: GetFileMessage = await this.WebSocketClient.Send<GetFileMessage>(msg);
+            return result;
+        }
+        async SaveFile(filename: string, mimeType: string, metadata: any, file: string): Promise<SaveFileMessage> {
+            var q: SaveFileMessage = new SaveFileMessage();
+            q.filename = filename;
+            q.mimeType = mimeType; q.file = file;
+            q.metadata = metadata;
+            var msg: Message = new Message(); msg.command = "savefile";
+            msg.data = JSONfn.stringify(q);
+            var result: SaveFileMessage = await this.WebSocketClient.Send<SaveFileMessage>(msg);
+            return result;
+        }
+        async UpdateFile(id: string, metadata: any): Promise<void> {
+            var q: UpdateFileMessage = new UpdateFileMessage();
+            q.metadata = metadata; q.id = id;
+            var msg: Message = new Message(); msg.command = "updatefile";
+            msg.data = JSONfn.stringify(q);
+            var result: UpdateFileMessage = await this.WebSocketClient.Send<UpdateFileMessage>(msg);
+            return;
+        }
+
         setCookie(cname, cvalue, exdays) {
             var d = new Date();
             d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
