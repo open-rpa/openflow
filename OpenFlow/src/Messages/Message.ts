@@ -756,7 +756,6 @@ export class Message {
             cli._logger.debug("[" + cli.user.username + "] GetIngress useringress");
             var ingress = await KubeUtil.instance().GetIngress(namespace, "useringress");
             if (ingress !== null) {
-                // console.log(ingress);
                 var rule = null;
                 for (var i = 0; i < ingress.spec.rules.length; i++) {
                     if (ingress.spec.rules[i].host == hostname) {
@@ -1062,6 +1061,7 @@ export class Message {
             readable._read = () => { }; // _read is required but you can noop it
             readable.push(buf);
             readable.push(null);
+            msg.file = null;
             if (msg.metadata == null) { msg.metadata = new Base(); }
             msg.metadata = Base.assign(msg.metadata);
             if (Util.IsNullUndefinded(msg.metadata._acl)) { msg.metadata._acl = []; }

@@ -985,6 +985,7 @@ module openflow {
 
 
     export class FilesCtrl extends entitiesCtrl<openflow.Base> {
+        public file: string;
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -1000,6 +1001,8 @@ module openflow {
             this.searchfields = ["metadata.name", "metadata.path"];
             this.collection = "files";
             this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
+            var elem = document.getElementById("myBar");
+            elem.style.width = '0%';
             WebSocketClient.onSignedin((user: TokenUser) => {
                 this.loadData();
             });
@@ -1011,25 +1014,24 @@ module openflow {
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
-        async DeleteMany(): Promise<void> {
-            this.loading = true;
-            var Promises: Promise<DeleteOneMessage>[] = [];
-            var q: DeleteOneMessage = new DeleteOneMessage();
-            this.models.forEach(model => {
-                q.collectionname = this.collection; q._id = (model as any)._id;
-                var msg: Message = new Message(); msg.command = "deleteone"; msg.data = JSON.stringify(q);
-                Promises.push(this.WebSocketClient.Send(msg));
-            });
-            const results: any = await Promise.all(Promises.map(p => p.catch(e => e)));
-            const values: DeleteOneMessage[] = results.filter(result => !(result instanceof Error));
-            var ids: string[] = [];
-            values.forEach((x: DeleteOneMessage) => ids.push(x._id));
-            this.models = this.models.filter(function (m: any): boolean { return ids.indexOf(m._id) === -1; });
-            this.loading = false;
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
-        }
         async Download(id: string) {
-            var fileinfo = await this.api.GetFile(null, id);
+            var lastp: number = 0;
+            var fileinfo = await this.api.GetFile(null, id, (msg, index, count) => {
+                var p: number = ((index + 1) / count * 100) | 0;
+                if (p > lastp || (index + 1) == count) {
+                    console.log(index + "/" + count + " " + p + "%");
+                    lastp = p;
+                }
+                var elem = document.getElementById("myBar");
+                elem.style.width = p + '%';
+                elem.innerText = p + '%';
+                if (p == 100) {
+                    elem.innerText = 'Processing ...';
+                }
+            });
+            var elem = document.getElementById("myBar");
+            elem.style.width = '0%';
+            elem.innerText = '';
             const blob = this.b64toBlob(fileinfo.file, fileinfo.mimeType);
             // const blobUrl = URL.createObjectURL(blob);
             // (window.location as any) = blobUrl;
@@ -1055,6 +1057,33 @@ module openflow {
             }
             var blob = new Blob(byteArrays, { type: contentType });
             return blob;
+        }
+        async Upload() {
+            var filename = (this.$scope as any).filename;
+            var type = (this.$scope as any).type;
+            console.log("filename: " + filename + " type: " + type);
+            this.loading = true;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            var lastp: number = 0;
+            await this.api.SaveFile(filename, type, null, this.file, (msg, index, count) => {
+                var p: number = ((index + 1) / count * 100) | 0;
+                if (p > lastp || (index + 1) == count) {
+                    console.log(index + "/" + count + " " + p + "%");
+                    lastp = p;
+                }
+                var elem = document.getElementById("myBar");
+                elem.style.width = p + '%';
+                elem.innerText = p + '%';
+                if (p == 100) {
+                    elem.innerText = 'Processing ...';
+                }
+            });
+            var elem = document.getElementById("myBar");
+            elem.style.width = '0%';
+            elem.innerText = '';
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            this.loadData();
         }
     }
     export class EntitiesCtrl extends entitiesCtrl<openflow.Base> {

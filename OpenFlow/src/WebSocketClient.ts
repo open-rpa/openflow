@@ -164,6 +164,8 @@ export class WebSocketClient {
         }
     }
     private ProcessQueue(): void {
+        let username: string = "Unknown";
+        if (!Util.IsNullUndefinded(this.user)) { username = this.user.username; }
         let ids: string[] = [];
         this._receiveQueue.forEach(msg => {
             if (ids.indexOf(msg.id) === -1) { ids.push(msg.id); }
@@ -174,9 +176,9 @@ export class WebSocketClient {
                 this._logger.error("_receiveQueue containers more than " + Config.websocket_max_package_count + " messages for id '" + id + "' so discarding all !!!!!!!");
                 this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
             }
-            msgs.sort((a, b) => a.index - b.index);
             var first: SocketMessage = msgs[0];
             if (first.count === msgs.length) {
+                msgs.sort((a, b) => a.index - b.index);
                 if (msgs.length === 1) {
                     this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
                     var singleresult: Message = Message.frommessage(first, first.data);
@@ -190,6 +192,8 @@ export class WebSocketClient {
                     var result: Message = Message.frommessage(first, buffer);
                     result.Process(this);
                 }
+            } else {
+                // this._logger.debug("[" + username + "] WebSocketclient::ProcessQueue receiveQueue: Cannot process i have " + msgs.length + " out of " + first.count + " for message " + first.id);
             }
         });
         this._sendQueue.forEach(msg => {
@@ -204,11 +208,9 @@ export class WebSocketClient {
             }
             this._sendQueue = this._sendQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
         });
-        if (this._receiveQueue.length > 25 || this._sendQueue.length > 25) {
-            if (!Util.IsNullUndefinded(this.user)) {
-                this._logger.debug("[" + this.user.username + "] WebSocketclient::ProcessQueue receiveQueue: " + this._receiveQueue.length + " sendQueue: " + this._sendQueue.length);
-            }
-        }
+        // if (this._receiveQueue.length > 25 || this._sendQueue.length > 25) {
+        //     this._logger.debug("[" + username + "] WebSocketclient::ProcessQueue receiveQueue: " + this._receiveQueue.length + " sendQueue: " + this._sendQueue.length);
+        // }
     }
     public async Send<T>(message: Message): Promise<T> {
         return new Promise<T>(async (resolve, reject) => {

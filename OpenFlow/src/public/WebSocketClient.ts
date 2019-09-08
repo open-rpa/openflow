@@ -8,14 +8,17 @@ module openflow {
     declare var device: any;
     declare var diagnostic: any;
 
-    type QueuedMessageCallback = (msg: any) => any;
+    export type QueuedMessageCallback = (msg: any) => any;
+    export type QueuedMessageStatusCallback = (msg: any, index: number, count: number) => any;
     export class QueuedMessage {
-        constructor(message: any, cb: QueuedMessageCallback) {
+        constructor(message: any, cb: QueuedMessageCallback, status: QueuedMessageStatusCallback) {
             this.id = message.id;
             this.message = message;
             this.cb = cb;
+            this.status = status;
         }
         public cb: QueuedMessageCallback;
+        public status: QueuedMessageStatusCallback;
         public id: string;
         public message: any;
     }
@@ -336,20 +339,20 @@ module openflow {
             me._receiveQueue.push(msg);
             me.ProcessQueue.bind(me)();
         }
-        public async Send<T>(message: Message): Promise<T> {
+        public async Send<T>(message: Message, status: QueuedMessageStatusCallback = null): Promise<T> {
             return new Promise<T>(async (resolve, reject) => {
                 this._Send(message, ((msg) => {
                     if (msg.error !== null && msg.error !== undefined) { console.error(message); return reject(msg.error); }
                     resolve(msg);
-                }).bind(this));
+                }).bind(this), status);
             });
         }
-        private _Send(message: Message, cb: QueuedMessageCallback): void {
+        private _Send(message: Message, cb: QueuedMessageCallback, status: QueuedMessageStatusCallback): void {
             var messages: string[] = this.chunkString(message.data, 500);
             if (messages === null || messages === undefined || messages.length === 0) {
                 var singlemessage: SocketMessage = SocketMessage.frommessage(message, "", 1, 0);
                 if (message.replyto === null || message.replyto === undefined) {
-                    this.messageQueue[singlemessage.id] = new QueuedMessage(singlemessage, cb);
+                    this.messageQueue[singlemessage.id] = new QueuedMessage(singlemessage, cb, status);
                 }
                 this._sendQueue.push(singlemessage);
                 return;
@@ -360,7 +363,7 @@ module openflow {
                 this._sendQueue.push(_message);
             }
             if (message.replyto === null || message.replyto === undefined) {
-                this.messageQueue[message.id] = new QueuedMessage(message, cb);
+                this.messageQueue[message.id] = new QueuedMessage(message, cb, status);
             }
             this.ProcessQueue();
         }
@@ -395,6 +398,16 @@ module openflow {
                         result.Process(this);
                     }
                     this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
+                } else {
+                    // console.log(msgs.length + " out of " + first.count);
+                    var qm: QueuedMessage = this.messageQueue[first.replyto];
+                    // console.log(first);
+                    if (qm != null && qm != undefined) {
+                        if (qm.status != null && qm.status != undefined) {
+                            qm.status(first, msgs.length, first.count);
+                        }
+                    }
+
                 }
             });
             if (this._socketObject !== null && this._socketObject.readyState !== 1) {
@@ -404,17 +417,33 @@ module openflow {
                 }, 1500);
                 return;
             }
-            this._sendQueue.forEach(msg => {
+            var sendcounter: number = 0;
+            while (this._sendQueue.length > 0 && sendcounter < 100) {
+                var msg = this._sendQueue[0];
                 try {
                     if (this._socketObject !== null && this._socketObject.readyState === 1) {
                         let id: string = msg.id;
                         this._socketObject.send(JSON.stringify(msg));
-                        this._sendQueue = this._sendQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
+
+                        var qm: QueuedMessage = this.messageQueue[id];
+                        if (qm != null && qm != undefined) {
+                            if (qm.status != null && qm.status != undefined) {
+                                qm.status(msg, msg.index, msg.count);
+                            }
+                        }
+                        this._sendQueue.splice(0, 1);
+                        // this._sendQueue = this._sendQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
+                        sendcounter++;
                     }
                 } catch (error) {
                     console.error(error);
                 }
-            });
+            }
+            if (this._sendQueue.length > 0) {
+                setTimeout(() => {
+                    this.ProcessQueue();
+                }, 100);
+            }
         }
     }
 

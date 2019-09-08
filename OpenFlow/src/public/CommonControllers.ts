@@ -73,37 +73,6 @@ module openflow {
                     originalMethod.apply(console, [...args]);
                 };
             });
-
-            // console.log = (msg) => {
-            //     var log = { message: msg, _type: "message", host: window.location.hostname };
-            //     this.Insert("jslog", log).catch(() => { });
-            // }
-
-            // (function () {
-            //     var oldLog = console.log;
-            //     console.log = function (msg) {
-            //         var log = { message: msg, _type: "message", host: window.location.hostname };
-            //         me.Insert("jslog", log).catch(() => { });
-            //         // oldLog.apply(console, arguments);
-            //         console.trace.apply(console, arguments);
-            //     };
-            // })();
-            // console.log = function (test) {
-            //     // var log = { message: arguments, _type: "message", host: window.location.hostname };
-            //     // me.Insert("jslog", log).catch(() => { });
-            //     console.warn(test)
-            //     return Function.prototype.bind.call(console.log, console, "test");
-            // }();
-            // console.warn = (msg) => {
-            //     var log = { message: msg, _type: "warning", host: window.location.hostname };
-            //     this.Insert("jslog", log).catch(() => { });
-            // }
-            // console.debug = (msg) => {
-            //     formerdebug.apply(console, { arguments: arguments });
-            //     // formerdebug(msg);
-            //     var log = { message: msg, _type: "debug", host: window.location.hostname };
-            //     this.Insert("jslog", log).catch(() => { });
-            // }
             window.onerror = (message, url, linenumber) => {
                 var log = { message: message, url: url, linenumber: linenumber, _type: "error", host: window.location.hostname };
                 this.Insert("jslog", log).catch(() => { });
@@ -129,8 +98,6 @@ module openflow {
                     }
                     if (data === null || data === undefined) {
                         if (this.$location.path() !== "/Login") {
-                            console.log("path: " + this.$location.path());
-                            console.log("WebSocketClient::onopen: Not signed in, redirect /Login");
                             var _url = this.$location.absUrl();
                             this.setCookie("url", _url, 365);
                             this.$location.path("/Login");
@@ -254,14 +221,11 @@ module openflow {
                 q.correlationId = Math.random().toString(36).substr(2, 9);
                 q.queuename = queuename; q.data = JSON.stringify(data);
                 var msg: Message = new Message(); msg.command = "queuemessage"; msg.data = JSON.stringify(q);
-                console.log("_QueueMessage: correlationId " + q.correlationId);
                 this.messageQueue[q.correlationId] = new messagequeue(q, (msgresult: QueueMessage) => {
                     resolve(msgresult);
                     delete this.messageQueue[q.correlationId];
                 });
                 var res = await this.WebSocketClient.Send(msg);
-                console.log("_QueueMessage");
-                console.log(res);
             });
         }
         async QueueMessage(queuename: string, data: any): Promise<any> {
@@ -311,22 +275,22 @@ module openflow {
             q = await this.WebSocketClient.Send<StopNoderedInstanceMessage>(msg);
         }
 
-        async GetFile(filename: string, id: string): Promise<GetFileMessage> {
+        async GetFile(filename: string, id: string, status: QueuedMessageStatusCallback = null): Promise<GetFileMessage> {
             var q: GetFileMessage = new GetFileMessage(); q.filename = filename;
             q.id = id;
             var msg: Message = new Message(); msg.command = "getfile";
             msg.data = JSONfn.stringify(q);
-            var result: GetFileMessage = await this.WebSocketClient.Send<GetFileMessage>(msg);
+            var result: GetFileMessage = await this.WebSocketClient.Send<GetFileMessage>(msg, status);
             return result;
         }
-        async SaveFile(filename: string, mimeType: string, metadata: any, file: string): Promise<SaveFileMessage> {
+        async SaveFile(filename: string, mimeType: string, metadata: any, file: string, status: QueuedMessageStatusCallback = null): Promise<SaveFileMessage> {
             var q: SaveFileMessage = new SaveFileMessage();
             q.filename = filename;
             q.mimeType = mimeType; q.file = file;
             q.metadata = metadata;
             var msg: Message = new Message(); msg.command = "savefile";
             msg.data = JSONfn.stringify(q);
-            var result: SaveFileMessage = await this.WebSocketClient.Send<SaveFileMessage>(msg);
+            var result: SaveFileMessage = await this.WebSocketClient.Send<SaveFileMessage>(msg, status);
             return result;
         }
         async UpdateFile(id: string, metadata: any): Promise<void> {
@@ -431,7 +395,6 @@ module openflow {
 
         link: ng.IDirectiveLinkFn = (scope: ng.IScope, element: ng.IAugmentedJQuery, attr: ng.IAttributes, ngModelCtrl: any) => {
             if (!element.hasClass("autogrow")) {
-                console.log("no autogrow for you today");
                 // no autogrow for you today
                 return;
             }
@@ -514,22 +477,26 @@ module openflow {
         }
         link: ng.IDirectiveLinkFn = (scope: ng.IScope, element: ng.IAugmentedJQuery, attr: ng.IAttributes, ngModelCtrl: any) => {
             var calculateValue = (value: string): string => {
-                if (value === null || value === undefined || value === "") return value;
-                var lib = (attr.lib ? attr.lib : "common");
-                if ((value.toString()).startsWith(lib + ".")) { return; }
-                var key: string = (lib + "." + value).toLowerCase();
-                var result = this.locale.getString(key);
-                if (result.startsWith(lib + ".")) { result = result.slice((lib + ".").length); }
-                // var result = await getString(this.locale, lib, value);
-                if (result == "%%KEY_NOT_FOUND%%" || result == "") {
-                    if (global_translate_notfound.indexOf(lib + "." + value) === -1) {
-                        global_translate_notfound.push(lib + "." + value);
-                        console.log("KEY_NOT_FOUND " + lib + "." + value);
+                try {
+                    if (value === null || value === undefined || value === "") return value;
+                    var lib = (attr.lib ? attr.lib : "common");
+                    if ((value.toString()).startsWith(lib + ".")) { return; }
+                    var key: string = (lib + "." + value).toLowerCase();
+                    var result = this.locale.getString(key);
+                    if (result.startsWith(lib + ".")) { result = result.slice((lib + ".").length); }
+                    // var result = await getString(this.locale, lib, value);
+                    if (result == "%%KEY_NOT_FOUND%%" || result == "") {
+                        if (global_translate_notfound.indexOf(lib + "." + value) === -1) {
+                            global_translate_notfound.push(lib + "." + value);
+                            console.log("KEY_NOT_FOUND " + lib + "." + value);
+                        }
+                        result = value;
                     }
-                    result = value;
+                    return result;
+                } catch (error) {
+                    console.error(error);
+                    return "error";
                 }
-
-                return result;
             };
             var lib = (attr.lib ? attr.lib : "common");
             this.locale.ready(lib).then(() => {
@@ -538,27 +505,10 @@ module openflow {
                     ngModelCtrl.$formatters.push(function (value) {
                         return calculateValue(value);
                     });
-                    // value = calculateValue(ngModelCtrl.$viewValue);
-                    // ngModelCtrl.$setViewValue(this.result);
-                    // ngModelCtrl.$render();
                 } else {
                     var hashCode = (s: string) => {
                         return s.split("").reduce(function (a, b) { a = ((a << 5) - a) + b.charCodeAt(0); return a & a }, 0);
                     }
-                    var watchFunction = () => {
-                        if (attr.value !== null && attr.value !== undefined) {
-                            return hashCode(attr.value);
-                        } else {
-                            var value = element.text();
-                            if (value !== null || value !== undefined) {
-                                return hashCode(value);
-                            }
-                            return value;
-                        }
-                    };
-                    // attrs.$observe('i18n', function (newVal, oldVal) {
-                    // });
-                    //scope.$watch(watchFunction, () => {
                     if (attr.value !== null && attr.value !== undefined && element[0].tagName !== "OPTION") {
                         value = calculateValue(attr.value);
                         attr.$set('value', value);
@@ -566,16 +516,46 @@ module openflow {
                         value = element.text();
                         if (value !== null || value !== undefined) {
                             var result = calculateValue(value);
-                            // console.log(value + "=" + result);
                             element.text(result);
                         }
                     }
-                    //});
                 }
             });
         }
         static factory(): ng.IDirectiveFactory {
             const directive = ($location: ng.ILocationService, $timeout: ng.ITimeoutService, locale) => new translate($location, $timeout, locale);
+            directive.$inject = ['$location', '$timeout', 'locale'];
+            return directive;
+        }
+    }
+    export class fileread implements ng.IDirective {
+        restrict = 'A';
+        require = '?ngModel';
+        constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService, public locale) {
+        }
+        link: ng.IDirectiveLinkFn = (scope: ng.IScope, element: ng.IAugmentedJQuery, attr: ng.IAttributes, ngModelCtrl: any) => {
+            if (!ngModelCtrl) return;
+
+            ngModelCtrl.$render = function () { };
+
+            element.bind('change', function (changeEvent) {
+                var reader = new FileReader();
+                reader.onload = function (loadEvent) {
+                    scope.$apply(function () {
+                        var base64result = ((loadEvent.target as any).result as string).split(',')[1];
+                        ngModelCtrl.$setViewValue(base64result);
+                        (scope as any).filename = (changeEvent.target as any).files[0].name;
+                        (scope as any).type = (changeEvent.target as any).files[0].type;
+                    });
+                }
+                if ((changeEvent.target as any).files != null && (changeEvent.target as any).files.length > 0) {
+                    reader.readAsDataURL((changeEvent.target as any).files[0]);
+                }
+            }); //change
+
+        }
+        static factory(): ng.IDirectiveFactory {
+            const directive = ($location: ng.ILocationService, $timeout: ng.ITimeoutService, locale) => new fileread($location, $timeout, locale);
             directive.$inject = ['$location', '$timeout', 'locale'];
             return directive;
         }
@@ -644,7 +624,7 @@ module openflow {
             this.loading = false;
             if (this.autorefresh) {
                 if (this.models.length > 100) {
-                    console.warn("Disabling auto refresh, result has more than 100 entries");
+                    // console.warn("Disabling auto refresh, result has more than 100 entries");
                 } else {
                     if (this.autorefreshpromise == null && this.searchstring === "") {
                         //if (this.autorefreshpromise == null) {
@@ -685,7 +665,6 @@ module openflow {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async Search() {
-            console.log("Search");
             await this.loadData();
         }
     }
