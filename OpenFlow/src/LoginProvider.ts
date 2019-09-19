@@ -356,12 +356,7 @@ export class LoginProvider {
                     if (!Config.allow_user_registration) {
                         return done(null, false);
                     }
-                    user = new User(); user.name = username; user.username = username;
-                    await user.SetPassword(password);
-                    user = await Config.db.InsertOne(user, "users", 0, false, TokenUser.rootToken());
-                    var users: Role = await Role.FindByNameOrId("users", TokenUser.rootToken());
-                    users.AddMember(user);
-                    await users.Save(TokenUser.rootToken())
+                    user = await User.ensureUser(TokenUser.rootToken(), username, username, null, password);
                 } else {
                     if (!(await user.ValidatePassword(password))) {
                         Audit.LoginFailed(username, "weblogin", "local", "");
@@ -394,6 +389,8 @@ export class LoginProvider {
         return strategy;
     }
     static async samlverify(profile: any, done: IVerifyFunction): Promise<void> {
+        console.log("samlverify");
+        console.log(JSON.stringify(profile));
         var username: string = (profile.nameID || profile.username);
         if (username !== null && username != undefined) { username = username.toLowerCase(); }
         this._logger.debug("verify: " + username);
@@ -407,11 +404,40 @@ export class LoginProvider {
                 if (!Util.IsNullEmpty(profile["http://schemas.microsoft.com/identity/claims/displayname"])) {
                     _user.name = profile["http://schemas.microsoft.com/identity/claims/displayname"];
                 }
+                if (!Util.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"])) {
+                    _user.name = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"];
+                }
                 _user.username = username;
+                if (!Util.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
+                    (_user as any).mobile = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"];
+                }
                 if (Util.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty, please add displayname to claims", null); return; }
                 // _user = await Config.db.InsertOne(_user, "users", 0, false, TokenUser.rootToken());
                 var jwt: string = TokenUser.rootToken();
                 _user = await User.ensureUser(jwt, _user.name, _user.username, null, null);
+            }
+        } else {
+            if (!Util.IsNullUndefinded(_user)) {
+                if (!Util.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
+                    (_user as any).mobile = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"];
+                }
+                var jwt: string = TokenUser.rootToken();
+                await _user.Save(jwt);
+            }
+        }
+
+        if (!Util.IsNullUndefinded(_user)) {
+            if (!Util.IsNullEmpty(profile["http://schemas.xmlsoap.org/claims/Group"])) {
+                var jwt: string = TokenUser.rootToken();
+                var strroles: string[] = profile["http://schemas.xmlsoap.org/claims/Group"];
+                for (var i = 0; i < strroles.length; i++) {
+                    var role: Role = await Role.FindByNameOrId(strroles[i], jwt);
+                    if (!Util.IsNullUndefinded(role)) {
+                        role.AddMember(_user);
+                        await role.Save(jwt);
+                    }
+                }
+                await _user.DecorateWithRoles();
             }
         }
 
@@ -437,10 +463,13 @@ export class LoginProvider {
             var createUser: boolean = Config.auto_create_users;
             if (Config.auto_create_domains.map(x => username.endsWith(x)).length == -1) { createUser = false; }
             if (createUser) {
+                console.log("createUser");
+                console.log(JSON.stringify(profile));
                 var jwt: string = TokenUser.rootToken();
                 _user = new User(); _user.name = profile.name;
                 if (!Util.IsNullEmpty(profile.displayName)) { _user.name = profile.displayName; }
                 _user.username = username;
+                (_user as any).mobile = profile.mobile;
                 if (Util.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty.", null); return; }
                 var jwt: string = TokenUser.rootToken();
                 _user = await User.ensureUser(jwt, _user.name, _user.username, null, null);

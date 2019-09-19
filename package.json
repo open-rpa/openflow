@@ -50,6 +50,7 @@
     "jquery-ui-bundle": "^1.12.1",
     "jsondiffpatch": "^0.3.11",
     "jsonwebtoken": "^8.5.1",
+    "mimetype": "0.0.8",
     "mongodb": "^3.2.7",
     "morgan": "^1.9.1",
     "node-red-contrib-auth-saml": "^1.0.6",

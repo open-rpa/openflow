@@ -269,6 +269,51 @@ module openflow {
         }
     }
 
+    export class GetFileMessage {
+        public error: string;
+        public jwt: string;
+
+        public filename: string;
+        public mimeType: string;
+        public id: string;
+        public metadata: any;
+        public file: string;
+        static assign(o: any): GetFileMessage {
+            if (typeof o === "string" || o instanceof String) {
+                return Object.assign(new GetFileMessage(), JSON.parse(o.toString()));
+            }
+            return Object.assign(new GetFileMessage(), o);
+        }
+    }
+    export class SaveFileMessage {
+        public error: string;
+        public jwt: string;
+
+        public filename: string;
+        public mimeType: string;
+        public id: string;
+        public metadata: any;
+        public file: string;
+        static assign(o: any): SaveFileMessage {
+            if (typeof o === "string" || o instanceof String) {
+                return Object.assign(new SaveFileMessage(), JSON.parse(o.toString()));
+            }
+            return Object.assign(new SaveFileMessage(), o);
+        }
+    }
+    export class UpdateFileMessage {
+        public error: string;
+        public jwt: string;
+
+        public id: string;
+        public metadata: any;
+        static assign(o: any): UpdateFileMessage {
+            if (typeof o === "string" || o instanceof String) {
+                return Object.assign(new UpdateFileMessage(), JSON.parse(o.toString()));
+            }
+            return Object.assign(new UpdateFileMessage(), o);
+        }
+    }
 
     export class Message {
         public id: string;

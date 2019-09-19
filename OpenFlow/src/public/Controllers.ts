@@ -985,6 +985,7 @@ module openflow {
 
 
     export class FilesCtrl extends entitiesCtrl<openflow.Base> {
+        public file: string;
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -1000,6 +1001,8 @@ module openflow {
             this.searchfields = ["metadata.name", "metadata.path"];
             this.collection = "files";
             this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
+            var elem = document.getElementById("myBar");
+            elem.style.width = '0%';
             WebSocketClient.onSignedin((user: TokenUser) => {
                 this.loadData();
             });
@@ -1011,22 +1014,76 @@ module openflow {
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
-        async DeleteMany(): Promise<void> {
-            this.loading = true;
-            var Promises: Promise<DeleteOneMessage>[] = [];
-            var q: DeleteOneMessage = new DeleteOneMessage();
-            this.models.forEach(model => {
-                q.collectionname = this.collection; q._id = (model as any)._id;
-                var msg: Message = new Message(); msg.command = "deleteone"; msg.data = JSON.stringify(q);
-                Promises.push(this.WebSocketClient.Send(msg));
+        async Download(id: string) {
+            var lastp: number = 0;
+            var fileinfo = await this.api.GetFile(null, id, (msg, index, count) => {
+                var p: number = ((index + 1) / count * 100) | 0;
+                if (p > lastp || (index + 1) == count) {
+                    console.log(index + "/" + count + " " + p + "%");
+                    lastp = p;
+                }
+                var elem = document.getElementById("myBar");
+                elem.style.width = p + '%';
+                elem.innerText = p + '%';
+                if (p == 100) {
+                    elem.innerText = 'Processing ...';
+                }
             });
-            const results: any = await Promise.all(Promises.map(p => p.catch(e => e)));
-            const values: DeleteOneMessage[] = results.filter(result => !(result instanceof Error));
-            var ids: string[] = [];
-            values.forEach((x: DeleteOneMessage) => ids.push(x._id));
-            this.models = this.models.filter(function (m: any): boolean { return ids.indexOf(m._id) === -1; });
+            var elem = document.getElementById("myBar");
+            elem.style.width = '0%';
+            elem.innerText = '';
+            const blob = this.b64toBlob(fileinfo.file, fileinfo.mimeType);
+            // const blobUrl = URL.createObjectURL(blob);
+            // (window.location as any) = blobUrl;
+            var anchor = document.createElement('a');
+            anchor.download = fileinfo.metadata.name;
+            anchor.href = ((window as any).webkitURL || window.URL).createObjectURL(blob);
+            anchor.dataset.downloadurl = [fileinfo.mimeType, anchor.download, anchor.href].join(':');
+            anchor.click();
+        }
+        b64toBlob(b64Data: string, contentType: string, sliceSize: number = 512) {
+            contentType = contentType || '';
+            sliceSize = sliceSize || 512;
+            var byteCharacters = atob(b64Data);
+            var byteArrays = [];
+            for (var offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+                var slice = byteCharacters.slice(offset, offset + sliceSize);
+                var byteNumbers = new Array(slice.length);
+                for (var i = 0; i < slice.length; i++) {
+                    byteNumbers[i] = slice.charCodeAt(i);
+                }
+                var byteArray = new Uint8Array(byteNumbers);
+                byteArrays.push(byteArray);
+            }
+            var blob = new Blob(byteArrays, { type: contentType });
+            return blob;
+        }
+        async Upload() {
+            var filename = (this.$scope as any).filename;
+            var type = (this.$scope as any).type;
+            console.log("filename: " + filename + " type: " + type);
+            this.loading = true;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            var lastp: number = 0;
+            await this.api.SaveFile(filename, type, null, this.file, (msg, index, count) => {
+                var p: number = ((index + 1) / count * 100) | 0;
+                if (p > lastp || (index + 1) == count) {
+                    console.log(index + "/" + count + " " + p + "%");
+                    lastp = p;
+                }
+                var elem = document.getElementById("myBar");
+                elem.style.width = p + '%';
+                elem.innerText = p + '%';
+                if (p == 100) {
+                    elem.innerText = 'Processing ...';
+                }
+            });
+            var elem = document.getElementById("myBar");
+            elem.style.width = '0%';
+            elem.innerText = '';
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            this.loadData();
         }
     }
     export class EntitiesCtrl extends entitiesCtrl<openflow.Base> {
@@ -1512,8 +1569,15 @@ module openflow {
         }
         processdata() {
             var ids: string[] = [];
-            for (var i: number = 0; i < this.model._acl.length; i++) {
-                ids.push(this.model._acl[i]._id);
+            if (this.collection == "files") {
+                console.log(this.model);
+                for (var i: number = 0; i < (this.model as any).metadata._acl.length; i++) {
+                    ids.push((this.model as any).metadata._acl[i]._id);
+                }
+            } else {
+                for (var i: number = 0; i < this.model._acl.length; i++) {
+                    ids.push(this.model._acl[i]._id);
+                }
             }
             this.usergroups = this.allusergroups.filter(x => ids.indexOf(x._id) == -1);
             this.newuser = this.usergroups[0];
@@ -1531,10 +1595,21 @@ module openflow {
             if (this.showjson) {
                 this.model = JSON.parse(this.jsonmodel);
             }
+            // if (this.collection == "files") {
+            //     await this.api.UpdateFile(this.model._id, (this.model as any).metadata);
+            //     this.$location.path("/Files");
+            //     if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            //     return;
+            // }
             if (this.model._id) {
                 await this.api.Update(this.collection, this.model);
             } else {
                 await this.api.Insert(this.collection, this.model);
+            }
+            if (this.collection == "files") {
+                this.$location.path("/Files");
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                return;
             }
             this.$location.path("/Entities/" + this.collection);
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -1554,22 +1629,33 @@ module openflow {
             this.model[this.newkey] = '';
             this.newkey = '';
         }
-
-
-
         removeuser(_id) {
-            for (var i = 0; i < this.model._acl.length; i++) {
-                if (this.model._acl[i]._id == _id) {
-                    this.model._acl.splice(i, 1);
-                    //this.model._acl = this.model._acl.splice(index, 1);
+            if (this.collection == "files") {
+                for (var i = 0; i < (this.model as any).metadata._acl.length; i++) {
+                    if ((this.model as any).metadata._acl[i]._id == _id) {
+                        (this.model as any).metadata._acl.splice(i, 1);
+                    }
                 }
+                var ids: string[] = [];
+                for (var i: number = 0; i < (this.model as any).metadata._acl.length; i++) {
+                    ids.push((this.model as any).metadata._acl[i]._id);
+                }
+                this.usergroups = this.allusergroups.filter(x => ids.indexOf(x._id) == -1);
+                this.newuser = this.usergroups[0];
+            } else {
+                for (var i = 0; i < this.model._acl.length; i++) {
+                    if (this.model._acl[i]._id == _id) {
+                        this.model._acl.splice(i, 1);
+                        //this.model._acl = this.model._acl.splice(index, 1);
+                    }
+                }
+                var ids: string[] = [];
+                for (var i: number = 0; i < this.model._acl.length; i++) {
+                    ids.push(this.model._acl[i]._id);
+                }
+                this.usergroups = this.allusergroups.filter(x => ids.indexOf(x._id) == -1);
+                this.newuser = this.usergroups[0];
             }
-            var ids: string[] = [];
-            for (var i: number = 0; i < this.model._acl.length; i++) {
-                ids.push(this.model._acl[i]._id);
-            }
-            this.usergroups = this.allusergroups.filter(x => ids.indexOf(x._id) == -1);
-            this.newuser = this.usergroups[0];
 
         }
         adduser() {
@@ -1578,15 +1664,26 @@ module openflow {
             ace._id = this.newuser._id;
             ace.name = this.newuser.name;
             ace.rights = "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=";
-            this.model._acl.push(ace);
-            var ids: string[] = [];
-            for (var i: number = 0; i < this.model._acl.length; i++) {
-                ids.push(this.model._acl[i]._id);
-            }
-            this.usergroups = this.allusergroups.filter(x => ids.indexOf(x._id) == -1);
-            this.newuser = this.usergroups[0];
 
+            if (this.collection == "files") {
+                (this.model as any).metadata._acl.push(ace);
+                var ids: string[] = [];
+                for (var i: number = 0; i < (this.model as any).metadata._acl.length; i++) {
+                    ids.push((this.model as any).metadata._acl[i]._id);
+                }
+                this.usergroups = this.allusergroups.filter(x => ids.indexOf(x._id) == -1);
+                this.newuser = this.usergroups[0];
+            } else {
+                this.model._acl.push(ace);
+                var ids: string[] = [];
+                for (var i: number = 0; i < this.model._acl.length; i++) {
+                    ids.push(this.model._acl[i]._id);
+                }
+                this.usergroups = this.allusergroups.filter(x => ids.indexOf(x._id) == -1);
+                this.newuser = this.usergroups[0];
+            }
         }
+
         isBitSet(base64: string, bit: number): boolean {
             bit--;
             var buf = this._base64ToArrayBuffer(base64);

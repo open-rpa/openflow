@@ -29,6 +29,7 @@ export interface Icreate_notification {
     config: any;
     contents: string;
     url: string;
+    customurl: string;
     included_segments: string | string[];
     excluded_segments: string | string[];
     include_player_ids: string | string[];
@@ -62,6 +63,8 @@ export class create_notification {
 
             if (!NoderedUtil.IsNullEmpty(msg.payload)) { this.config.contents = msg.payload; }
             if (!NoderedUtil.IsNullEmpty(msg.url)) { this.config.url = msg.url; }
+            if (!NoderedUtil.IsNullEmpty(msg.customurl)) { this.config.customurl = msg.customurl; }
+
             if (!NoderedUtil.IsNullEmpty(msg.included_segments)) { this.config.included_segments = msg.included_segments; }
             if (!NoderedUtil.IsNullEmpty(msg.excluded_segments)) { this.config.excluded_segments = msg.excluded_segments; }
             if (!NoderedUtil.IsNullEmpty(msg.include_player_ids)) { this.config.include_player_ids = msg.include_player_ids; }
@@ -75,7 +78,7 @@ export class create_notification {
                 'included_segments': Array.isArray(this.config.included_segments) ? this.config.included_segments : [this.config.included_segments],
                 'excluded_segments': Array.isArray(this.config.excluded_segments) ? this.config.excluded_segments : [this.config.excluded_segments],
                 'include_player_ids': Array.isArray(this.config.include_player_ids) ? this.config.include_player_ids : [this.config.include_player_ids],
-                'data': { 'URL': this.config.url },
+                'data': { 'customurl': this.config.customurl },
                 'url': this.config.url
             };
 

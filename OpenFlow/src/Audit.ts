@@ -14,6 +14,27 @@ export class Audit {
         log.username = user.username;
         Config.db.InsertOne(log, "audit", 0, false, TokenUser.rootToken());
     }
+    public static ImpersonateSuccess(user: TokenUser, impostor: TokenUser) {
+        var log: Singin = new Singin();
+        log.success = true;
+        log.type = "impersonate";
+        log.userid = user._id;
+        log.name = user.name;
+        log.username = user.username;
+        log.impostoruserid = impostor._id;
+        log.impostorname = impostor.name;
+        log.impostorusername = impostor.username;
+        Config.db.InsertOne(log, "audit", 0, false, TokenUser.rootToken());
+    }
+    public static ImpersonateFailed(user: TokenUser) {
+        var log: Singin = new Singin();
+        log.success = false;
+        log.type = "impersonate";
+        log.userid = user._id;
+        log.name = user.name;
+        log.username = user.username;
+        Config.db.InsertOne(log, "audit", 0, false, TokenUser.rootToken());
+    }
     public static LoginFailed(username: string, type: string, provider: string, remoteip: string) {
         var log: Singin = new Singin();
         log.remoteip = remoteip;
@@ -31,6 +52,9 @@ export class Singin extends Base {
     public userid: string;
     public username: string;
     public remoteip: string;
+    public impostoruserid: string;
+    public impostorname: string;
+    public impostorusername: string;
     constructor() {
         super();
         this._type = "signin";

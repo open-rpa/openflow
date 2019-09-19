@@ -218,6 +218,40 @@ export class DeleteOneMessage {
     }
 }
 
+
+
+export class GetFileMessage {
+    public error: string;
+    public jwt: string;
+
+    public filename: string;
+    public mimeType: string;
+    public id: string;
+    public metadata: any;
+    public file: string;
+    static assign(o: any): GetFileMessage {
+        if (typeof o === "string" || o instanceof String) {
+            return Object.assign(new GetFileMessage(), JSON.parse(o.toString()));
+        }
+        return Object.assign(new GetFileMessage(), o);
+    }
+}
+export class SaveFileMessage {
+    public error: string;
+    public jwt: string;
+
+    public filename: string;
+    public mimeType: string;
+    public id: string;
+    public metadata: any;
+    public file: string;
+    static assign(o: any): SaveFileMessage {
+        if (typeof o === "string" || o instanceof String) {
+            return Object.assign(new SaveFileMessage(), JSON.parse(o.toString()));
+        }
+        return Object.assign(new SaveFileMessage(), o);
+    }
+}
 export declare function emit(k, v);
 export type mapFunc = () => void;
 export type reduceFunc = (key: string, values: any[]) => any;
