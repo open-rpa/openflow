@@ -276,22 +276,50 @@ module openflow {
                 WebSocketClient.instance = this;
             });
         }
-        notificationOpenedCallback(state) {
-            console.debug("notificationOpenedCallback");
+        notificationOpenedCallback(notification) {
+            console.log("notificationOpenedCallback");
+            var state = notification.notification;
             console.debug(JSON.stringify(state));
-            //console.log(state);
+            try {
+                //if (state.isAppInFocus) {
+                if (state.payload.additionalData.URL != undefined && state.payload.additionalData.URL != null && state.payload.additionalData.URL != "") {
+                    console.log("set window.location.href:" + state.payload.additionalData.URL);
+                    window.location.href = state.payload.additionalData.URL;
+                }
+                if (state.payload.additionalData.customurl != undefined && state.payload.additionalData.customurl != null && state.payload.additionalData.customurl != "") {
+                    console.log("set window.location.href:" + state.payload.additionalData.customurl);
+                    window.location.href = state.payload.additionalData.customurl;
+                }
+                return;
+                //}
+                // {"isAppInFocus":true,"shown":true,"androidNotificationId":-1616162934,"displayType":0,"payload":{"notificationID":"aee1f7a2-2108-489d-a401-86dba6a1ad99","body":"Android 2019-06-02T20:58:25.876Z","additionalData":{"URL":"https://aiotdev-frontend.openrpa.dk/#/Alert/5cf25ad801530ae6396519b8"},"launchURL":"https://aiotdev-frontend.openrpa.dk/#/Alert/5cf25ad801530ae6396519b8","lockScreenVisibility":1,"fromProjectNumber":"906036108091","priority":0,"rawPayload":"{\"google.delivered_priority\":\"normal\",\"google.sent_time\":1559509106669,\"google.ttl\":259200,\"google.original_priority\":\"normal\",\"custom\":\"{\\\"a\\\":{\\\"URL\\\":\\\"https:\\\\\\/\\\\\\/aiotdev-frontend.openrpa.dk\\\\\\/#\\\\\\/Alert\\\\\\/5cf25ad801530ae6396519b8\\\"},\\\"u\\\":\\\"https:\\\\\\/\\\\\\/aiotdev-frontend.openrpa.dk\\\\\\/#\\\\\\/Alert\\\\\\/5cf25ad801530ae6396519b8\\\",\\\"i\\\":\\\"aee1f7a2-2108-489d-a401-86dba6a1ad99\\\"}\",\"from\":\"906036108091\",\"alert\":\"Android 2019-06-02T20:58:25.876Z\",\"google.message_id\":\"0:1559509106674108%6c875f80f9fd7ecd\",\"notificationId\":-1616162934}"}}
+                //console.log(state);
+            } catch (error) {
+                console.log(error);
+            }
+
         }
         notificationReceivedCallback(state) {
-            console.debug("notificationReceivedCallback");
-            console.debug(JSON.stringify(state));
-            if (state.isAppInFocus) {
-                window.location.href = state.payload.additionalData.URL;
-                return;
-            }
-            // {"isAppInFocus":true,"shown":true,"androidNotificationId":-1616162934,"displayType":0,"payload":{"notificationID":"aee1f7a2-2108-489d-a401-86dba6a1ad99","body":"Android 2019-06-02T20:58:25.876Z","additionalData":{"URL":"https://aiotdev-frontend.openrpa.dk/#/Alert/5cf25ad801530ae6396519b8"},"launchURL":"https://aiotdev-frontend.openrpa.dk/#/Alert/5cf25ad801530ae6396519b8","lockScreenVisibility":1,"fromProjectNumber":"906036108091","priority":0,"rawPayload":"{\"google.delivered_priority\":\"normal\",\"google.sent_time\":1559509106669,\"google.ttl\":259200,\"google.original_priority\":\"normal\",\"custom\":\"{\\\"a\\\":{\\\"URL\\\":\\\"https:\\\\\\/\\\\\\/aiotdev-frontend.openrpa.dk\\\\\\/#\\\\\\/Alert\\\\\\/5cf25ad801530ae6396519b8\\\"},\\\"u\\\":\\\"https:\\\\\\/\\\\\\/aiotdev-frontend.openrpa.dk\\\\\\/#\\\\\\/Alert\\\\\\/5cf25ad801530ae6396519b8\\\",\\\"i\\\":\\\"aee1f7a2-2108-489d-a401-86dba6a1ad99\\\"}\",\"from\":\"906036108091\",\"alert\":\"Android 2019-06-02T20:58:25.876Z\",\"google.message_id\":\"0:1559509106674108%6c875f80f9fd7ecd\",\"notificationId\":-1616162934}"}}
-            //console.log(state);
+            // console.log("notificationReceivedCallback");
+            // console.debug(JSON.stringify(state));
+            // try {
+            //     //if (state.isAppInFocus) {
+            //     if (state.payload.additionalData.URL != undefined && state.payload.additionalData.URL != null && state.payload.additionalData.URL != "") {
+            //         console.log("set window.location.href:" + state.payload.additionalData.URL);
+            //         window.location.href = state.payload.additionalData.URL;
+            //     }
+            //     if (state.payload.additionalData.customurl != undefined && state.payload.additionalData.customurl != null && state.payload.additionalData.customurl != "") {
+            //         console.log("set window.location.href:" + state.payload.additionalData.customurl);
+            //         window.location.href = state.payload.additionalData.customurl;
+            //     }
+            //     return;
+            //     //}
+            //     // {"isAppInFocus":true,"shown":true,"androidNotificationId":-1616162934,"displayType":0,"payload":{"notificationID":"aee1f7a2-2108-489d-a401-86dba6a1ad99","body":"Android 2019-06-02T20:58:25.876Z","additionalData":{"URL":"https://aiotdev-frontend.openrpa.dk/#/Alert/5cf25ad801530ae6396519b8"},"launchURL":"https://aiotdev-frontend.openrpa.dk/#/Alert/5cf25ad801530ae6396519b8","lockScreenVisibility":1,"fromProjectNumber":"906036108091","priority":0,"rawPayload":"{\"google.delivered_priority\":\"normal\",\"google.sent_time\":1559509106669,\"google.ttl\":259200,\"google.original_priority\":\"normal\",\"custom\":\"{\\\"a\\\":{\\\"URL\\\":\\\"https:\\\\\\/\\\\\\/aiotdev-frontend.openrpa.dk\\\\\\/#\\\\\\/Alert\\\\\\/5cf25ad801530ae6396519b8\\\"},\\\"u\\\":\\\"https:\\\\\\/\\\\\\/aiotdev-frontend.openrpa.dk\\\\\\/#\\\\\\/Alert\\\\\\/5cf25ad801530ae6396519b8\\\",\\\"i\\\":\\\"aee1f7a2-2108-489d-a401-86dba6a1ad99\\\"}\",\"from\":\"906036108091\",\"alert\":\"Android 2019-06-02T20:58:25.876Z\",\"google.message_id\":\"0:1559509106674108%6c875f80f9fd7ecd\",\"notificationId\":-1616162934}"}}
+            //     //console.log(state);
+            // } catch (error) {
+            //     console.log(error);
+            // }
         }
-
         public connect(): void {
         }
         getJSON(url: string, callback: any): void {
