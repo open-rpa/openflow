@@ -1,5 +1,5 @@
 import {
-    ObjectID, Db, Binary, InsertOneWriteOpResult, DeleteWriteOpResultObject, ObjectId, MapReduceOptions, CollectionInsertOneOptions, UpdateWriteOpResult, WriteOpResult, GridFSBucket
+    ObjectID, Db, Binary, InsertOneWriteOpResult, DeleteWriteOpResultObject, ObjectId, MapReduceOptions, CollectionInsertOneOptions, UpdateWriteOpResult, WriteOpResult, GridFSBucket, ReadPreference
 } from "mongodb";
 import { MongoClient } from "mongodb";
 import { Base, Rights, WellknownIds } from "./base";
@@ -250,6 +250,12 @@ export class DatabaseConnection {
             q = this.getbasequery(jwt, "_acl", [Rights.read]);
         }
 
+        if (finalize != null && finalize != undefined) {
+            try {
+                if (((finalize as any) as string).trim() == "") { (finalize as any) = null; }
+            } catch (error) {
+            }
+        }
         var inline: boolean = false;
         var opt: MapReduceOptions = { query: q, out: { replace: "map_temp_res" }, finalize: finalize };
         var outcol: string = "map_temp_res";
@@ -266,14 +272,19 @@ export class DatabaseConnection {
             if (out.hasOwnProperty("inline")) { inline = true; }
         }
         opt.scope = scope;
+        opt.readPreference = ReadPreference.PRIMARY_PREFERRED;
 
         // var result:T[] = await this.db.collection(collectionname).mapReduce(map, reduce, {query: q, out : {inline : 1}});
-        if (inline) {
-            var result: T[] = await this.db.collection(collectionname).mapReduce(map, reduce, opt);
-            return result;
-        } else {
-            await this.db.collection(collectionname).mapReduce(map, reduce, opt);
-            return [];
+        try {
+            if (inline) {
+                var result: T[] = await this.db.collection(collectionname).mapReduce(map, reduce, opt);
+                return result;
+            } else {
+                await this.db.collection(collectionname).mapReduce(map, reduce, opt);
+                return [];
+            }
+        } catch (error) {
+            throw error;
         }
         // var result:T[] = await this.db.collection(outcol).find({}).toArray(); // .limit(top)
         // // this.db.collection("map_temp_res").deleteMany({});
