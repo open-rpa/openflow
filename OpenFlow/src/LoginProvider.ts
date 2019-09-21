@@ -3,6 +3,7 @@ import * as winston from "winston";
 import * as express from "express";
 import * as cookieSession from "cookie-session";
 import * as bodyParser from "body-parser";
+import * as path from "path";
 
 import * as SAMLStrategy from "passport-saml";
 import * as GoogleStrategy from "passport-google-oauth20";
@@ -90,6 +91,21 @@ export class LoginProvider {
         });
     }
 
+    static async getProviders(): Promise<any[]> {
+        LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", TokenUser.rootToken());
+        var result: any[] = [];
+        LoginProvider.login_providers.forEach(provider => {
+            var item: any = { name: provider.name, id: provider.id, provider: provider.provider, logo: "fa-question-circle" };
+            if (provider.provider === "google") { item.logo = "fa-google"; }
+            if (provider.provider === "saml") { item.logo = "fa-windows"; }
+            result.push(item);
+        });
+        if (result.length === 0) {
+            var item: any = { name: "Local", id: "local", provider: "local", logo: "fa-question-circle" };
+            result.push(item);
+        }
+        return result;
+    }
     static async configure(logger: winston.Logger, app: express.Express, baseurl: string): Promise<void> {
         this._logger = logger;
         app.use(cookieSession({
@@ -109,14 +125,20 @@ export class LoginProvider {
 
         app.get("/Signout", (req: any, res: any, next: any): void => {
             req.logout();
-            res.redirect("/");
+            var originalUrl: any = req.cookies.originalUrl;
+            if (!Util.IsNullEmpty(originalUrl)) {
+                res.cookie("originalUrl", "", { expires: new Date() });
+                res.redirect(originalUrl);
+            } else {
+                res.redirect("/");
+            }
         });
         await LoginProvider.RegisterProviders(app, baseurl);
         app.get("/jwt", (req: any, res: any, next: any): void => {
             res.setHeader("Content-Type", "application/json");
             if (req.user) {
                 var user: TokenUser = new TokenUser(req.user);
-                res.end(JSON.stringify({ jwt: Crypt.createToken(user, "5m") }));
+                res.end(JSON.stringify({ jwt: Crypt.createToken(user, "5m"), user: user }));
             } else {
                 res.end(JSON.stringify({ jwt: "" }));
             }
@@ -152,20 +174,27 @@ export class LoginProvider {
             }
             res.end(JSON.stringify(res2));
         });
+        app.get("/login", async (req: any, res: any, next: any): Promise<void> => {
+            try {
+                res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
+                var file = path.join(__dirname, 'public', 'PassiveLogin.html');
+                res.sendFile(file);
+                // var result: any[] = await this.getProviders();
+                // res.setHeader("Content-Type", "application/json");
+                // res.end(JSON.stringify(result));
+                // res.end();
+            } catch (error) {
+                res.end(error);
+                console.error(error);
+            }
+            try {
+                LoginProvider.RegisterProviders(app, baseurl);
+            } catch (error) {
+            }
+        });
         app.get("/loginproviders", async (req: any, res: any, next: any): Promise<void> => {
             try {
-                LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", TokenUser.rootToken());
-                var result: any[] = [];
-                LoginProvider.login_providers.forEach(provider => {
-                    var item: any = { name: provider.name, id: provider.id, provider: provider.provider, logo: "fa-question-circle" };
-                    if (provider.provider === "google") { item.logo = "fa-google"; }
-                    if (provider.provider === "saml") { item.logo = "fa-windows"; }
-                    result.push(item);
-                });
-                if (result.length === 0) {
-                    var item: any = { name: "Local", id: "local", provider: "local", logo: "fa-question-circle" };
-                    result.push(item);
-                }
+                var result: any[] = await this.getProviders();
                 res.setHeader("Content-Type", "application/json");
                 res.end(JSON.stringify(result));
                 res.end();

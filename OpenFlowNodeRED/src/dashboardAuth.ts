@@ -73,19 +73,6 @@ export class dashboardAuth {
             failureRedirect: '/uisaml/',
             failureFlash: false
         }));
-        // app.use("/" + key,
-        //     bodyParser.urlencoded({ extended: false }),
-        //     passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),
-        //     function (req: any, res: any): void {
-        //         var originalUrl2: any = req.cookies.originalUrl2;
-        //         if (originalUrl2 !== undefined && originalUrl2 !== null) {
-        //             res.cookie("originalUrl2", "", { expires: new Date() });
-        //             res.redirect(originalUrl2);
-        //         } else {
-        //             res.redirect("/ui/");
-        //         }
-        //     }
-        // );
         return strategy;
     }
 }

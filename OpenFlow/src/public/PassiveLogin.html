@@ -1,0 +1,112 @@
+<script src="main.js"></script>
+<script>
+  function getJSON(url, callback) {
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", url, true);
+    xhr.responseType = "json";
+    xhr.onload = function () {
+      var status = xhr.status;
+      if (status === 200) {
+        callback(null, xhr.response);
+      } else {
+        callback(status, xhr.response);
+      }
+    };
+    xhr.send();
+  }
+
+  function SettingsController2($scope, $http) {
+    this.user = null;
+    this.name = 'John Smith';
+    // this.domain = "Donald duck";
+    this.localenabled = false;
+    this.domain = window.location.hostname;
+    this.process = function (error, data) {
+      this.providers = data;
+      for (var i = this.providers.length - 1; i >= 0; i--) {
+        if (this.providers[i].provider == "local") {
+          this.providers.splice(i, 1);
+          this.localenabled = true;
+        }
+      }
+      if (!$scope.$$phase) { $scope.$apply(); }
+    };
+    this.jwt = function (error, data) {
+      console.log(data);
+      if (data.user) {
+        this.user = data.user;
+      }
+      if (!$scope.$$phase) { $scope.$apply(); }
+    };
+    getJSON("/loginproviders", this.process.bind(this));
+
+    getJSON("/jwt", this.jwt.bind(this));
+
+  }
+  angular.module('controllerExample', [])
+    .controller('SettingsController2', SettingsController2);
+  SettingsController2.$inject = ['$scope', '$http'];
+</script>
+
+<body ng-app="controllerExample">
+
+  <div class="starter-template" ng-controller="SettingsController2 as ctrl">
+    <div class="row" ng-show="ctrl.user == null">
+      <div class="col-sm-9 col-md-7 col-lg-5 mx-auto">
+        <div class="card card-signin my-5">
+          <div class="card-body">
+            <h5 class="card-title text-center"><span translate lib="web">signin</span> {{ctrl.domain}}</h5>
+            </h5>
+            <form class="form-signin" ngNoForm method='post' action='/local'>
+              <div class="form-label-group" ng-show="ctrl.localenabled">
+                <input type="text" name="username" ng-model="ctrl.username" class="form-control" placeholder="email"
+                  required autofocus autocomplete='off'>
+                <label for="username" translate lib="web">email</label>
+              </div>
+              <div class="form-label-group" ng-show="ctrl.localenabled">
+                <input type="password" name="password" ng-model="ctrl.password" class="form-control"
+                  placeholder="Password" required autocomplete="current-password">
+                <label for="password" translate lib="web">password</label>
+              </div>
+              <div class="mb-3">
+                <label class="text-danger" translate lib="web" ng-model="ctrl.message"></label>
+              </div>
+              <button class="btn btn-lg btn-primary btn-block text-uppercase" type="submit" ng-show="ctrl.localenabled"
+                translate lib="web">signin</button>
+              <hr class="my-4" ng-show="ctrl.localenabled">
+
+              <a ng-href="/{{model.id}}" ng-repeat="model in ctrl.providers"
+                class="btn btn-lg btn-block text-uppercase">
+                <i class="fab {{model.logo}} mr-2"></i><span translate lib="web">{{model.name}}</span>
+              </a>
+
+              <div class="card-body" ng-show="ctrl.allow_user_registration==true">
+                <small><i>
+                    Select a provider or login using a local username and password.
+                    A new user will automaticly be created if username is unknown.
+                    Email validation will be requered to use the core functions.</i></small>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" ng-show="ctrl.user != null">
+      <div class="col-sm-9 col-md-7 col-lg-5 mx-auto">
+        <div class="card card-signin my-5">
+          <div class="card-body">
+            Hello {{ctrl.user.name}}<br>
+            <a ng-href="/Signout" class="btn btn-lg btn-block text-uppercase">
+              <i class="fas fa-sign-out-alt"></i>
+              Singout
+            </a>
+
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</body>
