@@ -1,9 +1,20 @@
-<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.2/css/all.css"
-  integrity="sha256-piqEf7Ap7CMps8krDQsSOTZgF+MU/0MPyPW2enj5I40=" crossorigin="anonymous" />
+<!DOCTYPE html>
+<html lang="en">
 
-<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
-  integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.2/css/all.css"
+    integrity="sha256-piqEf7Ap7CMps8krDQsSOTZgF+MU/0MPyPW2enj5I40=" crossorigin="anonymous" />
+
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+    integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+  <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+  <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+</head>
 
 <script>
   function getJSON(url, callback) {
@@ -13,7 +24,11 @@
     xhr.onload = function () {
       var status = xhr.status;
       if (status === 200) {
-        callback(null, xhr.response);
+        var data = xhr.response;
+        if (typeof data === "string" || data instanceof String) {
+          data = JSON.parse(data);
+        }
+        callback(null, data);
       } else {
         callback(status, xhr.response);
       }
@@ -28,6 +43,7 @@
     this.localenabled = false;
     this.domain = window.location.hostname;
     this.process = function (error, data) {
+      console.log(data);
       this.providers = data;
       for (var i = this.providers.length - 1; i >= 0; i--) {
         if (this.providers[i].provider == "local") {
@@ -41,10 +57,11 @@
       console.log(data);
       if (data.user) {
         this.user = data.user;
+      } else {
+        getJSON("/loginproviders", this.process.bind(this));
       }
       if (!$scope.$$phase) { $scope.$apply(); }
     };
-    getJSON("/loginproviders", this.process.bind(this));
 
     getJSON("/jwt", this.jwt.bind(this));
 
@@ -81,7 +98,7 @@
                 translate lib="web">signin</button>
               <hr class="my-4" ng-show="ctrl.localenabled">
 
-              <a ng-href="/{{model.id}}" ng-repeat="model in ctrl.providers"
+              <a ng-href="/{{model.id}}" ng-repeat="model in ctrl.providers track by $index"
                 class="btn btn-lg btn-block text-uppercase">
                 <i class="fab {{model.logo}} mr-2"></i><span translate lib="web">{{model.name}}</span>
               </a>

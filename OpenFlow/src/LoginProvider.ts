@@ -62,6 +62,18 @@ export class LoginProvider {
     private static _providers: any = {};
     private static login_providers: Provider[] = [];
 
+    public static redirect(res: any, originalUrl: string) {
+        res.write('<!DOCTYPE html>');
+        res.write('<body>');
+        res.write('<script>top.location = "' + originalUrl + '";</script>');
+        // res.write('<a href="' + originalUrl + '">click here</a>');
+        res.write('</body>');
+        res.write('</html>');
+        res.end();
+        // res.redirect(originalUrl);
+    }
+
+
     static async validateToken(rawAssertion: string): Promise<User> {
         return new Promise<User>((resolve, reject) => {
             var options = {
@@ -123,14 +135,33 @@ export class LoginProvider {
             // Audit.LoginSuccess(new TokenUser(user), "weblogin", "cookie", "");
         });
 
+        app.use(function (req, res, next) {
+            res.header('Access-Control-Allow-Origin', (req.headers.origin as any));
+            res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+            res.header('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+            res.header('Expires', '-1');
+            res.header('Pragma', 'no-cache');
+            next();
+        });
+
         app.get("/Signout", (req: any, res: any, next: any): void => {
             req.logout();
             var originalUrl: any = req.cookies.originalUrl;
             if (!Util.IsNullEmpty(originalUrl)) {
-                res.cookie("originalUrl", "", { expires: new Date() });
-                res.redirect(originalUrl);
+                res.cookie("originalUrl", "", { expires: new Date(0) });
+                LoginProvider.redirect(res, originalUrl);
             } else {
                 res.redirect("/");
+            }
+        });
+        app.get("/PassiveSignout", (req: any, res: any, next: any): void => {
+            req.logout();
+            var originalUrl: any = req.cookies.originalUrl;
+            if (!Util.IsNullEmpty(originalUrl)) {
+                res.cookie("originalUrl", "", { expires: new Date(0) });
+                LoginProvider.redirect(res, originalUrl);
+            } else {
+                res.redirect("/Login");
             }
         });
         await LoginProvider.RegisterProviders(app, baseurl);
@@ -139,6 +170,16 @@ export class LoginProvider {
             if (req.user) {
                 var user: TokenUser = new TokenUser(req.user);
                 res.end(JSON.stringify({ jwt: Crypt.createToken(user, "5m"), user: user }));
+            } else {
+                res.end(JSON.stringify({ jwt: "" }));
+            }
+            res.end();
+        });
+        app.get("/jwtlong", (req: any, res: any, next: any): void => {
+            res.setHeader("Content-Type", "application/json");
+            if (req.user) {
+                var user: TokenUser = new TokenUser(req.user);
+                res.end(JSON.stringify({ jwt: Crypt.createToken(user, "365d"), user: user }));
             } else {
                 res.end(JSON.stringify({ jwt: "" }));
             }
@@ -256,8 +297,8 @@ export class LoginProvider {
             function (req: any, res: any): void {
                 var originalUrl: any = req.cookies.originalUrl;
                 if (!Util.IsNullEmpty(originalUrl)) {
-                    res.cookie("originalUrl", "", { expires: new Date() });
-                    res.redirect(originalUrl);
+                    res.cookie("originalUrl", "", { expires: new Date(0) });
+                    LoginProvider.redirect(res, originalUrl);
                 } else {
                     res.redirect("/");
                 }
@@ -341,8 +382,8 @@ export class LoginProvider {
             function (req: any, res: any): void {
                 var originalUrl: any = req.cookies.originalUrl;
                 if (!Util.IsNullEmpty(originalUrl)) {
-                    res.cookie("originalUrl", "", { expires: new Date() });
-                    res.redirect(originalUrl);
+                    res.cookie("originalUrl", "", { expires: new Date(0) });
+                    LoginProvider.redirect(res, originalUrl);
                 } else {
                     res.redirect("/");
                 }
@@ -401,6 +442,7 @@ export class LoginProvider {
             }
         });
         passport.use("local", strategy);
+        // http://www.passportjs.org/docs/authenticate/#custom-callback
         app.use("/local",
             bodyParser.urlencoded({ extended: false }),
             //passport.authenticate("local", { failureRedirect: "/login?failed=true", failureFlash: true }),
@@ -408,8 +450,8 @@ export class LoginProvider {
             function (req: any, res: any): void {
                 var originalUrl: any = req.cookies.originalUrl;
                 if (!Util.IsNullEmpty(originalUrl)) {
-                    res.cookie("originalUrl", "", { expires: new Date() });
-                    res.redirect(originalUrl);
+                    res.cookie("originalUrl", "", { expires: new Date(0) });
+                    LoginProvider.redirect(res, originalUrl);
                 } else {
                     res.redirect("/");
                 }
