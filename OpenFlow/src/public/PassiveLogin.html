@@ -54,7 +54,6 @@
       if (!$scope.$$phase) { $scope.$apply(); }
     };
     this.jwt = function (error, data) {
-      console.log(data);
       if (data.user) {
         this.user = data.user;
       } else {
@@ -62,8 +61,16 @@
       }
       if (!$scope.$$phase) { $scope.$apply(); }
     };
+    this.config = function (error, data) {
+      console.log(data);
+      this.allow_user_registration = data.allow_user_registration;
+      this.allow_user_registration = true;
+      if (!$scope.$$phase) { $scope.$apply(); }
+    };
 
     getJSON("/jwt", this.jwt.bind(this));
+
+    getJSON("/jwt", this.config.bind(this));
 
   }
   angular.module('controllerExample', [])
@@ -73,10 +80,10 @@
 
 <body ng-app="controllerExample">
 
-  <div class="starter-template" ng-controller="SettingsController2 as ctrl">
+  <div ng-controller="SettingsController2 as ctrl">
     <div class="row" ng-show="ctrl.user == null">
       <div class="col-sm-9 col-md-7 col-lg-5 mx-auto">
-        <div class="card card-signin my-5">
+        <div class="card card-signin my-2">
           <div class="card-body">
             <h5 class="card-title text-center"><span translate lib="web">signin</span> {{ctrl.domain}}</h5>
             </h5>
@@ -91,16 +98,13 @@
                   placeholder="Password" required autocomplete="current-password">
                 <label for="password" translate lib="web">password</label>
               </div>
-              <div class="mb-3">
-                <label class="text-danger" translate lib="web" ng-model="ctrl.message"></label>
-              </div>
               <button class="btn btn-lg btn-primary btn-block text-uppercase" type="submit" ng-show="ctrl.localenabled"
                 translate lib="web">signin</button>
               <hr class="my-4" ng-show="ctrl.localenabled">
 
               <a ng-href="/{{model.id}}" ng-repeat="model in ctrl.providers track by $index"
                 class="btn btn-lg btn-block text-uppercase">
-                <i class="fab {{model.logo}} mr-2"></i><span translate lib="web">{{model.name}}</span>
+                <i class="fab {{model.logo}}"></i><span translate lib="web">{{model.name}}</span>
               </a>
 
               <div class="card-body" ng-show="ctrl.allow_user_registration==true">
