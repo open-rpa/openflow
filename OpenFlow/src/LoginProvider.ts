@@ -3,6 +3,7 @@ import * as winston from "winston";
 import * as express from "express";
 import * as cookieSession from "cookie-session";
 import * as bodyParser from "body-parser";
+import * as path from "path";
 
 import * as SAMLStrategy from "passport-saml";
 import * as GoogleStrategy from "passport-google-oauth20";
@@ -61,6 +62,18 @@ export class LoginProvider {
     private static _providers: any = {};
     private static login_providers: Provider[] = [];
 
+    public static redirect(res: any, originalUrl: string) {
+        res.write('<!DOCTYPE html>');
+        res.write('<body>');
+        res.write('<script>top.location = "' + originalUrl + '";</script>');
+        // res.write('<a href="' + originalUrl + '">click here</a>');
+        res.write('</body>');
+        res.write('</html>');
+        res.end();
+        // res.redirect(originalUrl);
+    }
+
+
     static async validateToken(rawAssertion: string): Promise<User> {
         return new Promise<User>((resolve, reject) => {
             var options = {
@@ -90,6 +103,21 @@ export class LoginProvider {
         });
     }
 
+    static async getProviders(): Promise<any[]> {
+        LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", TokenUser.rootToken());
+        var result: any[] = [];
+        LoginProvider.login_providers.forEach(provider => {
+            var item: any = { name: provider.name, id: provider.id, provider: provider.provider, logo: "fa-question-circle" };
+            if (provider.provider === "google") { item.logo = "fa-google"; }
+            if (provider.provider === "saml") { item.logo = "fa-windows"; }
+            result.push(item);
+        });
+        if (result.length === 0) {
+            var item: any = { name: "Local", id: "local", provider: "local", logo: "fa-question-circle" };
+            result.push(item);
+        }
+        return result;
+    }
     static async configure(logger: winston.Logger, app: express.Express, baseurl: string): Promise<void> {
         this._logger = logger;
         app.use(cookieSession({
@@ -107,16 +135,51 @@ export class LoginProvider {
             // Audit.LoginSuccess(new TokenUser(user), "weblogin", "cookie", "");
         });
 
+        app.use(function (req, res, next) {
+            res.header('Access-Control-Allow-Origin', (req.headers.origin as any));
+            res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+            res.header('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+            res.header('Expires', '-1');
+            res.header('Pragma', 'no-cache');
+            next();
+        });
+
         app.get("/Signout", (req: any, res: any, next: any): void => {
             req.logout();
-            res.redirect("/");
+            var originalUrl: any = req.cookies.originalUrl;
+            if (!Util.IsNullEmpty(originalUrl)) {
+                res.cookie("originalUrl", "", { expires: new Date(0) });
+                LoginProvider.redirect(res, originalUrl);
+            } else {
+                res.redirect("/");
+            }
+        });
+        app.get("/PassiveSignout", (req: any, res: any, next: any): void => {
+            req.logout();
+            var originalUrl: any = req.cookies.originalUrl;
+            if (!Util.IsNullEmpty(originalUrl)) {
+                res.cookie("originalUrl", "", { expires: new Date(0) });
+                LoginProvider.redirect(res, originalUrl);
+            } else {
+                res.redirect("/Login");
+            }
         });
         await LoginProvider.RegisterProviders(app, baseurl);
         app.get("/jwt", (req: any, res: any, next: any): void => {
             res.setHeader("Content-Type", "application/json");
             if (req.user) {
                 var user: TokenUser = new TokenUser(req.user);
-                res.end(JSON.stringify({ jwt: Crypt.createToken(user, "5m") }));
+                res.end(JSON.stringify({ jwt: Crypt.createToken(user, "5m"), user: user }));
+            } else {
+                res.end(JSON.stringify({ jwt: "" }));
+            }
+            res.end();
+        });
+        app.get("/jwtlong", (req: any, res: any, next: any): void => {
+            res.setHeader("Content-Type", "application/json");
+            if (req.user) {
+                var user: TokenUser = new TokenUser(req.user);
+                res.end(JSON.stringify({ jwt: Crypt.createToken(user, "365d"), user: user }));
             } else {
                 res.end(JSON.stringify({ jwt: "" }));
             }
@@ -152,20 +215,27 @@ export class LoginProvider {
             }
             res.end(JSON.stringify(res2));
         });
+        app.get("/login", async (req: any, res: any, next: any): Promise<void> => {
+            try {
+                res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
+                var file = path.join(__dirname, 'public', 'PassiveLogin.html');
+                res.sendFile(file);
+                // var result: any[] = await this.getProviders();
+                // res.setHeader("Content-Type", "application/json");
+                // res.end(JSON.stringify(result));
+                // res.end();
+            } catch (error) {
+                res.end(error);
+                console.error(error);
+            }
+            try {
+                LoginProvider.RegisterProviders(app, baseurl);
+            } catch (error) {
+            }
+        });
         app.get("/loginproviders", async (req: any, res: any, next: any): Promise<void> => {
             try {
-                LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", TokenUser.rootToken());
-                var result: any[] = [];
-                LoginProvider.login_providers.forEach(provider => {
-                    var item: any = { name: provider.name, id: provider.id, provider: provider.provider, logo: "fa-question-circle" };
-                    if (provider.provider === "google") { item.logo = "fa-google"; }
-                    if (provider.provider === "saml") { item.logo = "fa-windows"; }
-                    result.push(item);
-                });
-                if (result.length === 0) {
-                    var item: any = { name: "Local", id: "local", provider: "local", logo: "fa-question-circle" };
-                    result.push(item);
-                }
+                var result: any[] = await this.getProviders();
                 res.setHeader("Content-Type", "application/json");
                 res.end(JSON.stringify(result));
                 res.end();
@@ -227,8 +297,8 @@ export class LoginProvider {
             function (req: any, res: any): void {
                 var originalUrl: any = req.cookies.originalUrl;
                 if (!Util.IsNullEmpty(originalUrl)) {
-                    res.cookie("originalUrl", "", { expires: new Date() });
-                    res.redirect(originalUrl);
+                    res.cookie("originalUrl", "", { expires: new Date(0) });
+                    LoginProvider.redirect(res, originalUrl);
                 } else {
                     res.redirect("/");
                 }
@@ -312,8 +382,8 @@ export class LoginProvider {
             function (req: any, res: any): void {
                 var originalUrl: any = req.cookies.originalUrl;
                 if (!Util.IsNullEmpty(originalUrl)) {
-                    res.cookie("originalUrl", "", { expires: new Date() });
-                    res.redirect(originalUrl);
+                    res.cookie("originalUrl", "", { expires: new Date(0) });
+                    LoginProvider.redirect(res, originalUrl);
                 } else {
                     res.redirect("/");
                 }
@@ -372,6 +442,7 @@ export class LoginProvider {
             }
         });
         passport.use("local", strategy);
+        // http://www.passportjs.org/docs/authenticate/#custom-callback
         app.use("/local",
             bodyParser.urlencoded({ extended: false }),
             //passport.authenticate("local", { failureRedirect: "/login?failed=true", failureFlash: true }),
@@ -379,8 +450,8 @@ export class LoginProvider {
             function (req: any, res: any): void {
                 var originalUrl: any = req.cookies.originalUrl;
                 if (!Util.IsNullEmpty(originalUrl)) {
-                    res.cookie("originalUrl", "", { expires: new Date() });
-                    res.redirect(originalUrl);
+                    res.cookie("originalUrl", "", { expires: new Date(0) });
+                    LoginProvider.redirect(res, originalUrl);
                 } else {
                     res.redirect("/");
                 }
