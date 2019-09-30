@@ -207,6 +207,7 @@ export class DatabaseConnection {
      */
     async aggregate<T extends Base>(aggregates: object[], collectionname: string, jwt: string): Promise<T[]> {
         await this.connect();
+        aggregates.unshift(this.getbasequery(jwt, "_acl", [Rights.read]));
         // todo: add permissions check on aggregates
         // aggregates.unshift(this.getbasequery(jwt, [Rights.read]));
         var items: T[] = await this.db.collection(collectionname).aggregate(aggregates).toArray();
@@ -258,6 +259,9 @@ export class DatabaseConnection {
         }
         var inline: boolean = false;
         var opt: MapReduceOptions = { query: q, out: { replace: "map_temp_res" }, finalize: finalize };
+
+        // (opt as any).w = 0;
+
         var outcol: string = "map_temp_res";
         if (out === null || out === undefined || out === "") {
             opt.out = { replace: outcol };
@@ -272,11 +276,12 @@ export class DatabaseConnection {
             if (out.hasOwnProperty("inline")) { inline = true; }
         }
         opt.scope = scope;
-        opt.readPreference = ReadPreference.PRIMARY_PREFERRED;
+        // opt.readPreference = ReadPreference.PRIMARY_PREFERRED;
 
         // var result:T[] = await this.db.collection(collectionname).mapReduce(map, reduce, {query: q, out : {inline : 1}});
         try {
             if (inline) {
+                opt.out = { inline: 1 };
                 var result: T[] = await this.db.collection(collectionname).mapReduce(map, reduce, opt);
                 return result;
             } else {
