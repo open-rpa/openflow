@@ -469,9 +469,10 @@ export class LoginProvider {
                             if (!Util.IsNullEmpty(originalUrl)) {
                                 try {
                                     res.cookie("originalUrl", "", { expires: new Date(0) });
+                                    LoginProvider.redirect(res, originalUrl);
                                 } catch (error) {
+                                    console.error(error);
                                 }
-                                LoginProvider.redirect(res, originalUrl);
                             } else {
                                 res.redirect("/");
                             }
@@ -485,9 +486,10 @@ export class LoginProvider {
                         }
                         try {
                             res.cookie("originalUrl", "", { expires: new Date(0) });
+                            LoginProvider.redirect(res, originalUrl);
                         } catch (error) {
+                            console.error(error);
                         }
-                        LoginProvider.redirect(res, originalUrl);
                     } else {
                         res.redirect("/");
                     }
