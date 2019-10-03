@@ -491,7 +491,11 @@ export class LoginProvider {
                             console.error(error);
                         }
                     } else {
-                        res.redirect("/");
+                        try {
+                            res.redirect("/");
+                        } catch (error) {
+                            console.error(error);
+                        }
                     }
                 })(req, res, next);
             }
