@@ -802,3 +802,43 @@ export class upload_file {
     onclose() {
     }
 }
+
+
+
+
+
+
+export interface Iapi_aggregate {
+    collection: string;
+    aggregates: object[];
+}
+export class api_aggregate {
+    public node: Red = null;
+
+    constructor(public config: Iapi_aggregate) {
+        RED.nodes.createNode(this, config);
+        this.node = this;
+        this.node.status({});
+        this.node.on("input", this.oninput);
+        this.node.on("close", this.onclose);
+    }
+    async oninput(msg: any) {
+        try {
+            this.node.status({});
+            // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
+
+            if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
+            if (!NoderedUtil.IsNullUndefinded(msg.aggregates)) { this.config.aggregates = msg.aggregates; }
+
+            this.node.status({ fill: "blue", shape: "dot", text: "Running mapreduce" });
+            var result = await NoderedUtil.Aggregate(this.config.collection, this.config.aggregates, msg.jwt);
+            msg.payload = result;
+            this.node.send(msg);
+            this.node.status({});
+        } catch (error) {
+            NoderedUtil.HandleError(this, error);
+        }
+    }
+    onclose() {
+    }
+}

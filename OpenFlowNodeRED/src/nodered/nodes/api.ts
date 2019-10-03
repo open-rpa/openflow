@@ -20,6 +20,7 @@ export = function (RED: Red) {
 
     RED.nodes.registerType("map reduce", api.api_map_reduce);
     RED.nodes.registerType("api updatedocument", api.api_updatedocument);
+    RED.nodes.registerType("api aggregate", api.api_aggregate);
 
     RED.nodes.registerType("grant permission", api.grant_permission);
     RED.nodes.registerType("revoke permission", api.revoke_permission);

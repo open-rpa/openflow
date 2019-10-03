@@ -207,7 +207,16 @@ export class DatabaseConnection {
      */
     async aggregate<T extends Base>(aggregates: object[], collectionname: string, jwt: string): Promise<T[]> {
         await this.connect();
-        aggregates.unshift(this.getbasequery(jwt, "_acl", [Rights.read]));
+
+        if (typeof aggregates === "string" || aggregates instanceof String) {
+            aggregates = JSON.parse((aggregates as any));
+        }
+        var base = this.getbasequery(jwt, "_acl", [Rights.read]);
+        if (Array.isArray(aggregates)) {
+            aggregates.unshift({ $match: base });
+        } else {
+            aggregates = [{ $match: base }, aggregates];
+        }
         // todo: add permissions check on aggregates
         // aggregates.unshift(this.getbasequery(jwt, [Rights.read]));
         var items: T[] = await this.db.collection(collectionname).aggregate(aggregates).toArray();
