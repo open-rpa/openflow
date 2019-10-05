@@ -48,6 +48,9 @@ export class NoderedUtil {
     public static HandleError(node: Red, error: any): void {
         console.error(error);
         var message: string = error;
+        if (typeof error === "string" || error instanceof String) {
+            error = new Error((error as string));
+        }
         try {
             if (error.message) {
                 message = error.message;
