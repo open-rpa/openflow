@@ -727,7 +727,7 @@ module openflow {
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
-        async DeleteOne(model: openflow.TokenUser): Promise<any> {
+        async DeleteOneUser(model: openflow.TokenUser): Promise<any> {
             this.loading = true;
             await this.api.Delete(this.collection, model);
             this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
