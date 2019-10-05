@@ -625,7 +625,6 @@ export class Message {
             cli._logger.debug("[" + user.username + "] update nodered role " + name + "noderedadmins");
             await noderedadmins.Save(jwt);
 
-
         } catch (error) {
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
             msg.error = error.toString();

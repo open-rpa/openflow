@@ -14,6 +14,7 @@ export class Config {
     public static auto_create_domains: string[] = Config.parseArray(Config.getEnv("auto_create_domains", ""));
     public static allow_user_registration: boolean = Config.parseBoolean(Config.getEnv("allow_user_registration", "false"));
     public static allow_personal_nodered: boolean = Config.parseBoolean(Config.getEnv("allow_personal_nodered", "false"));
+    public static auto_create_personal_nodered_group: boolean = Config.parseBoolean(Config.getEnv("auto_create_personal_nodered_group", "false"));
     public static force_queue_prefix: boolean = Config.parseBoolean(Config.getEnv("force_queue_prefix", "true"));
     public static nodered_image: string = Config.getEnv("nodered_image", "cloudhack/openflownodered:edge");
 
@@ -82,11 +83,11 @@ export class Config {
             }
             return config;
         }, {
-                retries: 50,
-                onRetry: function (error: Error, count: number): void {
-                    Logger.instanse.warn("retry " + count + " error " + error.message + " getting " + url);
-                }
-            });
+            retries: 50,
+            onRetry: function (error: Error, count: number): void {
+                Logger.instanse.warn("retry " + count + " error " + error.message + " getting " + url);
+            }
+        });
         return metadata;
     }
     public static parseArray(s: string): string[] {
