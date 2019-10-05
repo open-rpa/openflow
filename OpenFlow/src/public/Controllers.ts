@@ -739,7 +739,7 @@ module openflow {
             var list = await this.api.Query("users", { _type: "role", name: name + "noderedadmins" });
             if (list.length == 1) {
                 console.log("Deleting " + name + "noderedadmins")
-                await this.api.Delete("users", list[0]._id);
+                await this.api.Delete("users", list[0]);
             }
 
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
