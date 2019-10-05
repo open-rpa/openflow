@@ -736,7 +736,7 @@ module openflow {
             name = name.split("@").join("").split(".").join("");
             name = name.toLowerCase();
 
-            var list = await this.api.Query("users", { _role: "role", name: name + "noderedadmins" });
+            var list = await this.api.Query("users", { _type: "role", name: name + "noderedadmins" });
             if (list.length == 1) {
                 console.log("Deleting " + name + "noderedadmins")
                 await this.api.Delete("users", list[0]._id);
