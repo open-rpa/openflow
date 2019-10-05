@@ -53,6 +53,10 @@ export class User extends Base {
         users.AddMember(user);
 
         if (Config.auto_create_personal_nodered_group) {
+            var name = user.username;
+            name = name.split("@").join("").split(".").join("");
+            name = name.toLowerCase();
+
             var noderedadmins = await User.ensureRole(jwt, name + "noderedadmins", null);
             noderedadmins.addRight(user._id, user.username, [Rights.full_control]);
             noderedadmins.removeRight(user._id, [Rights.delete]);

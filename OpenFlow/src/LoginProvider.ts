@@ -210,6 +210,7 @@ export class LoginProvider {
                 domain: Config.domain,
                 allow_user_registration: Config.allow_user_registration,
                 allow_personal_nodered: Config.allow_personal_nodered,
+                auto_create_personal_nodered_group: Config.auto_create_personal_nodered_group,
                 namespace: Config.namespace,
                 nodered_domain_schema: Config.nodered_domain_schema
             }

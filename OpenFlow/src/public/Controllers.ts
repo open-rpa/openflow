@@ -732,6 +732,16 @@ module openflow {
             await this.api.Delete(this.collection, model);
             this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
             this.loading = false;
+            var name = model.username;
+            name = name.split("@").join("").split(".").join("");
+            name = name.toLowerCase();
+
+            var list = await this.api.Query("users", { _role: "role", name: name + "noderedadmins" });
+            if (list.length == 1) {
+                console.log("Deleting " + name + "noderedadmins")
+                await this.api.Delete("users", list[0]._id);
+            }
+
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
     }
