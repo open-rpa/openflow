@@ -37,57 +37,65 @@
   }
 </style>
 
-<table id="table1" class="table table-striped table-hover table-sm" when-scrolled="ctrl.more()" style="width: 100%;">
-  <thead class="thead-dark">
-    <tr>
-      <th scope="col" ng-click="ctrl.ToggleOrder('metadata.name')"><b translate lib="web">name</b></th>
-      <th scope="col" ng-click="ctrl.ToggleOrder('metadata.path')"><b translate lib="web">path</b></th>
-      <th scope="col" ng-click="ctrl.ToggleOrder('contentType')"><b translate lib="web">type</b></th>
-      <th scope="col" ng-click="ctrl.ToggleOrder('metadata._createdby')"><b translate lib="web">createdby</b></th>
-      <th scope="col" ng-click="ctrl.ToggleOrder('metadata._created')"><b translate lib="web">created</b></th>
-      <th></th>
-      <th></th>
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr ng-repeat="model in ctrl.models">
-      <td>{{model.metadata.name}}</td>
-      <td>{{model.metadata.path}}</td>
-      <td>{{model.contentType}}</td>
-      <td>{{model.metadata._createdby}}</td>
-      <td>
-        <timesince ng-model="model.metadata._created" />
-      </td>
-      <td class="btn-cell">
-        <a ng-href="" class="table-btn" ng-click="ctrl.Download(model._id)">
+<form action="/upload" method="post" enctype="multipart/form-data">
+  <table id="table1" class="table table-striped table-hover table-sm" when-scrolled="ctrl.more()" style="width: 100%;">
+    <thead class="thead-dark">
+      <tr>
+        <th scope="col" ng-click="ctrl.ToggleOrder('metadata.name')"><b translate lib="web">name</b></th>
+        <th scope="col" ng-click="ctrl.ToggleOrder('metadata.path')"><b translate lib="web">path</b></th>
+        <th scope="col" ng-click="ctrl.ToggleOrder('contentType')"><b translate lib="web">type</b></th>
+        <th scope="col" ng-click="ctrl.ToggleOrder('metadata._createdby')"><b translate lib="web">createdby</b></th>
+        <th scope="col" ng-click="ctrl.ToggleOrder('metadata._created')"><b translate lib="web">created</b></th>
+        <th></th>
+        <th></th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr ng-repeat="model in ctrl.models">
+        <td>{{model.metadata.name}}</td>
+        <td>{{model.metadata.path}}</td>
+        <td>{{model.contentType}}</td>
+        <td>{{model.metadata._createdby}}</td>
+        <td>
+          <timesince ng-model="model.metadata._created" />
+        </td>
+        <td class="btn-cell">
+          <!-- <a ng-href="" class="table-btn" ng-click="ctrl.Download(model._id)">
           <i class="fas fa-file-download" style="color: #007bff;"></i>
-        </a>
-      </td>
-      <td class="btn-cell">
-        <a ng-href="#/Entity/{{ctrl.collection}}/{{model._id}}" class="table-btn"><i class="az-edit"></i></a>
-      </td>
-      <td class="btn-cell">
-        <a href ng-click="ctrl.DeleteOne(model)" ng-disabled="ctrl.loading==true" class="table-btn"><i
-            class="az-trash"></i></a>
-      </td>
-    </tr>
-  </tbody>
-  <tfoot>
-    <tr>
-      <td>Upload</td>
-      <td colspan="4">
-        <input type="file" ng-disabled="ctrl.loading==true" class="btn upload-btn" ng-model="ctrl.file"
-          fileread></button>
-      </td>
-      <td colspan="3">
-        <input type="button" ng-disabled="ctrl.loading==true" ng-click="ctrl.Upload()" value="Upload"></input>
-      </td>
-    </tr>
-    <tr>
-      <div id="myProgress">
-        <div id="myBar"></div>
-      </div>
-    </tr>
-  </tfoot>
-</table>
+        </a> -->
+          <a ng-href="/download/{{model._id}}" class="table-btn">
+            <i class="fas fa-file-download" style="color: #007bff;"></i>
+          </a>
+        </td>
+        <td class="btn-cell">
+          <a ng-href="#/Entity/{{ctrl.collection}}/{{model._id}}" class="table-btn"><i class="az-edit"></i></a>
+        </td>
+        <td class="btn-cell">
+          <a href ng-click="ctrl.DeleteOne(model)" ng-disabled="ctrl.loading==true" class="table-btn"><i
+              class="az-trash"></i></a>
+        </td>
+      </tr>
+    </tbody>
+    <tfoot>
+      <tr>
+        <td>Upload</td>
+        <td colspan="4">
+          <!-- <input type="file" ng-disabled="ctrl.loading==true" class="btn upload-btn" ng-model="ctrl.file"
+          fileread></button> -->
+          <input type="file" name="fileupload" id="fileupload" multiple>
+        </td>
+        <td colspan="3">
+          <!-- <input type="button" ng-disabled="ctrl.loading==true" ng-click="ctrl.Upload()" value="Upload"></input> -->
+          <input type="button" ng-disabled="ctrl.loading==true" ng-click="ctrl.Upload()" value="Upload"></input>
+          <!-- <input type="submit" value="Upload" name="submit"> -->
+        </td>
+      </tr>
+      <tr>
+        <div id="myProgress">
+          <div id="myBar"></div>
+        </div>
+      </tr>
+    </tfoot>
+  </table>
+</form>

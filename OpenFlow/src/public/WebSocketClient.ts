@@ -44,6 +44,7 @@ module openflow {
         public scanCount: number = 0;
         public oneSignalId: string = null;
         public location: any;
+        public websocket_package_size: number = 500;
         static $inject = ["$rootScope", "$location", "$window"];
         public messageQueue: IHashTable<QueuedMessage> = {};
         constructor(public $rootScope: ng.IRootScopeService, public $location, public $window: any) {
@@ -268,6 +269,7 @@ module openflow {
                 this.allow_user_registration = data.allow_user_registration;
                 this.namespace = data.namespace;
                 this.nodered_domain_schema = data.nodered_domain_schema;
+                this.websocket_package_size = data.websocket_package_size;
                 this._socketObject = new ReconnectingWebSocket(data.wshost);
                 this._socketObject.onopen = (this.onopen).bind(this);
                 this._socketObject.onmessage = (this.onmessage).bind(this);
@@ -376,7 +378,7 @@ module openflow {
             });
         }
         private _Send(message: Message, cb: QueuedMessageCallback, status: QueuedMessageStatusCallback): void {
-            var messages: string[] = this.chunkString(message.data, 500);
+            var messages: string[] = this.chunkString(message.data, this.websocket_package_size);
             if (messages === null || messages === undefined || messages.length === 0) {
                 var singlemessage: SocketMessage = SocketMessage.frommessage(message, "", 1, 0);
                 if (message.replyto === null || message.replyto === undefined) {

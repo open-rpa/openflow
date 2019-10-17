@@ -1069,6 +1069,34 @@ module openflow {
             return blob;
         }
         async Upload() {
+            // const e: any = document.querySelector('input[type="file"]');
+            var e: any = document.getElementById('fileupload')
+            const fd = new FormData();
+            for (var i = 0; i < e.files.length; i++) {
+                var file = e.files[i];
+                fd.append(e.name, file, file.name);
+            };
+            const xhr = new XMLHttpRequest();
+            // xhr.onreadystatechange = () => {
+            //     if (xhr.readyState == XMLHttpRequest.DONE) {
+            //         // console.log(xhr.responseText);
+            //     }
+            // }
+            xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    console.log("upload complete");
+                    // we done!
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    this.loadData();
+
+                }
+            };
+            console.log("open");
+            xhr.open('POST', '/upload', true);
+            console.log("send");
+            xhr.send(fd);
+        }
+        async Upload_usingapi() {
             var filename = (this.$scope as any).filename;
             var type = (this.$scope as any).type;
             console.log("filename: " + filename + " type: " + type);
