@@ -1271,7 +1271,10 @@ Download a file from API/GridFS
     </div>
     </script>
 <script type="text/x-red" data-help-name="api upload file">
-    Upload a file to API/GridFS
+    Upload a file to API/GridFS<br>
+    msg.filename<br>
+    msg.mimeType<br>
+    to save data with the file set msg.metadata to and javascript object<br>
     </script>
 <script type="text/javascript">
     RED.nodes.registerType('api upload file', {

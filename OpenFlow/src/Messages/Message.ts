@@ -545,7 +545,7 @@ export class Message {
                 if (msg.impersonate !== undefined && msg.impersonate !== null && msg.impersonate !== "") {
                     var items = await Config.db.query({ _id: msg.impersonate }, null, 1, 0, null, "users", msg.jwt);
                     if (items.length == 0) {
-                        Audit.ImpersonateFailed(tuser);
+                        Audit.ImpersonateFailed(tuser, msg.impersonate);
                         throw new Error("Permission denied, impersonating " + msg.impersonate);
                     }
                     var tuserimpostor = tuser;

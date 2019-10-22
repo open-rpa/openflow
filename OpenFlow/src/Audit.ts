@@ -26,13 +26,14 @@ export class Audit {
         log.impostorusername = impostor.username;
         Config.db.InsertOne(log, "audit", 0, false, TokenUser.rootToken());
     }
-    public static ImpersonateFailed(user: TokenUser) {
+    public static ImpersonateFailed(user: TokenUser, impostor_id: string) {
         var log: Singin = new Singin();
         log.success = false;
         log.type = "impersonate";
         log.userid = user._id;
         log.name = user.name;
         log.username = user.username;
+        log.impostoruserid = impostor_id;
         Config.db.InsertOne(log, "audit", 0, false, TokenUser.rootToken());
     }
     public static LoginFailed(username: string, type: string, provider: string, remoteip: string) {
