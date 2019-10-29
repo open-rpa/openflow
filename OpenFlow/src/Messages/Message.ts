@@ -1069,7 +1069,10 @@ export class Message {
             msg.file = null;
             if (msg.metadata == null) { msg.metadata = new Base(); }
             msg.metadata = Base.assign(msg.metadata);
-            if (Util.IsNullUndefinded(msg.metadata._acl)) { msg.metadata._acl = []; }
+            if (Util.IsNullUndefinded(msg.metadata._acl)) {
+                msg.metadata._acl = [];
+                msg.metadata.addRight(WellknownIds.filestore_users, "filestore users", [Rights.read]);
+            }
             var user: TokenUser = Crypt.verityToken(msg.jwt);
             msg.metadata._createdby = user.name;
             msg.metadata._createdbyid = user._id;
@@ -1088,10 +1091,10 @@ export class Message {
             if ((hasUser === null || hasUser === undefined)) {
                 msg.metadata.addRight(WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
             }
-            hasUser = msg.metadata._acl.find(e => e._id === WellknownIds.filestore_users);
-            if ((hasUser === null || hasUser === undefined)) {
-                msg.metadata.addRight(WellknownIds.filestore_users, "filestore users", [Rights.read]);
-            }
+            // hasUser = msg.metadata._acl.find(e => e._id === WellknownIds.filestore_users);
+            // if ((hasUser === null || hasUser === undefined)) {
+            //     msg.metadata.addRight(WellknownIds.filestore_users, "filestore users", [Rights.read]);
+            // }
             if (!Config.db.hasAuthorization(user, msg.metadata, Rights.create)) { throw new Error("Access denied"); }
             msg.id = await this._SaveFile(readable, msg.filename, msg.mimeType, msg.metadata);
         } catch (error) {
