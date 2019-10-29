@@ -1095,6 +1095,7 @@ export class Message {
             // if ((hasUser === null || hasUser === undefined)) {
             //     msg.metadata.addRight(WellknownIds.filestore_users, "filestore users", [Rights.read]);
             // }
+            msg.metadata = Config.db.ensureResource(msg.metadata);
             if (!Config.db.hasAuthorization(user, msg.metadata, Rights.create)) { throw new Error("Access denied"); }
             msg.id = await this._SaveFile(readable, msg.filename, msg.mimeType, msg.metadata);
         } catch (error) {
@@ -1222,6 +1223,7 @@ export class Message {
             msg.metadata.addRight(WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
             if (!Config.db.hasAuthorization(user, msg.metadata, Rights.update)) { throw new Error("Access denied"); }
 
+            msg.metadata = Config.db.ensureResource(msg.metadata);
             var fsc = Config.db.db.collection("fs.files");
             DatabaseConnection.traversejsonencode(msg.metadata);
             var res = await fsc.updateOne(q, { $set: { metadata: msg.metadata } });
