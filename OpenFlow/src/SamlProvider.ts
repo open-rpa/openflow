@@ -6,6 +6,7 @@ import * as samlp from "samlp";
 import { Config } from "./Config";
 import { TokenUser } from "./TokenUser";
 import { Audit } from "./Audit";
+import { LoginProvider } from "./LoginProvider";
 
 export class SamlProvider {
     private static _logger: winston.Logger;
@@ -62,7 +63,7 @@ export class SamlProvider {
         var cert: string = Buffer.from(Config.signing_crt, "base64").toString("ascii");
         var key: string = Buffer.from(Config.singing_key, "base64").toString("ascii");
 
-        var samlpoptions: any  = {
+        var samlpoptions: any = {
             issuer: Config.saml_issuer,
             cert: cert,
             key: key,
@@ -83,7 +84,7 @@ export class SamlProvider {
                 return req.user;
             },
             profileMapper: SamlProvider.profileMapper,
-            lifetimeInSeconds: (3600*24)
+            lifetimeInSeconds: (3600 * 24)
         };
 
         app.get("/issue/", (req: any, res: any, next: any): void => {
@@ -130,14 +131,28 @@ export class SamlProvider {
         // }));
 
         // TODO: FIX !!!!
-        app.get('/logout', (req: any, res: any, next: any): void => {
+        app.get('/logout', async (req: any, res: any, next: any) => {
             var referer: string = req.headers.referer;
             req.logout();
             if (referer !== null && referer !== undefined && referer !== "") {
+                // var providers = await LoginProvider.getProviders();
                 res.redirect(referer);
+                // var html = "<html><head></head><body>";
+                // providers.forEach(provider => {
+                //     if (provider.provider === "saml") {
+                //         html += "<iframe src='https://www.w3schools.com'></iframe>"
+                //     }
+                // });
+
+
+
+                // // https://sso.slagelse.dk/adfs/ls/?wa=wsignout1.0
+
+                // res.send(html)
             } else {
                 res.redirect("/");
             }
+
             // samlp.logout({
             //     issuer: Config.saml_issuer,
             //     protocolBinding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',

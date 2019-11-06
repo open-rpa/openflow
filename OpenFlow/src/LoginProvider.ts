@@ -67,7 +67,7 @@ export class samlauthstrategyoptions {
 }
 export class LoginProvider {
     private static _logger: winston.Logger;
-    private static _providers: any = {};
+    public static _providers: any = {};
     private static login_providers: Provider[] = [];
 
     public static redirect(res: any, originalUrl: string) {
@@ -153,6 +153,20 @@ export class LoginProvider {
         });
 
         app.get("/Signout", (req: any, res: any, next: any): void => {
+            var providerid: string = req.cookies.provider;
+            var provider: passport.Strategy;
+            if (providerid != null && providerid != undefined && providerid != "") {
+                provider = LoginProvider._providers[providerid];
+            }
+            if (provider != null && provider != undefined) {
+                (provider as any).logout(req, function (err, requestUrl) {
+                    // LOCAL logout
+                    req.logout();
+                    // redirect to the IdP with the encrypted SAML logout request
+                    res.redirect(requestUrl);
+                });
+                return;
+            }
             req.logout();
             var originalUrl: any = req.cookies.originalUrl;
             if (!Util.IsNullEmpty(originalUrl)) {
@@ -510,6 +524,7 @@ export class LoginProvider {
             passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),
             function (req: any, res: any): void {
                 var originalUrl: any = req.cookies.originalUrl;
+                res.cookie("provider", key, { maxAge: 900000, httpOnly: true });
                 if (!Util.IsNullEmpty(originalUrl)) {
                     res.cookie("originalUrl", "", { expires: new Date(0) });
                     LoginProvider.redirect(res, originalUrl);
