@@ -146,7 +146,11 @@ export class SamlProvider {
 
 
 
-                // // https://sso.slagelse.dk/adfs/ls/?wa=wsignout1.0
+                // https://sso.slagelse.dk/adfs/ls/?wa=wsignout1.0
+                // https://sso.slagelse.dk/adfs/ls/?wa=wsignout1.0&wreply=https://slagelseapi.access-iot.com/issue
+
+                // https://social.msdn.microsoft.com/Forums/vstudio/en-US/ac41c0c5-83ef-4394-9111-fa6d07215f5d/adfs-20-does-not-redirect-back-to-reply-url-on-signout?forum=Geneva
+                // https://www.sevecek.com/EnglishPages/Lists/Posts/Post.aspx?ID=93
 
                 // res.send(html)
             } else {

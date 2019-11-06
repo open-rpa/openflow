@@ -153,20 +153,20 @@ export class LoginProvider {
         });
 
         app.get("/Signout", (req: any, res: any, next: any): void => {
-            var providerid: string = req.cookies.provider;
-            var provider: passport.Strategy;
-            if (providerid != null && providerid != undefined && providerid != "") {
-                provider = LoginProvider._providers[providerid];
-            }
-            if (provider != null && provider != undefined) {
-                (provider as any).logout(req, function (err, requestUrl) {
-                    // LOCAL logout
-                    req.logout();
-                    // redirect to the IdP with the encrypted SAML logout request
-                    res.redirect(requestUrl);
-                });
-                return;
-            }
+            // var providerid: string = req.cookies.provider;
+            // var provider: passport.Strategy;
+            // if (providerid != null && providerid != undefined && providerid != "") {
+            //     provider = LoginProvider._providers[providerid];
+            // }
+            // if (provider != null && provider != undefined) {
+            //     (provider as any).logout(req, function (err, requestUrl) {
+            //         // LOCAL logout
+            //         req.logout();
+            //         // redirect to the IdP with the encrypted SAML logout request
+            //         res.redirect(requestUrl);
+            //     });
+            //     return;
+            // }
             req.logout();
             var originalUrl: any = req.cookies.originalUrl;
             if (!Util.IsNullEmpty(originalUrl)) {
