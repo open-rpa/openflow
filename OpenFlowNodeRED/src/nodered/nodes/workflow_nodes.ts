@@ -66,14 +66,22 @@ export class workflow_in_node {
     nestedassign(target, source) {
         if (source === null || source === undefined) return null;
         var keys = Object.keys(source);
+        var sourcekey: string = "";
         for (var i = 0; i < keys.length; i++) {
-            var sourcekey = keys[i];
-            if (Object.keys(source).find(targetkey => targetkey === sourcekey) !== undefined &&
-                Object.keys(source).find(targetkey => targetkey === sourcekey) !== null
-                && typeof source === "object" && typeof source[sourcekey] === "object") {
-                target[sourcekey] = this.nestedassign(target[sourcekey], source[sourcekey]);
-            } else {
-                target[sourcekey] = source[sourcekey];
+            try {
+                sourcekey = keys[i];
+                if (Object.keys(source).find(targetkey => targetkey === sourcekey) !== undefined &&
+                    Object.keys(source).find(targetkey => targetkey === sourcekey) !== null
+                    && typeof source === "object" && typeof source[sourcekey] === "object") {
+                    target[sourcekey] = this.nestedassign(target[sourcekey], source[sourcekey]);
+                } else {
+                    target[sourcekey] = source[sourcekey];
+                }
+            } catch (error) {
+                if (target != null && target != undefined) Logger.instanse.info(JSON.stringify(target));
+                if (source != null && source != undefined) Logger.instanse.info(JSON.stringify(source));
+                Logger.instanse.info(sourcekey);
+                Logger.instanse.error(error);
             }
         }
         // Object.keys(source).forEach(sourcekey => {
