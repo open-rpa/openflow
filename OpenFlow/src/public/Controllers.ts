@@ -852,7 +852,7 @@ module openflow {
             });
         }
         async loadUsers(): Promise<void> {
-            this.allusers = await this.api.Query("users", { $or: [{ _type: "user" }, { _type: "role" }] }, null, { _type: -1, name: 1 });
+            this.allusers = await this.api.Query("users", { $or: [{ _type: "user" }, { _type: "role" }] }, null, { _type: -1, name: 1 }, 500);
             if (this.model.members === undefined) { this.model.members = []; }
             var ids: string[] = [];
             for (var i: number = 0; i < this.model.members.length; i++) {

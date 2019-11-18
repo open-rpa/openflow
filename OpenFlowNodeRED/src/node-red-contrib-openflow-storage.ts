@@ -49,9 +49,14 @@ export class noderedcontribopenflowstorage {
             this._logger.debug(packageFile + " exists.");
         } catch (err) {
             var defaultPackage: any = {
-                "name": "node-red-project",
-                "description": "A Node-RED Project",
-                "version": "0.0.1"
+                "name": "openflow-project",
+                "license": "MPL-2.0",
+                "description": "A OpenFlow Node-RED Project",
+                "version": "0.0.1",
+                "repository": {
+                    "type": "git",
+                    "url": "git+https://github.com/open-rpa/openflow.git"
+                },
             };
             this._logger.debug("creating new packageFile " + packageFile);
             fs.writeFileSync(packageFile, JSON.stringify(defaultPackage, null, 4));
