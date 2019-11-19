@@ -26,6 +26,7 @@
     "morgan": "^1.9.1",
     "node-red": "^1.0.2",
     "node-red-contrib-auth-saml": "^1.0.8",
+    "node-red-node-email": "^1.7.2",
     "passport-google-oauth20": "^2.0.0",
     "passport-openid-connect": "^0.1.0",
     "passport-saml": "^1.1.0",
