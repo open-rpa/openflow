@@ -11,6 +11,20 @@ module openflow {
         .directive("textarea", textarea.factory())
         .directive("fileread", fileread.factory())
         .service("WebSocketClient", WebSocketClient)
+
+
+        .directive('autoComplete', function ($timeout) {
+            return function (scope, iElement, iAttrs) {
+                (iElement as any).autocomplete({
+                    source: scope[iAttrs.uiItems],
+                    select: function () {
+                        $timeout(function () {
+                            iElement.trigger('input');
+                        }, 0);
+                    }
+                })
+            };
+        })
         .service("api", api);
     // .directive("todoBlur", todoBlur)
     // .directive("todoFocus", todoFocus)

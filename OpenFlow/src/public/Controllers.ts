@@ -356,6 +356,9 @@ module openflow {
 
     }
     export class MainCtrl extends entitiesCtrl<openflow.Base> {
+        searchFilteredList: string[] = [];
+        countryList: string[] = [];
+        searchtext: string = "";
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -368,9 +371,86 @@ module openflow {
             console.debug("MainCtrl");
             this.collection = "workflow_instances"
             this.basequery = { state: { $ne: "completed" }, form: { $exists: true } };
+
+            ($scope as any).selected = undefined;
+            ($scope as any).states = ['Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois'];
+            ($scope as any).names = ["john", "bill", "charlie", "robert", "alban", "oscar", "marie", "celine", "brad", "drew", "rebecca", "michel", "francis", "jean", "paul", "pierre", "nicolas", "alfred", "gerard", "louis", "albert", "edouard", "benoit", "guillaume", "nicolas", "joseph"];
+            this.countryList = ["Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Anguilla", "Antigua &amp; Barbuda", "Argentina", "Armenia", "Aruba", "Australia", "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bermuda", "Bhutan", "Bolivia", "Bosnia &amp; Herzegovina", "Botswana", "Brazil", "British Virgin Islands", "Brunei", "Bulgaria", "Burkina Faso", "Burundi", "Cambodia", "Cameroon", "Cape Verde", "Cayman Islands", "Chad", "Chile", "China", "Colombia", "Congo", "Cook Islands", "Costa Rica", "Cote D Ivoire", "Croatia", "Cruise Ship", "Cuba", "Cyprus", "Czech Republic", "Denmark", "Djibouti", "Dominica", "Dominican Republic", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Estonia", "Ethiopia", "Falkland Islands", "Faroe Islands", "Fiji", "Finland", "France", "French Polynesia", "French West Indies", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Gibraltar", "Greece", "Greenland", "Grenada", "Guam", "Guatemala", "Guernsey", "Guinea", "Guinea Bissau", "Guyana", "Haiti", "Honduras", "Hong Kong", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Isle of Man", "Israel", "Italy", "Jamaica", "Japan", "Jersey", "Jordan", "Kazakhstan", "Kenya", "Kuwait", "Kyrgyz Republic", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg", "Macau", "Macedonia", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Mauritania", "Mauritius", "Mexico", "Moldova", "Monaco", "Mongolia", "Montenegro", "Montserrat", "Morocco", "Mozambique", "Namibia", "Nepal", "Netherlands", "Netherlands Antilles", "New Caledonia", "New Zealand", "Nicaragua", "Niger", "Nigeria", "Norway", "Oman", "Pakistan", "Palestine", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland", "Portugal", "Puerto Rico", "Qatar", "Reunion", "Romania", "Russia", "Rwanda", "Saint Pierre &amp; Miquelon", "Samoa", "San Marino", "Satellite", "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "South Africa", "South Korea", "Spain", "Sri Lanka", "St Kitts &amp; Nevis", "St Lucia", "St Vincent", "St. Lucia", "Sudan", "Suriname", "Swaziland", "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Timor L'Este", "Togo", "Tonga", "Trinidad &amp; Tobago", "Tunisia", "Turkey", "Turkmenistan", "Turks &amp; Caicos", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "Uruguay", "Uzbekistan", "Venezuela", "Vietnam", "Virgin Islands (US)", "Yemen", "Zambia", "Zimbabwe"];
             WebSocketClient.onSignedin((_user: TokenUser) => {
                 this.loadData();
             });
+
+
+            // $scope.$watch('searchtext', (newValue) => {
+            //     console.log("test");
+            //     this.complete(newValue);
+            // });
+        }
+
+        localSearch() {
+            return [];
+        }
+        e: any = null;
+        setkey(e) {
+            this.e = e;
+            this.handlekeys();
+        }
+        handlekeys() {
+            if (this.searchFilteredList.length > 0) {
+                var lowerCaseNames = this.searchFilteredList.map(function (value) {
+                    return value.toLowerCase();
+                });
+                var idx: number = lowerCaseNames.indexOf(this.searchtext.toLowerCase());
+                if (this.e.keyCode == 38) { // up
+                    if (idx <= 0) {
+                        idx = 0;
+                    } else { idx--; }
+                    this.searchtext = this.searchFilteredList[idx];
+                    return;
+                }
+                else if (this.e.keyCode == 40) { // down
+                    if (idx >= this.searchFilteredList.length) {
+                        idx = this.searchFilteredList.length - 1;
+                    } else { idx++; }
+                    this.searchtext = this.searchFilteredList[idx];
+                    return;
+                }
+                else if (this.e.keyCode == 13) { // enter
+                    if (idx >= 0) {
+                        this.searchtext = this.searchFilteredList[idx];
+                        this.searchFilteredList = [];
+                        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    }
+                }
+                else {
+                    // console.log(this.e.keyCode);
+                }
+            }
+        }
+        handlefilter(e) {
+            this.e = e;
+            // console.log(e.keyCode);
+
+            var output = [];
+            angular.forEach(this.countryList, (country) => {
+                if (country.toLowerCase().indexOf(this.searchtext.toLowerCase()) >= 0) {
+                    output.push(country);
+                }
+            });
+            this.searchFilteredList = output;
+            // console.log(output);
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        fillTextbox(searchtext) {
+            var lowerCaseNames = this.searchFilteredList.map(function (value) {
+                return value.toLowerCase();
+            });
+            var idx: number = lowerCaseNames.indexOf(searchtext.toLowerCase());
+            if (idx >= 0) {
+                this.searchtext = this.searchFilteredList[idx];
+                this.searchFilteredList = [];
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            }
         }
     }
     declare var QRScanner: any;
@@ -747,6 +827,7 @@ module openflow {
     }
     export class UserCtrl extends entityCtrl<openflow.TokenUser> {
         public newid: string;
+        public memberof: openflow.Role[];
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -758,6 +839,7 @@ module openflow {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             console.debug("UserCtrl");
             this.collection = "users";
+            this.postloadData = this.processdata;
             WebSocketClient.onSignedin((user: TokenUser) => {
                 if (this.id !== null && this.id !== undefined) {
                     this.loadData();
@@ -773,6 +855,21 @@ module openflow {
 
             });
         }
+        async processdata() {
+            if (this.model != null) {
+                console.log()
+                this.memberof = await this.api.Query("users",
+                    {
+                        $and: [
+                            { _type: "role" },
+                            { members: { $elemMatch: { _id: this.model._id } } }
+                        ]
+                    }, null, { _type: -1, name: 1 }, 5);
+            } else {
+                this.memberof = [];
+            }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
         deleteid(id) {
             if (this.model.federationids === null || this.model.federationids === undefined) {
                 this.model.federationids = [];
@@ -785,6 +882,9 @@ module openflow {
             }
             this.model.federationids.push(this.newid);
         }
+        RemoveMember(model: openflow.Role) {
+            this.memberof = this.memberof.filter(x => x._id != model._id);
+        }
         async submit(): Promise<void> {
             if (this.model._id) {
                 await this.api.Update(this.collection, this.model);
@@ -792,6 +892,26 @@ module openflow {
                 await this.api.Insert(this.collection, this.model);
             }
             this.$location.path("/Users");
+
+            var currentmemberof = await this.api.Query("users",
+                {
+                    $and: [
+                        { _type: "role" },
+                        { members: { $elemMatch: { _id: this.model._id } } }
+                    ]
+                }, null, { _type: -1, name: 1 }, 5);
+            for (var i = 0; i < currentmemberof.length; i++) {
+                var memberof = currentmemberof[i];
+                var exists = this.memberof.filter(x => x._id == memberof._id);
+                if (exists.length == 0) {
+                    console.log("Updating members of " + memberof.name + " " + memberof._id);
+                    console.log("members: " + memberof.members.length);
+                    memberof.members = memberof.members.filter(x => x._id != this.model._id);
+                    console.log("members: " + memberof.members.length);
+                    await this.api.Update("users", memberof);
+                }
+            }
+
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
     }
@@ -827,9 +947,11 @@ module openflow {
         }
     }
     export class RoleCtrl extends entityCtrl<openflow.Role> {
-        public addthis: any = "";
-        public users: TokenUser[] = null;
-        public allusers: TokenUser[] = null;
+        searchFilteredList: openflow.Role[] = [];
+        searchSelectedItem: openflow.Role = null;
+        searchtext: string = "";
+        e: any = null;
+
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -844,23 +966,10 @@ module openflow {
             WebSocketClient.onSignedin(async (user: TokenUser) => {
                 if (this.id !== null && this.id !== undefined) {
                     await this.loadData();
-                    await this.loadUsers();
                 } else {
                     this.model = new openflow.Role("");
-                    await this.loadUsers();
                 }
             });
-        }
-        async loadUsers(): Promise<void> {
-            this.allusers = await this.api.Query("users", { $or: [{ _type: "user" }, { _type: "role" }] }, null, { _type: -1, name: 1 }, 500);
-            if (this.model.members === undefined) { this.model.members = []; }
-            var ids: string[] = [];
-            for (var i: number = 0; i < this.model.members.length; i++) {
-                ids.push(this.model.members[i]._id);
-            }
-            this.users = this.allusers.filter(x => ids.indexOf(x._id) == -1);
-            this.addthis = this.users[0]._id;
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async submit(): Promise<void> {
             if (this.model._id) {
@@ -878,26 +987,97 @@ module openflow {
                     this.model.members.splice(i, 1);
                 }
             }
-            var ids: string[] = [];
-            for (var i: number = 0; i < this.model.members.length; i++) {
-                ids.push(this.model.members[i]._id);
-            }
-            this.users = this.allusers.filter(x => ids.indexOf(x._id) == -1);
-            this.addthis = this.users[0]._id;
         }
         AddMember(model: any) {
             if (this.model.members === undefined) { this.model.members = []; }
             var user: any = null;
-            this.users.forEach(u => {
-                if (u._id === this.addthis) { user = u; }
-            });
+            user = this.searchSelectedItem;
             this.model.members.push({ name: user.name, _id: user._id });
-            var ids: string[] = [];
-            for (var i: number = 0; i < this.model.members.length; i++) {
-                ids.push(this.model.members[i]._id);
+            this.searchSelectedItem = null;
+            this.searchtext = "";
+        }
+
+
+        restrictInput(e) {
+            if (e.keyCode == 13) {
+                e.preventDefault();
+                return false;
             }
-            this.users = this.allusers.filter(x => ids.indexOf(x._id) == -1);
-            this.addthis = this.users[0]._id;
+        }
+        setkey(e) {
+            this.e = e;
+            this.handlekeys();
+        }
+        handlekeys() {
+            if (this.searchFilteredList.length > 0) {
+                var idx: number = -1;
+                for (var i = 0; i < this.searchFilteredList.length; i++) {
+                    if (this.searchSelectedItem != null) {
+                        if (this.searchFilteredList[i]._id == this.searchSelectedItem._id) {
+                            idx = i;
+                        }
+                    }
+                }
+                if (this.e.keyCode == 38) { // up
+                    if (idx <= 0) {
+                        idx = 0;
+                    } else { idx--; }
+                    console.log("idx: " + idx);
+                    // this.searchtext = this.searchFilteredList[idx].name;
+                    this.searchSelectedItem = this.searchFilteredList[idx];
+                    return;
+                }
+                else if (this.e.keyCode == 40) { // down
+                    if (idx >= this.searchFilteredList.length) {
+                        idx = this.searchFilteredList.length - 1;
+                    } else { idx++; }
+                    console.log("idx: " + idx);
+                    // this.searchtext = this.searchFilteredList[idx].name;
+                    this.searchSelectedItem = this.searchFilteredList[idx];
+                    return;
+                }
+                else if (this.e.keyCode == 13) { // enter
+                    if (idx >= 0) {
+                        this.searchtext = this.searchFilteredList[idx].name;
+                        this.searchSelectedItem = this.searchFilteredList[idx];
+                        this.searchFilteredList = [];
+                        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    }
+                    return;
+                }
+                else {
+                    // console.log(this.e.keyCode);
+                }
+            } else {
+                if (this.e.keyCode == 13 && this.searchSelectedItem != null) {
+                    this.AddMember(this.searchSelectedItem);
+                }
+            }
+        }
+        async handlefilter(e) {
+            this.e = e;
+            // console.log(e.keyCode);
+            var ids: string[] = this.model.members.map(item => item._id);
+            this.searchFilteredList = await this.api.Query("users",
+                {
+                    $and: [
+                        { $or: [{ _type: "user" }, { _type: "role" }] },
+                        { name: new RegExp([this.searchtext].join(""), "i") },
+                        { _id: { $nin: ids } }
+                    ]
+                }
+                , null, { _type: -1, name: 1 }, 5);
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        fillTextbox(searchtext) {
+            this.searchFilteredList.forEach((item: any) => {
+                if (item.name.toLowerCase() == searchtext.toLowerCase()) {
+                    this.searchtext = item.name;
+                    this.searchSelectedItem = item;
+                    this.searchFilteredList = [];
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                }
+            });
         }
     }
 
@@ -1568,14 +1748,14 @@ module openflow {
 
 
     export class EntityCtrl extends entityCtrl<openflow.Base> {
-        public addthis: any = "";
-        public users: any[] = null;
+        searchFilteredList: openflow.TokenUser[] = [];
+        searchSelectedItem: openflow.TokenUser = null;
+        searchtext: string = "";
+        e: any = null;
+
         public newkey: string = "";
         public showjson: boolean = false;
         public jsonmodel: string = "";
-        public newuser: openflow.TokenUser;
-        public usergroups: openflow.TokenUser[] = [];
-        public allusergroups: openflow.TokenUser[] = [];
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -1590,7 +1770,6 @@ module openflow {
             this.postloadData = this.processdata;
             WebSocketClient.onSignedin(async (user: TokenUser) => {
                 // this.usergroups = await this.api.Query("users", {});
-                this.allusergroups = await this.api.Query("users", { $or: [{ _type: "user" }, { _type: "role" }] }, null, { _type: -1, name: 1 });
                 if (this.id !== null && this.id !== undefined) {
                     await this.loadData();
                 } else {
@@ -1617,8 +1796,6 @@ module openflow {
                     ids.push(this.model._acl[i]._id);
                 }
             }
-            this.usergroups = this.allusergroups.filter(x => ids.indexOf(x._id) == -1);
-            this.newuser = this.usergroups[0];
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         togglejson() {
@@ -1633,12 +1810,6 @@ module openflow {
             if (this.showjson) {
                 this.model = JSON.parse(this.jsonmodel);
             }
-            // if (this.collection == "files") {
-            //     await this.api.UpdateFile(this.model._id, (this.model as any).metadata);
-            //     this.$location.path("/Files");
-            //     if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            //     return;
-            // }
             if (this.model._id) {
                 await this.api.Update(this.collection, this.model);
             } else {
@@ -1674,12 +1845,6 @@ module openflow {
                         (this.model as any).metadata._acl.splice(i, 1);
                     }
                 }
-                var ids: string[] = [];
-                for (var i: number = 0; i < (this.model as any).metadata._acl.length; i++) {
-                    ids.push((this.model as any).metadata._acl[i]._id);
-                }
-                this.usergroups = this.allusergroups.filter(x => ids.indexOf(x._id) == -1);
-                this.newuser = this.usergroups[0];
             } else {
                 for (var i = 0; i < this.model._acl.length; i++) {
                     if (this.model._acl[i]._id == _id) {
@@ -1687,39 +1852,23 @@ module openflow {
                         //this.model._acl = this.model._acl.splice(index, 1);
                     }
                 }
-                var ids: string[] = [];
-                for (var i: number = 0; i < this.model._acl.length; i++) {
-                    ids.push(this.model._acl[i]._id);
-                }
-                this.usergroups = this.allusergroups.filter(x => ids.indexOf(x._id) == -1);
-                this.newuser = this.usergroups[0];
             }
 
         }
         adduser() {
             var ace = new Ace();
             ace.deny = false;
-            ace._id = this.newuser._id;
-            ace.name = this.newuser.name;
+            ace._id = this.searchSelectedItem._id;
+            ace.name = this.searchSelectedItem.name;
             ace.rights = "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=";
 
             if (this.collection == "files") {
                 (this.model as any).metadata._acl.push(ace);
-                var ids: string[] = [];
-                for (var i: number = 0; i < (this.model as any).metadata._acl.length; i++) {
-                    ids.push((this.model as any).metadata._acl[i]._id);
-                }
-                this.usergroups = this.allusergroups.filter(x => ids.indexOf(x._id) == -1);
-                this.newuser = this.usergroups[0];
             } else {
                 this.model._acl.push(ace);
-                var ids: string[] = [];
-                for (var i: number = 0; i < this.model._acl.length; i++) {
-                    ids.push(this.model._acl[i]._id);
-                }
-                this.usergroups = this.allusergroups.filter(x => ids.indexOf(x._id) == -1);
-                this.newuser = this.usergroups[0];
             }
+            this.searchSelectedItem = null;
+            this.searchtext = "";
         }
 
         isBitSet(base64: string, bit: number): boolean {
@@ -1786,6 +1935,90 @@ module openflow {
             return window.btoa(binary);
         }
 
+
+
+
+        restrictInput(e) {
+            if (e.keyCode == 13) {
+                e.preventDefault();
+                return false;
+            }
+        }
+        setkey(e) {
+            this.e = e;
+            this.handlekeys();
+        }
+        handlekeys() {
+            if (this.searchFilteredList.length > 0) {
+                var idx: number = -1;
+                for (var i = 0; i < this.searchFilteredList.length; i++) {
+                    if (this.searchSelectedItem != null) {
+                        if (this.searchFilteredList[i]._id == this.searchSelectedItem._id) {
+                            idx = i;
+                        }
+                    }
+                }
+                if (this.e.keyCode == 38) { // up
+                    if (idx <= 0) {
+                        idx = 0;
+                    } else { idx--; }
+                    console.log("idx: " + idx);
+                    // this.searchtext = this.searchFilteredList[idx].name;
+                    this.searchSelectedItem = this.searchFilteredList[idx];
+                    return;
+                }
+                else if (this.e.keyCode == 40) { // down
+                    if (idx >= this.searchFilteredList.length) {
+                        idx = this.searchFilteredList.length - 1;
+                    } else { idx++; }
+                    console.log("idx: " + idx);
+                    // this.searchtext = this.searchFilteredList[idx].name;
+                    this.searchSelectedItem = this.searchFilteredList[idx];
+                    return;
+                }
+                else if (this.e.keyCode == 13) { // enter
+                    if (idx >= 0) {
+                        this.searchtext = this.searchFilteredList[idx].name;
+                        this.searchSelectedItem = this.searchFilteredList[idx];
+                        this.searchFilteredList = [];
+                        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    }
+                    return;
+                }
+                else {
+                    // console.log(this.e.keyCode);
+                }
+            } else {
+                if (this.e.keyCode == 13 && this.searchSelectedItem != null) {
+                    this.adduser();
+                }
+            }
+        }
+        async handlefilter(e) {
+            this.e = e;
+            // console.log(e.keyCode);
+            var ids: string[] = this.model._acl.map(item => item._id);
+            this.searchFilteredList = await this.api.Query("users",
+                {
+                    $and: [
+                        { $or: [{ _type: "user" }, { _type: "role" }] },
+                        { name: new RegExp([this.searchtext].join(""), "i") },
+                        { _id: { $nin: ids } }
+                    ]
+                }
+                , null, { _type: -1, name: 1 }, 5);
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        fillTextbox(searchtext) {
+            this.searchFilteredList.forEach((item: any) => {
+                if (item.name.toLowerCase() == searchtext.toLowerCase()) {
+                    this.searchtext = item.name;
+                    this.searchSelectedItem = item;
+                    this.searchFilteredList = [];
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                }
+            });
+        }
 
     }
 
