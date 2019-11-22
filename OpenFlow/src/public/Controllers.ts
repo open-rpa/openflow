@@ -1492,7 +1492,11 @@ module openflow {
                     {
                         noAlerts: false,
                         breadcrumbSettings: { clickable: false },
-                        buttonSettings: { showCancel: false }
+                        buttonSettings: { showCancel: false },
+                        builder: {
+                            data: false,
+                            premium: false
+                        }
                     });
                 this.Formiobuilder.on('change', form => {
                     this.model.schema = form;
