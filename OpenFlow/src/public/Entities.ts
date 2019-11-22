@@ -207,6 +207,9 @@ module openflow {
             this._type = "form";
             this.dataType = "json";
         }
+        public fbeditor: boolean;
+        public wizard: boolean;
+        public schema: any;
         public formData: any;
         public dataType: string;
     }
@@ -232,6 +235,7 @@ module openflow {
         public form: string;
         public workflow: string;
         public userData: string;
+        public submission: any;
 
     }
 

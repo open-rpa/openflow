@@ -1,5 +1,11 @@
 <div>{{ ctrl.message}} </div>
+<style>
+    .alert-alert-success {
+        display: none !important;
+    }
+</style>
 <form id="workflowform" ng-submit="ctrl.Save()">
-    <div class="render-wrap">
+    <div class="render-wrap" ng-show="ctrl.model.fbeditor==true">
     </div>
+    <div id='formio' ng-show="ctrl.model.fbeditor!=true"></div>
 </form>

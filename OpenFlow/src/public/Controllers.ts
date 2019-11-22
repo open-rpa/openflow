@@ -1,6 +1,8 @@
 module openflow {
     // "use strict";
 
+
+
     function treatAsUTC(date): number {
         var result = new Date(date);
         result.setMinutes(result.getMinutes() - result.getTimezoneOffset());
@@ -12,6 +14,7 @@ module openflow {
         return (treatAsUTC(endDate) - treatAsUTC(startDate)) / millisecondsPerDay;
     }
     declare var jsondiffpatch: any;
+    declare var Formio: any;
 
     export class RPAWorkflowCtrl extends entityCtrl<openflow.RPAWorkflow> {
         public arguments: any;
@@ -352,9 +355,8 @@ module openflow {
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
-
-
     }
+
     export class MainCtrl extends entitiesCtrl<openflow.Base> {
         searchFilteredList: string[] = [];
         countryList: string[] = [];
@@ -380,6 +382,8 @@ module openflow {
                 this.loadData();
             });
 
+
+            // Formio.createForm(document.getElementById('formio'), 'https://examples.form.io/example');
 
             // $scope.$watch('searchtext', (newValue) => {
             //     console.log("test");
@@ -1412,6 +1416,7 @@ module openflow {
         public message: string = "";
         public charts: chartset[] = [];
         public formBuilder: any;
+        public Formiobuilder: any;
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -1427,19 +1432,25 @@ module openflow {
             this.id = $routeParams.id;
             this.basequery = { _id: this.id };
             this.postloadData = this.renderform;
-            WebSocketClient.onSignedin(async (user: TokenUser) => {
-                if (this.id !== null && this.id !== undefined && this.id !== "") {
-                    this.basequery = { _id: this.id };
-                    this.loadData();
-                } else {
-                    this.model = new openflow.Form();
-                    this.renderform();
-                }
+            this.
+                WebSocketClient.onSignedin(async (user: TokenUser) => {
+                    if (this.id !== null && this.id !== undefined && this.id !== "") {
+                        this.basequery = { _id: this.id };
+                        this.loadData();
+                    } else {
+                        this.model = new openflow.Form();
+                        this.renderform();
+                    }
 
-            });
+                });
         }
         async Save() {
-            this.model.formData = this.formBuilder.actions.getData(this.model.dataType);
+            console.log("wizard: " + this.model.wizard);
+            if (this.model.fbeditor == true) {
+                this.model.formData = this.formBuilder.actions.getData(this.model.dataType);
+            } else {
+                // allready there
+            }
             if (this.model._id) {
                 this.model = await this.api.Update(this.collection, this.model);
             } else {
@@ -1449,24 +1460,56 @@ module openflow {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async renderform() {
-            // https://www.npmjs.com/package/angular2-json-schema-form
-            // http://www.alpacajs.org/demos/form-builder/form-builder.html
-            // https://github.com/kevinchappell/formBuilder - https://formbuilder.online/ - https://kevinchappell.github.io/formBuilder/
-            var ele: any;
-            var roles: any = {};
-            this.WebSocketClient.user.roles.forEach(role => {
-                roles[role._id] = role.name;
-            });
+            if (this.model.fbeditor == true) {
+                // https://www.npmjs.com/package/angular2-json-schema-form
+                // http://www.alpacajs.org/demos/form-builder/form-builder.html
+                // https://github.com/kevinchappell/formBuilder - https://formbuilder.online/ - https://kevinchappell.github.io/formBuilder/
+                var ele: any;
+                var roles: any = {};
+                this.WebSocketClient.user.roles.forEach(role => {
+                    roles[role._id] = role.name;
+                });
 
-            var fbOptions = {
-                formData: this.model.formData,
-                dataType: this.model.dataType,
-                roles: roles,
-                disabledActionButtons: ['data', 'clear'],
-                onSave: this.Save.bind(this),
-            };
-            ele = $(document.getElementById('fb-editor'));
-            this.formBuilder = await ele.formBuilder(fbOptions).promise;
+                var fbOptions = {
+                    formData: this.model.formData,
+                    dataType: this.model.dataType,
+                    roles: roles,
+                    disabledActionButtons: ['data', 'clear'],
+                    onSave: this.Save.bind(this),
+                };
+                ele = $(document.getElementById('fb-editor'));
+                this.formBuilder = await ele.formBuilder(fbOptions).promise;
+            } else {
+                if (this.model.formData == null || this.model.formData == undefined) { this.model.formData = {}; }
+                // "https://examples.form.io/wizard"
+                if (this.model.wizard == true) {
+                    this.model.formData.display = "wizard";
+                } else {
+                    this.model.formData.display = "form";
+                }
+                console.log("wizard: " + this.model.wizard)
+                this.Formiobuilder = await Formio.builder(document.getElementById('builder'), this.model.formData,
+                    {
+                        noAlerts: false,
+                        breadcrumbSettings: { clickable: false },
+                        buttonSettings: { showCancel: false }
+                    });
+                this.Formiobuilder.on('change', form => {
+                    this.model.schema = form;
+                    // console.log('schema', form);
+                    // if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                })
+                this.Formiobuilder.on('submit', submission => {
+                    console.log(submission);
+                    // this.Save.bind(this);
+                    // console.log('schema', form);
+                    // if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                })
+                this.Formiobuilder.on('error', (errors) => {
+                    console.log('We have errors!');
+                    console.log(errors);
+                })
+            }
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
@@ -1474,6 +1517,7 @@ module openflow {
     export class FormCtrl extends entityCtrl<openflow.WorkflowInstance> {
         public message: string = "";
         public formRender: any;
+        public formioRender: any;
         public workflow: openflow.Workflow;
         public form: openflow.Form;
         public instanceid: string;
@@ -1537,13 +1581,13 @@ module openflow {
             }
         }
         async SendOne(queuename: string, message: any): Promise<void> {
-            console.debug("SendOne: queuename " + queuename + " / " + this.myid);
+            // console.debug("SendOne: queuename " + queuename + " / " + this.myid);
             var result: any = await this.api.QueueMessage(queuename, message);
             try {
                 result = JSON.parse(result);
             } catch (error) {
             }
-            console.debug(result);
+            // console.debug(result);
             if ((this.instanceid === undefined || this.instanceid === null) && (result !== null && result !== unescape)) {
                 this.instanceid = result._id;
                 this.$location.path("/Form/" + this.id + "/" + this.instanceid);
@@ -1551,151 +1595,287 @@ module openflow {
             }
         }
         async Save() {
-            var userData: any[] = this.formRender.userData;
-            if (this.model.payload === null || this.model.payload === undefined) { this.model.payload = {}; }
-            for (var i = 0; i < userData.length; i++) {
-                this.model.payload[userData[i].name] = "";
-                var val = userData[i].userData;
-                if (val !== undefined && val !== null) {
-                    if (userData[i].type == "checkbox-group") {
-                        this.model.payload[userData[i].name] = val;
-                    } else if (Array.isArray(val)) {
-                        this.model.payload[userData[i].name] = val[0];
-                    } else {
-                        this.model.payload[userData[i].name] = val;
+            if (this.form.fbeditor == true) {
+                var userData: any[] = this.formRender.userData;
+                if (this.model.payload === null || this.model.payload === undefined) { this.model.payload = {}; }
+                for (var i = 0; i < userData.length; i++) {
+                    this.model.payload[userData[i].name] = "";
+                    var val = userData[i].userData;
+                    if (val !== undefined && val !== null) {
+                        if (userData[i].type == "checkbox-group") {
+                            this.model.payload[userData[i].name] = val;
+                        } else if (Array.isArray(val)) {
+                            this.model.payload[userData[i].name] = val[0];
+                        } else {
+                            this.model.payload[userData[i].name] = val;
+                        }
                     }
                 }
+                this.model.payload.submitbutton = this.submitbutton;
+                var ele = $('.render-wrap');
+                ele.hide();
+            } else {
+
             }
-            this.model.payload.submitbutton = this.submitbutton;
-            var ele = $('.render-wrap');
-            ele.hide();
-            console.debug("SendOne: " + this.workflow._id + " / " + this.workflow.queue);
+            // console.debug("SendOne: " + this.workflow._id + " / " + this.workflow.queue);
             await this.SendOne(this.workflow.queue, this.model);
             this.loadData();
         }
         async renderform() {
-            console.debug("renderform");
-            var ele: any;
-            var roles: any = {};
-            this.WebSocketClient.user.roles.forEach(role => {
-                roles[role._id] = role.name;
-            });
-            if (typeof this.form.formData === 'string' || this.form.formData instanceof String) {
-                this.form.formData = JSON.parse((this.form.formData as any));
-            }
-            for (var i = 0; i < this.form.formData.length; i++) {
-                var value = this.model.payload[this.form.formData[i].name];
-                if (value == undefined || value == null) { value = ""; }
-                if (value != "" || this.form.formData[i].type != "button") {
-                    // console.log("0:" + this.form.formData[i].label + " -> " + value);
-                    this.form.formData[i].userData = [value];
+            if (this.form.fbeditor == true) {
+                console.debug("renderform");
+                var ele: any;
+                var roles: any = {};
+                this.WebSocketClient.user.roles.forEach(role => {
+                    roles[role._id] = role.name;
+                });
+                if (typeof this.form.formData === 'string' || this.form.formData instanceof String) {
+                    this.form.formData = JSON.parse((this.form.formData as any));
                 }
-                if (Array.isArray(value)) {
-                    // console.log("1:" + this.form.formData[i].userData + " -> " + value);
-                    this.form.formData[i].userData = value;
-                }
-                if (this.model.payload[this.form.formData[i].label] !== null && this.model.payload[this.form.formData[i].label] !== undefined) {
-                    value = this.model.payload[this.form.formData[i].label];
+                for (var i = 0; i < this.form.formData.length; i++) {
+                    var value = this.model.payload[this.form.formData[i].name];
                     if (value == undefined || value == null) { value = ""; }
-                    if (this.form.formData[i].type != "button") {
-                        // console.log("2:" + this.form.formData[i].label + " -> " + value);
-                        this.form.formData[i].label = value;
-                    } else if (value != "") {
-                        // console.log("2button:" + this.form.formData[i].label + " -> " + value);
-                        this.form.formData[i].label = value;
-                    } else {
-                        // console.log("skip " + this.form.formData[i].label);
+                    if (value != "" || this.form.formData[i].type != "button") {
+                        // console.log("0:" + this.form.formData[i].label + " -> " + value);
+                        this.form.formData[i].userData = [value];
+                    }
+                    if (Array.isArray(value)) {
+                        // console.log("1:" + this.form.formData[i].userData + " -> " + value);
+                        this.form.formData[i].userData = value;
+                    }
+                    if (this.model.payload[this.form.formData[i].label] !== null && this.model.payload[this.form.formData[i].label] !== undefined) {
+                        value = this.model.payload[this.form.formData[i].label];
+                        if (value == undefined || value == null) { value = ""; }
+                        if (this.form.formData[i].type != "button") {
+                            // console.log("2:" + this.form.formData[i].label + " -> " + value);
+                            this.form.formData[i].label = value;
+                        } else if (value != "") {
+                            // console.log("2button:" + this.form.formData[i].label + " -> " + value);
+                            this.form.formData[i].label = value;
+                        } else {
+                            // console.log("skip " + this.form.formData[i].label);
+                        }
+                    }
+                    if (this.model.values !== null && this.model.values !== undefined) {
+                        if (this.model.values[this.form.formData[i].name] !== null && this.model.values[this.form.formData[i].name] !== undefined) {
+                            value = this.model.values[this.form.formData[i].name];
+                            if (value == undefined || value == null) { value = []; }
+                            // console.log("3:" + this.form.formData[i].values + " -> " + value);
+                            this.form.formData[i].values = value;
+                        }
                     }
                 }
-                if (this.model.values !== null && this.model.values !== undefined) {
-                    if (this.model.values[this.form.formData[i].name] !== null && this.model.values[this.form.formData[i].name] !== undefined) {
-                        value = this.model.values[this.form.formData[i].name];
-                        if (value == undefined || value == null) { value = []; }
-                        // console.log("3:" + this.form.formData[i].values + " -> " + value);
-                        this.form.formData[i].values = value;
-                    }
+                var formRenderOpts = {
+                    formData: this.form.formData,
+                    dataType: this.form.dataType,
+                    roles: roles,
+                    disabledActionButtons: ['data', 'clear'],
+                    onSave: this.Save.bind(this),
+                };
+                if (this.model.userData !== null && this.model.userData !== undefined && this.model.userData !== "") {
+                    formRenderOpts.formData = this.model.userData;
                 }
-            }
-            var formRenderOpts = {
-                formData: this.form.formData,
-                dataType: this.form.dataType,
-                roles: roles,
-                disabledActionButtons: ['data', 'clear'],
-                onSave: this.Save.bind(this),
-            };
-            if (this.model.userData !== null && this.model.userData !== undefined && this.model.userData !== "") {
-                formRenderOpts.formData = this.model.userData;
-            }
-            var concatHashToString = function (hash) {
-                var emptyStr = '';
-                $.each(hash, function (index) {
-                    emptyStr += ' ' + hash[index].name + '="' + hash[index].value + '"';
-                });
-                return emptyStr;
-            }
-            var replaceElem = function (targetId, replaceWith) {
-                $(targetId).each(function () {
-                    var attributes = concatHashToString(this.attributes);
-                    var replacingStartTag = '<' + replaceWith + attributes + '>';
-                    var replacingEndTag = '</' + replaceWith + '>';
-                    $(this).replaceWith(replacingStartTag + $(this).html() + replacingEndTag);
-                });
-            }
-            var replaceElementTag = function (targetSelector, newTagString) {
-                $(targetSelector).each(function () {
-                    var newElem = $(newTagString, { html: $(this).html() });
-                    $.each(this.attributes, function () {
-                        newElem.attr(this.name, this.value);
+                var concatHashToString = function (hash) {
+                    var emptyStr = '';
+                    $.each(hash, function (index) {
+                        emptyStr += ' ' + hash[index].name + '="' + hash[index].value + '"';
                     });
-                    $(this).replaceWith(newElem);
-                });
-            }
-
-            // 
-            // replaceElem('div', 'span');
-            setTimeout(() => {
-                // $('button[type="button"]').contents().unwrap().wrap('<input/>');
-                // replaceElem('button', 'input');
-                // replaceElementTag('button[type="button"]', '<input></input>');
-
-                console.log("Attach buttons! 2");
-                // $('button[type="button"]').bind("click", function () {
-
-                $('button[type="button"]').each(function () {
-                    var cur: any = $(this)[0];
-                    console.log("set submit");
-                    console.log(cur);
-                    cur.type = "submit";
-                });
-                // $('input[type="button"]').click(function (evt) {
-                //     // var input = $("<input>").attr("type", "hidden").attr("name", evt.target.id).val((evt.target as any).value);
-                //     // $('#workflowform').append(input);
-                //     // $('button[type="button"]').replaceWith('<input>' + $('target').html() +'</newTag>')
-                //     // evt.preventDefault();
-                //     console.log(evt);
-                //     console.log("button clicked!");
-                //     $('#workflowform').submit();
-                // });
-                // $('button[type="button"]').click(function (evt) {
-                //     var input = $("<input>").attr("type", "hidden").attr("name", "clicked").val(evt.target.id);
-                //     $('#workflowform').append(input);
-                //     $('#workflowform').submit();
-                // });
-
-                var click = function (evt) {
-                    this.submitbutton = evt.target.id;
-                    // console.log(this);
-                    // var input = $("<input>").attr("type", "hidden").attr("name", "clicked").val(evt.target.id);
-                    // $('#workflowform').append(input);
-                    // evt.preventDefault();
-                    // $('#workflowform').submit();
+                    return emptyStr;
                 }
-                $('button[type="submit"]').click(click.bind(this));
+                var replaceElem = function (targetId, replaceWith) {
+                    $(targetId).each(function () {
+                        var attributes = concatHashToString(this.attributes);
+                        var replacingStartTag = '<' + replaceWith + attributes + '>';
+                        var replacingEndTag = '</' + replaceWith + '>';
+                        $(this).replaceWith(replacingStartTag + $(this).html() + replacingEndTag);
+                    });
+                }
+                var replaceElementTag = function (targetSelector, newTagString) {
+                    $(targetSelector).each(function () {
+                        var newElem = $(newTagString, { html: $(this).html() });
+                        $.each(this.attributes, function () {
+                            newElem.attr(this.name, this.value);
+                        });
+                        $(this).replaceWith(newElem);
+                    });
+                }
 
-            }, 500);
-            ele = $('.render-wrap');
-            ele.show();
-            this.formRender = ele.formRender(formRenderOpts);
+                // 
+                // replaceElem('div', 'span');
+                setTimeout(() => {
+                    // $('button[type="button"]').contents().unwrap().wrap('<input/>');
+                    // replaceElem('button', 'input');
+                    // replaceElementTag('button[type="button"]', '<input></input>');
+
+                    console.log("Attach buttons! 2");
+                    // $('button[type="button"]').bind("click", function () {
+
+                    $('button[type="button"]').each(function () {
+                        var cur: any = $(this)[0];
+                        console.log("set submit");
+                        console.log(cur);
+                        cur.type = "submit";
+                    });
+                    // $('input[type="button"]').click(function (evt) {
+                    //     // var input = $("<input>").attr("type", "hidden").attr("name", evt.target.id).val((evt.target as any).value);
+                    //     // $('#workflowform').append(input);
+                    //     // $('button[type="button"]').replaceWith('<input>' + $('target').html() +'</newTag>')
+                    //     // evt.preventDefault();
+                    //     console.log(evt);
+                    //     console.log("button clicked!");
+                    //     $('#workflowform').submit();
+                    // });
+                    // $('button[type="button"]').click(function (evt) {
+                    //     var input = $("<input>").attr("type", "hidden").attr("name", "clicked").val(evt.target.id);
+                    //     $('#workflowform').append(input);
+                    //     $('#workflowform').submit();
+                    // });
+
+                    var click = function (evt) {
+                        this.submitbutton = evt.target.id;
+                        // console.log(this);
+                        // var input = $("<input>").attr("type", "hidden").attr("name", "clicked").val(evt.target.id);
+                        // $('#workflowform').append(input);
+                        // evt.preventDefault();
+                        // $('#workflowform').submit();
+                    }
+                    $('button[type="submit"]').click(click.bind(this));
+
+                }, 500);
+                ele = $('.render-wrap');
+                ele.show();
+                this.formRender = ele.formRender(formRenderOpts);
+            } else {
+                // console.log("***************************************");
+                // console.log(this.model.payload);
+                // console.log("***************************************");
+
+                for (var y = 0; y < this.form.schema.components.length; y++) {
+                    var item = this.form.schema.components[y];
+                    if (item.type == "datagrid") {
+                        if (this.model.payload[item.key] === null || this.model.payload[item.key] === undefined) {
+                            var obj: any = {};
+                            for (var x = 0; x < item.components.length; x++) {
+                                obj[item.components[x].key] = "";
+                            }
+                            console.log("add default array for " + item.key, obj);
+                            this.model.payload[item.key] = [obj];
+                        }
+                        else {
+                            console.log("payload already have values for " + item.key);
+                            console.log("isArray: " + Array.isArray(this.model.payload[item.key]))
+                            if (Array.isArray(this.model.payload[item.key])) {
+                                // console.log("convert payload for " + item.key + " from array to object");
+                                // var obj2: any = {};
+                                // for (var x = 0; x < values.length; x++) {
+                                //     obj2[x] = values[x];
+                                // }
+                                // this.model.payload[item.key] = obj2;
+                            } else {
+                                console.log("convert payload for " + item.key + " from object to array");
+                                var keys = Object.keys(this.model.payload[item.key]);
+                                var arr: any[] = [];
+                                for (var x = 0; x < keys.length; x++) {
+                                    arr.push(this.model.payload[item.key][keys[x]]);
+                                }
+                                this.model.payload[item.key] = arr;
+                            }
+                        }
+
+                    }
+
+                }
+
+                if (this.model.payload != null && this.model.payload != undefined) {
+                    if (this.model.payload.values != null && this.model.payload.values != undefined) {
+                        var keys = Object.keys(this.model.payload.values);
+                        for (var i = 0; i < keys.length; i++) {
+                            var values = this.model.payload.values[keys[i]];
+                            for (var y = 0; y < this.form.schema.components.length; y++) {
+                                var item = this.form.schema.components[y];
+                                // console.log(item);
+                                if (item.key == keys[i]) {
+                                    if (Array.isArray(values)) {
+                                        console.log("handle " + item.key + " as array");
+                                        var obj2: any = {};
+                                        for (var x = 0; x < values.length; x++) {
+                                            obj2[x] = values[x];
+                                        }
+                                        if (item.data != null && item.data != undefined) {
+                                            item.data.values = obj2;
+                                            item.data.json = JSON.stringify(values);
+                                            // console.log("Setting values for " + keys[i], JSON.stringify(obj));
+                                        } else {
+                                            item.values = values;
+                                        }
+                                    } else {
+                                        console.log("handle " + item.key + " as an object");
+                                        if (item.data != null && item.data != undefined) {
+                                            item.data.values = values;
+                                            item.data.json = JSON.stringify(values);
+                                            // console.log("Setting values for " + keys[i], JSON.stringify(values));
+                                        } else {
+                                            item.values = values;
+                                        }
+                                    }
+                                    // if (item.data != null && item.data != undefined) {
+                                    //     console.log(keys[i], item.data);
+                                    // } else {
+                                    //     console.log(keys[i], item);
+                                    // }
+                                }
+                            }
+
+                        }
+                    }
+                }
+                if (this.form.wizard == true) {
+                    this.form.schema.display = "wizard";
+                } else {
+                    this.form.schema.display = "form";
+                }
+
+                this.formioRender = await Formio.createForm(document.getElementById('formio'), this.form.schema,
+                    {
+                        breadcrumbSettings: { clickable: true },
+                        buttonSettings: { showCancel: false }
+                    });
+                // wizard
+                this.formioRender.on('change', form => {
+                    // this.model.schema = form;
+                    // console.log('onchange', form);
+                    // if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                })
+                // https://formio.github.io/formio.js/app/examples/datagrid.html
+
+                if (this.model.payload != null && this.model.payload != undefined) {
+                    console.log("submission", this.model.payload);
+                    this.formioRender.submission = { data: this.model.payload };
+                }
+                this.formioRender.on('submit', submission => {
+                    console.log('onsubmit', submission);
+                    // console.log("submission");
+                    // console.log(submission.data);
+                    $(".alert-success").hide();
+                    setTimeout(() => {
+                        // just to be safe
+                        $(".alert-success").hide();
+                    }, 200);
+                    this.model.submission = submission;
+                    this.model.userData = submission;
+                    this.model.payload = submission.data;
+                    this.Save();
+                    // this.Save.bind(this);
+                    // console.log('schema', form);
+                    // if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                })
+                this.formioRender.on('error', (errors) => {
+                    console.log('We have errors!');
+                    console.log(errors);
+                })
+
+
+            }
         }
     }
     export class jslogCtrl extends entitiesCtrl<openflow.Base> {
