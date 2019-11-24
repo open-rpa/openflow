@@ -89,14 +89,24 @@
 <a href="" ng-hide="ctrl.showjson==true" ng-click="ctrl.togglejson()" translate lib="web">showjson</a>
 <a href="" ng-hide="ctrl.showjson==false" ng-click="ctrl.togglejson()" translate lib="web">showproperties</a>
 <form ng-submit="ctrl.submit()" class="form-horizontal" role="form" autocomplete="off" ng-hide="ctrl.showjson==true">
-
     <section ng-repeat="key in ctrl.keys">
-        <div class="form-group">
+        <div class="form-group" ng-show="ctrl.model._encrypt.indexOf(key) == -1">
             <label class="col-sm-3 control-label"><span translate lib="web">{{ key }}</span>: <a href=""
                     ng-click="ctrl.removekey(key)" translate lib="web">delete</a></label>
             <div class="col-sm-9">
                 <textarea class='autogrow form-control' rows='3' data-min-rows='3'
                     ng-model="ctrl.model[key]"></textarea>
+                <!-- 
+                <input ng-model="ctrl.model[key]" class="form-control input-md" ng-disabled="ctrl.loading==true" />
+                -->
+            </div>
+        </div>
+        <div class="form-group" ng-show="ctrl.model._encrypt.indexOf(key) > -1">
+            <label class="col-sm-3 control-label"><span translate lib="web">{{ key }}</span>: <a href=""
+                    ng-click="ctrl.removekey(key)" translate lib="web">delete</a></label>
+            <div class="col-sm-9">
+                <input type="password" class='autogrow form-control' rows='3' data-min-rows='3'
+                    ng-model="ctrl.model[key]"></input>
                 <!-- 
                 <input ng-model="ctrl.model[key]" class="form-control input-md" ng-disabled="ctrl.loading==true" />
                 -->
