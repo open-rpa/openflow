@@ -123,7 +123,11 @@ export class rpa_workflow_node {
 
             if (data.payload.command == "invokecompleted") {
                 result.payload = data.payload.data;
+                if (data.payload == null || data.payload == undefined) { data.payload = {}; }
                 this.node.status({ fill: "green", shape: "dot", text: data.payload.command });
+                console.log("********************");
+                console.log(result);
+                console.log("********************");
                 this.node.send(result);
             }
             else if (data.payload.command == "invokefailed" || data.payload.command == "invokeaborted" || data.payload.command == "error") {
