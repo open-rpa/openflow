@@ -123,7 +123,7 @@ export class rpa_workflow_node {
 
             if (data.payload.command == "invokecompleted") {
                 result.payload = data.payload.data;
-                if (data.payload == null || data.payload == undefined) { data.payload = {}; }
+                if (result.payload == null || result.payload == undefined) { result.payload = {}; }
                 this.node.status({ fill: "green", shape: "dot", text: data.payload.command });
                 console.log("********************");
                 console.log(result);
@@ -132,11 +132,13 @@ export class rpa_workflow_node {
             }
             else if (data.payload.command == "invokefailed" || data.payload.command == "invokeaborted" || data.payload.command == "error") {
                 result.payload = data.payload;
+                if (result.payload == null || result.payload == undefined) { result.payload = {}; }
                 this.node.status({ fill: "red", shape: "dot", text: data.payload.command });
                 this.node.send([null, null, result]);
             }
             else {
                 result.payload = data.payload;
+                if (result.payload == null || result.payload == undefined) { result.payload = {}; }
                 this.node.send([null, result]);
             }
             // this.node.send(result);
