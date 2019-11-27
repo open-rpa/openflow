@@ -123,10 +123,12 @@ export class rpa_workflow_node {
 
             if (data.payload.command == "invokecompleted") {
                 result.payload = data.payload.data;
+                this.node.status({ fill: "green", shape: "dot", text: data.payload.command });
                 this.node.send(result);
             }
             else if (data.payload.command == "invokefailed" || data.payload.command == "invokeaborted" || data.payload.command == "error") {
                 result.payload = data.payload;
+                this.node.status({ fill: "red", shape: "dot", text: data.payload.command });
                 this.node.send([null, null, result]);
             }
             else {
@@ -135,6 +137,7 @@ export class rpa_workflow_node {
             }
             // this.node.send(result);
         } catch (error) {
+            this.node.status({});
             NoderedUtil.HandleError(this, error);
         }
     }
@@ -156,14 +159,18 @@ export class rpa_workflow_node {
                 jwt: msg.jwt,
                 payload: rpacommand
             }
+            this.node.status({ fill: "blue", shape: "dot", text: "Robot running..." });
             this.con.SendMessage(JSON.stringify(data), this.config.queue, correlationId);
             // var data: any = {};
             // data.payload = msg.payload;
             // data.jwt = msg.jwt;
             // this.con.SendMessage(JSON.stringify(data), this.config.queue);
-            this.node.status({});
         } catch (error) {
             NoderedUtil.HandleError(this, error);
+            try {
+                this.node.status({ fill: "red", shape: "dot", text: error });
+            } catch (error) {
+            }
         }
     }
     onclose() {

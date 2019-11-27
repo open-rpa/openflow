@@ -1599,7 +1599,7 @@ module openflow {
             }
         }
         async Save() {
-            if (this.form.fbeditor == true) {
+            if (this.form.fbeditor === true) {
                 var userData: any[] = this.formRender.userData;
                 if (this.model.payload === null || this.model.payload === undefined) { this.model.payload = {}; }
                 for (var i = 0; i < userData.length; i++) {
@@ -1626,7 +1626,7 @@ module openflow {
             this.loadData();
         }
         async renderform() {
-            if (this.form.fbeditor == true) {
+            if (this.form.fbeditor === true) {
                 console.debug("renderform");
                 var ele: any;
                 var roles: any = {};
