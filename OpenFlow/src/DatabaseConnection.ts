@@ -13,6 +13,7 @@ import { UpdateOneMessage } from "./Messages/UpdateOneMessage";
 import { UpdateManyMessage } from "./Messages/UpdateManyMessage";
 import { InsertOrUpdateOneMessage } from "./Messages/InsertOrUpdateOneMessage";
 import { User } from "./User";
+import { Util } from "./Util";
 // tslint:disable-next-line: typedef
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 export declare function emit(k, v);
@@ -318,8 +319,8 @@ export class DatabaseConnection {
         await this.connect();
         item = this.ensureResource(item);
         DatabaseConnection.traversejsonencode(item);
-        if (jwt === null || jwt === undefined && collectionname === "jslog") {
-            jwt = TokenUser.rootToken();
+        if (Util.IsNullEmpty(jwt)) {
+            throw new Error("jwt is null");
         }
         var user: TokenUser = Crypt.verityToken(jwt);
         item._createdby = user.name;

@@ -1439,6 +1439,7 @@ module openflow {
                         this.loadData();
                     } else {
                         this.model = new openflow.Form();
+                        this.model.fbeditor = false;
                         this.renderform();
                     }
 
@@ -1460,6 +1461,7 @@ module openflow {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async renderform() {
+            if (this.model.fbeditor == null || this.model.fbeditor == undefined) this.model.fbeditor = true;
             if (this.model.fbeditor == true) {
                 // https://www.npmjs.com/package/angular2-json-schema-form
                 // http://www.alpacajs.org/demos/form-builder/form-builder.html
@@ -1478,7 +1480,9 @@ module openflow {
                     onSave: this.Save.bind(this),
                 };
                 ele = $(document.getElementById('fb-editor'));
-                this.formBuilder = await ele.formBuilder(fbOptions).promise;
+                if (this.formBuilder == null || this.formBuilder == undefined) {
+                    this.formBuilder = await ele.formBuilder(fbOptions).promise;
+                }
             } else {
                 if (this.model.formData == null || this.model.formData == undefined) { this.model.formData = {}; }
                 // "https://examples.form.io/wizard"
@@ -1626,6 +1630,7 @@ module openflow {
             this.loadData();
         }
         async renderform() {
+            if (this.form.fbeditor == null || this.form.fbeditor == undefined) this.form.fbeditor = true;
             if (this.form.fbeditor === true) {
                 console.debug("renderform");
                 var ele: any;

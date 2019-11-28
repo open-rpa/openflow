@@ -363,7 +363,12 @@ export class Message {
             if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (Util.IsNullEmpty(msg.w as any)) { msg.w = 0; }
             if (Util.IsNullEmpty(msg.j as any)) { msg.j = false; }
-
+            if (Util.IsNullEmpty(msg.jwt) && msg.collectionname === "jslog") {
+                msg.jwt = TokenUser.rootToken();
+            }
+            if (Util.IsNullEmpty(msg.jwt)) {
+                throw new Error("jwt is null and client is not authenticated");
+            }
             msg.result = await Config.db.InsertOne(msg.item, msg.collectionname, msg.w, msg.j, msg.jwt);
         } catch (error) {
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -580,6 +585,7 @@ export class Message {
                     cli.user = user;
                 } else {
                     cli._logger.debug(tuser.username + " was validated in using " + type);
+                    // cli.jwt = Crypt.createToken(cli.user, "5m");
                 }
                 user.lastseen = new Date(new Date().toISOString());
                 await user.Save(TokenUser.rootToken());

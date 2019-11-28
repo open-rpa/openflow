@@ -21,7 +21,8 @@
         </div>
     </div>
 </section>
-<div id="fb-editor" ng-show="ctrl.model.fbeditor==true"></div>
+<div id="fb-editor" ng-show="ctrl.model.fbeditor==true">
+</div>
 <div ng-show="ctrl.model.fbeditor!=true">
     <div class="form-inline">
         <label for="sid" class="col-sm-2 control-label" translate lib="web">Wizard</label>
@@ -31,4 +32,5 @@
         </div>
     </div>
 </div>
-<div id="builder" ng-show="ctrl.model.fbeditor!=true"></div>
+<div id="builder" ng-show="ctrl.model.fbeditor==false">
+</div>

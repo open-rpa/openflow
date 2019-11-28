@@ -165,9 +165,20 @@ export class noderedcontribopenflowstorage {
                 }
             }
             this._logger.info("Installing " + modules);
-            child_process.execSync("npm install " + modules, { stdio: [0, 1, 2], cwd: this.settings.userDir });
-            //this.firstrun = false;
-            //}
+            var errorcounter = 0;
+            while (errorcounter < 5) {
+                try {
+                    child_process.execSync("npm install " + modules, { stdio: [0, 1, 2], cwd: this.settings.userDir });
+                    errorcounter = 10;
+                } catch (error) {
+                    errorcounter++;
+                    this._logger.error("npm install error");
+                    if (error.status) this._logger.error("npm install status: " + error.status);
+                    if (error.message) this._logger.error("npm install message: " + error.message);
+                    if (error.stderr) this._logger.error("npm install stderr: " + error.stderr);
+                    if (error.stdout) this._logger.error("npm install stdout: " + error.stdout);
+                }
+            }
             this._logger.silly("noderedcontribopenflowstorage::_getSettings: return result");
             return settings;
         } catch (error) {
