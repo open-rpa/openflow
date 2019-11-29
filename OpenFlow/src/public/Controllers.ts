@@ -1890,6 +1890,15 @@ module openflow {
                     console.log('We have errors!');
                     console.log(errors);
                 });
+                var click = function (evt) {
+                    this.submitbutton = evt.target.id;
+                    // console.log(this);
+                    // var input = $("<input>").attr("type", "hidden").attr("name", "clicked").val(evt.target.id);
+                    // $('#workflowform').append(input);
+                    // evt.preventDefault();
+                    // $('#workflowform').submit();
+                }
+                $('button[type="submit"]').click(click.bind(this));
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
         }
