@@ -1464,6 +1464,7 @@ module openflow {
             if (this.model.fbeditor == null || this.model.fbeditor == undefined) this.model.fbeditor = true;
             if ((this.model.fbeditor as any) == "true") this.model.fbeditor = true;
             if ((this.model.fbeditor as any) == "false") this.model.fbeditor = false;
+            console.log("fbeditor: " + this.model.fbeditor);
             if (this.model.fbeditor == true) {
                 // https://www.npmjs.com/package/angular2-json-schema-form
                 // http://www.alpacajs.org/demos/form-builder/form-builder.html
@@ -1635,6 +1636,7 @@ module openflow {
             if (this.form.fbeditor == null || this.form.fbeditor == undefined) this.form.fbeditor = true;
             if ((this.form.fbeditor as any) == "true") this.form.fbeditor = true;
             if ((this.form.fbeditor as any) == "false") this.form.fbeditor = false;
+            console.log("fbeditor: " + this.form.fbeditor);
             if (this.form.fbeditor === true) {
                 console.debug("renderform");
                 var ele: any;
