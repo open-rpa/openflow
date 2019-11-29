@@ -1628,8 +1628,6 @@ module openflow {
 
         }
         traversecomponentsMakeDefaults(components: any[]) {
-            console.log("traversecomponentsMakeDefaults:");
-            console.log(components);
             for (var y = 0; y < components.length; y++) {
                 var item = components[y];
                 if (item.type == "datagrid") {
