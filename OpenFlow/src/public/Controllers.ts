@@ -1636,6 +1636,7 @@ module openflow {
             if (this.form.fbeditor == null || this.form.fbeditor == undefined) this.form.fbeditor = true;
             if ((this.form.fbeditor as any) == "true") this.form.fbeditor = true;
             if ((this.form.fbeditor as any) == "false") this.form.fbeditor = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
             console.log("fbeditor: " + this.form.fbeditor);
             if (this.form.fbeditor === true) {
                 console.debug("renderform");
@@ -1760,6 +1761,7 @@ module openflow {
                 ele = $('.render-wrap');
                 ele.show();
                 this.formRender = ele.formRender(formRenderOpts);
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
             } else {
                 // console.log("***************************************");
                 // console.log(this.model.payload);
@@ -1887,9 +1889,8 @@ module openflow {
                 this.formioRender.on('error', (errors) => {
                     console.log('We have errors!');
                     console.log(errors);
-                })
-
-
+                });
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
         }
     }
