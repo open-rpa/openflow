@@ -386,7 +386,6 @@ module openflow {
             // Formio.createForm(document.getElementById('formio'), 'https://examples.form.io/example');
 
             // $scope.$watch('searchtext', (newValue) => {
-            //     console.log("test");
             //     this.complete(newValue);
             // });
         }
@@ -426,15 +425,10 @@ module openflow {
                         if (!this.$scope.$$phase) { this.$scope.$apply(); }
                     }
                 }
-                else {
-                    // console.log(this.e.keyCode);
-                }
             }
         }
         handlefilter(e) {
             this.e = e;
-            // console.log(e.keyCode);
-
             var output = [];
             angular.forEach(this.countryList, (country) => {
                 if (country.toLowerCase().indexOf(this.searchtext.toLowerCase()) >= 0) {
@@ -442,7 +436,6 @@ module openflow {
                 }
             });
             this.searchFilteredList = output;
-            // console.log(output);
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         fillTextbox(searchtext) {
@@ -706,7 +699,6 @@ module openflow {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             console.debug("ProviderCtrl");
             this.collection = "config";
-            console.log(WebSocketClient);
             WebSocketClient.onSignedin((user: TokenUser) => {
                 if (this.id !== null && this.id !== undefined) {
                     this.loadData();
@@ -807,7 +799,6 @@ module openflow {
         async Impersonate(model: openflow.TokenUser): Promise<any> {
             this.loading = true;
             var result = await this.api.SigninWithToken(this.WebSocketClient.jwt, null, model._id);
-            console.log(result);
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
@@ -861,7 +852,6 @@ module openflow {
         }
         async processdata() {
             if (this.model != null) {
-                console.log()
                 this.memberof = await this.api.Query("users",
                     {
                         $and: [
@@ -1026,7 +1016,6 @@ module openflow {
                     if (idx <= 0) {
                         idx = 0;
                     } else { idx--; }
-                    console.log("idx: " + idx);
                     // this.searchtext = this.searchFilteredList[idx].name;
                     this.searchSelectedItem = this.searchFilteredList[idx];
                     return;
@@ -1035,7 +1024,6 @@ module openflow {
                     if (idx >= this.searchFilteredList.length) {
                         idx = this.searchFilteredList.length - 1;
                     } else { idx++; }
-                    console.log("idx: " + idx);
                     // this.searchtext = this.searchFilteredList[idx].name;
                     this.searchSelectedItem = this.searchFilteredList[idx];
                     return;
@@ -1049,9 +1037,6 @@ module openflow {
                     }
                     return;
                 }
-                else {
-                    // console.log(this.e.keyCode);
-                }
             } else {
                 if (this.e.keyCode == 13 && this.searchSelectedItem != null) {
                     this.AddMember(this.searchSelectedItem);
@@ -1060,7 +1045,6 @@ module openflow {
         }
         async handlefilter(e) {
             this.e = e;
-            // console.log(e.keyCode);
             var ids: string[] = this.model.members.map(item => item._id);
             this.searchFilteredList = await this.api.Query("users",
                 {
@@ -1261,11 +1245,6 @@ module openflow {
                 fd.append(e.name, file, file.name);
             };
             const xhr = new XMLHttpRequest();
-            // xhr.onreadystatechange = () => {
-            //     if (xhr.readyState == XMLHttpRequest.DONE) {
-            //         // console.log(xhr.responseText);
-            //     }
-            // }
             xhr.onload = () => {
                 if (xhr.status >= 200 && xhr.status < 300) {
                     console.log("upload complete");
@@ -1446,7 +1425,6 @@ module openflow {
                 });
         }
         async Save() {
-            console.log("wizard: " + this.model.wizard);
             if (this.model.fbeditor == true) {
                 this.model.formData = this.formBuilder.actions.getData(this.model.dataType);
             } else {
@@ -1464,7 +1442,6 @@ module openflow {
             if (this.model.fbeditor == null || this.model.fbeditor == undefined) this.model.fbeditor = true;
             if ((this.model.fbeditor as any) == "true") this.model.fbeditor = true;
             if ((this.model.fbeditor as any) == "false") this.model.fbeditor = false;
-            console.log("fbeditor: " + this.model.fbeditor);
             if (this.model.fbeditor == true) {
                 // https://www.npmjs.com/package/angular2-json-schema-form
                 // http://www.alpacajs.org/demos/form-builder/form-builder.html
@@ -1494,7 +1471,6 @@ module openflow {
                 } else {
                     this.model.formData.display = "form";
                 }
-                console.log("wizard: " + this.model.wizard)
                 this.Formiobuilder = await Formio.builder(document.getElementById('builder'), this.model.formData,
                     {
                         noAlerts: false,
@@ -1507,18 +1483,11 @@ module openflow {
                     });
                 this.Formiobuilder.on('change', form => {
                     this.model.schema = form;
-                    // console.log('schema', form);
-                    // if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 })
                 this.Formiobuilder.on('submit', submission => {
-                    console.log(submission);
-                    // this.Save.bind(this);
-                    // console.log('schema', form);
-                    // if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 })
                 this.Formiobuilder.on('error', (errors) => {
-                    console.log('We have errors!');
-                    console.log(errors);
+                    console.error(errors);
                 })
             }
             this.loading = false;
@@ -1632,12 +1601,139 @@ module openflow {
             await this.SendOne(this.workflow.queue, this.model);
             this.loadData();
         }
+        traversecomponentsPostProcess(components: any[], data: any) {
+            for (var i = 0; i < components.length; i++) {
+                var item = components[i];
+                if (item.type == "button" && item.action == "submit") {
+                    if (data[item.key] == true) {
+                        this.submitbutton = item.key;
+                        this.model.payload.submitbutton = item.key;
+                    }
+                }
+
+            }
+
+            for (var i = 0; i < components.length; i++) {
+                var item = components[i];
+                if (item.type == "table") {
+                    for (var x = 0; x < item.rows.length; x++) {
+                        for (var y = 0; y < item.rows[x].length; y++) {
+                            var subcomponents = item.rows[x][y].components;
+                            this.traversecomponentsPostProcess(subcomponents, data);
+                        }
+
+                    }
+                }
+            }
+
+        }
+        traversecomponentsMakeDefaults(components: any[]) {
+            console.log("traversecomponentsMakeDefaults:");
+            console.log(components);
+            for (var y = 0; y < components.length; y++) {
+                var item = components[y];
+                if (item.type == "datagrid") {
+                    if (this.model.payload[item.key] === null || this.model.payload[item.key] === undefined) {
+                        var obj: any = {};
+                        for (var x = 0; x < item.components.length; x++) {
+                            obj[item.components[x].key] = "";
+                        }
+                        console.log("add default array for " + item.key, obj);
+                        this.model.payload[item.key] = [obj];
+                    } else {
+                        console.log("payload already have values for " + item.key);
+                        console.log("isArray: " + Array.isArray(this.model.payload[item.key]))
+                        if (Array.isArray(this.model.payload[item.key])) {
+                            // console.log("convert payload for " + item.key + " from array to object");
+                            // var obj2: any = {};
+                            // for (var x = 0; x < values.length; x++) {
+                            //     obj2[x] = values[x];
+                            // }
+                            // this.model.payload[item.key] = obj2;
+                        } else {
+                            console.log("convert payload for " + item.key + " from object to array");
+                            var keys = Object.keys(this.model.payload[item.key]);
+                            var arr: any[] = [];
+                            for (var x = 0; x < keys.length; x++) {
+                                arr.push(this.model.payload[item.key][keys[x]]);
+                            }
+                            this.model.payload[item.key] = arr;
+                        }
+                    }
+                }
+                if (item.type == "button" && item.action == "submit") {
+                    this.model.payload[item.key] = false;
+                }
+            }
+            if (this.model.payload != null && this.model.payload != undefined) {
+                if (this.model.payload.values != null && this.model.payload.values != undefined) {
+                    var keys = Object.keys(this.model.payload.values);
+                }
+            }
+            if (this.model.payload != null && this.model.payload != undefined) {
+                if (this.model.payload.values != null && this.model.payload.values != undefined) {
+                    var keys = Object.keys(this.model.payload.values);
+                    for (var i = 0; i < keys.length; i++) {
+                        var values = this.model.payload.values[keys[i]];
+                        for (var y = 0; y < components.length; y++) {
+                            var item = components[y];
+                            // console.log(item);
+                            if (item.key == keys[i]) {
+                                if (Array.isArray(values)) {
+                                    console.log("handle " + item.key + " as array");
+                                    var obj2: any = {};
+                                    for (var x = 0; x < values.length; x++) {
+                                        obj2[x] = values[x];
+                                    }
+                                    if (item.data != null && item.data != undefined) {
+                                        item.data.values = obj2;
+                                        item.data.json = JSON.stringify(values);
+                                        // console.log("Setting values for " + keys[i], JSON.stringify(obj));
+                                    } else {
+                                        item.values = values;
+                                    }
+                                } else {
+                                    console.log("handle " + item.key + " as an object");
+                                    if (item.data != null && item.data != undefined) {
+                                        item.data.values = values;
+                                        item.data.json = JSON.stringify(values);
+                                        // console.log("Setting values for " + keys[i], JSON.stringify(values));
+                                    } else {
+                                        item.values = values;
+                                    }
+                                }
+                                // if (item.data != null && item.data != undefined) {
+                                //     console.log(keys[i], item.data);
+                                // } else {
+                                //     console.log(keys[i], item);
+                                // }
+                            }
+                        }
+
+                    }
+                }
+            }
+
+            for (var i = 0; i < components.length; i++) {
+                var item = components[i];
+                if (item.type == "table") {
+                    for (var x = 0; x < item.rows.length; x++) {
+                        for (var y = 0; y < item.rows[x].length; y++) {
+                            var subcomponents = item.rows[x][y].components;
+                            this.traversecomponentsMakeDefaults(subcomponents);
+                        }
+
+                    }
+                }
+            }
+
+            // rows
+        }
         async renderform() {
             if (this.form.fbeditor == null || this.form.fbeditor == undefined) this.form.fbeditor = true;
             if ((this.form.fbeditor as any) == "true") this.form.fbeditor = true;
             if ((this.form.fbeditor as any) == "false") this.form.fbeditor = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            console.log("fbeditor: " + this.form.fbeditor);
             if (this.form.fbeditor === true) {
                 console.debug("renderform");
                 var ele: any;
@@ -1763,89 +1859,9 @@ module openflow {
                 this.formRender = ele.formRender(formRenderOpts);
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
             } else {
-                // console.log("***************************************");
-                // console.log(this.model.payload);
-                // console.log("***************************************");
 
-                for (var y = 0; y < this.form.schema.components.length; y++) {
-                    var item = this.form.schema.components[y];
-                    if (item.type == "datagrid") {
-                        if (this.model.payload[item.key] === null || this.model.payload[item.key] === undefined) {
-                            var obj: any = {};
-                            for (var x = 0; x < item.components.length; x++) {
-                                obj[item.components[x].key] = "";
-                            }
-                            console.log("add default array for " + item.key, obj);
-                            this.model.payload[item.key] = [obj];
-                        }
-                        else {
-                            console.log("payload already have values for " + item.key);
-                            console.log("isArray: " + Array.isArray(this.model.payload[item.key]))
-                            if (Array.isArray(this.model.payload[item.key])) {
-                                // console.log("convert payload for " + item.key + " from array to object");
-                                // var obj2: any = {};
-                                // for (var x = 0; x < values.length; x++) {
-                                //     obj2[x] = values[x];
-                                // }
-                                // this.model.payload[item.key] = obj2;
-                            } else {
-                                console.log("convert payload for " + item.key + " from object to array");
-                                var keys = Object.keys(this.model.payload[item.key]);
-                                var arr: any[] = [];
-                                for (var x = 0; x < keys.length; x++) {
-                                    arr.push(this.model.payload[item.key][keys[x]]);
-                                }
-                                this.model.payload[item.key] = arr;
-                            }
-                        }
+                this.traversecomponentsMakeDefaults(this.form.schema.components);
 
-                    }
-
-                }
-
-                if (this.model.payload != null && this.model.payload != undefined) {
-                    if (this.model.payload.values != null && this.model.payload.values != undefined) {
-                        var keys = Object.keys(this.model.payload.values);
-                        for (var i = 0; i < keys.length; i++) {
-                            var values = this.model.payload.values[keys[i]];
-                            for (var y = 0; y < this.form.schema.components.length; y++) {
-                                var item = this.form.schema.components[y];
-                                // console.log(item);
-                                if (item.key == keys[i]) {
-                                    if (Array.isArray(values)) {
-                                        console.log("handle " + item.key + " as array");
-                                        var obj2: any = {};
-                                        for (var x = 0; x < values.length; x++) {
-                                            obj2[x] = values[x];
-                                        }
-                                        if (item.data != null && item.data != undefined) {
-                                            item.data.values = obj2;
-                                            item.data.json = JSON.stringify(values);
-                                            // console.log("Setting values for " + keys[i], JSON.stringify(obj));
-                                        } else {
-                                            item.values = values;
-                                        }
-                                    } else {
-                                        console.log("handle " + item.key + " as an object");
-                                        if (item.data != null && item.data != undefined) {
-                                            item.data.values = values;
-                                            item.data.json = JSON.stringify(values);
-                                            // console.log("Setting values for " + keys[i], JSON.stringify(values));
-                                        } else {
-                                            item.values = values;
-                                        }
-                                    }
-                                    // if (item.data != null && item.data != undefined) {
-                                    //     console.log(keys[i], item.data);
-                                    // } else {
-                                    //     console.log(keys[i], item);
-                                    // }
-                                }
-                            }
-
-                        }
-                    }
-                }
                 if (this.form.wizard == true) {
                     this.form.schema.display = "wizard";
                 } else {
@@ -1860,19 +1876,15 @@ module openflow {
                 // wizard
                 this.formioRender.on('change', form => {
                     // this.model.schema = form;
-                    // console.log('onchange', form);
                     // if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 })
                 // https://formio.github.io/formio.js/app/examples/datagrid.html
 
                 if (this.model.payload != null && this.model.payload != undefined) {
-                    console.log("submission", this.model.payload);
                     this.formioRender.submission = { data: this.model.payload };
                 }
                 this.formioRender.on('submit', submission => {
                     console.log('onsubmit', submission);
-                    // console.log("submission");
-                    // console.log(submission.data);
                     $(".alert-success").hide();
                     setTimeout(() => {
                         // just to be safe
@@ -1881,18 +1893,22 @@ module openflow {
                     this.model.submission = submission;
                     this.model.userData = submission;
                     this.model.payload = submission.data;
+
+                    this.traversecomponentsPostProcess(this.form.schema.components, submission.data);
+
                     this.Save();
                     // this.Save.bind(this);
-                    // console.log('schema', form);
                     // if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 })
                 this.formioRender.on('error', (errors) => {
-                    console.log('We have errors!');
-                    console.log(errors);
+                    console.error(errors);
                 });
                 var click = function (evt) {
-                    this.submitbutton = evt.target.id;
-                    // console.log(this);
+                    // this.submitbutton = evt.target.id;
+                    // if (evt.target.name) {
+                    //     this.submitbutton = evt.target.name.split('[').pop().split(']')[0];;
+                    // }
+                    // console.log(this.submitbutton);
                     // var input = $("<input>").attr("type", "hidden").attr("name", "clicked").val(evt.target.id);
                     // $('#workflowform').append(input);
                     // evt.preventDefault();
