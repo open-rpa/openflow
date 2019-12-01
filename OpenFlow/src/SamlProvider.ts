@@ -7,6 +7,8 @@ import { Config } from "./Config";
 import { TokenUser } from "./TokenUser";
 import { Audit } from "./Audit";
 import { LoginProvider } from "./LoginProvider";
+import * as passport from "passport";
+import { Util } from "./Util";
 
 export class SamlProvider {
     private static _logger: winston.Logger;
@@ -133,30 +135,31 @@ export class SamlProvider {
         // TODO: FIX !!!!
         app.get('/logout', async (req: any, res: any, next: any) => {
             var referer: string = req.headers.referer;
+            var providerid: any = req.cookies.provider;
             req.logout();
-            if (referer !== null && referer !== undefined && referer !== "") {
-                // var providers = await LoginProvider.getProviders();
+
+            if (!Util.IsNullEmpty(providerid)) {
+                var p = LoginProvider.login_providers.filter(x => x.id == providerid);
+                if (p.length > 0) {
+                    var provider = p[0];
+                    if (!Util.IsNullEmpty(provider.saml_signout_url)) {
+                        var html = "<html><head></head><body>";
+                        html += "<iframe src='" + provider.saml_signout_url + "'></iframe>";
+                        if (!Util.IsNullEmpty(referer)) {
+                            html += "<br/><p><a href='" + referer + "'>Back / Tilbage</a></p>";
+                        } else {
+                            html += "<br/><p><a href='/'>Back / Tilbage</ifarame></p>";
+                        }
+                        res.send(html);
+                        return;
+                    }
+                }
+            }
+            if (!Util.IsNullEmpty(referer)) {
                 res.redirect(referer);
-                // var html = "<html><head></head><body>";
-                // providers.forEach(provider => {
-                //     if (provider.provider === "saml") {
-                //         html += "<iframe src='https://www.w3schools.com'></iframe>"
-                //     }
-                // });
-
-
-
-                // https://sso.slagelse.dk/adfs/ls/?wa=wsignout1.0
-                // https://sso.slagelse.dk/adfs/ls/?wa=wsignout1.0&wreply=https://slagelseapi.access-iot.com/issue
-
-                // https://social.msdn.microsoft.com/Forums/vstudio/en-US/ac41c0c5-83ef-4394-9111-fa6d07215f5d/adfs-20-does-not-redirect-back-to-reply-url-on-signout?forum=Geneva
-                // https://www.sevecek.com/EnglishPages/Lists/Posts/Post.aspx?ID=93
-
-                // res.send(html)
             } else {
                 res.redirect("/");
             }
-
             // samlp.logout({
             //     issuer: Config.saml_issuer,
             //     protocolBinding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',

@@ -44,6 +44,7 @@ export class Provider extends Base {
     public saml_federation_metadata: string = "";
     public consumerKey: string;
     public consumerSecret: string;
+    public saml_signout_url: string;
 }
 // tslint:disable-next-line: class-name
 export class googleauthstrategyoptions {
@@ -68,7 +69,7 @@ export class samlauthstrategyoptions {
 export class LoginProvider {
     private static _logger: winston.Logger;
     public static _providers: any = {};
-    private static login_providers: Provider[] = [];
+    public static login_providers: Provider[] = [];
 
     public static redirect(res: any, originalUrl: string) {
         res.write('<!DOCTYPE html>');
@@ -439,6 +440,7 @@ export class LoginProvider {
             passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),
             function (req: any, res: any): void {
                 var originalUrl: any = req.cookies.originalUrl;
+                res.cookie("provider", key, { maxAge: 900000, httpOnly: true });
                 if (!Util.IsNullEmpty(originalUrl)) {
                     res.cookie("originalUrl", "", { expires: new Date(0) });
                     LoginProvider.redirect(res, originalUrl);
@@ -509,7 +511,7 @@ export class LoginProvider {
             <auth:DisplayName>Name ID</auth:DisplayName>
             <auth:Description>The SAML name identifier of the user</auth:Description>
             </auth:ClaimType>
-            </fed:ClaimTypesOffered>
+            </fed:ClaimTypesOffered>originalUrl
             <fed:PassiveRequestorEndpoint>
             <EndpointReference xmlns="http://www.w3.org/2005/08/addressing">
             <Address>` + options.callbackUrl + `</Address>
