@@ -239,4 +239,30 @@ module openflow {
 
     }
 
+
+
+    export class unattendedclient extends Base {
+        constructor() {
+            super();
+            this._type = "unattendedclient";
+        }
+        public windowsusername: string;
+        public windowspassword: string;
+        public computername: string;
+        public computerfqdn: string;
+        public openrpapath: string;
+        public autorestart: string;
+        public rdpretry: string;
+        public enabled: boolean;
+    }
+
+    export class unattendedserver extends Base {
+        constructor() {
+            super();
+            this._type = "unattendedserver";
+        }
+        public computername: string;
+        public computerfqdn: string;
+        public enabled: boolean;
+    }
 }

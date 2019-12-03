@@ -2435,4 +2435,46 @@ module openflow {
     }
 
 
+
+
+    export class hdrobotsCtrl extends entitiesCtrl<openflow.unattendedclient> {
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
+            public WebSocketClient: WebSocketClient,
+            public api: api
+        ) {
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
+            this.autorefresh = true;
+            console.debug("RolesCtrl");
+            this.basequery = { _type: "unattendedclient" };
+            this.collection = "openrpa";
+            WebSocketClient.onSignedin((user: TokenUser) => {
+                this.loadData();
+            });
+        }
+        async DeleteOne(model: any): Promise<any> {
+            this.loading = true;
+            await this.api.Delete(this.collection, model);
+            this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        async Enable(model: any): Promise<any> {
+            this.loading = true;
+            model.enabled = true;
+            await this.api.Update(this.collection, model);
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        async Disable(model: any): Promise<any> {
+            this.loading = true;
+            model.enabled = false;
+            await this.api.Update(this.collection, model);
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+    }
 }
