@@ -54,7 +54,7 @@ module openflow {
             });
         }
         async loadUsers(): Promise<void> {
-            this.users = await this.api.Query("users", { $or: [{ _type: "user" }, { _type: "role" }] }, null, null);
+            this.users = await this.api.Query("users", { $or: [{ _type: "user" }, { _type: "role", rparole: true }] }, null, null);
             this.users.forEach(user => {
                 if (user._id == this.model._createdbyid || user._id == this.model._createdbyid) {
                     this.user = user;

@@ -163,6 +163,7 @@ module openflow {
             this.name = name;
             this._type = "role";
         }
+        public rparole: boolean;
     }
     export class TokenUser extends Base {
         public roles: Rolemember[] = [];
