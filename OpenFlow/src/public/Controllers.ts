@@ -1610,7 +1610,6 @@ module openflow {
                         this.model.payload.submitbutton = item.key;
                     }
                 }
-
             }
 
             for (var i = 0; i < components.length; i++) {
@@ -1726,6 +1725,14 @@ module openflow {
             }
 
             // rows
+        }
+        sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+        async beforeSubmit(submission, next) {
+            // console.log('beforeSubmit', submission);
+            //next('go away!');
+            next();
         }
         async renderform() {
             if (this.form.fbeditor == null || this.form.fbeditor == undefined) this.form.fbeditor = true;
@@ -1869,10 +1876,18 @@ module openflow {
                 this.formioRender = await Formio.createForm(document.getElementById('formio'), this.form.schema,
                     {
                         breadcrumbSettings: { clickable: true },
-                        buttonSettings: { showCancel: false }
+                        buttonSettings: { showCancel: false },
+                        hooks: {
+                            beforeSubmit: this.beforeSubmit.bind(this)
+                        }
                     });
                 // wizard
                 this.formioRender.on('change', form => {
+                    //console.log('change', form);
+                    // setTimeout(() => {
+                    //     this.formioRender.submit();
+                    // }, 200);
+
                     // this.model.schema = form;
                     // if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 })
@@ -1881,7 +1896,7 @@ module openflow {
                 if (this.model.payload != null && this.model.payload != undefined) {
                     this.formioRender.submission = { data: this.model.payload };
                 }
-                this.formioRender.on('submit', submission => {
+                this.formioRender.on('submit', async submission => {
                     console.log('onsubmit', submission);
                     $(".alert-success").hide();
                     setTimeout(() => {
@@ -1891,28 +1906,12 @@ module openflow {
                     this.model.submission = submission;
                     this.model.userData = submission;
                     this.model.payload = submission.data;
-
                     this.traversecomponentsPostProcess(this.form.schema.components, submission.data);
-
                     this.Save();
-                    // this.Save.bind(this);
-                    // if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 })
                 this.formioRender.on('error', (errors) => {
                     console.error(errors);
                 });
-                var click = function (evt) {
-                    // this.submitbutton = evt.target.id;
-                    // if (evt.target.name) {
-                    //     this.submitbutton = evt.target.name.split('[').pop().split(']')[0];;
-                    // }
-                    // console.log(this.submitbutton);
-                    // var input = $("<input>").attr("type", "hidden").attr("name", "clicked").val(evt.target.id);
-                    // $('#workflowform').append(input);
-                    // evt.preventDefault();
-                    // $('#workflowform').submit();
-                }
-                $('button[type="submit"]').click(click.bind(this));
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
         }
