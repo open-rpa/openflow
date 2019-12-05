@@ -266,18 +266,40 @@ export class Message {
         this.Reply("pong");
         this.Send(cli);
     }
+    private static collectionCache: any = {};
+    private static collectionCachetime: Date = new Date();
     private async ListCollections(cli: WebSocketClient): Promise<void> {
         this.Reply();
         var msg: ListCollectionsMessage
         try {
             msg = ListCollectionsMessage.assign(this.data);
             if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-            msg.result = await Config.db.ListCollections(msg.jwt);
-            if (msg.includehist !== true) {
-                msg.result = msg.result.filter(x => !x.name.endsWith("_hist"));
+            var d = new Date(Message.collectionCachetime.getTime() + 1000 * 60);
+            if (d < new Date()) {
+                Message.collectionCache = {};
+                Message.collectionCachetime = new Date();
             }
-            msg.result = msg.result.filter(x => x.name != "fs.chunks");
-            msg.result = msg.result.filter(x => x.name != "fs.files");
+            if (Message.collectionCache[msg.jwt] != null) {
+                msg.result = Message.collectionCache[msg.jwt];
+            } else {
+                msg.result = await Config.db.ListCollections(msg.jwt);
+                if (msg.includehist !== true) {
+                    msg.result = msg.result.filter(x => !x.name.endsWith("_hist"));
+                }
+                msg.result = msg.result.filter(x => x.name != "fs.chunks");
+                msg.result = msg.result.filter(x => x.name != "fs.files");
+                var result = [];
+                // filter out collections that are empty, or we don't have access too
+                for (var i = 0; i < msg.result.length; i++) {
+                    var q = await Config.db.query({}, null, 1, 0, null, msg.result[i].name, msg.jwt);
+                    if (q.length > 0) result.push(msg.result[i]);
+                }
+                if (result.filter(x => x.name == "entities").length == 0) {
+                    result.push({ name: "entities", type: "collection" });
+                }
+                Message.collectionCache[msg.jwt] = result;
+                msg.result = result;
+            }
         } catch (error) {
             cli._logger.error(error);
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }

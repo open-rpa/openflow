@@ -1309,10 +1309,10 @@ module openflow {
             });
         }
         SelectCollection() {
-            // this.$location.path("/Entities/" + this.collection);
+            this.$location.path("/Entities/" + this.collection);
             //this.$location.hash("#/Entities/" + this.collection);
-            // if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            this.loadData();
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            // this.loadData();
         }
         async DropCollection() {
             await this.api.DropCollection(this.collection);
