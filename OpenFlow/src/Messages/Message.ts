@@ -420,6 +420,7 @@ export class Message {
             cli._logger.error(error);
         }
         try {
+            delete msg.query;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -442,6 +443,7 @@ export class Message {
             cli._logger.error(error);
         }
         try {
+            delete msg.query;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
