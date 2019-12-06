@@ -618,12 +618,12 @@ export class Message {
             cli._logger.error(error);
         }
         try {
+            msg.websocket_package_size = Config.websocket_package_size;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
             cli._logger.error(error);
         }
-        msg.websocket_package_size = Config.websocket_package_size;
         this.Send(cli);
     }
     private async RegisterUser(cli: WebSocketClient): Promise<void> {
