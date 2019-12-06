@@ -210,6 +210,7 @@ export class WebSocketClient {
         this._sendQueue.forEach(msg => {
             if (msg.command !== "pong") {
                 var b = msg.command;
+                console.log(JSON.stringify(msg));
             }
             let id: string = msg.id;
             try {
