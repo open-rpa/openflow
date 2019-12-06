@@ -729,7 +729,7 @@ export class Message {
                                         name: 'nodered',
                                         image: Config.nodered_image,
                                         imagePullPolicy: "Always",
-                                        ports: [{ containerPort: 80 }],
+                                        ports: [{ containerPort: 80 }, { containerPort: 5858 }],
                                         env: [
                                             { name: "saml_federation_metadata", value: Config.saml_federation_metadata },
                                             { name: "saml_issuer", value: Config.saml_issuer },

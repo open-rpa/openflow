@@ -363,7 +363,6 @@ module openflow {
                         break;
                 }
             } catch (error) {
-                console.log(this);
                 console.error(error);
 
             }

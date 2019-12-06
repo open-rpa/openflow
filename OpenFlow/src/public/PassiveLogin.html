@@ -18,7 +18,6 @@
 
 <script>
   function getCookieValue(a) {
-    console.log(document.cookie);
     var b = document.cookie.match('(^|[^;]+)\\s*' + a + '\\s*=\\s*([^;]+)');
     return b ? b.pop() : '';
   }
@@ -78,14 +77,10 @@
     var query = window.location.search.substring(1);
     var qs = parse_query_string(query);
     var cerror = qs.error;
-    console.log(query);
-    console.log(qs);
-    console.log(cerror);
     if (cerror !== null && cerror !== undefined && cerror != "") {
       this.message = "Unknown user or bad password";
     }
     this.process = function (error, data) {
-      console.log(data);
       this.providers = data;
       for (var i = this.providers.length - 1; i >= 0; i--) {
         if (this.providers[i].provider == "local") {
@@ -104,7 +99,6 @@
       if (!$scope.$$phase) { $scope.$apply(); }
     };
     this.config = function (error, data) {
-      console.log(data);
       this.allow_user_registration = data.allow_user_registration;
       this.allow_user_registration = true;
       if (!$scope.$$phase) { $scope.$apply(); }

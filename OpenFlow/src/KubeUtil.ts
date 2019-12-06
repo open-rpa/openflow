@@ -34,9 +34,6 @@ export class KubeUtil {
         var list = await this.CoreV1Api.listNamespacedService(namespace);
         for (var i = 0; i < list.body.items.length; i++) {
             var item = list.body.items[i];
-            //console.log(item);
-            //var json = JSON.stringify(item, null, 3);
-            //console.log(json);
             if (item.metadata.name == name) return item;
         }
         return null;
