@@ -22,7 +22,7 @@ export class Config {
     public static api_ws_url: string = Config.getEnv("api_ws_url", "ws://localhost:3000");
 
     public static api_bypass_perm_check: boolean = Config.parseBoolean(Config.getEnv("api_bypass_perm_check", "false"));
-    public static websocket_package_size: number = parseInt(Config.getEnv("websocket_package_size", "1024"), 10);
+    public static websocket_package_size: number = parseInt(Config.getEnv("websocket_package_size", "4096"), 10);
     public static websocket_max_package_count: number = parseInt(Config.getEnv("websocket_max_package_count", "1024"), 10);
     public static signing_crt: string = Config.getEnv("signing_crt", "");
     public static singing_key: string = Config.getEnv("singing_key", "");

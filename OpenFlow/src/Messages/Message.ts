@@ -623,6 +623,7 @@ export class Message {
             this.data = "";
             cli._logger.error(error);
         }
+        msg.websocket_package_size = Config.websocket_package_size;
         this.Send(cli);
     }
     private async RegisterUser(cli: WebSocketClient): Promise<void> {

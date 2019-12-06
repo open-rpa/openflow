@@ -89,6 +89,17 @@ export class WebSocketClient {
         }
         this.consumers = [];
     }
+    public async Close(): Promise<void> {
+        if (this._socketObject != null) {
+            await this.CloseConsumers();
+            try {
+                this._socketObject.close();
+            } catch (error) {
+                this._logger.error("WebSocketclient::Close " + error);
+            }
+        }
+
+    }
     public async CreateConsumer(queuename: string): Promise<void> {
         var autoDelete: boolean = false;
 
