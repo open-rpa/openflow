@@ -104,6 +104,16 @@ export class WebServer {
                 });
 
                 this.settings = new nodered_settings();
+                var c = Config;
+                if (Config.nodered_port > 0) {
+                    this.settings.uiPort = Config.nodered_port;
+                }
+                else {
+                    this.settings.uiPort = Config.port;
+                }
+
+
+
                 this.settings.userDir = path.join(__dirname, "./nodered");
                 this.settings.nodesDir = path.join(__dirname, "./nodered");
 

@@ -14,7 +14,7 @@ export class Config {
     public static saml_crt: string = Config.getEnv("saml_crt", "");
 
     public static port: number = parseInt(Config.getEnv("port", "1880"));
-    public static nodered_port: number = parseInt(Config.getEnv("port", "0"));
+    public static nodered_port: number = parseInt(Config.getEnv("nodered_port", "0"));
     public static domain: string = Config.getEnv("domain", "localhost");
     public static protocol: string = Config.getEnv("protocol", "http");
     public static nodered_domain_schema: string = Config.getEnv("nodered_domain_schema", "");

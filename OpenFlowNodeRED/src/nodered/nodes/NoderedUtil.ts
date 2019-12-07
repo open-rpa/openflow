@@ -197,7 +197,7 @@ export class NoderedUtil {
             Logger.instanse.debug("GetToken::isNumeric: " + this.isNumeric(Config.nodered_id));
             if (Config.jwt !== "") {
                 q.jwt = Config.jwt;
-            } else if (Crypt.encryption_key !== "") {
+            } else if (Crypt.encryption_key() !== "") {
                 var user = new TokenUser();
                 if (NoderedUtil.IsNullEmpty(Config.nodered_sa)) {
                     user.name = "nodered" + Config.nodered_id;
