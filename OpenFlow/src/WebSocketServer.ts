@@ -57,6 +57,7 @@ export class WebSocketServer {
                 }
             } catch (error) {
                 console.error(error);
+                cli.Close();
             }
 
             // if cli.jwt

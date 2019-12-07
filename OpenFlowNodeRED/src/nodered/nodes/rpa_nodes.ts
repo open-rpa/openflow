@@ -123,18 +123,27 @@ export class rpa_workflow_node {
 
             if (data.payload.command == "invokecompleted") {
                 result.payload = data.payload.data;
+                if (result.payload == null || result.payload == undefined) { result.payload = {}; }
+                this.node.status({ fill: "green", shape: "dot", text: data.payload.command });
+                console.log("********************");
+                console.log(result);
+                console.log("********************");
                 this.node.send(result);
             }
             else if (data.payload.command == "invokefailed" || data.payload.command == "invokeaborted" || data.payload.command == "error") {
                 result.payload = data.payload;
+                if (result.payload == null || result.payload == undefined) { result.payload = {}; }
+                this.node.status({ fill: "red", shape: "dot", text: data.payload.command });
                 this.node.send([null, null, result]);
             }
             else {
                 result.payload = data.payload;
+                if (result.payload == null || result.payload == undefined) { result.payload = {}; }
                 this.node.send([null, result]);
             }
             // this.node.send(result);
         } catch (error) {
+            this.node.status({});
             NoderedUtil.HandleError(this, error);
         }
     }
@@ -156,14 +165,18 @@ export class rpa_workflow_node {
                 jwt: msg.jwt,
                 payload: rpacommand
             }
+            this.node.status({ fill: "blue", shape: "dot", text: "Robot running..." });
             this.con.SendMessage(JSON.stringify(data), this.config.queue, correlationId);
             // var data: any = {};
             // data.payload = msg.payload;
             // data.jwt = msg.jwt;
             // this.con.SendMessage(JSON.stringify(data), this.config.queue);
-            this.node.status({});
         } catch (error) {
             NoderedUtil.HandleError(this, error);
+            try {
+                this.node.status({ fill: "red", shape: "dot", text: error });
+            } catch (error) {
+            }
         }
     }
     onclose() {
@@ -194,7 +207,7 @@ export async function get_rpa_robots(req, res) {
     try {
         var rawAssertion = req.user.getAssertionXml();
         var token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
-        var result: any[] = await NoderedUtil.Query('users', { _type: "user" },
+        var result: any[] = await NoderedUtil.Query('users', { $or: [{ _type: "user" }, { _type: "role", rparole: true }] },
             { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
         res.json(result);
     } catch (error) {
@@ -207,7 +220,22 @@ export async function get_rpa_workflows(req, res) {
         var token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
         var q: any = { _type: "workflow" };
         if (req.query.queue != null && req.query.queue != undefined && req.query.queue != "" && req.query.queue != "none") {
-            q = { _type: "workflow", $or: [{ _createdbyid: req.query.queue }, { _modifiedbyid: req.query.queue }] };
+            q = {
+                _type: "workflow",
+                $or: [
+                    { _createdbyid: req.query.queue },
+                    { _modifiedbyid: req.query.queue },
+                    {
+                        _acl: {
+                            $elemMatch: {
+                                rights: { $bitsAllSet: [2] },
+                                deny: false,
+                                _id: req.query.queue
+                            }
+                        }
+                    }
+                ]
+            };
         }
         var result: any[] = await NoderedUtil.Query('openrpa', q,
             { name: 1 }, { name: -1 }, 1000, 0, token.jwt)

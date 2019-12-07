@@ -266,18 +266,40 @@ export class Message {
         this.Reply("pong");
         this.Send(cli);
     }
+    private static collectionCache: any = {};
+    private static collectionCachetime: Date = new Date();
     private async ListCollections(cli: WebSocketClient): Promise<void> {
         this.Reply();
         var msg: ListCollectionsMessage
         try {
             msg = ListCollectionsMessage.assign(this.data);
             if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-            msg.result = await Config.db.ListCollections(msg.jwt);
-            if (msg.includehist !== true) {
-                msg.result = msg.result.filter(x => !x.name.endsWith("_hist"));
+            var d = new Date(Message.collectionCachetime.getTime() + 1000 * 60);
+            if (d < new Date()) {
+                Message.collectionCache = {};
+                Message.collectionCachetime = new Date();
             }
-            msg.result = msg.result.filter(x => x.name != "fs.chunks");
-            msg.result = msg.result.filter(x => x.name != "fs.files");
+            if (Message.collectionCache[msg.jwt] != null) {
+                msg.result = Message.collectionCache[msg.jwt];
+            } else {
+                msg.result = await Config.db.ListCollections(msg.jwt);
+                if (msg.includehist !== true) {
+                    msg.result = msg.result.filter(x => !x.name.endsWith("_hist"));
+                }
+                msg.result = msg.result.filter(x => x.name != "fs.chunks");
+                msg.result = msg.result.filter(x => x.name != "fs.files");
+                var result = [];
+                // filter out collections that are empty, or we don't have access too
+                for (var i = 0; i < msg.result.length; i++) {
+                    var q = await Config.db.query({}, null, 1, 0, null, msg.result[i].name, msg.jwt);
+                    if (q.length > 0) result.push(msg.result[i]);
+                }
+                if (result.filter(x => x.name == "entities").length == 0) {
+                    result.push({ name: "entities", type: "collection" });
+                }
+                Message.collectionCache[msg.jwt] = result;
+                msg.result = result;
+            }
         } catch (error) {
             cli._logger.error(error);
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -363,7 +385,12 @@ export class Message {
             if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (Util.IsNullEmpty(msg.w as any)) { msg.w = 0; }
             if (Util.IsNullEmpty(msg.j as any)) { msg.j = false; }
-
+            if (Util.IsNullEmpty(msg.jwt) && msg.collectionname === "jslog") {
+                msg.jwt = TokenUser.rootToken();
+            }
+            if (Util.IsNullEmpty(msg.jwt)) {
+                throw new Error("jwt is null and client is not authenticated");
+            }
             msg.result = await Config.db.InsertOne(msg.item, msg.collectionname, msg.w, msg.j, msg.jwt);
         } catch (error) {
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -393,6 +420,7 @@ export class Message {
             cli._logger.error(error);
         }
         try {
+            delete msg.query;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -415,6 +443,7 @@ export class Message {
             cli._logger.error(error);
         }
         try {
+            delete msg.query;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -545,7 +574,7 @@ export class Message {
                 if (msg.impersonate !== undefined && msg.impersonate !== null && msg.impersonate !== "") {
                     var items = await Config.db.query({ _id: msg.impersonate }, null, 1, 0, null, "users", msg.jwt);
                     if (items.length == 0) {
-                        Audit.ImpersonateFailed(tuser);
+                        Audit.ImpersonateFailed(tuser, msg.impersonate);
                         throw new Error("Permission denied, impersonating " + msg.impersonate);
                     }
                     var tuserimpostor = tuser;
@@ -580,6 +609,7 @@ export class Message {
                     cli.user = user;
                 } else {
                     cli._logger.debug(tuser.username + " was validated in using " + type);
+                    // cli.jwt = Crypt.createToken(cli.user, "5m");
                 }
                 user.lastseen = new Date(new Date().toISOString());
                 await user.Save(TokenUser.rootToken());
@@ -590,6 +620,7 @@ export class Message {
             cli._logger.error(error);
         }
         try {
+            msg.websocket_package_size = Config.websocket_package_size;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -624,7 +655,6 @@ export class Message {
             noderedadmins.AddMember(user);
             cli._logger.debug("[" + user.username + "] update nodered role " + name + "noderedadmins");
             await noderedadmins.Save(jwt);
-
 
         } catch (error) {
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -701,7 +731,7 @@ export class Message {
                                         name: 'nodered',
                                         image: Config.nodered_image,
                                         imagePullPolicy: "Always",
-                                        ports: [{ containerPort: 80 }],
+                                        ports: [{ containerPort: 80 }, { containerPort: 5858 }],
                                         env: [
                                             { name: "saml_federation_metadata", value: Config.saml_federation_metadata },
                                             { name: "saml_issuer", value: Config.saml_issuer },
@@ -933,14 +963,20 @@ export class Message {
 
             var list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
 
+            var found: any = null;
+            msg.result = null;
             if (list.body.items.length > 0) {
                 for (var i = 0; i < list.body.items.length; i++) {
                     var item = list.body.items[i];
                     if (item.metadata.labels.app === name) {
-                        msg.result = item;
-                        cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance:" + name + " found one");
+                        found = item;
+                        if (item.status.phase != "Failed") {
+                            msg.result = item;
+                            cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance:" + name + " found one");
+                        }
                     }
                 }
+                if (msg.result == null) msg.result = found;
             } else {
                 cli._logger.warn("[" + cli.user.username + "] GetNoderedInstance: found NO Namespaced Pods ???");
             }
@@ -1064,7 +1100,10 @@ export class Message {
             msg.file = null;
             if (msg.metadata == null) { msg.metadata = new Base(); }
             msg.metadata = Base.assign(msg.metadata);
-            if (Util.IsNullUndefinded(msg.metadata._acl)) { msg.metadata._acl = []; }
+            if (Util.IsNullUndefinded(msg.metadata._acl)) {
+                msg.metadata._acl = [];
+                msg.metadata.addRight(WellknownIds.filestore_users, "filestore users", [Rights.read]);
+            }
             var user: TokenUser = Crypt.verityToken(msg.jwt);
             msg.metadata._createdby = user.name;
             msg.metadata._createdbyid = user._id;
@@ -1083,10 +1122,11 @@ export class Message {
             if ((hasUser === null || hasUser === undefined)) {
                 msg.metadata.addRight(WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
             }
-            hasUser = msg.metadata._acl.find(e => e._id === WellknownIds.filestore_users);
-            if ((hasUser === null || hasUser === undefined)) {
-                msg.metadata.addRight(WellknownIds.filestore_users, "filestore users", [Rights.read]);
-            }
+            // hasUser = msg.metadata._acl.find(e => e._id === WellknownIds.filestore_users);
+            // if ((hasUser === null || hasUser === undefined)) {
+            //     msg.metadata.addRight(WellknownIds.filestore_users, "filestore users", [Rights.read]);
+            // }
+            msg.metadata = Config.db.ensureResource(msg.metadata);
             if (!Config.db.hasAuthorization(user, msg.metadata, Rights.create)) { throw new Error("Access denied"); }
             msg.id = await this._SaveFile(readable, msg.filename, msg.mimeType, msg.metadata);
         } catch (error) {
@@ -1214,6 +1254,7 @@ export class Message {
             msg.metadata.addRight(WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
             if (!Config.db.hasAuthorization(user, msg.metadata, Rights.update)) { throw new Error("Access denied"); }
 
+            msg.metadata = Config.db.ensureResource(msg.metadata);
             var fsc = Config.db.db.collection("fs.files");
             DatabaseConnection.traversejsonencode(msg.metadata);
             var res = await fsc.updateOne(q, { $set: { metadata: msg.metadata } });

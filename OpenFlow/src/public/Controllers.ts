@@ -1,6 +1,8 @@
 module openflow {
     // "use strict";
 
+
+
     function treatAsUTC(date): number {
         var result = new Date(date);
         result.setMinutes(result.getMinutes() - result.getTimezoneOffset());
@@ -12,6 +14,7 @@ module openflow {
         return (treatAsUTC(endDate) - treatAsUTC(startDate)) / millisecondsPerDay;
     }
     declare var jsondiffpatch: any;
+    declare var Formio: any;
 
     export class RPAWorkflowCtrl extends entityCtrl<openflow.RPAWorkflow> {
         public arguments: any;
@@ -51,7 +54,7 @@ module openflow {
             });
         }
         async loadUsers(): Promise<void> {
-            this.users = await this.api.Query("users", { $or: [{ _type: "user" }, { _type: "role" }] }, null, null);
+            this.users = await this.api.Query("users", { $or: [{ _type: "user" }, { _type: "role", rparole: true }] }, null, null);
             this.users.forEach(user => {
                 if (user._id == this.model._createdbyid || user._id == this.model._createdbyid) {
                     this.user = user;
@@ -352,10 +355,12 @@ module openflow {
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
-
-
     }
+
     export class MainCtrl extends entitiesCtrl<openflow.Base> {
+        searchFilteredList: string[] = [];
+        countryList: string[] = [];
+        searchtext: string = "";
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -368,9 +373,81 @@ module openflow {
             console.debug("MainCtrl");
             this.collection = "workflow_instances"
             this.basequery = { state: { $ne: "completed" }, form: { $exists: true } };
+
+            ($scope as any).selected = undefined;
+            ($scope as any).states = ['Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois'];
+            ($scope as any).names = ["john", "bill", "charlie", "robert", "alban", "oscar", "marie", "celine", "brad", "drew", "rebecca", "michel", "francis", "jean", "paul", "pierre", "nicolas", "alfred", "gerard", "louis", "albert", "edouard", "benoit", "guillaume", "nicolas", "joseph"];
+            this.countryList = ["Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Anguilla", "Antigua &amp; Barbuda", "Argentina", "Armenia", "Aruba", "Australia", "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bermuda", "Bhutan", "Bolivia", "Bosnia &amp; Herzegovina", "Botswana", "Brazil", "British Virgin Islands", "Brunei", "Bulgaria", "Burkina Faso", "Burundi", "Cambodia", "Cameroon", "Cape Verde", "Cayman Islands", "Chad", "Chile", "China", "Colombia", "Congo", "Cook Islands", "Costa Rica", "Cote D Ivoire", "Croatia", "Cruise Ship", "Cuba", "Cyprus", "Czech Republic", "Denmark", "Djibouti", "Dominica", "Dominican Republic", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Estonia", "Ethiopia", "Falkland Islands", "Faroe Islands", "Fiji", "Finland", "France", "French Polynesia", "French West Indies", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Gibraltar", "Greece", "Greenland", "Grenada", "Guam", "Guatemala", "Guernsey", "Guinea", "Guinea Bissau", "Guyana", "Haiti", "Honduras", "Hong Kong", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Isle of Man", "Israel", "Italy", "Jamaica", "Japan", "Jersey", "Jordan", "Kazakhstan", "Kenya", "Kuwait", "Kyrgyz Republic", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg", "Macau", "Macedonia", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Mauritania", "Mauritius", "Mexico", "Moldova", "Monaco", "Mongolia", "Montenegro", "Montserrat", "Morocco", "Mozambique", "Namibia", "Nepal", "Netherlands", "Netherlands Antilles", "New Caledonia", "New Zealand", "Nicaragua", "Niger", "Nigeria", "Norway", "Oman", "Pakistan", "Palestine", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland", "Portugal", "Puerto Rico", "Qatar", "Reunion", "Romania", "Russia", "Rwanda", "Saint Pierre &amp; Miquelon", "Samoa", "San Marino", "Satellite", "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "South Africa", "South Korea", "Spain", "Sri Lanka", "St Kitts &amp; Nevis", "St Lucia", "St Vincent", "St. Lucia", "Sudan", "Suriname", "Swaziland", "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Timor L'Este", "Togo", "Tonga", "Trinidad &amp; Tobago", "Tunisia", "Turkey", "Turkmenistan", "Turks &amp; Caicos", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "Uruguay", "Uzbekistan", "Venezuela", "Vietnam", "Virgin Islands (US)", "Yemen", "Zambia", "Zimbabwe"];
             WebSocketClient.onSignedin((_user: TokenUser) => {
                 this.loadData();
             });
+
+
+            // Formio.createForm(document.getElementById('formio'), 'https://examples.form.io/example');
+
+            // $scope.$watch('searchtext', (newValue) => {
+            //     this.complete(newValue);
+            // });
+        }
+
+        localSearch() {
+            return [];
+        }
+        e: any = null;
+        setkey(e) {
+            this.e = e;
+            this.handlekeys();
+        }
+        handlekeys() {
+            if (this.searchFilteredList.length > 0) {
+                var lowerCaseNames = this.searchFilteredList.map(function (value) {
+                    return value.toLowerCase();
+                });
+                var idx: number = lowerCaseNames.indexOf(this.searchtext.toLowerCase());
+                if (this.e.keyCode == 38) { // up
+                    if (idx <= 0) {
+                        idx = 0;
+                    } else { idx--; }
+                    this.searchtext = this.searchFilteredList[idx];
+                    return;
+                }
+                else if (this.e.keyCode == 40) { // down
+                    if (idx >= this.searchFilteredList.length) {
+                        idx = this.searchFilteredList.length - 1;
+                    } else { idx++; }
+                    this.searchtext = this.searchFilteredList[idx];
+                    return;
+                }
+                else if (this.e.keyCode == 13) { // enter
+                    if (idx >= 0) {
+                        this.searchtext = this.searchFilteredList[idx];
+                        this.searchFilteredList = [];
+                        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    }
+                }
+            }
+        }
+        handlefilter(e) {
+            this.e = e;
+            var output = [];
+            angular.forEach(this.countryList, (country) => {
+                if (country.toLowerCase().indexOf(this.searchtext.toLowerCase()) >= 0) {
+                    output.push(country);
+                }
+            });
+            this.searchFilteredList = output;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        fillTextbox(searchtext) {
+            var lowerCaseNames = this.searchFilteredList.map(function (value) {
+                return value.toLowerCase();
+            });
+            var idx: number = lowerCaseNames.indexOf(searchtext.toLowerCase());
+            if (idx >= 0) {
+                this.searchtext = this.searchFilteredList[idx];
+                this.searchFilteredList = [];
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            }
         }
     }
     declare var QRScanner: any;
@@ -622,7 +699,6 @@ module openflow {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             console.debug("ProviderCtrl");
             this.collection = "config";
-            console.log(WebSocketClient);
             WebSocketClient.onSignedin((user: TokenUser) => {
                 if (this.id !== null && this.id !== undefined) {
                     this.loadData();
@@ -723,20 +799,30 @@ module openflow {
         async Impersonate(model: openflow.TokenUser): Promise<any> {
             this.loading = true;
             var result = await this.api.SigninWithToken(this.WebSocketClient.jwt, null, model._id);
-            console.log(result);
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
-        async DeleteOne(model: openflow.TokenUser): Promise<any> {
+        async DeleteOneUser(model: openflow.TokenUser): Promise<any> {
             this.loading = true;
             await this.api.Delete(this.collection, model);
             this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
             this.loading = false;
+            var name = model.username;
+            name = name.split("@").join("").split(".").join("");
+            name = name.toLowerCase();
+
+            var list = await this.api.Query("users", { _type: "role", name: name + "noderedadmins" });
+            if (list.length == 1) {
+                console.log("Deleting " + name + "noderedadmins")
+                await this.api.Delete("users", list[0]);
+            }
+
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
     }
     export class UserCtrl extends entityCtrl<openflow.TokenUser> {
         public newid: string;
+        public memberof: openflow.Role[];
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -748,6 +834,7 @@ module openflow {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             console.debug("UserCtrl");
             this.collection = "users";
+            this.postloadData = this.processdata;
             WebSocketClient.onSignedin((user: TokenUser) => {
                 if (this.id !== null && this.id !== undefined) {
                     this.loadData();
@@ -763,6 +850,20 @@ module openflow {
 
             });
         }
+        async processdata() {
+            if (this.model != null) {
+                this.memberof = await this.api.Query("users",
+                    {
+                        $and: [
+                            { _type: "role" },
+                            { members: { $elemMatch: { _id: this.model._id } } }
+                        ]
+                    }, null, { _type: -1, name: 1 }, 5);
+            } else {
+                this.memberof = [];
+            }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
         deleteid(id) {
             if (this.model.federationids === null || this.model.federationids === undefined) {
                 this.model.federationids = [];
@@ -775,6 +876,9 @@ module openflow {
             }
             this.model.federationids.push(this.newid);
         }
+        RemoveMember(model: openflow.Role) {
+            this.memberof = this.memberof.filter(x => x._id != model._id);
+        }
         async submit(): Promise<void> {
             if (this.model._id) {
                 await this.api.Update(this.collection, this.model);
@@ -782,6 +886,26 @@ module openflow {
                 await this.api.Insert(this.collection, this.model);
             }
             this.$location.path("/Users");
+
+            var currentmemberof = await this.api.Query("users",
+                {
+                    $and: [
+                        { _type: "role" },
+                        { members: { $elemMatch: { _id: this.model._id } } }
+                    ]
+                }, null, { _type: -1, name: 1 }, 5);
+            for (var i = 0; i < currentmemberof.length; i++) {
+                var memberof = currentmemberof[i];
+                var exists = this.memberof.filter(x => x._id == memberof._id);
+                if (exists.length == 0) {
+                    console.log("Updating members of " + memberof.name + " " + memberof._id);
+                    console.log("members: " + memberof.members.length);
+                    memberof.members = memberof.members.filter(x => x._id != this.model._id);
+                    console.log("members: " + memberof.members.length);
+                    await this.api.Update("users", memberof);
+                }
+            }
+
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
     }
@@ -817,9 +941,11 @@ module openflow {
         }
     }
     export class RoleCtrl extends entityCtrl<openflow.Role> {
-        public addthis: any = "";
-        public users: TokenUser[] = null;
-        public allusers: TokenUser[] = null;
+        searchFilteredList: openflow.Role[] = [];
+        searchSelectedItem: openflow.Role = null;
+        searchtext: string = "";
+        e: any = null;
+
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -834,23 +960,10 @@ module openflow {
             WebSocketClient.onSignedin(async (user: TokenUser) => {
                 if (this.id !== null && this.id !== undefined) {
                     await this.loadData();
-                    await this.loadUsers();
                 } else {
                     this.model = new openflow.Role("");
-                    await this.loadUsers();
                 }
             });
-        }
-        async loadUsers(): Promise<void> {
-            this.allusers = await this.api.Query("users", { $or: [{ _type: "user" }, { _type: "role" }] }, null, { _type: -1, name: 1 });
-            if (this.model.members === undefined) { this.model.members = []; }
-            var ids: string[] = [];
-            for (var i: number = 0; i < this.model.members.length; i++) {
-                ids.push(this.model.members[i]._id);
-            }
-            this.users = this.allusers.filter(x => ids.indexOf(x._id) == -1);
-            this.addthis = this.users[0]._id;
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async submit(): Promise<void> {
             if (this.model._id) {
@@ -868,26 +981,91 @@ module openflow {
                     this.model.members.splice(i, 1);
                 }
             }
-            var ids: string[] = [];
-            for (var i: number = 0; i < this.model.members.length; i++) {
-                ids.push(this.model.members[i]._id);
-            }
-            this.users = this.allusers.filter(x => ids.indexOf(x._id) == -1);
-            this.addthis = this.users[0]._id;
         }
         AddMember(model: any) {
             if (this.model.members === undefined) { this.model.members = []; }
             var user: any = null;
-            this.users.forEach(u => {
-                if (u._id === this.addthis) { user = u; }
-            });
+            user = this.searchSelectedItem;
             this.model.members.push({ name: user.name, _id: user._id });
-            var ids: string[] = [];
-            for (var i: number = 0; i < this.model.members.length; i++) {
-                ids.push(this.model.members[i]._id);
+            this.searchSelectedItem = null;
+            this.searchtext = "";
+        }
+
+
+        restrictInput(e) {
+            if (e.keyCode == 13) {
+                e.preventDefault();
+                return false;
             }
-            this.users = this.allusers.filter(x => ids.indexOf(x._id) == -1);
-            this.addthis = this.users[0]._id;
+        }
+        setkey(e) {
+            this.e = e;
+            this.handlekeys();
+        }
+        handlekeys() {
+            if (this.searchFilteredList.length > 0) {
+                var idx: number = -1;
+                for (var i = 0; i < this.searchFilteredList.length; i++) {
+                    if (this.searchSelectedItem != null) {
+                        if (this.searchFilteredList[i]._id == this.searchSelectedItem._id) {
+                            idx = i;
+                        }
+                    }
+                }
+                if (this.e.keyCode == 38) { // up
+                    if (idx <= 0) {
+                        idx = 0;
+                    } else { idx--; }
+                    // this.searchtext = this.searchFilteredList[idx].name;
+                    this.searchSelectedItem = this.searchFilteredList[idx];
+                    return;
+                }
+                else if (this.e.keyCode == 40) { // down
+                    if (idx >= this.searchFilteredList.length) {
+                        idx = this.searchFilteredList.length - 1;
+                    } else { idx++; }
+                    // this.searchtext = this.searchFilteredList[idx].name;
+                    this.searchSelectedItem = this.searchFilteredList[idx];
+                    return;
+                }
+                else if (this.e.keyCode == 13) { // enter
+                    if (idx >= 0) {
+                        this.searchtext = this.searchFilteredList[idx].name;
+                        this.searchSelectedItem = this.searchFilteredList[idx];
+                        this.searchFilteredList = [];
+                        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    }
+                    return;
+                }
+            } else {
+                if (this.e.keyCode == 13 && this.searchSelectedItem != null) {
+                    this.AddMember(this.searchSelectedItem);
+                }
+            }
+        }
+        async handlefilter(e) {
+            this.e = e;
+            var ids: string[] = this.model.members.map(item => item._id);
+            this.searchFilteredList = await this.api.Query("users",
+                {
+                    $and: [
+                        { $or: [{ _type: "user" }, { _type: "role" }] },
+                        { name: new RegExp([this.searchtext].join(""), "i") },
+                        { _id: { $nin: ids } }
+                    ]
+                }
+                , null, { _type: -1, name: 1 }, 5);
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        fillTextbox(searchtext) {
+            this.searchFilteredList.forEach((item: any) => {
+                if (item.name.toLowerCase() == searchtext.toLowerCase()) {
+                    this.searchtext = item.name;
+                    this.searchSelectedItem = item;
+                    this.searchFilteredList = [];
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                }
+            });
         }
     }
 
@@ -1059,6 +1237,29 @@ module openflow {
             return blob;
         }
         async Upload() {
+            // const e: any = document.querySelector('input[type="file"]');
+            var e: any = document.getElementById('fileupload')
+            const fd = new FormData();
+            for (var i = 0; i < e.files.length; i++) {
+                var file = e.files[i];
+                fd.append(e.name, file, file.name);
+            };
+            const xhr = new XMLHttpRequest();
+            xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    console.log("upload complete");
+                    // we done!
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    this.loadData();
+
+                }
+            };
+            console.log("open");
+            xhr.open('POST', '/upload', true);
+            console.log("send");
+            xhr.send(fd);
+        }
+        async Upload_usingapi() {
             var filename = (this.$scope as any).filename;
             var type = (this.$scope as any).type;
             console.log("filename: " + filename + " type: " + type);
@@ -1108,10 +1309,10 @@ module openflow {
             });
         }
         SelectCollection() {
-            // this.$location.path("/Entities/" + this.collection);
+            this.$location.path("/Entities/" + this.collection);
             //this.$location.hash("#/Entities/" + this.collection);
-            // if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            this.loadData();
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            // this.loadData();
         }
         async DropCollection() {
             await this.api.DropCollection(this.collection);
@@ -1194,6 +1395,7 @@ module openflow {
         public message: string = "";
         public charts: chartset[] = [];
         public formBuilder: any;
+        public Formiobuilder: any;
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -1209,19 +1411,25 @@ module openflow {
             this.id = $routeParams.id;
             this.basequery = { _id: this.id };
             this.postloadData = this.renderform;
-            WebSocketClient.onSignedin(async (user: TokenUser) => {
-                if (this.id !== null && this.id !== undefined && this.id !== "") {
-                    this.basequery = { _id: this.id };
-                    this.loadData();
-                } else {
-                    this.model = new openflow.Form();
-                    this.renderform();
-                }
+            this.
+                WebSocketClient.onSignedin(async (user: TokenUser) => {
+                    if (this.id !== null && this.id !== undefined && this.id !== "") {
+                        this.basequery = { _id: this.id };
+                        this.loadData();
+                    } else {
+                        this.model = new openflow.Form();
+                        this.model.fbeditor = false;
+                        this.renderform();
+                    }
 
-            });
+                });
         }
         async Save() {
-            this.model.formData = this.formBuilder.actions.getData(this.model.dataType);
+            if (this.model.fbeditor == true) {
+                this.model.formData = this.formBuilder.actions.getData(this.model.dataType);
+            } else {
+                // allready there
+            }
             if (this.model._id) {
                 this.model = await this.api.Update(this.collection, this.model);
             } else {
@@ -1231,24 +1439,57 @@ module openflow {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async renderform() {
-            // https://www.npmjs.com/package/angular2-json-schema-form
-            // http://www.alpacajs.org/demos/form-builder/form-builder.html
-            // https://github.com/kevinchappell/formBuilder - https://formbuilder.online/ - https://kevinchappell.github.io/formBuilder/
-            var ele: any;
-            var roles: any = {};
-            this.WebSocketClient.user.roles.forEach(role => {
-                roles[role._id] = role.name;
-            });
+            if (this.model.fbeditor == null || this.model.fbeditor == undefined) this.model.fbeditor = true;
+            if ((this.model.fbeditor as any) == "true") this.model.fbeditor = true;
+            if ((this.model.fbeditor as any) == "false") this.model.fbeditor = false;
+            if (this.model.fbeditor == true) {
+                // https://www.npmjs.com/package/angular2-json-schema-form
+                // http://www.alpacajs.org/demos/form-builder/form-builder.html
+                // https://github.com/kevinchappell/formBuilder - https://formbuilder.online/ - https://kevinchappell.github.io/formBuilder/
+                var ele: any;
+                var roles: any = {};
+                this.WebSocketClient.user.roles.forEach(role => {
+                    roles[role._id] = role.name;
+                });
 
-            var fbOptions = {
-                formData: this.model.formData,
-                dataType: this.model.dataType,
-                roles: roles,
-                disabledActionButtons: ['data', 'clear'],
-                onSave: this.Save.bind(this),
-            };
-            ele = $(document.getElementById('fb-editor'));
-            this.formBuilder = await ele.formBuilder(fbOptions).promise;
+                var fbOptions = {
+                    formData: this.model.formData,
+                    dataType: this.model.dataType,
+                    roles: roles,
+                    disabledActionButtons: ['data', 'clear'],
+                    onSave: this.Save.bind(this),
+                };
+                ele = $(document.getElementById('fb-editor'));
+                if (this.formBuilder == null || this.formBuilder == undefined) {
+                    this.formBuilder = await ele.formBuilder(fbOptions).promise;
+                }
+            } else {
+                if (this.model.formData == null || this.model.formData == undefined) { this.model.formData = {}; }
+                // "https://examples.form.io/wizard"
+                if (this.model.wizard == true) {
+                    this.model.formData.display = "wizard";
+                } else {
+                    this.model.formData.display = "form";
+                }
+                this.Formiobuilder = await Formio.builder(document.getElementById('builder'), this.model.formData,
+                    {
+                        noAlerts: false,
+                        breadcrumbSettings: { clickable: false },
+                        buttonSettings: { showCancel: false },
+                        builder: {
+                            data: false,
+                            premium: false
+                        }
+                    });
+                this.Formiobuilder.on('change', form => {
+                    this.model.schema = form;
+                })
+                this.Formiobuilder.on('submit', submission => {
+                })
+                this.Formiobuilder.on('error', (errors) => {
+                    console.error(errors);
+                })
+            }
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
@@ -1256,6 +1497,7 @@ module openflow {
     export class FormCtrl extends entityCtrl<openflow.WorkflowInstance> {
         public message: string = "";
         public formRender: any;
+        public formioRender: any;
         public workflow: openflow.Workflow;
         public form: openflow.Form;
         public instanceid: string;
@@ -1319,13 +1561,13 @@ module openflow {
             }
         }
         async SendOne(queuename: string, message: any): Promise<void> {
-            console.debug("SendOne: queuename " + queuename + " / " + this.myid);
+            // console.debug("SendOne: queuename " + queuename + " / " + this.myid);
             var result: any = await this.api.QueueMessage(queuename, message);
             try {
                 result = JSON.parse(result);
             } catch (error) {
             }
-            console.debug(result);
+            // console.debug(result);
             if ((this.instanceid === undefined || this.instanceid === null) && (result !== null && result !== unescape)) {
                 this.instanceid = result._id;
                 this.$location.path("/Form/" + this.id + "/" + this.instanceid);
@@ -1333,151 +1575,345 @@ module openflow {
             }
         }
         async Save() {
-            var userData: any[] = this.formRender.userData;
-            if (this.model.payload === null || this.model.payload === undefined) { this.model.payload = {}; }
-            for (var i = 0; i < userData.length; i++) {
-                this.model.payload[userData[i].name] = "";
-                var val = userData[i].userData;
-                if (val !== undefined && val !== null) {
-                    if (userData[i].type == "checkbox-group") {
-                        this.model.payload[userData[i].name] = val;
-                    } else if (Array.isArray(val)) {
-                        this.model.payload[userData[i].name] = val[0];
-                    } else {
-                        this.model.payload[userData[i].name] = val;
+            if (this.form.fbeditor === true) {
+                var userData: any[] = this.formRender.userData;
+                if (this.model.payload === null || this.model.payload === undefined) { this.model.payload = {}; }
+                for (var i = 0; i < userData.length; i++) {
+                    this.model.payload[userData[i].name] = "";
+                    var val = userData[i].userData;
+                    if (val !== undefined && val !== null) {
+                        if (userData[i].type == "checkbox-group") {
+                            this.model.payload[userData[i].name] = val;
+                        } else if (Array.isArray(val)) {
+                            this.model.payload[userData[i].name] = val[0];
+                        } else {
+                            this.model.payload[userData[i].name] = val;
+                        }
                     }
                 }
+                this.model.payload.submitbutton = this.submitbutton;
+                var ele = $('.render-wrap');
+                ele.hide();
+            } else {
+
             }
-            this.model.payload.submitbutton = this.submitbutton;
-            var ele = $('.render-wrap');
-            ele.hide();
-            console.debug("SendOne: " + this.workflow._id + " / " + this.workflow.queue);
+            // console.debug("SendOne: " + this.workflow._id + " / " + this.workflow.queue);
             await this.SendOne(this.workflow.queue, this.model);
             this.loadData();
         }
-        async renderform() {
-            console.debug("renderform");
-            var ele: any;
-            var roles: any = {};
-            this.WebSocketClient.user.roles.forEach(role => {
-                roles[role._id] = role.name;
-            });
-            if (typeof this.form.formData === 'string' || this.form.formData instanceof String) {
-                this.form.formData = JSON.parse((this.form.formData as any));
+        traversecomponentsPostProcess(components: any[], data: any) {
+            for (var i = 0; i < components.length; i++) {
+                var item = components[i];
+                if (item.type == "button" && item.action == "submit") {
+                    if (data[item.key] == true) {
+                        this.submitbutton = item.key;
+                        this.model.payload.submitbutton = item.key;
+                    }
+                }
             }
-            for (var i = 0; i < this.form.formData.length; i++) {
-                var value = this.model.payload[this.form.formData[i].name];
-                if (value == undefined || value == null) { value = ""; }
-                if (value != "" || this.form.formData[i].type != "button") {
-                    // console.log("0:" + this.form.formData[i].label + " -> " + value);
-                    this.form.formData[i].userData = [value];
+
+            for (var i = 0; i < components.length; i++) {
+                var item = components[i];
+                if (item.type == "table") {
+                    for (var x = 0; x < item.rows.length; x++) {
+                        for (var y = 0; y < item.rows[x].length; y++) {
+                            var subcomponents = item.rows[x][y].components;
+                            this.traversecomponentsPostProcess(subcomponents, data);
+                        }
+
+                    }
                 }
-                if (Array.isArray(value)) {
-                    // console.log("1:" + this.form.formData[i].userData + " -> " + value);
-                    this.form.formData[i].userData = value;
-                }
-                if (this.model.payload[this.form.formData[i].label] !== null && this.model.payload[this.form.formData[i].label] !== undefined) {
-                    value = this.model.payload[this.form.formData[i].label];
-                    if (value == undefined || value == null) { value = ""; }
-                    if (this.form.formData[i].type != "button") {
-                        // console.log("2:" + this.form.formData[i].label + " -> " + value);
-                        this.form.formData[i].label = value;
-                    } else if (value != "") {
-                        // console.log("2button:" + this.form.formData[i].label + " -> " + value);
-                        this.form.formData[i].label = value;
+            }
+
+        }
+        traversecomponentsMakeDefaults(components: any[]) {
+            for (var y = 0; y < components.length; y++) {
+                var item = components[y];
+                if (item.type == "datagrid") {
+                    if (this.model.payload[item.key] === null || this.model.payload[item.key] === undefined) {
+                        var obj: any = {};
+                        for (var x = 0; x < item.components.length; x++) {
+                            obj[item.components[x].key] = "";
+                        }
+                        console.log("add default array for " + item.key, obj);
+                        this.model.payload[item.key] = [obj];
                     } else {
-                        // console.log("skip " + this.form.formData[i].label);
+                        console.log("payload already have values for " + item.key);
+                        console.log("isArray: " + Array.isArray(this.model.payload[item.key]))
+                        if (Array.isArray(this.model.payload[item.key])) {
+                            // console.log("convert payload for " + item.key + " from array to object");
+                            // var obj2: any = {};
+                            // for (var x = 0; x < values.length; x++) {
+                            //     obj2[x] = values[x];
+                            // }
+                            // this.model.payload[item.key] = obj2;
+                        } else {
+                            console.log("convert payload for " + item.key + " from object to array");
+                            var keys = Object.keys(this.model.payload[item.key]);
+                            var arr: any[] = [];
+                            for (var x = 0; x < keys.length; x++) {
+                                arr.push(this.model.payload[item.key][keys[x]]);
+                            }
+                            this.model.payload[item.key] = arr;
+                        }
                     }
                 }
-                if (this.model.values !== null && this.model.values !== undefined) {
-                    if (this.model.values[this.form.formData[i].name] !== null && this.model.values[this.form.formData[i].name] !== undefined) {
-                        value = this.model.values[this.form.formData[i].name];
-                        if (value == undefined || value == null) { value = []; }
-                        // console.log("3:" + this.form.formData[i].values + " -> " + value);
-                        this.form.formData[i].values = value;
+                if (item.type == "button" && item.action == "submit") {
+                    this.model.payload[item.key] = false;
+                }
+            }
+            if (this.model.payload != null && this.model.payload != undefined) {
+                if (this.model.payload.values != null && this.model.payload.values != undefined) {
+                    var keys = Object.keys(this.model.payload.values);
+                }
+            }
+            if (this.model.payload != null && this.model.payload != undefined) {
+                if (this.model.payload.values != null && this.model.payload.values != undefined) {
+                    var keys = Object.keys(this.model.payload.values);
+                    for (var i = 0; i < keys.length; i++) {
+                        var values = this.model.payload.values[keys[i]];
+                        for (var y = 0; y < components.length; y++) {
+                            var item = components[y];
+                            // console.log(item);
+                            if (item.key == keys[i]) {
+                                if (Array.isArray(values)) {
+                                    console.log("handle " + item.key + " as array");
+                                    var obj2: any = {};
+                                    for (var x = 0; x < values.length; x++) {
+                                        obj2[x] = values[x];
+                                    }
+                                    if (item.data != null && item.data != undefined) {
+                                        item.data.values = obj2;
+                                        item.data.json = JSON.stringify(values);
+                                        // console.log("Setting values for " + keys[i], JSON.stringify(obj));
+                                    } else {
+                                        item.values = values;
+                                    }
+                                } else {
+                                    console.log("handle " + item.key + " as an object");
+                                    if (item.data != null && item.data != undefined) {
+                                        item.data.values = values;
+                                        item.data.json = JSON.stringify(values);
+                                        // console.log("Setting values for " + keys[i], JSON.stringify(values));
+                                    } else {
+                                        item.values = values;
+                                    }
+                                }
+                                // if (item.data != null && item.data != undefined) {
+                                //     console.log(keys[i], item.data);
+                                // } else {
+                                //     console.log(keys[i], item);
+                                // }
+                            }
+                        }
+
                     }
                 }
             }
-            var formRenderOpts = {
-                formData: this.form.formData,
-                dataType: this.form.dataType,
-                roles: roles,
-                disabledActionButtons: ['data', 'clear'],
-                onSave: this.Save.bind(this),
-            };
-            if (this.model.userData !== null && this.model.userData !== undefined && this.model.userData !== "") {
-                formRenderOpts.formData = this.model.userData;
+
+            for (var i = 0; i < components.length; i++) {
+                var item = components[i];
+                if (item.type == "table") {
+                    for (var x = 0; x < item.rows.length; x++) {
+                        for (var y = 0; y < item.rows[x].length; y++) {
+                            var subcomponents = item.rows[x][y].components;
+                            this.traversecomponentsMakeDefaults(subcomponents);
+                        }
+
+                    }
+                }
             }
-            var concatHashToString = function (hash) {
-                var emptyStr = '';
-                $.each(hash, function (index) {
-                    emptyStr += ' ' + hash[index].name + '="' + hash[index].value + '"';
+
+            // rows
+        }
+        sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+        async beforeSubmit(submission, next) {
+            // console.log('beforeSubmit', submission);
+            //next('go away!');
+            next();
+        }
+        async renderform() {
+            if (this.form.fbeditor == null || this.form.fbeditor == undefined) this.form.fbeditor = true;
+            if ((this.form.fbeditor as any) == "true") this.form.fbeditor = true;
+            if ((this.form.fbeditor as any) == "false") this.form.fbeditor = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            if (this.form.fbeditor === true) {
+                console.debug("renderform");
+                var ele: any;
+                var roles: any = {};
+                this.WebSocketClient.user.roles.forEach(role => {
+                    roles[role._id] = role.name;
                 });
-                return emptyStr;
-            }
-            var replaceElem = function (targetId, replaceWith) {
-                $(targetId).each(function () {
-                    var attributes = concatHashToString(this.attributes);
-                    var replacingStartTag = '<' + replaceWith + attributes + '>';
-                    var replacingEndTag = '</' + replaceWith + '>';
-                    $(this).replaceWith(replacingStartTag + $(this).html() + replacingEndTag);
-                });
-            }
-            var replaceElementTag = function (targetSelector, newTagString) {
-                $(targetSelector).each(function () {
-                    var newElem = $(newTagString, { html: $(this).html() });
-                    $.each(this.attributes, function () {
-                        newElem.attr(this.name, this.value);
+                if (typeof this.form.formData === 'string' || this.form.formData instanceof String) {
+                    this.form.formData = JSON.parse((this.form.formData as any));
+                }
+                for (var i = 0; i < this.form.formData.length; i++) {
+                    var value = this.model.payload[this.form.formData[i].name];
+                    if (value == undefined || value == null) { value = ""; }
+                    if (value != "" || this.form.formData[i].type != "button") {
+                        // console.log("0:" + this.form.formData[i].label + " -> " + value);
+                        this.form.formData[i].userData = [value];
+                    }
+                    if (Array.isArray(value)) {
+                        // console.log("1:" + this.form.formData[i].userData + " -> " + value);
+                        this.form.formData[i].userData = value;
+                    }
+                    if (this.model.payload[this.form.formData[i].label] !== null && this.model.payload[this.form.formData[i].label] !== undefined) {
+                        value = this.model.payload[this.form.formData[i].label];
+                        if (value == undefined || value == null) { value = ""; }
+                        if (this.form.formData[i].type != "button") {
+                            // console.log("2:" + this.form.formData[i].label + " -> " + value);
+                            this.form.formData[i].label = value;
+                        } else if (value != "") {
+                            // console.log("2button:" + this.form.formData[i].label + " -> " + value);
+                            this.form.formData[i].label = value;
+                        } else {
+                            // console.log("skip " + this.form.formData[i].label);
+                        }
+                    }
+                    if (this.model.values !== null && this.model.values !== undefined) {
+                        if (this.model.values[this.form.formData[i].name] !== null && this.model.values[this.form.formData[i].name] !== undefined) {
+                            value = this.model.values[this.form.formData[i].name];
+                            if (value == undefined || value == null) { value = []; }
+                            // console.log("3:" + this.form.formData[i].values + " -> " + value);
+                            this.form.formData[i].values = value;
+                        }
+                    }
+                }
+                var formRenderOpts = {
+                    formData: this.form.formData,
+                    dataType: this.form.dataType,
+                    roles: roles,
+                    disabledActionButtons: ['data', 'clear'],
+                    onSave: this.Save.bind(this),
+                };
+                if (this.model.userData !== null && this.model.userData !== undefined && this.model.userData !== "") {
+                    formRenderOpts.formData = this.model.userData;
+                }
+                var concatHashToString = function (hash) {
+                    var emptyStr = '';
+                    $.each(hash, function (index) {
+                        emptyStr += ' ' + hash[index].name + '="' + hash[index].value + '"';
                     });
-                    $(this).replaceWith(newElem);
-                });
-            }
-
-            // 
-            // replaceElem('div', 'span');
-            setTimeout(() => {
-                // $('button[type="button"]').contents().unwrap().wrap('<input/>');
-                // replaceElem('button', 'input');
-                // replaceElementTag('button[type="button"]', '<input></input>');
-
-                console.log("Attach buttons! 2");
-                // $('button[type="button"]').bind("click", function () {
-
-                $('button[type="button"]').each(function () {
-                    var cur: any = $(this)[0];
-                    console.log("set submit");
-                    console.log(cur);
-                    cur.type = "submit";
-                });
-                // $('input[type="button"]').click(function (evt) {
-                //     // var input = $("<input>").attr("type", "hidden").attr("name", evt.target.id).val((evt.target as any).value);
-                //     // $('#workflowform').append(input);
-                //     // $('button[type="button"]').replaceWith('<input>' + $('target').html() +'</newTag>')
-                //     // evt.preventDefault();
-                //     console.log(evt);
-                //     console.log("button clicked!");
-                //     $('#workflowform').submit();
-                // });
-                // $('button[type="button"]').click(function (evt) {
-                //     var input = $("<input>").attr("type", "hidden").attr("name", "clicked").val(evt.target.id);
-                //     $('#workflowform').append(input);
-                //     $('#workflowform').submit();
-                // });
-
-                var click = function (evt) {
-                    this.submitbutton = evt.target.id;
-                    // console.log(this);
-                    // var input = $("<input>").attr("type", "hidden").attr("name", "clicked").val(evt.target.id);
-                    // $('#workflowform').append(input);
-                    // evt.preventDefault();
-                    // $('#workflowform').submit();
+                    return emptyStr;
                 }
-                $('button[type="submit"]').click(click.bind(this));
+                var replaceElem = function (targetId, replaceWith) {
+                    $(targetId).each(function () {
+                        var attributes = concatHashToString(this.attributes);
+                        var replacingStartTag = '<' + replaceWith + attributes + '>';
+                        var replacingEndTag = '</' + replaceWith + '>';
+                        $(this).replaceWith(replacingStartTag + $(this).html() + replacingEndTag);
+                    });
+                }
+                var replaceElementTag = function (targetSelector, newTagString) {
+                    $(targetSelector).each(function () {
+                        var newElem = $(newTagString, { html: $(this).html() });
+                        $.each(this.attributes, function () {
+                            newElem.attr(this.name, this.value);
+                        });
+                        $(this).replaceWith(newElem);
+                    });
+                }
 
-            }, 500);
-            ele = $('.render-wrap');
-            ele.show();
-            this.formRender = ele.formRender(formRenderOpts);
+                // 
+                // replaceElem('div', 'span');
+                setTimeout(() => {
+                    // $('button[type="button"]').contents().unwrap().wrap('<input/>');
+                    // replaceElem('button', 'input');
+                    // replaceElementTag('button[type="button"]', '<input></input>');
+
+                    console.log("Attach buttons! 2");
+                    // $('button[type="button"]').bind("click", function () {
+
+                    $('button[type="button"]').each(function () {
+                        var cur: any = $(this)[0];
+                        console.log("set submit");
+                        console.log(cur);
+                        cur.type = "submit";
+                    });
+                    // $('input[type="button"]').click(function (evt) {
+                    //     // var input = $("<input>").attr("type", "hidden").attr("name", evt.target.id).val((evt.target as any).value);
+                    //     // $('#workflowform').append(input);
+                    //     // $('button[type="button"]').replaceWith('<input>' + $('target').html() +'</newTag>')
+                    //     // evt.preventDefault();
+                    //     console.log(evt);
+                    //     console.log("button clicked!");
+                    //     $('#workflowform').submit();
+                    // });
+                    // $('button[type="button"]').click(function (evt) {
+                    //     var input = $("<input>").attr("type", "hidden").attr("name", "clicked").val(evt.target.id);
+                    //     $('#workflowform').append(input);
+                    //     $('#workflowform').submit();
+                    // });
+
+                    var click = function (evt) {
+                        this.submitbutton = evt.target.id;
+                        // console.log(this);
+                        // var input = $("<input>").attr("type", "hidden").attr("name", "clicked").val(evt.target.id);
+                        // $('#workflowform').append(input);
+                        // evt.preventDefault();
+                        // $('#workflowform').submit();
+                    }
+                    $('button[type="submit"]').click(click.bind(this));
+
+                }, 500);
+                ele = $('.render-wrap');
+                ele.show();
+                this.formRender = ele.formRender(formRenderOpts);
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            } else {
+
+                this.traversecomponentsMakeDefaults(this.form.schema.components);
+
+                if (this.form.wizard == true) {
+                    this.form.schema.display = "wizard";
+                } else {
+                    this.form.schema.display = "form";
+                }
+
+                this.formioRender = await Formio.createForm(document.getElementById('formio'), this.form.schema,
+                    {
+                        breadcrumbSettings: { clickable: true },
+                        buttonSettings: { showCancel: false },
+                        hooks: {
+                            beforeSubmit: this.beforeSubmit.bind(this)
+                        }
+                    });
+                // wizard
+                this.formioRender.on('change', form => {
+                    //console.log('change', form);
+                    // setTimeout(() => {
+                    //     this.formioRender.submit();
+                    // }, 200);
+
+                    // this.model.schema = form;
+                    // if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                })
+                // https://formio.github.io/formio.js/app/examples/datagrid.html
+
+                if (this.model.payload != null && this.model.payload != undefined) {
+                    this.formioRender.submission = { data: this.model.payload };
+                }
+                this.formioRender.on('submit', async submission => {
+                    console.log('onsubmit', submission);
+                    $(".alert-success").hide();
+                    setTimeout(() => {
+                        // just to be safe
+                        $(".alert-success").hide();
+                    }, 200);
+                    this.model.submission = submission;
+                    this.model.userData = submission;
+                    this.model.payload = submission.data;
+                    this.traversecomponentsPostProcess(this.form.schema.components, submission.data);
+                    this.Save();
+                })
+                this.formioRender.on('error', (errors) => {
+                    console.error(errors);
+                });
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            }
         }
     }
     export class jslogCtrl extends entitiesCtrl<openflow.Base> {
@@ -1530,14 +1966,14 @@ module openflow {
 
 
     export class EntityCtrl extends entityCtrl<openflow.Base> {
-        public addthis: any = "";
-        public users: any[] = null;
+        searchFilteredList: openflow.TokenUser[] = [];
+        searchSelectedItem: openflow.TokenUser = null;
+        searchtext: string = "";
+        e: any = null;
+
         public newkey: string = "";
         public showjson: boolean = false;
         public jsonmodel: string = "";
-        public newuser: openflow.TokenUser;
-        public usergroups: openflow.TokenUser[] = [];
-        public allusergroups: openflow.TokenUser[] = [];
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -1552,7 +1988,6 @@ module openflow {
             this.postloadData = this.processdata;
             WebSocketClient.onSignedin(async (user: TokenUser) => {
                 // this.usergroups = await this.api.Query("users", {});
-                this.allusergroups = await this.api.Query("users", { $or: [{ _type: "user" }, { _type: "role" }] }, null, { _type: -1, name: 1 });
                 if (this.id !== null && this.id !== undefined) {
                     await this.loadData();
                 } else {
@@ -1579,8 +2014,6 @@ module openflow {
                     ids.push(this.model._acl[i]._id);
                 }
             }
-            this.usergroups = this.allusergroups.filter(x => ids.indexOf(x._id) == -1);
-            this.newuser = this.usergroups[0];
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         togglejson() {
@@ -1595,12 +2028,6 @@ module openflow {
             if (this.showjson) {
                 this.model = JSON.parse(this.jsonmodel);
             }
-            // if (this.collection == "files") {
-            //     await this.api.UpdateFile(this.model._id, (this.model as any).metadata);
-            //     this.$location.path("/Files");
-            //     if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            //     return;
-            // }
             if (this.model._id) {
                 await this.api.Update(this.collection, this.model);
             } else {
@@ -1636,12 +2063,6 @@ module openflow {
                         (this.model as any).metadata._acl.splice(i, 1);
                     }
                 }
-                var ids: string[] = [];
-                for (var i: number = 0; i < (this.model as any).metadata._acl.length; i++) {
-                    ids.push((this.model as any).metadata._acl[i]._id);
-                }
-                this.usergroups = this.allusergroups.filter(x => ids.indexOf(x._id) == -1);
-                this.newuser = this.usergroups[0];
             } else {
                 for (var i = 0; i < this.model._acl.length; i++) {
                     if (this.model._acl[i]._id == _id) {
@@ -1649,39 +2070,23 @@ module openflow {
                         //this.model._acl = this.model._acl.splice(index, 1);
                     }
                 }
-                var ids: string[] = [];
-                for (var i: number = 0; i < this.model._acl.length; i++) {
-                    ids.push(this.model._acl[i]._id);
-                }
-                this.usergroups = this.allusergroups.filter(x => ids.indexOf(x._id) == -1);
-                this.newuser = this.usergroups[0];
             }
 
         }
         adduser() {
             var ace = new Ace();
             ace.deny = false;
-            ace._id = this.newuser._id;
-            ace.name = this.newuser.name;
+            ace._id = this.searchSelectedItem._id;
+            ace.name = this.searchSelectedItem.name;
             ace.rights = "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=";
 
             if (this.collection == "files") {
                 (this.model as any).metadata._acl.push(ace);
-                var ids: string[] = [];
-                for (var i: number = 0; i < (this.model as any).metadata._acl.length; i++) {
-                    ids.push((this.model as any).metadata._acl[i]._id);
-                }
-                this.usergroups = this.allusergroups.filter(x => ids.indexOf(x._id) == -1);
-                this.newuser = this.usergroups[0];
             } else {
                 this.model._acl.push(ace);
-                var ids: string[] = [];
-                for (var i: number = 0; i < this.model._acl.length; i++) {
-                    ids.push(this.model._acl[i]._id);
-                }
-                this.usergroups = this.allusergroups.filter(x => ids.indexOf(x._id) == -1);
-                this.newuser = this.usergroups[0];
             }
+            this.searchSelectedItem = null;
+            this.searchtext = "";
         }
 
         isBitSet(base64: string, bit: number): boolean {
@@ -1748,6 +2153,90 @@ module openflow {
             return window.btoa(binary);
         }
 
+
+
+
+        restrictInput(e) {
+            if (e.keyCode == 13) {
+                e.preventDefault();
+                return false;
+            }
+        }
+        setkey(e) {
+            this.e = e;
+            this.handlekeys();
+        }
+        handlekeys() {
+            if (this.searchFilteredList.length > 0) {
+                var idx: number = -1;
+                for (var i = 0; i < this.searchFilteredList.length; i++) {
+                    if (this.searchSelectedItem != null) {
+                        if (this.searchFilteredList[i]._id == this.searchSelectedItem._id) {
+                            idx = i;
+                        }
+                    }
+                }
+                if (this.e.keyCode == 38) { // up
+                    if (idx <= 0) {
+                        idx = 0;
+                    } else { idx--; }
+                    console.log("idx: " + idx);
+                    // this.searchtext = this.searchFilteredList[idx].name;
+                    this.searchSelectedItem = this.searchFilteredList[idx];
+                    return;
+                }
+                else if (this.e.keyCode == 40) { // down
+                    if (idx >= this.searchFilteredList.length) {
+                        idx = this.searchFilteredList.length - 1;
+                    } else { idx++; }
+                    console.log("idx: " + idx);
+                    // this.searchtext = this.searchFilteredList[idx].name;
+                    this.searchSelectedItem = this.searchFilteredList[idx];
+                    return;
+                }
+                else if (this.e.keyCode == 13) { // enter
+                    if (idx >= 0) {
+                        this.searchtext = this.searchFilteredList[idx].name;
+                        this.searchSelectedItem = this.searchFilteredList[idx];
+                        this.searchFilteredList = [];
+                        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    }
+                    return;
+                }
+                else {
+                    // console.log(this.e.keyCode);
+                }
+            } else {
+                if (this.e.keyCode == 13 && this.searchSelectedItem != null) {
+                    this.adduser();
+                }
+            }
+        }
+        async handlefilter(e) {
+            this.e = e;
+            // console.log(e.keyCode);
+            var ids: string[] = this.model._acl.map(item => item._id);
+            this.searchFilteredList = await this.api.Query("users",
+                {
+                    $and: [
+                        { $or: [{ _type: "user" }, { _type: "role" }] },
+                        { name: new RegExp([this.searchtext].join(""), "i") },
+                        { _id: { $nin: ids } }
+                    ]
+                }
+                , null, { _type: -1, name: 1 }, 5);
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        fillTextbox(searchtext) {
+            this.searchFilteredList.forEach((item: any) => {
+                if (item.name.toLowerCase() == searchtext.toLowerCase()) {
+                    this.searchtext = item.name;
+                    this.searchSelectedItem = item;
+                    this.searchFilteredList = [];
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                }
+            });
+        }
 
     }
 
@@ -1945,4 +2434,46 @@ module openflow {
     }
 
 
+
+
+    export class hdrobotsCtrl extends entitiesCtrl<openflow.unattendedclient> {
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
+            public WebSocketClient: WebSocketClient,
+            public api: api
+        ) {
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
+            this.autorefresh = true;
+            console.debug("RolesCtrl");
+            this.basequery = { _type: "unattendedclient" };
+            this.collection = "openrpa";
+            WebSocketClient.onSignedin((user: TokenUser) => {
+                this.loadData();
+            });
+        }
+        async DeleteOne(model: any): Promise<any> {
+            this.loading = true;
+            await this.api.Delete(this.collection, model);
+            this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        async Enable(model: any): Promise<any> {
+            this.loading = true;
+            model.enabled = true;
+            await this.api.Update(this.collection, model);
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        async Disable(model: any): Promise<any> {
+            this.loading = true;
+            model.enabled = false;
+            await this.api.Update(this.collection, model);
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+    }
 }

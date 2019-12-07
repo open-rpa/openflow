@@ -72,5 +72,6 @@
     "reload": "Genindlæs",
     "host": "Vært",
     "project": "Projekt",
-    "helloworld": "Hej verden"
+    "helloworld": "Hej verden",
+    "embedsignout": "Embed Signout"
 }

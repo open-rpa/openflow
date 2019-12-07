@@ -72,5 +72,6 @@
     "reload": "Reload",
     "host": "Host",
     "project": "Project",
-    "helloworld": "Hello world"
+    "helloworld": "Hello world",
+    "embedsignout": "Embed Signout"
 }

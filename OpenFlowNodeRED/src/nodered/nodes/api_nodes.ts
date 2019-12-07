@@ -128,6 +128,9 @@ export class api_get {
             if (!NoderedUtil.IsNullUndefinded(msg.orderby)) { this.config.orderby = msg.orderby; }
             if (!NoderedUtil.IsNullEmpty(msg.top)) { this.config.top = parseInt(msg.top); }
             if (!NoderedUtil.IsNullEmpty(msg.skip)) { this.config.skip = parseInt(msg.skip); }
+            if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
+                msg.jwt = Config.jwt;
+            }
 
             if (NoderedUtil.IsNullEmpty(this.config.top)) { this.config.top = 500; }
             if (NoderedUtil.IsNullEmpty(this.config.skip)) { this.config.skip = 0; }
@@ -210,6 +213,10 @@ export class api_add {
             if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { this.config.resultfield = msg.resultfield; }
             if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
             if (!NoderedUtil.IsNullEmpty(msg.journal)) { this.config.journal = msg.journal; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
+                msg.jwt = Config.jwt;
+            }
+
 
             if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
             if ((this.config.journal as any) === undefined || (this.config.journal as any) === null) this.config.journal = false;
@@ -282,6 +289,9 @@ export class api_update {
             if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { this.config.resultfield = msg.resultfield; }
             if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
             if (!NoderedUtil.IsNullEmpty(msg.journal)) { this.config.journal = msg.journal; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
+                msg.jwt = Config.jwt;
+            }
 
             if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
             if ((this.config.journal as any) === undefined || (this.config.journal as any) === null) this.config.journal = false;
@@ -355,6 +365,9 @@ export class api_addorupdate {
             if (!NoderedUtil.IsNullEmpty(msg.uniqeness)) { this.config.uniqeness = msg.uniqeness; }
             if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
             if (!NoderedUtil.IsNullEmpty(msg.journal)) { this.config.journal = msg.journal; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
+                msg.jwt = Config.jwt;
+            }
 
             if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
             if ((this.config.journal as any) === undefined || (this.config.journal as any) === null) this.config.journal = false;
@@ -421,6 +434,9 @@ export class api_delete {
 
             if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
             if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { this.config.inputfield = msg.inputfield; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
+                msg.jwt = Config.jwt;
+            }
 
             var data: any[] = [];
             var _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
@@ -490,6 +506,9 @@ export class api_map_reduce {
             if (!NoderedUtil.IsNullUndefinded(msg.finalize)) { this.config.finalize = msg.finalize; }
             if (!NoderedUtil.IsNullUndefinded(msg.scope)) { this.config.finalize = msg.scope; }
             if (!NoderedUtil.IsNullUndefinded(msg.query)) { this.config.query = msg.query; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
+                msg.jwt = Config.jwt;
+            }
 
             var scope = NoderedUtil.FetchFromObject(msg, this.config.scope);
             var _output: any = {};
@@ -560,6 +579,9 @@ export class api_updatedocument {
             if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
             if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
             if (!NoderedUtil.IsNullEmpty(msg.journal)) { this.config.journal = msg.journal; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
+                msg.jwt = Config.jwt;
+            }
 
             if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
             if ((this.config.journal as any) === undefined || (this.config.journal as any) === null) this.config.journal = false;
@@ -743,6 +765,9 @@ export class download_file {
             // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
             if (!NoderedUtil.IsNullEmpty(msg.fileid)) { this.config.fileid = msg.fileid; }
             if (!NoderedUtil.IsNullEmpty(msg.filename)) { this.config.filename = msg.filename; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
+                msg.jwt = Config.jwt;
+            }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Getting file" });
             var file = await NoderedUtil.GetFile(this.config.filename, this.config.fileid, msg.jwt);
@@ -784,6 +809,9 @@ export class upload_file {
             // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
             if (!NoderedUtil.IsNullEmpty(msg.filename)) { this.config.filename = msg.filename; }
             if (!NoderedUtil.IsNullEmpty(msg.mimeType)) { this.config.mimeType = msg.mimeType; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
+                msg.jwt = Config.jwt;
+            }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Saving file" });
             var file = await NoderedUtil.SaveFile(this.config.filename, this.config.mimeType, msg.metadata, msg.payload, msg.jwt);
@@ -793,6 +821,46 @@ export class upload_file {
             msg.mimeType = file.mimeType;
             msg.metadata = file.metadata;
 
+            this.node.send(msg);
+            this.node.status({});
+        } catch (error) {
+            NoderedUtil.HandleError(this, error);
+        }
+    }
+    onclose() {
+    }
+}
+
+
+
+
+
+
+export interface Iapi_aggregate {
+    collection: string;
+    aggregates: object[];
+}
+export class api_aggregate {
+    public node: Red = null;
+
+    constructor(public config: Iapi_aggregate) {
+        RED.nodes.createNode(this, config);
+        this.node = this;
+        this.node.status({});
+        this.node.on("input", this.oninput);
+        this.node.on("close", this.onclose);
+    }
+    async oninput(msg: any) {
+        try {
+            this.node.status({});
+            // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
+
+            if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
+            if (!NoderedUtil.IsNullUndefinded(msg.aggregates)) { this.config.aggregates = msg.aggregates; }
+
+            this.node.status({ fill: "blue", shape: "dot", text: "Running mapreduce" });
+            var result = await NoderedUtil.Aggregate(this.config.collection, this.config.aggregates, msg.jwt);
+            msg.payload = result;
             this.node.send(msg);
             this.node.status({});
         } catch (error) {

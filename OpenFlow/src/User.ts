@@ -51,6 +51,19 @@ export class User extends Base {
         await user.Save(jwt);
         var users: Role = await Role.FindByNameOrId("users", jwt);
         users.AddMember(user);
+
+        if (Config.auto_create_personal_nodered_group) {
+            var name = user.username;
+            name = name.split("@").join("").split(".").join("");
+            name = name.toLowerCase();
+
+            var noderedadmins = await User.ensureRole(jwt, name + "noderedadmins", null);
+            noderedadmins.addRight(user._id, user.username, [Rights.full_control]);
+            noderedadmins.removeRight(user._id, [Rights.delete]);
+            noderedadmins.AddMember(user);
+            await noderedadmins.Save(jwt);
+        }
+
         await users.Save(jwt)
         await user.DecorateWithRoles();
         return user;
@@ -132,7 +145,7 @@ export class User extends Base {
     }
     public async DecorateWithRoles(): Promise<void> {
         let query: any = { _type: "role" };
-        var _roles: Role[] = await Config.db.query<Role>(query, null, 500, 0, null, "users", TokenUser.rootToken());
+        var _roles: Role[] = await Config.db.query<Role>(query, null, 1000, 0, null, "users", TokenUser.rootToken());
         if (_roles.length === 0 && this.username !== "root") {
             throw new Error("System has no roles !!!!!!");
         }

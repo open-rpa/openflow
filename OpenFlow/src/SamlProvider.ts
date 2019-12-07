@@ -6,6 +6,9 @@ import * as samlp from "samlp";
 import { Config } from "./Config";
 import { TokenUser } from "./TokenUser";
 import { Audit } from "./Audit";
+import { LoginProvider } from "./LoginProvider";
+import * as passport from "passport";
+import { Util } from "./Util";
 
 export class SamlProvider {
     private static _logger: winston.Logger;
@@ -62,7 +65,7 @@ export class SamlProvider {
         var cert: string = Buffer.from(Config.signing_crt, "base64").toString("ascii");
         var key: string = Buffer.from(Config.singing_key, "base64").toString("ascii");
 
-        var samlpoptions: any  = {
+        var samlpoptions: any = {
             issuer: Config.saml_issuer,
             cert: cert,
             key: key,
@@ -83,7 +86,7 @@ export class SamlProvider {
                 return req.user;
             },
             profileMapper: SamlProvider.profileMapper,
-            lifetimeInSeconds: (3600*24)
+            lifetimeInSeconds: (3600 * 24)
         };
 
         app.get("/issue/", (req: any, res: any, next: any): void => {
@@ -130,10 +133,29 @@ export class SamlProvider {
         // }));
 
         // TODO: FIX !!!!
-        app.get('/logout', (req: any, res: any, next: any): void => {
+        app.get('/logout', async (req: any, res: any, next: any) => {
             var referer: string = req.headers.referer;
+            var providerid: any = req.cookies.provider;
             req.logout();
-            if (referer !== null && referer !== undefined && referer !== "") {
+
+            if (!Util.IsNullEmpty(providerid)) {
+                var p = LoginProvider.login_providers.filter(x => x.id == providerid);
+                if (p.length > 0) {
+                    var provider = p[0];
+                    if (!Util.IsNullEmpty(provider.saml_signout_url)) {
+                        var html = "<html><head></head><body>";
+                        html += "<iframe src='" + provider.saml_signout_url + "'></iframe>";
+                        if (!Util.IsNullEmpty(referer)) {
+                            html += "<br/><p><a href='" + referer + "'>Back / Tilbage</a></p>";
+                        } else {
+                            html += "<br/><p><a href='/'>Back / Tilbage</ifarame></p>";
+                        }
+                        res.send(html);
+                        return;
+                    }
+                }
+            }
+            if (!Util.IsNullEmpty(referer)) {
                 res.redirect(referer);
             } else {
                 res.redirect("/");

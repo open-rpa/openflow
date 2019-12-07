@@ -64,6 +64,37 @@ export class WebServer {
             next();
         });
         this.app.use("/", express.static(path.join(__dirname, "/public")));
+        //     private async _GetFile(id: string): Promise<string> {
+        //     return new Promise<string>(async (resolve, reject) => {
+        //         try {
+        //             var bucket = new GridFSBucket(Config.db.db);
+        //             let downloadStream = bucket.openDownloadStream(safeObjectID(id));
+        //             var bufs = [];
+        //             downloadStream.on('data', (chunk) => {
+        //                 bufs.push(chunk);
+        //             });
+        //             downloadStream.on('error', (error) => {
+        //                 reject(error);
+        //             });
+        //             downloadStream.on('end', () => {
+
+        //                 // var contentLength = bufs.reduce(function(sum, buf){
+        //                 //     return sum + buf.length;
+        //                 //   }, 0);
+        //                 var buffer = Buffer.concat(bufs);
+        //                 //writeFileSync('/home/allan/Documents/data.png', result.body);
+        //                 //result.body = Buffer.from(result.body).toString('base64');
+        //                 var result = buffer.toString('base64');
+        //                 resolve(result);
+        //             });
+        //         } catch (err) {
+        //             reject(err);
+        //         }
+        //     });
+        // }
+
+
+
 
         await LoginProvider.configure(this._logger, this.app, baseurl);
         await SamlProvider.configure(this._logger, this.app, baseurl);

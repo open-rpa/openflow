@@ -1,24 +1,20 @@
 import * as https from "https";
 import * as retry from "async-retry";
 import { fetch, toPassportConfig } from "passport-saml-metadata";
+import { NoderedUtil } from "./nodered/nodes/NoderedUtil";
 export class Config {
     public static nodered_id: string = Config.getEnv("nodered_id", "1");
     public static nodered_sa: string = Config.getEnv("nodered_sa", "");
     public static queue_prefix: string = Config.getEnv("queue_prefix", "");
 
-    public static consumer_key: string = Config.getEnv("consumer_key", "");
-    public static consumer_secret: string = Config.getEnv("consumer_secret", "");
-
     public static saml_federation_metadata: string = Config.getEnv("saml_federation_metadata", "");
     public static saml_issuer: string = Config.getEnv("saml_issuer", "");
     public static saml_entrypoint: string = Config.getEnv("saml_entrypoint", "");
+    public static saml_baseurl: string = Config.getEnv("saml_baseurl", "");
     public static saml_crt: string = Config.getEnv("saml_crt", "");
 
-    public static tls_crt: string = Config.getEnv("tls_crt", "");
-    public static tls_key: string = Config.getEnv("tls_key", "");
-    public static tls_ca: string = Config.getEnv("tls_ca", "");
-    public static tls_passphrase: string = Config.getEnv("tls_passphrase", "");
     public static port: number = parseInt(Config.getEnv("port", "1880"));
+    public static nodered_port: number = parseInt(Config.getEnv("port", "0"));
     public static domain: string = Config.getEnv("domain", "localhost");
     public static protocol: string = Config.getEnv("protocol", "http");
     public static nodered_domain_schema: string = Config.getEnv("nodered_domain_schema", "");
@@ -34,24 +30,31 @@ export class Config {
     public static api_credential_cache_seconds: number = parseInt(Config.getEnv("api_credential_cache_seconds", "300"));
     public static api_allow_anonymous: boolean = Config.parseBoolean(Config.getEnv("api_allow_anonymous", "false"));
 
-    public static aes_secret: string = Config.getEnv("aes_secret", "");
     public static jwt: string = Config.getEnv("jwt", "");
+
+    public static aes_secret: string = Config.getEnv("aes_secret", "");
+    public static tls_crt: string = Config.getEnv("tls_crt", "");
+    public static tls_key: string = Config.getEnv("tls_key", "");
+    public static tls_ca: string = Config.getEnv("tls_ca", "");
+    public static tls_passphrase: string = Config.getEnv("tls_passphrase", "");
 
 
     public static baseurl(): string {
-        if (Config.nodered_sa === null || Config.nodered_sa === undefined || Config.nodered_sa === "") {
-            var matches = Config.nodered_id.match(/\d+/);
-            if (matches !== null && matches !== undefined) {
-                if (matches.length > 0) {
-                    Config.nodered_id = matches[matches.length - 1]; // Just grab the last number
+        if (NoderedUtil.IsNullEmpty(Config.domain)) {
+            if (Config.nodered_sa === null || Config.nodered_sa === undefined || Config.nodered_sa === "") {
+                var matches = Config.nodered_id.match(/\d+/);
+                if (matches !== null && matches !== undefined) {
+                    if (matches.length > 0) {
+                        Config.nodered_id = matches[matches.length - 1]; // Just grab the last number
+                    }
                 }
-            }
-            if (Config.nodered_domain_schema != "") {
-                Config.domain = Config.nodered_domain_schema.replace("$nodered_id$", Config.nodered_id)
-            }
-        } else {
-            if (Config.nodered_domain_schema != "") {
-                Config.domain = Config.nodered_domain_schema.replace("$nodered_id$", Config.nodered_id)
+                if (Config.nodered_domain_schema != "") {
+                    Config.domain = Config.nodered_domain_schema.replace("$nodered_id$", Config.nodered_id)
+                }
+            } else {
+                if (Config.nodered_domain_schema != "") {
+                    Config.domain = Config.nodered_domain_schema.replace("$nodered_id$", Config.nodered_id)
+                }
             }
         }
         // if (Config.tls_crt != '' && Config.tls_key != '') {
@@ -64,8 +67,12 @@ export class Config {
         } else {
             result = Config.protocol + "://" + Config.domain;
         }
-        if (Config.port != 80 && Config.port != 443) {
-            result = result + ":" + Config.port + "/";
+        var port: number = Config.port;
+        if (Config.nodered_port > 0) {
+            port = Config.nodered_port;
+        }
+        if (port != 80 && port != 443) {
+            result = result + ":" + port + "/";
         } else { result = result + "/"; }
         return result;
     }
@@ -120,11 +127,11 @@ export class Config {
             }
             return config;
         }, {
-                retries: 50,
-                onRetry: function (error: Error, count: number): void {
-                    console.log("retry " + count + " error " + error.message + " getting " + url);
-                }
-            });
+            retries: 50,
+            onRetry: function (error: Error, count: number): void {
+                console.log("retry " + count + " error " + error.message + " getting " + url);
+            }
+        });
         return metadata;
     }
 

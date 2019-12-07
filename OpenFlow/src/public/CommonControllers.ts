@@ -623,7 +623,7 @@ module openflow {
             this.models = await this.api.Query(this.collection, query, this.baseprojection, this.orderby);
             this.loading = false;
             if (this.autorefresh) {
-                if (this.models.length > 100) {
+                if (this.models.length >= 100) {
                     // console.warn("Disabling auto refresh, result has more than 100 entries");
                 } else {
                     if (this.autorefreshpromise == null && this.searchstring === "") {

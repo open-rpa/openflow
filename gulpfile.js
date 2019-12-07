@@ -4,9 +4,10 @@ var shell = require("gulp-shell");
 var replace = require('gulp-replace');
 
 
-var OpenFlowFiles = ["./OpenFlow/src/public/**/*.html", "./OpenFlow/src/public/**/*.css", "./OpenFlow/src/public/**/*.js", "./OpenFlow/src/public/**/*.json",
+var OpenFlowFiles = [
+    "./OpenFlow/src/public/**/*.html", "./OpenFlow/src/public/**/*.css", "./OpenFlow/src/public/**/*.js", "./OpenFlow/src/public/**/*.json",
     "./OpenFlow/src/public/**/*.ico", "./OpenFlow/src/public/**/*.eot", "./OpenFlow/src/public/**/*.svg", "./OpenFlow/src/public/**/*.ttf",
-    "./OpenFlow/src/public/**/*.woff", "./OpenFlow/src/public/**/*.png"];
+    "./OpenFlow/src/public/**/*.woff", "./OpenFlow/src/public/**/*.woff2", "./OpenFlow/src/public/**/*.png"];
 var NodeREDHTMLFiles = ["./OpenFlowNodeRED/src/nodered/nodes/**/*.html"]
 
 

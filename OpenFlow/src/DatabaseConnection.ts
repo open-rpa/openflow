@@ -13,6 +13,7 @@ import { UpdateOneMessage } from "./Messages/UpdateOneMessage";
 import { UpdateManyMessage } from "./Messages/UpdateManyMessage";
 import { InsertOrUpdateOneMessage } from "./Messages/InsertOrUpdateOneMessage";
 import { User } from "./User";
+import { Util } from "./Util";
 // tslint:disable-next-line: typedef
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 export declare function emit(k, v);
@@ -207,6 +208,16 @@ export class DatabaseConnection {
      */
     async aggregate<T extends Base>(aggregates: object[], collectionname: string, jwt: string): Promise<T[]> {
         await this.connect();
+
+        if (typeof aggregates === "string" || aggregates instanceof String) {
+            aggregates = JSON.parse((aggregates as any));
+        }
+        var base = this.getbasequery(jwt, "_acl", [Rights.read]);
+        if (Array.isArray(aggregates)) {
+            aggregates.unshift({ $match: base });
+        } else {
+            aggregates = [{ $match: base }, aggregates];
+        }
         // todo: add permissions check on aggregates
         // aggregates.unshift(this.getbasequery(jwt, [Rights.read]));
         var items: T[] = await this.db.collection(collectionname).aggregate(aggregates).toArray();
@@ -258,6 +269,9 @@ export class DatabaseConnection {
         }
         var inline: boolean = false;
         var opt: MapReduceOptions = { query: q, out: { replace: "map_temp_res" }, finalize: finalize };
+
+        // (opt as any).w = 0;
+
         var outcol: string = "map_temp_res";
         if (out === null || out === undefined || out === "") {
             opt.out = { replace: outcol };
@@ -272,11 +286,12 @@ export class DatabaseConnection {
             if (out.hasOwnProperty("inline")) { inline = true; }
         }
         opt.scope = scope;
-        opt.readPreference = ReadPreference.PRIMARY_PREFERRED;
+        // opt.readPreference = ReadPreference.PRIMARY_PREFERRED;
 
         // var result:T[] = await this.db.collection(collectionname).mapReduce(map, reduce, {query: q, out : {inline : 1}});
         try {
             if (inline) {
+                opt.out = { inline: 1 };
                 var result: T[] = await this.db.collection(collectionname).mapReduce(map, reduce, opt);
                 return result;
             } else {
@@ -304,8 +319,8 @@ export class DatabaseConnection {
         await this.connect();
         item = this.ensureResource(item);
         DatabaseConnection.traversejsonencode(item);
-        if (jwt === null || jwt === undefined && collectionname === "jslog") {
-            jwt = TokenUser.rootToken();
+        if (Util.IsNullEmpty(jwt)) {
+            throw new Error("jwt is null");
         }
         var user: TokenUser = Crypt.verityToken(jwt);
         item._createdby = user.name;

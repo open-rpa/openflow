@@ -85,4 +85,18 @@
     </div>
 
 
+
+    <div class="form-inline" ng-repeat="m in ctrl.memberof">
+        <label class="col-sm-1 control-label" translate lib="web">memberof</label>
+        <div class="col-sm-3">
+            {{ m.name }}
+        </div>
+        <div class="col-sm-2">
+            <button ng-click=" ctrl.RemoveMember(m)" type="button" ng-disabled="ctrl.loading==true"
+                class="btn btn-success" translate lib="web">remove</button>
+        </div>
+    </div>
+
+
+
 </form>

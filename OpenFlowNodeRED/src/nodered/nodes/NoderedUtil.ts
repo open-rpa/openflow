@@ -1,5 +1,5 @@
 import { Red } from "node-red";
-import { QueryMessage, Message, InsertOneMessage, UpdateOneMessage, DeleteOneMessage, InsertOrUpdateOneMessage, SigninMessage, TokenUser, mapFunc, reduceFunc, finalizeFunc, MapReduceMessage, JSONfn, UpdateManyMessage, GetFileMessage, SaveFileMessage } from "../../Message";
+import { QueryMessage, Message, InsertOneMessage, UpdateOneMessage, DeleteOneMessage, InsertOrUpdateOneMessage, SigninMessage, TokenUser, mapFunc, reduceFunc, finalizeFunc, MapReduceMessage, JSONfn, UpdateManyMessage, GetFileMessage, SaveFileMessage, AggregateMessage } from "../../Message";
 import { WebSocketClient } from "../../WebSocketClient";
 import { Crypt } from "../../Crypt";
 import { Config } from "../../Config";
@@ -48,6 +48,9 @@ export class NoderedUtil {
     public static HandleError(node: Red, error: any): void {
         console.error(error);
         var message: string = error;
+        if (typeof error === "string" || error instanceof String) {
+            error = new Error((error as string));
+        }
         try {
             if (error.message) {
                 message = error.message;
@@ -147,6 +150,15 @@ export class NoderedUtil {
         var q: MapReduceMessage<any> = new MapReduceMessage(map, reduce, finalize, query, out);
         q.collectionname = collection; q.scope = scope; q.jwt = jwt;
         var msg: Message = new Message(); msg.command = "mapreduce"; q.out = out;
+        msg.data = JSONfn.stringify(q);
+        var result: QueryMessage = await WebSocketClient.instance.Send<QueryMessage>(msg);
+        return result.result;
+    }
+
+    public static async Aggregate(collection: string, aggregates: object[], jwt: string): Promise<any> {
+        var q: AggregateMessage = new AggregateMessage();
+        q.collectionname = collection; q.aggregates = aggregates; q.jwt = jwt;
+        var msg: Message = new Message(); msg.command = "aggregate";
         msg.data = JSONfn.stringify(q);
         var result: QueryMessage = await WebSocketClient.instance.Send<QueryMessage>(msg);
         return result.result;

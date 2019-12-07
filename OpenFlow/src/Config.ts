@@ -14,37 +14,41 @@ export class Config {
     public static auto_create_domains: string[] = Config.parseArray(Config.getEnv("auto_create_domains", ""));
     public static allow_user_registration: boolean = Config.parseBoolean(Config.getEnv("allow_user_registration", "false"));
     public static allow_personal_nodered: boolean = Config.parseBoolean(Config.getEnv("allow_personal_nodered", "false"));
-    public static force_queue_prefix: boolean = Config.parseBoolean(Config.getEnv("force_queue_prefix", "true"));
-    public static nodered_image: string = Config.getEnv("nodered_image", "cloudhack/openflownodered:edge");
+    public static auto_create_personal_nodered_group: boolean = Config.parseBoolean(Config.getEnv("auto_create_personal_nodered_group", "false"));
 
-    public static saml_federation_metadata: string = Config.getEnv("saml_federation_metadata", "");
-    public static api_ws_url: string = Config.getEnv("api_ws_url", "ws://localhost:3000");
-
-    public static api_bypass_perm_check: boolean = Config.parseBoolean(Config.getEnv("api_bypass_perm_check", "false"));
-    public static websocket_package_size: number = parseInt(Config.getEnv("websocket_package_size", "1024"), 10);
-    public static websocket_max_package_count: number = parseInt(Config.getEnv("websocket_max_package_count", "1024"), 10);
-    public static signing_crt: string = Config.getEnv("signing_crt", "");
-    public static singing_key: string = Config.getEnv("singing_key", "");
     public static tls_crt: string = Config.getEnv("tls_crt", "");
     public static tls_key: string = Config.getEnv("tls_key", "");
     public static tls_ca: string = Config.getEnv("tls_ca", "");
     public static tls_passphrase: string = Config.getEnv("tls_passphrase", "");
+
+
+    public static api_bypass_perm_check: boolean = Config.parseBoolean(Config.getEnv("api_bypass_perm_check", "false"));
+    public static websocket_package_size: number = parseInt(Config.getEnv("websocket_package_size", "4096"), 10);
+    public static websocket_max_package_count: number = parseInt(Config.getEnv("websocket_max_package_count", "1024"), 10);
+    public static protocol: string = Config.getEnv("protocol", "http"); // used by personal nodered and baseurl()
     public static port: number = parseInt(Config.getEnv("port", "3000"));
-    public static domain: string = Config.getEnv("domain", "localhost");
-    public static namespace: string = Config.getEnv("namespace", "");
-    public static nodered_domain_schema: string = Config.getEnv("nodered_domain_schema", "");
+    public static domain: string = Config.getEnv("domain", "localhost"); // sent to website and used in baseurl()
 
-    public static protocol: string = Config.getEnv("protocol", "http");
-    public static saml_issuer: string = Config.getEnv("saml_issuer", "the-issuer");
 
-    // public static login_providers:Provider[] = [];
-    public static amqp_url: string = Config.getEnv("amqp_url", "amqp://localhost");
+    public static amqp_url: string = Config.getEnv("amqp_url", "amqp://localhost"); // used to register queues and by personal nodered
     public static mongodb_url: string = Config.getEnv("mongodb_url", "mongodb://localhost:27017");
     public static mongodb_db: string = Config.getEnv("mongodb_db", "openflow");
 
-    public static aes_secret: string = Config.getEnv("aes_secret", "");
     public static skip_history_collections: string = Config.getEnv("skip_history_collections", "");
     public static allow_skiphistory: boolean = Config.parseBoolean(Config.getEnv("allow_skiphistory", "true"));
+
+    public static saml_issuer: string = Config.getEnv("saml_issuer", "the-issuer"); // define uri of STS, also sent to personal nodereds
+    public static aes_secret: string = Config.getEnv("aes_secret", "");
+    public static signing_crt: string = Config.getEnv("signing_crt", "");
+    public static singing_key: string = Config.getEnv("singing_key", "");
+
+    // Used to configure personal nodered's
+    public static force_queue_prefix: boolean = Config.parseBoolean(Config.getEnv("force_queue_prefix", "true"));
+    public static nodered_image: string = Config.getEnv("nodered_image", "cloudhack/openflownodered:edge");
+    public static saml_federation_metadata: string = Config.getEnv("saml_federation_metadata", "");
+    public static api_ws_url: string = Config.getEnv("api_ws_url", "ws://localhost:3000");
+    public static namespace: string = Config.getEnv("namespace", ""); // also sent to website 
+    public static nodered_domain_schema: string = Config.getEnv("nodered_domain_schema", ""); // also sent to website
 
     public static baseurl(): string {
         var result: string = "";
@@ -82,11 +86,11 @@ export class Config {
             }
             return config;
         }, {
-                retries: 50,
-                onRetry: function (error: Error, count: number): void {
-                    Logger.instanse.warn("retry " + count + " error " + error.message + " getting " + url);
-                }
-            });
+            retries: 50,
+            onRetry: function (error: Error, count: number): void {
+                Logger.instanse.warn("retry " + count + " error " + error.message + " getting " + url);
+            }
+        });
         return metadata;
     }
     public static parseArray(s: string): string[] {

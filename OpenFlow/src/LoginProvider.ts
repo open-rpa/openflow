@@ -1,3 +1,4 @@
+import * as crypto from "crypto";
 import * as url from "url";
 import * as winston from "winston";
 import * as express from "express";
@@ -13,7 +14,8 @@ import * as LocalStrategy from "passport-local";
 import * as passport from "passport";
 import { Config } from "./Config";
 import { User } from "./User";
-import { Base } from "./base";
+import { Base, Rights, WellknownIds } from "./base";
+
 import { TokenUser } from "./TokenUser";
 import { Crypt } from "./Crypt";
 import { Role } from "./Role";
@@ -22,6 +24,12 @@ import { Audit } from "./Audit";
 import * as saml from "saml20";
 import { SamlProvider } from "./SamlProvider";
 import { Util } from "./Util";
+// import { multer } from "multer";
+// import { GridFsStorage } from "multer-gridfs-storage";
+var multer = require('multer');
+var GridFsStorage = require('multer-gridfs-storage');
+import { GridFSBucket, ObjectID, Db, Cursor } from "mongodb";
+const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 
 interface IVerifyFunction { (error: any, profile: any): void; }
 export class Provider extends Base {
@@ -36,6 +44,7 @@ export class Provider extends Base {
     public saml_federation_metadata: string = "";
     public consumerKey: string;
     public consumerSecret: string;
+    public saml_signout_url: string;
 }
 // tslint:disable-next-line: class-name
 export class googleauthstrategyoptions {
@@ -59,8 +68,8 @@ export class samlauthstrategyoptions {
 }
 export class LoginProvider {
     private static _logger: winston.Logger;
-    private static _providers: any = {};
-    private static login_providers: Provider[] = [];
+    public static _providers: any = {};
+    public static login_providers: Provider[] = [];
 
     public static redirect(res: any, originalUrl: string) {
         res.write('<!DOCTYPE html>');
@@ -145,6 +154,20 @@ export class LoginProvider {
         });
 
         app.get("/Signout", (req: any, res: any, next: any): void => {
+            // var providerid: string = req.cookies.provider;
+            // var provider: passport.Strategy;
+            // if (providerid != null && providerid != undefined && providerid != "") {
+            //     provider = LoginProvider._providers[providerid];
+            // }
+            // if (provider != null && provider != undefined) {
+            //     (provider as any).logout(req, function (err, requestUrl) {
+            //         // LOCAL logout
+            //         req.logout();
+            //         // redirect to the IdP with the encrypted SAML logout request
+            //         res.redirect(requestUrl);
+            //     });
+            //     return;
+            // }
             req.logout();
             var originalUrl: any = req.cookies.originalUrl;
             if (!Util.IsNullEmpty(originalUrl)) {
@@ -210,8 +233,10 @@ export class LoginProvider {
                 domain: Config.domain,
                 allow_user_registration: Config.allow_user_registration,
                 allow_personal_nodered: Config.allow_personal_nodered,
+                auto_create_personal_nodered_group: Config.auto_create_personal_nodered_group,
                 namespace: Config.namespace,
-                nodered_domain_schema: Config.nodered_domain_schema
+                nodered_domain_schema: Config.nodered_domain_schema,
+                websocket_package_size: Config.websocket_package_size
             }
             res.end(JSON.stringify(res2));
         });
@@ -248,6 +273,125 @@ export class LoginProvider {
             } catch (error) {
             }
         });
+
+
+        app.get("/download/:id", async (req, res) => {
+            try {
+                var user: TokenUser = null;
+                var jwt: string = null;
+                var authHeader = req.headers.authorization;
+                if (authHeader) {
+                    user = Crypt.verityToken(authHeader);
+                    jwt = Crypt.createToken(user, "15m");
+                }
+                else if (req.user) {
+                    user = new TokenUser(req.user);
+                    jwt = Crypt.createToken(user, "15m");
+                }
+                if (user == null) {
+                    return res.status(404).send({ message: 'Route ' + req.url + ' Not found.' });
+                }
+
+                var id = req.params.id;
+                var rows = await Config.db.query({ _id: safeObjectID(id) }, null, 1, 0, null, "files", jwt);
+                if (rows == null || rows.length != 1) { return res.status(404).send({ message: 'id ' + id + ' Not found.' }); }
+                var file = rows[0] as any;
+
+                var bucket = new GridFSBucket(Config.db.db);
+                let downloadStream = bucket.openDownloadStream(safeObjectID(id));
+                res.set('Content-Type', file.contentType);
+                res.set('Content-Disposition', 'attachment; filename="' + file.filename + '"');
+                res.set('Content-Length', file.length);
+                downloadStream.on("error", function (err) {
+                    res.end();
+                });
+                downloadStream.pipe(res);
+            } catch (error) {
+                return res.status(500).send({ message: error });
+            }
+        });
+        try {
+
+            var t = new Role();
+
+            var storage = GridFsStorage({
+                db: Config.db,
+                file: (req, file) => {
+                    return new Promise((resolve, reject) => {
+                        crypto.randomBytes(16, (err, buf) => {
+                            if (err) {
+                                return reject(err);
+                            }
+                            // const filename = buf.toString('hex') + path.extname(file.originalname);
+                            const filename = file.originalname;
+                            const fileInfo = {
+                                filename: filename,
+                                metadata: new Base()
+                            };
+                            var user: TokenUser = null;
+                            var jwt: string = null;
+                            var authHeader = req.headers.authorization;
+                            if (authHeader) {
+                                user = Crypt.verityToken(authHeader);
+                                jwt = Crypt.createToken(user, "15m");
+                            }
+                            else if (req.user) {
+                                user = new TokenUser(req.user);
+                                jwt = Crypt.createToken(user, "15m");
+                            }
+
+                            fileInfo.metadata.name = file.originalname;
+                            (fileInfo.metadata as any).filename = file.originalname;
+                            (fileInfo.metadata as any).path = "";
+                            fileInfo.metadata._acl = [];
+                            fileInfo.metadata._createdby = user.name;
+                            fileInfo.metadata._createdbyid = user._id;
+                            fileInfo.metadata._created = new Date(new Date().toISOString());
+                            fileInfo.metadata._modifiedby = user.name;
+                            fileInfo.metadata._modifiedbyid = user._id;
+                            fileInfo.metadata._modified = fileInfo.metadata._created;
+                            fileInfo.metadata.addRight(user._id, user.name, [Rights.full_control]);
+                            fileInfo.metadata.addRight(WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
+                            fileInfo.metadata.addRight(WellknownIds.filestore_users, "filestore users", [Rights.read]);
+
+                            resolve(fileInfo);
+                        });
+                    });
+                },
+            });
+            var upload = multer({ //multer settings for single upload
+                storage: storage
+            }).any();
+
+            app.post("/upload", async (req, res) => {
+                var user: TokenUser = null;
+                var jwt: string = null;
+                var authHeader = req.headers.authorization;
+                if (authHeader) {
+                    user = Crypt.verityToken(authHeader);
+                    jwt = Crypt.createToken(user, "15m");
+                }
+                else if (req.user) {
+                    user = new TokenUser(req.user);
+                    jwt = Crypt.createToken(user, "15m");
+                }
+                if (user == null) {
+                    return res.status(404).send({ message: 'Route ' + req.url + ' Not found.' });
+                }
+
+                upload(req, res, function (err) {
+                    if (err) {
+                        res.json({ error_code: 1, err_desc: err });
+                        return;
+                    }
+                    LoginProvider.redirect(res, req.headers.referer);
+                    // res.json({ error_code: 0, err_desc: null });
+                });
+            });
+        } catch (error) {
+            console.error(error);
+        }
+
     }
     static async RegisterProviders(app: express.Express, baseurl: string) {
         if (LoginProvider.login_providers.length === 0) {
@@ -296,6 +440,7 @@ export class LoginProvider {
             passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),
             function (req: any, res: any): void {
                 var originalUrl: any = req.cookies.originalUrl;
+                res.cookie("provider", key, { maxAge: 900000, httpOnly: true });
                 if (!Util.IsNullEmpty(originalUrl)) {
                     res.cookie("originalUrl", "", { expires: new Date(0) });
                     LoginProvider.redirect(res, originalUrl);
@@ -366,7 +511,7 @@ export class LoginProvider {
             <auth:DisplayName>Name ID</auth:DisplayName>
             <auth:Description>The SAML name identifier of the user</auth:Description>
             </auth:ClaimType>
-            </fed:ClaimTypesOffered>
+            </fed:ClaimTypesOffered>originalUrl
             <fed:PassiveRequestorEndpoint>
             <EndpointReference xmlns="http://www.w3.org/2005/08/addressing">
             <Address>` + options.callbackUrl + `</Address>
@@ -381,6 +526,7 @@ export class LoginProvider {
             passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),
             function (req: any, res: any): void {
                 var originalUrl: any = req.cookies.originalUrl;
+                res.cookie("provider", key, { maxAge: 900000, httpOnly: true });
                 if (!Util.IsNullEmpty(originalUrl)) {
                     res.cookie("originalUrl", "", { expires: new Date(0) });
                     LoginProvider.redirect(res, originalUrl);
@@ -443,20 +589,64 @@ export class LoginProvider {
         });
         passport.use("local", strategy);
         // http://www.passportjs.org/docs/authenticate/#custom-callback
+        // app.use("/local",
+        //     bodyParser.urlencoded({ extended: false }),
+        //     //passport.authenticate("local", { failureRedirect: "/login?failed=true", failureFlash: true }),
+        //     passport.authenticate("local", { failureRedirect: "/" }),
+        //     function (req: any, res: any): void {
+        //         var originalUrl: any = req.cookies.originalUrl;
+        //         if (!Util.IsNullEmpty(originalUrl)) {
+        //             res.cookie("originalUrl", "", { expires: new Date(0) });
+        //             LoginProvider.redirect(res, originalUrl);
+        //         } else {
+        //             res.redirect("/");
+        //         }
+        //     }
+        // );
         app.use("/local",
             bodyParser.urlencoded({ extended: false }),
-            //passport.authenticate("local", { failureRedirect: "/login?failed=true", failureFlash: true }),
-            passport.authenticate("local", { failureRedirect: "/" }),
-            function (req: any, res: any): void {
-                var originalUrl: any = req.cookies.originalUrl;
-                if (!Util.IsNullEmpty(originalUrl)) {
-                    res.cookie("originalUrl", "", { expires: new Date(0) });
-                    LoginProvider.redirect(res, originalUrl);
-                } else {
-                    res.redirect("/");
-                }
+            function (req: any, res: any, next: any): void {
+                passport.authenticate("local", function (err, user, info) {
+                    var originalUrl: any = req.cookies.originalUrl;
+                    if (!err && user) {
+                        req.logIn(user, function (err: any) {
+                            if (err) { }
+                            // if (err) { return next(err); }
+                            if (!Util.IsNullEmpty(originalUrl)) {
+                                try {
+                                    res.cookie("originalUrl", "", { expires: new Date(0) });
+                                    LoginProvider.redirect(res, originalUrl);
+                                } catch (error) {
+                                    console.error(error);
+                                }
+                            } else {
+                                res.redirect("/");
+                            }
+                        });
+                    }
+                    if (!Util.IsNullEmpty(originalUrl)) {
+                        if (originalUrl.indexOf("?") == -1) {
+                            originalUrl = originalUrl + "?error=1"
+                        } else if (originalUrl.indexOf("error=1") == -1) {
+                            originalUrl = originalUrl + "&error=1"
+                        }
+                        try {
+                            res.cookie("originalUrl", "", { expires: new Date(0) });
+                            LoginProvider.redirect(res, originalUrl);
+                        } catch (error) {
+                            console.error(error);
+                        }
+                    } else {
+                        try {
+                            res.redirect("/");
+                        } catch (error) {
+                            console.error(error);
+                        }
+                    }
+                })(req, res, next);
             }
         );
+
         return strategy;
     }
     static async samlverify(profile: any, done: IVerifyFunction): Promise<void> {

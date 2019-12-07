@@ -10,6 +10,7 @@ export class SigninMessage implements IReplyMessage {
     public onesignalid: string;
     public gpslocation: any;
     public device: any;
+    public websocket_package_size: number;
 
     public validate_only: boolean = false;
     public username: string;

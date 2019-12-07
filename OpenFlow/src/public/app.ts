@@ -11,6 +11,20 @@ module openflow {
         .directive("textarea", textarea.factory())
         .directive("fileread", fileread.factory())
         .service("WebSocketClient", WebSocketClient)
+
+
+        .directive('autoComplete', function ($timeout) {
+            return function (scope, iElement, iAttrs) {
+                (iElement as any).autocomplete({
+                    source: scope[iAttrs.uiItems],
+                    select: function () {
+                        $timeout(function () {
+                            iElement.trigger('input');
+                        }, 0);
+                    }
+                })
+            };
+        })
         .service("api", api);
     // .directive("todoBlur", todoBlur)
     // .directive("todoFocus", todoFocus)
@@ -54,6 +68,8 @@ module openflow {
 
                 .when('/Socket', { templateUrl: 'Socket.html', controller: SocketCtrl, controllerAs: 'ctrl' })
                 .when('/Nodered', { templateUrl: 'Nodered.html', controller: NoderedCtrl, controllerAs: 'ctrl' })
+
+                .when('/hdrobots', { templateUrl: 'hdrobots.html', controller: hdrobotsCtrl, controllerAs: 'ctrl' })
 
                 .otherwise({ redirectTo: '/main' });
         }
