@@ -51,7 +51,11 @@ function isNumeric(num) {
             logger.info("signed in as " + result.user.name + " with id " + result.user._id);
 
             const server: http.Server = await WebServer.configure(logger, socket);
-            logger.info("listening on " + Config.baseurl());
+            var baseurl = Config.saml_baseurl;
+            if (NoderedUtil.IsNullEmpty(baseurl)) {
+                baseurl = Config.baseurl();
+            }
+            logger.info("listening on " + baseurl);
         });
     } catch (error) {
         logger.error(error.message);

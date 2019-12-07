@@ -18,9 +18,9 @@ import { WebSocketClient } from "./WebSocketClient";
 import { noderedcontribopenflowstorage } from "./node-red-contrib-openflow-storage";
 import { SigninMessage, Message } from "./Message";
 import { noderedcontribmiddlewareauth } from "./node-red-contrib-middleware-auth";
-import { dashboardAuth } from "./dashboardAuth";
 
 import * as passport from "passport";
+import { NoderedUtil } from "./nodered/nodes/NoderedUtil";
 
 export class WebServer {
     private static _logger: winston.Logger;
@@ -112,7 +112,11 @@ export class WebServer {
                 //     profile.permissions = "*";
                 //     done(profile);
                 // });
-                this.settings.adminAuth = await samlauth.noderedcontribauthsaml.configure(Config.baseurl(), Config.saml_federation_metadata, Config.saml_issuer,
+                var baseurl = Config.saml_baseurl;
+                if (NoderedUtil.IsNullEmpty(baseurl)) {
+                    baseurl = Config.baseurl();
+                }
+                this.settings.adminAuth = await samlauth.noderedcontribauthsaml.configure(baseurl, Config.saml_federation_metadata, Config.saml_issuer,
                     (profile: string | any, done: any) => {
                         var roles: string[] = profile["http://schemas.xmlsoap.org/claims/Group"];
                         if (roles !== undefined) {
@@ -125,7 +129,7 @@ export class WebServer {
                         }
                         // profile.permissions = "*";
                         done(profile);
-                    }, "");
+                    }, "", Config.saml_entrypoint);
                 // this.settings.adminAuth = await noderedcontribauthsaml.configure(this._logger, Config.baseurl());clear
 
                 // settings.adminAuth = new noderedcontribauthopenid(this._logger, Config.baseurl());
@@ -166,7 +170,13 @@ export class WebServer {
                 // serve the http nodes UI from /api
                 this.app.use(this.settings.httpNodeRoot, RED.httpNode);
 
-                server.listen(Config.port);
+                if (Config.nodered_port > 0) {
+                    server.listen(Config.nodered_port);
+                }
+                else {
+                    server.listen(Config.port);
+                }
+
             } else {
                 await RED.stop();
                 // initialise the runtime with a server and settings
