@@ -28,13 +28,14 @@ function isNumeric(num) {
 }
 (async function (): Promise<void> {
     try {
+        var c = Config;
         var socket: WebSocketClient = new WebSocketClient(logger, Config.api_ws_url);
         socket.events.on("onopen", async () => {
 
             var q: SigninMessage = new SigninMessage();
             if (Config.jwt !== "") {
                 q.jwt = Config.jwt;
-            } else if (Crypt.encryption_key !== "") {
+            } else if (Crypt.encryption_key() !== "") {
                 var user = new TokenUser();
                 if (NoderedUtil.IsNullEmpty(Config.nodered_sa)) {
                     user.name = "nodered" + Config.nodered_id;

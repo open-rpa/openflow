@@ -67,7 +67,7 @@ export class api_get_jwt {
             } else {
                 if (Config.jwt !== "") {
                     q.jwt = Config.jwt;
-                } else if (Crypt.encryption_key !== "") {
+                } else if (Crypt.encryption_key() !== "") {
                     var user = new TokenUser();
                     if (NoderedUtil.IsNullEmpty(Config.nodered_sa)) {
                         user.name = "nodered" + Config.nodered_id;
