@@ -58,7 +58,7 @@ services:
       - saml_federation_metadata=http://web/issue/FederationMetadata/2007-06/FederationMetadata.xml
       - saml_issuer=uri:localhost.openrpa.dk
       - saml_entrypoint=http://localhost.openrpa.dk/issue
-      - saml_baseurl=http://localhost.openrpa.dk/issue
+      - saml_baseurl=http://localhost.openrpa.dk:1880/
       #      - saml_crt=
 
       - port=1880
