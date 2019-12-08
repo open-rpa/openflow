@@ -32,6 +32,7 @@ function isNumeric(num) {
         var socket: WebSocketClient = new WebSocketClient(logger, Config.api_ws_url);
         socket.events.on("onopen", async () => {
 
+            var c = Config;
             var q: SigninMessage = new SigninMessage();
             if (Config.jwt !== "") {
                 q.jwt = Config.jwt;

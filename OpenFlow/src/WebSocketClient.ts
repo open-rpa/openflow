@@ -152,7 +152,11 @@ export class WebSocketClient {
         } catch (error) {
             this._logger.error("WebSocketclient::WebSocket error in queue " + sender.queue + " / " + error);
             setTimeout(() => {
-                sender.channel.nack(msg);
+                try {
+                    sender.channel.nack(msg);
+                } catch (error) {
+                    this._logger.error("WebSocketclient::WebSocket nack message in queue " + sender.queue);
+                }
             }, 2000);
         }
     }
