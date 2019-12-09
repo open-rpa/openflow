@@ -40,7 +40,7 @@
     "express": "^4.17.1",
     "flash": "^1.1.0",
     "formBuilder": "^3.2.5",
-    "gulp": "^4.0.0",
+    "gulp": "^4.0.2",
     "gulp-replace": "^1.0.0",
     "gulp-shell": "^0.7.1",
     "handlebars": "^4.4.3",

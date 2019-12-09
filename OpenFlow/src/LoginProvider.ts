@@ -285,7 +285,7 @@ export class LoginProvider {
                     jwt = Crypt.createToken(user, "15m");
                 }
                 else if (req.user) {
-                    user = new TokenUser(req.user);
+                    user = new TokenUser(req.user as any);
                     jwt = Crypt.createToken(user, "15m");
                 }
                 if (user == null) {
@@ -372,7 +372,7 @@ export class LoginProvider {
                     jwt = Crypt.createToken(user, "15m");
                 }
                 else if (req.user) {
-                    user = new TokenUser(req.user);
+                    user = new TokenUser(req.user as any);
                     jwt = Crypt.createToken(user, "15m");
                 }
                 if (user == null) {

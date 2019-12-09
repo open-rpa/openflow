@@ -364,7 +364,7 @@ export class DatabaseConnection {
         // var options:CollectionInsertOneOptions = { writeConcern: { w: parseInt((w as any)), j: j } };
         var options: CollectionInsertOneOptions = { w: w, j: j };
         //var options: CollectionInsertOneOptions = { w: "majority" };
-        var result: InsertOneWriteOpResult = await this.db.collection(collectionname).insertOne(item, options);
+        var result: InsertOneWriteOpResult<T> = await this.db.collection(collectionname).insertOne(item, options);
         item = result.ops[0];
         if (collectionname === "users" && item._type === "user") {
             var users: Role = await Role.FindByNameOrId("users", jwt);
