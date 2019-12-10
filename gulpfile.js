@@ -78,6 +78,12 @@ gulp.task("bumpnodered", function () {
         .pipe(replace(/openflownodered:\d+(\.\d+)+/g, 'openflownodered:' + version))
         .pipe(gulp.dest("config"));
 });
+gulp.task("bumpconfigmap", function () {
+    console.log('cloudhack/openflownodered:' + version);
+    return gulp.src(["config/**/configmap.yml"])
+        .pipe(replace(/openflownodered:\d+(\.\d+)+/g, 'openflownodered:' + version))
+        .pipe(gulp.dest("config"));
+});
 
 gulp.task("bumpaiotfrontend", function () {
     var version = "0.0.1";
@@ -89,6 +95,6 @@ gulp.task("bumpaiotfrontend", function () {
         .pipe(gulp.dest("config"));
 });
 
-gulp.task("bump", gulp.series("bumpflow", "bumpnodered", "bumpaiotfrontend"));
+gulp.task("bump", gulp.series("bumpflow", "bumpnodered", "bumpconfigmap", "bumpaiotfrontend"));
 
 gulp.task("default", gulp.series("copyfiles1", "copyfiles2", "watch"));
