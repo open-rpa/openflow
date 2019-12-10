@@ -735,7 +735,7 @@ export class Message {
                                         env: [
                                             { name: "saml_federation_metadata", value: Config.saml_federation_metadata },
                                             { name: "saml_issuer", value: Config.saml_issuer },
-                                            { name: "saml_baseurl", value: Config.protocol + "://" + hostname },
+                                            { name: "saml_baseurl", value: Config.protocol + "://" + hostname + "/" },
                                             { name: "nodered_id", value: name },
                                             { name: "nodered_sa", value: cli.user.username },
                                             { name: "jwt", value: nodered_jwt },
