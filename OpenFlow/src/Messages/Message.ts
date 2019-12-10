@@ -742,7 +742,7 @@ export class Message {
                                             { name: "api_ws_url", value: Config.api_ws_url },
                                             { name: "amqp_url", value: Config.amqp_url },
                                             { name: "nodered_domain_schema", value: hostname },
-                                            { name: "domain", value: hostname }
+                                            { name: "domain", value: hostname },
                                             { name: "protocol", value: Config.protocol },
                                             { name: "port", value: Config.port.toString() },
                                             { name: "noderedusers", value: (name + "noderedusers") },
