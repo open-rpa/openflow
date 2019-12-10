@@ -8,7 +8,7 @@ import { Crypt } from "./Crypt";
 import { Config } from "./Config";
 import { TokenUser } from "./TokenUser";
 import { Ace } from "./Ace";
-import { Role } from "./Role";
+import { Role, Rolemember } from "./Role";
 import { UpdateOneMessage } from "./Messages/UpdateOneMessage";
 import { UpdateManyMessage } from "./Messages/UpdateManyMessage";
 import { InsertOrUpdateOneMessage } from "./Messages/InsertOrUpdateOneMessage";
@@ -81,19 +81,96 @@ export class DatabaseConnection {
         }
         return item;
     }
-    async Cleanmembers<T extends Role>(item: T): Promise<T> {
-        for (var i = item.members.length - 1; i >= 0; i--) {
-            {
+    async Cleanmembers<T extends Role>(item: T, original: T): Promise<T> {
+        var removed: Rolemember[] = [];
+        if (original != null && Config.update_acl_based_on_groups == true) {
+            for (var i = original.members.length - 1; i >= 0; i--) {
                 var ace = item.members[i];
                 var exists = item.members.filter(x => x._id == ace._id);
-                if (exists.length > 1) {
-                    item.members.splice(i, 1);
-                } else {
-                    var arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1 }).limit(1).toArray();
-                    if (arr.length == 0) {
-                        item.members.splice(i, 1);
-                    } else { ace.name = arr[0].name; }
+                if (exists.length == 0) {
+                    removed.push(ace);
                 }
+            }
+        }
+        var doadd: boolean = true;
+        var multi_tenant_skip: string[] = [WellknownIds.users, WellknownIds.filestore_users,
+        WellknownIds.nodered_api_users, WellknownIds.nodered_users, WellknownIds.personal_nodered_users,
+        WellknownIds.robot_users, , WellknownIds.robots];
+        if (item._id == WellknownIds.users && Config.multi_tenant) {
+            doadd = false;
+        }
+        if (doadd) {
+            for (var i = item.members.length - 1; i >= 0; i--) {
+                {
+                    var ace = item.members[i];
+                    var exists = item.members.filter(x => x._id == ace._id);
+                    if (exists.length > 1) {
+                        item.members.splice(i, 1);
+                    } else {
+                        var arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1, _acl: 1, _type: 1 }).limit(1).toArray();
+                        if (arr.length == 0) {
+                            item.members.splice(i, 1);
+                        }
+                        else if (Config.update_acl_based_on_groups == true) {
+                            ace.name = arr[0].name;
+                            if (Config.multi_tenant && multi_tenant_skip.indexOf(item._id) > -1) {
+                                // when multi tenant don't allow members of common user groups to see each other
+                                console.log("Running in multi tenant mode, skip adding permissions for " + item.name);
+                            } else if (arr[0]._type == "user") {
+                                var u: User = User.assign(arr[0]);
+                                if (u.getRight(item._id) == null) {
+                                    console.log("Assigning " + item.name + " read permission to " + u.name);
+                                    u.addRight(item._id, item.name, [Rights.read], false);
+                                    // await this.db.collection("users").save(u);
+                                } else if (u._id != item._id) {
+                                    console.log(item.name + " allready exists on " + u.name);
+                                }
+                            } else if (arr[0]._type == "role") {
+                                var r: Role = Role.assign(arr[0]);
+                                if (r._id == WellknownIds.admins || r._id == WellknownIds.users) {
+                                }
+                                if (r.getRight(item._id) == null) {
+                                    console.log("Assigning " + item.name + " read permission to " + r.name);
+                                    r.addRight(item._id, item.name, [Rights.read], false);
+                                    // await this.db.collection("users").save(r);
+                                } else if (r._id != item._id) {
+                                    console.log(item.name + " allready exists on " + r.name);
+                                }
+
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        for (var i = removed.length - 1; i >= 0; i--) {
+            var ace = removed[i];
+            var arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1, _acl: 1, _type: 1 }).limit(1).toArray();
+            if (arr.length == 1 && item._id != WellknownIds.admins && item._id != WellknownIds.root) {
+                if (Config.multi_tenant && multi_tenant_skip.indexOf(item._id) > -1) {
+                    // when multi tenant don't allow members of common user groups to see each other
+                    console.log("Running in multi tenant mode, skip removing permissions for " + item.name);
+                } else if (arr[0]._type == "user") {
+                    var u: User = User.assign(arr[0]);
+                    if (u.getRight(item._id) != null) {
+                        console.log("Removing " + item.name + " read permissions from " + u.name);
+                        u.removeRight(item._id, [Rights.read]);
+                        // await this.db.collection("users").save(u);
+                    } else {
+                        console.log("No need to remove " + item.name + " read permissions from " + u.name);
+                    }
+                } else if (arr[0]._type == "role") {
+                    var r: Role = Role.assign(arr[0]);
+                    if (r.getRight(item._id) != null) {
+                        console.log("Removing " + item.name + " read permissions from " + r.name);
+                        r.removeRight(item._id, [Rights.read]);
+                        // await this.db.collection("users").save(r);
+                    } else {
+                        console.log("No need to remove " + item.name + " read permissions from " + u.name);
+                    }
+                }
+
             }
         }
         return item;
@@ -358,7 +435,7 @@ export class DatabaseConnection {
 
         item = await this.CleanACL(item);
         if (item._type === "role" && collectionname === "users") {
-            item = await this.Cleanmembers(item as any);
+            item = await this.Cleanmembers(item as any, null);
         }
 
         // var options:CollectionInsertOneOptions = { writeConcern: { w: parseInt((w as any)), j: j } };
@@ -556,7 +633,7 @@ export class DatabaseConnection {
                     (q.item as any).metadata = await this.CleanACL((q.item as any).metadata);
                 }
                 if (q.item._type === "role" && q.collectionname === "users") {
-                    q.item = await this.Cleanmembers(q.item as any);
+                    q.item = await this.Cleanmembers(q.item as any, original);
                 }
 
                 if (q.collectionname != "fs.files") {
@@ -867,6 +944,20 @@ export class DatabaseConnection {
         //     this._logger.debug("[" + user.username + "] Skip isme in base query, not read (" + bits[0] + ")");
         // } else {
         //     this._logger.debug("[" + user.username + "] Skip isme in base query, bits missing!");
+        // }
+        // if(bits.length==1 && (bits[0]+1) == Rights.read)
+        // {
+        //     for (var i: number = 0; i < user.roles.length; i++) {
+        //         var role = user.roles[i];
+        //         if(role._id!=WellknownIds.admins && role._id!=WellknownIds.robots && role._id!=WellknownIds.nodered_users && 
+        //             role._id!=WellknownIds.nodered_admins && role._id!=WellknownIds.nodered_api_users && role._id!=WellknownIds.filestore_users && 
+        //             role._id!=WellknownIds.filestore_admins && role._id!=WellknownIds.robot_users && role._id!=WellknownIds.robot_admins
+        //             && role._id!=WellknownIds.personal_nodered_users)
+        //             {
+
+        //             }
+        //     }
+
         // }
         return { $or: finalor.concat() };
     }

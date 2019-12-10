@@ -54,6 +54,7 @@ async function initDatabase(): Promise<boolean> {
         users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
         users.removeRight(WellknownIds.admins, [Rights.delete]);
         users.AddMember(root);
+        if (users.getRight(users._id) && Config.multi_tenant) users.removeRight(users._id, [Rights.full_control])
         await users.Save(jwt);
 
 
@@ -61,6 +62,7 @@ async function initDatabase(): Promise<boolean> {
         personal_nodered_users.AddMember(admins);
         personal_nodered_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
         personal_nodered_users.removeRight(WellknownIds.admins, [Rights.delete]);
+        if (personal_nodered_users.getRight(personal_nodered_users._id) && Config.multi_tenant) personal_nodered_users.removeRight(personal_nodered_users._id, [Rights.full_control])
         await personal_nodered_users.Save(jwt);
         var nodered_admins: Role = await User.ensureRole(jwt, "nodered admins", WellknownIds.nodered_admins);
         nodered_admins.AddMember(admins);
@@ -71,11 +73,13 @@ async function initDatabase(): Promise<boolean> {
         nodered_users.AddMember(admins);
         nodered_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
         nodered_users.removeRight(WellknownIds.admins, [Rights.delete]);
+        if (nodered_users.getRight(nodered_users._id) && Config.multi_tenant) nodered_users.removeRight(nodered_users._id, [Rights.full_control])
         await nodered_users.Save(jwt);
         var nodered_api_users: Role = await User.ensureRole(jwt, "nodered api users", WellknownIds.nodered_api_users);
         nodered_api_users.AddMember(admins);
         nodered_api_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
         nodered_api_users.removeRight(WellknownIds.admins, [Rights.delete]);
+        if (nodered_api_users.getRight(nodered_api_users._id) && Config.multi_tenant) nodered_api_users.removeRight(nodered_api_users._id, [Rights.full_control])
         await nodered_api_users.Save(jwt);
 
         var robot_admins: Role = await User.ensureRole(jwt, "robot admins", WellknownIds.robot_admins);
@@ -88,6 +92,7 @@ async function initDatabase(): Promise<boolean> {
         robot_users.AddMember(users);
         robot_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
         robot_users.removeRight(WellknownIds.admins, [Rights.delete]);
+        if (robot_users.getRight(robot_users._id) && Config.multi_tenant) robot_users.removeRight(robot_users._id, [Rights.full_control])
         await robot_users.Save(jwt);
 
         if (!admins.IsMember(root._id)) {
@@ -99,13 +104,16 @@ async function initDatabase(): Promise<boolean> {
         filestore_admins.AddMember(admins);
         filestore_admins.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
         filestore_admins.removeRight(WellknownIds.admins, [Rights.delete]);
+        if (filestore_admins.getRight(filestore_admins._id) && Config.multi_tenant) filestore_admins.removeRight(filestore_admins._id, [Rights.full_control])
         await filestore_admins.Save(jwt);
         var filestore_users: Role = await User.ensureRole(jwt, "filestore users", WellknownIds.filestore_users);
         filestore_users.AddMember(admins);
         filestore_users.AddMember(users);
         filestore_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
         filestore_users.removeRight(WellknownIds.admins, [Rights.delete]);
+        if (filestore_users.getRight(filestore_users._id) && Config.multi_tenant) filestore_users.removeRight(filestore_users._id, [Rights.full_control])
         await filestore_users.Save(jwt);
+
 
 
         // Temp hack to update all existing users and roles

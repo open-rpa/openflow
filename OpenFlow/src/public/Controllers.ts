@@ -2272,7 +2272,7 @@ module openflow {
                     delete this.model[key];
                 }
             });
-            this.models = await this.api.Query(this.collection + "_hist", { id: this.id }, null, { _version: -1 });
+            this.models = await this.api.Query(this.collection + "_hist", { id: this.id }, null, this.orderby);
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         CompareNow(model) {

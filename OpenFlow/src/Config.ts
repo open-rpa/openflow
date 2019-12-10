@@ -22,6 +22,8 @@ export class Config {
     public static tls_passphrase: string = Config.getEnv("tls_passphrase", "");
 
 
+    public static update_acl_based_on_groups: boolean = Config.parseBoolean(Config.getEnv("update_acl_based_on_groups", "false"));
+    public static multi_tenant: boolean = Config.parseBoolean(Config.getEnv("multi_tenant", "false"));
     public static api_bypass_perm_check: boolean = Config.parseBoolean(Config.getEnv("api_bypass_perm_check", "false"));
     public static websocket_package_size: number = parseInt(Config.getEnv("websocket_package_size", "4096"), 10);
     public static websocket_max_package_count: number = parseInt(Config.getEnv("websocket_max_package_count", "1024"), 10);
