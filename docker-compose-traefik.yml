@@ -77,7 +77,7 @@ services:
   nodered:
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.nodered.rule=Host(`nodered.openflow.sowaio.com`)"
+      - "traefik.http.routers.nodered.rule=Host(`nodered.sowaio.com`)"
       - "traefik.http.routers.nodered.entrypoints=web"
       - "traefik.http.services.nodered.loadbalancer.server.port=1880"
     image: "cloudhack/openflownodered:0.0.392"
@@ -90,7 +90,7 @@ services:
       - saml_federation_metadata=http://web/issue/FederationMetadata/2007-06/FederationMetadata.xml
       - saml_issuer=uri:openflow.sowaio.com
       - saml_entrypoint=http://openflow.sowaio.com/issue
-      - saml_baseurl=http://nodered.openflow.sowaio.com/
+      - saml_baseurl=http://nodered.sowaio.com/
       #      - saml_crt=
 
       - port=1880
