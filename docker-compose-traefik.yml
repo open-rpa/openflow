@@ -64,8 +64,8 @@ services:
       - api_bypass_perm_check=false
       - websocket_package_size=4096
       - websocket_max_package_count=1048576
-      - protocol=https
-      - port=443
+      - protocol=http
+      - port=80
       - domain=openflow.sowaio.com
 
       - amqp_url=amqp://admin:demo2018@rabbitmq
@@ -89,7 +89,7 @@ services:
     container_name: "nodered"
     environment:
       #      - nodered_id=1
-      - nodered_sa=nodered1
+      - nodered_sa=nodered
       - queue_prefix=
 
       - saml_federation_metadata=http://web/issue/FederationMetadata/2007-06/FederationMetadata.xml
