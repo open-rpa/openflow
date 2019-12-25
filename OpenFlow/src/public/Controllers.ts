@@ -1995,8 +1995,8 @@ module openflow {
                     await this.loadData();
                 } else {
                     this.model = new openflow.Base();
-                    this.model._type = "role";
-                    this.model.name = "";
+                    this.model._type = "test";
+                    this.model.name = "new item";
                     this.keys = Object.keys(this.model);
                     for (var i: number = this.keys.length - 1; i >= 0; i--) {
                         if (this.keys[i].startsWith('_')) this.keys.splice(i, 1);
