@@ -6,9 +6,9 @@
   <section>
     <div class="form-group">
       <div class="col-sm-offset-2 col-sm-10">
+        <button type="button" class="btn btn-secondary" ng-click="ctrl.GetNoderedInstance()">Get status</button>
         <button type="button" class="btn btn-secondary" ng-click="ctrl.EnsureNoderedInstance()"
           ng-show="ctrl.instance==null">Create Nodered</button>
-        <button type="button" class="btn btn-secondary" ng-click="ctrl.GetNoderedInstance()">Get status</button>
         <button type="button" class="btn btn-secondary" ng-click="ctrl.RestartNoderedInstance()"
           ng-show="ctrl.instance!=null">Restart
           Nodered</button>
