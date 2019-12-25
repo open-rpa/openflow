@@ -835,6 +835,7 @@ module openflow {
             console.debug("UserCtrl");
             this.collection = "users";
             this.postloadData = this.processdata;
+            this.memberof = [];
             WebSocketClient.onSignedin((user: TokenUser) => {
                 if (this.id !== null && this.id !== undefined) {
                     this.loadData();
@@ -846,6 +847,7 @@ module openflow {
                     this.model.newpassword = "";
                     this.model.sid = "";
                     this.model.federationids = [];
+                    this.processdata();
                 }
 
             });
@@ -896,6 +898,7 @@ module openflow {
                 }, null, { _type: -1, name: 1 }, 5);
             for (var i = 0; i < currentmemberof.length; i++) {
                 var memberof = currentmemberof[i];
+                if (this.memberof == null || this.memberof == undefined) this.memberof = [];
                 var exists = this.memberof.filter(x => x._id == memberof._id);
                 if (exists.length == 0) {
                     console.log("Updating members of " + memberof.name + " " + memberof._id);
