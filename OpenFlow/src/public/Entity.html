@@ -17,8 +17,17 @@
         color: white;
         cursor: pointer;
     }
-</style>
 
+    textarea {
+        border: 0 none white;
+        overflow: hidden;
+        padding: 0;
+        outline: none;
+        background-color: #D0D0D0;
+    }
+</style>
+<script>
+</script>
 
 <!-- readonly
             onfocus="this.removeAttribute('readonly');"-->
@@ -86,6 +95,7 @@
 
 
 <pre ng-show="ErrorMessage!=null">{{ ErrorMessage }}</pre>
+<pre>{{ctrl.message}}</pre>
 <a href="" ng-hide="ctrl.showjson==true" ng-click="ctrl.togglejson()" translate lib="web">showjson</a>
 <a href="" ng-hide="ctrl.showjson==false" ng-click="ctrl.togglejson()" translate lib="web">showproperties</a>
 <form ng-submit="ctrl.submit()" class="form-horizontal" role="form" autocomplete="off" ng-hide="ctrl.showjson==true">
@@ -94,8 +104,7 @@
             <label class="col-sm-3 control-label"><span translate lib="web">{{ key }}</span>: <a href=""
                     ng-click="ctrl.removekey(key)" translate lib="web">delete</a></label>
             <div class="col-sm-9">
-                <textarea class='autogrow form-control' rows='3' data-min-rows='3'
-                    ng-model="ctrl.model[key]"></textarea>
+                <textarea class='form-control' rows='1' data-min-rows='1' ng-model="ctrl.model[key]"></textarea>
                 <!-- 
                 <input ng-model="ctrl.model[key]" class="form-control input-md" ng-disabled="ctrl.loading==true" />
                 -->
@@ -105,16 +114,27 @@
             <label class="col-sm-3 control-label"><span translate lib="web">{{ key }}</span>: <a href=""
                     ng-click="ctrl.removekey(key)" translate lib="web">delete</a></label>
             <div class="col-sm-9">
-                <input type="password" class='autogrow form-control' rows='3' data-min-rows='3'
+                <input type="password" class='form-control' rows='1' data-min-rows='1'
                     ng-model="ctrl.model[key]"></input>
                 <!-- 
                 <input ng-model="ctrl.model[key]" class="form-control input-md" ng-disabled="ctrl.loading==true" />
                 -->
             </div>
         </div>
+
     </section>
 
 
+    <div class="form-inline">
+        <label class="col-sm-2 control-label" translate lib="web">add key</label>
+        <div class="col-sm-4">
+            <input type="text" class='form-control' ng-model="ctrl.newkey"></input>
+        </div>
+        <div class="col-sm-2">
+            <button ng-click="ctrl.addkey()" type="button" ng-disabled="ctrl.loading==true" class="btn btn-success"
+                translate lib="web">add</button>
+        </div>
+    </div>
     <div class="form-group">
         <div class="col-sm-offset-2 col-sm-10">
             <button type="submit" ng-disabled="ctrl.loading==true" class="btn btn-success" translate
@@ -126,11 +146,17 @@
 <form ng-submit="ctrl.submit()" class="form-horizontal" role="form" autocomplete="off" ng-hide="ctrl.showjson==false">
     <div ng-hide="ctrl.showjson==false" class="form-group" style="width: 100%;">
         <div class="form-group">
+            <div class="col-sm-offset-3 col-sm-9">
+                <button type="submit" ng-disabled="ctrl.loading==true" class="btn btn-success" translate
+                    lib="web">save</button>
+            </div>
+        </div>
+        <div class="form-group">
             <label class="col-sm-3 control-label" translate lib="web">json</label>
             <div class="col-sm-9">
                 <!-- <textarea class="form-control" rows="5" ng-model="ctrl.jsonmodel" style="max-width: 100%;"></textarea> -->
 
-                <textarea class='autogrow form-control' rows='3' data-min-rows='3' ng-model="ctrl.jsonmodel"></textarea>
+                <textarea class=' form-control' rows='3' data-min-rows='3' ng-model="ctrl.jsonmodel"></textarea>
 
                 <!-- <textarea msd-elastic  class="form-control" ></textarea> -->
             </div>

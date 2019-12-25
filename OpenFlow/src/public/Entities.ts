@@ -10,6 +10,7 @@ module openflow {
         public _modifiedby: string;
         public _modified: Date;
         public _acl: Ace[];
+        public _encrypt: string[];
 
         /**
  * Enumerate ACL for specefic ID

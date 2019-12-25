@@ -419,20 +419,31 @@ module openflow {
                         return;
                     }
                 }
-                element.css({
-                    paddingTop: 0,
-                    height: 0,
-                    minHeight: 0
-                });
+                var currentContentHeight = (this as any).scrollHeight;
+                var currentBorderHeight = (this as any).offsetHeight;
+                {
+                    element.css({
+                        paddingTop: 0,
+                        height: 0,
+                        minHeight: 0
+                    });
 
-                var contentHeight = (this as any).scrollHeight;
-                var borderHeight = (this as any).offsetHeight;
+                    var contentHeight = (this as any).scrollHeight;
+                    var borderHeight = (this as any).offsetHeight;
 
-                element.css({
-                    paddingTop: ~~Math.max(0, minHeight - contentHeight) / 2 + "px",
-                    minHeight: null, // remove property
-                    height: contentHeight + borderHeight + "px" // because we're using border-box
-                });
+                    console.log("before: " + currentContentHeight + currentBorderHeight);
+
+                    element.css({
+                        paddingTop: ~~Math.max(0, minHeight - contentHeight) / 2 + "px",
+                        minHeight: null, // remove property
+                        height: contentHeight + borderHeight + "px" // because we're using border-box
+                    });
+
+                    contentHeight = (this as any).scrollHeight;
+                    borderHeight = (this as any).offsetHeight;
+                    console.log("after: " + contentHeight + borderHeight);
+
+                }
             });
 
             // watch model changes from the outside to adjust height
