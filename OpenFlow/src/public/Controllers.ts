@@ -1977,7 +1977,7 @@ module openflow {
         public newkey: string = "";
         public showjson: boolean = false;
         public jsonmodel: string = "";
-        public message: string = "Find me!";
+        public message: string = "";
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
