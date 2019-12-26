@@ -74,9 +74,9 @@ export class NoderedUtil {
 
 
 
-    public static async Query(collection: string, query: any, projection: any, orderby: any, top: number, skip: number, jwt: string): Promise<any[]> {
+    public static async Query(collection: string, query: any, projection: any, orderby: any, top: number, skip: number, jwt: string, queryas: string = null): Promise<any[]> {
         var q: QueryMessage = new QueryMessage(); q.collectionname = collection;
-        q.orderby = orderby; q.projection = projection;
+        q.orderby = orderby; q.projection = projection; q.queryas = queryas;
         //q.query = query;
         q.query = JSON.stringify(query, (key, value) => {
             var t = typeof value;

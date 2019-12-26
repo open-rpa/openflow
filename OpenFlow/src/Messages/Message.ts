@@ -342,7 +342,7 @@ export class Message {
         try {
             msg = QueryMessage.assign(this.data);
             if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-            msg.result = await Config.db.query(msg.query, msg.projection, msg.top, msg.skip, msg.orderby, msg.collectionname, msg.jwt);
+            msg.result = await Config.db.query(msg.query, msg.projection, msg.top, msg.skip, msg.orderby, msg.collectionname, msg.jwt, msg.queryas);
         } catch (error) {
             cli._logger.error(error);
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }

@@ -188,7 +188,7 @@ export class DatabaseConnection {
      * @returns Promise<T[]> Array of results
      */
     // tslint:disable-next-line: max-line-length
-    async query<T extends Base>(query: any, projection: Object, top: number, skip: number, orderby: Object | string, collectionname: string, jwt: string): Promise<T[]> {
+    async query<T extends Base>(query: any, projection: Object, top: number, skip: number, orderby: Object | string, collectionname: string, jwt: string, queryas: string = null): Promise<T[]> {
         var arr: T[] = [];
         await this.connect();
         var mysort: Object = {};
@@ -236,13 +236,22 @@ export class DatabaseConnection {
         var _query: Object = {};
         if (collectionname === "files") { collectionname = "fs.files"; }
         if (collectionname === "fs.files") {
-            _query = { $and: [query, this.getbasequery(jwt, "metadata._acl", [Rights.read])] };
+            if (!Util.IsNullEmpty(queryas)) {
+                _query = { $and: [query, this.getbasequery(jwt, "metadata._acl", [Rights.read]), await this.getbasequeryuserid(queryas, "metadata._acl", [Rights.read])] };
+            } else {
+                _query = { $and: [query, this.getbasequery(jwt, "metadata._acl", [Rights.read])] };
+            }
             projection = null;
         } else {
-            if (!collectionname.endsWith("_hist")) {
-                _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
+            // if (!collectionname.endsWith("_hist")) {
+            //     _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
+            // } else {
+            //     // todo: enforcer permissions when fetching _hist ?
+            //     _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
+            // }
+            if (!Util.IsNullEmpty(queryas)) {
+                _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read]), await this.getbasequeryuserid(queryas, "_acl", [Rights.read])] };
             } else {
-                // todo: enforcer permissions when fetching _hist ?
                 _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
             }
         }
@@ -936,30 +945,12 @@ export class DatabaseConnection {
             };
             finalor.push(q2);
         }
-        // 
-        // if (bits.length > 0 && (bits[0] + 1) == Rights.read) {
-        //     this._logger.debug("[" + user.username + "] Include isme in base query");
-        //     return { $or: finalor.concat(isme) };
-        // } else if (bits.length > 0) {
-        //     this._logger.debug("[" + user.username + "] Skip isme in base query, not read (" + bits[0] + ")");
-        // } else {
-        //     this._logger.debug("[" + user.username + "] Skip isme in base query, bits missing!");
-        // }
-        // if(bits.length==1 && (bits[0]+1) == Rights.read)
-        // {
-        //     for (var i: number = 0; i < user.roles.length; i++) {
-        //         var role = user.roles[i];
-        //         if(role._id!=WellknownIds.admins && role._id!=WellknownIds.robots && role._id!=WellknownIds.nodered_users && 
-        //             role._id!=WellknownIds.nodered_admins && role._id!=WellknownIds.nodered_api_users && role._id!=WellknownIds.filestore_users && 
-        //             role._id!=WellknownIds.filestore_admins && role._id!=WellknownIds.robot_users && role._id!=WellknownIds.robot_admins
-        //             && role._id!=WellknownIds.personal_nodered_users)
-        //             {
-
-        //             }
-        //     }
-
-        // }
         return { $or: finalor.concat() };
+    }
+    private async getbasequeryuserid(userid: string, field: string, bits: number[]): Promise<Object> {
+        var user = await User.FindByUsernameOrId(null, userid);
+        var jwt = Crypt.createToken(user, "5m");
+        return this.getbasequery(jwt, field, bits);
     }
     /**
      * Ensure _type and _acs on object

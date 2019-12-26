@@ -220,25 +220,25 @@ export async function get_rpa_workflows(req, res) {
         var token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
         var q: any = { _type: "workflow" };
         if (req.query.queue != null && req.query.queue != undefined && req.query.queue != "" && req.query.queue != "none") {
-            q = {
-                _type: "workflow",
-                $or: [
-                    { _createdbyid: req.query.queue },
-                    { _modifiedbyid: req.query.queue },
-                    {
-                        _acl: {
-                            $elemMatch: {
-                                rights: { $bitsAllSet: [2] },
-                                deny: false,
-                                _id: req.query.queue
-                            }
-                        }
-                    }
-                ]
-            };
+            // q = {
+            //     _type: "workflow",
+            //     $or: [
+            //         { _createdbyid: req.query.queue },
+            //         { _modifiedbyid: req.query.queue },
+            //         {
+            //             _acl: {
+            //                 $elemMatch: {
+            //                     rights: { $bitsAllSet: [2] },
+            //                     deny: false,
+            //                     _id: req.query.queue
+            //                 }
+            //             }
+            //         }
+            //     ]
+            // };
         }
         var result: any[] = await NoderedUtil.Query('openrpa', q,
-            { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
+            { name: 1 }, { name: -1 }, 1000, 0, token.jwt, req.query.queue)
         res.json(result);
     } catch (error) {
         res.status(500).json(error);
