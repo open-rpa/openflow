@@ -121,7 +121,7 @@ export class DatabaseConnection {
                                 if (u.getRight(item._id) == null) {
                                     console.log("Assigning " + item.name + " read permission to " + u.name);
                                     u.addRight(item._id, item.name, [Rights.read], false);
-                                    // await this.db.collection("users").save(u);
+                                    await this.db.collection("users").save(u);
                                 } else if (u._id != item._id) {
                                     console.log(item.name + " allready exists on " + u.name);
                                 }
@@ -132,7 +132,7 @@ export class DatabaseConnection {
                                 if (r.getRight(item._id) == null) {
                                     console.log("Assigning " + item.name + " read permission to " + r.name);
                                     r.addRight(item._id, item.name, [Rights.read], false);
-                                    // await this.db.collection("users").save(r);
+                                    await this.db.collection("users").save(r);
                                 } else if (r._id != item._id) {
                                     console.log(item.name + " allready exists on " + r.name);
                                 }
@@ -144,33 +144,35 @@ export class DatabaseConnection {
             }
         }
 
-        for (var i = removed.length - 1; i >= 0; i--) {
-            var ace = removed[i];
-            var arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1, _acl: 1, _type: 1 }).limit(1).toArray();
-            if (arr.length == 1 && item._id != WellknownIds.admins && item._id != WellknownIds.root) {
-                if (Config.multi_tenant && multi_tenant_skip.indexOf(item._id) > -1) {
-                    // when multi tenant don't allow members of common user groups to see each other
-                    console.log("Running in multi tenant mode, skip removing permissions for " + item.name);
-                } else if (arr[0]._type == "user") {
-                    var u: User = User.assign(arr[0]);
-                    if (u.getRight(item._id) != null) {
-                        console.log("Removing " + item.name + " read permissions from " + u.name);
-                        u.removeRight(item._id, [Rights.read]);
-                        // await this.db.collection("users").save(u);
-                    } else {
-                        console.log("No need to remove " + item.name + " read permissions from " + u.name);
+        if (Config.update_acl_based_on_groups) {
+            for (var i = removed.length - 1; i >= 0; i--) {
+                var ace = removed[i];
+                var arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1, _acl: 1, _type: 1 }).limit(1).toArray();
+                if (arr.length == 1 && item._id != WellknownIds.admins && item._id != WellknownIds.root) {
+                    if (Config.multi_tenant && multi_tenant_skip.indexOf(item._id) > -1) {
+                        // when multi tenant don't allow members of common user groups to see each other
+                        console.log("Running in multi tenant mode, skip removing permissions for " + item.name);
+                    } else if (arr[0]._type == "user") {
+                        var u: User = User.assign(arr[0]);
+                        if (u.getRight(item._id) != null) {
+                            console.log("Removing " + item.name + " read permissions from " + u.name);
+                            u.removeRight(item._id, [Rights.read]);
+                            await this.db.collection("users").save(u);
+                        } else {
+                            console.log("No need to remove " + item.name + " read permissions from " + u.name);
+                        }
+                    } else if (arr[0]._type == "role") {
+                        var r: Role = Role.assign(arr[0]);
+                        if (r.getRight(item._id) != null) {
+                            console.log("Removing " + item.name + " read permissions from " + r.name);
+                            r.removeRight(item._id, [Rights.read]);
+                            await this.db.collection("users").save(r);
+                        } else {
+                            console.log("No need to remove " + item.name + " read permissions from " + u.name);
+                        }
                     }
-                } else if (arr[0]._type == "role") {
-                    var r: Role = Role.assign(arr[0]);
-                    if (r.getRight(item._id) != null) {
-                        console.log("Removing " + item.name + " read permissions from " + r.name);
-                        r.removeRight(item._id, [Rights.read]);
-                        // await this.db.collection("users").save(r);
-                    } else {
-                        console.log("No need to remove " + item.name + " read permissions from " + u.name);
-                    }
-                }
 
+                }
             }
         }
         return item;
