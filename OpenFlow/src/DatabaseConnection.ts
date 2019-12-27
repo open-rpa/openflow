@@ -103,6 +103,9 @@ export class DatabaseConnection {
             for (var i = item.members.length - 1; i >= 0; i--) {
                 {
                     var ace = item.members[i];
+                    if (Config.update_acl_based_on_groups == true) {
+                        item.addRight(ace._id, ace.name, [Rights.read]);
+                    }
                     var exists = item.members.filter(x => x._id == ace._id);
                     if (exists.length > 1) {
                         item.members.splice(i, 1);
@@ -150,6 +153,7 @@ export class DatabaseConnection {
         if (Config.update_acl_based_on_groups) {
             for (var i = removed.length - 1; i >= 0; i--) {
                 var ace = removed[i];
+                item.removeRight(ace._id, [Rights.read]);
                 var arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1, _acl: 1, _type: 1 }).limit(1).toArray();
                 if (arr.length == 1 && item._id != WellknownIds.admins && item._id != WellknownIds.root) {
                     if (Config.multi_tenant && multi_tenant_skip.indexOf(item._id) > -1) {
