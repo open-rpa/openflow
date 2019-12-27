@@ -85,7 +85,7 @@ export class DatabaseConnection {
         var removed: Rolemember[] = [];
         if (original != null && Config.update_acl_based_on_groups == true) {
             for (var i = original.members.length - 1; i >= 0; i--) {
-                var ace = item.members[i];
+                var ace = original.members[i];
                 var exists = item.members.filter(x => x._id == ace._id);
                 if (exists.length == 0) {
                     removed.push(ace);
