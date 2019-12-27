@@ -63,7 +63,10 @@ async function initDatabase(): Promise<boolean> {
         personal_nodered_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
         personal_nodered_users.removeRight(WellknownIds.admins, [Rights.delete]);
         if (Config.update_acl_based_on_groups) personal_nodered_users.addRight(personal_nodered_users._id, "personal nodered users", [Rights.read]);
-        if (Config.multi_tenant) personal_nodered_users.removeRight(personal_nodered_users._id, [Rights.full_control]);
+        if (Config.multi_tenant) {
+            this._logger.debug("[root][users] Running in multi tenant mode, remove " + personal_nodered_users.name + " from self");
+            personal_nodered_users.removeRight(personal_nodered_users._id, [Rights.full_control]);
+        }
         await personal_nodered_users.Save(jwt);
         var nodered_admins: Role = await User.ensureRole(jwt, "nodered admins", WellknownIds.nodered_admins);
         nodered_admins.AddMember(admins);
@@ -74,15 +77,21 @@ async function initDatabase(): Promise<boolean> {
         nodered_users.AddMember(admins);
         nodered_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
         nodered_users.removeRight(WellknownIds.admins, [Rights.delete]);
-        if (Config.update_acl_based_on_groups) nodered_users.addRight(nodered_users._id, "nodered users", [Rights.read]);
-        if (Config.multi_tenant) nodered_users.removeRight(nodered_users._id, [Rights.full_control]);
+        if (Config.update_acl_based_on_groups) nodered_users.addRight(nodered_users._id, nodered_users.name, [Rights.read]);
+        if (Config.multi_tenant) {
+            this._logger.debug("[root][users] Running in multi tenant mode, remove " + nodered_users.name + " from self");
+            nodered_users.removeRight(nodered_users._id, [Rights.full_control]);
+        }
         await nodered_users.Save(jwt);
         var nodered_api_users: Role = await User.ensureRole(jwt, "nodered api users", WellknownIds.nodered_api_users);
         nodered_api_users.AddMember(admins);
         nodered_api_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
         nodered_api_users.removeRight(WellknownIds.admins, [Rights.delete]);
-        if (Config.update_acl_based_on_groups) nodered_api_users.addRight(nodered_api_users._id, "nodered api users", [Rights.read]);
-        if (Config.multi_tenant) nodered_api_users.removeRight(nodered_api_users._id, [Rights.full_control]);
+        if (Config.update_acl_based_on_groups) nodered_api_users.addRight(nodered_api_users._id, nodered_api_users.name, [Rights.read]);
+        if (Config.multi_tenant) {
+            this._logger.debug("[root][users] Running in multi tenant mode, remove " + nodered_api_users.name + " from self");
+            nodered_api_users.removeRight(nodered_api_users._id, [Rights.full_control]);
+        }
         await nodered_api_users.Save(jwt);
 
         var robot_admins: Role = await User.ensureRole(jwt, "robot admins", WellknownIds.robot_admins);
@@ -90,13 +99,16 @@ async function initDatabase(): Promise<boolean> {
         robot_admins.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
         robot_admins.removeRight(WellknownIds.admins, [Rights.delete]);
         await robot_admins.Save(jwt);
-        var robot_users: Role = await User.ensureRole(jwt, "robot users", WellknownIds.robot_users);
+        var robot_users: Role = await User.ensureRole(jwt, robot_users.name, WellknownIds.robot_users);
         robot_users.AddMember(admins);
         robot_users.AddMember(users);
         robot_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
         robot_users.removeRight(WellknownIds.admins, [Rights.delete]);
-        if (Config.update_acl_based_on_groups) robot_users.addRight(robot_users._id, "robot users", [Rights.read]);
-        if (Config.multi_tenant) robot_users.removeRight(robot_users._id, [Rights.full_control]);
+        if (Config.update_acl_based_on_groups) robot_users.addRight(robot_users._id, robot_users.name, [Rights.read]);
+        if (Config.multi_tenant) {
+            this._logger.debug("[root][users] Running in multi tenant mode, remove " + robot_users.name + " from self");
+            robot_users.removeRight(robot_users._id, [Rights.full_control]);
+        }
         await robot_users.Save(jwt);
 
         if (!admins.IsMember(root._id)) {
@@ -108,16 +120,22 @@ async function initDatabase(): Promise<boolean> {
         filestore_admins.AddMember(admins);
         filestore_admins.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
         filestore_admins.removeRight(WellknownIds.admins, [Rights.delete]);
-        if (Config.update_acl_based_on_groups) filestore_admins.addRight(filestore_admins._id, "filestore admins", [Rights.read]);
-        if (Config.multi_tenant) filestore_admins.removeRight(filestore_admins._id, [Rights.full_control]);
+        if (Config.update_acl_based_on_groups) filestore_admins.addRight(filestore_admins._id, filestore_admins.name, [Rights.read]);
+        if (Config.multi_tenant) {
+            this._logger.debug("[root][users] Running in multi tenant mode, remove " + filestore_admins.name + " from self");
+            filestore_admins.removeRight(filestore_admins._id, [Rights.full_control]);
+        }
         await filestore_admins.Save(jwt);
         var filestore_users: Role = await User.ensureRole(jwt, "filestore users", WellknownIds.filestore_users);
         filestore_users.AddMember(admins);
         filestore_users.AddMember(users);
         filestore_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
         filestore_users.removeRight(WellknownIds.admins, [Rights.delete]);
-        if (Config.update_acl_based_on_groups) filestore_users.addRight(filestore_users._id, "filestore users", [Rights.read]);
-        if (Config.multi_tenant) filestore_users.removeRight(filestore_users._id, [Rights.full_control]);
+        if (Config.update_acl_based_on_groups) filestore_users.addRight(filestore_users._id, filestore_users.name, [Rights.read]);
+        if (Config.multi_tenant) {
+            this._logger.debug("[root][users] Running in multi tenant mode, remove " + filestore_users.name + " from self");
+            filestore_users.removeRight(filestore_users._id, [Rights.full_control]);
+        }
         await filestore_users.Save(jwt);
 
 
