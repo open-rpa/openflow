@@ -118,7 +118,7 @@ export class DatabaseConnection {
                                 console.log("Running in multi tenant mode, skip adding permissions for " + item.name);
                             } else if (arr[0]._type == "user") {
                                 var u: User = User.assign(arr[0]);
-                                if (u.getRight(item._id) == null) {
+                                if (!u.hasRight(item._id, Rights.read)) {
                                     console.log("Assigning " + item.name + " read permission to " + u.name);
                                     u.addRight(item._id, item.name, [Rights.read], false);
 
@@ -131,7 +131,7 @@ export class DatabaseConnection {
                                 var r: Role = Role.assign(arr[0]);
                                 if (r._id == WellknownIds.admins || r._id == WellknownIds.users) {
                                 }
-                                if (r.getRight(item._id) == null) {
+                                if (!r.hasRight(item._id, Rights.read)) {
                                     console.log("Assigning " + item.name + " read permission to " + r.name);
                                     r.addRight(item._id, item.name, [Rights.read], false);
                                     await this.db.collection("users").updateOne({ _id: r._id }, { $set: { _acl: r._acl } });
@@ -157,7 +157,7 @@ export class DatabaseConnection {
                         console.log("Running in multi tenant mode, skip removing permissions for " + item.name);
                     } else if (arr[0]._type == "user") {
                         var u: User = User.assign(arr[0]);
-                        if (u.getRight(item._id) != null) {
+                        if (u.hasRight(item._id, Rights.read)) {
                             console.log("Removing " + item.name + " read permissions from " + u.name);
                             u.removeRight(item._id, [Rights.read]);
                             // await this.db.collection("users").save(u);
@@ -167,7 +167,7 @@ export class DatabaseConnection {
                         }
                     } else if (arr[0]._type == "role") {
                         var r: Role = Role.assign(arr[0]);
-                        if (r.getRight(item._id) != null) {
+                        if (r.hasRight(item._id, Rights.read)) {
                             console.log("Removing " + item.name + " read permissions from " + r.name);
                             r.removeRight(item._id, [Rights.read]);
                             // await this.db.collection("users").save(r);
