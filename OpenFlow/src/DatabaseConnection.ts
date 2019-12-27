@@ -105,7 +105,10 @@ export class DatabaseConnection {
                     var ace = item.members[i];
                     if (Config.update_acl_based_on_groups == true) {
                         if (multi_tenant_skip.indexOf(item._id) > -1) {
-                            item.removeRight(ace._id, [Rights.read]);
+                            if (ace._id != WellknownIds.admins && ace._id != WellknownIds.root) {
+                                item.removeRight(ace._id, [Rights.read]);
+                            }
+
                         } else {
                             item.addRight(ace._id, ace.name, [Rights.read]);
                         }
