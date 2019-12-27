@@ -853,7 +853,7 @@ module openflow {
             });
         }
         async processdata() {
-            if (this.model != null) {
+            if (this.model != null && (this.model._id != null && this.model._id != "")) {
                 this.memberof = await this.api.Query("users",
                     {
                         $and: [
