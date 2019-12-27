@@ -121,7 +121,9 @@ export class DatabaseConnection {
                                 if (u.getRight(item._id) == null) {
                                     console.log("Assigning " + item.name + " read permission to " + u.name);
                                     u.addRight(item._id, item.name, [Rights.read], false);
-                                    await this.db.collection("users").save(u);
+
+                                    await this.db.collection("users").updateOne({ _id: u._id }, { $set: { _acl: u._acl } });
+                                    // await this.db.collection("users").save(u);
                                 } else if (u._id != item._id) {
                                     console.log(item.name + " allready exists on " + u.name);
                                 }
@@ -132,7 +134,8 @@ export class DatabaseConnection {
                                 if (r.getRight(item._id) == null) {
                                     console.log("Assigning " + item.name + " read permission to " + r.name);
                                     r.addRight(item._id, item.name, [Rights.read], false);
-                                    await this.db.collection("users").save(r);
+                                    await this.db.collection("users").updateOne({ _id: r._id }, { $set: { _acl: r._acl } });
+                                    // await this.db.collection("users").save(r);
                                 } else if (r._id != item._id) {
                                     console.log(item.name + " allready exists on " + r.name);
                                 }
@@ -157,7 +160,8 @@ export class DatabaseConnection {
                         if (u.getRight(item._id) != null) {
                             console.log("Removing " + item.name + " read permissions from " + u.name);
                             u.removeRight(item._id, [Rights.read]);
-                            await this.db.collection("users").save(u);
+                            // await this.db.collection("users").save(u);
+                            await this.db.collection("users").updateOne({ _id: u._id }, { $set: { _acl: u._acl } });
                         } else {
                             console.log("No need to remove " + item.name + " read permissions from " + u.name);
                         }
@@ -166,7 +170,8 @@ export class DatabaseConnection {
                         if (r.getRight(item._id) != null) {
                             console.log("Removing " + item.name + " read permissions from " + r.name);
                             r.removeRight(item._id, [Rights.read]);
-                            await this.db.collection("users").save(r);
+                            // await this.db.collection("users").save(r);
+                            await this.db.collection("users").updateOne({ _id: r._id }, { $set: { _acl: r._acl } });
                         } else {
                             console.log("No need to remove " + item.name + " read permissions from " + u.name);
                         }

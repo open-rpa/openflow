@@ -611,7 +611,7 @@ export class Message {
                     cli._logger.debug(tuser.username + " was validated in using " + type);
                     // cli.jwt = Crypt.createToken(cli.user, "5m");
                 }
-                if (msg.impersonate === undefined || msg.impersonate === null && msg.impersonate === "") {
+                if (msg.impersonate === undefined || msg.impersonate === null || msg.impersonate === "") {
                     user.lastseen = new Date(new Date().toISOString());
                 }
                 await user.Save(TokenUser.rootToken());
