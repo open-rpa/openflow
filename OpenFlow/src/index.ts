@@ -99,7 +99,7 @@ async function initDatabase(): Promise<boolean> {
         robot_admins.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
         robot_admins.removeRight(WellknownIds.admins, [Rights.delete]);
         await robot_admins.Save(jwt);
-        var robot_users: Role = await User.ensureRole(jwt, robot_users.name, WellknownIds.robot_users);
+        var robot_users: Role = await User.ensureRole(jwt, "robot users", WellknownIds.robot_users);
         robot_users.AddMember(admins);
         robot_users.AddMember(users);
         robot_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
