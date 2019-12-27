@@ -108,7 +108,6 @@ export class DatabaseConnection {
                             if (ace._id != WellknownIds.admins && ace._id != WellknownIds.root) {
                                 item.removeRight(ace._id, [Rights.read]);
                             }
-
                         } else {
                             item.addRight(ace._id, ace.name, [Rights.read]);
                         }
@@ -161,11 +160,10 @@ export class DatabaseConnection {
             for (var i = removed.length - 1; i >= 0; i--) {
                 var ace = removed[i];
 
-                if (multi_tenant_skip.indexOf(item._id) > -1) {
-                    item.removeRight(ace._id, [Rights.read]);
-                } else {
+                if (ace._id != WellknownIds.admins && ace._id != WellknownIds.root) {
                     item.removeRight(ace._id, [Rights.read]);
                 }
+
                 var arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1, _acl: 1, _type: 1 }).limit(1).toArray();
                 if (arr.length == 1 && item._id != WellknownIds.admins && item._id != WellknownIds.root) {
                     if (Config.multi_tenant && multi_tenant_skip.indexOf(item._id) > -1) {
