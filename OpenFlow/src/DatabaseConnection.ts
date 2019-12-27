@@ -468,6 +468,20 @@ export class DatabaseConnection {
             item = await this.Cleanmembers(item as any, null);
         }
 
+        if (collectionname === "users" && item._type === "user") {
+            var u: TokenUser = (item as any);
+            if (u.username == null || u.username == "") { throw new Error("Username is mandatory"); }
+            if (u.name == null || u.name == "") { throw new Error("Name is mandatory"); }
+            var exists = await User.FindByUsername(u.username, TokenUser.rootToken());
+            if (exists != null) { throw new Error("Access denied"); }
+        }
+        if (collectionname === "users" && item._type === "role") {
+            var r: Role = (item as any);
+            if (r.name == null || r.name == "") { throw new Error("Name is mandatory"); }
+            var exists2 = await Role.FindByName(r.name);
+            if (exists2 != null) { throw new Error("Access denied"); }
+        }
+
         // var options:CollectionInsertOneOptions = { writeConcern: { w: parseInt((w as any)), j: j } };
         var options: CollectionInsertOneOptions = { w: w, j: j };
         //var options: CollectionInsertOneOptions = { w: "majority" };
@@ -476,7 +490,7 @@ export class DatabaseConnection {
         if (collectionname === "users" && item._type === "user") {
             var users: Role = await Role.FindByNameOrId("users", jwt);
             users.AddMember(item);
-            await users.Save(jwt)
+            await users.Save(jwt);
         }
         if (collectionname === "users" && item._type === "role") {
             item.addRight(item._id, item.name, [Rights.read]);
