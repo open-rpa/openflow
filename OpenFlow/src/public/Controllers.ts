@@ -629,13 +629,15 @@ module openflow {
             "$scope",
             "$location",
             "$routeParams",
-            "WebSocketClient"
+            "WebSocketClient",
+            "api"
         ];
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
-            public WebSocketClient: WebSocketClient
+            public WebSocketClient: WebSocketClient,
+            public api: api
         ) {
             console.debug("MenuCtrl::constructor");
             $scope.$root.$on('$routeChangeStart', (...args) => { this.routeChangeStart.apply(this, args); });
@@ -644,6 +646,7 @@ module openflow {
                 if (event && data) { }
                 this.user = data.user;
                 this.signedin = true;
+                console.log(this.user);
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 // cleanup();
             });
@@ -658,6 +661,9 @@ module openflow {
         }
         hascordova() {
             return this.WebSocketClient.usingCordova;
+        }
+        stopimpersonation() {
+            this.api.gettoken();
         }
     }
 
