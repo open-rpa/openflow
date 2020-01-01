@@ -106,10 +106,10 @@ export class DatabaseConnection {
                     if (Config.update_acl_based_on_groups == true) {
                         if (multi_tenant_skip.indexOf(item._id) > -1) {
                             if (ace._id != WellknownIds.admins && ace._id != WellknownIds.root) {
-                                item.removeRight(ace._id, [Rights.read]);
+                                // item.removeRight(ace._id, [Rights.read]);
                             }
                         } else {
-                            item.addRight(ace._id, ace.name, [Rights.read]);
+                            // item.addRight(ace._id, ace.name, [Rights.read]);
                         }
                     }
                     var exists = item.members.filter(x => x._id == ace._id);
@@ -161,7 +161,15 @@ export class DatabaseConnection {
                 var ace = removed[i];
 
                 if (ace._id != WellknownIds.admins && ace._id != WellknownIds.root) {
-                    item.removeRight(ace._id, [Rights.read]);
+                    // if (item.hasRight(ace._id, Rights.read)) {
+                    //     item.removeRight(ace._id, [Rights.read]);
+                    //     var right = item.getRight(ace._id, false);
+                    //     // read was not the only right ? then re add
+                    //     if (right != null) {
+                    //         item.addRight(ace._id, ace.name, [Rights.read]);
+                    //     }
+                    // }
+
                 }
 
                 var arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1, _acl: 1, _type: 1 }).limit(1).toArray();
@@ -172,20 +180,33 @@ export class DatabaseConnection {
                     } else if (arr[0]._type == "user") {
                         var u: User = User.assign(arr[0]);
                         if (u.hasRight(item._id, Rights.read)) {
-                            console.log("Removing " + item.name + " read permissions from " + u.name);
                             u.removeRight(item._id, [Rights.read]);
-                            // await this.db.collection("users").save(u);
-                            await this.db.collection("users").updateOne({ _id: u._id }, { $set: { _acl: u._acl } });
+
+                            // was read the only right ? then remove it
+                            var right = u.getRight(item._id, false);
+                            if (right == null) {
+                                console.log("Removing " + item.name + " read permissions from " + u.name);
+                                // await this.db.collection("users").save(u);
+                                await this.db.collection("users").updateOne({ _id: u._id }, { $set: { _acl: u._acl } });
+
+                            }
+
                         } else {
                             console.log("No need to remove " + item.name + " read permissions from " + u.name);
                         }
                     } else if (arr[0]._type == "role") {
                         var r: Role = Role.assign(arr[0]);
                         if (r.hasRight(item._id, Rights.read)) {
-                            console.log("Removing " + item.name + " read permissions from " + r.name);
                             r.removeRight(item._id, [Rights.read]);
-                            // await this.db.collection("users").save(r);
-                            await this.db.collection("users").updateOne({ _id: r._id }, { $set: { _acl: r._acl } });
+
+                            // was read the only right ? then remove it
+                            var right = r.getRight(item._id, false);
+                            if (right == null) {
+                                console.log("Removing " + item.name + " read permissions from " + r.name);
+                                // await this.db.collection("users").save(r);
+                                await this.db.collection("users").updateOne({ _id: r._id }, { $set: { _acl: r._acl } });
+                            }
+
                         } else {
                             console.log("No need to remove " + item.name + " read permissions from " + u.name);
                         }
