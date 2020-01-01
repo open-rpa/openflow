@@ -490,7 +490,7 @@ export class DatabaseConnection {
         if (collectionname === "users" && item._type === "user") {
             var users: Role = await Role.FindByNameOrId("users", jwt);
             users.AddMember(item);
-            await users.Save(jwt);
+            await users.Save(TokenUser.rootToken());
         }
         if (collectionname === "users" && item._type === "role") {
             item.addRight(item._id, item.name, [Rights.read]);
