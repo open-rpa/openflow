@@ -135,7 +135,7 @@ export class WebSocketClient {
     public async sendToQueue(msg: QueueMessage) {
         if (Util.IsNullEmpty(msg.queuename)) { throw new Error("sendToQueue, queuename is mandatory") }
         if (this.consumers.length === 0) { throw new Error("No consumers for client available to send message through") }
-        var result = this.consumers[0].sendToQueue(msg.queuename, msg.correlationId, { payload: msg.data, jwt: this.jwt });
+        var result = this.consumers[0].sendToQueue(msg.queuename, msg.correlationId, { payload: msg.data, jwt: this.jwt, user: this.user });
     }
     sleep(ms) {
         return new Promise(resolve => {
