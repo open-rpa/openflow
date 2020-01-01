@@ -2418,6 +2418,7 @@ module openflow {
                 console.error(error);
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            this.GetNoderedInstance();
         }
         async DeleteNoderedInstance() {
             try {
@@ -2428,6 +2429,7 @@ module openflow {
                 console.error(error);
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            this.GetNoderedInstance();
         }
         async RestartNoderedInstance() {
             try {
@@ -2438,6 +2440,7 @@ module openflow {
                 console.error(error);
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            this.GetNoderedInstance();
         }
         async StartNoderedInstance() {
             try {
@@ -2448,6 +2451,7 @@ module openflow {
                 console.error(error);
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            this.GetNoderedInstance();
         }
         async StopNoderedInstance() {
             try {
@@ -2458,6 +2462,7 @@ module openflow {
                 console.error(error);
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            this.GetNoderedInstance();
         }
 
         async submit() {

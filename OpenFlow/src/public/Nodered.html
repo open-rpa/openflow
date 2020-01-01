@@ -10,7 +10,7 @@
         <button type="button" class="btn btn-secondary" ng-click="ctrl.EnsureNoderedInstance()"
           ng-show="ctrl.instance==null || ctrl.instancestatus == 'pending deletion (Running)' ">Create Nodered</button>
         <button type="button" class="btn btn-secondary" ng-click="ctrl.RestartNoderedInstance()"
-          ng-show="ctrl.instance!=null">Restart
+          ng-show="ctrl.instance!=null && ctrl.instancestatus != 'pending deletion (Running)'">Restart
           Nodered</button>
         <button type="button" class="btn btn-secondary" ng-click="ctrl.DeleteNoderedInstance()"
           ng-show="ctrl.instance!=null && ctrl.instancestatus != 'pending deletion (Running)' ">Delete Nodered</button>
