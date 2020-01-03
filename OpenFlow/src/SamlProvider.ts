@@ -144,11 +144,17 @@ export class SamlProvider {
                     var provider = p[0];
                     if (!Util.IsNullEmpty(provider.saml_signout_url)) {
                         var html = "<html><head></head><body>";
+                        html += "<h1>Logud</h1><br>";
+                        if (!Util.IsNullEmpty(referer)) {
+                            html += "<br/><p><a href='" + referer + "'>Til login</a></p>";
+                        } else {
+                            html += "<br/><p><a href='/'>Til login</ifarame></p>";
+                        }
                         html += "<iframe src='" + provider.saml_signout_url + "'></iframe>";
                         if (!Util.IsNullEmpty(referer)) {
-                            html += "<br/><p><a href='" + referer + "'>Back / Tilbage</a></p>";
+                            html += "<br/><p><a href='" + referer + "'>Til login</a></p>";
                         } else {
-                            html += "<br/><p><a href='/'>Back / Tilbage</ifarame></p>";
+                            html += "<br/><p><a href='/'>Til login</ifarame></p>";
                         }
                         res.send(html);
                         return;
