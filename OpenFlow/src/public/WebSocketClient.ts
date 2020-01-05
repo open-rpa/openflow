@@ -30,6 +30,7 @@ module openflow {
         public allow_user_registration: boolean = false;
 
         public namespace: string = null;
+        public version: string = null;
         public nodered_domain_schema: string = null;
 
         private _url: string = null;
@@ -270,6 +271,7 @@ module openflow {
                 this.namespace = data.namespace;
                 this.nodered_domain_schema = data.nodered_domain_schema;
                 this.websocket_package_size = data.websocket_package_size;
+                this.version = data.version;
                 this._socketObject = new ReconnectingWebSocket(data.wshost);
                 this._socketObject.onopen = (this.onopen).bind(this);
                 this._socketObject.onmessage = (this.onmessage).bind(this);

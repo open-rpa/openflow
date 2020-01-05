@@ -2,7 +2,7 @@ var fs = require("fs");
 var gulp = require("gulp");
 var shell = require("gulp-shell");
 var replace = require('gulp-replace');
-
+var merge = require('merge-stream');
 
 var OpenFlowFiles = [
     "./OpenFlow/src/public/**/*.html", "./OpenFlow/src/public/**/*.css", "./OpenFlow/src/public/**/*.js", "./OpenFlow/src/public/**/*.json",
@@ -20,33 +20,17 @@ if (fs.existsSync("../VERSION")) {
 }
 gulp.task("copyfiles1", function () {
     console.log("copyfiles1");
-    return gulp.src(OpenFlowFiles)
-        .pipe(gulp.dest(destination));
-});
-gulp.task("copyfiles2", function () {
-    console.log("copyfiles2");
-    return gulp.src(NodeREDHTMLFiles)
-        .pipe(gulp.dest("OpenFlowNodeRED/dist/nodered/nodes"));
+    var openflow = gulp.src(OpenFlowFiles).pipe(gulp.dest(destination));
+    var nodered = gulp.src(NodeREDHTMLFiles).pipe(gulp.dest("OpenFlowNodeRED/dist/nodered/nodes"));
+    var version = gulp.src('./VERSION').pipe(gulp.dest("./dist"));
+    return merge(openflow, nodered, version);
 });
 gulp.task("watch", function () {
-    gulp.watch(OpenFlowFiles, gulp.series("copyfiles1"));
-    return gulp.watch(NodeREDHTMLFiles, gulp.series("copyfiles2"));
+    return gulp.watch(NodeREDHTMLFiles.concat(OpenFlowFiles).concat('./VERSION'), gulp.series("copyfiles1"));
 });
 
-// gulp.task("compose", shell.task([
-//     'cd OpenFlowNodeRED && tsc -p tsconfig.json && docker build -t cloudhack/openflownodered:edge .',
-//     'cd OpenFlowNodeRED && tsc -p tsconfig.json && docker build -t cloudhack/openflownodered:edge .',
-//     'docker tag cloudhack/openflownodered:edge cloudhack/openflownodered:' + version,
-//     'docker push cloudhack/openflownodered',
-//     'gulp copyfiles',
-//     'tsc -p OpenFlow/tsconfig.json',
-//     'docker build -t cloudhack/openflow:edge .',
-//     'docker tag cloudhack/openflow:edge cloudhack/openflow:' + version,
-//     'docker push cloudhack/openflow'
-// ]));
 gulp.task("compose", shell.task([
     'gulp copyfiles1',
-    'gulp copyfiles2',
     'echo "compile OpenFlowNodeRED"',
     'cd OpenFlowNodeRED && tsc -p tsconfig.json',
     'echo "Build cloudhack/openflownodered"',
@@ -97,4 +81,4 @@ gulp.task("bumpaiotfrontend", function () {
 
 gulp.task("bump", gulp.series("bumpflow", "bumpnodered", "bumpconfigmap", "bumpaiotfrontend"));
 
-gulp.task("default", gulp.series("copyfiles1", "copyfiles2", "watch"));
+gulp.task("default", gulp.series("copyfiles1", "watch"));

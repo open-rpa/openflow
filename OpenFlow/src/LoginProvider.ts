@@ -236,7 +236,8 @@ export class LoginProvider {
                 auto_create_personal_nodered_group: Config.auto_create_personal_nodered_group,
                 namespace: Config.namespace,
                 nodered_domain_schema: Config.nodered_domain_schema,
-                websocket_package_size: Config.websocket_package_size
+                websocket_package_size: Config.websocket_package_size,
+                version: Config.version
             }
             res.end(JSON.stringify(res2));
         });

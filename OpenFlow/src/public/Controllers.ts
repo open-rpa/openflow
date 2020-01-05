@@ -701,6 +701,10 @@ module openflow {
         stopimpersonation() {
             this.api.gettoken();
         }
+        PathIs(path: string) {
+            if (this.path == null && this.path == undefined) return false;
+            return this.path.startsWith(path);
+        }
     }
 
     export class ProvidersCtrl extends entitiesCtrl<openflow.Provider> {
