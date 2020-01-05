@@ -500,7 +500,7 @@ export class DatabaseConnection {
             var r: Role = (item as any);
             if (r.name == null || r.name == "") { throw new Error("Name is mandatory"); }
             var exists2 = await Role.FindByName(r.name);
-            if (exists2 != null) { throw new Error("Access denied"); }
+            if (exists2 != null) { throw new Error("Access denied, adding new user"); }
         }
 
         // var options:CollectionInsertOneOptions = { writeConcern: { w: parseInt((w as any)), j: j } };
