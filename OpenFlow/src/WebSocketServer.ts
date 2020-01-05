@@ -69,7 +69,11 @@ export class WebSocketServer {
             var cli = WebSocketServer._clients[i];
             if (cli.user != null) {
                 // Lets assume only robots register queues ( not true )
-                if (cli.consumers != null && cli.consumers.length > 0) {
+                if (cli.clientagent == "openrpa") {
+                    Config.db.db.collection("users").updateOne({ _id: cli.user._id },
+                        { $set: { _rpaheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } });
+                }
+                else if (cli.consumers != null && cli.consumers.length > 0) {
                     // Should proberly turn this a little down, so we dont update all online users every 10th second
                     Config.db.db.collection("users").updateOne({ _id: cli.user._id }, { $set: { _heartbeat: new Date(new Date().toISOString()) } });
                 }

@@ -50,9 +50,11 @@ export class SocketMessage {
 export class SigninMessage {
     public error: string;
 
-    public validate_only: boolean = false;
     public username: string;
     public password: string;
+    public validate_only: boolean = false;
+    public clientagent: string;
+    public clientversion: string;
     public user: TokenUser;
     public jwt: string;
     public rawAssertion: string;

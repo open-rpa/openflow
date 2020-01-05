@@ -82,7 +82,7 @@ export class SamlProvider {
                 var tuser: TokenUser = new TokenUser(req.user);
                 var remoteip = "";
                 if (req.connection) { remoteip = req.connection.remoteAddress; }
-                Audit.LoginSuccess(tuser, "tokenissued", "saml", remoteip);
+                Audit.LoginSuccess(tuser, "tokenissued", "saml", remoteip, "getUserFromRequest", "unknown");
                 return req.user;
             },
             profileMapper: SamlProvider.profileMapper,

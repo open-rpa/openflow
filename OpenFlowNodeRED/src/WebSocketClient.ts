@@ -1,4 +1,4 @@
-import { SocketMessage, TokenUser, SigninMessage, Message } from "./Message";
+import { SocketMessage, TokenUser, Message } from "./Message";
 import * as events from "events";
 import * as WebSocket from "ws";
 import winston = require("winston");

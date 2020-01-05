@@ -119,8 +119,11 @@ module openflow {
             q.jwt = jwt;
             q.rawAssertion = rawAssertion;
             q.realm = "browser";
+            q.clientagent = "webapp";
+            q.clientversion = this.WebSocketClient.version;
             if (this.WebSocketClient.usingCordova) {
                 q.realm = "mobile";
+                q.clientagent = "mobileapp";
             }
             q.impersonate = impersonate;
             q.onesignalid = this.WebSocketClient.oneSignalId;
@@ -138,8 +141,11 @@ module openflow {
             q.username = username;
             q.password = password;
             q.realm = "browser";
+            q.clientagent = "webapp";
+            q.clientversion = this.WebSocketClient.version;
             if (this.WebSocketClient.usingCordova) {
                 q.realm = "mobile";
+                q.clientagent = "mobileapp";
             }
             q.impersonate = impersonate;
             q.onesignalid = this.WebSocketClient.oneSignalId;

@@ -562,19 +562,21 @@ export class Message {
                 user = await Auth.ValidateByPassword(msg.username, msg.password);
                 tuser = new TokenUser(user);
             }
+            cli.clientagent = msg.clientagent;
+            cli.clientversion = msg.clientversion;
             if (user === null || user === undefined || tuser === null || tuser === undefined) {
                 msg.error = "Unknown username or password";
-                Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip);
+                Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
                 cli._logger.debug(tuser.username + " failed logging in using " + type);
             } else {
-                Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip);
+                Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
                 var userid: string = user._id;
                 msg.jwt = Crypt.createToken(tuser, "5m");
                 msg.user = tuser;
                 if (msg.impersonate !== undefined && msg.impersonate !== null && msg.impersonate !== "") {
                     var items = await Config.db.query({ _id: msg.impersonate }, null, 1, 0, null, "users", msg.jwt);
                     if (items.length == 0) {
-                        Audit.ImpersonateFailed(tuser, msg.impersonate);
+                        Audit.ImpersonateFailed(tuser, msg.impersonate, cli.clientagent, cli.clientversion);
                         throw new Error("Permission denied, impersonating " + msg.impersonate);
                     }
                     var tuserimpostor = tuser;
@@ -586,7 +588,7 @@ export class Message {
                     tuser.impostor = userid;
                     msg.jwt = Crypt.createToken(tuser, "5m");
                     msg.user = tuser;
-                    Audit.ImpersonateSuccess(tuser, tuserimpostor);
+                    Audit.ImpersonateSuccess(tuser, tuserimpostor, cli.clientagent, cli.clientversion);
                 }
                 if (msg.firebasetoken != null && msg.firebasetoken != undefined && msg.firebasetoken != "") {
                     user.firebasetoken = msg.firebasetoken;
@@ -614,6 +616,8 @@ export class Message {
                 if (msg.impersonate === undefined || msg.impersonate === null || msg.impersonate === "") {
                     user.lastseen = new Date(new Date().toISOString());
                 }
+                user._lastclientagent = cli.clientagent;
+                user._lastclientversion = cli.clientversion;
                 await user.Save(TokenUser.rootToken());
             }
         } catch (error) {

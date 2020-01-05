@@ -39,6 +39,8 @@ export class WebSocketClient {
     private _sendQueue: SocketMessage[];
     public messageQueue: IHashTable<QueuedMessage> = {};
     public remoteip: string;
+    public clientagent: string;
+    public clientversion: string;
 
     user: User;
     public consumers: amqp_consumer[] = [];

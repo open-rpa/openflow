@@ -23,6 +23,11 @@ export class User extends Base {
     }
     noderedname: string;
     lastseen: Date;
+    _heartbeat: Date;
+    _rpaheartbeat: Date;
+    _noderedheartbeat: Date;
+    _lastclientagent: string;
+    _lastclientversion: string;
     username: string;
     passwordhash: string;
     sid: string;

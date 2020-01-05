@@ -189,6 +189,8 @@ export class NoderedUtil {
     }
     public static async GetToken(username: string, password: string): Promise<SigninMessage> {
         var q: SigninMessage = new SigninMessage(); q.validate_only = true;
+        q.clientagent = "nodered";
+        q.clientversion = Config.version;
         if (!NoderedUtil.IsNullEmpty(username) && !NoderedUtil.IsNullEmpty(password)) {
             q.username = username; q.password = password;
         } else {
@@ -218,6 +220,8 @@ export class NoderedUtil {
     }
     public static async GetTokenFromSAML(rawAssertion: string): Promise<SigninMessage> {
         var q: SigninMessage = new SigninMessage(); q.validate_only = true;
+        q.clientagent = "nodered";
+        q.clientversion = Config.version;
         q.rawAssertion = rawAssertion;
         var _msg: Message = new Message();
         _msg.command = "signin"; _msg.data = JSON.stringify(q);

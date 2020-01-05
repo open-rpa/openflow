@@ -22,8 +22,9 @@ gulp.task("copyfiles1", function () {
     console.log("copyfiles1");
     var openflow = gulp.src(OpenFlowFiles).pipe(gulp.dest(destination));
     var nodered = gulp.src(NodeREDHTMLFiles).pipe(gulp.dest("OpenFlowNodeRED/dist/nodered/nodes"));
-    var version = gulp.src('./VERSION').pipe(gulp.dest("./dist"));
-    return merge(openflow, nodered, version);
+    var version1 = gulp.src('./VERSION').pipe(gulp.dest("./dist"));
+    var version2 = gulp.src('./VERSION').pipe(gulp.dest("OpenFlowNodeRED/dist"));
+    return merge(openflow, nodered, version1, version2);
 });
 gulp.task("watch", function () {
     return gulp.watch(NodeREDHTMLFiles.concat(OpenFlowFiles).concat('./VERSION'), gulp.series("copyfiles1"));
