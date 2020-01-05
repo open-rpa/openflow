@@ -28,6 +28,7 @@
   <tbody>
     <tr ng-repeat="model in ctrl.models">
       <td>
+        <i class="fas fa-robot" ng-show="model.clientagent=='openrpa'"></i>
         <i class="fas fa-globe" ng-show="model.clientagent=='webapp' || model.clientagent=='browser'"></i>
         <i class="fas fa-mobile-alt" ng-show="model.clientagent=='mobileapp'"></i>
         <i class="fab fa-node-js" ng-show="model.clientagent=='nodered' || model.clientagent=='getUserFromRequest'"></i>
