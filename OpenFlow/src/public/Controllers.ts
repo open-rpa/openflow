@@ -2585,8 +2585,8 @@ module openflow {
             console.debug("RolesCtrl");
             this.basequery = { _type: "user" };
             this.collection = "users";
-            var dt = new Date(new Date().toISOString());
             this.preloadData = () => {
+                var dt = new Date(new Date().toISOString());
                 if (this.showall) {
                     this.basequery = { _heartbeat: { "$exists": true } };
                 } else {
