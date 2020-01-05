@@ -654,7 +654,7 @@ module openflow {
                     query = { $and: [query, { $or: finalor.concat() }] };
                 }
             }
-            this.models = await this.api.Query(this.collection, query, this.baseprojection, this.orderby, null, null, this.basequeryas);
+            this.models = await this.api.Query(this.collection, query, this.baseprojection, this.orderby, 100, 0, this.basequeryas);
             this.loading = false;
             if (this.autorefresh) {
                 if (this.models.length >= 100) {
