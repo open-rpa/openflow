@@ -2646,7 +2646,7 @@ module openflow {
             public userdata: userdata
         ) {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api, userdata);
-            this.autorefresh = true;
+            this.autorefresh = false;
             console.debug("AuditlogsCtrl");
             // this.basequery = { _type: "role" };
             this.collection = "audit";
