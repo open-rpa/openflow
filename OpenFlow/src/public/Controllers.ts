@@ -293,12 +293,12 @@ module openflow {
 
 
             var workflows = await this.api.Query("openrpa", { _type: "workflow" }, null, null);
-            var workflowids = [];
-            workflows.forEach(workflow => {
-                workflowids.push(workflow._id);
-            });
-            var q = { WorkflowId: { $in: workflowids } }
-            var instances = await this.api.Query("openrpa_instances", q, null, null);
+            // var workflowids = [];
+            // workflows.forEach(workflow => {
+            //     workflowids.push(workflow._id);
+            // });
+            // var q = { WorkflowId: { $in: workflowids } }
+            // var instances = await this.api.Query("openrpa_instances", q, null, null);
 
 
 
@@ -2632,5 +2632,34 @@ module openflow {
         //     this.loading = false;
         //     if (!this.$scope.$$phase) { this.$scope.$apply(); }
         // }
+    }
+
+
+    export class AuditlogsCtrl extends entitiesCtrl<openflow.Role> {
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
+            public WebSocketClient: WebSocketClient,
+            public api: api,
+            public userdata: userdata
+        ) {
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api, userdata);
+            this.autorefresh = true;
+            console.debug("AuditlogsCtrl");
+            // this.basequery = { _type: "role" };
+            this.collection = "audit";
+            WebSocketClient.onSignedin((user: TokenUser) => {
+                this.loadData();
+            });
+        }
+        async DeleteOne(model: any): Promise<any> {
+            this.loading = true;
+            await this.api.Delete(this.collection, model);
+            this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
     }
 }

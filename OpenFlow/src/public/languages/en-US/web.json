@@ -78,5 +78,9 @@
     "showall": "Show all",
     "hdrobots": "HD Robots",
     "robots": "Robots",
-    "heartbeat": "Heartbeat"
+    "heartbeat": "Heartbeat",
+    "auditlogs": "Audit log",
+    "impostorname": "Imposter",
+    "clientagent": "Agent",
+    "clientversion": "Version"
 }
