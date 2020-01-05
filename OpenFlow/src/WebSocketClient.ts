@@ -41,7 +41,7 @@ export class WebSocketClient {
     public remoteip: string;
 
     user: User;
-    private consumers: amqp_consumer[] = [];
+    public consumers: amqp_consumer[] = [];
     constructor(logger: winston.Logger, socketObject: WebSocket) {
         this._logger = logger;
         this._socketObject = socketObject;

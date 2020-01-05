@@ -74,5 +74,9 @@
     "project": "Projekt",
     "helloworld": "Hej verden",
     "embedsignout": "Embed Signout",
-    "hdrobots": "HD Robots"
+    "files": "Filer",
+    "showall": "Vis alle",
+    "hdrobots": "HD Robots",
+    "robots": "Robotter",
+    "heartbeat": "Puls"
 }

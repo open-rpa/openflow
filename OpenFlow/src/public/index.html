@@ -34,7 +34,10 @@
           <a class="nav-link" href="#/Workflows"><span translate lib="web">workflows</span></a>
         </li>
         <li class="nav-item" ng-show="menuctrl.hasrole('users')">
-          <a class="nav-link" href="#/RPAWorkflows"><span translate lib="web">RPA workflows</span></a>
+          <a class="nav-link" href="#/RPAWorkflows"><span translate lib="web">rpaworkflows</span></a>
+        </li>
+        <li class="nav-item" ng-show="menuctrl.hasrole('users')">
+          <a class="nav-link" href="#/Robots"><span translate lib="web">Robots</span></a>
         </li>
         <li class="nav-item" ng-show="menuctrl.hasrole('users')">
           <a class="nav-link" href="#/Reports"><span translate lib="web">reports</span></a>
@@ -83,6 +86,8 @@
 
   <link rel="stylesheet" href="openflow-font/styles.css">
   <link rel="stylesheet" href="site.css">
+
+  <script src='FileSaver.min.js'></script>
 
   <link rel='stylesheet' href='formio.full.min.css'>
   <script src='formio.full.min.js'></script>
