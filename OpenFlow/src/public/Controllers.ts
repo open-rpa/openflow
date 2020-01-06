@@ -2647,13 +2647,35 @@ module openflow {
         ) {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api, userdata);
             this.autorefresh = false;
+            this.baseprojection = { name: 1, _type: 1, impostorname: 1, clientagent: 1, clientversion: 1, _created: 1 };
             console.debug("AuditlogsCtrl");
             // this.basequery = { _type: "role" };
             this.collection = "audit";
+            this.postloadData = this.processdata;
             WebSocketClient.onSignedin((user: TokenUser) => {
                 this.loadData();
             });
         }
+        processdata() {
+            for (var i = 0; i < this.models.length; i++) {
+                var model: any = this.models[i];
+                model.fa = "far fa-question-circle";
+                model.fa2 = "";
+                if (model.clientagent == 'openrpa') model.fa = 'fas fa-robot';
+                if (model.clientagent == 'webapp') model.fa = 'fas fa-globe';
+                if (model.clientagent == 'browser') model.fa = 'fas fa-globe';
+                if (model.clientagent == 'mobileapp') model.fa = 'fas fa-mobile-alt';
+                if (model.clientagent == 'nodered') model.fa = 'fab fa-node-js';
+                if (model.clientagent == 'getUserFromRequest') model.fa = 'fab fa-node-js';
+                if (model.clientagent == 'googleverify') model.fa = 'fab fa-google';
+                if (model.clientagent == 'samlverify') model.fa = 'fab fa-windows';
+
+                if (model.impostorname != '' && model.impostorname != null) model.fa2 = 'fas fa-user-secret';
+            }
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+
         async DeleteOne(model: any): Promise<any> {
             this.loading = true;
             await this.api.Delete(this.collection, model);

@@ -28,12 +28,19 @@
   <tbody>
     <tr ng-repeat="model in ctrl.models">
       <td>
-        <i class="fas fa-robot" ng-show="model.clientagent=='openrpa'"></i>
+        <!-- <i class="fas fa-robot" ng-show="model.clientagent=='openrpa'"></i>
         <i class="fas fa-globe" ng-show="model.clientagent=='webapp' || model.clientagent=='browser'"></i>
         <i class="fas fa-mobile-alt" ng-show="model.clientagent=='mobileapp'"></i>
         <i class="fab fa-node-js" ng-show="model.clientagent=='nodered' || model.clientagent=='getUserFromRequest'"></i>
-        <i class="fas fa-question" ng-show="model.clientagent=='' || model.clientagent==null"></i>
-        <i class="fas fa-user-secret" ng-show="model.impostorname!='' && model.impostorname!=null"></td>
+        <i class="fab fa-google" ng-show="model.clientagent=='googleverify'"></i>
+        <i class="fab fa-windows" ng-show="model.clientagent=='samlverify'"></i>
+        <i class="far fa-question-circle" ng-show="model.clientagent=='' || model.clientagent==null"></i>
+
+        <i class="fas fa-user-secret" ng-show="model.impostorname!='' && model.impostorname!=null"> -->
+        <i ng-class="model.fa">
+          <i ng-class="model.fa2">
+
+      </td>
       <td>{{model.name}}</td>
       <td>{{model._type}}</td>
       <td>{{model.impostorname}}</td>
