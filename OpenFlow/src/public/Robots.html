@@ -27,6 +27,9 @@
     <tr>
       <th scope="col" ng-click="ctrl.ToggleOrder('name')"><b translate lib="web">name</b></th>
       <th scope="col" ng-click="ctrl.ToggleOrder('_heartbeat')"><b translate lib="web">heartbeat</b></th>
+      <th scope="col" ng-click="ctrl.ToggleOrder('_lastopenrpaclientversion')"><b translate
+          lib="web">lastclientversion</b>
+      </th>
       <th></th>
       <th></th>
       <th></th>
@@ -38,6 +41,7 @@
       <td>
         <timesince ng-model="model._heartbeat" />
       </td>
+      <td>{{model._lastopenrpaclientversion}}</td>
       <td class="btn-cell">
         <a href ng-click="ctrl.ShowWorkflows(model)" class="table-btn">workflows</a>
       </td>

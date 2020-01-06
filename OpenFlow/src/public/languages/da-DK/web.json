@@ -82,5 +82,7 @@
     "auditlogs": "revisions log",
     "impostorname": "Imposter",
     "clientagent": "Agent",
-    "clientversion": "Version"
+    "clientversion": "Version",
+    "lastclientagent": "Agent",
+    "lastclientversion": "Version"
 }

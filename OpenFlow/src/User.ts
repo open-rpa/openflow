@@ -28,6 +28,8 @@ export class User extends Base {
     _noderedheartbeat: Date;
     _lastclientagent: string;
     _lastclientversion: string;
+    _lastopenrpaclientversion: string;
+    _lastnoderedclientversion: string;
     username: string;
     passwordhash: string;
     sid: string;

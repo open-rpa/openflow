@@ -618,6 +618,12 @@ export class Message {
                 }
                 user._lastclientagent = cli.clientagent;
                 user._lastclientversion = cli.clientversion;
+                if (cli.clientagent == "openrpa") {
+                    user._lastopenrpaclientversion = cli.clientversion;
+                }
+                if (cli.clientagent == "nodered") {
+                    user._lastnoderedclientversion = cli.clientversion;
+                }
                 await user.Save(TokenUser.rootToken());
             }
         } catch (error) {
