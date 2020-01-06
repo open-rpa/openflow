@@ -15,6 +15,7 @@ module openflow {
     }
     declare var jsondiffpatch: any;
     declare var Formio: any;
+    declare var FileSaver: any;
 
     export class RPAWorkflowCtrl extends entityCtrl<openflow.RPAWorkflow> {
         public arguments: any;
@@ -90,9 +91,10 @@ module openflow {
             public $routeParams: ng.route.IRouteParamsService,
             public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
-            public api: api
+            public api: api,
+            public userdata: userdata
         ) {
-            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api, userdata);
             console.debug("RPAWorkflowsCtrl");
             this.collection = "openrpa";
             this.basequery = { _type: "workflow" };
@@ -167,6 +169,37 @@ module openflow {
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
+        download(data, filename, type) {
+            var file = new Blob([data], { type: type });
+            if (window.navigator.msSaveOrOpenBlob) // IE10+
+                window.navigator.msSaveOrOpenBlob(file, filename);
+            else { // Others
+                var a = document.createElement("a"),
+                    url = URL.createObjectURL(file);
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(function () {
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                }, 0);
+            }
+        }
+        async Download(model: any) {
+            // console.log("Create file");
+            // var file = new File(["Hello, world!"], "hello world.txt", { type: "text/plain;charset=utf-8" });
+            // console.log("SaveAs");
+            // debugger;
+            // FileSaver.saveAs(file);
+            var workflows = await this.api.Query("openrpa", { _type: "workflow", _id: model._id }, null, null);
+            if (workflows.length > 0) {
+                model = workflows[0];
+                console.log(model);
+                this.download(model.Xaml, model.name + ".xaml", "application/xaml+xml");
+            }
+        }
+
     }
 
 
@@ -179,9 +212,10 @@ module openflow {
             public $routeParams: ng.route.IRouteParamsService,
             public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
-            public api: api
+            public api: api,
+            public userdata: userdata
         ) {
-            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api, userdata);
             this.collection = "workflow";
             this.basequery = { _type: "workflow", web: true };
             console.debug("WorkflowsCtrl");
@@ -216,9 +250,10 @@ module openflow {
             public $routeParams: ng.route.IRouteParamsService,
             public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
-            public api: api
+            public api: api,
+            public userdata: userdata
         ) {
-            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api, userdata);
             console.debug("ReportsCtrl");
             WebSocketClient.onSignedin((user: TokenUser) => {
                 this.processData();
@@ -258,12 +293,12 @@ module openflow {
 
 
             var workflows = await this.api.Query("openrpa", { _type: "workflow" }, null, null);
-            var workflowids = [];
-            workflows.forEach(workflow => {
-                workflowids.push(workflow._id);
-            });
-            var q = { WorkflowId: { $in: workflowids } }
-            var instances = await this.api.Query("openrpa_instances", q, null, null);
+            // var workflowids = [];
+            // workflows.forEach(workflow => {
+            //     workflowids.push(workflow._id);
+            // });
+            // var q = { WorkflowId: { $in: workflowids } }
+            // var instances = await this.api.Query("openrpa_instances", q, null, null);
 
 
 
@@ -368,8 +403,9 @@ module openflow {
             public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
             public api: api,
+            public userdata: userdata
         ) {
-            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api, userdata);
             console.debug("MainCtrl");
             this.collection = "workflow_instances"
             this.basequery = { state: { $ne: "completed" }, form: { $exists: true } };
@@ -629,13 +665,15 @@ module openflow {
             "$scope",
             "$location",
             "$routeParams",
-            "WebSocketClient"
+            "WebSocketClient",
+            "api"
         ];
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
             public $routeParams: ng.route.IRouteParamsService,
-            public WebSocketClient: WebSocketClient
+            public WebSocketClient: WebSocketClient,
+            public api: api
         ) {
             console.debug("MenuCtrl::constructor");
             $scope.$root.$on('$routeChangeStart', (...args) => { this.routeChangeStart.apply(this, args); });
@@ -644,6 +682,7 @@ module openflow {
                 if (event && data) { }
                 this.user = data.user;
                 this.signedin = true;
+                // console.log(this.user);
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 // cleanup();
             });
@@ -659,6 +698,13 @@ module openflow {
         hascordova() {
             return this.WebSocketClient.usingCordova;
         }
+        stopimpersonation() {
+            this.api.gettoken();
+        }
+        PathIs(path: string) {
+            if (this.path == null && this.path == undefined) return false;
+            return this.path.startsWith(path);
+        }
     }
 
     export class ProvidersCtrl extends entitiesCtrl<openflow.Provider> {
@@ -668,9 +714,10 @@ module openflow {
             public $routeParams: ng.route.IRouteParamsService,
             public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
-            public api
+            public api,
+            public userdata: userdata
         ) {
-            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api, userdata);
             console.debug("ProvidersCtrl");
             this.basequery = { _type: "provider" };
             this.collection = "config";
@@ -729,9 +776,10 @@ module openflow {
             public $routeParams: ng.route.IRouteParamsService,
             public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
-            public api: api
+            public api: api,
+            public userdata: userdata
         ) {
-            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api, userdata);
             this.autorefresh = true;
             console.debug("UsersCtrl");
             this.basequery = { _type: "user" };
@@ -835,6 +883,7 @@ module openflow {
             console.debug("UserCtrl");
             this.collection = "users";
             this.postloadData = this.processdata;
+            this.memberof = [];
             WebSocketClient.onSignedin((user: TokenUser) => {
                 if (this.id !== null && this.id !== undefined) {
                     this.loadData();
@@ -846,12 +895,13 @@ module openflow {
                     this.model.newpassword = "";
                     this.model.sid = "";
                     this.model.federationids = [];
+                    this.processdata();
                 }
 
             });
         }
         async processdata() {
-            if (this.model != null) {
+            if (this.model != null && (this.model._id != null && this.model._id != "")) {
                 this.memberof = await this.api.Query("users",
                     {
                         $and: [
@@ -896,6 +946,7 @@ module openflow {
                 }, null, { _type: -1, name: 1 }, 5);
             for (var i = 0; i < currentmemberof.length; i++) {
                 var memberof = currentmemberof[i];
+                if (this.memberof == null || this.memberof == undefined) this.memberof = [];
                 var exists = this.memberof.filter(x => x._id == memberof._id);
                 if (exists.length == 0) {
                     console.log("Updating members of " + memberof.name + " " + memberof._id);
@@ -921,9 +972,10 @@ module openflow {
             public $routeParams: ng.route.IRouteParamsService,
             public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
-            public api: api
+            public api: api,
+            public userdata: userdata
         ) {
-            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api, userdata);
             this.autorefresh = true;
             console.debug("RolesCtrl");
             this.basequery = { _type: "role" };
@@ -1170,9 +1222,10 @@ module openflow {
             public $routeParams: ng.route.IRouteParamsService,
             public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
-            public api: api
+            public api: api,
+            public userdata: userdata
         ) {
-            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api, userdata);
             console.debug("EntitiesCtrl");
             this.autorefresh = true;
             this.basequery = {};
@@ -1295,9 +1348,10 @@ module openflow {
             public $routeParams: ng.route.IRouteParamsService,
             public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
-            public api: api
+            public api: api,
+            public userdata: userdata
         ) {
-            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api, userdata);
             console.debug("EntitiesCtrl");
             this.autorefresh = true;
             this.basequery = {};
@@ -1355,9 +1409,10 @@ module openflow {
             public $routeParams: ng.route.IRouteParamsService,
             public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
-            public api: api
+            public api: api,
+            public userdata: userdata
         ) {
-            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api, userdata);
             console.debug("FormsCtrl");
             this.autorefresh = true;
             this.collection = "forms";
@@ -1925,9 +1980,10 @@ module openflow {
             public $routeParams: ng.route.IRouteParamsService,
             public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
-            public api: api
+            public api: api,
+            public userdata: userdata
         ) {
-            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api, userdata);
             this.autorefresh = true;
             console.debug("jslogCtrl");
             this.searchfields = ["_createdby", "host", "message"];
@@ -1974,6 +2030,7 @@ module openflow {
         public newkey: string = "";
         public showjson: boolean = false;
         public jsonmodel: string = "";
+        public message: string = "";
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -1992,13 +2049,16 @@ module openflow {
                     await this.loadData();
                 } else {
                     this.model = new openflow.Base();
-                    this.model._type = "role";
-                    this.model.name = "";
+                    this.model._type = "test";
+                    this.model.name = "new item";
+                    this.model._encrypt = [];
+                    this.model._acl = [];
                     this.keys = Object.keys(this.model);
                     for (var i: number = this.keys.length - 1; i >= 0; i--) {
                         if (this.keys[i].startsWith('_')) this.keys.splice(i, 1);
                     }
-                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    this.processdata();
+                    //if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 }
             });
         }
@@ -2015,6 +2075,22 @@ module openflow {
                 }
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            this.fixtextarea();
+        }
+        fixtextarea() {
+            setTimeout(() => {
+                var tx = document.getElementsByTagName('textarea');
+                for (var i = 0; i < tx.length; i++) {
+                    tx[i].setAttribute('style', 'height:' + (tx[i].scrollHeight) + 'px;overflow-y:hidden;');
+                    tx[i].addEventListener("input", OnInput, false);
+                }
+
+                function OnInput() {
+                    this.style.height = 'auto';
+                    this.style.height = (this.scrollHeight) + 'px';
+                }
+
+            }, 500);
         }
         togglejson() {
             this.showjson = !this.showjson;
@@ -2022,11 +2098,23 @@ module openflow {
                 this.jsonmodel = JSON.stringify(this.model, null, 2);
             } else {
                 this.model = JSON.parse(this.jsonmodel);
+                this.keys = Object.keys(this.model);
+                for (var i: number = this.keys.length - 1; i >= 0; i--) {
+                    if (this.keys[i].startsWith('_')) this.keys.splice(i, 1);
+                }
             }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            this.fixtextarea();
         }
         async submit(): Promise<void> {
             if (this.showjson) {
-                this.model = JSON.parse(this.jsonmodel);
+                try {
+                    this.model = JSON.parse(this.jsonmodel);
+                } catch (error) {
+                    this.message = error;
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    return;
+                }
             }
             if (this.model._id) {
                 await this.api.Update(this.collection, this.model);
@@ -2249,9 +2337,10 @@ module openflow {
             public $routeParams: ng.route.IRouteParamsService,
             public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
-            public api: api
+            public api: api,
+            public userdata: userdata
         ) {
-            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api, userdata);
             this.autorefresh = true;
             console.debug("HistoryCtrl");
             this.id = $routeParams.id;
@@ -2272,7 +2361,7 @@ module openflow {
                     delete this.model[key];
                 }
             });
-            this.models = await this.api.Query(this.collection + "_hist", { id: this.id }, null, { _version: -1 });
+            this.models = await this.api.Query(this.collection + "_hist", { id: this.id }, null, this.orderby);
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         CompareNow(model) {
@@ -2377,6 +2466,7 @@ module openflow {
                 console.error(error);
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            this.GetNoderedInstance();
         }
         async DeleteNoderedInstance() {
             try {
@@ -2387,6 +2477,7 @@ module openflow {
                 console.error(error);
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            this.GetNoderedInstance();
         }
         async RestartNoderedInstance() {
             try {
@@ -2397,6 +2488,7 @@ module openflow {
                 console.error(error);
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            this.GetNoderedInstance();
         }
         async StartNoderedInstance() {
             try {
@@ -2407,6 +2499,7 @@ module openflow {
                 console.error(error);
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            this.GetNoderedInstance();
         }
         async StopNoderedInstance() {
             try {
@@ -2417,6 +2510,7 @@ module openflow {
                 console.error(error);
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            this.GetNoderedInstance();
         }
 
         async submit() {
@@ -2443,9 +2537,10 @@ module openflow {
             public $routeParams: ng.route.IRouteParamsService,
             public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
-            public api: api
+            public api: api,
+            public userdata: userdata
         ) {
-            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api, userdata);
             this.autorefresh = true;
             console.debug("RolesCtrl");
             this.basequery = { _type: "unattendedclient" };
@@ -2472,6 +2567,119 @@ module openflow {
             this.loading = true;
             model.enabled = false;
             await this.api.Update(this.collection, model);
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+    }
+
+
+    export class RobotsCtrl extends entitiesCtrl<openflow.unattendedclient> {
+        public showall: boolean = false;
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
+            public WebSocketClient: WebSocketClient,
+            public api: api,
+            public userdata: userdata
+        ) {
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api, userdata);
+            this.autorefresh = true;
+            console.debug("RolesCtrl");
+            this.basequery = { _type: "user" };
+            this.collection = "users";
+            this.preloadData = () => {
+                var dt = new Date(new Date().toISOString());
+                if (this.showall) {
+                    this.basequery = { _heartbeat: { "$exists": true } };
+                } else {
+                    // dt.setTime(dt.getDate() - 1);
+                    // this.basequery = { _heartbeat: { "$gte": dt } };
+
+                    dt.setMinutes(dt.getMinutes() - 1);
+                    this.basequery = { _heartbeat: { "$gte": dt } };
+                }
+            };
+            WebSocketClient.onSignedin((user: TokenUser) => {
+                this.loadData();
+            });
+        }
+        ShowWorkflows(model: any) {
+            this.userdata.data.basequeryas = model._id;
+            this.$location.path("/RPAWorkflows");
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+
+        }
+        // async DeleteOne(model: any): Promise<any> {
+        //     this.loading = true;
+        //     await this.api.Delete(this.collection, model);
+        //     this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
+        //     this.loading = false;
+        //     if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        // }
+        // async Enable(model: any): Promise<any> {
+        //     this.loading = true;
+        //     model.enabled = true;
+        //     await this.api.Update(this.collection, model);
+        //     this.loading = false;
+        //     if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        // }
+        // async Disable(model: any): Promise<any> {
+        //     this.loading = true;
+        //     model.enabled = false;
+        //     await this.api.Update(this.collection, model);
+        //     this.loading = false;
+        //     if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        // }
+    }
+
+
+    export class AuditlogsCtrl extends entitiesCtrl<openflow.Role> {
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
+            public WebSocketClient: WebSocketClient,
+            public api: api,
+            public userdata: userdata
+        ) {
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api, userdata);
+            this.autorefresh = false;
+            this.baseprojection = { name: 1, _type: 1, impostorname: 1, clientagent: 1, clientversion: 1, _created: 1 };
+            console.debug("AuditlogsCtrl");
+            // this.basequery = { _type: "role" };
+            this.collection = "audit";
+            this.postloadData = this.processdata;
+            WebSocketClient.onSignedin((user: TokenUser) => {
+                this.loadData();
+            });
+        }
+        processdata() {
+            for (var i = 0; i < this.models.length; i++) {
+                var model: any = this.models[i];
+                model.fa = "far fa-question-circle";
+                model.fa2 = "";
+                if (model.clientagent == 'openrpa') model.fa = 'fas fa-robot';
+                if (model.clientagent == 'webapp') model.fa = 'fas fa-globe';
+                if (model.clientagent == 'browser') model.fa = 'fas fa-globe';
+                if (model.clientagent == 'mobileapp') model.fa = 'fas fa-mobile-alt';
+                if (model.clientagent == 'nodered') model.fa = 'fab fa-node-js';
+                if (model.clientagent == 'getUserFromRequest') model.fa = 'fab fa-node-js';
+                if (model.clientagent == 'googleverify') model.fa = 'fab fa-google';
+                if (model.clientagent == 'samlverify') model.fa = 'fab fa-windows';
+
+                if (model.impostorname != '' && model.impostorname != null) model.fa2 = 'fas fa-user-secret';
+            }
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+
+        async DeleteOne(model: any): Promise<any> {
+            this.loading = true;
+            await this.api.Delete(this.collection, model);
+            this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }

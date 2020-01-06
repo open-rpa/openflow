@@ -49,6 +49,8 @@ export class noderedcontribmiddlewareauth {
             try {
                 var q: SigninMessage = new SigninMessage();
                 q.username = login; q.password = password; q.validate_only = true;
+                q.clientagent = "nodered";
+                q.clientversion = Config.version;
                 var msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
                 var result: SigninMessage = await socket.Send<SigninMessage>(msg);
                 if (result.user != null) {

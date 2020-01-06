@@ -34,6 +34,8 @@ function isNumeric(num) {
 
             var c = Config;
             var q: SigninMessage = new SigninMessage();
+            q.clientagent = "nodered";
+            q.clientversion = Config.version;
             if (Config.jwt !== "") {
                 q.jwt = Config.jwt;
             } else if (Crypt.encryption_key() !== "") {

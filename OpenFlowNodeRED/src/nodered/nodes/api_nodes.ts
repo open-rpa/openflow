@@ -62,6 +62,8 @@ export class api_get_jwt {
             if (!NoderedUtil.IsNullEmpty(msg.password)) { username = msg.password; }
 
             var q: SigninMessage = new SigninMessage(); q.validate_only = true;
+            q.clientagent = "nodered";
+            q.clientversion = Config.version;
             if (!NoderedUtil.IsNullEmpty(username) && !NoderedUtil.IsNullEmpty(password)) {
                 q.username = username; q.password = password;
             } else {

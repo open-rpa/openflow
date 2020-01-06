@@ -16,7 +16,6 @@ import { nodered_settings } from "./nodered_settings";
 import { Config } from "./Config";
 import { WebSocketClient } from "./WebSocketClient";
 import { noderedcontribopenflowstorage } from "./node-red-contrib-openflow-storage";
-import { SigninMessage, Message } from "./Message";
 import { noderedcontribmiddlewareauth } from "./node-red-contrib-middleware-auth";
 
 import * as passport from "passport";

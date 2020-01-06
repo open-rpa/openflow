@@ -139,10 +139,17 @@ Send payload as data to a robot, requesting it to run the selected Workflow
                 $.getJSON('rpa_workflows', { queue: $('#node-input-queue-select').val() }, function (data) {
                     $('#node-input-workflow-select').empty();
                     $.each(data, function (i, ele) {
-                        $('#node-input-workflow-select').append($('<option>', {
-                            value: ele._id,
-                            text: ele.name
-                        }));
+                        if (ele.projectandname != null && ele.projectandname != undefined && ele.projectandname != "") {
+                            $('#node-input-workflow-select').append($('<option>', {
+                                value: ele._id,
+                                text: ele.projectandname
+                            }));
+                        } else {
+                            $('#node-input-workflow-select').append($('<option>', {
+                                value: ele._id,
+                                text: ele.name
+                            }));
+                        }
                     });
                     if (firstrun) {
                         $('#node-input-workflow-select').val($('#node-input-workflow').val());

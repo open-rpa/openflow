@@ -342,7 +342,7 @@ export class Message {
         try {
             msg = QueryMessage.assign(this.data);
             if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-            msg.result = await Config.db.query(msg.query, msg.projection, msg.top, msg.skip, msg.orderby, msg.collectionname, msg.jwt);
+            msg.result = await Config.db.query(msg.query, msg.projection, msg.top, msg.skip, msg.orderby, msg.collectionname, msg.jwt, msg.queryas);
         } catch (error) {
             cli._logger.error(error);
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -562,19 +562,21 @@ export class Message {
                 user = await Auth.ValidateByPassword(msg.username, msg.password);
                 tuser = new TokenUser(user);
             }
+            cli.clientagent = msg.clientagent;
+            cli.clientversion = msg.clientversion;
             if (user === null || user === undefined || tuser === null || tuser === undefined) {
                 msg.error = "Unknown username or password";
-                Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip);
+                Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
                 cli._logger.debug(tuser.username + " failed logging in using " + type);
             } else {
-                Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip);
+                Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
                 var userid: string = user._id;
                 msg.jwt = Crypt.createToken(tuser, "5m");
                 msg.user = tuser;
                 if (msg.impersonate !== undefined && msg.impersonate !== null && msg.impersonate !== "") {
                     var items = await Config.db.query({ _id: msg.impersonate }, null, 1, 0, null, "users", msg.jwt);
                     if (items.length == 0) {
-                        Audit.ImpersonateFailed(tuser, msg.impersonate);
+                        Audit.ImpersonateFailed(tuser, msg.impersonate, cli.clientagent, cli.clientversion);
                         throw new Error("Permission denied, impersonating " + msg.impersonate);
                     }
                     var tuserimpostor = tuser;
@@ -586,7 +588,7 @@ export class Message {
                     tuser.impostor = userid;
                     msg.jwt = Crypt.createToken(tuser, "5m");
                     msg.user = tuser;
-                    Audit.ImpersonateSuccess(tuser, tuserimpostor);
+                    Audit.ImpersonateSuccess(tuser, tuserimpostor, cli.clientagent, cli.clientversion);
                 }
                 if (msg.firebasetoken != null && msg.firebasetoken != undefined && msg.firebasetoken != "") {
                     user.firebasetoken = msg.firebasetoken;
@@ -611,7 +613,17 @@ export class Message {
                     cli._logger.debug(tuser.username + " was validated in using " + type);
                     // cli.jwt = Crypt.createToken(cli.user, "5m");
                 }
-                user.lastseen = new Date(new Date().toISOString());
+                if (msg.impersonate === undefined || msg.impersonate === null || msg.impersonate === "") {
+                    user.lastseen = new Date(new Date().toISOString());
+                }
+                user._lastclientagent = cli.clientagent;
+                user._lastclientversion = cli.clientversion;
+                if (cli.clientagent == "openrpa") {
+                    user._lastopenrpaclientversion = cli.clientversion;
+                }
+                if (cli.clientagent == "nodered") {
+                    user._lastnoderedclientversion = cli.clientversion;
+                }
                 await user.Save(TokenUser.rootToken());
             }
         } catch (error) {
@@ -735,6 +747,7 @@ export class Message {
                                         env: [
                                             { name: "saml_federation_metadata", value: Config.saml_federation_metadata },
                                             { name: "saml_issuer", value: Config.saml_issuer },
+                                            { name: "saml_baseurl", value: Config.protocol + "://" + hostname + "/" },
                                             { name: "nodered_id", value: name },
                                             { name: "nodered_sa", value: cli.user.username },
                                             { name: "jwt", value: nodered_jwt },
@@ -742,6 +755,7 @@ export class Message {
                                             { name: "api_ws_url", value: Config.api_ws_url },
                                             { name: "amqp_url", value: Config.amqp_url },
                                             { name: "nodered_domain_schema", value: hostname },
+                                            { name: "domain", value: hostname },
                                             { name: "protocol", value: Config.protocol },
                                             { name: "port", value: Config.port.toString() },
                                             { name: "noderedusers", value: (name + "noderedusers") },
@@ -764,7 +778,7 @@ export class Message {
                         }
                     }
                 }
-                await KubeUtil.instance().ExtensionsV1beta1Api.createNamespacedDeployment(namespace, _deployment);
+                await KubeUtil.instance().ExtensionsV1beta1Api.createNamespacedDeployment(namespace, (_deployment as any));
             }
             cli._logger.debug("[" + cli.user.username + "] GetService");
             var service = await KubeUtil.instance().GetService(namespace, name);

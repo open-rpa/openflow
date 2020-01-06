@@ -6,15 +6,16 @@
   <section>
     <div class="form-group">
       <div class="col-sm-offset-2 col-sm-10">
-        <button type="button" class="btn btn-secondary" ng-click="ctrl.EnsureNoderedInstance()"
-          ng-show="ctrl.instance==null">Create Nodered</button>
         <button type="button" class="btn btn-secondary" ng-click="ctrl.GetNoderedInstance()">Get status</button>
+        <button type="button" class="btn btn-secondary" ng-click="ctrl.EnsureNoderedInstance()"
+          ng-show="ctrl.instance==null || ctrl.instancestatus == 'pending deletion (Running)' ">Create Nodered</button>
         <button type="button" class="btn btn-secondary" ng-click="ctrl.RestartNoderedInstance()"
-          ng-show="ctrl.instance!=null">Restart
+          ng-show="ctrl.instance!=null && ctrl.instancestatus != 'pending deletion (Running)' && ctrl.instancestatus != 'Pending'">Restart
           Nodered</button>
         <button type="button" class="btn btn-secondary" ng-click="ctrl.DeleteNoderedInstance()"
-          ng-show="ctrl.instance!=null">Delete Nodered</button>
-        <button type="button" class="btn btn-secondary" ng-show="ctrl.instance!=null"
+          ng-show="ctrl.instance!=null && ctrl.instancestatus != 'pending deletion (Running)' ">Delete Nodered</button>
+        <button type="button" class="btn btn-secondary"
+          ng-show="ctrl.instance!=null && ctrl.instancestatus != 'pending deletion (Running)' && ctrl.instancestatus != 'Pending'"
           ng-click="ctrl.GetNoderedInstanceLog()">Get Console</button>
 
         <a ng-href="{{ctrl.noderedurl}}" class="btn btn-danger" target="nodered" ng-show="ctrl.instance!=null">Open

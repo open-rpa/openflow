@@ -26,7 +26,7 @@ services:
   rabbitmq:
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.rabbitmq.rule=Host(`mq.nuc.openrpa.dk`)"
+      - "traefik.http.routers.rabbitmq.rule=Host(`mq.localhost.openrpa.dk`)"
       - "traefik.http.routers.rabbitmq.entrypoints=web"
       - "traefik.http.services.rabbitmq.loadbalancer.server.port=15672"
     image: "rabbitmq:3-management"
@@ -42,7 +42,7 @@ services:
   web:
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.web.rule=Host(`nuc.openrpa.dk`)"
+      - "traefik.http.routers.web.rule=Host(`localhost.openrpa.dk`)"
       - "traefik.http.routers.web.entrypoints=web"
       - "traefik.frontend.passHostHeader=true"
     image: "cloudhack/openflow:0.0.392"
@@ -61,7 +61,7 @@ services:
       - websocket_max_package_count=1048576
       - protocol=http
       - port=80
-      - domain=nuc.openrpa.dk
+      - domain=localhost.openrpa.dk
 
       - amqp_url=amqp://admin:demo2018@rabbitmq
       - mongodb_url=mongodb://mongodb:27017
@@ -70,14 +70,14 @@ services:
       - skip_history_collections=audit,jslog
       - allow_skiphistory=false
 
-      - saml_issuer=uri:nuc.openrpa.dk
+      - saml_issuer=uri:localhost.openrpa.dk
       - aes_secret=7TXsxf7cn9EkUqm5h4MEWGjzkxkNCk2K
       - signing_crt=LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURZRENDQWtpZ0F3SUJBZ0lKQUsrSll6OGQ1bURxTUEwR0NTcUdTSWIzRFFFQkN3VUFNRVV4Q3pBSkJnTlYKQkFZVEFrRlZNUk13RVFZRFZRUUlEQXBUYjIxbExWTjBZWFJsTVNFd0h3WURWUVFLREJoSmJuUmxjbTVsZENCWAphV1JuYVhSeklGQjBlU0JNZEdRd0hoY05NVGt3TnpFd01UZ3dPVEl4V2hjTk1Ua3dPREE1TVRnd09USXhXakJGCk1Rc3dDUVlEVlFRR0V3SkJWVEVUTUJFR0ExVUVDQXdLVTI5dFpTMVRkR0YwWlRFaE1COEdBMVVFQ2d3WVNXNTAKWlhKdVpYUWdWMmxrWjJsMGN5QlFkSGtnVEhSa01JSUJJakFOQmdrcWhraUc5dzBCQVFFRkFBT0NBUThBTUlJQgpDZ0tDQVFFQTZrcEo4eHFUUU9pRzVmTUt4T1U5VzZDbVVSSWJnb2ZoSHZwVVZWVDBoMnRsakFsc2Z2cWRzSk5MClZBd3dySW55V2ZNYlVHZGE3M21MTG9XdEM0L3RYUlNEQktnK2J6MXhRSHNzcjVaMmVueDhYdGtRSDVHZ1crOVQKajdhbVNZL0l0SUFiME5qL1NRaVozK0JPN0tpeTJpMWFVdlJBeVp5UVpVcyt1aWlIRkNJekhBbXltV0ovNXdrdwptb2ZUYjUxWWlqZ2xiaGdZVllUcXdVdmpscEIvbWFnWjV3VENuOWpmbG16bGY1aSs5aTAxSHU1U1RXNW9JSnovCm9oQ25Mam4wM2c4NXA5dllFaTJLUkM2dW84Nnp5Y1pxL1lKQzVNTlVPTzZRanlZYXQ4RjBYWVVQNzhzS1l2OCsKYTF3WmlDNFZhSWt2OEFaOUJua0hFbllBRnhpZ2RRSURBUUFCbzFNd1VUQWRCZ05WSFE0RUZnUVVsenEzdDBOWQowckpwSmpIMXRoQitlV0M2SGJZd0h3WURWUjBqQkJnd0ZvQVVsenEzdDBOWTBySnBKakgxdGhCK2VXQzZIYll3CkR3WURWUjBUQVFIL0JBVXdBd0VCL3pBTkJna3Foa2lHOXcwQkFRc0ZBQU9DQVFFQW8rOHJDVllXOFc5UzZxUDQKdzVoSEMyTk5WMGJIVmgyQ3FZbmp3RXVTTjM4NWgvUWd3TmlIZE5NQzJXUHd4VytwSmZ4Q0Y1ZGZOMzUrZ085YworOTg1UHYzYVoyZ3BmcWVaRTFKZ2JqUTFiTkVWT3BqRDV0dVlNRE55YWpraS9oWVdDaVBSams5ZG1nQVV4cHdpCkZuTUdlemk4K080dXQyRW1DaHhUYlZUQ1psRnJwRWpqSTF1WUVmQ2l5NmZaUXV2bnpCeU5QZ3FUQS9RWXhMZkIKRWE4cFpOMk5LNm5IdEF0clhyRkYveFh6OHJRYWlyVFYrVm9yQXQxdzYzZ1VTWGc1VU55R2JZaDErdFRzWTdoYQpNamkwSFNYQkxtL0dHb05XaHBDVVpDVDU0NWJ6SmdJNjJwd2hKcVlyWm5jYlBDRzRaWXhHZzIxTVZLdkJaL29pCkFYcStpQT09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
       - singing_key=LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCk1JSUV2UUlCQURBTkJna3Foa2lHOXcwQkFRRUZBQVNDQktjd2dnU2pBZ0VBQW9JQkFRRHFTa256R3BOQTZJYmwKOHdyRTVUMWJvS1pSRWh1Q2grRWUrbFJWVlBTSGEyV01DV3grK3Ayd2swdFVERENzaWZKWjh4dFFaMXJ2ZVlzdQpoYTBMaisxZEZJTUVxRDV2UFhGQWV5eXZsblo2Zkh4ZTJSQWZrYUJiNzFPUHRxWkpqOGkwZ0J2UTJQOUpDSm5mCjRFN3NxTExhTFZwUzlFREpuSkJsU3o2NktJY1VJak1jQ2JLWlluL25DVENhaDlOdm5WaUtPQ1Z1R0JoVmhPckIKUytPV2tIK1pxQm5uQk1LZjJOK1diT1YvbUw3MkxUVWU3bEpOYm1nZ25QK2lFS2N1T2ZUZUR6bW4yOWdTTFlwRQpMcTZqenJQSnhtcjlna0xrdzFRNDdwQ1BKaHEzd1hSZGhRL3Z5d3BpL3o1clhCbUlMaFZvaVMvd0JuMEdlUWNTCmRnQVhHS0IxQWdNQkFBRUNnZ0VBTXVEZkhrUHZKbkZZbWljbGQ0eXd2bTBzc1A1VnF3c0hBRXNzZFR0MXZ0SzcKd3FWcFFrbjZaSllZRGJCNEFZQVRlU1VxRVZQZ2s1QzVnT2pXbzJRbUQ4aWNpeTVlSUpvZk5mbUp3cmZTRXRkbAp5dE1vaFRLQ3VIUkltVFQ0OTVDWjdWakVzWjN1RWxZajFGSkowV3J4TENBZE5WYUZtMEs4dU1LV1pLYllicTUwCk40SkdBVVA4cXpzVGsxMFcwL1JsVkhjN3MxcVJMYmhUaHVmeWZqdkFsWlRDUStzNld2Z1FzNTljZis5ZkRpenEKeDlFYTRmclN4SkFzdmhEZ3lmd0FCSHVYcEl5ZGFJNEQ1UkZYRXBGQW1SYkZGRkFhNW9Zam5XT1BiQmVKUHJUUApMckxmcU03NkVaZ1pXclU5UmgwN2VXeVMwdlAyVEhmNGo4eTNYWEpFQVFLQmdRRDVyVTFnQlNLdXhxZVZkWFZRCkp1RXVIVnVFTEkzS0hITVRGb1R1cEFKU2R1b3VSMXNmYjZHc1RPQWFmamp6QlpHdFFFa3R4c3pEemFTTVh5OHYKYU5mT1QvcTlZYXFwdSt3cno5dXp4dnBhY1pQZHg3TGJUWGwwYmRKR2FPRHdNYWY3bHRDcmo1WVZ6Vk9GSGsvZgpCYndGV1ZQTUJORldCMEZMZzU1dGN6cjFGUUtCZ1FEd09UdEp2TXNtZVZFVU1aUnFnNjB0U2FyN0pjeHJKRklrCno5ZFdIUW1xS1dpNzFob3krbHBqM0FwRnhBQ3lPY2dmZE03VFQyb25rcXB1c0NUNlliZThXT3BrWWxIMGlpUmQKWkVISC9zakhySzNEaktJWEIvSEVyVEdrOVJNaTdiNUd4NGYweVVkM2hqd0E2Y2dGRDlyd0l6VyszMjM0Z2xlNwphdzlIRFpxVjRRS0JnQVBiOXVjMkRSd3dlK1NtaFNLeEJ5Z0VVaWJQM1gwelJXQVZLQWJjU0NEb0w2UjVlK0lYCmdxTThLUGFmM3RkNnpZNmxBTHlSWnhiYnRlQnBsRHdpWGJ1VnB1V0lmZS9UdE1uVWs2dkt0cEh4VVh6TEdtdWoKWGU0N3lGVklSN25PdXE3NzNNdmFFMUxROHFxTEZtYjNHcm5tY0pJbHZPcWNnQmpmdHZJd0pzZ2xBb0dBU1RtWQoyZlJEbEptOFhrUnlzamtySzdmZDk2cGc4blBpMmpmRXN3b3M3UUtzV3oxN1JQak5YczB2RUc4YnF6Z3p5V3JvCnRMN3JZOTZ3TndkWWJqNGxMTE9KMTBtbEk3Nk1NUytqWVp4SGhaNGNaWlJUd0dONmpmSWhST0F6a2gwWU9Da1EKUjB5bmpVYU11ZGFKVXdtdk9pM3hieHBhUWpzeEZQOGdiQTg0aE9FQ2dZRUExbXZjSStZeDZITW00WkVjMU9yaworNXJoUHJrdGNMT0JHR3pZZGZIZGRZMytVdFZydUpCRmt5R2pCU2t2YmVtcUZxRlluMHFZckpXZVlUS2hMbUlwClkyRk1Gd29abWxpSkpONTA1eStTemdPbUVxN2wzT1Z4R0NwTTd1ODNyWFBXRGRERnc5WVNYVU1ueFRDUGsyRW0KekEyUzVkWjlWRld2NlR6VHg3cTIyc2c9Ci0tLS0tRU5EIFBSSVZBVEUgS0VZLS0tLS0K
   nodered:
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.nodered.rule=Host(`nodered1.nuc.openrpa.dk`)"
+      - "traefik.http.routers.nodered.rule=Host(`nodered1.localhost.openrpa.dk`)"
       - "traefik.http.routers.nodered.entrypoints=web"
       - "traefik.http.services.nodered.loadbalancer.server.port=1880"
     image: "cloudhack/openflownodered:0.0.392"
@@ -88,9 +88,9 @@ services:
       - queue_prefix=
 
       - saml_federation_metadata=http://web/issue/FederationMetadata/2007-06/FederationMetadata.xml
-      - saml_issuer=uri:nuc.openrpa.dk
-      - saml_entrypoint=http://nuc.openrpa.dk/issue
-      - saml_baseurl=http://nodered1.nuc.openrpa.dk/
+      - saml_issuer=uri:localhost.openrpa.dk
+      - saml_entrypoint=http://localhost.openrpa.dk/issue
+      - saml_baseurl=http://nodered1.localhost.openrpa.dk/
       #      - saml_crt=
 
       - port=1880

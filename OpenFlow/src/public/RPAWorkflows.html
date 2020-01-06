@@ -35,6 +35,9 @@
         </td>
         <td class="btn-cell">
           <a ng-href="#/RPAWorkflow/{{model._id}}" ng-disabled="ctrl.loading==true" translate lib="web">invoke</a>
+          <a href ng-click="ctrl.Download(model)" ng-disabled="ctrl.loading==true" class="table-btn"
+            lib="web">download</a>
+
 
         </td>
       </tr>

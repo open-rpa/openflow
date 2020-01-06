@@ -119,8 +119,11 @@ module openflow {
             q.jwt = jwt;
             q.rawAssertion = rawAssertion;
             q.realm = "browser";
+            q.clientagent = "webapp";
+            q.clientversion = this.WebSocketClient.version;
             if (this.WebSocketClient.usingCordova) {
                 q.realm = "mobile";
+                q.clientagent = "mobileapp";
             }
             q.impersonate = impersonate;
             q.onesignalid = this.WebSocketClient.oneSignalId;
@@ -138,8 +141,11 @@ module openflow {
             q.username = username;
             q.password = password;
             q.realm = "browser";
+            q.clientagent = "webapp";
+            q.clientversion = this.WebSocketClient.version;
             if (this.WebSocketClient.usingCordova) {
                 q.realm = "mobile";
+                q.clientagent = "mobileapp";
             }
             q.impersonate = impersonate;
             q.onesignalid = this.WebSocketClient.oneSignalId;
@@ -164,9 +170,9 @@ module openflow {
             var msg: Message = new Message(); msg.command = "dropcollection"; msg.data = JSON.stringify(q);
             q = await this.WebSocketClient.Send<DropCollectionMessage>(msg);
         }
-        async Query(collection: string, query: any, projection: any = null, orderby: any = { _created: -1 }, top: number = 100, skip: number = 0): Promise<any[]> {
+        async Query(collection: string, query: any, projection: any = null, orderby: any = { _created: -1 }, top: number = 100, skip: number = 0, queryas: string = null): Promise<any[]> {
             var q: QueryMessage = new QueryMessage();
-            q.collectionname = collection; q.query = query;
+            q.collectionname = collection; q.query = query; q.queryas = queryas;
             q.query = JSON.stringify(query, (key, value) => {
                 if (value instanceof RegExp)
                     return ("__REGEXP " + value.toString());
@@ -419,20 +425,31 @@ module openflow {
                         return;
                     }
                 }
-                element.css({
-                    paddingTop: 0,
-                    height: 0,
-                    minHeight: 0
-                });
+                var currentContentHeight = (this as any).scrollHeight;
+                var currentBorderHeight = (this as any).offsetHeight;
+                {
+                    element.css({
+                        paddingTop: 0,
+                        height: 0,
+                        minHeight: 0
+                    });
 
-                var contentHeight = (this as any).scrollHeight;
-                var borderHeight = (this as any).offsetHeight;
+                    var contentHeight = (this as any).scrollHeight;
+                    var borderHeight = (this as any).offsetHeight;
 
-                element.css({
-                    paddingTop: ~~Math.max(0, minHeight - contentHeight) / 2 + "px",
-                    minHeight: null, // remove property
-                    height: contentHeight + borderHeight + "px" // because we're using border-box
-                });
+                    console.log("before: " + currentContentHeight + currentBorderHeight);
+
+                    element.css({
+                        paddingTop: ~~Math.max(0, minHeight - contentHeight) / 2 + "px",
+                        minHeight: null, // remove property
+                        height: contentHeight + borderHeight + "px" // because we're using border-box
+                    });
+
+                    contentHeight = (this as any).scrollHeight;
+                    borderHeight = (this as any).offsetHeight;
+                    console.log("after: " + contentHeight + borderHeight);
+
+                }
             });
 
             // watch model changes from the outside to adjust height
@@ -528,6 +545,12 @@ module openflow {
             return directive;
         }
     }
+    export class userdata {
+        public data: any;
+        constructor() {
+            this.data = {};
+        }
+    }
     export class fileread implements ng.IDirective {
         restrict = 'A';
         require = '?ngModel';
@@ -575,6 +598,7 @@ module openflow {
         public postloadData: any = null;
         public searchstring: string = "";
         public searchfields: string[] = ["name"];
+        public basequeryas: string = null;
 
         public static $inject = [
             "$scope",
@@ -582,7 +606,8 @@ module openflow {
             "$routeParams",
             "$interval",
             "WebSocketClient",
-            "api"
+            "api",
+            "userdata"
         ];
         constructor(
             public $scope: ng.IScope,
@@ -590,8 +615,23 @@ module openflow {
             public $routeParams: ng.route.IRouteParamsService,
             public $interval: ng.IIntervalService,
             public WebSocketClient: WebSocketClient,
-            public api: api
+            public api: api,
+            public userdata: userdata
         ) {
+            if (this.userdata.data != null && this.userdata.data) {
+                if (this.userdata.data.basequery != null) {
+                    this.basequery = this.userdata.data.basequery;
+                    delete this.userdata.data.basequery;
+                }
+                if (this.userdata.data.searchstring != null) {
+                    this.searchstring = this.userdata.data.searchstring;
+                    delete this.userdata.data.searchstring;
+                }
+                if (this.userdata.data.basequeryas != null) {
+                    this.basequeryas = this.userdata.data.basequeryas;
+                    delete this.userdata.data.basequeryas;
+                }
+            }
         }
         async loadData(): Promise<void> {
             if (this.loading == true) { console.log("allready loading data, exit"); return; }
@@ -620,7 +660,7 @@ module openflow {
                     query = { $and: [query, { $or: finalor.concat() }] };
                 }
             }
-            this.models = await this.api.Query(this.collection, query, this.baseprojection, this.orderby);
+            this.models = await this.api.Query(this.collection, query, this.baseprojection, this.orderby, 100, 0, this.basequeryas);
             this.loading = false;
             if (this.autorefresh) {
                 if (this.models.length >= 100) {

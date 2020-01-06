@@ -10,6 +10,7 @@ module openflow {
         .directive("translate", translate.factory())
         .directive("textarea", textarea.factory())
         .directive("fileread", fileread.factory())
+        .service("userdata", userdata)
         .service("WebSocketClient", WebSocketClient)
 
 
@@ -70,6 +71,9 @@ module openflow {
                 .when('/Nodered', { templateUrl: 'Nodered.html', controller: NoderedCtrl, controllerAs: 'ctrl' })
 
                 .when('/hdrobots', { templateUrl: 'hdrobots.html', controller: hdrobotsCtrl, controllerAs: 'ctrl' })
+                .when('/Robots', { templateUrl: 'Robots.html', controller: RobotsCtrl, controllerAs: 'ctrl' })
+
+                .when('/Auditlogs', { templateUrl: 'Auditlogs.html', controller: AuditlogsCtrl, controllerAs: 'ctrl' })
 
                 .otherwise({ redirectTo: '/main' });
         }

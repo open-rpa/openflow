@@ -50,9 +50,11 @@ export class SocketMessage {
 export class SigninMessage {
     public error: string;
 
-    public validate_only: boolean = false;
     public username: string;
     public password: string;
+    public validate_only: boolean = false;
+    public clientagent: string;
+    public clientversion: string;
     public user: TokenUser;
     public jwt: string;
     public rawAssertion: string;
@@ -93,6 +95,7 @@ export class QueryMessage {
     public orderby: Object | string;
     public collectionname: string;
     public result: any[];
+    public queryas: string;
     static assign(o: any): QueryMessage {
         if (typeof o === "string" || o instanceof String) {
             return Object.assign(new QueryMessage(), JSON.parse(o.toString()));

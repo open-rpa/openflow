@@ -82,7 +82,7 @@ export class SamlProvider {
                 var tuser: TokenUser = new TokenUser(req.user);
                 var remoteip = "";
                 if (req.connection) { remoteip = req.connection.remoteAddress; }
-                Audit.LoginSuccess(tuser, "tokenissued", "saml", remoteip);
+                Audit.LoginSuccess(tuser, "tokenissued", "saml", remoteip, "getUserFromRequest", "unknown");
                 return req.user;
             },
             profileMapper: SamlProvider.profileMapper,
@@ -133,6 +133,22 @@ export class SamlProvider {
         // }));
 
         // TODO: FIX !!!!
+        app.get('/wssignout', async (req: any, res: any, next: any) => {
+            req.logout();
+            var html = "<html><head></head><body>";
+            html += "<h1>Logud</h1><br>";
+            html += "<br/><p><a href='/'>Til login</ifarame></p>";
+            html += "</body></html>";
+            res.send(html);
+        });
+        app.post('/wssignout', async (req: any, res: any, next: any) => {
+            req.logout();
+            var html = "<html><head></head><body>";
+            html += "<h1>Logud</h1><br>";
+            html += "<br/><p><a href='/'>Til login</ifarame></p>";
+            html += "</body></html>";
+            res.send(html);
+        });
         app.get('/logout', async (req: any, res: any, next: any) => {
             var referer: string = req.headers.referer;
             var providerid: any = req.cookies.provider;
@@ -144,12 +160,19 @@ export class SamlProvider {
                     var provider = p[0];
                     if (!Util.IsNullEmpty(provider.saml_signout_url)) {
                         var html = "<html><head></head><body>";
+                        html += "<h1>Logud</h1><br>";
+                        if (!Util.IsNullEmpty(referer)) {
+                            html += "<br/><p><a href='" + referer + "'>Til login</a></p>";
+                        } else {
+                            html += "<br/><p><a href='/'>Til login</a></p>";
+                        }
                         html += "<iframe src='" + provider.saml_signout_url + "'></iframe>";
                         if (!Util.IsNullEmpty(referer)) {
-                            html += "<br/><p><a href='" + referer + "'>Back / Tilbage</a></p>";
+                            html += "<br/><p><a href='" + referer + "'>Til login</a></p>";
                         } else {
-                            html += "<br/><p><a href='/'>Back / Tilbage</ifarame></p>";
+                            html += "<br/><p><a href='/'>Til login</a></p>";
                         }
+                        html += "</body></html>";
                         res.send(html);
                         return;
                     }

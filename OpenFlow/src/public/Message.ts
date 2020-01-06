@@ -42,6 +42,8 @@ module openflow {
     export class SigninMessage {
         public error: string;
 
+        public clientagent: string;
+        public clientversion: string;
         public impersonate: string;
         public realm: string;
         public firebasetoken: string;
@@ -79,6 +81,7 @@ module openflow {
         public skip: number;
         public orderby: Object | string;
         public collectionname: string;
+        public queryas: string;
         public result: any[];
         static assign(o: any): QueryMessage {
             if (typeof o === "string" || o instanceof String) {

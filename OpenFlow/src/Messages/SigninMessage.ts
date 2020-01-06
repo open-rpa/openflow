@@ -11,6 +11,8 @@ export class SigninMessage implements IReplyMessage {
     public gpslocation: any;
     public device: any;
     public websocket_package_size: number;
+    public clientagent: string;
+    public clientversion: string;
 
     public validate_only: boolean = false;
     public username: string;

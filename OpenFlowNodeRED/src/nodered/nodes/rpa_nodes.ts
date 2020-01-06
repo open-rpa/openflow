@@ -123,6 +123,7 @@ export class rpa_workflow_node {
 
             if (data.payload.command == "invokecompleted") {
                 result.payload = data.payload.data;
+                if (data.user != null) result.user = data.user;
                 if (result.payload == null || result.payload == undefined) { result.payload = {}; }
                 this.node.status({ fill: "green", shape: "dot", text: data.payload.command });
                 console.log("********************");
@@ -132,12 +133,14 @@ export class rpa_workflow_node {
             }
             else if (data.payload.command == "invokefailed" || data.payload.command == "invokeaborted" || data.payload.command == "error") {
                 result.payload = data.payload;
+                if (data.user != null) result.user = data.user;
                 if (result.payload == null || result.payload == undefined) { result.payload = {}; }
                 this.node.status({ fill: "red", shape: "dot", text: data.payload.command });
                 this.node.send([null, null, result]);
             }
             else {
                 result.payload = data.payload;
+                if (data.user != null) result.user = data.user;
                 if (result.payload == null || result.payload == undefined) { result.payload = {}; }
                 this.node.send([null, result]);
             }
@@ -220,25 +223,25 @@ export async function get_rpa_workflows(req, res) {
         var token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
         var q: any = { _type: "workflow" };
         if (req.query.queue != null && req.query.queue != undefined && req.query.queue != "" && req.query.queue != "none") {
-            q = {
-                _type: "workflow",
-                $or: [
-                    { _createdbyid: req.query.queue },
-                    { _modifiedbyid: req.query.queue },
-                    {
-                        _acl: {
-                            $elemMatch: {
-                                rights: { $bitsAllSet: [2] },
-                                deny: false,
-                                _id: req.query.queue
-                            }
-                        }
-                    }
-                ]
-            };
+            // q = {
+            //     _type: "workflow",
+            //     $or: [
+            //         { _createdbyid: req.query.queue },
+            //         { _modifiedbyid: req.query.queue },
+            //         {
+            //             _acl: {
+            //                 $elemMatch: {
+            //                     rights: { $bitsAllSet: [2] },
+            //                     deny: false,
+            //                     _id: req.query.queue
+            //                 }
+            //             }
+            //         }
+            //     ]
+            // };
         }
         var result: any[] = await NoderedUtil.Query('openrpa', q,
-            { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
+            { name: 1, projectandname: 1 }, { projectid: -1, name: -1 }, 1000, 0, token.jwt, req.query.queue)
         res.json(result);
     } catch (error) {
         res.status(500).json(error);
