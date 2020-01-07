@@ -50,8 +50,8 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.web.rule=Host(`openflow.sowaio.com`)"
-      - "traefik.http.routers.whoami.entrypoints=websecure"
-      - "traefik.http.routers.whoami.tls.certresolver=mytlschallenge"
+      - "traefik.http.routers.web.entrypoints=websecure"
+      - "traefik.http.routers.web.tls.certresolver=mytlschallenge"
       - "traefik.frontend.passHostHeader=true"
     image: "cloudhack/openflow:0.0.392"
     container_name: "web"
@@ -86,8 +86,8 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.nodered.rule=Host(`nodered.sowaio.com`)"
-      - "traefik.http.routers.whoami.entrypoints=websecure"
-      - "traefik.http.routers.whoami.tls.certresolver=mytlschallenge"
+      - "traefik.http.routers.nodered.entrypoints=websecure"
+      - "traefik.http.routers.nodered.tls.certresolver=mytlschallenge"
       - "traefik.http.services.nodered.loadbalancer.server.port=1880"
     image: "cloudhack/openflownodered:0.0.392"
     container_name: "nodered"
