@@ -22,9 +22,8 @@ services:
       #- "--certificatesResolvers.sample.acme.storage=acme.json"
       #- "--certificatesResolvers.sample.acme.httpChallenge.entryPoint=web"
     ports:
-      - "80:80"
+      - "8880:80"
       - "8080:8080"
-      - "443:443"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
 
