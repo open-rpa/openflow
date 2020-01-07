@@ -651,8 +651,6 @@ export class LoginProvider {
         return strategy;
     }
     static async samlverify(profile: any, done: IVerifyFunction): Promise<void> {
-        console.log("samlverify");
-        console.log(JSON.stringify(profile));
         var username: string = (profile.nameID || profile.username);
         if (username !== null && username != undefined) { username = username.toLowerCase(); }
         this._logger.debug("verify: " + username);
@@ -725,8 +723,6 @@ export class LoginProvider {
             var createUser: boolean = Config.auto_create_users;
             if (Config.auto_create_domains.map(x => username.endsWith(x)).length == -1) { createUser = false; }
             if (createUser) {
-                console.log("createUser");
-                console.log(JSON.stringify(profile));
                 var jwt: string = TokenUser.rootToken();
                 _user = new User(); _user.name = profile.name;
                 if (!Util.IsNullEmpty(profile.displayName)) { _user.name = profile.displayName; }
