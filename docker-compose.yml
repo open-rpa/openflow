@@ -57,8 +57,8 @@ services:
 
       - saml_federation_metadata=http://web/issue/FederationMetadata/2007-06/FederationMetadata.xml
       - saml_issuer=uri:openflow.sowaio.com
-      - saml_entrypoint=https://openflow.sowaio.com/issue
-      - saml_baseurl=https://openflow.sowaio.com:1880/
+      - saml_entrypoint=http://openflow.sowaio.com/issue
+      - saml_baseurl=http://nodered.sowaio.com/
       #      - saml_crt=
 
       - port=1880
