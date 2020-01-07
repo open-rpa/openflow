@@ -17,14 +17,17 @@ services:
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
-      #- "--entryPoints.websecure.address=:443"
-      #- "--certificatesResolvers.sample.acme.email=kjdi@cloudfactory.dk"
-      #- "--certificatesResolvers.sample.acme.storage=acme.json"
+      - "--entryPoints.websecure.address=:443"
+      - "--certificatesresolvers.mytlschallenge.acme.tlschallenge=true"
+      #- "--certificatesresolvers.mytlschallenge.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
+      - "--certificatesresolvers.mytlschallenge.acme.email=kjdi@cloudfactory.dk"
+      - "--certificatesresolvers.mytlschallenge.acme.storage=/letsencrypt/acme.json"
       #- "--certificatesResolvers.sample.acme.httpChallenge.entryPoint=web"
     ports:
-      - "80:80"
+      - "443:443"
       - "8080:8080"
     volumes:
+      - "/letsencrypt:/letsencrypt"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
 
   rabbitmq:
@@ -47,7 +50,8 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.web.rule=Host(`openflow.sowaio.com`)"
-      - "traefik.http.routers.web.entrypoints=web"
+      - "traefik.http.routers.whoami.entrypoints=websecure"
+      - "traefik.http.routers.whoami.tls.certresolver=mytlschallenge"
       - "traefik.frontend.passHostHeader=true"
     image: "cloudhack/openflow:0.0.392"
     container_name: "web"
@@ -82,7 +86,8 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.nodered.rule=Host(`nodered.sowaio.com`)"
-      - "traefik.http.routers.nodered.entrypoints=web"
+      - "traefik.http.routers.whoami.entrypoints=websecure"
+      - "traefik.http.routers.whoami.tls.certresolver=mytlschallenge"
       - "traefik.http.services.nodered.loadbalancer.server.port=1880"
     image: "cloudhack/openflownodered:0.0.392"
     container_name: "nodered"
