@@ -32,7 +32,7 @@ services:
       - websocket_max_package_count=1048576
       - protocol=http
       - port=80
-      - domain=10.0.0.201
+      - domain=10.68.4.161
 
       - amqp_url=amqp://admin:demo2018@rabbitmq
       - mongodb_url=mongodb://mongodb:27017
