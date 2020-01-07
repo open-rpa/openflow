@@ -13,20 +13,22 @@ services:
     container_name: "traefik"
     command:
       #- "--log.level=DEBUG"
-      - "--api.insecure=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
-      - "--entryPoints.websecure.address=:443"
-      - "--certificatesResolvers.sample.acme.email=kjdi@cloudfactory.dk"
-      - "--certificatesResolvers.sample.acme.storage=acme.json"
-      - "--certificatesResolvers.sample.acme.httpChallenge.entryPoint=web"
+      #- "--api.insecure=true"
+      #- "--providers.docker=true"
+      #- "--providers.docker.exposedbydefault=false"
+      #- "--entrypoints.web.address=:80"
+      #- "--entryPoints.websecure.address=:443"
+      #- "--certificatesResolvers.sample.acme.email=kjdi@cloudfactory.dk"
+      #- "--certificatesResolvers.sample.acme.storage=acme.json"
+      #- "--certificatesResolvers.sample.acme.httpChallenge.entryPoint=web"
     ports:
       - "80:80"
       - "8080:8080"
       - "443:443"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "/opt/traefik/traefik.toml:/traefik.toml"
+      - "/opt/traefik/acme.json:/acme.json"
 
   rabbitmq:
     labels:
