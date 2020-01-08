@@ -2669,6 +2669,8 @@ module openflow {
                 if (model.clientagent == 'getUserFromRequest') model.fa = 'fab fa-node-js';
                 if (model.clientagent == 'googleverify') model.fa = 'fab fa-google';
                 if (model.clientagent == 'samlverify') model.fa = 'fab fa-windows';
+                if (model.clientagent == 'aiotwebapp') model.fa = 'fas fa-globe';
+                if (model.clientagent == 'aiotmobileapp') model.fa = 'fas fa-mobile-alt';
 
                 if (model.impostorname != '' && model.impostorname != null) model.fa2 = 'fas fa-user-secret';
             }
