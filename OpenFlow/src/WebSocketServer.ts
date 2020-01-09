@@ -72,15 +72,21 @@ export class WebSocketServer {
                     // Lets assume only robots register queues ( not true )
                     if (cli.clientagent == "openrpa") {
                         Config.db.db.collection("users").updateOne({ _id: cli.user._id },
-                            { $set: { _rpaheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } });
+                            { $set: { _rpaheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
+                                console.log(err);
+                            });
                     }
                     if (cli.clientagent == "nodered") {
                         Config.db.db.collection("users").updateOne({ _id: cli.user._id },
-                            { $set: { _noderedheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } });
+                            { $set: { _noderedheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
+                                console.log(err);
+                            });
                     }
                     else if (cli.consumers != null && cli.consumers.length > 0) {
                         // Should proberly turn this a little down, so we dont update all online users every 10th second
-                        Config.db.db.collection("users").updateOne({ _id: cli.user._id }, { $set: { _heartbeat: new Date(new Date().toISOString()) } });
+                        Config.db.db.collection("users").updateOne({ _id: cli.user._id }, { $set: { _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
+                            console.log(err);
+                        });
                     }
                 }
             } catch (error) {
