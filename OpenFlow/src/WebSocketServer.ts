@@ -66,21 +66,25 @@ export class WebSocketServer {
             WebSocketServer._logger.info("new client count: " + WebSocketServer._clients.length);
         }
         for (var i = 0; i < WebSocketServer._clients.length; i++) {
-            var cli = WebSocketServer._clients[i];
-            if (cli.user != null) {
-                // Lets assume only robots register queues ( not true )
-                if (cli.clientagent == "openrpa") {
-                    Config.db.db.collection("users").updateOne({ _id: cli.user._id },
-                        { $set: { _rpaheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } });
+            try {
+                var cli = WebSocketServer._clients[i];
+                if (cli.user != null) {
+                    // Lets assume only robots register queues ( not true )
+                    if (cli.clientagent == "openrpa") {
+                        Config.db.db.collection("users").updateOne({ _id: cli.user._id },
+                            { $set: { _rpaheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } });
+                    }
+                    if (cli.clientagent == "nodered") {
+                        Config.db.db.collection("users").updateOne({ _id: cli.user._id },
+                            { $set: { _noderedheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } });
+                    }
+                    else if (cli.consumers != null && cli.consumers.length > 0) {
+                        // Should proberly turn this a little down, so we dont update all online users every 10th second
+                        Config.db.db.collection("users").updateOne({ _id: cli.user._id }, { $set: { _heartbeat: new Date(new Date().toISOString()) } });
+                    }
                 }
-                if (cli.clientagent == "nodered") {
-                    Config.db.db.collection("users").updateOne({ _id: cli.user._id },
-                        { $set: { _noderedheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } });
-                }
-                else if (cli.consumers != null && cli.consumers.length > 0) {
-                    // Should proberly turn this a little down, so we dont update all online users every 10th second
-                    Config.db.db.collection("users").updateOne({ _id: cli.user._id }, { $set: { _heartbeat: new Date(new Date().toISOString()) } });
-                }
+            } catch (error) {
+                console.error(error);
             }
         }
     }
