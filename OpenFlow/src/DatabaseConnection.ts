@@ -43,19 +43,23 @@ export class DatabaseConnection {
             });
         });
     }
+    public isConnected: boolean = false;
     /**
      * Connect to MongoDB
      * @returns Promise<void>
      */
     async connect(): Promise<void> {
-        if (this.cli !== null && this.cli !== undefined && this.cli.isConnected) {
+        //if (this.cli !== null && this.cli !== undefined && this.cli.isConnected) {
+        if (this.cli !== null && this.cli !== undefined && this.isConnected) {
             return;
         }
         this.cli = await MongoClient.connect(this.mongodburl, { autoReconnect: false, useNewUrlParser: true });
         this.cli.on("error", (error) => {
+            this.isConnected = false;
             this._logger.error(error);
         });
         this.db = this.cli.db(this._dbname);
+        this.isConnected = true;
     }
     async ListCollections(jwt: string): Promise<any[]> {
         var result = await DatabaseConnection.toArray(this.db.listCollections());
