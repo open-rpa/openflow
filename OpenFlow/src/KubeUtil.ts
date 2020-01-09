@@ -52,7 +52,6 @@ export class KubeUtil {
             var item = list.body.items[i];
             if (item.metadata && item.metadata.labels) {
                 var value = item.metadata.labels[labelskey];
-                console.log(value);
                 if (value == labelsvalue) return item;
             }
         }

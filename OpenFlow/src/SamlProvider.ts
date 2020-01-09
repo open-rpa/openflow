@@ -136,16 +136,16 @@ export class SamlProvider {
         app.get('/wssignout', async (req: any, res: any, next: any) => {
             req.logout();
             var html = "<html><head></head><body>";
-            html += "<h1>Logud</h1><br>";
-            html += "<br/><p><a href='/'>Til login</ifarame></p>";
+            html += "<h1>Du er nu logget ud</h1><br>";
+            // html += "<br/><p><a href='/'>Til login</ifarame></p>";
             html += "</body></html>";
             res.send(html);
         });
         app.post('/wssignout', async (req: any, res: any, next: any) => {
             req.logout();
             var html = "<html><head></head><body>";
-            html += "<h1>Logud</h1><br>";
-            html += "<br/><p><a href='/'>Til login</ifarame></p>";
+            html += "<h1>Du er nu logget ud</h1><br>";
+            // html += "<br/><p><a href='/'>Til login</ifarame></p>";
             html += "</body></html>";
             res.send(html);
         });

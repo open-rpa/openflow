@@ -1,7 +1,8 @@
 version: "3.3"
 services:
   mongodb:
-    image: "mongo"
+    #image: "mongo"
+    image: "mongo:3.6.16"
     restart: always
     ports:
       - "27017:27017"

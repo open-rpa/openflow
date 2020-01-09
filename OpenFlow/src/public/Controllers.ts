@@ -1106,7 +1106,7 @@ module openflow {
                         { _id: { $nin: ids } }
                     ]
                 }
-                , null, { _type: -1, name: 1 }, 5);
+                , null, { _type: -1, name: 1 }, 8);
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         fillTextbox(searchtext) {
@@ -2647,7 +2647,8 @@ module openflow {
         ) {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api, userdata);
             this.autorefresh = false;
-            this.baseprojection = { name: 1, _type: 1, impostorname: 1, clientagent: 1, clientversion: 1, _created: 1 };
+            this.baseprojection = { name: 1, type: 1, _type: 1, impostorname: 1, clientagent: 1, clientversion: 1, _created: 1 };
+            this.searchfields = ["name", "impostorname", "clientagent", "type"];
             console.debug("AuditlogsCtrl");
             // this.basequery = { _type: "role" };
             this.collection = "audit";
@@ -2669,6 +2670,8 @@ module openflow {
                 if (model.clientagent == 'getUserFromRequest') model.fa = 'fab fa-node-js';
                 if (model.clientagent == 'googleverify') model.fa = 'fab fa-google';
                 if (model.clientagent == 'samlverify') model.fa = 'fab fa-windows';
+                if (model.clientagent == 'aiotwebapp') model.fa = 'fas fa-globe';
+                if (model.clientagent == 'aiotmobileapp') model.fa = 'fas fa-mobile-alt';
 
                 if (model.impostorname != '' && model.impostorname != null) model.fa2 = 'fas fa-user-secret';
             }
