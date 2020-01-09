@@ -1106,7 +1106,7 @@ module openflow {
                         { _id: { $nin: ids } }
                     ]
                 }
-                , null, { _type: -1, name: 1 }, 5);
+                , null, { _type: -1, name: 1 }, 8);
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         fillTextbox(searchtext) {
