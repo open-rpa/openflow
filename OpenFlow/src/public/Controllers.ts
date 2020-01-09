@@ -2648,6 +2648,7 @@ module openflow {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api, userdata);
             this.autorefresh = false;
             this.baseprojection = { name: 1, _type: 1, impostorname: 1, clientagent: 1, clientversion: 1, _created: 1 };
+            this.searchfields = ["name", "impostorname", "clientagent", "_type"];
             console.debug("AuditlogsCtrl");
             // this.basequery = { _type: "role" };
             this.collection = "audit";
