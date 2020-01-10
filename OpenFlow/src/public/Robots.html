@@ -61,7 +61,7 @@
         <a href ng-click="ctrl.ShowWorkflows(model)" class="table-btn">workflows</a>
       </td>
       <td class="btn-cell">
-        <a href ng-click="ctrl.OpenNodered(model)" class="table-btn">nodered</a>
+        <a href ng-click="ctrl.OpenNodered(model)" ng-show="model.hasnodered==true" class="table-btn">nodered</a>
       </td>
       <td class="btn-cell">
         <a ng-href="#/Entity/{{ctrl.collection}}/{{model._id}}" class="table-btn"><i class="az-edit"></i></a>

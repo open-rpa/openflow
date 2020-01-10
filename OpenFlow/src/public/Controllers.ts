@@ -1147,9 +1147,9 @@ module openflow {
             });
         }
 
-        async EnsureNoderedInstance() {
+        async EnsureNoderedInstance(name: string) {
             try {
-                await this.api.EnsureNoderedInstance();
+                await this.api.EnsureNoderedInstance(name);
                 this.messages += "EnsureNoderedInstance completed" + "\n";
             } catch (error) {
                 this.messages += error + "\n";
@@ -1157,9 +1157,9 @@ module openflow {
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
-        async DeleteNoderedInstance() {
+        async DeleteNoderedInstance(name: string) {
             try {
-                await this.api.DeleteNoderedInstance();
+                await this.api.DeleteNoderedInstance(name);
                 this.messages += "DeleteNoderedInstance completed" + "\n";
             } catch (error) {
                 this.messages += error + "\n";
@@ -1167,9 +1167,9 @@ module openflow {
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
-        async RestartNoderedInstance() {
+        async RestartNoderedInstance(name: string) {
             try {
-                await this.api.RestartNoderedInstance();
+                await this.api.RestartNoderedInstance(name);
                 this.messages += "RestartNoderedInstance completed" + "\n";
             } catch (error) {
                 this.messages += error + "\n";
@@ -1177,9 +1177,9 @@ module openflow {
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
-        async StartNoderedInstance() {
+        async StartNoderedInstance(name: string) {
             try {
-                await this.api.StartNoderedInstance();
+                await this.api.StartNoderedInstance(name);
                 this.messages += "StartNoderedInstance completed" + "\n";
             } catch (error) {
                 this.messages += error + "\n";
@@ -1187,9 +1187,9 @@ module openflow {
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
-        async StopNoderedInstance() {
+        async StopNoderedInstance(name: string) {
             try {
-                await this.api.StopNoderedInstance();
+                await this.api.StopNoderedInstance(name);
                 this.messages += "StopNoderedInstance completed" + "\n";
             } catch (error) {
                 this.messages += error + "\n";
@@ -2400,6 +2400,7 @@ module openflow {
         public instance: any = null;
         public instancestatus: string = "";
         public instancelog: string = "";
+        public name: string = "";
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -2410,10 +2411,13 @@ module openflow {
             console.debug("NoderedCtrl");
             WebSocketClient.onSignedin(async (user: TokenUser) => {
                 await api.RegisterQueue();
-                var name = WebSocketClient.user.username;
-                name = name.split("@").join("").split(".").join("");
-                name = name.toLowerCase();
-                this.noderedurl = "https://" + WebSocketClient.nodered_domain_schema.replace("$nodered_id$", name);
+                this.name = $routeParams.id;
+                if (this.name == null || this.name == undefined || this.name == "") {
+                    this.name = WebSocketClient.user.username;
+                }
+                this.name = this.name.split("@").join("").split(".").join("");
+                this.name = this.name.toLowerCase();
+                this.noderedurl = "https://" + WebSocketClient.nodered_domain_schema.replace("$nodered_id$", this.name);
                 // // this.GetNoderedInstance();
                 this.GetNoderedInstance();
             });
@@ -2422,7 +2426,7 @@ module openflow {
             try {
                 this.instancestatus = "fetching status";
 
-                this.instance = await this.api.GetNoderedInstance();
+                this.instance = await this.api.GetNoderedInstance(this.name);
                 console.debug("GetNoderedInstance:");
                 if (this.instance !== null && this.instance !== undefined) {
                     if (this.instance.metadata.deletionTimestamp !== undefined) {
@@ -2446,7 +2450,7 @@ module openflow {
             try {
                 this.instancestatus = "fetching log";
                 console.debug("GetNoderedInstanceLog:");
-                this.instancelog = await this.api.GetNoderedInstanceLog();
+                this.instancelog = await this.api.GetNoderedInstanceLog(this.name);
                 this.instancelog = this.instancelog.split("\n").reverse().join("\n");
                 this.messages += "GetNoderedInstanceLog completed\n";
                 this.instancestatus = "";
@@ -2459,7 +2463,7 @@ module openflow {
         }
         async EnsureNoderedInstance() {
             try {
-                await this.api.EnsureNoderedInstance();
+                await this.api.EnsureNoderedInstance(this.name);
                 this.messages += "EnsureNoderedInstance completed" + "\n";
             } catch (error) {
                 this.messages += error + "\n";
@@ -2470,7 +2474,7 @@ module openflow {
         }
         async DeleteNoderedInstance() {
             try {
-                await this.api.DeleteNoderedInstance();
+                await this.api.DeleteNoderedInstance(this.name);
                 this.messages += "DeleteNoderedInstance completed" + "\n";
             } catch (error) {
                 this.messages += error + "\n";
@@ -2481,7 +2485,7 @@ module openflow {
         }
         async RestartNoderedInstance() {
             try {
-                await this.api.RestartNoderedInstance();
+                await this.api.RestartNoderedInstance(this.name);
                 this.messages += "RestartNoderedInstance completed" + "\n";
             } catch (error) {
                 this.messages += error + "\n";
@@ -2492,7 +2496,7 @@ module openflow {
         }
         async StartNoderedInstance() {
             try {
-                await this.api.StartNoderedInstance();
+                await this.api.StartNoderedInstance(this.name);
                 this.messages += "StartNoderedInstance completed" + "\n";
             } catch (error) {
                 this.messages += error + "\n";
@@ -2503,7 +2507,7 @@ module openflow {
         }
         async StopNoderedInstance() {
             try {
-                await this.api.StopNoderedInstance();
+                await this.api.StopNoderedInstance(this.name);
                 this.messages += "StopNoderedInstance completed" + "\n";
             } catch (error) {
                 this.messages += error + "\n";
@@ -2590,6 +2594,7 @@ module openflow {
             console.debug("RolesCtrl");
             this.basequery = { _type: "user" };
             this.collection = "users";
+            this.postloadData = this.processdata;
             this.preloadData = () => {
                 var dt = new Date(new Date().toISOString());
                 if (this.showinactive) {
@@ -2609,6 +2614,20 @@ module openflow {
             WebSocketClient.onSignedin((user: TokenUser) => {
                 this.loadData();
             });
+        }
+        processdata() {
+            for (var i = 0; i < this.models.length; i++) {
+                var model: any = this.models[i];
+                (model as any).hasnodered = false;
+                if (model._noderedheartbeat != undefined && model._noderedheartbeat != null) {
+                    var dt = new Date(model._noderedheartbeat)
+                    var now: Date = new Date(),
+                        secondsPast: number = (now.getTime() - dt.getTime()) / 1000;
+                    if (secondsPast < 60) (model as any).hasnodered = true;
+                }
+            }
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         ShowWorkflows(model: any) {
             this.userdata.data.basequeryas = model._id;
