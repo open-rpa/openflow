@@ -2614,7 +2614,7 @@ module openflow {
         }
         OpenNodered(model: any) {
             // var name = WebSocketClient.user.username;
-            var name = model.name;
+            var name = model.username;
             name = name.split("@").join("").split(".").join("");
             name = name.toLowerCase();
             var noderedurl = "https://" + this.WebSocketClient.nodered_domain_schema.replace("$nodered_id$", name);
