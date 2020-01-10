@@ -82,6 +82,18 @@ export class WebSocketServer {
                                 console.log(err);
                             });
                     }
+                    if (cli.clientagent == "webapp" || cli.clientagent == "aiotwebapp") {
+                        Config.db.db.collection("users").updateOne({ _id: cli.user._id },
+                            { $set: { _webheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
+                                console.log(err);
+                            });
+                    }
+                    if (cli.clientagent == "mobileapp" || cli.clientagent == "aiotmobileapp") {
+                        Config.db.db.collection("users").updateOne({ _id: cli.user._id },
+                            { $set: { _webheartbeat: new Date(new Date().toISOString()), _mobilheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
+                                console.log(err);
+                            });
+                    }
                     else if (cli.consumers != null && cli.consumers.length > 0) {
                         // Should proberly turn this a little down, so we dont update all online users every 10th second
                         Config.db.db.collection("users").updateOne({ _id: cli.user._id }, { $set: { _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {

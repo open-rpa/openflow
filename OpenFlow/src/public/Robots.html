@@ -30,6 +30,7 @@
       <th scope="col" ng-click="ctrl.ToggleOrder('name')"><b translate lib="web">name</b></th>
       <th scope="col" ng-click="ctrl.ToggleOrder('_rpaheartbeat')"><b translate lib="web">robot</b></th>
       <th scope="col" ng-click="ctrl.ToggleOrder('_noderedheartbeat')"><b translate lib="web">nodered</b></th>
+      <th scope="col" ng-click="ctrl.ToggleOrder('_webheartbeat')"><b translate lib="web">web</b></th>
       <th scope="col" ng-click="ctrl.ToggleOrder('_heartbeat')"><b translate lib="web">heartbeat</b></th>
       <th scope="col" ng-click="ctrl.ToggleOrder('_lastopenrpaclientversion')"><b translate
           lib="web">lastclientversion</b>
@@ -47,8 +48,10 @@
         <timesince ng-model="model._rpaheartbeat" />
       </td>
       <td>
-
         <timesince ng-model="model._noderedheartbeat" />
+      </td>
+      <td>
+        <timesince ng-model="model._webheartbeat" />
       </td>
       <td>
         <timesince ng-model="model._heartbeat" />
