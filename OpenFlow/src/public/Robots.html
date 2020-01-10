@@ -31,7 +31,7 @@
       <th scope="col" ng-click="ctrl.ToggleOrder('_rpaheartbeat')"><b translate lib="web">robot</b></th>
       <th scope="col" ng-click="ctrl.ToggleOrder('_noderedheartbeat')"><b translate lib="web">nodered</b></th>
       <th scope="col" ng-click="ctrl.ToggleOrder('_webheartbeat')"><b translate lib="web">web</b></th>
-      <th scope="col" ng-click="ctrl.ToggleOrder('_heartbeat')"><b translate lib="web">heartbeat</b></th>
+      <!-- <th scope="col" ng-click="ctrl.ToggleOrder('_heartbeat')"><b translate lib="web">heartbeat</b></th> -->
       <th scope="col" ng-click="ctrl.ToggleOrder('_lastopenrpaclientversion')"><b translate
           lib="web">lastclientversion</b>
       </th>
@@ -53,9 +53,9 @@
       <td>
         <timesince ng-model="model._webheartbeat" />
       </td>
-      <td>
+      <!-- <td>
         <timesince ng-model="model._heartbeat" />
-      </td>
+      </td> -->
       <td>{{model._lastopenrpaclientversion}}</td>
       <td class="btn-cell">
         <a href ng-click="ctrl.ShowWorkflows(model)" class="table-btn">workflows</a>
