@@ -19,10 +19,10 @@
         <select ng-model="ctrl.collection" ng-options="item.name as item.name for item in ctrl.collections"
           ng-change="ctrl.SelectCollection()">
         </select>
-        <a href ng-click="ctrl.DropCollection()" class="btn btn-secondary" translate lib="web"
+        <!-- <a href ng-click="ctrl.DropCollection()" class="btn btn-secondary" translate lib="web"
           ng-show="ctrl.WebSocketClient.user.username=='az'"" ng-disabled=" ctrl.loading==true">Drop</a>
         <a href ng-click="ctrl.DeleteMany()" class="btn btn-secondary" translate lib="web"
-          ng-show="ctrl.WebSocketClient.user.username=='az'"" ng-disabled=" ctrl.loading==true">empty</a>
+          ng-show="ctrl.WebSocketClient.user.username=='az'"" ng-disabled=" ctrl.loading==true">empty</a> -->
       </div>
 
     </div>
