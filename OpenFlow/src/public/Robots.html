@@ -17,6 +17,8 @@
   </div>
   <div class=" col-md-6 text-right">
     <!-- <a ng-href="#/Entity/{{ctrl.collection}}" class="btn btn-info" translate lib="web">addentity</a> -->
+    <input type="checkbox" ng-model="ctrl.showinactive" ng-change="ctrl.loadData()"> <span translate
+      lib="web">showinactive</span>
     <input type="checkbox" ng-model="ctrl.showall" ng-change="ctrl.loadData()"> <span translate lib="web">showall</span>
     <a ng-href="#/Entity/{{ctrl.collection}}" class="btn btn-info"><i class="az-add-lg"></i></a>
   </div>
@@ -26,10 +28,13 @@
   <thead class="thead-dark">
     <tr>
       <th scope="col" ng-click="ctrl.ToggleOrder('name')"><b translate lib="web">name</b></th>
+      <th scope="col" ng-click="ctrl.ToggleOrder('_rpaheartbeat')"><b translate lib="web">rpaheartbeat</b></th>
+      <th scope="col" ng-click="ctrl.ToggleOrder('_noderedheartbeat')"><b translate lib="web">noderedheartbeat</b></th>
       <th scope="col" ng-click="ctrl.ToggleOrder('_heartbeat')"><b translate lib="web">heartbeat</b></th>
       <th scope="col" ng-click="ctrl.ToggleOrder('_lastopenrpaclientversion')"><b translate
           lib="web">lastclientversion</b>
       </th>
+      <th></th>
       <th></th>
       <th></th>
       <th></th>
@@ -39,11 +44,21 @@
     <tr ng-repeat="model in ctrl.models">
       <td>{{model.name}}</td>
       <td>
+        <timesince ng-model="model._rpaheartbeat" />
+      </td>
+      <td>
+
+        <timesince ng-model="model._noderedheartbeat" />
+      </td>
+      <td>
         <timesince ng-model="model._heartbeat" />
       </td>
       <td>{{model._lastopenrpaclientversion}}</td>
       <td class="btn-cell">
         <a href ng-click="ctrl.ShowWorkflows(model)" class="table-btn">workflows</a>
+      </td>
+      <td class="btn-cell">
+        <a href ng-click="ctrl.OpenNodered(model)" class="table-btn">nodered</a>
       </td>
       <td class="btn-cell">
         <a ng-href="#/Entity/{{ctrl.collection}}/{{model._id}}" class="table-btn"><i class="az-edit"></i></a>

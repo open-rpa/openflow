@@ -2575,6 +2575,7 @@ module openflow {
 
     export class RobotsCtrl extends entitiesCtrl<openflow.unattendedclient> {
         public showall: boolean = false;
+        public showinactive: boolean = false;
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -2591,14 +2592,14 @@ module openflow {
             this.collection = "users";
             this.preloadData = () => {
                 var dt = new Date(new Date().toISOString());
-                if (this.showall) {
+                if (this.showinactive) {
                     this.basequery = { _heartbeat: { "$exists": true } };
-                } else {
-                    // dt.setTime(dt.getDate() - 1);
-                    // this.basequery = { _heartbeat: { "$gte": dt } };
-
+                } else if (this.showall) {
                     dt.setMinutes(dt.getMinutes() - 1);
                     this.basequery = { _heartbeat: { "$gte": dt } };
+                } else {
+                    dt.setMinutes(dt.getMinutes() - 1);
+                    this.basequery = { _rpaheartbeat: { "$gte": dt } };
                 }
             };
             WebSocketClient.onSignedin((user: TokenUser) => {
@@ -2609,6 +2610,15 @@ module openflow {
             this.userdata.data.basequeryas = model._id;
             this.$location.path("/RPAWorkflows");
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
+
+        }
+        OpenNodered(model: any) {
+            // var name = WebSocketClient.user.username;
+            var name = model.name;
+            name = name.split("@").join("").split(".").join("");
+            name = name.toLowerCase();
+            var noderedurl = "https://" + this.WebSocketClient.nodered_domain_schema.replace("$nodered_id$", name);
+            window.open(noderedurl);
 
         }
         // async DeleteOne(model: any): Promise<any> {
