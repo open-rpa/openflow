@@ -2593,7 +2593,11 @@ module openflow {
             this.preloadData = () => {
                 var dt = new Date(new Date().toISOString());
                 if (this.showinactive) {
-                    this.basequery = { _heartbeat: { "$exists": true } };
+                    if (this.showall) {
+                        this.basequery = { _heartbeat: { "$exists": true } };
+                    } else {
+                        this.basequery = { _rpaheartbeat: { "$exists": true } };
+                    }
                 } else if (this.showall) {
                     dt.setMinutes(dt.getMinutes() - 1);
                     this.basequery = { _heartbeat: { "$gte": dt } };
