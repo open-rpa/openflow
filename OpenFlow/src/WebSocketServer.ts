@@ -48,7 +48,7 @@ export class WebSocketServer {
                     if ((payload.exp - clockTimestamp) < 60) {
                         WebSocketServer._logger.debug("Token for " + tuser.username + " expires in less than 1 minute, send new jwt to client");
                         var l: SigninMessage = new SigninMessage();
-                        cli.jwt = Crypt.createToken(tuser, "5m");
+                        cli.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
                         l.jwt = cli.jwt;
                         l.user = tuser;
                         var m: Message = new Message(); m.command = "refreshtoken";

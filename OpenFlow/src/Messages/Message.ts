@@ -571,22 +571,26 @@ export class Message {
             } else {
                 Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
                 var userid: string = user._id;
-                msg.jwt = Crypt.createToken(tuser, "5m");
+                msg.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
                 msg.user = tuser;
                 if (msg.impersonate !== undefined && msg.impersonate !== null && msg.impersonate !== "") {
                     var items = await Config.db.query({ _id: msg.impersonate }, null, 1, 0, null, "users", msg.jwt);
                     if (items.length == 0) {
                         Audit.ImpersonateFailed(tuser, msg.impersonate, cli.clientagent, cli.clientversion);
-                        throw new Error("Permission denied, impersonating " + msg.impersonate);
+                        throw new Error("Permission denied, view and impersonating " + msg.impersonate);
                     }
                     var tuserimpostor = tuser;
                     user = User.assign(items[0] as User);
                     await user.DecorateWithRoles();
                     // Check we have update rights
-                    await user.Save(msg.jwt);
+                    try {
+                        await user.Save(msg.jwt);
+                    } catch (error) {
+                        throw new Error("Permission denied, updating and impersonating " + msg.impersonate);
+                    }
                     tuser = new TokenUser(user);
                     tuser.impostor = userid;
-                    msg.jwt = Crypt.createToken(tuser, "5m");
+                    msg.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
                     msg.user = tuser;
                     Audit.ImpersonateSuccess(tuser, tuserimpostor, cli.clientagent, cli.clientversion);
                 }
@@ -655,7 +659,7 @@ export class Message {
             user = await User.ensureUser(jwt, msg.name, msg.username, null, msg.password);
             msg.user = new TokenUser(user);
 
-            jwt = Crypt.createToken(msg.user, "5m");
+            jwt = Crypt.createToken(msg.user, Config.shorttoken_expires_in);
             var name = user.username;
             name = name.split("@").join("").split(".").join("");
             name = name.toLowerCase();
@@ -705,7 +709,7 @@ export class Message {
             }
 
             var tuser: TokenUser = new TokenUser(cli.user);
-            var nodered_jwt: string = Crypt.createToken(tuser, "365d");
+            var nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
 
             // var noderedusers = await User.ensureRole(cli.jwt, name + "noderedusers", null);
             // noderedusers.addRight(cli.user._id, cli.user.username, [Rights.full_control]);
@@ -1141,7 +1145,7 @@ export class Message {
             //     msg.metadata.addRight(WellknownIds.filestore_users, "filestore users", [Rights.read]);
             // }
             msg.metadata = Config.db.ensureResource(msg.metadata);
-            if (!Config.db.hasAuthorization(user, msg.metadata, Rights.create)) { throw new Error("Access denied"); }
+            if (!Config.db.hasAuthorization(user, msg.metadata, Rights.create)) { throw new Error("Access denied, no authorization to save file"); }
             msg.id = await this._SaveFile(readable, msg.filename, msg.mimeType, msg.metadata);
         } catch (error) {
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -1266,7 +1270,7 @@ export class Message {
                 msg.metadata.addRight(user._id, user.name, [Rights.full_control]);
             }
             msg.metadata.addRight(WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
-            if (!Config.db.hasAuthorization(user, msg.metadata, Rights.update)) { throw new Error("Access denied"); }
+            if (!Config.db.hasAuthorization(user, msg.metadata, Rights.update)) { throw new Error("Access denied, no authorization to update file"); }
 
             msg.metadata = Config.db.ensureResource(msg.metadata);
             var fsc = Config.db.db.collection("fs.files");

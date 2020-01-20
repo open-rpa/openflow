@@ -2,6 +2,7 @@ import { User } from "./User";
 import { Rolemember } from "./Role";
 import { WellknownIds } from "./base";
 import { Crypt } from "./Crypt";
+import { Config } from "./Config";
 
 export class TokenUser {
     _type: string;
@@ -30,7 +31,7 @@ export class TokenUser {
         return result;
     }
     static rootToken(): string {
-        return Crypt.createToken(TokenUser.rootUser(), "5m");
+        return Crypt.createToken(TokenUser.rootUser(), Config.shorttoken_expires_in);
     }
     hasrolename(name: string): Boolean {
         var hits: Rolemember[] = this.roles.filter(member => member.name === name);

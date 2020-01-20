@@ -192,7 +192,7 @@ export class LoginProvider {
             res.setHeader("Content-Type", "application/json");
             if (req.user) {
                 var user: TokenUser = new TokenUser(req.user);
-                res.end(JSON.stringify({ jwt: Crypt.createToken(user, "5m"), user: user }));
+                res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.shorttoken_expires_in), user: user }));
             } else {
                 res.end(JSON.stringify({ jwt: "" }));
             }
@@ -202,7 +202,7 @@ export class LoginProvider {
             res.setHeader("Content-Type", "application/json");
             if (req.user) {
                 var user: TokenUser = new TokenUser(req.user);
-                res.end(JSON.stringify({ jwt: Crypt.createToken(user, "365d"), user: user }));
+                res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.longtoken_expires_in), user: user }));
             } else {
                 res.end(JSON.stringify({ jwt: "" }));
             }
@@ -214,7 +214,7 @@ export class LoginProvider {
                 var user: User = await LoginProvider.validateToken(rawAssertion);
                 var tuser: TokenUser = new TokenUser(user);
                 res.setHeader("Content-Type", "application/json");
-                res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, "5m") }));
+                res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, Config.shorttoken_expires_in) }));
             } catch (error) {
                 res.end(error);
                 console.error(error);
@@ -283,11 +283,11 @@ export class LoginProvider {
                 var authHeader = req.headers.authorization;
                 if (authHeader) {
                     user = Crypt.verityToken(authHeader);
-                    jwt = Crypt.createToken(user, "15m");
+                    jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
                 }
                 else if (req.user) {
                     user = new TokenUser(req.user as any);
-                    jwt = Crypt.createToken(user, "15m");
+                    jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
                 }
                 if (user == null) {
                     return res.status(404).send({ message: 'Route ' + req.url + ' Not found.' });
@@ -334,11 +334,11 @@ export class LoginProvider {
                             var authHeader = req.headers.authorization;
                             if (authHeader) {
                                 user = Crypt.verityToken(authHeader);
-                                jwt = Crypt.createToken(user, "15m");
+                                jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
                             }
                             else if (req.user) {
                                 user = new TokenUser(req.user);
-                                jwt = Crypt.createToken(user, "15m");
+                                jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
                             }
 
                             fileInfo.metadata.name = file.originalname;
@@ -370,11 +370,11 @@ export class LoginProvider {
                 var authHeader = req.headers.authorization;
                 if (authHeader) {
                     user = Crypt.verityToken(authHeader);
-                    jwt = Crypt.createToken(user, "15m");
+                    jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
                 }
                 else if (req.user) {
                     user = new TokenUser(req.user as any);
-                    jwt = Crypt.createToken(user, "15m");
+                    jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
                 }
                 if (user == null) {
                     return res.status(404).send({ message: 'Route ' + req.url + ' Not found.' });
