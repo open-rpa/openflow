@@ -2669,6 +2669,7 @@ module openflow {
 
 
     export class AuditlogsCtrl extends entitiesCtrl<openflow.Role> {
+        public model: openflow.Role;
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -2712,11 +2713,15 @@ module openflow {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
 
-        async DeleteOne(model: any): Promise<any> {
-            this.loading = true;
-            await this.api.Delete(this.collection, model);
-            this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
-            this.loading = false;
+        async ShowAudit(model: any): Promise<any> {
+            this.model = null;
+            var modal: any = $("#exampleModal");
+            modal.modal();
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            var arr = await this.api.Query(this.collection, { _id: model._id }, null, null, 1);
+            if (arr.length == 1) {
+                this.model = arr[0];
+            }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
     }
