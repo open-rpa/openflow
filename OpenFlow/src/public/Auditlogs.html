@@ -11,8 +11,14 @@
   </div>
 </div>
 <div class="col-sm-12 text-right">
-  <a href="#/Role" class="btn btn-info" translate lib="web">addrole</a>
 </div>
+<style>
+  .failed {
+    border-color: red;
+    border: width 2;
+    border-style: solid
+  }
+</style>
 <table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;">
   <thead class="thead-dark">
     <tr>
@@ -26,7 +32,7 @@
     </tr>
   </thead>
   <tbody>
-    <tr ng-repeat="model in ctrl.models">
+    <tr ng-repeat="model in ctrl.models" ng-class="{failed: model.success == false}">
       <td>
         <!-- <i class="fas fa-robot" ng-show="model.clientagent=='openrpa'"></i>
         <i class="fas fa-globe" ng-show="model.clientagent=='webapp' || model.clientagent=='browser'"></i>

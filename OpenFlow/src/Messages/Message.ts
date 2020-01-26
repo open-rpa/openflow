@@ -573,11 +573,17 @@ export class Message {
                 var userid: string = user._id;
                 msg.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
                 msg.user = tuser;
-                if (msg.impersonate !== undefined && msg.impersonate !== null && msg.impersonate !== "") {
+                if (msg.impersonate !== undefined && msg.impersonate !== null && msg.impersonate !== "" && tuser._id != msg.impersonate) {
                     var items = await Config.db.query({ _id: msg.impersonate }, null, 1, 0, null, "users", msg.jwt);
                     if (items.length == 0) {
-                        Audit.ImpersonateFailed(tuser, msg.impersonate, cli.clientagent, cli.clientversion);
-                        throw new Error("Permission denied, view and impersonating " + msg.impersonate);
+                        var impostors = await Config.db.query<User>({ _id: msg.impersonate }, null, 1, 0, null, "users", TokenUser.rootToken());
+                        var impb: User = new User(); impb.name = "unknown"; impb._id = msg.impersonate;
+                        var imp: TokenUser = new TokenUser(impb);
+                        if (impostors.length == 1) {
+                            imp = new TokenUser(impostors[0]);
+                        }
+                        Audit.ImpersonateFailed(imp, tuser, cli.clientagent, cli.clientversion);
+                        throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " view and impersonating " + msg.impersonate);
                     }
                     var tuserimpostor = tuser;
                     user = User.assign(items[0] as User);
@@ -586,7 +592,15 @@ export class Message {
                     try {
                         await user.Save(msg.jwt);
                     } catch (error) {
-                        throw new Error("Permission denied, updating and impersonating " + msg.impersonate);
+                        var impostors = await Config.db.query<User>({ _id: msg.impersonate }, null, 1, 0, null, "users", TokenUser.rootToken());
+                        var impb: User = new User(); impb.name = "unknown"; impb._id = msg.impersonate;
+                        var imp: TokenUser = new TokenUser(impb);
+                        if (impostors.length == 1) {
+                            imp = new TokenUser(impostors[0]);
+                        }
+
+                        Audit.ImpersonateFailed(imp, tuser, cli.clientagent, cli.clientversion);
+                        throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " updating and impersonating " + msg.impersonate);
                     }
                     tuser = new TokenUser(user);
                     tuser.impostor = userid;
