@@ -341,9 +341,29 @@ export class DatabaseConnection {
     async aggregate<T extends Base>(aggregates: object[], collectionname: string, jwt: string): Promise<T[]> {
         await this.connect();
 
-        if (typeof aggregates === "string" || aggregates instanceof String) {
-            aggregates = JSON.parse((aggregates as any));
+        var json: any = aggregates;
+        if (typeof json !== 'string' && !(json instanceof String)) {
+            json = JSON.stringify(json, (key, value) => {
+                if (value instanceof RegExp)
+                    return ("__REGEXP " + value.toString());
+                else
+                    return value;
+            });
         }
+        aggregates = JSON.parse(json, (key, value) => {
+            if (typeof value === 'string' && value.match(isoDatePattern)) {
+                return new Date(value); // isostring, so cast to js date
+            } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") == 0) {
+                var m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
+                return new RegExp(m[1], m[2] || "");
+            } else
+                return value; // leave any other value as-is
+        });
+
+
+        // if (typeof aggregates === "string" || aggregates instanceof String) {
+        //     aggregates = JSON.parse((aggregates as any));
+        // }
         var base = this.getbasequery(jwt, "_acl", [Rights.read]);
         if (Array.isArray(aggregates)) {
             aggregates.unshift({ $match: base });
