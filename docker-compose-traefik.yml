@@ -49,6 +49,8 @@ services:
     image: "cloudhack/openflow:0.0.392"
     container_name: "web"
     environment:
+      - update_acl_based_on_groups=true
+      - multi_tenant=false
       - auto_create_users=true
       - auto_create_domains=
       - allow_user_registration=true

@@ -45,6 +45,10 @@ export class Config {
     public static aes_secret: string = Config.getEnv("aes_secret", "");
     public static signing_crt: string = Config.getEnv("signing_crt", "");
     public static singing_key: string = Config.getEnv("singing_key", "");
+    public static shorttoken_expires_in: string = Config.getEnv("shorttoken_expires_in", "5m");
+    public static longtoken_expires_in: string = Config.getEnv("longtoken_expires_in", "365d");
+    public static downloadtoken_expires_in: string = Config.getEnv("downloadtoken_expires_in", "15m");
+    public static personalnoderedtoken_expires_in: string = Config.getEnv("personalnoderedtoken_expires_in", "365d");
 
     // Used to configure personal nodered's
     public static force_queue_prefix: boolean = Config.parseBoolean(Config.getEnv("force_queue_prefix", "true"));

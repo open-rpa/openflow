@@ -860,7 +860,7 @@ export class api_aggregate {
             if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
             if (!NoderedUtil.IsNullUndefinded(msg.aggregates)) { this.config.aggregates = msg.aggregates; }
 
-            this.node.status({ fill: "blue", shape: "dot", text: "Running mapreduce" });
+            this.node.status({ fill: "blue", shape: "dot", text: "Running aggregate" });
             var result = await NoderedUtil.Aggregate(this.config.collection, this.config.aggregates, msg.jwt);
             msg.payload = result;
             this.node.send(msg);

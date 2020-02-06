@@ -68,8 +68,8 @@ export class DatabaseConnection {
     }
     async DropCollection(collectionname: string, jwt: string): Promise<void> {
         var user: TokenUser = Crypt.verityToken(jwt);
-        if (!user.hasrolename("admins")) throw new Error("Access denied");
-        if (["workflow", "entities", "config", "audit", "jslog", "openrpa", "nodered", "openrpa_instances", "forms", "workflow_instances", "users"].indexOf(collectionname) > -1) throw new Error("Access denied");
+        if (!user.hasrolename("admins")) throw new Error("Access denied, droppping collection " + collectionname);
+        if (["workflow", "entities", "config", "audit", "jslog", "openrpa", "nodered", "openrpa_instances", "forms", "workflow_instances", "users"].indexOf(collectionname) > -1) throw new Error("Access denied, dropping reserved collection " + collectionname);
         await this.db.dropCollection(collectionname);
     }
 
@@ -341,9 +341,29 @@ export class DatabaseConnection {
     async aggregate<T extends Base>(aggregates: object[], collectionname: string, jwt: string): Promise<T[]> {
         await this.connect();
 
-        if (typeof aggregates === "string" || aggregates instanceof String) {
-            aggregates = JSON.parse((aggregates as any));
+        var json: any = aggregates;
+        if (typeof json !== 'string' && !(json instanceof String)) {
+            json = JSON.stringify(json, (key, value) => {
+                if (value instanceof RegExp)
+                    return ("__REGEXP " + value.toString());
+                else
+                    return value;
+            });
         }
+        aggregates = JSON.parse(json, (key, value) => {
+            if (typeof value === 'string' && value.match(isoDatePattern)) {
+                return new Date(value); // isostring, so cast to js date
+            } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") == 0) {
+                var m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
+                return new RegExp(m[1], m[2] || "");
+            } else
+                return value; // leave any other value as-is
+        });
+
+
+        // if (typeof aggregates === "string" || aggregates instanceof String) {
+        //     aggregates = JSON.parse((aggregates as any));
+        // }
         var base = this.getbasequery(jwt, "_acl", [Rights.read]);
         if (Array.isArray(aggregates)) {
             aggregates.unshift({ $match: base });
@@ -454,6 +474,9 @@ export class DatabaseConnection {
         if (Util.IsNullEmpty(jwt)) {
             throw new Error("jwt is null");
         }
+        var name = item.name;
+        if (Util.IsNullEmpty(name)) name = item._name;
+        if (Util.IsNullEmpty(name)) name = "Unknown";
         var user: TokenUser = Crypt.verityToken(jwt);
         item._createdby = user.name;
         item._createdbyid = user._id;
@@ -465,8 +488,8 @@ export class DatabaseConnection {
         if ((hasUser === null || hasUser === undefined)) {
             item.addRight(user._id, user.name, [Rights.full_control]);
         }
-        if (collectionname != "audit") { this._logger.debug("[" + user.username + "][" + collectionname + "] Adding " + item._type + " " + (item.name || item._name) + " to database"); }
-        if (!this.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied"); }
+        if (collectionname != "audit") { this._logger.debug("[" + user.username + "][" + collectionname + "] Adding " + item._type + " " + name + " to database"); }
+        if (!this.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
 
         item = this.encryptentity<T>(item);
         if (!item._id) { item._id = new ObjectID().toHexString(); }
@@ -498,13 +521,13 @@ export class DatabaseConnection {
             if (u.username == null || u.username == "") { throw new Error("Username is mandatory"); }
             if (u.name == null || u.name == "") { throw new Error("Name is mandatory"); }
             var exists = await User.FindByUsername(u.username, TokenUser.rootToken());
-            if (exists != null) { throw new Error("Access denied"); }
+            if (exists != null) { throw new Error("Access denied, user already exists"); }
         }
         if (collectionname === "users" && item._type === "role") {
             var r: Role = (item as any);
             if (r.name == null || r.name == "") { throw new Error("Name is mandatory"); }
             var exists2 = await Role.FindByName(r.name);
-            if (exists2 != null) { throw new Error("Access denied, adding new user"); }
+            if (exists2 != null) { throw new Error("Access denied, role already exists"); }
         }
 
         // var options:CollectionInsertOneOptions = { writeConcern: { w: parseInt((w as any)), j: j } };
@@ -556,7 +579,7 @@ export class DatabaseConnection {
         if (q.item === null || q.item === undefined) { throw Error("Cannot update null item"); }
         await this.connect();
         var user: TokenUser = Crypt.verityToken(q.jwt);
-        if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied"); }
+        if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to UpdateOne"); }
         if (q.collectionname === "files") { q.collectionname = "fs.files"; }
 
         var original: T = null;
@@ -566,9 +589,13 @@ export class DatabaseConnection {
             if (!q.item.hasOwnProperty("_id")) {
                 throw Error("Cannot update item without _id");
             }
+            var name = q.item.name;
+            if (Util.IsNullEmpty(name)) name = q.item._name;
+            if (Util.IsNullEmpty(name)) name = "Unknown";
+
             original = await this.getbyid<T>(q.item._id, q.collectionname, q.jwt);
             if (!original) { throw Error("item not found!"); }
-            if (!this.hasAuthorization(user, original, Rights.update)) { throw new Error("Access denied"); }
+            if (!this.hasAuthorization(user, original, Rights.update)) { throw new Error("Access denied, no authorization to InsertOne " + q.item._type + " " + name + " to database"); }
             if (q.collectionname != "fs.files") {
                 q.item._modifiedby = user.name;
                 q.item._modifiedbyid = user._id;
@@ -747,7 +774,7 @@ export class DatabaseConnection {
         if (q.item === null || q.item === undefined) { throw Error("Cannot update null item"); }
         await this.connect();
         var user: TokenUser = Crypt.verityToken(q.jwt);
-        if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied"); }
+        if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to UpdateMany"); }
 
         if (q.collectionname === "users" && q.item._type === "user" && q.item.hasOwnProperty("newpassword")) {
             (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
@@ -836,7 +863,7 @@ export class DatabaseConnection {
         else if (exists.length > 1) {
             throw JSON.stringify(query) + " is not uniqe, more than 1 item in collection matches this";
         }
-        if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied"); }
+        if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to InsertOrUpdateOne"); }
         // if (q.item._id !== null && q.item._id !== undefined && q.item._id !== "") {
         if (exists.length == 1) {
             this._logger.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Updating found one in database");
@@ -879,7 +906,7 @@ export class DatabaseConnection {
         var user: TokenUser = Crypt.verityToken(jwt);
         // var original:Base = await this.getbyid(id, collectionname, jwt);
         // if(!original) { throw Error("item not found!"); }
-        // if(!this.hasAuthorization(user, original, "delete")) { throw new Error("Access denied"); }
+        // if(!this.hasAuthorization(user, original, "delete")) { throw new Error("Access denied, no authorization to DeleteOne"); }
         var _query: any = {};
         if (typeof id === 'string' || id instanceof String) {
             _query = { $and: [{ _id: id }, this.getbasequery(jwt, "_acl", [Rights.delete])] };
@@ -1009,7 +1036,7 @@ export class DatabaseConnection {
     }
     private async getbasequeryuserid(userid: string, field: string, bits: number[]): Promise<Object> {
         var user = await User.FindByUsernameOrId(null, userid);
-        var jwt = Crypt.createToken(user, "5m");
+        var jwt = Crypt.createToken(user, Config.shorttoken_expires_in);
         return this.getbasequery(jwt, field, bits);
     }
     /**

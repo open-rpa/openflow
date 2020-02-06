@@ -11,8 +11,14 @@
   </div>
 </div>
 <div class="col-sm-12 text-right">
-  <a href="#/Role" class="btn btn-info" translate lib="web">addrole</a>
 </div>
+<style>
+  .failed {
+    border-color: red;
+    border: width 2;
+    border-style: solid
+  }
+</style>
 <table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;">
   <thead class="thead-dark">
     <tr>
@@ -26,7 +32,7 @@
     </tr>
   </thead>
   <tbody>
-    <tr ng-repeat="model in ctrl.models">
+    <tr ng-repeat="model in ctrl.models" ng-class="{failed: model.success == false}">
       <td>
         <!-- <i class="fas fa-robot" ng-show="model.clientagent=='openrpa'"></i>
         <i class="fas fa-globe" ng-show="model.clientagent=='webapp' || model.clientagent=='browser'"></i>
@@ -41,7 +47,7 @@
           <i ng-class="model.fa2">
 
       </td>
-      <td>{{model.name}}</td>
+      <td class="btn-cell"><a href ng-click="ctrl.ShowAudit(model)" class="table-btn">{{model.name}}</a></td>
       <td>{{model.type}}</td>
       <td>{{model.impostorname}}</td>
       <td>{{model.clientagent}}</td>
@@ -52,3 +58,69 @@
     </tr>
   </tbody>
 </table>
+
+
+
+<div class="modal" tabindex="-1" role="dialog" id="exampleModal">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">{{ctrl.model.name}} </h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <table>
+          <tr>
+            <td>success</td>
+            <td>{{ctrl.model.success}}</td>
+          </tr>
+          <tr>
+            <td>type</td>
+            <td>{{ctrl.model.type}}</td>
+          </tr>
+          <tr>
+            <td>provider</td>
+            <td>{{ctrl.model.provider}}</td>
+          </tr>
+          <tr>
+            <td>userid</td>
+            <td>{{ctrl.model.userid}}</td>
+          </tr>
+          <tr>
+            <td>username</td>
+            <td>{{ctrl.model.username}}</td>
+          </tr>
+          <tr>
+            <td>remoteip</td>
+            <td>{{ctrl.model.remoteip}}</td>
+          </tr>
+          <tr>
+            <td>impostoruserid</td>
+            <td>{{ctrl.model.impostoruserid}}</td>
+          </tr>
+          <tr>
+            <td>impostorname</td>
+            <td>{{ctrl.model.impostorname}}</td>
+          </tr>
+          <tr>
+            <td>impostorusername</td>
+            <td>{{ctrl.model.impostorusername}}</td>
+          </tr>
+          <tr>
+            <td>clientagent</td>
+            <td>{{ctrl.model.clientagent}}</td>
+          </tr>
+          <tr>
+            <td>clientversion</td>
+            <td>{{ctrl.model.clientversion}}</td>
+          </tr>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>

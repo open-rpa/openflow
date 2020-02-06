@@ -35,15 +35,17 @@ export class Audit {
         Config.db.InsertOne(log, "audit", 0, false, TokenUser.rootToken())
             .catch((error) => console.error("failed InsertOne in ImpersonateSuccess: " + error));
     }
-    public static ImpersonateFailed(user: TokenUser, impostor_id: string, clientagent: string, clientversion: string) {
+    public static ImpersonateFailed(user: TokenUser, impostor: TokenUser, clientagent: string, clientversion: string) {
         var log: Singin = new Singin();
         log.addRight(user._id, user.name, [Rights.read]);
+        log.addRight(impostor._id, impostor.name, [Rights.read]);
         log.success = false;
         log.type = "impersonate";
         log.userid = user._id;
         log.name = user.name;
         log.username = user.username;
-        log.impostoruserid = impostor_id;
+        log.impostoruserid = impostor._id;
+        log.impostorname = impostor.name;
         log.clientagent = clientagent;
         log.clientversion = clientversion;
         Config.db.InsertOne(log, "audit", 0, false, TokenUser.rootToken())
