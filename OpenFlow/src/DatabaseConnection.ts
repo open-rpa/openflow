@@ -936,7 +936,20 @@ export class DatabaseConnection {
 
         // var res:DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne({_id:id});
         // var res:DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne(id);
-        if (res.deletedCount === 0) { throw Error("item not found!"); }
+        if (res.deletedCount === 0) { throw Error("item not found!"); } else {
+            // try {
+            //     var item: any = { _id: id, };
+            //     item._modifiedby = user.name;
+            //     item._modifiedbyid = user._id;
+            //     item._modified = new Date(new Date().toISOString());
+            //     item._deletedby = user.name;
+            //     item._deletedbyid = user._id;
+            //     item._deleted = new Date(new Date().toISOString());
+            //     await this.SaveDiff(collectionname, null, item);
+            // } catch (error) {
+            //     console.error(error)
+            // }
+        }
     }
     /**
      * Helper function used to check if field needs to be encrypted
