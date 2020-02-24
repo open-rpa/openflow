@@ -193,7 +193,7 @@ export class Message {
         } catch (error) {
             cli._logger.error(error);
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            msg.error = error.toString();
+            if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
         try {
@@ -222,7 +222,7 @@ export class Message {
         } catch (error) {
             cli._logger.error(error);
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            msg.error = error.toString();
+            if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
         try {
@@ -242,7 +242,7 @@ export class Message {
         } catch (error) {
             cli._logger.error(error);
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            msg.error = error.toString();
+            if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
         try {
@@ -303,7 +303,7 @@ export class Message {
         } catch (error) {
             cli._logger.error(error);
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            msg.error = error.toString();
+            if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
         try {
@@ -324,7 +324,7 @@ export class Message {
         } catch (error) {
             cli._logger.error(error);
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            msg.error = error.toString();
+            if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
         try {
@@ -346,7 +346,7 @@ export class Message {
         } catch (error) {
             cli._logger.error(error);
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            msg.error = error.toString();
+            if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
         try {
@@ -366,7 +366,7 @@ export class Message {
             msg.result = await Config.db.aggregate(msg.aggregates, msg.collectionname, msg.jwt);
         } catch (error) {
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            msg.error = error.toString();
+            if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
         try {
@@ -394,7 +394,7 @@ export class Message {
             msg.result = await Config.db.InsertOne(msg.item, msg.collectionname, msg.w, msg.j, msg.jwt);
         } catch (error) {
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            msg.error = error.toString();
+            if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
         try {
@@ -416,7 +416,7 @@ export class Message {
             msg = await Config.db.UpdateOne(msg);
         } catch (error) {
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            msg.error = error.toString();
+            if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
         try {
@@ -439,7 +439,7 @@ export class Message {
             msg = await Config.db.UpdateMany(msg);
         } catch (error) {
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            msg.error = error.toString();
+            if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
         try {
@@ -463,7 +463,7 @@ export class Message {
             msg = await Config.db.InsertOrUpdateOne(msg);
         } catch (error) {
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            msg.error = error.toString();
+            if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
         try {
@@ -483,7 +483,7 @@ export class Message {
             await Config.db.DeleteOne(msg._id, msg.collectionname, msg.jwt);
         } catch (error) {
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            msg.error = error.toString();
+            if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
         try {
@@ -503,7 +503,7 @@ export class Message {
             msg.result = await Config.db.MapReduce(msg.map, msg.reduce, msg.finalize, msg.query, msg.out, msg.collectionname, msg.scope, msg.jwt);
         } catch (error) {
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            msg.error = error.toString();
+            if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
         try {
@@ -540,7 +540,7 @@ export class Message {
                         user = await User.ensureUser(jwt, tuser.name, tuser.username, null, msg.password);
                         tuser = new TokenUser(user);
                     } else {
-                        msg.error = "Unknown username or password";
+                        if (msg !== null && msg !== undefined) msg.error = "Unknown username or password";
                     }
                 }
                 if (impostor !== "") {
@@ -565,7 +565,7 @@ export class Message {
             cli.clientagent = msg.clientagent;
             cli.clientversion = msg.clientversion;
             if (user === null || user === undefined || tuser === null || tuser === undefined) {
-                msg.error = "Unknown username or password";
+                if (msg !== null && msg !== undefined) msg.error = "Unknown username or password";
                 Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
                 cli._logger.debug(tuser.username + " failed logging in using " + type);
             } else {
@@ -646,7 +646,7 @@ export class Message {
             }
         } catch (error) {
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            msg.error = error.toString();
+            if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
         try {
@@ -688,7 +688,7 @@ export class Message {
 
         } catch (error) {
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            msg.error = error.toString();
+            if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
         try {
@@ -846,13 +846,13 @@ export class Message {
                 }
             } else {
                 cli._logger.error("[" + cli.user.username + "] failed locating useringress");
-                msg.error = "failed locating useringress";
+                if (msg !== null && msg !== undefined) msg.error = "failed locating useringress";
             }
         } catch (error) {
             this.data = "";
             cli._logger.error(error);
             //msg.error = JSON.stringify(error, null, 2);
-            msg.error = "Request failed!"
+            if (msg !== null && msg !== undefined) msg.error = "Request failed!"
         }
         try {
             this.data = JSON.stringify(msg);
@@ -921,13 +921,13 @@ export class Message {
                 }
             } else {
                 cli._logger.error("[" + cli.user.username + "] failed locating useringress");
-                msg.error = "failed locating useringress";
+                if (msg !== null && msg !== undefined) msg.error = "failed locating useringress";
             }
         } catch (error) {
             this.data = "";
             cli._logger.error(error);
             //msg.error = JSON.stringify(error, null, 2);
-            msg.error = "Request failed!"
+            if (msg !== null && msg !== undefined) msg.error = "Request failed!"
         }
         try {
             this.data = JSON.stringify(msg);
@@ -966,7 +966,7 @@ export class Message {
             this.data = "";
             cli._logger.error(error);
             //msg.error = JSON.stringify(error, null, 2);
-            msg.error = "Request failed!"
+            if (msg !== null && msg !== undefined) msg.error = "Request failed!"
         }
         try {
             this.data = JSON.stringify(msg);
@@ -1016,7 +1016,7 @@ export class Message {
             this.data = "";
             cli._logger.error(error);
             //msg.error = JSON.stringify(error, null, 2);
-            msg.error = "Request failed!"
+            if (msg !== null && msg !== undefined) msg.error = "Request failed!"
         }
         try {
             this.data = JSON.stringify(msg);
@@ -1062,7 +1062,7 @@ export class Message {
             this.data = "";
             cli._logger.error(error);
             //msg.error = JSON.stringify(error, null, 2);
-            msg.error = "Request failed!"
+            if (msg !== null && msg !== undefined) msg.error = "Request failed!"
         }
         try {
             this.data = JSON.stringify(msg);
@@ -1163,7 +1163,7 @@ export class Message {
             msg.id = await this._SaveFile(readable, msg.filename, msg.mimeType, msg.metadata);
         } catch (error) {
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            msg.error = error.toString();
+            if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
         try {
@@ -1225,7 +1225,7 @@ export class Message {
             msg.file = await this._GetFile(msg.id);
         } catch (error) {
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            msg.error = error.toString();
+            if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
         try {
@@ -1293,7 +1293,7 @@ export class Message {
 
         } catch (error) {
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            msg.error = error.toString();
+            if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
         try {
