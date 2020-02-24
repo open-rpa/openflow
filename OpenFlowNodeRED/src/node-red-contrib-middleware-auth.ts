@@ -38,7 +38,7 @@ export class noderedcontribmiddlewareauth {
         var cacheduser: CachedUser = this.getUser(req.headers.authorization);
         if (cacheduser != null) {
             req.user = cacheduser.user;
-            req.user.jwt = cacheduser.jwt;
+            (req.user as any).jwt = cacheduser.jwt;
             return next();
         }
         // parse login and password from headers
@@ -61,7 +61,7 @@ export class noderedcontribmiddlewareauth {
                         this.authorizationCache[req.headers.authorization] = cacheduser;
                         Logger.instanse.info("noderedcontribmiddlewareauth: Authorized " + user.username + " for " + req.url);
                         req.user = cacheduser.user;
-                        req.user.jwt = cacheduser.jwt;
+                        (req.user as any).jwt = cacheduser.jwt;
                         return next();
                     } else {
                         console.warn("noderedcontribmiddlewareauth: " + user.username + " is not member of 'nodered api users' for " + req.url);
