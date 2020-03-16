@@ -445,6 +445,7 @@ export class run_workflow_node {
 
                     result = res[0];
                     result.payload = data.payload;
+                    result._id = result._originalid;
 
                     this.node.send([null, result]); // ???? why does this not work ?????
                     // this.node.send([null, null, result]);
@@ -498,6 +499,7 @@ export class run_workflow_node {
                 this.node.status({ fill: "red", shape: "dot", text: "Unknown workflow " + workflowid });
                 return;
             }
+            msg._originalid = msg._id;
             var _id = msg._id;
             var queue: string = workflow.queue;
             delete msg._id;
