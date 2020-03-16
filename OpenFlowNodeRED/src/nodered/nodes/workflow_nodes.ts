@@ -81,6 +81,8 @@ export class workflow_in_node {
             var who = WebSocketClient.instance.user;
             (role as any) = { _type: "role", "name": queue + "users", members: [{ "_id": who._id, "name": who.name }], "workflowid": this.workflow._id };
             role = await NoderedUtil.InsertOne("users", role, 0, false, null);
+        } else {
+            role = res[0];
         }
         var wf: Base = Base.assign(this.workflow);
         wf.addRight(role._id, role.name, [-1]);
