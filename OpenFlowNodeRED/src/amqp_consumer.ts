@@ -56,6 +56,20 @@ export class amqp_consumer {
             this._logger.error(error);
         }
     }
+    SendMessage(msg: string, queue: string, correlationId: string, sendreply: boolean): void {
+        if (correlationId == null || correlationId == "") { correlationId = this.generateUuid(); }
+        this._logger.info("SendMessage " + msg);
+        if (sendreply) {
+            this.channel.sendToQueue(queue, Buffer.from(msg), { correlationId: correlationId, replyTo: this._ok.queue });
+        } else {
+            this.channel.sendToQueue(queue, Buffer.from(msg), { correlationId: correlationId });
+        }
+    }
+    generateUuid(): string {
+        return Math.random().toString() +
+            Math.random().toString() +
+            Math.random().toString();
+    }
 
 
 }

@@ -47,10 +47,14 @@ export class amqp_publisher {
         if (this.channel != null && this.channel != undefined) { await this.channel.close(); this.channel = null; }
         if (this.conn != null && this.conn != undefined) { await this.conn.close(); this.conn = null; }
     }
-    SendMessage(msg: string, queue: string, correlationId: string): void {
+    SendMessage(msg: string, queue: string, correlationId: string, sendreply: boolean): void {
         if (correlationId == null || correlationId == "") { correlationId = this.generateUuid(); }
         this._logger.info("SendMessage " + msg);
-        this.channel.sendToQueue(queue, Buffer.from(msg), { correlationId: correlationId, replyTo: this._ok.queue });
+        if (sendreply) {
+            this.channel.sendToQueue(queue, Buffer.from(msg), { correlationId: correlationId, replyTo: this._ok.queue });
+        } else {
+            this.channel.sendToQueue(queue, Buffer.from(msg), { correlationId: correlationId });
+        }
     }
     private _OnMessage(sender: amqp_publisher, msg: amqplib.ConsumeMessage): void {
         try {

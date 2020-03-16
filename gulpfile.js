@@ -24,10 +24,12 @@ gulp.task("copyfiles1", function () {
     var nodered = gulp.src(NodeREDHTMLFiles).pipe(gulp.dest("OpenFlowNodeRED/dist/nodered/nodes"));
     var version1 = gulp.src('./VERSION').pipe(gulp.dest("./dist"));
     var version2 = gulp.src('./VERSION').pipe(gulp.dest("OpenFlowNodeRED/dist"));
-    return merge(openflow, nodered, version1, version2);
+
+    var copyspurce = gulp.src('./OpenFlow/src/public/**/*.ts').pipe(gulp.dest(destination + '/OpenFlow/src/public'));
+    return merge(openflow, nodered, version1, version2, copyspurce);
 });
 gulp.task("watch", function () {
-    return gulp.watch(NodeREDHTMLFiles.concat(OpenFlowFiles).concat('./VERSION'), gulp.series("copyfiles1"));
+    return gulp.watch(NodeREDHTMLFiles.concat(OpenFlowFiles).concat('./VERSION').concat('./OpenFlow/src/public/**/*.ts'), gulp.series("copyfiles1"));
 });
 
 gulp.task("compose", shell.task([

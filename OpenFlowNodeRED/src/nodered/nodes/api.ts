@@ -29,5 +29,6 @@ export = function (RED: Red) {
     RED.nodes.registerType("api upload file", api.upload_file);
 
     RED.httpAdmin.get("/api_roles", RED.auth.needsPermission('serial.read'), api.get_api_roles);
+    RED.httpAdmin.get("/api_userroles", RED.auth.needsPermission('serial.read'), api.get_api_userroles);
 
 }

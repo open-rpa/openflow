@@ -537,8 +537,41 @@ export async function get_api_roles(req, res) {
     try {
         var rawAssertion = req.user.getAssertionXml();
         var token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
-        var result: any[] = await NoderedUtil.Query('users', { _type: "role" },
-            { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
+        var q: any = { _type: "role" };
+        if (!NoderedUtil.IsNullEmpty(req.query.name)) {
+            q = { _type: "role", name: { $regex: ".*" + req.query.name + ".*" } };
+        }
+        var result: any[] = await NoderedUtil.Query('users', q, { name: 1 }, { name: -1 }, 1000, 0, token.jwt);
+
+        res.json(result);
+    } catch (error) {
+        res.status(500).json(error);
+    }
+}
+
+
+export async function get_api_userroles(req, res) {
+    try {
+        var rawAssertion = req.user.getAssertionXml();
+        var token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
+        var q: any = { $or: [{ _type: "role" }, { _type: "user" }] };
+        var ors = [];
+        if (!NoderedUtil.IsNullEmpty(req.query.name)) {
+            ors.push({ name: { $regex: ".*" + req.query.name + ".*" } });
+        }
+        if (!NoderedUtil.IsNullEmpty(req.query.id)) {
+            ors.push({ _id: req.query.id });
+        }
+        if (ors.length > 0) {
+            q = {
+                $and: [
+                    { $or: [{ _type: "role" }, { _type: "user" }] },
+                    { $or: ors }
+                ]
+            };
+        }
+
+        var result: any[] = await NoderedUtil.Query('users', q, { name: 1 }, { name: -1 }, 100, 0, token.jwt)
         res.json(result);
     } catch (error) {
         res.status(500).json(error);

@@ -113,3 +113,161 @@ Send payload as data to a robot, requesting it to run the selected Workflow
 
     });
 </script>
+
+
+
+
+
+
+
+<script type="text/x-red" data-template-name="run workflow">
+    <div class="form-row">
+        <label ><i class="fa fa-tag"></i> Queue name</label>
+        <input type="text" id="node-input-queue" placeholder="Queue name">
+    </div>
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+    <div class="form-row">
+        <label for="node-input-workflowid-search"><i class="fa fa-tasks"></i> Search</label>
+        <input type="text" id="node-input-workflowid-search" placeholder="Search" >
+    </div>
+    <div class="form-row">
+        <label for="node-input-workflowid"><i class="fa fa-tasks"></i> Target</label>
+        <select id="node-input-workflowid-select">
+            <option>Loading...</option>
+        </select>
+        <input id="node-input-workflowid" type="hidden">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-targetid-search"><i class="fa fa-tasks"></i> Search</label>
+        <input type="text" id="node-input-targetid-search" placeholder="Search" >
+    </div>
+    <div class="form-row">
+        <label for="node-input-targetid"><i class="fa fa-tasks"></i> Target</label>
+        <select id="node-input-targetid-select">
+            <option>Loading...</option>
+        </select>
+        <input id="node-input-targetid" type="hidden">
+    </div>
+</script>
+<script type="text/x-red" data-help-name="run workflow">
+    <p>Grants a role (or user if set by msg.targetid) a specific permission on the entity/entities in payload.</p>
+</script>
+<script type="text/javascript">
+    function generateUuid() {
+        return Math.random().toString(36).substr(2, 9);
+    }
+
+    RED.nodes.registerType('run workflow', {
+        category: 'rpa',
+        color: "#a6bbcf",
+        defaults: {
+            name: { value: "", required: true },
+            queue: { value: "", required: true },
+            targetid: { value: "" },
+            workflowid: { value: "" }
+        },
+        inputs: 1,
+        outputs: 2,
+        outputLabels: ["scheduled", "result"],
+        icon: "bridge.png",
+        label: function () {
+            return this.name || "run workflow";
+        },
+        labelStyle: function () {
+            return this.name ? "node_label_italic" : "";
+        },
+
+        oneditprepare: function () {
+            var queue = $('#node-input-queue').val();
+            if (queue === null || queue === undefined || queue === "") {
+                queue = generateUuid();
+                $('#node-input-queue').val(queue);
+            }
+            // var name = $('#node-input-name').val();
+            // if (name === null || name === undefined || name === "") {
+            //     name = queue;
+            //     $('#node-input-name').val(name);
+            // }
+            var reloadUsers = function (firstrun) {
+                $('#node-input-targetid-select').empty();
+                $('#node-input-targetid-select').append($('<option>', {
+                    value: -1,
+                    text: "Loading..."
+                }));
+                $('#node-input-targetid-select').val(-1);
+                $.getJSON('api_userroles', { name: $('#node-input-targetid-search').val(), id: $('#node-input-targetid').val() }, function (data) {
+                    $('#node-input-targetid-select').empty();
+                    $('#node-input-targetid-select').append($('<option>', {
+                        value: "",
+                        text: "None"
+                    }));
+
+                    $.each(data, function (i, ele) {
+                        $('#node-input-targetid-select').append($('<option>', {
+                            value: ele._id,
+                            text: ele.name
+                        }));
+                    });
+                    $('#node-input-targetid-select').val($('#node-input-targetid').val());
+                    // if (firstrun) {
+                    //     $('#node-input-targetid-select').val($('#node-input-targetid').val());
+                    // }
+                }).error(function (jqXHR, textStatus, errorThrown) {
+                    console.log("error " + textStatus);
+                    console.log("incoming Text " + jqXHR.responseText);
+                    alert("error:" + jqXHR.responseText);
+                });
+            }
+            $('#node-input-targetid-search').change(() => {
+                reloadUsers(false);
+            })
+            reloadUsers(true);
+
+
+
+            var reloadWorkflows = function (firstrun) {
+                $('#node-input-workflowid-select').empty();
+                $('#node-input-workflowid-select').append($('<option>', {
+                    value: -1,
+                    text: "Loading..."
+                }));
+                $('#node-input-workflowid-select').val(-1);
+                $.getJSON('workflows', { name: $('#node-input-workflowid-search').val(), id: $('#node-input-workflowid').val() }, function (data) {
+                    $('#node-input-workflowid-select').empty();
+                    $('#node-input-workflowid-select').append($('<option>', {
+                        value: "",
+                        text: "None"
+                    }));
+
+                    $.each(data, function (i, ele) {
+                        $('#node-input-workflowid-select').append($('<option>', {
+                            value: ele._id,
+                            text: ele.name
+                        }));
+                    });
+                    $('#node-input-workflowid-select').val($('#node-input-workflowid').val());
+                    // if (firstrun) {
+                    //     $('#node-input-workflowid-select').val($('#node-input-workflowid').val());
+                    // }
+                }).error(function (jqXHR, textStatus, errorThrown) {
+                    console.log("error " + textStatus);
+                    console.log("incoming Text " + jqXHR.responseText);
+                    alert("error:" + jqXHR.responseText);
+                });
+            }
+            $('#node-input-workflowid-search').change(() => {
+                reloadWorkflows(false);
+            })
+            reloadWorkflows(true);
+        },
+        oneditsave: function () {
+            $('#node-input-targetid').val($('#node-input-targetid-select').val());
+            $('#node-input-workflowid').val($('#node-input-workflowid-select').val());
+        }
+
+    });
+</script>
