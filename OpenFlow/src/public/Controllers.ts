@@ -1520,8 +1520,9 @@ module openflow {
             if (this.instanceid !== null && this.instanceid !== undefined && this.instanceid !== "") {
                 var res = await this.api.Query("workflow_instances", { _id: this.instanceid }, null, { _created: -1 }, 1);
                 if (res.length > 0) { this.model = res[0]; } else { console.error(this.id + " workflow instances not found!"); return; }
-                console.log(this.model);
-                console.log(this.model.form);
+                // console.log(this.model);
+                // console.log(this.model.form);
+                console.log("form: " + this.model.form);
                 if (this.model.payload === null || this.model.payload === undefined) {
                     this.model.payload = { _id: this.instanceid };
                 }
@@ -1530,7 +1531,11 @@ module openflow {
                 }
 
 
-                if (this.model.form !== "") {
+                if (this.model.form === "none") {
+                    this.$location.path("/main");
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    return;
+                } else if (this.model.form !== "") {
                     var res = await this.api.Query("forms", { _id: this.model.form }, null, { _created: -1 }, 1);
                     if (res.length > 0) { this.form = res[0]; } else {
                         if (this.model.state == "completed") {
