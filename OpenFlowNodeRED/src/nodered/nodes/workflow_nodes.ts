@@ -342,7 +342,7 @@ export async function get_workflows(req, res) {
         var ors = [];
         if (!NoderedUtil.IsNullEmpty(req.query.name)) {
             ors.push({ name: { $regex: ".*" + req.query.name + ".*" } });
-        }
+        } else { ors.push({}); }
         if (!NoderedUtil.IsNullEmpty(req.query.id)) {
             ors.push({ _id: req.query.id });
         }
@@ -354,7 +354,6 @@ export async function get_workflows(req, res) {
                 ]
             };
         }
-
         var result: any[] = await NoderedUtil.Query('workflow', q, { name: 1 }, { name: -1 }, 100, 0, token.jwt)
         res.json(result);
     } catch (error) {
@@ -395,7 +394,12 @@ export class run_workflow_node {
     async connect() {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
-            this.con = new amqp_consumer(Logger.instanse, this.host, this.config.queue);
+            var queue: string = this.config.queue;
+            if (!NoderedUtil.IsNullUndefinded(Config.queue_prefix)) {
+                queue = Config.queue_prefix + this.config.queue;
+            }
+
+            this.con = new amqp_consumer(Logger.instanse, this.host, queue);
             this.con.OnMessage = this.OnMessage.bind(this);
             await this.con.connect(true);
             this.node.status({ fill: "green", shape: "dot", text: "Connected" });

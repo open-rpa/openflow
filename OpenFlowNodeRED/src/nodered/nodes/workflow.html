@@ -134,7 +134,7 @@ Send payload as data to a robot, requesting it to run the selected Workflow
         <input type="text" id="node-input-workflowid-search" placeholder="Search" >
     </div>
     <div class="form-row">
-        <label for="node-input-workflowid"><i class="fa fa-tasks"></i> Target</label>
+        <label for="node-input-workflowid"><i class="fa fa-tasks"></i> Workflow</label>
         <select id="node-input-workflowid-select">
             <option>Loading...</option>
         </select>
@@ -154,7 +154,14 @@ Send payload as data to a robot, requesting it to run the selected Workflow
     </div>
 </script>
 <script type="text/x-red" data-help-name="run workflow">
-    <p>Grants a role (or user if set by msg.targetid) a specific permission on the entity/entities in payload.</p>
+    <p>
+        Create a new test asssigned to a user or role.<br>
+        You can set Workflow using msg.workflowid<br>
+        You can set Target using msg.targetid<br>
+        msg.payload will be reused when calling the workflow_forms
+        <br><br>
+        will return the resulting msg.payload when the workflow completes or fails
+    </p>
 </script>
 <script type="text/javascript">
     function generateUuid() {

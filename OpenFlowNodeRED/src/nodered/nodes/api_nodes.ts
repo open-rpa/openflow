@@ -558,7 +558,7 @@ export async function get_api_userroles(req, res) {
         var ors = [];
         if (!NoderedUtil.IsNullEmpty(req.query.name)) {
             ors.push({ name: { $regex: ".*" + req.query.name + ".*" } });
-        }
+        } else { ors.push({}); }
         if (!NoderedUtil.IsNullEmpty(req.query.id)) {
             ors.push({ _id: req.query.id });
         }
@@ -571,7 +571,17 @@ export async function get_api_userroles(req, res) {
             };
         }
 
-        var result: any[] = await NoderedUtil.Query('users', q, { name: 1 }, { name: -1 }, 100, 0, token.jwt)
+        var result: any[] = await NoderedUtil.Query('users', q, { name: 1 }, { name: -1 }, 100, 0, token.jwt);
+        if (!NoderedUtil.IsNullEmpty(req.query.id)) {
+            var exists = result.filter(x => x._id == req.query.id);
+            if (exists.length == 0) {
+                var result2: any[] = await NoderedUtil.Query('users', { _id: req.query.id }, { name: 1 }, { name: -1 }, 1, 0, token.jwt);
+                if (result2.length == 1) {
+                    result.push(result2[0]);
+                }
+            }
+        }
+
         res.json(result);
     } catch (error) {
         res.status(500).json(error);
