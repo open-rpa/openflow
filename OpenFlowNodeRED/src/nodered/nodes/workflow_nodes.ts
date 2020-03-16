@@ -499,6 +499,7 @@ export class run_workflow_node {
                 return;
             }
             var queue: string = workflow.queue;
+            delete msg._id;
             msg._type = "instance";
             msg.queue = resultqueue;
             msg.name = name;
