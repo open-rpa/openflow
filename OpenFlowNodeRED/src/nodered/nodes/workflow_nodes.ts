@@ -69,7 +69,6 @@ export class workflow_in_node {
             wf._type = "workflow";
             wf.name = this.config.name;
             (wf as any).queue = queue;
-            wf.addRight(role._id, role.name, [-1]);
             this.workflow = await NoderedUtil.InsertOne("workflow", { _type: "workflow", "queue": queue, "name": this.config.name }, 0, false, null);
         } else {
             this.workflow = res[0];
