@@ -498,11 +498,12 @@ export class run_workflow_node {
                 this.node.status({ fill: "red", shape: "dot", text: "Unknown workflow " + workflowid });
                 return;
             }
+            var _id = msg._id;
             var queue: string = workflow.queue;
             delete msg._id;
             msg._type = "instance";
             msg.queue = resultqueue;
-            msg.name = name;
+            msg.name = "runner: " + name;
             msg.state = "pending";
             var res3 = await NoderedUtil.InsertOne("workflow_instances", msg, 1, true, jwt);
             msg._parentid = res3._id;
@@ -520,10 +521,12 @@ export class run_workflow_node {
             (_res2data as any).state = "new";
 
             var res2 = await NoderedUtil.InsertOne("workflow_instances", _res2data, 1, true, jwt);
-            msg._id = res2._id;
+            msg.newinstanceid = res2._id;
             var message = { _id: res2._id };
 
             this.con.SendMessage(JSON.stringify(message), queue, null, false);
+
+            msg._id = _id;
 
             this.node.send(msg);
         } catch (error) {
