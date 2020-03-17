@@ -88,7 +88,7 @@ export class workflow_in_node {
 
         }
 
-        var res = await NoderedUtil.Query("users", { "_type": "role", "workflowid": this.workflow._id }, null, null, 1, 0, null);
+        var res = await NoderedUtil.Query("users", { "_type": "role", "$or": [{ "workflowid": this.workflow._id }, { "name": queue + "users" }] }, null, null, 1, 0, null);
         var role: Base = null;
         if (res.length == 0) {
             var who = WebSocketClient.instance.user;
