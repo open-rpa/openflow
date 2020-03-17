@@ -405,7 +405,7 @@ module openflow {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api, userdata);
             console.debug("MainCtrl");
             this.collection = "workflow_instances"
-            this.basequery = { state: { $ne: "completed" }, form: { $exists: true } };
+            this.basequery = { state: { $ne: "completed" }, $and: [{ form: { $exists: true } }, { form: { "$ne": "none" } }] };
 
             WebSocketClient.onSignedin((_user: TokenUser) => {
                 this.loadData();

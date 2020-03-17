@@ -4,6 +4,7 @@ import { WebSocketClient } from "../../WebSocketClient";
 import { Crypt } from "../../Crypt";
 import { Config } from "../../Config";
 import { Logger } from "../../Logger";
+import { Base } from "../../Base";
 
 export class NoderedUtil {
     public static IsNullUndefinded(obj: any) {
@@ -72,6 +73,22 @@ export class NoderedUtil {
     }
 
 
+    public static async GetRole(id: string, name: string): Promise<Base> {
+        var res: any[];
+        if (NoderedUtil.IsNullEmpty(id)) {
+            // res = await NoderedUtil.Query("users", { "_type": "role", $or: [{ _id: id }, { name: name }] }, null, null, 2, 0, null);
+            res = await NoderedUtil.Query("users", { "_type": "role", name: name }, null, null, 2, 0, null);
+        } else {
+            res = await NoderedUtil.Query("users", { "_type": "role", _id: id }, null, null, 2, 0, null);
+        }
+        if (res.length == 1) {
+            return res[0];
+        }
+        else if (res.length == 2) {
+            console.error("Found more than one !");
+        }
+        return null;
+    }
 
 
     public static async Query(collection: string, query: any, projection: any, orderby: any, top: number, skip: number, jwt: string, queryas: string = null): Promise<any[]> {
