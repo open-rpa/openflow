@@ -393,6 +393,7 @@ module openflow {
     }
 
     export class MainCtrl extends entitiesCtrl<openflow.Base> {
+        public showcompleted: boolean = false;
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -407,14 +408,23 @@ module openflow {
             this.collection = "workflow_instances"
             // this.basequery = { state: { $ne: "completed" }, $and: [{ form: { $exists: true } }, { form: { "$ne": "none" } }] };
             // this.basequery = { state: { $ne: "completed" }, form: { $exists: true } };
-            WebSocketClient.onSignedin((_user: TokenUser) => {
+            this.preloadData = () => {
                 var user = this.WebSocketClient.user;
                 var ors: any[] = [];
                 ors.push({ targetid: user._id });
                 this.WebSocketClient.user.roles.forEach(role => {
                     ors.push({ targetid: role._id });
                 });
-                this.basequery = { state: { $ne: "completed" }, form: { $exists: true }, $or: ors };
+                this.basequery = {};
+                this.basequery = { $or: ors };
+                if (!this.showcompleted) {
+                    this.basequery.state = { $ne: "completed" };
+                    this.basequery.form = { $exists: true };
+                    // this.basequery.$or = ors;
+                } else {
+                }
+            };
+            WebSocketClient.onSignedin((_user: TokenUser) => {
                 this.loadData();
             });
 

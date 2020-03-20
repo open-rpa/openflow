@@ -7,6 +7,7 @@
       <div class="input-group-addon"><i class="fas fa-search"></i></div>
       <input ng-model="ctrl.searchstring" ng-change="ctrl.Search()" class="form-control input-md"
         ng-model-options="{debounce: 400}" />
+      <input type="checkbox" class="form-control " ng-model="ctrl.showcompleted" ng-change="ctrl.Search()" />
     </div>
   </div>
 </div>
