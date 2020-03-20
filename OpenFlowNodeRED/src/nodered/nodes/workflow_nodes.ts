@@ -294,7 +294,7 @@ export class workflow_out_node {
                 data.values = msg.values;
                 data.jwt = msg.jwt;
 
-                this.con.SendMessage(JSON.stringify(data), msg.resultqueue, null, false);
+                this.con.SendMessage(JSON.stringify(data), msg.resultqueue, msg.correlationId, false);
             }
         } catch (error) {
             NoderedUtil.HandleError(this, error);
