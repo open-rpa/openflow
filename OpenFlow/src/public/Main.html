@@ -13,17 +13,16 @@
 <table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;">
   <thead class="thead-dark">
     <tr>
-      <th><b translate lib="web">createdby</b></th>
       <th><b translate lib="web">name</b></th>
       <th><b translate lib="web">state</b></th>
       <th><b translate lib="web">created</b></th>
       <th><b translate lib="web">updated</b></th>
+      <th><b translate lib="web">createdby</b></th>
       <th></th>
     </tr>
   </thead>
   <tbody>
     <tr ng-repeat="model in ctrl.models">
-      <td>{{model._createdby}}</td>
       <td>{{model.name}}</td>
       <td>{{model.state}}</td>
       <td>
@@ -32,6 +31,7 @@
       <td>
         <timesince ng-model="model._modified" />
       </td>
+      <td>{{model._createdby}}</td>
       <td class="btn-cell">
         <a ng-href="#/Form/{{model.workflow}}/{{model._id}}" ng-hide="ctrl.loading==true || model.form == 'none'"
           translate lib="web">open</a>

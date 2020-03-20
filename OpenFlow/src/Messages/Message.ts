@@ -721,7 +721,7 @@ export class Message {
             msg = EnsureNoderedInstanceMessage.assign(this.data);
             var name = cli.user.username;
             if (msg.name !== null && msg.name !== undefined && msg.name !== "" && msg.name != cli.user.username) {
-                var exists = User.FindByUsername(msg.name, cli.jwt);
+                var exists = await User.FindByUsername(msg.name, cli.jwt);
                 if (exists == null) { throw new Error("Unknown name " + msg.name) }
                 name = msg.name;
             }
@@ -883,7 +883,7 @@ export class Message {
             msg = DeleteNoderedInstanceMessage.assign(this.data);
             var name = cli.user.username;
             if (msg.name !== null && msg.name !== undefined && msg.name !== "" && msg.name != cli.user.username) {
-                var exists = User.FindByUsername(msg.name, cli.jwt);
+                var exists = await User.FindByUsername(msg.name, cli.jwt);
                 if (exists == null) { throw new Error("Unknown name " + msg.name) }
                 name = msg.name;
             }
@@ -957,7 +957,7 @@ export class Message {
             msg = RestartNoderedInstanceMessage.assign(this.data);
             var name = cli.user.username;
             if (msg.name !== null && msg.name !== undefined && msg.name !== "" && msg.name != cli.user.username) {
-                var exists = User.FindByUsername(msg.name, cli.jwt);
+                var exists = await User.FindByUsername(msg.name, cli.jwt);
                 if (exists == null) { throw new Error("Unknown name " + msg.name) }
                 name = msg.name;
             }
@@ -996,7 +996,7 @@ export class Message {
             msg = GetNoderedInstanceMessage.assign(this.data);
             var name = cli.user.username;
             if (msg.name !== null && msg.name !== undefined && msg.name !== "" && msg.name != cli.user.username) {
-                var exists = User.FindByUsername(msg.name, cli.jwt);
+                var exists = await User.FindByUsername(msg.name, cli.jwt);
                 if (exists == null) { throw new Error("Unknown name " + msg.name) }
                 name = msg.name;
             }
@@ -1046,7 +1046,7 @@ export class Message {
             msg = GetNoderedInstanceLogMessage.assign(this.data);
             var name = cli.user.username;
             if (msg.name !== null && msg.name !== undefined && msg.name !== "" && msg.name != cli.user.username) {
-                var exists = User.FindByUsername(msg.name, cli.jwt);
+                var exists = await User.FindByUsername(msg.name, cli.jwt);
                 if (exists == null) { throw new Error("Unknown name " + msg.name) }
                 name = msg.name;
             }
