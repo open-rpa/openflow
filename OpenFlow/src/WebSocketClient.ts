@@ -269,6 +269,11 @@ export class WebSocketClient {
     async Queue(data: string, replyTo: string, correlationId: string, queuename: string): Promise<any[]> {
         var d: any = JSON.parse(data);
         var q: QueueMessage = new QueueMessage();
+        if (this.clientversion == "1.0.80" || this.clientversion == "1.0.81" || this.clientversion == "1.0.82" || this.clientversion == "1.0.83" || this.clientversion == "1.0.84" || this.clientversion == "1.0.85") {
+            q.data = d.payload;
+        } else {
+            q.data = d;
+        }
         q.data = d.payload; q.replyto = replyTo;
         q.error = d.error;
         q.correlationId = correlationId; q.queuename = queuename;
