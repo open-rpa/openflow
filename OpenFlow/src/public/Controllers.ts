@@ -405,9 +405,16 @@ module openflow {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api, userdata);
             console.debug("MainCtrl");
             this.collection = "workflow_instances"
-            this.basequery = { state: { $ne: "completed" }, $and: [{ form: { $exists: true } }, { form: { "$ne": "none" } }] };
-
+            // this.basequery = { state: { $ne: "completed" }, $and: [{ form: { $exists: true } }, { form: { "$ne": "none" } }] };
+            // this.basequery = { state: { $ne: "completed" }, form: { $exists: true } };
             WebSocketClient.onSignedin((_user: TokenUser) => {
+                var user = this.WebSocketClient.user;
+                var ors: any[] = [];
+                ors.push({ targetid: user._id });
+                this.WebSocketClient.user.roles.forEach(role => {
+                    ors.push({ targetid: role._id });
+                });
+                this.basequery = { state: { $ne: "completed" }, form: { $exists: true }, $or: ors };
                 this.loadData();
             });
 
@@ -1543,7 +1550,7 @@ module openflow {
                             if (!this.$scope.$$phase) { this.$scope.$apply(); }
                             return;
                         } else {
-                            console.error(this.id + " form not found! " + this.model.state); return;
+                            console.error(this.model.form + " form not found! " + this.model.state); return;
                         }
                     }
                 } else {

@@ -54,6 +54,7 @@ function isNumeric(num) {
             var result: SigninMessage = await socket.Send<SigninMessage>(msg);
             logger.info("signed in as " + result.user.name + " with id " + result.user._id);
             WebSocketClient.instance.user = result.user;
+            WebSocketClient.instance.jwt = result.jwt;
 
             const server: http.Server = await WebServer.configure(logger, socket);
             var baseurl = Config.saml_baseurl;

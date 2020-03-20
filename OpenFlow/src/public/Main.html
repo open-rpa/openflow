@@ -15,6 +15,7 @@
     <tr>
       <th><b translate lib="web">createdby</b></th>
       <th><b translate lib="web">name</b></th>
+      <th><b translate lib="web">state</b></th>
       <th><b translate lib="web">created</b></th>
       <th><b translate lib="web">updated</b></th>
       <th></th>
@@ -24,6 +25,7 @@
     <tr ng-repeat="model in ctrl.models">
       <td>{{model._createdby}}</td>
       <td>{{model.name}}</td>
+      <td>{{model.state}}</td>
       <td>
         <timesince ng-model="model._created" />
       </td>
@@ -31,8 +33,8 @@
         <timesince ng-model="model._modified" />
       </td>
       <td class="btn-cell">
-        <a ng-href="#/Form/{{model.workflow}}/{{model._id}}" ng-disabled="ctrl.loading==true" translate
-          lib="web">open</a>
+        <a ng-href="#/Form/{{model.workflow}}/{{model._id}}" ng-hide="ctrl.loading==true || model.form == 'none'"
+          translate lib="web">open</a>
       </td>
     </tr>
   </tbody>

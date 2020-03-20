@@ -33,13 +33,16 @@ export class amqp_consumer {
     OnMessage(sender: amqp_consumer, msg: amqplib.ConsumeMessage): void {
         sender._logger.info("OnMessage " + msg.content.toString());
     }
-    sendToQueue(replyto: string, correlationId: string, data: any) {
+    sendToQueue(queue: string, correlationId: string, data: any): void {
+        this.sendToQueueWithReply(queue, this._ok.queue, correlationId, data);
+    }
+    sendToQueueWithReply(queue: string, replyto: string, correlationId: string, data: any): void {
         if (typeof data !== 'string' && !(data instanceof String)) {
             data = JSON.stringify(data);
         }
         this._logger.info("SendMessage " + data);
         //this.channel.publish( this.exchange, "", Buffer.from(msg));
-        this.channel.sendToQueue(replyto, Buffer.from(data), { correlationId: correlationId, replyTo: this._ok.queue });
+        this.channel.sendToQueue(queue, Buffer.from(data), { correlationId: correlationId, replyTo: replyto });
     }
 
 }

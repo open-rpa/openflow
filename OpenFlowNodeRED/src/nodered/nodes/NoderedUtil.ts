@@ -1,5 +1,5 @@
 import { Red } from "node-red";
-import { QueryMessage, Message, InsertOneMessage, UpdateOneMessage, DeleteOneMessage, InsertOrUpdateOneMessage, SigninMessage, TokenUser, mapFunc, reduceFunc, finalizeFunc, MapReduceMessage, JSONfn, UpdateManyMessage, GetFileMessage, SaveFileMessage, AggregateMessage } from "../../Message";
+import { QueryMessage, Message, InsertOneMessage, UpdateOneMessage, DeleteOneMessage, InsertOrUpdateOneMessage, SigninMessage, TokenUser, mapFunc, reduceFunc, finalizeFunc, MapReduceMessage, JSONfn, UpdateManyMessage, GetFileMessage, SaveFileMessage, AggregateMessage, CreateWorkflowInstanceMessage } from "../../Message";
 import { WebSocketClient } from "../../WebSocketClient";
 import { Crypt } from "../../Crypt";
 import { Config } from "../../Config";
@@ -201,6 +201,15 @@ export class NoderedUtil {
         return result;
     }
 
+    public static async CreateWorkflowInstance(targetid: string, workflowid: string, correlationId: string, resultqueue: string, parentid: string, payload: any, jwt: string): Promise<string> {
+        var q: CreateWorkflowInstanceMessage = new CreateWorkflowInstanceMessage();
+        q.targetid = targetid; q.workflowid = workflowid; q.resultqueue = resultqueue;
+        q.correlationId = correlationId; q.parentid = parentid; q.jwt = jwt; q.payload = payload;
+        var _msg: Message = new Message();
+        _msg.command = "createworkflowinstance"; _msg.data = JSON.stringify(q);
+        var result: CreateWorkflowInstanceMessage = await WebSocketClient.instance.Send<CreateWorkflowInstanceMessage>(_msg);
+        return result.newinstanceid;
+    }
     static isNumeric(num) {
         return !isNaN(num)
     }
@@ -233,6 +242,16 @@ export class NoderedUtil {
         _msg.command = "signin"; _msg.data = JSON.stringify(q);
         var result: SigninMessage = await WebSocketClient.instance.Send<SigninMessage>(_msg);
         Logger.instanse.debug("Created token as " + result.user.username);
+        return result;
+    }
+    public static async RenewToken(jwt: string, longtoken: boolean): Promise<SigninMessage> {
+        var q: SigninMessage = new SigninMessage(); q.validate_only = true;
+        q.clientagent = "nodered";
+        q.clientversion = Config.version; q.longtoken = longtoken; q.jwt = jwt;
+        var _msg: Message = new Message();
+        _msg.command = "signin"; _msg.data = JSON.stringify(q);
+        var result: SigninMessage = await WebSocketClient.instance.Send<SigninMessage>(_msg);
+        Logger.instanse.debug("Renewed token as " + result.user.username);
         return result;
     }
     public static async GetTokenFromSAML(rawAssertion: string): Promise<SigninMessage> {

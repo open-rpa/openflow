@@ -1,4 +1,5 @@
 import { WebSocketClient, QueuedMessage } from "./WebSocketClient";
+import { Base } from "./Base";
 
 function isNumber(value: string | number): boolean {
     return ((value != null) && !isNaN(Number(value.toString())));
@@ -58,6 +59,7 @@ export class SigninMessage {
     public user: TokenUser;
     public jwt: string;
     public rawAssertion: string;
+    public longtoken: boolean = false;
     static assign(o: any): SigninMessage {
         if (typeof o === "string" || o instanceof String) {
             return Object.assign(new SigninMessage(), JSON.parse(o.toString()));
@@ -83,6 +85,17 @@ export class Rolemember {
     }
     name: string;
     _id: string;
+}
+export class Role extends Base {
+    constructor(name: string, _id: string) {
+        super();
+        this.name = name;
+        this._id = _id;
+        this._type = "role";
+    }
+    name: string;
+    _id: string;
+    members: Rolemember[];
 }
 export class QueryMessage {
     public error: string;
@@ -277,6 +290,30 @@ export class MapReduceMessage<T> {
         return Object.assign(new MapReduceMessage(null, null, null, null, null), o);
     }
 }
+
+export class CreateWorkflowInstanceMessage {
+    public error: string;
+    public jwt: any;
+
+    public correlationId: string;
+    public newinstanceid: string;
+    public state: string;
+    public queue: string;
+    public workflowid: string;
+    public resultqueue: string;
+    public targetid: string;
+    public parentid: string;
+
+    public payload: any;
+    static assign<T>(o: any): CreateWorkflowInstanceMessage {
+        if (typeof o === "string" || o instanceof String) {
+            return Object.assign(new CreateWorkflowInstanceMessage(), JSON.parse(o.toString()));
+        }
+        return Object.assign(new CreateWorkflowInstanceMessage(), o);
+    }
+
+}
+
 export class JSONfn {
     public static stringify(obj) {
         return JSON.stringify(obj, function (key, value) {

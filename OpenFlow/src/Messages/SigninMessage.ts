@@ -14,6 +14,7 @@ export class SigninMessage implements IReplyMessage {
     public clientagent: string;
     public clientversion: string;
 
+    public longtoken: boolean = false;
     public validate_only: boolean = false;
     public username: string;
     public password: string;
