@@ -63,9 +63,9 @@ export class amqp_consumer {
                     this.OnMessage(msg, (result) => {
                         try {
                             if (!this.noAck) { this.channel.ack(msg); }
-                            if (msg.properties.replyTo !== null && msg.properties.replyTo !== undefined) {
-                                this.channel.sendToQueue(msg.properties.replyTo, Buffer.from(result), { correlationId: msg.properties.correlationId });
-                            }
+                            // if (msg.properties.replyTo !== null && msg.properties.replyTo !== undefined) {
+                            //     this.channel.sendToQueue(msg.properties.replyTo, Buffer.from(result), { correlationId: msg.properties.correlationId });
+                            // }
                         } catch (error) {
                             this._logger.error(error);
                         }

@@ -195,6 +195,8 @@ export class workflow_in_node {
             // result.values = data.values;
             // result.jwt = data.jwt;
             data.amqpacknowledgment = ack;
+            data._replyTo = msg.properties.replyTo;
+            data._correlationId = msg.properties.correlationId;
 
             this.node.send(data);
             // this.node.send(result);
@@ -293,6 +295,26 @@ export class workflow_out_node {
                 data.jwt = msg.jwt;
 
                 this.con.SendMessage(JSON.stringify(data), msg.resultqueue, null, false);
+            }
+        } catch (error) {
+            NoderedUtil.HandleError(this, error);
+        }
+        try {
+            if (!NoderedUtil.IsNullEmpty(msg._replyTo)) {
+                if (msg.payload === null || msg.payload === undefined) { msg.payload == {}; }
+                var data: any = {};
+                data.state = msg.state;
+                if (msg.error) {
+                    data.error = "error";
+                    if (msg.error.message) {
+                        data.error = msg.error.message;
+                    }
+                }
+                data._id = msg._id;
+                data.payload = msg.payload;
+                data.values = msg.values;
+                data.jwt = msg.jwt;
+                this.con.SendMessage(JSON.stringify(data), msg._replyTo, msg._correlationId, false);
             }
         } catch (error) {
             NoderedUtil.HandleError(this, error);
