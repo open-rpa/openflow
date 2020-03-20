@@ -162,18 +162,11 @@ export class rpa_workflow_node {
             var rpacommand = {
                 command: "invoke",
                 workflowid: this.config.workflow,
-                data: msg.payload
-            }
-            var data = {
                 jwt: msg.jwt,
-                payload: rpacommand
+                data: { payload: msg.payload }
             }
             this.node.status({ fill: "blue", shape: "dot", text: "Robot running..." });
-            this.con.SendMessage(JSON.stringify(data), this.config.queue, correlationId, true);
-            // var data: any = {};
-            // data.payload = msg.payload;
-            // data.jwt = msg.jwt;
-            // this.con.SendMessage(JSON.stringify(data), this.config.queue);
+            this.con.SendMessage(JSON.stringify(rpacommand), this.config.queue, correlationId, true);
         } catch (error) {
             NoderedUtil.HandleError(this, error);
             try {
