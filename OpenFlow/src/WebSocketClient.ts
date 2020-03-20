@@ -274,7 +274,8 @@ export class WebSocketClient {
         } else {
             q.data = d;
         }
-        q.data = d.payload; q.replyto = replyTo;
+        // q.data = d.payload; 
+        q.replyto = replyTo;
         q.error = d.error;
         q.correlationId = correlationId; q.queuename = queuename;
         let m: Message = Message.fromcommand("queuemessage");
