@@ -1331,7 +1331,7 @@ export class Message {
             msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
 
             if (cli.consumers.length == 0) {
-                cli.CreateConsumer("nodered." + Math.random().toString(36).substr(2, 9));
+                await cli.CreateConsumer("nodered." + Math.random().toString(36).substr(2, 9));
                 // throw new Error("Client not connected to any message queues");
             }
             if (Util.IsNullEmpty(msg.queue)) {
