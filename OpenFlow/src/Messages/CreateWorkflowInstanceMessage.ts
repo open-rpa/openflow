@@ -14,6 +14,7 @@ export class CreateWorkflowInstanceMessage<T extends Base> implements IReplyMess
     public parentid: string;
     public name: string;
     public initialrun: boolean;
+    public form: string;
 
     public payload: any;
 

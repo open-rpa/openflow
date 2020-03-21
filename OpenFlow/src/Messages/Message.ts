@@ -1353,6 +1353,7 @@ export class Message {
             if (res.length != 1) throw new Error("Unknown target id " + msg.targetid);
             workflow = res[0];
             msg.state = "new";
+            msg.form = "unknown";
             (msg as any).workflow = msg.workflowid;
 
             if (Util.IsNullEmpty(msg.correlationId)) {

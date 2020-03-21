@@ -1552,6 +1552,12 @@ module openflow {
                     this.$location.path("/main");
                     if (!this.$scope.$$phase) { this.$scope.$apply(); }
                     return;
+                } else if (this.model.form === "unknown") {
+                    console.debug("Form is unknown for instance, send empty message");
+                    console.debug("SendOne: " + this.workflow._id + " / " + this.workflow.queue);
+                    await this.SendOne(this.workflow.queue, {});
+                    this.loadData();
+                    return;
                 } else if (this.model.form !== "") {
                     var res = await this.api.Query("forms", { _id: this.model.form }, null, { _created: -1 }, 1);
                     if (res.length > 0) { this.form = res[0]; } else {
