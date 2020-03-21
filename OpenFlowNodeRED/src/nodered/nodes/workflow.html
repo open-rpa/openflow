@@ -166,12 +166,18 @@ If you have buttons on the form, you can get the name of the button clicked in m
         </select>
         <input id="node-input-targetid" type="hidden">
     </div>
+    <div class="form-row">
+        <label for="node-input-initialrun"><i class="fa fa-tasks"></i> Initial Run</label>
+        <input type="checkbox" id="node-input-initialrun">
+
+    </div>
 </script>
 <script type="text/x-red" data-help-name="run workflow">
     <p>
         Create a new task asssigned to a user or role.<br>
         You can set Workflow using msg.workflowid<br>
         You can set Target using msg.targetid<br>
+        You can set Initial Run using msg.initialrun<br>
         msg.payload will be sent to the workflow when calling the workflow_forms
         <br><br>
         will return the result in msg.payload when the workflow completes or fails, ( msg.state = "completed" ? "failed" )
@@ -189,7 +195,8 @@ If you have buttons on the form, you can get the name of the button clicked in m
             name: { value: "", required: true },
             queue: { value: "", required: true },
             targetid: { value: "" },
-            workflowid: { value: "" }
+            workflowid: { value: "" },
+            initialrun: { value: false }
         },
         inputs: 1,
         outputs: 2,

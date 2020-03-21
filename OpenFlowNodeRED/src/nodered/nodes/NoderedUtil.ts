@@ -201,9 +201,9 @@ export class NoderedUtil {
         return result;
     }
 
-    public static async CreateWorkflowInstance(targetid: string, workflowid: string, correlationId: string, resultqueue: string, parentid: string, payload: any, jwt: string): Promise<string> {
+    public static async CreateWorkflowInstance(targetid: string, workflowid: string, correlationId: string, resultqueue: string, parentid: string, payload: any, initialrun: boolean, jwt: string): Promise<string> {
         var q: CreateWorkflowInstanceMessage = new CreateWorkflowInstanceMessage();
-        q.targetid = targetid; q.workflowid = workflowid; q.resultqueue = resultqueue;
+        q.targetid = targetid; q.workflowid = workflowid; q.resultqueue = resultqueue; q.initialrun = initialrun;
         q.correlationId = correlationId; q.parentid = parentid; q.jwt = jwt; q.payload = payload;
         var _msg: Message = new Message();
         _msg.command = "createworkflowinstance"; _msg.data = JSON.stringify(q);

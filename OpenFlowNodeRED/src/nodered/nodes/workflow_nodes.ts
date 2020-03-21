@@ -405,6 +405,7 @@ export interface Irun_workflow_node {
     queue: string;
     targetid: string;
     workflowid: string;
+    initialrun: boolean;
 }
 export class run_workflow_node {
     public node: Red = null;
@@ -539,6 +540,11 @@ export class run_workflow_node {
                 var i: WebSocketClient = WebSocketClient.instance;
                 jwt = i.jwt;
             }
+            var initialrun = this.config.initialrun;
+            if (!NoderedUtil.IsNullEmpty(msg.initialrun)) {
+                initialrun = msg.initialrun;
+            }
+
 
             msg.jwt = (await NoderedUtil.RenewToken(jwt, true)).jwt;
             // Logger.instanse.info("run workflow called with id " + msg._id + " (" + msg.name + ")");
@@ -554,7 +560,7 @@ export class run_workflow_node {
             // Logger.instanse.info("created runner instance with id " + res3._id + " (" + res3.name + ")");
             msg._parentid = res3._id;
 
-            msg.newinstanceid = await NoderedUtil.CreateWorkflowInstance(targetid, workflowid, null, resultqueue, res3._id, msg.payload, jwt);;
+            msg.newinstanceid = await NoderedUtil.CreateWorkflowInstance(targetid, workflowid, null, resultqueue, res3._id, msg.payload, initialrun, jwt);;
 
             this.node.send(msg);
             this.node.status({ fill: "green", shape: "dot", text: "Connected" });

@@ -303,6 +303,7 @@ export class CreateWorkflowInstanceMessage {
     public resultqueue: string;
     public targetid: string;
     public parentid: string;
+    public initialrun: boolean;
 
     public payload: any;
     static assign<T>(o: any): CreateWorkflowInstanceMessage {

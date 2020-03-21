@@ -1367,10 +1367,10 @@ export class Message {
             var res2 = await Config.db.InsertOne(_data, "workflow_instances", 1, true, msg.jwt);
             msg.newinstanceid = res2._id;
 
-
-            var message = { _id: res2._id };
-            cli.consumers[0].sendToQueueWithReply(msg.queue, msg.resultqueue, msg.correlationId, message);
-
+            if (msg.initialrun) {
+                var message = { _id: res2._id };
+                cli.consumers[0].sendToQueueWithReply(msg.queue, msg.resultqueue, msg.correlationId, message);
+            }
         } catch (error) {
             cli._logger.error(error);
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
