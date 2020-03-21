@@ -797,7 +797,7 @@ export class Message {
                                                 port: 80,
                                                 scheme: "HTTP"
                                             },
-                                            initialDelaySeconds: 30,
+                                            initialDelaySeconds: 60,
                                             periodSeconds: 5,
                                             failureThreshold: 5,
                                             timeoutSeconds: 5
