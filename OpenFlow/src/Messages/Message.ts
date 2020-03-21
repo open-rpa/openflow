@@ -40,6 +40,7 @@ import { DropCollectionMessage } from "./DropCollectionMessage";
 import * as path from "path";
 import { UpdateFileMessage } from "./UpdateFileMessage";
 import { DatabaseConnection } from "../DatabaseConnection";
+import { CreateWorkflowInstanceMessage } from "./CreateWorkflowInstanceMessage";
 
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 export class Message {
@@ -175,6 +176,9 @@ export class Message {
                     break;
                 case "updatefile":
                     this.UpdateFile(cli);
+                    break;
+                case "createworkflowinstance":
+                    this.CreateWorkflowInstance(cli);
                     break;
                 default:
                     this.UnknownCommand(cli);
@@ -571,7 +575,12 @@ export class Message {
             } else {
                 Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
                 var userid: string = user._id;
-                msg.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
+                if (msg.longtoken) {
+                    msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
+                } else {
+                    msg.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
+                }
+
                 msg.user = tuser;
                 if (msg.impersonate !== undefined && msg.impersonate !== null && msg.impersonate !== "" && tuser._id != msg.impersonate) {
                     var items = await Config.db.query({ _id: msg.impersonate }, null, 1, 0, null, "users", msg.jwt);
@@ -604,7 +613,11 @@ export class Message {
                     }
                     tuser = new TokenUser(user);
                     tuser.impostor = userid;
-                    msg.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
+                    if (msg.longtoken) {
+                        msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
+                    } else {
+                        msg.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
+                    }
                     msg.user = tuser;
                     Audit.ImpersonateSuccess(tuser, tuserimpostor, cli.clientagent, cli.clientversion);
                 }
@@ -629,7 +642,6 @@ export class Message {
                     cli.user = user;
                 } else {
                     cli._logger.debug(tuser.username + " was validated in using " + type);
-                    // cli.jwt = Crypt.createToken(cli.user, "5m");
                 }
                 if (msg.impersonate === undefined || msg.impersonate === null || msg.impersonate === "") {
                     user.lastseen = new Date(new Date().toISOString());
@@ -709,7 +721,7 @@ export class Message {
             msg = EnsureNoderedInstanceMessage.assign(this.data);
             var name = cli.user.username;
             if (msg.name !== null && msg.name !== undefined && msg.name !== "" && msg.name != cli.user.username) {
-                var exists = User.FindByUsername(msg.name, cli.jwt);
+                var exists = await User.FindByUsername(msg.name, cli.jwt);
                 if (exists == null) { throw new Error("Unknown name " + msg.name) }
                 name = msg.name;
             }
@@ -785,7 +797,7 @@ export class Message {
                                                 port: 80,
                                                 scheme: "HTTP"
                                             },
-                                            initialDelaySeconds: 30,
+                                            initialDelaySeconds: 60,
                                             periodSeconds: 5,
                                             failureThreshold: 5,
                                             timeoutSeconds: 5
@@ -871,7 +883,7 @@ export class Message {
             msg = DeleteNoderedInstanceMessage.assign(this.data);
             var name = cli.user.username;
             if (msg.name !== null && msg.name !== undefined && msg.name !== "" && msg.name != cli.user.username) {
-                var exists = User.FindByUsername(msg.name, cli.jwt);
+                var exists = await User.FindByUsername(msg.name, cli.jwt);
                 if (exists == null) { throw new Error("Unknown name " + msg.name) }
                 name = msg.name;
             }
@@ -945,7 +957,7 @@ export class Message {
             msg = RestartNoderedInstanceMessage.assign(this.data);
             var name = cli.user.username;
             if (msg.name !== null && msg.name !== undefined && msg.name !== "" && msg.name != cli.user.username) {
-                var exists = User.FindByUsername(msg.name, cli.jwt);
+                var exists = await User.FindByUsername(msg.name, cli.jwt);
                 if (exists == null) { throw new Error("Unknown name " + msg.name) }
                 name = msg.name;
             }
@@ -984,7 +996,7 @@ export class Message {
             msg = GetNoderedInstanceMessage.assign(this.data);
             var name = cli.user.username;
             if (msg.name !== null && msg.name !== undefined && msg.name !== "" && msg.name != cli.user.username) {
-                var exists = User.FindByUsername(msg.name, cli.jwt);
+                var exists = await User.FindByUsername(msg.name, cli.jwt);
                 if (exists == null) { throw new Error("Unknown name " + msg.name) }
                 name = msg.name;
             }
@@ -1034,7 +1046,7 @@ export class Message {
             msg = GetNoderedInstanceLogMessage.assign(this.data);
             var name = cli.user.username;
             if (msg.name !== null && msg.name !== undefined && msg.name !== "" && msg.name != cli.user.username) {
-                var exists = User.FindByUsername(msg.name, cli.jwt);
+                var exists = await User.FindByUsername(msg.name, cli.jwt);
                 if (exists == null) { throw new Error("Unknown name " + msg.name) }
                 name = msg.name;
             }
@@ -1292,6 +1304,76 @@ export class Message {
             var res = await fsc.updateOne(q, { $set: { metadata: msg.metadata } });
 
         } catch (error) {
+            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) msg.error = error.toString();
+            cli._logger.error(error);
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            cli._logger.error(error);
+        }
+        this.Send(cli);
+    }
+
+    async CreateWorkflowInstance(cli: WebSocketClient) {
+        this.Reply();
+        var msg: CreateWorkflowInstanceMessage<Base>
+        try {
+            msg = CreateWorkflowInstanceMessage.assign(this.data);
+            if (Util.IsNullEmpty(msg.workflowid) && Util.IsNullEmpty(msg.queue)) throw new Error("workflowid or queue is mandatory");
+            if (Util.IsNullEmpty(msg.resultqueue)) throw new Error("replyqueuename is mandatory");
+            if (Util.IsNullEmpty(msg.targetid)) throw new Error("targetid is mandatory");
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+
+            var tuser = Crypt.verityToken(msg.jwt);
+            msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
+
+            if (cli.consumers.length == 0) {
+                await cli.CreateConsumer("nodered." + Math.random().toString(36).substr(2, 9));
+                // throw new Error("Client not connected to any message queues");
+            }
+            if (Util.IsNullEmpty(msg.queue)) {
+                var workflow: any = null;
+                var user: any = null;
+                var res = await Config.db.query({ "_id": msg.workflowid }, null, 1, 0, null, "workflow", msg.jwt);
+                if (res.length != 1) throw new Error("Unknown workflow id " + msg.workflowid);
+                workflow = res[0];
+                msg.queue = workflow.queue;
+                if (Util.IsNullEmpty(msg.name)) { msg.name = workflow.name; }
+            }
+            if (Util.IsNullEmpty(msg.name)) throw new Error("name is mandatory when workflowid not set")
+
+            if (msg.queue === msg.resultqueue) {
+                throw new Error("Cannot reply to self queuename:" + msg.queue + " correlationId:" + msg.resultqueue);
+            }
+
+            res = await Config.db.query({ "_id": msg.targetid }, null, 1, 0, null, "users", msg.jwt);
+            if (res.length != 1) throw new Error("Unknown target id " + msg.targetid);
+            workflow = res[0];
+            msg.state = "new";
+            msg.form = "unknown";
+            (msg as any).workflow = msg.workflowid;
+
+            if (Util.IsNullEmpty(msg.correlationId)) {
+                msg.correlationId = Math.random().toString(36).substr(2, 9);
+            }
+
+            var _data = Base.assign<Base>(msg as any);
+            _data.addRight(msg.targetid, "targetid", [-1]);
+            _data._type = "instance";
+            _data.name = msg.name;
+
+            var res2 = await Config.db.InsertOne(_data, "workflow_instances", 1, true, msg.jwt);
+            msg.newinstanceid = res2._id;
+
+            if (msg.initialrun) {
+                var message = { _id: res2._id };
+                cli.consumers[0].sendToQueueWithReply(msg.queue, msg.resultqueue, msg.correlationId, message);
+            }
+        } catch (error) {
+            cli._logger.error(error);
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);

@@ -21,6 +21,45 @@ export type mapFunc = () => void;
 export type reduceFunc = (key: string, values: any[]) => any;
 export type finalizeFunc = (key: string, value: any) => any;
 const isoDatePattern = new RegExp(/\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z)/);
+
+//export declare function
+// export declare function Promise.retry(k, v);
+
+// declare function f(): void;
+// declare namespace Promise {
+//     export function retry(retries: number, any): any;
+// }
+Object.defineProperty(Promise, 'retry', {
+    configurable: true,
+    writable: true,
+    value: function retry(retries, executor) {
+        console.log(`${retries} retries left!`)
+
+        if (typeof retries !== 'number') {
+            throw new TypeError('retries is not a number')
+        }
+
+        return new Promise(executor).catch(error => retries > 0
+            ? (Promise as any).retry(retries - 1, executor)
+            : Promise.reject(error)
+        )
+    }
+})
+
+// (Promise as any).retry(100, (resolve, reject) => {
+//     // your sendFile core logic with proper
+//     // calls to resolve and reject goes here
+//     const rand = Math.random()
+
+//     console.log(rand)
+
+//     if (rand < 0.1) resolve(rand)
+//     else reject(rand)
+// }).then(
+//     value => console.log(`resolved: ${value}`),
+//     error => console.log(`rejected: ${error}`)
+// )
+
 export class DatabaseConnection {
     private mongodburl: string;
     private cli: MongoClient;
@@ -53,7 +92,12 @@ export class DatabaseConnection {
         if (this.cli !== null && this.cli !== undefined && this.isConnected) {
             return;
         }
-        this.cli = await MongoClient.connect(this.mongodburl, { autoReconnect: false, useNewUrlParser: true });
+        this.cli = await (Promise as any).retry(100, (resolve, reject) => {
+            MongoClient.connect(this.mongodburl, { autoReconnect: false, useNewUrlParser: true }).then((cli) => {
+                resolve(cli);
+            }).catch(reject);
+        });
+        // this.cli = await MongoClient.connect(this.mongodburl, { autoReconnect: false, useNewUrlParser: true });
         this.cli.on("error", (error) => {
             this.isConnected = false;
             this._logger.error(error);

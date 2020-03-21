@@ -26,31 +26,53 @@ export class amqp_publisher {
     channel: amqplib.Channel; // channel: amqplib.ConfirmChannel;
     private _ok: amqplib.Replies.AssertQueue;
     public OnMessage: any;
+    public isClosing: boolean;
 
     constructor(public _logger: winston.Logger, private connectionstring: string, public localqueuename: string) {
     }
-    async connect(): Promise<void> {
-        this.conn = await amqplib.connect(this.connectionstring);
-        this.conn.on("error", () => null);
-        this.channel = await this.conn.createChannel();
-        if (NoderedUtil.IsNullEmpty(this.localqueuename)) {
-            this._ok = await this.channel.assertQueue(this.localqueuename, { exclusive: true });
-        } else {
-            this._ok = await this.channel.assertQueue(this.localqueuename, { durable: false });
-
+    onerror(error) {
+        try {
+            this._logger.error(error);
+        } catch (err) {
+            console.error(error);
         }
-        await this.channel.consume(this._ok.queue, (msg) => { this._OnMessage(this, msg); }, { noAck: true });
+    }
+    onclose() {
+        if (this.isClosing == true) return;
+        setTimeout(() => { this.connect() }, 1000);
+    }
+    async connect(): Promise<void> {
+        try {
+            this.isClosing = false;
+            this.conn = await amqplib.connect(this.connectionstring + "?heartbeat=60");
+            this.conn.on("error", this.onerror.bind(this));
+            this.channel = await this.conn.createChannel();
+            if (NoderedUtil.IsNullEmpty(this.localqueuename)) {
+                this._ok = await this.channel.assertQueue(this.localqueuename, { exclusive: true });
+            } else {
+                this._ok = await this.channel.assertQueue(this.localqueuename, { durable: false });
 
-        this._logger.info("Connected to " + new URL(this.connectionstring).hostname);
+            }
+            await this.channel.consume(this._ok.queue, (msg) => { this._OnMessage(this, msg); }, { noAck: true });
+            this._logger.info("Connected to " + new URL(this.connectionstring).hostname);
+            this.conn.on("close", this.onclose.bind(this));
+        } catch (error) {
+            this._logger.error(error);
+            this.onclose();
+        }
     }
     async close(): Promise<void> {
         if (this.channel != null && this.channel != undefined) { await this.channel.close(); this.channel = null; }
         if (this.conn != null && this.conn != undefined) { await this.conn.close(); this.conn = null; }
     }
-    SendMessage(msg: string, queue: string, correlationId: string): void {
+    SendMessage(msg: string, queue: string, correlationId: string, sendreply: boolean): void {
         if (correlationId == null || correlationId == "") { correlationId = this.generateUuid(); }
         this._logger.info("SendMessage " + msg);
-        this.channel.sendToQueue(queue, Buffer.from(msg), { correlationId: correlationId, replyTo: this._ok.queue });
+        if (sendreply) {
+            this.channel.sendToQueue(queue, Buffer.from(msg), { correlationId: correlationId, replyTo: this._ok.queue });
+        } else {
+            this.channel.sendToQueue(queue, Buffer.from(msg), { correlationId: correlationId });
+        }
     }
     private _OnMessage(sender: amqp_publisher, msg: amqplib.ConsumeMessage): void {
         try {
@@ -77,6 +99,7 @@ export class amqp_rpc_publisher {
     private _logger: winston.Logger;
     private _ok: amqplib.Replies.AssertQueue;
     private connectionstring: string;
+    public isClosing: boolean;
 
     activecalls: IHashTable<Deferred<string>>;
 
@@ -85,15 +108,39 @@ export class amqp_rpc_publisher {
         this._logger = logger;
         this.connectionstring = connectionstring;
     }
+    onerror(error) {
+        try {
+            this._logger.error(error);
+        } catch (err) {
+            console.error(error);
+        }
+    }
+    onclose() {
+        if (this.isClosing == true) return;
+        setTimeout(() => { this.connect() }, 1000);
+    }
     async connect(): Promise<void> {
-        var me: amqp_rpc_publisher = this;
-        this.conn = await amqplib.connect(this.connectionstring);
-        this.channel = await this.conn.createChannel();
-        this._ok = await this.channel.assertQueue("", { exclusive: true });
-        await this.channel.consume(this._ok.queue, (msg) => { this.OnMessage(me, msg); }, { noAck: true });
-        this._logger.info("Connected to " + new URL(this.connectionstring).hostname);
+        try {
+            this.isClosing = false;
+            var me: amqp_rpc_publisher = this;
+            if (this.conn != null) {
+                this.conn.off("error", this.onerror);
+                this.conn.off("close", this.onclose);
+            }
+            this.conn = await amqplib.connect(this.connectionstring + "?heartbeat=60");
+            this.conn.on("error", this.onerror.bind(this));
+            this.channel = await this.conn.createChannel();
+            this._ok = await this.channel.assertQueue("", { exclusive: true });
+            await this.channel.consume(this._ok.queue, (msg) => { this.OnMessage(me, msg); }, { noAck: true });
+            this._logger.info("Connected to " + new URL(this.connectionstring).hostname);
+            this.conn.on("close", this.onclose.bind(this));
+        } catch (error) {
+            this._logger.error(error);
+            this.onclose();
+        }
     }
     async close(): Promise<void> {
+        this.isClosing = true;
         if (this.channel != null && this.channel != undefined) { await this.channel.close(); this.channel = null; }
         if (this.conn != null && this.conn != undefined) { await this.conn.close(); this.conn = null; }
     }

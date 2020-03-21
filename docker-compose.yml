@@ -1,13 +1,13 @@
 version: "3"
 services:
   mongodb:
-    #image: "mongo"
-    image: "mongo:3.6.16"
+    image: "mongo"
+    #image: "mongo:3.6.16"
     restart: always
     ports:
       - "27017:27017"
     volumes:
-      - ./db:/data/db
+      - mongodb_data:/data/db
   rabbitmq:
     image: "rabbitmq:3-management"
     restart: always
@@ -18,7 +18,7 @@ services:
       - "5672:5672"
       - "15672:15672"
   web:
-    image: "cloudhack/openflow:0.0.392"
+    image: "cloudhack/openflow:0.0.489"
     environment:
       - update_acl_based_on_groups=true
       - multi_tenant=false
@@ -35,7 +35,7 @@ services:
       - websocket_max_package_count=1048576
       - protocol=http
       - port=80
-      - domain=10.0.0.201
+      - domain=localhost.openrpa.dk
 
       - amqp_url=amqp://admin:demo2018@rabbitmq
       - mongodb_url=mongodb://mongodb:27017
@@ -52,7 +52,7 @@ services:
       - "80:80"
       - "5858:5858"
   nodered:
-    image: "cloudhack/openflownodered:0.0.392"
+    image: "cloudhack/openflownodered:0.0.489"
     environment:
       #      - nodered_id=1
       - nodered_sa=nodered1
@@ -90,3 +90,6 @@ services:
       - tls_passphrase=
     ports:
       - "1880:1880"
+volumes:
+  mongodb_data:
+    driver: local

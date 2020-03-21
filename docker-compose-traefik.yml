@@ -7,8 +7,7 @@ services:
     ports:
       - "27017:27017"
     volumes:
-      - ./db:/data/db
-
+      - mongodb_data:/data/db
   traefik:
     image: "traefik:v2.0.0-rc3"
     container_name: "traefik"
@@ -46,7 +45,7 @@ services:
       - "traefik.http.routers.web.rule=Host(`localhost.openrpa.dk`)"
       - "traefik.http.routers.web.entrypoints=web"
       - "traefik.frontend.passHostHeader=true"
-    image: "cloudhack/openflow:0.0.392"
+    image: "cloudhack/openflow:0.0.489"
     container_name: "web"
     environment:
       - update_acl_based_on_groups=true
@@ -83,7 +82,7 @@ services:
       - "traefik.http.routers.nodered.rule=Host(`nodered1.localhost.openrpa.dk`)"
       - "traefik.http.routers.nodered.entrypoints=web"
       - "traefik.http.services.nodered.loadbalancer.server.port=1880"
-    image: "cloudhack/openflownodered:0.0.392"
+    image: "cloudhack/openflownodered:0.0.489"
     container_name: "nodered"
     environment:
       #      - nodered_id=1
@@ -120,3 +119,6 @@ services:
       - tls_key=
       - tls_ca=
       - tls_passphrase=
+volumes:
+  mongodb_data:
+    driver: local

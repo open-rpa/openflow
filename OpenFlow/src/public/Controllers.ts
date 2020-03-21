@@ -393,9 +393,7 @@ module openflow {
     }
 
     export class MainCtrl extends entitiesCtrl<openflow.Base> {
-        searchFilteredList: string[] = [];
-        countryList: string[] = [];
-        searchtext: string = "";
+        public showcompleted: boolean = false;
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -408,82 +406,28 @@ module openflow {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api, userdata);
             console.debug("MainCtrl");
             this.collection = "workflow_instances"
-            this.basequery = { state: { $ne: "completed" }, form: { $exists: true } };
-
-            ($scope as any).selected = undefined;
-            ($scope as any).states = ['Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois'];
-            ($scope as any).names = ["john", "bill", "charlie", "robert", "alban", "oscar", "marie", "celine", "brad", "drew", "rebecca", "michel", "francis", "jean", "paul", "pierre", "nicolas", "alfred", "gerard", "louis", "albert", "edouard", "benoit", "guillaume", "nicolas", "joseph"];
-            this.countryList = ["Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Anguilla", "Antigua &amp; Barbuda", "Argentina", "Armenia", "Aruba", "Australia", "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bermuda", "Bhutan", "Bolivia", "Bosnia &amp; Herzegovina", "Botswana", "Brazil", "British Virgin Islands", "Brunei", "Bulgaria", "Burkina Faso", "Burundi", "Cambodia", "Cameroon", "Cape Verde", "Cayman Islands", "Chad", "Chile", "China", "Colombia", "Congo", "Cook Islands", "Costa Rica", "Cote D Ivoire", "Croatia", "Cruise Ship", "Cuba", "Cyprus", "Czech Republic", "Denmark", "Djibouti", "Dominica", "Dominican Republic", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Estonia", "Ethiopia", "Falkland Islands", "Faroe Islands", "Fiji", "Finland", "France", "French Polynesia", "French West Indies", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Gibraltar", "Greece", "Greenland", "Grenada", "Guam", "Guatemala", "Guernsey", "Guinea", "Guinea Bissau", "Guyana", "Haiti", "Honduras", "Hong Kong", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Isle of Man", "Israel", "Italy", "Jamaica", "Japan", "Jersey", "Jordan", "Kazakhstan", "Kenya", "Kuwait", "Kyrgyz Republic", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg", "Macau", "Macedonia", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Mauritania", "Mauritius", "Mexico", "Moldova", "Monaco", "Mongolia", "Montenegro", "Montserrat", "Morocco", "Mozambique", "Namibia", "Nepal", "Netherlands", "Netherlands Antilles", "New Caledonia", "New Zealand", "Nicaragua", "Niger", "Nigeria", "Norway", "Oman", "Pakistan", "Palestine", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland", "Portugal", "Puerto Rico", "Qatar", "Reunion", "Romania", "Russia", "Rwanda", "Saint Pierre &amp; Miquelon", "Samoa", "San Marino", "Satellite", "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "South Africa", "South Korea", "Spain", "Sri Lanka", "St Kitts &amp; Nevis", "St Lucia", "St Vincent", "St. Lucia", "Sudan", "Suriname", "Swaziland", "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Timor L'Este", "Togo", "Tonga", "Trinidad &amp; Tobago", "Tunisia", "Turkey", "Turkmenistan", "Turks &amp; Caicos", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "Uruguay", "Uzbekistan", "Venezuela", "Vietnam", "Virgin Islands (US)", "Yemen", "Zambia", "Zimbabwe"];
+            // this.basequery = { state: { $ne: "completed" }, $and: [{ form: { $exists: true } }, { form: { "$ne": "none" } }] };
+            // this.basequery = { state: { $ne: "completed" }, form: { $exists: true } };
+            this.preloadData = () => {
+                var user = this.WebSocketClient.user;
+                var ors: any[] = [];
+                ors.push({ targetid: user._id });
+                this.WebSocketClient.user.roles.forEach(role => {
+                    ors.push({ targetid: role._id });
+                });
+                this.basequery = {};
+                this.basequery = { $or: ors };
+                if (!this.showcompleted) {
+                    this.basequery.state = { $ne: "completed" };
+                    this.basequery.form = { $exists: true };
+                    // this.basequery.$or = ors;
+                } else {
+                }
+            };
             WebSocketClient.onSignedin((_user: TokenUser) => {
                 this.loadData();
             });
 
-
-            // Formio.createForm(document.getElementById('formio'), 'https://examples.form.io/example');
-
-            // $scope.$watch('searchtext', (newValue) => {
-            //     this.complete(newValue);
-            // });
-        }
-
-        localSearch() {
-            return [];
-        }
-        e: any = null;
-        setkey(e) {
-            this.e = e;
-            this.handlekeys();
-        }
-        handlekeys() {
-            if (this.searchFilteredList.length > 0) {
-                var lowerCaseNames = this.searchFilteredList.map(function (value) {
-                    return value.toLowerCase();
-                });
-                var idx: number = lowerCaseNames.indexOf(this.searchtext.toLowerCase());
-                if (this.e.keyCode == 38) { // up
-                    if (idx <= 0) {
-                        idx = 0;
-                    } else { idx--; }
-                    this.searchtext = this.searchFilteredList[idx];
-                    return;
-                }
-                else if (this.e.keyCode == 40) { // down
-                    if (idx >= this.searchFilteredList.length) {
-                        idx = this.searchFilteredList.length - 1;
-                    } else { idx++; }
-                    this.searchtext = this.searchFilteredList[idx];
-                    return;
-                }
-                else if (this.e.keyCode == 13) { // enter
-                    if (idx >= 0) {
-                        this.searchtext = this.searchFilteredList[idx];
-                        this.searchFilteredList = [];
-                        if (!this.$scope.$$phase) { this.$scope.$apply(); }
-                    }
-                }
-            }
-        }
-        handlefilter(e) {
-            this.e = e;
-            var output = [];
-            angular.forEach(this.countryList, (country) => {
-                if (country.toLowerCase().indexOf(this.searchtext.toLowerCase()) >= 0) {
-                    output.push(country);
-                }
-            });
-            this.searchFilteredList = output;
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
-        }
-        fillTextbox(searchtext) {
-            var lowerCaseNames = this.searchFilteredList.map(function (value) {
-                return value.toLowerCase();
-            });
-            var idx: number = lowerCaseNames.indexOf(searchtext.toLowerCase());
-            if (idx >= 0) {
-                this.searchtext = this.searchFilteredList[idx];
-                this.searchFilteredList = [];
-                if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            }
         }
     }
     declare var QRScanner: any;
@@ -1593,7 +1537,26 @@ module openflow {
             if (this.instanceid !== null && this.instanceid !== undefined && this.instanceid !== "") {
                 var res = await this.api.Query("workflow_instances", { _id: this.instanceid }, null, { _created: -1 }, 1);
                 if (res.length > 0) { this.model = res[0]; } else { console.error(this.id + " workflow instances not found!"); return; }
-                if (this.model.form !== "") {
+                // console.log(this.model);
+                // console.log(this.model.form);
+                console.log("form: " + this.model.form);
+                if (this.model.payload === null || this.model.payload === undefined) {
+                    this.model.payload = { _id: this.instanceid };
+                }
+                if (typeof this.model.payload !== "object") {
+                    this.model.payload = { message: this.model.payload, _id: this.instanceid };
+                }
+
+
+                if (this.model.form === "none") {
+                    this.$location.path("/main");
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    return;
+                } else if (this.model.form === "unknown") {
+                    console.debug("Form is unknown for instance, send empty message");
+                    this.Save();
+                    return;
+                } else if (this.model.form !== "") {
                     var res = await this.api.Query("forms", { _id: this.model.form }, null, { _created: -1 }, 1);
                     if (res.length > 0) { this.form = res[0]; } else {
                         if (this.model.state == "completed") {
@@ -1601,7 +1564,7 @@ module openflow {
                             if (!this.$scope.$$phase) { this.$scope.$apply(); }
                             return;
                         } else {
-                            console.error(this.id + " form not found! " + this.model.state); return;
+                            console.error(this.model.form + " form not found! " + this.model.state); return;
                         }
                     }
                 } else {
@@ -1630,7 +1593,7 @@ module openflow {
             }
         }
         async Save() {
-            if (this.form.fbeditor === true) {
+            if (this.form !== null && this.form !== undefined && this.form.fbeditor === true) {
                 var userData: any[] = this.formRender.userData;
                 if (this.model.payload === null || this.model.payload === undefined) { this.model.payload = {}; }
                 for (var i = 0; i < userData.length; i++) {
@@ -1653,7 +1616,8 @@ module openflow {
 
             }
             // console.debug("SendOne: " + this.workflow._id + " / " + this.workflow.queue);
-            await this.SendOne(this.workflow.queue, this.model);
+            this.model.payload._id = this.instanceid;
+            await this.SendOne(this.workflow.queue, this.model.payload);
             this.loadData();
         }
         traversecomponentsPostProcess(components: any[], data: any) {

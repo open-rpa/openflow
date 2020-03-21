@@ -162,18 +162,11 @@ export class rpa_workflow_node {
             var rpacommand = {
                 command: "invoke",
                 workflowid: this.config.workflow,
-                data: msg.payload
-            }
-            var data = {
                 jwt: msg.jwt,
-                payload: rpacommand
+                data: { payload: msg.payload }
             }
             this.node.status({ fill: "blue", shape: "dot", text: "Robot running..." });
-            this.con.SendMessage(JSON.stringify(data), this.config.queue, correlationId);
-            // var data: any = {};
-            // data.payload = msg.payload;
-            // data.jwt = msg.jwt;
-            // this.con.SendMessage(JSON.stringify(data), this.config.queue);
+            this.con.SendMessage(JSON.stringify(rpacommand), this.config.queue, correlationId, true);
         } catch (error) {
             NoderedUtil.HandleError(this, error);
             try {
@@ -222,24 +215,6 @@ export async function get_rpa_workflows(req, res) {
         var rawAssertion = req.user.getAssertionXml();
         var token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
         var q: any = { _type: "workflow" };
-        if (req.query.queue != null && req.query.queue != undefined && req.query.queue != "" && req.query.queue != "none") {
-            // q = {
-            //     _type: "workflow",
-            //     $or: [
-            //         { _createdbyid: req.query.queue },
-            //         { _modifiedbyid: req.query.queue },
-            //         {
-            //             _acl: {
-            //                 $elemMatch: {
-            //                     rights: { $bitsAllSet: [2] },
-            //                     deny: false,
-            //                     _id: req.query.queue
-            //                 }
-            //             }
-            //         }
-            //     ]
-            // };
-        }
         var result: any[] = await NoderedUtil.Query('openrpa', q,
             { name: 1, projectandname: 1 }, { projectid: -1, name: -1 }, 1000, 0, token.jwt, req.query.queue)
         res.json(result);

@@ -17,7 +17,10 @@
     </div>
 </script>
 <script type="text/x-red" data-help-name="workflow in">
-Active when workflow is triggered
+Create an entry point that can be activated either from openflow web or a RPA robot.<br>
+The workflow MUST end with a workflow out node, to send a reply back to the webpage/robot.<br>
+msg.jwt will contain the token of the calling user<br>
+msg.user will contain the TokenUser of the calling user<br>
 </script>
 <script type="text/javascript">
     RED.nodes.registerType('workflow in', {
@@ -66,7 +69,18 @@ Active when workflow is triggered
     </div>
 </script>
 <script type="text/x-red" data-help-name="workflow out">
-Send payload as data to a robot, requesting it to run the selected Workflow
+Send payload as data to the calling webpage or robot.<br>
+Set state to idle if you want to keep the payload alive for multiple requests.<br>
+For web select a form to request or give feedback, or set to None to redirect the user to the main page.<br>
+The form will show values from msg.payload mapping each property to the field name. So if you have a web form field called "firstname"
+you can set the value using msg.payload.firstname.<br>
+For tables, select and others with multiple values, you can send the values for the field using
+msg.payload.values. Say you have a dropdown list named users then you fill the list using <br>
+msg.payload.values.users = [{id:1, "name": "Allan"}, {id:2, "name": "Bettina"}];<br>
+and you can set the selected value using payload <br>
+msg.payload.users = 2;<br>
+If you have buttons on the form, you can get the name of the button clicked in msg.payload.submitbutton
+
 </script>
 <script type="text/javascript">
     RED.nodes.registerType('workflow out', {
@@ -109,6 +123,178 @@ Send payload as data to a robot, requesting it to run the selected Workflow
         },
         oneditsave: function () {
             $('#node-input-form').val($('#node-input-form-select').val());
+        }
+
+    });
+</script>
+
+
+
+
+
+
+
+<script type="text/x-red" data-template-name="assign workflow">
+    <div class="form-row">
+        <label ><i class="fa fa-tag"></i> Queue name</label>
+        <input type="text" id="node-input-queue" placeholder="Queue name">
+    </div>
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+    <div class="form-row">
+        <label for="node-input-workflowid-search"><i class="fa fa-tasks"></i> Search</label>
+        <input type="text" id="node-input-workflowid-search" placeholder="Search" >
+    </div>
+    <div class="form-row">
+        <label for="node-input-workflowid"><i class="fa fa-tasks"></i> Workflow</label>
+        <select id="node-input-workflowid-select">
+            <option>Loading...</option>
+        </select>
+        <input id="node-input-workflowid" type="hidden">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-targetid-search"><i class="fa fa-tasks"></i> Search</label>
+        <input type="text" id="node-input-targetid-search" placeholder="Search" >
+    </div>
+    <div class="form-row">
+        <label for="node-input-targetid"><i class="fa fa-tasks"></i> Target</label>
+        <select id="node-input-targetid-select">
+            <option>Loading...</option>
+        </select>
+        <input id="node-input-targetid" type="hidden">
+    </div>
+    <div class="form-row">
+        <label for="node-input-initialrun"><i class="fa fa-tasks"></i> Initial Run</label>
+        <input type="checkbox" id="node-input-initialrun">
+
+    </div>
+</script>
+<script type="text/x-red" data-help-name="assign workflow">
+    <p>
+        Create a new task asssigned to a user or role.<br>
+        You can set Workflow using msg.workflowid<br>
+        You can set Target using msg.targetid<br>
+        You can set Initial Run using msg.initialrun<br>
+        msg.payload will be sent to the workflow when calling the workflow_forms
+        <br><br>
+        will return the result in msg.payload when the workflow completes or fails, ( msg.state = "completed" ? "failed" )
+    </p>
+</script>
+<script type="text/javascript">
+    function generateUuid() {
+        return Math.random().toString(36).substr(2, 9);
+    }
+
+    RED.nodes.registerType('assign workflow', {
+        category: 'rpa',
+        color: "#a6bbcf",
+        defaults: {
+            name: { value: "", required: true },
+            queue: { value: "", required: true },
+            targetid: { value: "" },
+            workflowid: { value: "" },
+            initialrun: { value: false, required: true }
+        },
+        inputs: 1,
+        outputs: 2,
+        outputLabels: ["scheduled", "result"],
+        icon: "bridge.png",
+        label: function () {
+            return this.name || "assign workflow";
+        },
+        labelStyle: function () {
+            return this.name ? "node_label_italic" : "";
+        },
+
+        oneditprepare: function () {
+            var queue = $('#node-input-queue').val();
+            if (queue === null || queue === undefined || queue === "") {
+                queue = generateUuid();
+                $('#node-input-queue').val(queue);
+            }
+            // var name = $('#node-input-name').val();
+            // if (name === null || name === undefined || name === "") {
+            //     name = queue;
+            //     $('#node-input-name').val(name);
+            // }
+            var reloadUsers = function (firstrun) {
+                $('#node-input-targetid-select').empty();
+                $('#node-input-targetid-select').append($('<option>', {
+                    value: -1,
+                    text: "Loading..."
+                }));
+                $('#node-input-targetid-select').val(-1);
+                $.getJSON('api_userroles', { name: $('#node-input-targetid-search').val(), id: $('#node-input-targetid').val() }, function (data) {
+                    $('#node-input-targetid-select').empty();
+                    $('#node-input-targetid-select').append($('<option>', {
+                        value: "",
+                        text: "None"
+                    }));
+
+                    $.each(data, function (i, ele) {
+                        $('#node-input-targetid-select').append($('<option>', {
+                            value: ele._id,
+                            text: ele.name
+                        }));
+                    });
+                    $('#node-input-targetid-select').val($('#node-input-targetid').val());
+                    // if (firstrun) {
+                    //     $('#node-input-targetid-select').val($('#node-input-targetid').val());
+                    // }
+                }).error(function (jqXHR, textStatus, errorThrown) {
+                    console.log("error " + textStatus);
+                    console.log("incoming Text " + jqXHR.responseText);
+                    alert("error:" + jqXHR.responseText);
+                });
+            }
+            $('#node-input-targetid-search').change(() => {
+                reloadUsers(false);
+            })
+            reloadUsers(true);
+
+
+
+            var reloadWorkflows = function (firstrun) {
+                $('#node-input-workflowid-select').empty();
+                $('#node-input-workflowid-select').append($('<option>', {
+                    value: -1,
+                    text: "Loading..."
+                }));
+                $('#node-input-workflowid-select').val(-1);
+                $.getJSON('workflows', { name: $('#node-input-workflowid-search').val(), id: $('#node-input-workflowid').val() }, function (data) {
+                    $('#node-input-workflowid-select').empty();
+                    $('#node-input-workflowid-select').append($('<option>', {
+                        value: "",
+                        text: "None"
+                    }));
+
+                    $.each(data, function (i, ele) {
+                        $('#node-input-workflowid-select').append($('<option>', {
+                            value: ele._id,
+                            text: ele.name
+                        }));
+                    });
+                    $('#node-input-workflowid-select').val($('#node-input-workflowid').val());
+                    // if (firstrun) {
+                    //     $('#node-input-workflowid-select').val($('#node-input-workflowid').val());
+                    // }
+                }).error(function (jqXHR, textStatus, errorThrown) {
+                    console.log("error " + textStatus);
+                    console.log("incoming Text " + jqXHR.responseText);
+                    alert("error:" + jqXHR.responseText);
+                });
+            }
+            $('#node-input-workflowid-search').change(() => {
+                reloadWorkflows(false);
+            })
+            reloadWorkflows(true);
+        },
+        oneditsave: function () {
+            $('#node-input-targetid').val($('#node-input-targetid-select').val());
+            $('#node-input-workflowid').val($('#node-input-workflowid-select').val());
         }
 
     });
