@@ -134,7 +134,7 @@ If you have buttons on the form, you can get the name of the button clicked in m
 
 
 
-<script type="text/x-red" data-template-name="run workflow">
+<script type="text/x-red" data-template-name="assign workflow">
     <div class="form-row">
         <label ><i class="fa fa-tag"></i> Queue name</label>
         <input type="text" id="node-input-queue" placeholder="Queue name">
@@ -172,7 +172,7 @@ If you have buttons on the form, you can get the name of the button clicked in m
 
     </div>
 </script>
-<script type="text/x-red" data-help-name="run workflow">
+<script type="text/x-red" data-help-name="assign workflow">
     <p>
         Create a new task asssigned to a user or role.<br>
         You can set Workflow using msg.workflowid<br>
@@ -188,7 +188,7 @@ If you have buttons on the form, you can get the name of the button clicked in m
         return Math.random().toString(36).substr(2, 9);
     }
 
-    RED.nodes.registerType('run workflow', {
+    RED.nodes.registerType('assign workflow', {
         category: 'rpa',
         color: "#a6bbcf",
         defaults: {
@@ -203,7 +203,7 @@ If you have buttons on the form, you can get the name of the button clicked in m
         outputLabels: ["scheduled", "result"],
         icon: "bridge.png",
         label: function () {
-            return this.name || "run workflow";
+            return this.name || "assign workflow";
         },
         labelStyle: function () {
             return this.name ? "node_label_italic" : "";

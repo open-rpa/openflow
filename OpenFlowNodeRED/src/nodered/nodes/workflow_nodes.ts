@@ -400,19 +400,19 @@ export async function get_workflows(req, res) {
 
 
 
-export interface Irun_workflow_node {
+export interface Iassign_workflow_node {
     name: string;
     queue: string;
     targetid: string;
     workflowid: string;
     initialrun: boolean;
 }
-export class run_workflow_node {
+export class assign_workflow_node {
     public node: Red = null;
     public name: string = "";
     public host: string;
     public con: amqp_consumer;
-    constructor(public config: Irun_workflow_node) {
+    constructor(public config: Iassign_workflow_node) {
         RED.nodes.createNode(this, config);
         this.node = this;
         this.node.status({});
