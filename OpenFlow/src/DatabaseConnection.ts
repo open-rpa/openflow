@@ -94,9 +94,14 @@ export class DatabaseConnection {
         }
         this.cli = await (Promise as any).retry(100, (resolve, reject) => {
             MongoClient.connect(this.mongodburl, { autoReconnect: false, useNewUrlParser: true }).then((cli) => {
+                console.log(`Connected to mongodb`);
                 resolve(cli);
-            }).catch(reject);
+            }).catch((reason) => {
+                console.log(reason);
+                reject(reason);
+            });
         });
+        console.log(`Really connected to mongodb`);
         // this.cli = await MongoClient.connect(this.mongodburl, { autoReconnect: false, useNewUrlParser: true });
         this.cli.on("error", (error) => {
             this.isConnected = false;

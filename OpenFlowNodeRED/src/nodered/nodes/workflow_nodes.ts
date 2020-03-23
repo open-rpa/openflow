@@ -101,7 +101,7 @@ export class workflow_in_node {
         var wf: Base = Base.assign(this.workflow);
         wf.addRight(role._id, role.name, [-1]);
         this.workflow = wf;
-
+        this.workflow.queue = queue;
         this.workflow.rpa = this.config.rpa;
         this.workflow.web = this.config.web;
         this.workflow = await NoderedUtil._UpdateOne("workflow", null, this.workflow, 0, false, null);
@@ -157,7 +157,7 @@ export class workflow_in_node {
                     if (ack !== null && ack !== undefined) ack();
                     return;
                 }
-                data = Object.assign(res[0], data);
+                data = Object.assign(res[0], { payload: data });
                 // Logger.instanse.info("workflow in activated id " + data._id);
                 // result.name = res[0].name;
                 // result._id = res[0]._id;
@@ -185,7 +185,7 @@ export class workflow_in_node {
                 // Logger.instanse.info("workflow in activated creating a new workflow instance with id " + res2._id);
                 // OpenFlow Controller.ts needs the id, when creating a new intance !
                 data._id = res2._id;
-                if (data.payload !== null || data.payload != undefined) {
+                if (data.payload !== null && data.payload != undefined) {
                     try {
                         data.payload._id = res2._id;
                     } catch (error) {
