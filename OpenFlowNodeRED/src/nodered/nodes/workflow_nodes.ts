@@ -102,6 +102,7 @@ export class workflow_in_node {
         wf.addRight(role._id, role.name, [-1]);
         this.workflow = wf;
         this.workflow.queue = queue;
+        this.workflow.name = this.config.name;
         this.workflow.rpa = this.config.rpa;
         this.workflow.web = this.config.web;
         this.workflow = await NoderedUtil._UpdateOne("workflow", null, this.workflow, 0, false, null);
@@ -150,6 +151,7 @@ export class workflow_in_node {
                 }
             }
             this.node.status({ fill: "blue", shape: "dot", text: "Processing " + _id });
+            console.log(data);
             if (_id !== null && _id !== undefined && _id !== "") {
                 var res = await NoderedUtil.Query("workflow_instances", { "_id": _id }, null, null, 1, 0, data.jwt);
                 if (res.length == 0) {
@@ -157,7 +159,15 @@ export class workflow_in_node {
                     if (ack !== null && ack !== undefined) ack();
                     return;
                 }
-                data = Object.assign(res[0], { payload: data });
+                if (res[0].payload === null || res[0].payload === undefined) {
+                    res[0].payload = data;
+                    data = res[0];
+                } else {
+                    res[0].payload = Object.assign(res[0].payload, data);
+                    data = res[0];
+                }
+                console.log(data.payload);
+                // data = Object.assign(res[0], { payload: data });
                 // Logger.instanse.info("workflow in activated id " + data._id);
                 // result.name = res[0].name;
                 // result._id = res[0]._id;
