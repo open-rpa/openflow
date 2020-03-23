@@ -185,7 +185,13 @@ export class workflow_in_node {
                 // Logger.instanse.info("workflow in activated creating a new workflow instance with id " + res2._id);
                 // OpenFlow Controller.ts needs the id, when creating a new intance !
                 data._id = res2._id;
-                data.payload._id = res2._id;
+                if (data.payload !== null || data.payload != undefined) {
+                    try {
+                        data.payload._id = res2._id;
+                    } catch (error) {
+                        Logger.instanse.warn(error);
+                    }
+                }
                 // result = this.nestedassign(res2, result);
                 data = Object.assign(res2, data);
             }
