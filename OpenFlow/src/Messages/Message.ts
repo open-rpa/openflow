@@ -712,15 +712,25 @@ export class Message {
         this.Send(cli);
     }
 
-    private async GetInstanceName(cli: WebSocketClient, name: string): Promise<string> {
-        var username = cli.user.username;
-        username = username.split("@").join("").split(".").join("");
-        if (name !== null && name !== undefined && name !== "" && name != username) {
-            var exists = await User.FindByUsername(name, cli.jwt);
-            if (exists == null) {
-                throw new Error("Unknown name " + name);
+    private async GetInstanceName(cli: WebSocketClient, _id: string, name: string): Promise<string> {
+        if (_id !== null && _id !== undefined && _id !== "" && _id != cli.user._id) {
+            var res = await Config.db.query<User>({ _id: _id }, null, 1, 0, null, "users", cli.jwt);
+            if (res.length == 0) {
+                throw new Error("Unknown userid " + _id);
             }
+            name = res[0].username;
+            // if (name !== null && name !== undefined && name !== "" && name != username) {
+            // }
+            // var exists = await User.FindByUsername(name, cli.jwt);
+        } else {
+            name = cli.user.username;
         }
+        // if (name !== null && name !== undefined && name !== "" && name != username) {
+        //     var exists = await User.FindByUsername(name, cli.jwt);
+        //     if (exists == null) {
+        //         throw new Error("Unknown name " + name);
+        //     }
+        // }
         name = name.split("@").join("").split(".").join("");
         name = name.toLowerCase();
         return name;
@@ -732,7 +742,7 @@ export class Message {
         try {
             cli._logger.debug("[" + cli.user.username + "] EnsureNoderedInstance");
             msg = EnsureNoderedInstanceMessage.assign(this.data);
-            var name = await this.GetInstanceName(cli, msg.name);
+            var name = await this.GetInstanceName(cli, msg._id, msg.name);
             var namespace = Config.namespace;
             var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
             var queue_prefix: string = "";
@@ -887,7 +897,7 @@ export class Message {
         try {
             cli._logger.debug("[" + cli.user.username + "] DeleteNoderedInstance");
             msg = DeleteNoderedInstanceMessage.assign(this.data);
-            var name = await this.GetInstanceName(cli, msg.name);
+            var name = await this.GetInstanceName(cli, msg._id, msg.name);
             var namespace = Config.namespace;
             var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
@@ -954,7 +964,7 @@ export class Message {
         try {
             cli._logger.debug("[" + cli.user.username + "] RestartNoderedInstance");
             msg = RestartNoderedInstanceMessage.assign(this.data);
-            var name = await this.GetInstanceName(cli, msg.name);
+            var name = await this.GetInstanceName(cli, msg._id, msg.name);
             var namespace = Config.namespace;
             // var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
@@ -986,7 +996,7 @@ export class Message {
         try {
             cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance");
             msg = GetNoderedInstanceMessage.assign(this.data);
-            var name = await this.GetInstanceName(cli, msg.name);
+            var name = await this.GetInstanceName(cli, msg._id, msg.name);
             var namespace = Config.namespace;
             // var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
@@ -1029,7 +1039,7 @@ export class Message {
         try {
             cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance");
             msg = GetNoderedInstanceLogMessage.assign(this.data);
-            var name = await this.GetInstanceName(cli, msg.name);
+            var name = await this.GetInstanceName(cli, msg._id, msg.name);
             var namespace = Config.namespace;
 
             var list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);

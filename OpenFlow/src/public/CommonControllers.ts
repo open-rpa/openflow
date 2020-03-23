@@ -243,40 +243,40 @@ module openflow {
             }
             return msg;
         }
-        async GetNoderedInstance(name: string): Promise<any> {
-            var q: GetNoderedInstanceMessage = new GetNoderedInstanceMessage(); q.name = name;
+        async GetNoderedInstance(_id: string, name: string): Promise<any> {
+            var q: GetNoderedInstanceMessage = new GetNoderedInstanceMessage(); q.name = name; q._id = _id;
             var msg: Message = new Message(); msg.command = "getnoderedinstance"; msg.data = JSON.stringify(q);
             q = await this.WebSocketClient.Send<GetNoderedInstanceMessage>(msg);
             return q.result;
         }
-        async GetNoderedInstanceLog(name: string): Promise<string> {
-            var q: GetNoderedInstanceLogMessage = new GetNoderedInstanceLogMessage(); q.name = name;
+        async GetNoderedInstanceLog(_id: string, name: string): Promise<string> {
+            var q: GetNoderedInstanceLogMessage = new GetNoderedInstanceLogMessage(); q.name = name; q._id = _id;
             var msg: Message = new Message(); msg.command = "getnoderedinstancelog"; msg.data = JSON.stringify(q);
             q = await this.WebSocketClient.Send<GetNoderedInstanceLogMessage>(msg);
             return q.result;
         }
-        async EnsureNoderedInstance(name: string): Promise<void> {
-            var q: EnsureNoderedInstanceMessage = new EnsureNoderedInstanceMessage(); q.name = name;
+        async EnsureNoderedInstance(_id: string, name: string): Promise<void> {
+            var q: EnsureNoderedInstanceMessage = new EnsureNoderedInstanceMessage(); q.name = name; q._id = _id;
             var msg: Message = new Message(); msg.command = "ensurenoderedinstance"; msg.data = JSON.stringify(q);
             q = await this.WebSocketClient.Send<EnsureNoderedInstanceMessage>(msg);
         }
-        async DeleteNoderedInstance(name: string): Promise<void> {
-            var q: DeleteNoderedInstanceMessage = new DeleteNoderedInstanceMessage(); q.name = name;
+        async DeleteNoderedInstance(_id: string, name: string): Promise<void> {
+            var q: DeleteNoderedInstanceMessage = new DeleteNoderedInstanceMessage(); q.name = name; q._id = _id;
             var msg: Message = new Message(); msg.command = "deletenoderedinstance"; msg.data = JSON.stringify(q);
             q = await this.WebSocketClient.Send<DeleteNoderedInstanceMessage>(msg);
         }
-        async RestartNoderedInstance(name: string): Promise<void> {
-            var q: RestartNoderedInstanceMessage = new RestartNoderedInstanceMessage(); q.name = name;
+        async RestartNoderedInstance(_id: string, name: string): Promise<void> {
+            var q: RestartNoderedInstanceMessage = new RestartNoderedInstanceMessage(); q.name = name; q._id = _id;
             var msg: Message = new Message(); msg.command = "restartnoderedinstance"; msg.data = JSON.stringify(q);
             q = await this.WebSocketClient.Send<RestartNoderedInstanceMessage>(msg);
         }
-        async StartNoderedInstance(name: string): Promise<void> {
-            var q: StartNoderedInstanceMessage = new StartNoderedInstanceMessage(); q.name = name;
+        async StartNoderedInstance(_id: string, name: string): Promise<void> {
+            var q: StartNoderedInstanceMessage = new StartNoderedInstanceMessage(); q.name = name; q._id = _id;
             var msg: Message = new Message(); msg.command = "startnoderedinstance"; msg.data = JSON.stringify(q);
             q = await this.WebSocketClient.Send<StartNoderedInstanceMessage>(msg);
         }
-        async StopNoderedInstance(name: string): Promise<void> {
-            var q: StopNoderedInstanceMessage = new StopNoderedInstanceMessage(); q.name = name;
+        async StopNoderedInstance(_id: string, name: string): Promise<void> {
+            var q: StopNoderedInstanceMessage = new StopNoderedInstanceMessage(); q.name = name; q._id = _id;
             var msg: Message = new Message(); msg.command = "stopnoderedinstance"; msg.data = JSON.stringify(q);
             q = await this.WebSocketClient.Send<StopNoderedInstanceMessage>(msg);
         }
