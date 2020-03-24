@@ -816,7 +816,7 @@ export class Message {
                                                 port: 80,
                                                 scheme: "HTTP"
                                             },
-                                            initialDelaySeconds: 60,
+                                            initialDelaySeconds: Config.nodered_initial_liveness_delay,
                                             periodSeconds: 5,
                                             failureThreshold: 5,
                                             timeoutSeconds: 5

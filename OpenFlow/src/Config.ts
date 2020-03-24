@@ -57,6 +57,7 @@ export class Config {
     public static api_ws_url: string = Config.getEnv("api_ws_url", "ws://localhost:3000");
     public static namespace: string = Config.getEnv("namespace", ""); // also sent to website 
     public static nodered_domain_schema: string = Config.getEnv("nodered_domain_schema", ""); // also sent to website
+    public static nodered_initial_liveness_delay: string = Config.getEnv("nodered_initial_liveness_delay", "60"); // also sent to website
 
     public static baseurl(): string {
         var result: string = "";
