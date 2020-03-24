@@ -827,6 +827,7 @@ export class Message {
                         }
                     }
                 }
+                // await KubeUtil.instance().ExtensionsV1beta1Api.createNamespacedDeployment(namespace, (_deployment as any));
                 await KubeUtil.instance().ExtensionsV1beta1Api.createNamespacedDeployment(namespace, (_deployment as any));
             }
             cli._logger.debug("[" + cli.user.username + "] GetService");
