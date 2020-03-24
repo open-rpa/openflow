@@ -743,6 +743,8 @@ export class Message {
             cli._logger.debug("[" + cli.user.username + "] EnsureNoderedInstance");
             msg = EnsureNoderedInstanceMessage.assign(this.data);
             var name = await this.GetInstanceName(cli, msg._id, msg.name);
+            var _id = msg._id;
+            if (_id !== null && _id !== undefined && _id !== "") _id = cli.user._id;
             var namespace = Config.namespace;
             var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
             var queue_prefix: string = "";
@@ -750,7 +752,8 @@ export class Message {
                 queue_prefix = cli.user.username;
             }
 
-            var tuser: TokenUser = new TokenUser(cli.user);
+            var nodereduser = await User.FindById(_id, cli.jwt);
+            var tuser: TokenUser = new TokenUser(nodereduser);
             var nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
 
             // var noderedusers = await User.ensureRole(cli.jwt, name + "noderedusers", null);
