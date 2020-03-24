@@ -112,34 +112,35 @@ export class rpa_workflow_node {
             result.amqpacknowledgment = ack;
             var json: string = msg.content.toString();
             var data = JSON.parse(json);
+            var command = data.command;
             result.jwt = data.jwt;
             var correlationId = msg.properties.correlationId;
             if (correlationId != null && this.messages[correlationId] != null) {
                 result = this.messages[correlationId];
-                if (data.payload.command == "invokecompleted" || data.payload.command == "invokefailed" || data.payload.command == "invokeaborted" || data.payload.command == "error") {
+                if (command == "invokecompleted" || command == "invokefailed" || command == "invokeaborted" || command == "error") {
                     delete this.messages[correlationId];
                 }
             }
 
-            if (data.payload.command == "invokecompleted") {
-                result.payload = data.payload.data;
+            if (command == "invokecompleted") {
+                result.payload = data.data;
                 if (data.user != null) result.user = data.user;
                 if (result.payload == null || result.payload == undefined) { result.payload = {}; }
-                this.node.status({ fill: "green", shape: "dot", text: data.payload.command });
+                this.node.status({ fill: "green", shape: "dot", text: command });
                 console.log("********************");
                 console.log(result);
                 console.log("********************");
                 this.node.send(result);
             }
-            else if (data.payload.command == "invokefailed" || data.payload.command == "invokeaborted" || data.payload.command == "error") {
-                result.payload = data.payload;
+            else if (command == "invokefailed" || command == "invokeaborted" || command == "error") {
+                result.payload = data;
                 if (data.user != null) result.user = data.user;
                 if (result.payload == null || result.payload == undefined) { result.payload = {}; }
-                this.node.status({ fill: "red", shape: "dot", text: data.payload.command });
+                this.node.status({ fill: "red", shape: "dot", text: command });
                 this.node.send([null, null, result]);
             }
             else {
-                result.payload = data.payload;
+                result.payload = data;
                 if (data.user != null) result.user = data.user;
                 if (result.payload == null || result.payload == undefined) { result.payload = {}; }
                 this.node.send([null, result]);
