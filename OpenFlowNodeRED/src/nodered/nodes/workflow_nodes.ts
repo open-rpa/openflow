@@ -190,7 +190,7 @@ export class workflow_in_node {
                 }
                 var who = WebSocketClient.instance.user;
                 var res2 = await NoderedUtil.InsertOne("workflow_instances",
-                    { _type: "instance", "queue": queue, "name": this.workflow.name, payload: data.payload, workflow: this.workflow._id, targetid: who._id }, 1, true, data.jwt);
+                    { _type: "instance", "queue": queue, "name": this.workflow.name, payload: data, workflow: this.workflow._id, targetid: who._id }, 1, true, data.jwt);
 
                 // Logger.instanse.info("workflow in activated creating a new workflow instance with id " + res2._id);
                 // OpenFlow Controller.ts needs the id, when creating a new intance !
