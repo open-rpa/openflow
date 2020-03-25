@@ -153,7 +153,11 @@ export class workflow_in_node {
             this.node.status({ fill: "blue", shape: "dot", text: "Processing " + _id });
             console.log(data);
             if (_id !== null && _id !== undefined && _id !== "") {
-                var res = await NoderedUtil.Query("workflow_instances", { "_id": _id }, null, null, 1, 0, data.jwt);
+
+                var jwt = data.jwt;
+                delete data.jwt;
+
+                var res = await NoderedUtil.Query("workflow_instances", { "_id": _id }, null, null, 1, 0, jwt);
                 if (res.length == 0) {
                     NoderedUtil.HandleError(this, "Unknown workflow_instances id " + _id);
                     if (ack !== null && ack !== undefined) ack();
@@ -166,7 +170,8 @@ export class workflow_in_node {
                     res[0].payload = Object.assign(res[0].payload, data);
                     data = res[0];
                 }
-                console.log(data.payload);
+                data.jwt = jwt;
+                // console.log(data.payload);
                 // data = Object.assign(res[0], { payload: data });
                 // Logger.instanse.info("workflow in activated id " + data._id);
                 // result.name = res[0].name;
@@ -188,9 +193,11 @@ export class workflow_in_node {
                 if (!NoderedUtil.IsNullUndefinded(Config.queue_prefix)) {
                     queue = Config.queue_prefix + this.config.queue;
                 }
+                var jwt = data.jwt;
+                delete data.jwt;
                 var who = WebSocketClient.instance.user;
                 var res2 = await NoderedUtil.InsertOne("workflow_instances",
-                    { _type: "instance", "queue": queue, "name": this.workflow.name, payload: data, workflow: this.workflow._id, targetid: who._id }, 1, true, data.jwt);
+                    { _type: "instance", "queue": queue, "name": this.workflow.name, payload: data, workflow: this.workflow._id, targetid: who._id }, 1, true, jwt);
 
                 // Logger.instanse.info("workflow in activated creating a new workflow instance with id " + res2._id);
                 // OpenFlow Controller.ts needs the id, when creating a new intance !
@@ -204,6 +211,7 @@ export class workflow_in_node {
                 }
                 // result = this.nestedassign(res2, result);
                 data = Object.assign(res2, data);
+                data.jwt = jwt;
             }
             // var result: any = {};
             // result.amqpacknowledgment = ack;

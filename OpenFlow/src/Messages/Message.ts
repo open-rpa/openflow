@@ -213,6 +213,7 @@ export class Message {
         var msg: QueueMessage
         try {
             msg = QueueMessage.assign(this.data);
+            if (Util.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
             if (Util.IsNullEmpty(msg.replyto)) {
                 await cli.sendToQueue(msg);
             } else {
