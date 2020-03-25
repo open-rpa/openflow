@@ -193,11 +193,16 @@ export class workflow_in_node {
                 if (!NoderedUtil.IsNullUndefinded(Config.queue_prefix)) {
                     queue = Config.queue_prefix + this.config.queue;
                 }
+
+                var who = WebSocketClient.instance.user;
+
                 var jwt = data.jwt;
                 delete data.jwt;
                 var who = WebSocketClient.instance.user;
-                var res2 = await NoderedUtil.InsertOne("workflow_instances",
-                    { _type: "instance", "queue": queue, "name": this.workflow.name, payload: data, workflow: this.workflow._id, targetid: who._id }, 1, true, jwt);
+                var item: Base = ({ _type: "instance", "queue": queue, "name": this.workflow.name, payload: data, workflow: this.workflow._id, targetid: who._id }) as any;
+                item = Base.assign(item);
+                item.addRight(who._id, who.name, [-1]);
+                var res2 = await NoderedUtil.InsertOne("workflow_instances", item, 1, true, jwt);
 
                 // Logger.instanse.info("workflow in activated creating a new workflow instance with id " + res2._id);
                 // OpenFlow Controller.ts needs the id, when creating a new intance !
@@ -511,14 +516,11 @@ export class assign_workflow_node {
                 var state = res[0].state;
                 var _parentid = res[0].parentid;
                 if (_parentid !== null && _parentid !== undefined && _parentid !== "") {
-                    res = await NoderedUtil.Query("workflow_instances", { "_id": _parentid }, null, null, 1, 0, data.jwt);
+                    res = await NoderedUtil.Query("workflow_instances", { "_id": _parentid }, null, null, 1, 0, null);
                     if (res.length == 0) {
-                        res = await NoderedUtil.Query("workflow_instances", { "_id": _parentid }, null, null, 1, 0, null);
-                        if (res.length == 0) {
-                            NoderedUtil.HandleError(this, "Unknown workflow_instances parentid " + _id);
-                            if (ack !== null && ack !== undefined) ack();
-                            return;
-                        }
+                        NoderedUtil.HandleError(this, "Unknown workflow_instances parentid " + _id);
+                        if (ack !== null && ack !== undefined) ack();
+                        return;
                     }
 
                     res[0].state = state;
