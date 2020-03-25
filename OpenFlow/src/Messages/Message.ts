@@ -214,6 +214,20 @@ export class Message {
         try {
             msg = QueueMessage.assign(this.data);
             if (Util.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+            if (!Util.IsNullUndefinded(msg.data)) {
+                if (typeof msg.data == 'string') {
+                    try {
+                        var obj = JSON.parse(msg.data);
+                        if (Util.IsNullUndefinded(obj.jwt)) {
+                            obj.jwt = msg.jwt;
+                            msg.data = JSON.stringify(obj);
+                        }
+                    } catch (error) {
+                    }
+                } else {
+                    msg.data.jwt = msg.jwt;
+                }
+            }
             if (Util.IsNullUndefinded(msg.data.jwt)) msg.data.jwt = msg.jwt;
             if (Util.IsNullEmpty(msg.replyto)) {
                 await cli.sendToQueue(msg);
