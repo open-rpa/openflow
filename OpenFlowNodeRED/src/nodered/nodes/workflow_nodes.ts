@@ -508,6 +508,7 @@ export class assign_workflow_node {
             }
             if (_id !== null && _id !== undefined && _id !== "") {
                 var res = await NoderedUtil.Query("workflow_instances", { "_id": _id }, { parentid: 1 }, null, 1, 0, data.jwt);
+                console.log("1: " + res.length);
                 if (res.length == 0) {
                     NoderedUtil.HandleError(this, "Unknown workflow_instances id " + _id);
                     if (ack !== null && ack !== undefined) ack();
@@ -517,6 +518,7 @@ export class assign_workflow_node {
                 var _parentid = res[0].parentid;
                 if (_parentid !== null && _parentid !== undefined && _parentid !== "") {
                     res = await NoderedUtil.Query("workflow_instances", { "_id": _parentid }, null, null, 1, 0, null);
+                    console.log("2: " + res.length);
                     if (res.length == 0) {
                         NoderedUtil.HandleError(this, "Unknown workflow_instances parentid " + _id);
                         if (ack !== null && ack !== undefined) ack();
