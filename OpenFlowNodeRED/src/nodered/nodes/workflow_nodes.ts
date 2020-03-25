@@ -511,11 +511,14 @@ export class assign_workflow_node {
                 var state = res[0].state;
                 var _parentid = res[0].parentid;
                 if (_parentid !== null && _parentid !== undefined && _parentid !== "") {
-                    res = await NoderedUtil.Query("workflow_instances", { "_id": _parentid }, null, null, 1, 0, null);
+                    res = await NoderedUtil.Query("workflow_instances", { "_id": _parentid }, null, null, 1, 0, data.jwt);
                     if (res.length == 0) {
-                        NoderedUtil.HandleError(this, "Unknown workflow_instances parentid " + _id);
-                        if (ack !== null && ack !== undefined) ack();
-                        return;
+                        res = await NoderedUtil.Query("workflow_instances", { "_id": _parentid }, null, null, 1, 0, null);
+                        if (res.length == 0) {
+                            NoderedUtil.HandleError(this, "Unknown workflow_instances parentid " + _id);
+                            if (ack !== null && ack !== undefined) ack();
+                            return;
+                        }
                     }
 
                     res[0].state = state;
