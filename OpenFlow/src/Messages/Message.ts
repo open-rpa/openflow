@@ -228,7 +228,6 @@ export class Message {
                     msg.data.jwt = msg.jwt;
                 }
             }
-            if (Util.IsNullUndefinded(msg.data.jwt)) msg.data.jwt = msg.jwt;
             if (Util.IsNullEmpty(msg.replyto)) {
                 await cli.sendToQueue(msg);
             } else {
