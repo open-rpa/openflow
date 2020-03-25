@@ -520,7 +520,7 @@ export class assign_workflow_node {
                     res = await NoderedUtil.Query("workflow_instances", { "_id": _parentid }, null, null, 1, 0, null);
                     console.log("2: " + res.length);
                     if (res.length == 0) {
-                        NoderedUtil.HandleError(this, "Unknown workflow_instances parentid " + _id);
+                        NoderedUtil.HandleError(this, "Unknown workflow_instances parentid " + _parentid);
                         if (ack !== null && ack !== undefined) ack();
                         return;
                     }
@@ -586,6 +586,9 @@ export class assign_workflow_node {
             (runnerinstance as any).state = "idle";
             (runnerinstance as any).msg = msg;
             (runnerinstance as any).jwt = msg.jwt;
+            var who = WebSocketClient.instance.user;
+            runnerinstance.addRight(who._id, who.name, [-1]);
+
             // Logger.instanse.info("**************************************");
             var res3 = await NoderedUtil.InsertOne("workflow_instances", runnerinstance, 1, true, jwt);
             // Logger.instanse.info("created runner instance with id " + res3._id + " (" + res3.name + ")");
