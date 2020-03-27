@@ -160,7 +160,7 @@ export class User extends Base {
     }
     public async DecorateWithRoles(): Promise<void> {
         let query: any = { _type: "role" };
-        var _roles: Role[] = await Config.db.query<Role>(query, null, 1000, 0, null, "users", TokenUser.rootToken());
+        var _roles: Role[] = await Config.db.query<Role>(query, null, 2000, 0, null, "users", TokenUser.rootToken());
         if (_roles.length === 0 && this.username !== "root") {
             throw new Error("System has no roles !!!!!!");
         }
