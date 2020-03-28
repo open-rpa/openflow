@@ -40,17 +40,16 @@ export class rpa_detector_node {
     }
     async OnMessage(msg: any, ack: any) {
         try {
-            var result: any = {};
-            result.amqpacknowledgment = ack;
-
-            var data = JSON.parse(msg.content.toString());
+            // var result: any = {};
+            // result.amqpacknowledgment = ack;
+            var msg = JSON.parse(msg.content.toString());
+            if (msg.data && !msg.payload) msg.payload = msg.data;
             try {
-                data.payload = JSON.parse(data.payload);
+                msg.payload = JSON.parse(msg.payload);
             } catch (error) {
             }
-            result.payload = data.payload;
-            result.jwt = data.jwt;
-            this.node.send(result);
+            this.node.send(msg);
+            ack();
         } catch (error) {
             NoderedUtil.HandleError(this, error);
         }
