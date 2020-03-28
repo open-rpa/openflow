@@ -40,12 +40,15 @@ export class rpa_detector_node {
     }
     async OnMessage(msg: any, ack: any) {
         try {
-            // var result: any = {};
-            // result.amqpacknowledgment = ack;
             var msg = JSON.parse(msg.content.toString());
-            if (msg.data && !msg.payload) msg.payload = msg.data;
+            if (msg.data && !msg.payload) {
+                msg.payload = msg.data;
+                delete msg.data;
+            }
             try {
-                msg.payload = JSON.parse(msg.payload);
+                if (typeof msg.payload == "string") {
+                    msg.payload = JSON.parse(msg.payload);
+                }
             } catch (error) {
             }
             this.node.send(msg);
