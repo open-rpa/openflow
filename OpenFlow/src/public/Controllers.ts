@@ -104,11 +104,15 @@ module openflow {
                 this.loadData();
             });
         }
-        async processdata() {
+        processdata() {
             this.loading = true;
-            this.charts = [];
+            this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            this.dographs();
+        }
+        async dographs() {
             var chart: chartset = null;
+            this.charts = [];
             for (var i = 0; i < this.models.length; i++) {
                 var workflow = this.models[i] as any;
                 var d = new Date();
@@ -166,8 +170,7 @@ module openflow {
                 workflow.chart = chart;
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
-            this.loading = false;
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+
         }
         download(data, filename, type) {
             var file = new Blob([data], { type: type });
