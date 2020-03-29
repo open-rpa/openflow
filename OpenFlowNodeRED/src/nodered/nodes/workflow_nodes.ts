@@ -163,12 +163,18 @@ export class workflow_in_node {
                     if (ack !== null && ack !== undefined) ack();
                     return;
                 }
-                if (res[0].payload === null || res[0].payload === undefined) {
-                    res[0].payload = data;
-                    data = res[0];
+                var orgmsg = res[0];
+                if (orgmsg.payload === null || orgmsg.payload === undefined) {
+                    orgmsg.payload = data;
+                    data = orgmsg;
                 } else {
-                    res[0].payload = Object.assign(res[0].payload, data);
-                    data = res[0];
+                    if (typeof orgmsg.payload === "object") {
+                        orgmsg.payload = Object.assign(orgmsg.payload, data);
+                    } else {
+                        orgmsg.payload = { message: orgmsg.payload };
+                        orgmsg.payload = Object.assign(orgmsg.payload, data);
+                    }
+                    data = orgmsg;
                 }
                 data.jwt = jwt;
                 // console.log(data.payload);
