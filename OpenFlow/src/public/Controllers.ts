@@ -730,11 +730,27 @@ module openflow {
             this.collection = "users";
             this.searchfields = ["name", "username"];
             this.postloadData = this.processData;
+            if (this.userdata.data.UsersCtrl) {
+                this.basequery = this.userdata.data.UsersCtrl.basequery;
+                this.collection = this.userdata.data.UsersCtrl.collection;
+                this.baseprojection = this.userdata.data.UsersCtrl.baseprojection;
+                this.orderby = this.userdata.data.UsersCtrl.orderby;
+                this.searchstring = this.userdata.data.UsersCtrl.searchstring;
+                this.basequeryas = this.userdata.data.UsersCtrl.basequeryas;
+            }
+
             WebSocketClient.onSignedin((user: TokenUser) => {
                 this.loadData();
             });
         }
         async processData(): Promise<void> {
+            if (!this.userdata.data.UsersCtrl) this.userdata.data.UsersCtrl = {};
+            this.userdata.data.UsersCtrl.basequery = this.basequery;
+            this.userdata.data.UsersCtrl.collection = this.collection;
+            this.userdata.data.UsersCtrl.baseprojection = this.baseprojection;
+            this.userdata.data.UsersCtrl.orderby = this.orderby;
+            this.userdata.data.UsersCtrl.searchstring = this.searchstring;
+            this.userdata.data.UsersCtrl.basequeryas = this.basequeryas;
             var chart: chartset = null;
             // for (var i = 0; i < this.models.length; i++) {
             //     var user = this.models[i] as any;
@@ -924,9 +940,28 @@ module openflow {
             console.debug("RolesCtrl");
             this.basequery = { _type: "role" };
             this.collection = "users";
+            this.postloadData = this.processdata;
+            if (this.userdata.data.RolesCtrl) {
+                this.basequery = this.userdata.data.RolesCtrl.basequery;
+                this.collection = this.userdata.data.RolesCtrl.collection;
+                this.baseprojection = this.userdata.data.RolesCtrl.baseprojection;
+                this.orderby = this.userdata.data.RolesCtrl.orderby;
+                this.searchstring = this.userdata.data.RolesCtrl.searchstring;
+                this.basequeryas = this.userdata.data.RolesCtrl.basequeryas;
+            }
             WebSocketClient.onSignedin((user: TokenUser) => {
                 this.loadData();
             });
+        }
+        processdata() {
+            if (!this.userdata.data.RolesCtrl) this.userdata.data.RolesCtrl = {};
+            this.userdata.data.RolesCtrl.basequery = this.basequery;
+            this.userdata.data.RolesCtrl.collection = this.collection;
+            this.userdata.data.RolesCtrl.baseprojection = this.baseprojection;
+            this.userdata.data.RolesCtrl.orderby = this.orderby;
+            this.userdata.data.RolesCtrl.searchstring = this.searchstring;
+            this.userdata.data.RolesCtrl.basequeryas = this.basequeryas;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async DeleteOne(model: any): Promise<any> {
             this.loading = true;
@@ -1301,12 +1336,32 @@ module openflow {
             this.basequery = {};
             this.collection = $routeParams.collection;
             this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
+            this.postloadData = this.processdata;
+            if (this.userdata.data.EntitiesCtrl) {
+                this.basequery = this.userdata.data.EntitiesCtrl.basequery;
+                this.collection = this.userdata.data.EntitiesCtrl.collection;
+                this.baseprojection = this.userdata.data.EntitiesCtrl.baseprojection;
+                this.orderby = this.userdata.data.EntitiesCtrl.orderby;
+                this.searchstring = this.userdata.data.EntitiesCtrl.searchstring;
+                this.basequeryas = this.userdata.data.EntitiesCtrl.basequeryas;
+            }
             WebSocketClient.onSignedin(async (user: TokenUser) => {
                 this.collections = await api.ListCollections();
                 this.loadData();
             });
         }
+        processdata() {
+            if (!this.userdata.data.EntitiesCtrl) this.userdata.data.EntitiesCtrl = {};
+            this.userdata.data.EntitiesCtrl.basequery = this.basequery;
+            this.userdata.data.EntitiesCtrl.collection = this.collection;
+            this.userdata.data.EntitiesCtrl.baseprojection = this.baseprojection;
+            this.userdata.data.EntitiesCtrl.orderby = this.orderby;
+            this.userdata.data.EntitiesCtrl.searchstring = this.searchstring;
+            this.userdata.data.EntitiesCtrl.basequeryas = this.basequeryas;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
         SelectCollection() {
+            this.userdata.data.EntitiesCtrl.collection = this.collection;
             this.$location.path("/Entities/" + this.collection);
             //this.$location.hash("#/Entities/" + this.collection);
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -2584,11 +2639,31 @@ module openflow {
                     this.basequery = { _rpaheartbeat: { "$gte": dt } };
                 }
             };
+            if (this.userdata.data.RobotsCtrl) {
+                this.basequery = this.userdata.data.RobotsCtrl.basequery;
+                this.collection = this.userdata.data.RobotsCtrl.collection;
+                this.baseprojection = this.userdata.data.RobotsCtrl.baseprojection;
+                this.orderby = this.userdata.data.RobotsCtrl.orderby;
+                this.searchstring = this.userdata.data.RobotsCtrl.searchstring;
+                this.basequeryas = this.userdata.data.RobotsCtrl.basequeryas;
+                this.showinactive = this.userdata.data.RobotsCtrl.showinactive;
+                this.showall = this.userdata.data.RobotsCtrl.showall;
+            }
             WebSocketClient.onSignedin((user: TokenUser) => {
                 this.loadData();
             });
         }
         processdata() {
+            if (!this.userdata.data.RobotsCtrl) this.userdata.data.RobotsCtrl = {};
+            this.userdata.data.RobotsCtrl.basequery = this.basequery;
+            this.userdata.data.RobotsCtrl.collection = this.collection;
+            this.userdata.data.RobotsCtrl.baseprojection = this.baseprojection;
+            this.userdata.data.RobotsCtrl.orderby = this.orderby;
+            this.userdata.data.RobotsCtrl.searchstring = this.searchstring;
+            this.userdata.data.RobotsCtrl.basequeryas = this.basequeryas;
+            this.userdata.data.RobotsCtrl.showinactive = this.showinactive;
+            this.userdata.data.RobotsCtrl.showall = this.showall;
+
             for (var i = 0; i < this.models.length; i++) {
                 var model: any = this.models[i];
                 (model as any).hasnodered = false;
