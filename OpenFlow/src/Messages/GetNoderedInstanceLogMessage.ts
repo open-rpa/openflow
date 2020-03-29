@@ -4,6 +4,7 @@ export class GetNoderedInstanceLogMessage implements IReplyMessage {
     public error: string;
     public jwt: any;
     public name: string;
+    public _id: string;
     public result: string;
 
     static assign(o: any): GetNoderedInstanceLogMessage {

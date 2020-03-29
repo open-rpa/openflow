@@ -113,6 +113,14 @@ export class User extends Base {
         await result.DecorateWithRoles();
         return result;
     }
+    public static async FindById(_id: string, jwt: string = null): Promise<User> {
+        if (jwt === null || jwt == undefined || jwt == "") { jwt = TokenUser.rootToken(); }
+        var items: User[] = await Config.db.query<User>({ _id: _id }, null, 1, 0, null, "users", jwt);
+        if (items === null || items === undefined || items.length === 0) { return null; }
+        var result: User = User.assign(items[0]);
+        await result.DecorateWithRoles();
+        return result;
+    }
     public static async FindByUsername(username: string, jwt: string = null): Promise<User> {
         var byuser = { username: new RegExp(["^", username, "$"].join(""), "i") };
         //var byid = { federationids: { $elemMatch: new RegExp(["^", username, "$"].join(""), "i") } }
@@ -152,7 +160,7 @@ export class User extends Base {
     }
     public async DecorateWithRoles(): Promise<void> {
         let query: any = { _type: "role" };
-        var _roles: Role[] = await Config.db.query<Role>(query, null, 1000, 0, null, "users", TokenUser.rootToken());
+        var _roles: Role[] = await Config.db.query<Role>(query, null, 2000, 0, null, "users", TokenUser.rootToken());
         if (_roles.length === 0 && this.username !== "root") {
             throw new Error("System has no roles !!!!!!");
         }

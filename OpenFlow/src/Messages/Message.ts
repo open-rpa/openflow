@@ -213,6 +213,21 @@ export class Message {
         var msg: QueueMessage
         try {
             msg = QueueMessage.assign(this.data);
+            if (Util.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+            if (!Util.IsNullUndefinded(msg.data)) {
+                if (typeof msg.data == 'string') {
+                    try {
+                        var obj = JSON.parse(msg.data);
+                        if (Util.IsNullUndefinded(obj.jwt)) {
+                            obj.jwt = msg.jwt;
+                            msg.data = JSON.stringify(obj);
+                        }
+                    } catch (error) {
+                    }
+                } else {
+                    msg.data.jwt = msg.jwt;
+                }
+            }
             if (Util.IsNullEmpty(msg.replyto)) {
                 await cli.sendToQueue(msg);
             } else {
@@ -712,6 +727,29 @@ export class Message {
         this.Send(cli);
     }
 
+    private async GetInstanceName(cli: WebSocketClient, _id: string, name: string): Promise<string> {
+        if (_id !== null && _id !== undefined && _id !== "" && _id != cli.user._id) {
+            var res = await Config.db.query<User>({ _id: _id }, null, 1, 0, null, "users", cli.jwt);
+            if (res.length == 0) {
+                throw new Error("Unknown userid " + _id);
+            }
+            name = res[0].username;
+            // if (name !== null && name !== undefined && name !== "" && name != username) {
+            // }
+            // var exists = await User.FindByUsername(name, cli.jwt);
+        } else {
+            name = cli.user.username;
+        }
+        // if (name !== null && name !== undefined && name !== "" && name != username) {
+        //     var exists = await User.FindByUsername(name, cli.jwt);
+        //     if (exists == null) {
+        //         throw new Error("Unknown name " + name);
+        //     }
+        // }
+        name = name.split("@").join("").split(".").join("");
+        name = name.toLowerCase();
+        return name;
+    }
     private async EnsureNoderedInstance(cli: WebSocketClient): Promise<void> {
         this.Reply();
         var msg: EnsureNoderedInstanceMessage;
@@ -719,14 +757,9 @@ export class Message {
         try {
             cli._logger.debug("[" + cli.user.username + "] EnsureNoderedInstance");
             msg = EnsureNoderedInstanceMessage.assign(this.data);
-            var name = cli.user.username;
-            if (msg.name !== null && msg.name !== undefined && msg.name !== "" && msg.name != cli.user.username) {
-                var exists = await User.FindByUsername(msg.name, cli.jwt);
-                if (exists == null) { throw new Error("Unknown name " + msg.name) }
-                name = msg.name;
-            }
-            name = name.split("@").join("").split(".").join("");
-            name = name.toLowerCase();
+            var name = await this.GetInstanceName(cli, msg._id, msg.name);
+            var _id = msg._id;
+            if (_id !== null && _id !== undefined && _id !== "") _id = cli.user._id;
             var namespace = Config.namespace;
             var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
             var queue_prefix: string = "";
@@ -734,7 +767,8 @@ export class Message {
                 queue_prefix = cli.user.username;
             }
 
-            var tuser: TokenUser = new TokenUser(cli.user);
+            var nodereduser = await User.FindById(_id, cli.jwt);
+            var tuser: TokenUser = new TokenUser(nodereduser);
             var nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
 
             // var noderedusers = await User.ensureRole(cli.jwt, name + "noderedusers", null);
@@ -797,7 +831,7 @@ export class Message {
                                                 port: 80,
                                                 scheme: "HTTP"
                                             },
-                                            initialDelaySeconds: 60,
+                                            initialDelaySeconds: Config.nodered_initial_liveness_delay,
                                             periodSeconds: 5,
                                             failureThreshold: 5,
                                             timeoutSeconds: 5
@@ -808,6 +842,7 @@ export class Message {
                         }
                     }
                 }
+                // await KubeUtil.instance().ExtensionsV1beta1Api.createNamespacedDeployment(namespace, (_deployment as any));
                 await KubeUtil.instance().ExtensionsV1beta1Api.createNamespacedDeployment(namespace, (_deployment as any));
             }
             cli._logger.debug("[" + cli.user.username + "] GetService");
@@ -881,14 +916,7 @@ export class Message {
         try {
             cli._logger.debug("[" + cli.user.username + "] DeleteNoderedInstance");
             msg = DeleteNoderedInstanceMessage.assign(this.data);
-            var name = cli.user.username;
-            if (msg.name !== null && msg.name !== undefined && msg.name !== "" && msg.name != cli.user.username) {
-                var exists = await User.FindByUsername(msg.name, cli.jwt);
-                if (exists == null) { throw new Error("Unknown name " + msg.name) }
-                name = msg.name;
-            }
-            name = name.split("@").join("").split(".").join("");
-            name = name.toLowerCase();
+            var name = await this.GetInstanceName(cli, msg._id, msg.name);
             var namespace = Config.namespace;
             var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
@@ -955,14 +983,7 @@ export class Message {
         try {
             cli._logger.debug("[" + cli.user.username + "] RestartNoderedInstance");
             msg = RestartNoderedInstanceMessage.assign(this.data);
-            var name = cli.user.username;
-            if (msg.name !== null && msg.name !== undefined && msg.name !== "" && msg.name != cli.user.username) {
-                var exists = await User.FindByUsername(msg.name, cli.jwt);
-                if (exists == null) { throw new Error("Unknown name " + msg.name) }
-                name = msg.name;
-            }
-            name = name.split("@").join("").split(".").join("");
-            name = name.toLowerCase();
+            var name = await this.GetInstanceName(cli, msg._id, msg.name);
             var namespace = Config.namespace;
             // var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
@@ -994,14 +1015,7 @@ export class Message {
         try {
             cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance");
             msg = GetNoderedInstanceMessage.assign(this.data);
-            var name = cli.user.username;
-            if (msg.name !== null && msg.name !== undefined && msg.name !== "" && msg.name != cli.user.username) {
-                var exists = await User.FindByUsername(msg.name, cli.jwt);
-                if (exists == null) { throw new Error("Unknown name " + msg.name) }
-                name = msg.name;
-            }
-            name = name.split("@").join("").split(".").join("");
-            name = name.toLowerCase();
+            var name = await this.GetInstanceName(cli, msg._id, msg.name);
             var namespace = Config.namespace;
             // var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
@@ -1044,16 +1058,8 @@ export class Message {
         try {
             cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance");
             msg = GetNoderedInstanceLogMessage.assign(this.data);
-            var name = cli.user.username;
-            if (msg.name !== null && msg.name !== undefined && msg.name !== "" && msg.name != cli.user.username) {
-                var exists = await User.FindByUsername(msg.name, cli.jwt);
-                if (exists == null) { throw new Error("Unknown name " + msg.name) }
-                name = msg.name;
-            }
-            name = name.split("@").join("").split(".").join("");
-            name = name.toLowerCase();
+            var name = await this.GetInstanceName(cli, msg._id, msg.name);
             var namespace = Config.namespace;
-
 
             var list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
 

@@ -101,7 +101,8 @@ export class workflow_in_node {
         var wf: Base = Base.assign(this.workflow);
         wf.addRight(role._id, role.name, [-1]);
         this.workflow = wf;
-
+        this.workflow.queue = queue;
+        this.workflow.name = this.config.name;
         this.workflow.rpa = this.config.rpa;
         this.workflow.web = this.config.web;
         this.workflow = await NoderedUtil._UpdateOne("workflow", null, this.workflow, 0, false, null);
@@ -150,14 +151,34 @@ export class workflow_in_node {
                 }
             }
             this.node.status({ fill: "blue", shape: "dot", text: "Processing " + _id });
+            console.log(data);
             if (_id !== null && _id !== undefined && _id !== "") {
-                var res = await NoderedUtil.Query("workflow_instances", { "_id": _id }, null, null, 1, 0, data.jwt);
+
+                var jwt = data.jwt;
+                delete data.jwt;
+
+                var res = await NoderedUtil.Query("workflow_instances", { "_id": _id }, null, null, 1, 0, jwt);
                 if (res.length == 0) {
                     NoderedUtil.HandleError(this, "Unknown workflow_instances id " + _id);
                     if (ack !== null && ack !== undefined) ack();
                     return;
                 }
-                data = Object.assign(res[0], data);
+                var orgmsg = res[0];
+                if (orgmsg.payload === null || orgmsg.payload === undefined) {
+                    orgmsg.payload = data;
+                    data = orgmsg;
+                } else {
+                    if (typeof orgmsg.payload === "object") {
+                        orgmsg.payload = Object.assign(orgmsg.payload, data);
+                    } else {
+                        orgmsg.payload = { message: orgmsg.payload };
+                        orgmsg.payload = Object.assign(orgmsg.payload, data);
+                    }
+                    data = orgmsg;
+                }
+                data.jwt = jwt;
+                // console.log(data.payload);
+                // data = Object.assign(res[0], { payload: data });
                 // Logger.instanse.info("workflow in activated id " + data._id);
                 // result.name = res[0].name;
                 // result._id = res[0]._id;
@@ -179,15 +200,29 @@ export class workflow_in_node {
                     queue = Config.queue_prefix + this.config.queue;
                 }
 
-                var res2 = await NoderedUtil.InsertOne("workflow_instances",
-                    { _type: "instance", "queue": queue, "name": this.workflow.name, payload: data.payload, workflow: this.workflow._id }, 1, true, data.jwt);
+                var who = WebSocketClient.instance.user;
+
+                var jwt = data.jwt;
+                delete data.jwt;
+                var who = WebSocketClient.instance.user;
+                var item: Base = ({ _type: "instance", "queue": queue, "name": this.workflow.name, payload: data, workflow: this.workflow._id, targetid: who._id }) as any;
+                item = Base.assign(item);
+                item.addRight(who._id, who.name, [-1]);
+                var res2 = await NoderedUtil.InsertOne("workflow_instances", item, 1, true, jwt);
 
                 // Logger.instanse.info("workflow in activated creating a new workflow instance with id " + res2._id);
                 // OpenFlow Controller.ts needs the id, when creating a new intance !
                 data._id = res2._id;
-                data.payload._id = res2._id;
+                if (data.payload !== null && data.payload != undefined) {
+                    try {
+                        data.payload._id = res2._id;
+                    } catch (error) {
+                        Logger.instanse.warn(error);
+                    }
+                }
                 // result = this.nestedassign(res2, result);
                 data = Object.assign(res2, data);
+                data.jwt = jwt;
             }
             // var result: any = {};
             // result.amqpacknowledgment = ack;
@@ -478,7 +513,8 @@ export class assign_workflow_node {
                 }
             }
             if (_id !== null && _id !== undefined && _id !== "") {
-                var res = await NoderedUtil.Query("workflow_instances", { "_id": _id }, { parentid: 1, state: 1 }, null, 1, 0, data.jwt);
+                var res = await NoderedUtil.Query("workflow_instances", { "_id": _id }, { parentid: 1 }, null, 1, 0, data.jwt);
+                console.log("1: " + res.length);
                 if (res.length == 0) {
                     NoderedUtil.HandleError(this, "Unknown workflow_instances id " + _id);
                     if (ack !== null && ack !== undefined) ack();
@@ -488,8 +524,9 @@ export class assign_workflow_node {
                 var _parentid = res[0].parentid;
                 if (_parentid !== null && _parentid !== undefined && _parentid !== "") {
                     res = await NoderedUtil.Query("workflow_instances", { "_id": _parentid }, null, null, 1, 0, null);
+                    console.log("2: " + res.length);
                     if (res.length == 0) {
-                        NoderedUtil.HandleError(this, "Unknown workflow_instances parentid " + _id);
+                        NoderedUtil.HandleError(this, "Unknown workflow_instances parentid " + _parentid);
                         if (ack !== null && ack !== undefined) ack();
                         return;
                     }
@@ -555,6 +592,9 @@ export class assign_workflow_node {
             (runnerinstance as any).state = "idle";
             (runnerinstance as any).msg = msg;
             (runnerinstance as any).jwt = msg.jwt;
+            var who = WebSocketClient.instance.user;
+            runnerinstance.addRight(who._id, who.name, [-1]);
+
             // Logger.instanse.info("**************************************");
             var res3 = await NoderedUtil.InsertOne("workflow_instances", runnerinstance, 1, true, jwt);
             // Logger.instanse.info("created runner instance with id " + res3._id + " (" + res3.name + ")");
