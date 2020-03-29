@@ -109,6 +109,15 @@ export class noderedcontribopenflowstorage {
             var result = await NoderedUtil.Query("nodered", { _type: "credential", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
             if (result.length === 0) { return []; }
             var cred: any = result[0].credentials;
+            var arr: any = result[0].credentialsarray;
+            if (arr !== null && arr !== undefined) {
+                cred = {};
+                for (var i = 0; i < arr.length; i++) {
+                    var key = arr[i].key;
+                    var value = arr[i].value;
+                    cred[key] = value;
+                }
+            }
             return cred;
         } catch (error) {
             if (error.message) { this._logger.error(error.message); }
@@ -121,17 +130,31 @@ export class noderedcontribopenflowstorage {
         try {
             this._logger.silly("noderedcontribopenflowstorage::_saveCredentials");
             var result = await NoderedUtil.Query("nodered", { _type: "credential", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
-            if (result.length === 0) {
-                var item: any = {
-                    name: "credentials for " + Config.nodered_id,
-                    credentials: credentials, _type: "credential", nodered_id: Config.nodered_id,
-                    _encrypt: ["credentials"]
-                };
-                await NoderedUtil.InsertOne("nodered", item, 1, true, null);
-            } else {
-                result[0].credentials = credentials;
-                await NoderedUtil._UpdateOne("nodered", null, result[0], 1, true, null);
+
+            var credentialsarray = [];
+            var orgkeys = Object.keys(credentials);
+            for (var i = 0; i < orgkeys.length; i++) {
+                var key = orgkeys[i];
+                var value = credentials[key];
+                var obj = { key: key, value: value };
+                credentialsarray.push(obj);
             }
+            if (credentials)
+                if (result.length === 0) {
+                    var item: any = {
+                        name: "credentials for " + Config.nodered_id,
+                        credentials: credentials, credentialsarray: credentialsarray, _type: "credential", nodered_id: Config.nodered_id,
+                        _encrypt: ["credentials"]
+                    };
+                    var subresult = await NoderedUtil.InsertOne("nodered", item, 1, true, null);
+                    console.log(subresult);
+                } else {
+                    var item: any = result[0];
+                    item.credentials = credentials;
+                    item.credentialsarray = credentialsarray;
+                    var subresult = await NoderedUtil._UpdateOne("nodered", null, item, 1, true, null);
+                    console.log(subresult);
+                }
         } catch (error) {
             if (error.message) { this._logger.error(error.message); }
             else { this._logger.error(error); }
