@@ -570,13 +570,13 @@ export class DatabaseConnection {
             if (u.username == null || u.username == "") { throw new Error("Username is mandatory"); }
             if (u.name == null || u.name == "") { throw new Error("Name is mandatory"); }
             var exists = await User.FindByUsername(u.username, TokenUser.rootToken());
-            if (exists != null) { throw new Error("Access denied, user already exists"); }
+            if (exists != null) { throw new Error("Access denied, user  '" + u.username + "' already exists"); }
         }
         if (collectionname === "users" && item._type === "role") {
             var r: Role = (item as any);
             if (r.name == null || r.name == "") { throw new Error("Name is mandatory"); }
             var exists2 = await Role.FindByName(r.name);
-            if (exists2 != null) { throw new Error("Access denied, role already exists"); }
+            if (exists2 != null) { throw new Error("Access denied, role '" + r.name + "' already exists"); }
         }
 
         // var options:CollectionInsertOneOptions = { writeConcern: { w: parseInt((w as any)), j: j } };
