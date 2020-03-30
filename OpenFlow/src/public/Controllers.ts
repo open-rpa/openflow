@@ -1939,7 +1939,6 @@ module openflow {
                 ele = $('.render-wrap');
                 ele.show();
                 this.formRender = ele.formRender(formRenderOpts);
-                if (!this.$scope.$$phase) { this.$scope.$apply(); }
             } else {
 
                 this.traversecomponentsMakeDefaults(this.form.schema.components);
@@ -1989,9 +1988,11 @@ module openflow {
                 this.formioRender.on('error', (errors) => {
                     console.error(errors);
                 });
-                if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
+            $('#workflowform :input').prop("disabled", true);
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
+
     }
     export class jslogCtrl extends entitiesCtrl<openflow.Base> {
         public message: string = "";
