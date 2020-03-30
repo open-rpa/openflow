@@ -1989,10 +1989,14 @@ module openflow {
                     console.error(errors);
                 });
             }
-            $('#workflowform :input').prop("disabled", true);
-            $('#workflowform :button').prop("disabled", true);
-            $('#workflowform :input').addClass("disabled");
-            $('#workflowform :button').addClass("disabled");
+            if (this.model.state == "completed" || this.model.state == "failed") {
+                $('#workflowform :input').prop("disabled", true);
+                $('#workflowform :button').prop("disabled", true);
+                $('#workflowform :input').addClass("disabled");
+                $('#workflowform :button').addClass("disabled");
+                $("#workflowform :input").unbind();
+                $("#workflowform :button").unbind();
+            }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
 
