@@ -778,7 +778,6 @@ export class Message {
             noderedadmins.removeRight(nodereduser._id, [Rights.delete]);
             noderedadmins.addRight(cli.user._id, cli.user.username, [Rights.full_control]);
             noderedadmins.removeRight(cli.user._id, [Rights.delete]);
-            noderedadmins.AddMember(cli.user);
             noderedadmins.AddMember(nodereduser);
             cli._logger.debug("[" + cli.user.username + "] update nodered role " + name + "noderedadmins");
             await noderedadmins.Save(cli.jwt);
