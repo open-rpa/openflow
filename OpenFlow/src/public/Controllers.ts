@@ -1985,7 +1985,7 @@ module openflow {
                 $('#workflowform :input').addClass("disabled");
                 $('#workflowform :button').addClass("disabled");
 
-                $('button[type="button"]').hide();
+                $('#workflowform :button').hide();
                 $('input[type="submit"]').hide();
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
