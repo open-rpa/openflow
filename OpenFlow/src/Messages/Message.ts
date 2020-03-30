@@ -771,23 +771,14 @@ export class Message {
             var tuser: TokenUser = new TokenUser(nodereduser);
             var nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
 
-            // var noderedusers = await User.ensureRole(cli.jwt, name + "noderedusers", null);
-            // noderedusers.addRight(cli.user._id, cli.user.username, [Rights.full_control]);
-            // noderedusers.removeRight(cli.user._id, [Rights.delete]);
-            // noderedusers.AddMember(cli.user);
-            // var nodereduser: User = await User.ensureUser(cli.jwt, "nodered" + name, "nodered" + name, null);
-            // nodereduser.addRight(cli.user._id, cli.user.username, [Rights.full_control]);
-            // nodereduser.removeRight(cli.user._id, [Rights.delete]);
-            // await nodereduser.Save(cli.jwt);
-
             cli._logger.debug("[" + cli.user.username + "] ensure nodered role " + name + "noderedadmins");
             var noderedadmins = await User.ensureRole(cli.jwt, name + "noderedadmins", null);
+            noderedadmins.addRight(nodereduser._id, nodereduser.username, [Rights.full_control]);
+            noderedadmins.removeRight(nodereduser._id, [Rights.delete]);
             noderedadmins.addRight(cli.user._id, cli.user.username, [Rights.full_control]);
             noderedadmins.removeRight(cli.user._id, [Rights.delete]);
             noderedadmins.AddMember(cli.user);
-            // noderedadmins.addRight(nodereduser._id, nodereduser.username, [Rights.full_control]);
-            // noderedadmins.removeRight(nodereduser._id, [Rights.delete]);
-            // noderedadmins.AddMember(nodereduser);
+            noderedadmins.AddMember(nodereduser);
             cli._logger.debug("[" + cli.user.username + "] update nodered role " + name + "noderedadmins");
             await noderedadmins.Save(cli.jwt);
 
@@ -813,7 +804,7 @@ export class Message {
                                             { name: "saml_issuer", value: Config.saml_issuer },
                                             { name: "saml_baseurl", value: Config.protocol + "://" + hostname + "/" },
                                             { name: "nodered_id", value: name },
-                                            { name: "nodered_sa", value: cli.user.username },
+                                            { name: "nodered_sa", value: nodereduser.username },
                                             { name: "jwt", value: nodered_jwt },
                                             { name: "queue_prefix", value: queue_prefix },
                                             { name: "api_ws_url", value: Config.api_ws_url },
