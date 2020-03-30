@@ -762,14 +762,15 @@ export class Message {
             if (_id === null || _id === undefined || _id === "") _id = cli.user._id;
             var namespace = Config.namespace;
             var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
-            var queue_prefix: string = "";
-            if (Config.force_queue_prefix) {
-                queue_prefix = cli.user.username;
-            }
 
             var nodereduser = await User.FindById(_id, cli.jwt);
             var tuser: TokenUser = new TokenUser(nodereduser);
             var nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
+
+            var queue_prefix: string = "";
+            if (Config.force_queue_prefix) {
+                queue_prefix = nodereduser.username;
+            }
 
             cli._logger.debug("[" + cli.user.username + "] ensure nodered role " + name + "noderedadmins");
             var noderedadmins = await User.ensureRole(cli.jwt, name + "noderedadmins", null);
