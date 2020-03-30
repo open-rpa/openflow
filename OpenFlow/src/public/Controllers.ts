@@ -1990,7 +1990,9 @@ module openflow {
                 });
             }
             $('#workflowform :input').prop("disabled", true);
-            $('#workflowform :button').attr("disabled", (true as any));
+            $('#workflowform :button').prop("disabled", true);
+            $('#workflowform :input').addClass("disabled");
+            $('#workflowform :button').addClass("disabled");
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
 
