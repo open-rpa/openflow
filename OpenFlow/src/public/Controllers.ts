@@ -1996,6 +1996,8 @@ module openflow {
                 $('#workflowform :button').addClass("disabled");
                 $("#workflowform :input").unbind();
                 $("#workflowform :button").unbind();
+                $("#workflowform :input").off("click");
+                $("#workflowform :button").off("click");
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
