@@ -1807,8 +1807,6 @@ module openflow {
             return new Promise(resolve => setTimeout(resolve, ms));
         }
         async beforeSubmit(submission, next) {
-            // console.log('beforeSubmit', submission);
-            //next('go away!');
             next();
         }
         async renderform() {
@@ -1894,16 +1892,8 @@ module openflow {
                     });
                 }
 
-                // 
-                // replaceElem('div', 'span');
                 setTimeout(() => {
-                    // $('button[type="button"]').contents().unwrap().wrap('<input/>');
-                    // replaceElem('button', 'input');
-                    // replaceElementTag('button[type="button"]', '<input></input>');
-
                     console.log("Attach buttons! 2");
-                    // $('button[type="button"]').bind("click", function () {
-
                     $('button[type="button"]').each(function () {
                         var cur: any = $(this)[0];
                         console.log("set submit");
@@ -1994,10 +1984,9 @@ module openflow {
                 $('#workflowform :button').prop("disabled", true);
                 $('#workflowform :input').addClass("disabled");
                 $('#workflowform :button').addClass("disabled");
-                $("#workflowform :input").unbind();
-                $("#workflowform :button").unbind();
-                $("#workflowform :input").off("click");
-                $("#workflowform :button").off("click");
+
+                $('button[type="button"]').hide();
+                $('input[type="submit"]').hide();
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
