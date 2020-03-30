@@ -759,7 +759,7 @@ export class Message {
             msg = EnsureNoderedInstanceMessage.assign(this.data);
             var name = await this.GetInstanceName(cli, msg._id, msg.name);
             var _id = msg._id;
-            if (_id !== null && _id !== undefined && _id !== "") _id = cli.user._id;
+            if (_id === null || _id === undefined || _id === "") _id = cli.user._id;
             var namespace = Config.namespace;
             var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
             var queue_prefix: string = "";
