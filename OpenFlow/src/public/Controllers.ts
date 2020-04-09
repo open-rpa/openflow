@@ -249,6 +249,9 @@ module openflow {
     export class ReportsCtrl extends entitiesCtrl<openflow.Base> {
         public message: string = "";
         public charts: chartset[] = [];
+        public datatimeframe: Date;
+        public onlinetimeframe: Date;
+        public timeframedesc: string = "";
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -261,38 +264,66 @@ module openflow {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api, userdata);
             console.debug("ReportsCtrl");
             WebSocketClient.onSignedin((user: TokenUser) => {
-                this.processData();
+                if (this.userdata.data.ReportsCtrl) {
+                    this.datatimeframe = this.userdata.data.ReportsCtrl.datatimeframe;
+                    this.onlinetimeframe = this.userdata.data.ReportsCtrl.onlinetimeframe;
+                    this.processData();
+                } else {
+                    this.settimeframe(30, 0, "30 days");
+                }
+
             });
         }
+        settimeframe(days, hours, desc) {
+            this.datatimeframe = new Date(new Date().toISOString());
+            console.log(this.datatimeframe);
+            if (days > 0) this.datatimeframe.setDate(this.datatimeframe.getDate() - days);
+            if (hours > 0) this.datatimeframe.setHours(this.datatimeframe.getHours() - hours);
+            this.timeframedesc = desc;
+            console.log(this.datatimeframe);
+
+            this.onlinetimeframe = new Date(new Date().toISOString());
+            this.onlinetimeframe.setMinutes(this.onlinetimeframe.getMinutes() - 1);
+            // this.datatimeframe = new Date(new Date().toISOString());
+            // this.datatimeframe.setMonth(this.datatimeframe.getMonth() - 1);
+
+            // dt = new Date(new Date().toISOString());
+            // dt.setMonth(dt.getMonth() - 1);
+            // //dt.setDate(dt.getDate() - 1);
+            // dt = new Date(new Date().toISOString());
+            // dt.setMonth(dt.getMonth() - 1);
+            // var dt2 = new Date(new Date().toISOString());
+            // dt2.setMinutes(dt.getMinutes() - 1);
+
+            if (!this.userdata.data.ReportsCtrl) this.userdata.data.ReportsCtrl = { run: this.processData.bind(this) };
+            this.userdata.data.ReportsCtrl.datatimeframe = this.datatimeframe;
+            this.userdata.data.ReportsCtrl.onlinetimeframe = this.onlinetimeframe;
+            this.userdata.data.ReportsCtrl.run(this.userdata.data.ReportsCtrl.points);
+        }
         async processData(): Promise<void> {
+            this.userdata.data.ReportsCtrl.run = this.processData.bind(this);
+            this.userdata.data.ReportsCtrl.points = null;
             this.loading = true;
             this.charts = [];
             var chart: chartset = null;
             var agg: any = {};
             var data: any = {};
-            var dt: Date;
 
-            // var agg = [{ "$group": { "_id": "$_type", "count": { "$sum": 1 } } }];
-
-            // fuck it, lets kust focus on robots who have been online the last month
+            // fuck it, lets just focus on robots who have been online the last month
+            // agg = [
+            //     { $match: { _rpaheartbeat: { "$exists": true } } },
+            //     { "$count": "_rpaheartbeat" }
+            // ];
             agg = [
-                { $match: { _rpaheartbeat: { "$exists": true } } },
-                { "$count": "_rpaheartbeat" }
-            ];
-            dt = new Date(new Date().toISOString());
-            dt.setMonth(dt.getMonth() - 1);
-            agg = [
-                { $match: { _rpaheartbeat: { "$gte": dt } } },
+                { $match: { _rpaheartbeat: { "$gte": this.datatimeframe } } },
                 { "$count": "_rpaheartbeat" }
             ];
             data = await this.api.Aggregate("users", agg);
             var totalrobots = 0;
             if (data.length > 0) totalrobots = data[0]._rpaheartbeat;
 
-            dt = new Date(new Date().toISOString());
-            dt.setMinutes(dt.getMinutes() - 1);
             agg = [
-                { $match: { _rpaheartbeat: { "$gte": dt } } },
+                { $match: { _rpaheartbeat: { "$gte": this.onlinetimeframe } } },
                 { "$count": "_rpaheartbeat" }
             ];
             data = await this.api.Aggregate("users", agg);
@@ -300,22 +331,20 @@ module openflow {
             if (data.length > 0) onlinerobots = data[0]._rpaheartbeat;
 
             chart = new chartset();
-            chart.heading = "Robots seen the last month";
+            chart.heading = "Robots seen the last " + this.timeframedesc;
             chart.labels = ['online', 'offline'];
             chart.data = [onlinerobots, (totalrobots - onlinerobots)];
             chart.charttype = "doughnut";
             // chart.click = this.robotsclick.bind(this);
             chart.click = this.robotsclick.bind(this);
             this.charts.push(chart);
-
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
 
             // var agg = [{ "$group": { "_id": "$_type", "count": { "$sum": 1 } } }];
 
-            dt = new Date(new Date().toISOString());
-            dt.setMonth(dt.getMonth() - 1);
             agg = [
-                { $match: { _created: { "$gte": dt }, _type: "workflowinstance" } },
+                { $match: { _created: { "$gte": this.datatimeframe }, _type: "workflowinstance" } },
                 { "$group": { "_id": { "WorkflowId": "$WorkflowId", "name": "$name" }, "count": { "$sum": 1 } } },
                 { $sort: { "count": -1 } },
                 { "$limit": 20 }
@@ -347,30 +376,26 @@ module openflow {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async robotsclick(points, evt): Promise<void> {
+            this.userdata.data.ReportsCtrl.run = this.robotsclick.bind(this);
+            this.userdata.data.ReportsCtrl.points = points;
             if (points.length > 0) {
             } else { return; }
             var chart: chartset = null;
             var agg: any = {};
             var data: any = {};
-            var dt: Date;
-
-            dt = new Date(new Date().toISOString());
-            dt.setMonth(dt.getMonth() - 1);
-            //dt.setDate(dt.getDate() - 1);
-            var dt2 = new Date(new Date().toISOString());
-            dt2.setMinutes(dt.getMinutes() - 1);
             // 
             // { "$limit": 20 }
             var rpaheartbeat: any = [];
             if (points[0]._index == 0) // Online robots
             {
-                // rpaheartbeat = { $match: { "user._rpaheartbeat": { "$gte": dt2 } } };
-                rpaheartbeat = { $match: { "_rpaheartbeat": { "$gte": dt2 } } };
+                // rpaheartbeat = { $match: { "user._rpaheartbeat": { "$gte": this.onlinetimeframe } } };
+                rpaheartbeat = { $match: { "_rpaheartbeat": { "$gte": this.onlinetimeframe } } };
             } else {
 
-                // rpaheartbeat = { $match: { "user._rpaheartbeat": { "$lt": dt2 } } };
-                rpaheartbeat = { $match: { "_rpaheartbeat": { "$lt": dt2 } } };
+                // rpaheartbeat = { $match: { "user._rpaheartbeat": { "$lt": this.onlinetimeframe } } };
+                rpaheartbeat = { $match: { "_rpaheartbeat": { "$lt": this.onlinetimeframe } } };
             }
+            this.charts = [];
             agg = [
                 { $match: { _type: 'user' } },
                 rpaheartbeat,
@@ -398,9 +423,9 @@ module openflow {
             chart = new chartset();
             if (points[0]._index == 0) // Online robots
             {
-                chart.heading = "Logins per online robot the last month (top 20)";
+                chart.heading = "Logins per online robot the last " + this.timeframedesc + " (top 20)";
             } else {
-                chart.heading = "Logins per offline robot the last month (top 20)";
+                chart.heading = "Logins per offline robot the last " + this.timeframedesc + " (top 20)";
             }
             chart.data = [];
             chart.ids = [];
@@ -409,23 +434,20 @@ module openflow {
                 chart.ids.push(data[x]._id);
                 chart.labels.push(data[x].name);
             }
-            chart.click = this.processData.bind(this);
-            this.charts.splice(0, 1);
-            this.charts.unshift(chart);
+            chart.click = this.robotclick.bind(this);
+            this.charts.push(chart);
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
 
             if (points[0]._index == 0) // Online robots
             {
-                rpaheartbeat = { $match: { "user._rpaheartbeat": { "$gte": dt2 } } };
+                rpaheartbeat = { $match: { "user._rpaheartbeat": { "$gte": this.onlinetimeframe } } };
             } else {
-                rpaheartbeat = { $match: { "user._rpaheartbeat": { "$lt": dt2 } } };
+                rpaheartbeat = { $match: { "user._rpaheartbeat": { "$lt": this.onlinetimeframe } } };
             }
 
-            dt = new Date(new Date().toISOString());
-            dt.setMonth(dt.getMonth() - 1);
             agg = [
-                { $match: { _created: { "$gte": dt }, _type: "workflowinstance" } },
+                { $match: { _created: { "$gte": this.datatimeframe }, _type: "workflowinstance" } },
                 {
                     $lookup: {
                         from: "users",
@@ -475,6 +497,46 @@ module openflow {
                 chart.labels.push(workflowruns[x]._id.name);
             }
             chart.click = this.workflowclick.bind(this);
+            this.charts.push(chart);
+
+
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+
+        }
+        async robotclick(points, evt): Promise<void> {
+            if (points.length > 0) {
+            } else { return; }
+            var userid = this.charts[0].ids[points[0]._index];
+            console.log(userid);
+            var chart: chartset = null;
+            var agg: any = {};
+            var data: any = {};
+
+
+            agg = [
+                { $match: { _created: { "$gte": this.datatimeframe }, _type: "workflowinstance", ownerid: userid } },
+                { "$group": { "_id": { "WorkflowId": "$WorkflowId", "name": "$name", "owner": "$owner" }, "count": { "$sum": 1 } } },
+                { $sort: { "count": -1 } },
+                { "$limit": 20 }
+            ];
+            var workflowruns = await this.api.Aggregate("openrpa_instances", agg);
+            console.log(workflowruns);
+
+            chart = new chartset();
+            if (workflowruns.length > 0) // Online robots
+            {
+                chart.heading = "Workflow runs for " + workflowruns[0].owner + " (top 20)";
+            } else {
+                chart.heading = "No data (or permissions) for robot";
+            }
+            chart.data = [];
+            chart.ids = [];
+            for (var x = 0; x < workflowruns.length; x++) {
+                chart.data.push(workflowruns[x].count);
+                chart.ids.push(workflowruns[x]._id.WorkflowId);
+                chart.labels.push(workflowruns[x]._id.name);
+            }
+            chart.click = this.workflowclick.bind(this);
             this.charts.splice(1, 1);
             this.charts.push(chart);
 
@@ -491,18 +553,9 @@ module openflow {
             var chart: chartset = null;
             var agg: any = {};
             var data: any = {};
-            var dt: Date;
 
-            dt = new Date(new Date().toISOString());
-            dt.setMonth(dt.getMonth() - 1);
-            var dt2 = new Date(new Date().toISOString());
-            dt2.setMinutes(dt.getMinutes() - 1);
-
-
-            dt = new Date(new Date().toISOString());
-            dt.setMonth(dt.getMonth() - 1);
             agg = [
-                { $match: { _created: { "$gte": dt }, WorkflowId: WorkflowId } },
+                { $match: { _created: { "$gte": this.datatimeframe }, WorkflowId: WorkflowId } },
                 {
                     $group:
                     {
