@@ -195,6 +195,14 @@ module openflow {
             q = await this.WebSocketClient.Send<MapReduceMessage>(msg);
             return q.result;
         }
+        async Aggregate(collection: string, aggregates: object[]): Promise<any> {
+            var q: AggregateMessage = new AggregateMessage();
+            q.collectionname = collection; q.aggregates = aggregates;
+            var msg: Message = new Message(); msg.command = "aggregate";
+            msg.data = JSONfn.stringify(q);
+            var result = await this.WebSocketClient.Send<QueryMessage>(msg);
+            return result.result;
+        }
         async Insert(collection: string, model: any): Promise<any> {
             var q: InsertOneMessage = new InsertOneMessage();
             q.collectionname = collection; q.item = model;

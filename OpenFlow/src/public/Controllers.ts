@@ -240,7 +240,9 @@ module openflow {
         labels: string[] = [];
         series: string[] = [];
         data: any[] = [];
+        ids: any[] = [];
         charttype: string = "bar";
+        click: any = null;
 
     }
     export declare function emit(k, v);
@@ -266,63 +268,77 @@ module openflow {
             this.loading = true;
             this.charts = [];
             var chart: chartset = null;
+            var agg: any = {};
+            var data: any = {};
+            var dt: Date;
 
-            console.debug("get mapreduce of instances");
-            var stats = await this.api.MapReduce("openrpa_instances",
-                function map() {
-                    this.count = 1;
-                    emit(this.WorkflowId, this);
-                }, function reduce(key, values) {
-                    var reducedObject = { count: 0, value: 0, avg: 0, minrun: 0, maxrun: 0, run: 0, _acl: [] };
-                    values.forEach(function (value) {
-                        var startDate = new Date(value._created);
-                        var endDate = new Date(value._modified);
-                        var seconds = (endDate.getTime() - startDate.getTime()) / 1000;
-                        if (reducedObject.minrun == 0 && seconds > 0) reducedObject.minrun = seconds;
-                        if (reducedObject.minrun > seconds) reducedObject.minrun = seconds;
-                        if (reducedObject.maxrun < seconds) reducedObject.maxrun = seconds;
-                        reducedObject.run += seconds;
-                        reducedObject.count += value.count;
-                        reducedObject._acl = value._acl;
-                    });
-                    return reducedObject;
-                }, function finalize(key, reducedValue) {
-                    if (reducedValue.count > 0) {
-                        reducedValue.avg = reducedValue.value / reducedValue.count;
-                        reducedValue.run = reducedValue.run / reducedValue.count;
-                    }
-                    return reducedValue;
-                }, {}, { inline: 1 }, null);
+            // var agg = [{ "$group": { "_id": "$_type", "count": { "$sum": 1 } } }];
+
+            // fuck it, lets kust focus on robots who have been online the last month
+            agg = [
+                { $match: { _rpaheartbeat: { "$exists": true } } },
+                { "$count": "_rpaheartbeat" }
+            ];
+            dt = new Date(new Date().toISOString());
+            dt.setMonth(dt.getMonth() - 1);
+            agg = [
+                { $match: { _rpaheartbeat: { "$gte": dt } } },
+                { "$count": "_rpaheartbeat" }
+            ];
+            data = await this.api.Aggregate("users", agg);
+            var totalrobots = 0;
+            if (data.length > 0) totalrobots = data[0]._rpaheartbeat;
+
+            dt = new Date(new Date().toISOString());
+            dt.setMinutes(dt.getMinutes() - 1);
+            agg = [
+                { $match: { _rpaheartbeat: { "$gte": dt } } },
+                { "$count": "_rpaheartbeat" }
+            ];
+            data = await this.api.Aggregate("users", agg);
+            var onlinerobots = 0;
+            if (data.length > 0) onlinerobots = data[0]._rpaheartbeat;
+
+            chart = new chartset();
+            chart.heading = "Robots seen the last month";
+            chart.labels = ['online', 'offline'];
+            chart.data = [onlinerobots, (totalrobots - onlinerobots)];
+            chart.charttype = "doughnut";
+            // chart.click = this.robotsclick.bind(this);
+            chart.click = this.robotsclick.bind(this);
+            this.charts.push(chart);
 
 
-            var workflows = await this.api.Query("openrpa", { _type: "workflow" }, null, null);
-            // var workflowids = [];
-            // workflows.forEach(workflow => {
-            //     workflowids.push(workflow._id);
-            // });
-            // var q = { WorkflowId: { $in: workflowids } }
-            // var instances = await this.api.Query("openrpa_instances", q, null, null);
 
+            // var agg = [{ "$group": { "_id": "$_type", "count": { "$sum": 1 } } }];
+
+            dt = new Date(new Date().toISOString());
+            dt.setMonth(dt.getMonth() - 1);
+            agg = [
+                { $match: { _created: { "$gte": dt }, _type: "workflowinstance" } },
+                { "$group": { "_id": { "WorkflowId": "$WorkflowId", "name": "$name" }, "count": { "$sum": 1 } } },
+                { $sort: { "count": -1 } },
+                { "$limit": 20 }
+            ];
+            var workflowruns = await this.api.Aggregate("openrpa_instances", agg);
 
 
             chart = new chartset();
-            chart.heading = "compare run times";
-            chart.series = ['minrun', 'avgrun', 'maxrun'];
-            // chart.labels = ['ok', 'warning', 'alarm'];
-            chart.data = [[], [], []];
-            for (var x = 0; x < stats.length; x++) {
-                var model = stats[x].value;
-                var _id = stats[x]._id;
-                var workflow = workflows.filter(y => y._id == _id)[0];
-                if (workflow !== undefined) {
-                    chart.data[0].push(model.minrun);
-                    chart.data[1].push(model.run);
-                    chart.data[2].push(model.maxrun);
-                    var id = stats[x]._id;
-                    var workflow = workflows.filter(x => x._id == id)[0];
-                    if (workflow == undefined) { chart.labels.push("unknown"); } else { chart.labels.push(workflow.name); }
-                }
+            chart.heading = "Workflow runs (top 20)";
+            // chart.series = ['name', 'count'];
+            // chart.labels = ['name', 'count'];
+            chart.data = [];
+            chart.ids = [];
+            for (var x = 0; x < workflowruns.length; x++) {
+                // chart.data[0].push(workflowruns[x]._id.name);
+                // chart.data[1].push(workflowruns[x].count);
+                chart.data.push(workflowruns[x].count);
+                chart.ids.push(workflowruns[x]._id.WorkflowId);
+                chart.labels.push(workflowruns[x]._id.name);
+                //     if (workflow == undefined) { chart.labels.push("unknown"); } else { chart.labels.push(workflow.name); }
+                // }
             }
+            chart.click = this.workflowclick.bind(this);
             this.charts.push(chart);
 
 
@@ -330,9 +346,200 @@ module openflow {
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
+        async robotsclick(points, evt): Promise<void> {
+            if (points.length > 0) {
+            } else { return; }
+            var chart: chartset = null;
+            var agg: any = {};
+            var data: any = {};
+            var dt: Date;
+
+            dt = new Date(new Date().toISOString());
+            dt.setMonth(dt.getMonth() - 1);
+            var dt2 = new Date(new Date().toISOString());
+            dt2.setMinutes(dt.getMinutes() - 1);
+            // 
+            // { "$limit": 20 }
+            var rpaheartbeat: any = [];
+            if (points[0]._index == 0) // Online robots
+            {
+                rpaheartbeat = { $match: { "user._rpaheartbeat": { "$gte": dt2 } } };
+            } else {
+
+                rpaheartbeat = { $match: { "user._rpaheartbeat": { "$lt": dt2 } } };
+            }
+
+            agg = [
+                { $match: { _created: { "$gte": dt }, clientagent: "openrpa" } },
+                {
+                    $lookup: {
+                        from: "users",
+                        localField: "userid",
+                        foreignField: "_id",
+                        as: "userarr"
+                    }
+                },
+                {
+                    "$project": {
+                        "userid": 1,
+                        "name": 1,
+                        "user": { "$arrayElemAt": ["$userarr", 0] }
+                    }
+                },
+                rpaheartbeat,
+                { "$group": { "_id": { userid: "$userid", name: "$name" }, "count": { "$sum": 1 } } },
+                { $sort: { "count": -1 } },
+                { "$limit": 20 }
+            ];
+
+
+            var data = await this.api.Aggregate("audit", agg);
 
 
 
+            chart = new chartset();
+            if (points[0]._index == 0) // Online robots
+            {
+                chart.heading = "Logins per online robot the last month (top 20)";
+            } else {
+                chart.heading = "Logins per offline robot the last month (top 20)";
+            }
+            // chart.series = ['name', 'count'];
+            // chart.labels = ['name', 'count'];
+            chart.data = [];
+            chart.ids = [];
+            for (var x = 0; x < data.length; x++) {
+                chart.data.push(data[x].count);
+                chart.ids.push(data[x]._id.userid);
+                chart.labels.push(data[x]._id.name);
+            }
+            chart.click = this.processData.bind(this);
+            this.charts.splice(0, 1);
+            this.charts.unshift(chart);
+
+
+
+
+            dt = new Date(new Date().toISOString());
+            dt.setMonth(dt.getMonth() - 1);
+            agg = [
+                { $match: { _created: { "$gte": dt }, _type: "workflowinstance" } },
+                {
+                    $lookup: {
+                        from: "users",
+                        localField: "ownerid",
+                        foreignField: "_id",
+                        as: "userarr"
+                    }
+                },
+                {
+                    "$project": {
+                        "WorkflowId": 1,
+                        "name": 1,
+                        "user": { "$arrayElemAt": ["$userarr", 0] }
+                    }
+                },
+                {
+                    "$project": {
+                        "WorkflowId": 1,
+                        "newname": { $concat: ["$name", " (", "$user.name", ")"] },
+                        "name": 1,
+                        "user": 1
+                    }
+                },
+                rpaheartbeat,
+                // { $project: { "newname":  } },
+
+
+                { "$group": { "_id": { "WorkflowId": "$WorkflowId", "name": "$newname" }, "count": { "$sum": 1 } } },
+                { $sort: { "count": -1 } },
+                { "$limit": 20 }
+            ];
+            var workflowruns = await this.api.Aggregate("openrpa_instances", agg);
+
+
+            chart = new chartset();
+            if (points[0]._index == 0) // Online robots
+            {
+                chart.heading = "Workflow runs for online robots (top 20)";
+            } else {
+                chart.heading = "Workflow runs for offline robots (top 20)";
+            }
+            chart.data = [];
+            chart.ids = [];
+            for (var x = 0; x < workflowruns.length; x++) {
+                chart.data.push(workflowruns[x].count);
+                chart.ids.push(workflowruns[x]._id.WorkflowId);
+                chart.labels.push(workflowruns[x]._id.name);
+            }
+            chart.click = this.workflowclick.bind(this);
+            this.charts.splice(1, 1);
+            this.charts.push(chart);
+
+
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+
+        }
+        async workflowclick(points, evt): Promise<void> {
+            if (points.length > 0) {
+            } else { return; }
+
+            var WorkflowId = this.charts[1].ids[points[0]._index];
+
+            var chart: chartset = null;
+            var agg: any = {};
+            var data: any = {};
+            var dt: Date;
+
+            dt = new Date(new Date().toISOString());
+            dt.setMonth(dt.getMonth() - 1);
+            var dt2 = new Date(new Date().toISOString());
+            dt2.setMinutes(dt.getMinutes() - 1);
+
+
+            dt = new Date(new Date().toISOString());
+            dt.setMonth(dt.getMonth() - 1);
+            agg = [
+                { $match: { _created: { "$gte": dt }, WorkflowId: WorkflowId } },
+                {
+                    $group:
+                    {
+                        _id:
+                        {
+                            name: "$name",
+                            day: { $dayOfMonth: "$_created" },
+                            month: { $month: "$_created" },
+                            year: { $year: "$_created" }
+                        },
+                        total: { $sum: "$data" },
+                        count: { $sum: 1 }
+                    }
+                },
+                { $sort: { count: 1 } },
+                { "$limit": 20 }
+            ];
+            var workflowruns = await this.api.Aggregate("openrpa_instances", agg);
+
+
+            chart = new chartset();
+            if (workflowruns.length > 0) {
+                chart.heading = "Number of runs per day for " + workflowruns[0]._id.name;
+            } else {
+                chart.heading = "No data ";
+            }
+            chart.data = [];
+            for (var x = 0; x < workflowruns.length; x++) {
+                chart.data.push(workflowruns[x].count);
+                chart.labels.push(workflowruns[x]._id.day);
+            }
+            chart.click = this.processData.bind(this);
+            this.charts.splice(1, 1);
+            this.charts.push(chart);
+
+
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+
+        }
         async InsertNew(): Promise<void> {
             // this.loading = true;
             var model = { name: "Find me " + Math.random().toString(36).substr(2, 9), "temp": "hi mom" };
@@ -629,7 +836,6 @@ module openflow {
                 if (event && data) { }
                 this.user = data.user;
                 this.signedin = true;
-                // console.log(this.user);
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 // cleanup();
             });
