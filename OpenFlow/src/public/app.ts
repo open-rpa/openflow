@@ -3,6 +3,10 @@
  */
 module openflow {
     "use strict";
+    // .config(function (ChartJsProvider) {
+    //     ChartJsProvider.setOptions({ responsive: true });
+    //     ChartJsProvider.setOptions('Line', { responsive: true });
+    // })
     var webApp: any = angular.module("webApp", ['ngRoute', 'chart.js', 'ngLocalize', 'ngLocalize.Config'])
         .controller("MenuCtrl", MenuCtrl)
         .controller("Providers", ProvidersCtrl)

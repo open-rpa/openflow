@@ -233,7 +233,17 @@ module openflow {
         options: any = {
             legend: { display: true }
         };
-        baseColors: string[] = ['#F7464A', '#97BBCD', '#FDB45C', '#46BFBD', '#949FB1', '#4D5360'];
+        // baseColors: string[] = ['#F7464A', '#97BBCD', '#FDB45C', '#46BFBD', '#949FB1', '#4D5360'];
+        // baseColors: string[] = ['#803690', '#00ADF9', '#DCDCDC', '#46BFBD', '#FDB45C', '#949FB1', '#4D5360'];
+        baseColors: [
+            '#97BBCD', // blue
+            '#DCDCDC', // light grey
+            '#F7464A', // red
+            '#46BFBD', // green
+            '#FDB45C', // yellow
+            '#949FB1', // grey
+            '#4D5360'  // dark grey
+        ];
         colors: string[] = this.baseColors;
         type: string = 'bar';
         heading: string = "";
@@ -243,7 +253,6 @@ module openflow {
         ids: any[] = [];
         charttype: string = "bar";
         click: any = null;
-
     }
     export declare function emit(k, v);
     export class ReportsCtrl extends entitiesCtrl<openflow.Base> {
@@ -301,6 +310,7 @@ module openflow {
             this.userdata.data.ReportsCtrl.run(this.userdata.data.ReportsCtrl.points);
         }
         async processData(): Promise<void> {
+            console.log('processData');
             this.userdata.data.ReportsCtrl.run = this.processData.bind(this);
             this.userdata.data.ReportsCtrl.points = null;
             this.loading = true;
@@ -331,10 +341,19 @@ module openflow {
             if (data.length > 0) onlinerobots = data[0]._rpaheartbeat;
 
             chart = new chartset();
-            chart.heading = "Robots seen the last " + this.timeframedesc;
+            chart.heading = "Online and offline robots, seen the last " + this.timeframedesc;
             chart.labels = ['online', 'offline'];
             chart.data = [onlinerobots, (totalrobots - onlinerobots)];
-            chart.charttype = "doughnut";
+            chart.charttype = "pie";
+            chart.colors = [
+                // '#98FB98', // very light green
+                // '#F08080', // very light red
+                // '#228B22', // green
+                // '#B22222', // red
+                '#006400', // green
+                '#8B0000', // red
+            ];
+
             // chart.click = this.robotsclick.bind(this);
             chart.click = this.robotsclick.bind(this);
             this.charts.push(chart);
@@ -376,6 +395,7 @@ module openflow {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async robotsclick(points, evt): Promise<void> {
+            console.log('robotsclick');
             this.userdata.data.ReportsCtrl.run = this.robotsclick.bind(this);
             this.userdata.data.ReportsCtrl.points = points;
             if (points.length > 0) {
@@ -397,9 +417,11 @@ module openflow {
             }
             this.charts = [];
             agg = [
-                { $match: { _type: 'user' } },
-                rpaheartbeat,
-                {
+                { $match: { _type: 'user' } }
+                , { $sort: { "_rpaheartbeat": -1 } }
+                , { "$limit": 20 }
+                , rpaheartbeat
+                , {
                     $lookup: {
                         from: "audit",
                         localField: "_id",
@@ -414,7 +436,9 @@ module openflow {
                         "count": { "$size": "$audit" }
                     }
                 }
-                , { "$limit": 20 }
+                , { $sort: { "count": -1 } }
+                // , { $sort: { "_rpaheartbeat": -1 } }
+                // , { "$limit": 20 }
             ];
 
             var data = await this.api.Aggregate("users", agg);
@@ -504,6 +528,7 @@ module openflow {
 
         }
         async robotclick(points, evt): Promise<void> {
+            console.log('robotclick');
             if (points.length > 0) {
             } else { return; }
             var userid = this.charts[0].ids[points[0]._index];
@@ -545,6 +570,7 @@ module openflow {
 
         }
         async workflowclick(points, evt): Promise<void> {
+            console.log('workflowclick');
             if (points.length > 0) {
             } else { return; }
 

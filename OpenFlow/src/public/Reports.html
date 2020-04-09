@@ -12,9 +12,11 @@
 
 <div ng-repeat="chart in ctrl.charts">
     <div>{{chart.heading}}</div>
-    <div style="width: 500px">
+    <!-- style="width: 500px" -->
+    <div style="max-width: 600px;">
         <canvas id="bar" class="chart-base" chart-type="chart.charttype" chart-data="chart.data"
-            chart-labels="chart.labels" chart-series="chart.series" chart-click="chart.click">
+            chart-labels="chart.labels" chart-series="chart.series" chart-click="chart.click"
+            chart-colors="chart.colors">
         </canvas>
     </div><br>
 </div>
