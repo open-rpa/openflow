@@ -356,6 +356,7 @@ module openflow {
 
             dt = new Date(new Date().toISOString());
             dt.setMonth(dt.getMonth() - 1);
+            //dt.setDate(dt.getDate() - 1);
             var dt2 = new Date(new Date().toISOString());
             dt2.setMinutes(dt.getMinutes() - 1);
             // 
@@ -363,39 +364,36 @@ module openflow {
             var rpaheartbeat: any = [];
             if (points[0]._index == 0) // Online robots
             {
-                rpaheartbeat = { $match: { "user._rpaheartbeat": { "$gte": dt2 } } };
+                // rpaheartbeat = { $match: { "user._rpaheartbeat": { "$gte": dt2 } } };
+                rpaheartbeat = { $match: { "_rpaheartbeat": { "$gte": dt2 } } };
             } else {
 
-                rpaheartbeat = { $match: { "user._rpaheartbeat": { "$lt": dt2 } } };
+                // rpaheartbeat = { $match: { "user._rpaheartbeat": { "$lt": dt2 } } };
+                rpaheartbeat = { $match: { "_rpaheartbeat": { "$lt": dt2 } } };
             }
-
             agg = [
-                { $match: { _created: { "$gte": dt }, clientagent: "openrpa" } },
+                { $match: { _type: 'user' } },
+                rpaheartbeat,
                 {
                     $lookup: {
-                        from: "users",
-                        localField: "userid",
-                        foreignField: "_id",
-                        as: "userarr"
+                        from: "audit",
+                        localField: "_id",
+                        foreignField: "userid",
+                        as: "audit"
                     }
-                },
-                {
-                    "$project": {
-                        "userid": 1,
+                }
+                , {
+                    $project: {
+                        "_id": 1,
                         "name": 1,
-                        "user": { "$arrayElemAt": ["$userarr", 0] }
+                        "count": { "$size": "$audit" }
                     }
-                },
-                rpaheartbeat,
-                { "$group": { "_id": { userid: "$userid", name: "$name" }, "count": { "$sum": 1 } } },
-                { $sort: { "count": -1 } },
-                { "$limit": 20 }
+                }
+                , { "$limit": 20 }
             ];
 
-
-            var data = await this.api.Aggregate("audit", agg);
-
-
+            var data = await this.api.Aggregate("users", agg);
+            console.log(data);
 
             chart = new chartset();
             if (points[0]._index == 0) // Online robots
@@ -404,21 +402,25 @@ module openflow {
             } else {
                 chart.heading = "Logins per offline robot the last month (top 20)";
             }
-            // chart.series = ['name', 'count'];
-            // chart.labels = ['name', 'count'];
             chart.data = [];
             chart.ids = [];
             for (var x = 0; x < data.length; x++) {
                 chart.data.push(data[x].count);
-                chart.ids.push(data[x]._id.userid);
-                chart.labels.push(data[x]._id.name);
+                chart.ids.push(data[x]._id);
+                chart.labels.push(data[x].name);
             }
             chart.click = this.processData.bind(this);
             this.charts.splice(0, 1);
             this.charts.unshift(chart);
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
 
-
+            if (points[0]._index == 0) // Online robots
+            {
+                rpaheartbeat = { $match: { "user._rpaheartbeat": { "$gte": dt2 } } };
+            } else {
+                rpaheartbeat = { $match: { "user._rpaheartbeat": { "$lt": dt2 } } };
+            }
 
             dt = new Date(new Date().toISOString());
             dt.setMonth(dt.getMonth() - 1);
@@ -456,7 +458,7 @@ module openflow {
                 { "$limit": 20 }
             ];
             var workflowruns = await this.api.Aggregate("openrpa_instances", agg);
-
+            console.log(workflowruns);
 
             chart = new chartset();
             if (points[0]._index == 0) // Online robots
@@ -519,7 +521,7 @@ module openflow {
                 { "$limit": 20 }
             ];
             var workflowruns = await this.api.Aggregate("openrpa_instances", agg);
-
+            console.log(workflowruns);
 
             chart = new chartset();
             if (workflowruns.length > 0) {
