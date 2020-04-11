@@ -596,7 +596,7 @@ module openflow {
                         count: { $sum: 1 }
                     }
                 },
-                { $sort: { count: 1 } },
+                { $sort: { "_id.day": 1 } },
                 { "$limit": 20 }
             ];
             var workflowruns = await this.api.Aggregate("openrpa_instances", agg);
