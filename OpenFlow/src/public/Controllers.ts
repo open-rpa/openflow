@@ -112,63 +112,47 @@ module openflow {
         }
         async dographs() {
             var chart: chartset = null;
-            this.charts = [];
+            var agg: any = {};
+            var data: any = {};
+
+            var datatimeframe = new Date(new Date().toISOString());
+            datatimeframe.setDate(datatimeframe.getDate() - 5);
+            agg = [
+                { $match: { _created: { "$gte": datatimeframe } } },
+                {
+                    $group:
+                    {
+                        _id:
+                        {
+                            WorkflowId: "$WorkflowId",
+                            name: "$name",
+                            day: { $dayOfMonth: "$_created" }
+                        },
+                        count: { $sum: 1 }
+                    }
+                },
+                { $sort: { "_id.day": 1 } }
+                // ,{ "$limit": 20 }
+            ];
+            var workflowruns = await this.api.Aggregate("openrpa_instances", agg);
+
+
             for (var i = 0; i < this.models.length; i++) {
                 var workflow = this.models[i] as any;
-                var d = new Date();
-                //d.setMonth(d.getMonth() - 1);
-                d.setDate(d.getDate() - 7);
-                console.debug("get mapreduce of instances");
-                var stats = await this.api.MapReduce("openrpa_instances",
-                    function map() {
-                        var startDate = new Date(this._created);
-                        this.count = 1;
-                        emit(startDate.toISOString().split('T')[0], this);
-                    }, function reduce(key, values) {
-                        var reducedObject = { count: 0, value: 0, avg: 0, minrun: 0, maxrun: 0, run: 0, _acl: [] };
-                        values.forEach(function (value) {
-                            var startDate = new Date(value._created);
-                            var endDate = new Date(value._modified);
-                            var seconds = (endDate.getTime() - startDate.getTime()) / 1000;
-                            if (reducedObject.minrun == 0 && seconds > 0) reducedObject.minrun = seconds;
-                            if (reducedObject.minrun > seconds) reducedObject.minrun = seconds;
-                            if (reducedObject.maxrun < seconds) reducedObject.maxrun = seconds;
-                            reducedObject.run += seconds;
-                            reducedObject.count += value.count;
-                            reducedObject._acl = value._acl;
-                        });
-                        return reducedObject;
-                    }, function finalize(key, reducedValue) {
-                        if (reducedValue.count > 0) {
-                            reducedValue.avg = reducedValue.value / reducedValue.count;
-                            reducedValue.run = reducedValue.run / reducedValue.count;
-                        }
-                        return reducedValue;
-                    }, { _type: "workflowinstance", WorkflowId: workflow._id, "_created": { "$gte": new Date(d.toISOString()) } }, { inline: 1 }, null);
 
                 chart = new chartset();
-                chart.charttype = "line"
                 chart.data = [];
-                var lastdate = "";
-                var days = daysBetween(d, new Date());
-                for (var y = 0; y < days; y++) {
-                    var startDate = new Date(d);
-                    startDate.setDate(d.getDate() + y);
-                    var datestring = startDate.toISOString().split('T')[0];
-                    var exists = stats.filter(m => m._id == datestring);
-                    if (exists.length > 0) {
-                        chart.data.push(exists[0].value.count);
-                    } else {
-                        chart.data.push(0);
-                    }
-                    if ((y % 2) == 0 || (days == 30 && y == 30)) {
-                        chart.labels.push(startDate.getDate().toString());
-                    } else {
-                        chart.labels.push("");
+                for (var x = 0; x < workflowruns.length; x++) {
+                    if (workflowruns[x]._id.WorkflowId == workflow._id) {
+                        chart.data.push(workflowruns[x].count);
+                        chart.labels.push(workflowruns[x]._id.day);
                     }
                 }
-                workflow.chart = chart;
-                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                if (chart.data.length > 0) {
+                    workflow.chart = chart;
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                }
+
             }
 
         }
@@ -1042,55 +1026,6 @@ module openflow {
             this.userdata.data.UsersCtrl.searchstring = this.searchstring;
             this.userdata.data.UsersCtrl.basequeryas = this.basequeryas;
             var chart: chartset = null;
-            // for (var i = 0; i < this.models.length; i++) {
-            //     var user = this.models[i] as any;
-            //     var d = new Date();
-            //     // d.setMonth(d.getMonth() - 1);
-            //     d.setDate(d.getDate() - 7);
-            //     console.debug("get mapreduce for " + user.name);
-            //     var stats = await this.api.MapReduce("audit",
-            //         function map() {
-            //             var startDate = new Date(this._created);
-            //             this.count = 1;
-            //             emit(startDate.toISOString().split('T')[0], this);
-            //         }, function reduce(key, values) {
-            //             var reducedObject = { count: 0, value: 0, avg: 0, minrun: 0, maxrun: 0, run: 0, _acl: [] };
-            //             values.forEach(function (value) {
-            //                 reducedObject.count += value.count;
-            //                 reducedObject._acl = value._acl;
-            //             });
-            //             return reducedObject;
-            //         }, function finalize(key, reducedValue) {
-            //             if (reducedValue.count > 0) {
-            //                 reducedValue.avg = reducedValue.value / reducedValue.count;
-            //             }
-            //             return reducedValue;
-            //         }, { userid: user._id, "_created": { "$gte": new Date(d.toISOString()) } }, { inline: 1 }, null);
-
-            //     chart = new chartset();
-            //     chart.charttype = "line"
-            //     chart.data = [];
-            //     var days = daysBetween(d, new Date());
-            //     for (var y = 0; y < days; y++) {
-            //         var startDate = new Date(d);
-            //         startDate.setDate(d.getDate() + y);
-            //         var datestring = startDate.toISOString().split('T')[0];
-            //         var exists = stats.filter(m => m._id == datestring);
-            //         if (exists.length > 0) {
-            //             chart.data.push(exists[0].value.count);
-            //         } else {
-            //             chart.data.push(0);
-            //         }
-            //         //chart.labels.push(datestring);
-            //         if ((y % 2) == 0 || (days == 30 && y == 30)) {
-            //             chart.labels.push(startDate.getDate().toString());
-            //         } else {
-            //             chart.labels.push("");
-            //         }
-            //     }
-            //     user.chart = chart;
-
-            // }
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
