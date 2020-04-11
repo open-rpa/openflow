@@ -200,14 +200,20 @@ export class workflow_in_node {
                     queue = Config.queue_prefix + this.config.queue;
                 }
 
-                var who = WebSocketClient.instance.user;
-
                 var jwt = data.jwt;
-                delete data.jwt;
+
                 var who = WebSocketClient.instance.user;
+                var me = WebSocketClient.instance.user;
+                if (!NoderedUtil.IsNullEmpty(jwt)) {
+                    var signin = await NoderedUtil.RenewToken(jwt, true);
+                    who = signin.user;
+                    data.jwt = signin.jwt;
+                }
+                // delete data.jwt;                
                 var item: Base = ({ _type: "instance", "queue": queue, "name": this.workflow.name, payload: data, workflow: this.workflow._id, targetid: who._id }) as any;
                 item = Base.assign(item);
                 item.addRight(who._id, who.name, [-1]);
+                if (who._id != me._id) item.addRight(me._id, me.name, [-1]);
                 var res2 = await NoderedUtil.InsertOne("workflow_instances", item, 1, true, jwt);
 
                 // Logger.instanse.info("workflow in activated creating a new workflow instance with id " + res2._id);

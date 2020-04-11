@@ -233,20 +233,34 @@ module openflow {
         options: any = {
             legend: { display: true }
         };
-        baseColors: string[] = ['#F7464A', '#97BBCD', '#FDB45C', '#46BFBD', '#949FB1', '#4D5360'];
+        // baseColors: string[] = ['#F7464A', '#97BBCD', '#FDB45C', '#46BFBD', '#949FB1', '#4D5360'];
+        // baseColors: string[] = ['#803690', '#00ADF9', '#DCDCDC', '#46BFBD', '#FDB45C', '#949FB1', '#4D5360'];
+        baseColors: [
+            '#97BBCD', // blue
+            '#DCDCDC', // light grey
+            '#F7464A', // red
+            '#46BFBD', // green
+            '#FDB45C', // yellow
+            '#949FB1', // grey
+            '#4D5360'  // dark grey
+        ];
         colors: string[] = this.baseColors;
         type: string = 'bar';
         heading: string = "";
         labels: string[] = [];
         series: string[] = [];
         data: any[] = [];
+        ids: any[] = [];
         charttype: string = "bar";
-
+        click: any = null;
     }
     export declare function emit(k, v);
     export class ReportsCtrl extends entitiesCtrl<openflow.Base> {
         public message: string = "";
         public charts: chartset[] = [];
+        public datatimeframe: Date;
+        public onlinetimeframe: Date;
+        public timeframedesc: string = "";
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -259,70 +273,120 @@ module openflow {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api, userdata);
             console.debug("ReportsCtrl");
             WebSocketClient.onSignedin((user: TokenUser) => {
-                this.processData();
+                if (this.userdata.data.ReportsCtrl) {
+                    this.datatimeframe = this.userdata.data.ReportsCtrl.datatimeframe;
+                    this.onlinetimeframe = this.userdata.data.ReportsCtrl.onlinetimeframe;
+                    this.processData();
+                } else {
+                    this.settimeframe(30, 0, "30 days");
+                }
+
             });
         }
+        settimeframe(days, hours, desc) {
+            this.datatimeframe = new Date(new Date().toISOString());
+            console.log(this.datatimeframe);
+            if (days > 0) this.datatimeframe.setDate(this.datatimeframe.getDate() - days);
+            if (hours > 0) this.datatimeframe.setHours(this.datatimeframe.getHours() - hours);
+            this.timeframedesc = desc;
+            console.log(this.datatimeframe);
+
+            this.onlinetimeframe = new Date(new Date().toISOString());
+            this.onlinetimeframe.setMinutes(this.onlinetimeframe.getMinutes() - 1);
+            // this.datatimeframe = new Date(new Date().toISOString());
+            // this.datatimeframe.setMonth(this.datatimeframe.getMonth() - 1);
+
+            // dt = new Date(new Date().toISOString());
+            // dt.setMonth(dt.getMonth() - 1);
+            // //dt.setDate(dt.getDate() - 1);
+            // dt = new Date(new Date().toISOString());
+            // dt.setMonth(dt.getMonth() - 1);
+            // var dt2 = new Date(new Date().toISOString());
+            // dt2.setMinutes(dt.getMinutes() - 1);
+
+            if (!this.userdata.data.ReportsCtrl) this.userdata.data.ReportsCtrl = { run: this.processData.bind(this) };
+            this.userdata.data.ReportsCtrl.datatimeframe = this.datatimeframe;
+            this.userdata.data.ReportsCtrl.onlinetimeframe = this.onlinetimeframe;
+            this.userdata.data.ReportsCtrl.run(this.userdata.data.ReportsCtrl.points);
+        }
         async processData(): Promise<void> {
+            console.log('processData');
+            this.userdata.data.ReportsCtrl.run = this.processData.bind(this);
+            this.userdata.data.ReportsCtrl.points = null;
             this.loading = true;
             this.charts = [];
             var chart: chartset = null;
+            var agg: any = {};
+            var data: any = {};
 
-            console.debug("get mapreduce of instances");
-            var stats = await this.api.MapReduce("openrpa_instances",
-                function map() {
-                    this.count = 1;
-                    emit(this.WorkflowId, this);
-                }, function reduce(key, values) {
-                    var reducedObject = { count: 0, value: 0, avg: 0, minrun: 0, maxrun: 0, run: 0, _acl: [] };
-                    values.forEach(function (value) {
-                        var startDate = new Date(value._created);
-                        var endDate = new Date(value._modified);
-                        var seconds = (endDate.getTime() - startDate.getTime()) / 1000;
-                        if (reducedObject.minrun == 0 && seconds > 0) reducedObject.minrun = seconds;
-                        if (reducedObject.minrun > seconds) reducedObject.minrun = seconds;
-                        if (reducedObject.maxrun < seconds) reducedObject.maxrun = seconds;
-                        reducedObject.run += seconds;
-                        reducedObject.count += value.count;
-                        reducedObject._acl = value._acl;
-                    });
-                    return reducedObject;
-                }, function finalize(key, reducedValue) {
-                    if (reducedValue.count > 0) {
-                        reducedValue.avg = reducedValue.value / reducedValue.count;
-                        reducedValue.run = reducedValue.run / reducedValue.count;
-                    }
-                    return reducedValue;
-                }, {}, { inline: 1 }, null);
+            // fuck it, lets just focus on robots who have been online the last month
+            // agg = [
+            //     { $match: { _rpaheartbeat: { "$exists": true } } },
+            //     { "$count": "_rpaheartbeat" }
+            // ];
+            agg = [
+                { $match: { _rpaheartbeat: { "$gte": this.datatimeframe } } },
+                { "$count": "_rpaheartbeat" }
+            ];
+            data = await this.api.Aggregate("users", agg);
+            var totalrobots = 0;
+            if (data.length > 0) totalrobots = data[0]._rpaheartbeat;
+
+            agg = [
+                { $match: { _rpaheartbeat: { "$gte": this.onlinetimeframe } } },
+                { "$count": "_rpaheartbeat" }
+            ];
+            data = await this.api.Aggregate("users", agg);
+            var onlinerobots = 0;
+            if (data.length > 0) onlinerobots = data[0]._rpaheartbeat;
+
+            chart = new chartset();
+            chart.heading = "Online and offline robots, seen the last " + this.timeframedesc;
+            chart.labels = ['online', 'offline'];
+            chart.data = [onlinerobots, (totalrobots - onlinerobots)];
+            chart.charttype = "pie";
+            chart.colors = [
+                // '#98FB98', // very light green
+                // '#F08080', // very light red
+                // '#228B22', // green
+                // '#B22222', // red
+                '#006400', // green
+                '#8B0000', // red
+            ];
+
+            // chart.click = this.robotsclick.bind(this);
+            chart.click = this.robotsclick.bind(this);
+            this.charts.push(chart);
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
 
-            var workflows = await this.api.Query("openrpa", { _type: "workflow" }, null, null);
-            // var workflowids = [];
-            // workflows.forEach(workflow => {
-            //     workflowids.push(workflow._id);
-            // });
-            // var q = { WorkflowId: { $in: workflowids } }
-            // var instances = await this.api.Query("openrpa_instances", q, null, null);
+            // var agg = [{ "$group": { "_id": "$_type", "count": { "$sum": 1 } } }];
 
+            agg = [
+                { $match: { _created: { "$gte": this.datatimeframe }, _type: "workflowinstance" } },
+                { "$group": { "_id": { "WorkflowId": "$WorkflowId", "name": "$name" }, "count": { "$sum": 1 } } },
+                { $sort: { "count": -1 } },
+                { "$limit": 20 }
+            ];
+            var workflowruns = await this.api.Aggregate("openrpa_instances", agg);
 
 
             chart = new chartset();
-            chart.heading = "compare run times";
-            chart.series = ['minrun', 'avgrun', 'maxrun'];
-            // chart.labels = ['ok', 'warning', 'alarm'];
-            chart.data = [[], [], []];
-            for (var x = 0; x < stats.length; x++) {
-                var model = stats[x].value;
-                var _id = stats[x]._id;
-                var workflow = workflows.filter(y => y._id == _id)[0];
-                if (workflow !== undefined) {
-                    chart.data[0].push(model.minrun);
-                    chart.data[1].push(model.run);
-                    chart.data[2].push(model.maxrun);
-                    var id = stats[x]._id;
-                    var workflow = workflows.filter(x => x._id == id)[0];
-                    if (workflow == undefined) { chart.labels.push("unknown"); } else { chart.labels.push(workflow.name); }
-                }
+            chart.heading = "Workflow runs (top 20)";
+            // chart.series = ['name', 'count'];
+            // chart.labels = ['name', 'count'];
+            chart.data = [];
+            chart.ids = [];
+            for (var x = 0; x < workflowruns.length; x++) {
+                // chart.data[0].push(workflowruns[x]._id.name);
+                // chart.data[1].push(workflowruns[x].count);
+                chart.data.push(workflowruns[x].count);
+                chart.ids.push(workflowruns[x]._id.WorkflowId);
+                chart.labels.push(workflowruns[x]._id.name);
+                //     if (workflow == undefined) { chart.labels.push("unknown"); } else { chart.labels.push(workflow.name); }
+                // }
             }
+            chart.click = this.workflowclick.bind(this);
             this.charts.push(chart);
 
 
@@ -330,9 +394,233 @@ module openflow {
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
+        async robotsclick(points, evt): Promise<void> {
+            console.log('robotsclick');
+            this.userdata.data.ReportsCtrl.run = this.robotsclick.bind(this);
+            this.userdata.data.ReportsCtrl.points = points;
+            if (points.length > 0) {
+            } else { return; }
+            var chart: chartset = null;
+            var agg: any = {};
+            var data: any = {};
+            // 
+            // { "$limit": 20 }
+            var rpaheartbeat: any = [];
+            if (points[0]._index == 0) // Online robots
+            {
+                // rpaheartbeat = { $match: { "user._rpaheartbeat": { "$gte": this.onlinetimeframe } } };
+                rpaheartbeat = { $match: { "_rpaheartbeat": { "$gte": this.onlinetimeframe } } };
+            } else {
+
+                // rpaheartbeat = { $match: { "user._rpaheartbeat": { "$lt": this.onlinetimeframe } } };
+                rpaheartbeat = { $match: { "_rpaheartbeat": { "$lt": this.onlinetimeframe } } };
+            }
+            this.charts = [];
+            agg = [
+                { $match: { _type: 'user' } }
+                , { $sort: { "_rpaheartbeat": -1 } }
+                , { "$limit": 20 }
+                , rpaheartbeat
+                , {
+                    $lookup: {
+                        from: "audit",
+                        localField: "_id",
+                        foreignField: "userid",
+                        as: "audit"
+                    }
+                }
+                , {
+                    $project: {
+                        "_id": 1,
+                        "name": 1,
+                        "count": { "$size": "$audit" }
+                    }
+                }
+                , { $sort: { "count": -1 } }
+                // , { $sort: { "_rpaheartbeat": -1 } }
+                // , { "$limit": 20 }
+            ];
+
+            var data = await this.api.Aggregate("users", agg);
+            console.log(data);
+
+            chart = new chartset();
+            if (points[0]._index == 0) // Online robots
+            {
+                chart.heading = "Logins per online robot the last " + this.timeframedesc + " (top 20)";
+            } else {
+                chart.heading = "Logins per offline robot the last " + this.timeframedesc + " (top 20)";
+            }
+            chart.data = [];
+            chart.ids = [];
+            for (var x = 0; x < data.length; x++) {
+                chart.data.push(data[x].count);
+                chart.ids.push(data[x]._id);
+                chart.labels.push(data[x].name);
+            }
+            chart.click = this.robotclick.bind(this);
+            this.charts.push(chart);
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
 
+            if (points[0]._index == 0) // Online robots
+            {
+                rpaheartbeat = { $match: { "user._rpaheartbeat": { "$gte": this.onlinetimeframe } } };
+            } else {
+                rpaheartbeat = { $match: { "user._rpaheartbeat": { "$lt": this.onlinetimeframe } } };
+            }
 
+            agg = [
+                { $match: { _created: { "$gte": this.datatimeframe }, _type: "workflowinstance" } },
+                {
+                    $lookup: {
+                        from: "users",
+                        localField: "ownerid",
+                        foreignField: "_id",
+                        as: "userarr"
+                    }
+                },
+                {
+                    "$project": {
+                        "WorkflowId": 1,
+                        "name": 1,
+                        "user": { "$arrayElemAt": ["$userarr", 0] }
+                    }
+                },
+                {
+                    "$project": {
+                        "WorkflowId": 1,
+                        "newname": { $concat: ["$name", " (", "$user.name", ")"] },
+                        "name": 1,
+                        "user": 1
+                    }
+                },
+                rpaheartbeat,
+                // { $project: { "newname":  } },
+
+
+                { "$group": { "_id": { "WorkflowId": "$WorkflowId", "name": "$newname" }, "count": { "$sum": 1 } } },
+                { $sort: { "count": -1 } },
+                { "$limit": 20 }
+            ];
+            var workflowruns = await this.api.Aggregate("openrpa_instances", agg);
+            console.log(workflowruns);
+
+            chart = new chartset();
+            if (points[0]._index == 0) // Online robots
+            {
+                chart.heading = "Workflow runs for online robots (top 20)";
+            } else {
+                chart.heading = "Workflow runs for offline robots (top 20)";
+            }
+            chart.data = [];
+            chart.ids = [];
+            for (var x = 0; x < workflowruns.length; x++) {
+                chart.data.push(workflowruns[x].count);
+                chart.ids.push(workflowruns[x]._id.WorkflowId);
+                chart.labels.push(workflowruns[x]._id.name);
+            }
+            chart.click = this.workflowclick.bind(this);
+            this.charts.push(chart);
+
+
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+
+        }
+        async robotclick(points, evt): Promise<void> {
+            console.log('robotclick');
+            if (points.length > 0) {
+            } else { return; }
+            var userid = this.charts[0].ids[points[0]._index];
+            console.log(userid);
+            var chart: chartset = null;
+            var agg: any = {};
+            var data: any = {};
+
+
+            agg = [
+                { $match: { _created: { "$gte": this.datatimeframe }, _type: "workflowinstance", ownerid: userid } },
+                { "$group": { "_id": { "WorkflowId": "$WorkflowId", "name": "$name", "owner": "$owner" }, "count": { "$sum": 1 } } },
+                { $sort: { "count": -1 } },
+                { "$limit": 20 }
+            ];
+            var workflowruns = await this.api.Aggregate("openrpa_instances", agg);
+            console.log(workflowruns);
+
+            chart = new chartset();
+            if (workflowruns.length > 0) // Online robots
+            {
+                chart.heading = "Workflow runs for " + workflowruns[0].owner + " (top 20)";
+            } else {
+                chart.heading = "No data (or permissions) for robot";
+            }
+            chart.data = [];
+            chart.ids = [];
+            for (var x = 0; x < workflowruns.length; x++) {
+                chart.data.push(workflowruns[x].count);
+                chart.ids.push(workflowruns[x]._id.WorkflowId);
+                chart.labels.push(workflowruns[x]._id.name);
+            }
+            chart.click = this.workflowclick.bind(this);
+            this.charts.splice(1, 1);
+            this.charts.push(chart);
+
+
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+
+        }
+        async workflowclick(points, evt): Promise<void> {
+            console.log('workflowclick');
+            if (points.length > 0) {
+            } else { return; }
+
+            var WorkflowId = this.charts[1].ids[points[0]._index];
+
+            var chart: chartset = null;
+            var agg: any = {};
+            var data: any = {};
+
+            agg = [
+                { $match: { _created: { "$gte": this.datatimeframe }, WorkflowId: WorkflowId } },
+                {
+                    $group:
+                    {
+                        _id:
+                        {
+                            name: "$name",
+                            day: { $dayOfMonth: "$_created" },
+                            month: { $month: "$_created" },
+                            year: { $year: "$_created" }
+                        },
+                        total: { $sum: "$data" },
+                        count: { $sum: 1 }
+                    }
+                },
+                { $sort: { "_id.day": 1 } },
+                { "$limit": 20 }
+            ];
+            var workflowruns = await this.api.Aggregate("openrpa_instances", agg);
+            console.log(workflowruns);
+
+            chart = new chartset();
+            if (workflowruns.length > 0) {
+                chart.heading = "Number of runs per day for " + workflowruns[0]._id.name;
+            } else {
+                chart.heading = "No data ";
+            }
+            chart.data = [];
+            for (var x = 0; x < workflowruns.length; x++) {
+                chart.data.push(workflowruns[x].count);
+                chart.labels.push(workflowruns[x]._id.day);
+            }
+            chart.click = this.processData.bind(this);
+            this.charts.splice(1, 1);
+            this.charts.push(chart);
+
+
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+
+        }
         async InsertNew(): Promise<void> {
             // this.loading = true;
             var model = { name: "Find me " + Math.random().toString(36).substr(2, 9), "temp": "hi mom" };
@@ -629,7 +917,6 @@ module openflow {
                 if (event && data) { }
                 this.user = data.user;
                 this.signedin = true;
-                // console.log(this.user);
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 // cleanup();
             });
@@ -1807,8 +2094,6 @@ module openflow {
             return new Promise(resolve => setTimeout(resolve, ms));
         }
         async beforeSubmit(submission, next) {
-            // console.log('beforeSubmit', submission);
-            //next('go away!');
             next();
         }
         async renderform() {
@@ -1894,16 +2179,8 @@ module openflow {
                     });
                 }
 
-                // 
-                // replaceElem('div', 'span');
                 setTimeout(() => {
-                    // $('button[type="button"]').contents().unwrap().wrap('<input/>');
-                    // replaceElem('button', 'input');
-                    // replaceElementTag('button[type="button"]', '<input></input>');
-
                     console.log("Attach buttons! 2");
-                    // $('button[type="button"]').bind("click", function () {
-
                     $('button[type="button"]').each(function () {
                         var cur: any = $(this)[0];
                         console.log("set submit");
@@ -1939,7 +2216,6 @@ module openflow {
                 ele = $('.render-wrap');
                 ele.show();
                 this.formRender = ele.formRender(formRenderOpts);
-                if (!this.$scope.$$phase) { this.$scope.$apply(); }
             } else {
 
                 this.traversecomponentsMakeDefaults(this.form.schema.components);
@@ -1989,9 +2265,19 @@ module openflow {
                 this.formioRender.on('error', (errors) => {
                     console.error(errors);
                 });
-                if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
+            if (this.model.state == "completed" || this.model.state == "failed") {
+                $('#workflowform :input').prop("disabled", true);
+                $('#workflowform :button').prop("disabled", true);
+                $('#workflowform :input').addClass("disabled");
+                $('#workflowform :button').addClass("disabled");
+
+                $('#workflowform :button').hide();
+                $('input[type="submit"]').hide();
+            }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
+
     }
     export class jslogCtrl extends entitiesCtrl<openflow.Base> {
         public message: string = "";

@@ -128,7 +128,9 @@ async function initDatabase(): Promise<boolean> {
         await filestore_admins.Save(jwt);
         var filestore_users: Role = await User.ensureRole(jwt, "filestore users", WellknownIds.filestore_users);
         filestore_users.AddMember(admins);
-        filestore_users.AddMember(users);
+        if (!Config.multi_tenant) {
+            filestore_users.AddMember(users);
+        }
         filestore_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
         filestore_users.removeRight(WellknownIds.admins, [Rights.delete]);
         if (Config.update_acl_based_on_groups) filestore_users.addRight(filestore_users._id, filestore_users.name, [Rights.read]);
