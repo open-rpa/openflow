@@ -290,8 +290,10 @@ export class DatabaseConnection {
         if (orderby) {
             if (typeof orderby === "string" || orderby instanceof String) {
                 var neworderby = null;
+                console.log(orderby);
                 try {
                     neworderby = JSON.parse((orderby as string));
+                    console.log(neworderby);
                     mysort = neworderby;
                 } catch (error) {
                 }
