@@ -325,7 +325,7 @@ module openflow {
             if (data.length > 0) onlinerobots = data[0]._rpaheartbeat;
 
             chart = new chartset();
-            chart.heading = "Online and offline robots, seen the last " + this.timeframedesc;
+            chart.heading = onlinerobots + " Online and " + (totalrobots - onlinerobots) + " offline robots, seen the last " + this.timeframedesc;
             chart.labels = ['online', 'offline'];
             chart.data = [onlinerobots, (totalrobots - onlinerobots)];
             chart.charttype = "pie";
