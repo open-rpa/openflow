@@ -16,9 +16,9 @@ docker-compose up
 or
 docker-compose up -d
 
-[docker-compose-traefik.yml](open-rpa/openflow/blob/master/docker-compose-traefik.yml) is for people running docker ce/docker desktop or docker swarm
+[docker-compose-traefik.yml](https://github.com/open-rpa/openflow/blob/master/docker-compose-traefik.yml) is for people running docker ce/docker desktop or docker swarm
 
-[docker-compose-toolbox.yml](open-rpa/openflow/blob/master/docker-compose-toolbox.yml) is for people running [docker toolbox](https://docs.docker.com/toolbox/toolbox_install_windows/) 
+[docker-compose-toolbox.yml](https://github.com/open-rpa/openflow/blob/master/docker-compose-toolbox.yml) is for people running [docker toolbox](https://docs.docker.com/toolbox/toolbox_install_windows/) 
 
 [docker-compose.yml](https://github.com/open-rpa/openflow/blob/master/docker-compose.yml) is for developers who don't want to install [mongoDB](https://www.mongodb.com/download-center/community)/[RabbitMQ](https://www.rabbitmq.com/download.html) or an easy way to run one instance while debugging the other.
 
