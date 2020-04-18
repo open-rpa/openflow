@@ -105,4 +105,8 @@ skip_history_collections=audit,jslog
 
 Now you can run this by going to run ( Ctrl+Shit+D) and selecting OpenFlow in the dropdown box and press play button, select OpenFlowNodeRed in the dropdown and press play again
 
+Lastly we need to start a background job that copies asserts to the dist folder, go to Terminal tab and add a new shelll, then type
+
+`gulp`
+
 For further help or education contact [OpenIAP](https://openrpa.dk/) for a support agreement
