@@ -22,6 +22,12 @@ docker-compose up -d
 
 [docker-compose.yml](https://github.com/open-rpa/openflow/blob/master/docker-compose.yml) is for developers who don't want to install [mongoDB](https://www.mongodb.com/download-center/community)/[RabbitMQ](https://www.rabbitmq.com/download.html) or an easy way to run one instance while debugging the other.
 
+Then you can access the API/web on [http://localhost.openrpa.dk](http://localhost.openrpa.dk) ( or [http://toolbox.openrpa.dk](http://toolbox.openrpa.dk) )
+You can access nodered on [http://nodered1.localhost.openrpa.dk](http://nodered1.localhost.openrpa.dk) ( or [http://nodered1.toolbox.openrpa.dk](http://nodered1.toolbox.openrpa.dk) )
+and RabbitMQ on  [http://mq.localhost.openrpa.dk](http://mq.localhost.openrpa.dk) ( or [http://mq.toolbox.openrpa.dk](http://mq.toolbox.openrpa.dk) )
+
+The first username and password you try to login as, will be created and made admin
+
 For help with running on [kubernetes](https://kubernetes.io/) or self hosting contact [OpenIAP](https://openrpa.dk/) for a support agreement
 
 #### Developer setup
