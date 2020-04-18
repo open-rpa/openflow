@@ -289,9 +289,20 @@ export class DatabaseConnection {
         var mysort: Object = {};
         if (orderby) {
             if (typeof orderby === "string" || orderby instanceof String) {
-                mysort[(orderby as string)] = 1;
+                var neworderby = null;
+                try {
+                    neworderby = JSON.parse((orderby as string));
+                    mysort = neworderby;
+                } catch (error) {
+                }
+                if (neworderby == null) mysort[(orderby as string)] = 1;
             } else {
                 mysort = orderby;
+            }
+        }
+        if (projection) {
+            if (typeof projection === "string" || projection instanceof String) {
+                projection = JSON.parse((projection as string));
             }
         }
         // for (let key in query) {

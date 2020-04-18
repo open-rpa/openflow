@@ -17,7 +17,7 @@
         <th ng-click="ctrl.ToggleOrder('name')"><b translate lib="web">name</b></th>
         <th ng-click="ctrl.ToggleOrder('_createdby')"><b translate lib="web">who</b></th>
         <th ng-click="ctrl.ToggleOrder('_modified')"><b translate lib="web">updated</b></th>
-        <th></th>
+        <th>Runs last 5 days</th>
         <th></th>
       </tr>
     </thead>
@@ -29,9 +29,11 @@
           <timesince ng-model="model._modified" />
         </td>
         <td class="btn-cell" height="40px" width="200">
-          <canvas id="bar" class="model.chart-base" chart-type="model.chart.charttype" chart-data="model.chart.data"
-            chart-labels="model.chart.labels" chart-series="model.chart.series" height="40px" width="200">
+          <canvas ng-show="model.chart!=null" id="bar" class="model.chart-base" chart-type="model.chart.charttype"
+            chart-data="model.chart.data" chart-labels="model.chart.labels" chart-series="model.chart.series"
+            height="40px" width="200">
           </canvas>
+          <span ng-show="model.chart== null">No data</span>
         </td>
         <td class="btn-cell">
           <a ng-href="#/RPAWorkflow/{{model._id}}" ng-disabled="ctrl.loading==true" translate lib="web">invoke</a>
