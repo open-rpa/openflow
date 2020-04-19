@@ -44,7 +44,7 @@ go to the folder with openflow
 
 Install gulp and typescript globally
 
-`npm i gulp tsc -g`
+`npm i gulp typescript -g`
 
 install packages for openflow api/web
 
@@ -99,7 +99,7 @@ multi_tenant=true
 
 websocket_max_package_count=1048576
 
-api_ws_url=wss://localhost.openrpa.dk
+api_ws_url=ws://localhost.openrpa.dk
 domain=localhost.openrpa.dk
 protocol=http
 amqp_url=amqp://localhost
