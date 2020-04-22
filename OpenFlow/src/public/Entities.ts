@@ -178,6 +178,33 @@ module openflow {
             this._type = "user";
         }
     }
+    export class resourcevalues {
+        public cpu: string;
+        public memory: string;
+    }
+    export class resources {
+        public limits: resourcevalues;
+        public requests: resourcevalues;
+    }
+    export class noderedconfig {
+        public resources: resources;
+        public api_allow_anonymous: boolean = false;
+        public queue_prefix: string = "";
+    }
+    export class NoderedUser extends TokenUser {
+        public nodered: noderedconfig;
+        constructor(name: string, public username: string) {
+            super(name, username);
+        }
+        static assign<NoderedUser>(o: any): NoderedUser {
+            var res = Object.assign(new NoderedUser(o.name, o.username), o);
+            if (res.nodered === null || res.nodered === undefined) {
+                res.nodered = new noderedconfig();
+            }
+            return res;
+        }
+
+    }
     export class Rolemember {
         constructor(name: string, _id: string) {
             this.name = name;
