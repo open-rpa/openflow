@@ -823,7 +823,7 @@ export class Message {
                                             { name: "port", value: Config.port.toString() },
                                             { name: "noderedusers", value: (name + "noderedusers") },
                                             { name: "noderedadmins", value: (name + "noderedadmins") },
-                                            { name: "api_allow_anonymous", value: user.nodered.api_allow_anonymous },
+                                            { name: "api_allow_anonymous", value: user.nodered.api_allow_anonymous.toString() },
                                         ],
                                         livenessProbe: {
                                             httpGet: {
@@ -898,6 +898,7 @@ export class Message {
         } catch (error) {
             this.data = "";
             cli._logger.error(error);
+            console.log(JSON.stringify(error, null, 2));
             //msg.error = JSON.stringify(error, null, 2);
             if (msg !== null && msg !== undefined) msg.error = "Request failed!"
         }
