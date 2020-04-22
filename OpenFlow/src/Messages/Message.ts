@@ -824,6 +824,7 @@ export class Message {
                                             { name: "noderedusers", value: (name + "noderedusers") },
                                             { name: "noderedadmins", value: (name + "noderedadmins") },
                                             { name: "api_allow_anonymous", value: user.nodered.api_allow_anonymous.toString() },
+                                            { name: "NODE_ENV", value: Config.NODE_ENV },
                                         ],
                                         livenessProbe: {
                                             httpGet: {

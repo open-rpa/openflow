@@ -12,6 +12,8 @@ export class Config {
     public static db: DatabaseConnection = null;
     public static version: string = fs.readFileSync("VERSION", "utf8");
 
+    public static NODE_ENV: string = Config.getEnv("NODE_ENV", "development");
+
     public static auto_create_users: boolean = Config.parseBoolean(Config.getEnv("auto_create_users", "false"));
     public static auto_create_domains: string[] = Config.parseArray(Config.getEnv("auto_create_domains", ""));
     public static allow_user_registration: boolean = Config.parseBoolean(Config.getEnv("allow_user_registration", "false"));

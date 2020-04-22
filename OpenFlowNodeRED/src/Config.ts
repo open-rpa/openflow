@@ -9,6 +9,8 @@ export class Config {
     public static nodered_sa: string = Config.getEnv("nodered_sa", "");
     public static queue_prefix: string = Config.getEnv("queue_prefix", "");
 
+    public static NODE_ENV: string = Config.getEnv("NODE_ENV", "development");
+
     public static saml_federation_metadata: string = Config.getEnv("saml_federation_metadata", "");
     public static saml_issuer: string = Config.getEnv("saml_issuer", "");
     public static saml_entrypoint: string = Config.getEnv("saml_entrypoint", "");
@@ -22,9 +24,6 @@ export class Config {
     public static nodered_domain_schema: string = Config.getEnv("nodered_domain_schema", "");
     public static noderedusers: string = Config.getEnv("noderedusers", "");
     public static noderedadmins: string = Config.getEnv("noderedadmins", "");
-
-
-
 
     public static api_ws_url: string = Config.getEnv("api_ws_url", "ws://localhost:3000");
     public static amqp_url: string = Config.getEnv("amqp_url", "amqp://localhost");
