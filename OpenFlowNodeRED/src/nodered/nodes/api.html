@@ -41,16 +41,17 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 <script type="text/javascript">
     RED.nodes.registerType('api get jwt', {
         category: 'api',
-        color: "#a6bbcf",
+        color: "#FFAAAA",
+        paletteLabel: 'get jwt',
+        icon: "font-awesome/fa-key",
         defaults: {
             name: { value: "" },
             config: { value: "", type: "api-credentials", required: false }
         },
         inputs: 1,
         outputs: 1,
-        icon: "bridge.png",
         label: function () {
-            return this.name || "api get jwt";
+            return this.name || "get jwt";
         },
         labelStyle: function () {
             return this.name ? "node_label_italic" : "";
@@ -106,7 +107,9 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 <script type="text/javascript">
     RED.nodes.registerType('api get', {
         category: 'api',
-        color: "#a6bbcf",
+        color: "#DEB887",
+        paletteLabel: 'get',
+        icon: "font-awesome/fa-database",
         defaults: {
             name: { value: "" },
             query: { value: "" },
@@ -119,7 +122,6 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         },
         inputs: 1,
         outputs: 1,
-        icon: "bridge.png",
         label: function () {
             return this.name || "api get";
         },
@@ -191,7 +193,9 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 <script type="text/javascript">
     RED.nodes.registerType('api add', {
         category: 'api',
-        color: "#a6bbcf",
+        color: "#DEBD5C",
+        paletteLabel: 'add',
+        icon: "font-awesome/fa-plus",
         defaults: {
             name: { value: "" },
             entitytype: { value: "" },
@@ -203,7 +207,6 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         },
         inputs: 1,
         outputs: 1,
-        icon: "bridge.png",
         label: function () {
             return this.name || "api add";
         },
@@ -274,7 +277,9 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 <script type="text/javascript">
     RED.nodes.registerType('api update', {
         category: 'api',
-        color: "#a6bbcf",
+        color: "#E2D96E",
+        paletteLabel: 'update',
+        icon: "font-awesome/fa-pencil",
         defaults: {
             name: { value: "" },
             entitytype: { value: "" },
@@ -286,7 +291,6 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         },
         inputs: 1,
         outputs: 1,
-        icon: "bridge.png",
         label: function () {
             return this.name || "api update";
         },
@@ -367,7 +371,9 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 <script type="text/javascript">
     RED.nodes.registerType('api addorupdate', {
         category: 'api',
-        color: "#a6bbcf",
+        color: "#E6E0F8",
+        paletteLabel: 'addorupdate',
+        icon: "font-awesome/fa-pencil",
         defaults: {
             name: { value: "" },
             entitytype: { value: "" },
@@ -380,7 +386,6 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         },
         inputs: 1,
         outputs: 1,
-        icon: "bridge.png",
         label: function () {
             return this.name || "api addorupdate";
         },
@@ -428,7 +433,9 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 <script type="text/javascript">
     RED.nodes.registerType('api delete', {
         category: 'api',
-        color: "#a6bbcf",
+        color: "#E9967A",
+        paletteLabel: 'addorupdate',
+        icon: "font-awesome/fa-trash",
         defaults: {
             name: { value: "" },
             entitytype: { value: "" },
@@ -437,7 +444,6 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         },
         inputs: 1,
         outputs: 1,
-        icon: "bridge.png",
         label: function () {
             return this.name || "api delete";
         },
@@ -496,7 +502,9 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 <script type="text/javascript">
     RED.nodes.registerType('grant permission', {
         category: 'api',
-        color: "#a6bbcf",
+        color: "#A6BBCF",
+        paletteLabel: 'grant',
+        icon: "font-awesome/fa-key",
         defaults: {
             name: { value: "" },
             targetid: { value: "result._id", required: true },
@@ -505,7 +513,6 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         },
         inputs: 1,
         outputs: 1,
-        icon: "bridge.png",
         label: function () {
             return this.name || "grant permission";
         },
@@ -580,7 +587,9 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 <script type="text/javascript">
     RED.nodes.registerType('revoke permission', {
         category: 'api',
-        color: "#a6bbcf",
+        color: "#F3B567",
+        paletteLabel: 'revoke',
+        icon: "font-awesome/fa-key",
         defaults: {
             name: { value: "" },
             targetid: { value: "result._id", required: true },
@@ -589,7 +598,6 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         },
         inputs: 1,
         outputs: 1,
-        icon: "bridge.png",
         label: function () {
             return this.name || "revoke permission";
         },
@@ -712,7 +720,9 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 <script type="text/javascript">
     RED.nodes.registerType('map reduce', {
         category: 'api',
-        color: "#a6bbcf",
+        color: "#E7E7AE",
+        paletteLabel: 'mapreduce',
+        icon: "font-awesome/fa-map",
         defaults: {
             name: { value: "" },
             collection: { value: "entities", required: true },
@@ -751,7 +761,6 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         },
         inputs: 1,
         outputs: 1,
-        icon: "bridge.png",
         label: function () {
             return this.name || "map reduce";
         },
@@ -1013,7 +1022,9 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 <script type="text/javascript">
     RED.nodes.registerType('api updatedocument', {
         category: 'api',
-        color: "#a6bbcf",
+        color: "#FDF0C2",
+        paletteLabel: 'updatedoc',
+        icon: "font-awesome/fa-wrench",
         defaults: {
             name: { value: "" },
             writeconcern: { value: "0", required: true },
@@ -1025,7 +1036,6 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         },
         inputs: 1,
         outputs: 1,
-        icon: "bridge.png",
         label: function () {
             return this.name || "api update";
         },
@@ -1132,7 +1142,9 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 <script type="text/javascript">
     RED.nodes.registerType('api aggregate', {
         category: 'api',
-        color: "#a6bbcf",
+        color: "#3FADB5",
+        paletteLabel: 'aggregate',
+        icon: "font-awesome/fa-bar-chart",
         defaults: {
             name: { value: "" },
             aggregates: { value: "[ {\"$group\" : {\"_id\":\"$_type\", \"count\":{\"$sum\":1}} } ]", required: true },
@@ -1140,7 +1152,6 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         },
         inputs: 1,
         outputs: 1,
-        icon: "bridge.png",
         label: function () {
             return this.name || "api aggregate";
         },
@@ -1233,7 +1244,9 @@ Download a file from API/GridFS
 <script type="text/javascript">
     RED.nodes.registerType('api download file', {
         category: 'api',
-        color: "#a6bbcf",
+        color: "#DEB887",
+        paletteLabel: 'download',
+        icon: "font-awesome/fa-download",
         defaults: {
             fileid: { value: "" },
             filename: { value: "" },
@@ -1241,7 +1254,6 @@ Download a file from API/GridFS
         },
         inputs: 1,
         outputs: 1,
-        icon: "bridge.png",
         label: function () {
             return this.name || "api download file";
         },
@@ -1279,7 +1291,9 @@ Download a file from API/GridFS
 <script type="text/javascript">
     RED.nodes.registerType('api upload file', {
         category: 'api',
-        color: "#a6bbcf",
+        color: "#C0DEED",
+        paletteLabel: 'upload',
+        icon: "font-awesome/fa-upload",
         defaults: {
             filename: { value: "" },
             mimeType: { value: "" },
@@ -1287,7 +1301,6 @@ Download a file from API/GridFS
         },
         inputs: 1,
         outputs: 1,
-        icon: "bridge.png",
         label: function () {
             return this.name || "api upload file";
         },

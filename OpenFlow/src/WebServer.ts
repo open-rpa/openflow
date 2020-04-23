@@ -136,8 +136,8 @@ export class WebServer {
             server = http.createServer(this.app);
         }
 
-
-        server.listen(Config.port);
+        var port = Config.port;
+        server.listen(port);
         return server;
     }
 }

@@ -21,7 +21,9 @@ Active everytime a trigger gets triggered on a robot
 <script type="text/javascript">
     RED.nodes.registerType('rpa detector', {
         category: 'rpa',
-        color: "#a6bbcf",
+        color: "#E7E7AE",
+        paletteLabel: 'detector',
+        icon: "font-awesome/fa-signal",
         defaults: {
             queue: { value: "", required: true },
             noack: { value: true, required: true },
@@ -29,7 +31,6 @@ Active everytime a trigger gets triggered on a robot
         },
         inputs: 0,
         outputs: 1,
-        icon: "bridge.png",
         label: function () {
             return this.name || "rpa detector";
         },
@@ -91,7 +92,9 @@ Send payload as data to a robot, requesting it to run the selected Workflow
 <script type="text/javascript">
     RED.nodes.registerType('rpa workflow', {
         category: 'rpa',
-        color: "#a6bbcf",
+        color: "#3FADB5",
+        paletteLabel: 'robot',
+        icon: "open_rpa_white.png",
         defaults: {
             queue: { value: "", required: true },
             workflow: { value: "", required: true },
@@ -99,7 +102,6 @@ Send payload as data to a robot, requesting it to run the selected Workflow
         },
         inputs: 1,
         outputs: 3,
-        icon: "bridge.png",
         align: "right",
         outputLabels: ["completed", "status", "failed"],
         label: function () {

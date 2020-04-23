@@ -25,7 +25,9 @@ msg.user will contain the TokenUser of the calling user<br>
 <script type="text/javascript">
     RED.nodes.registerType('workflow in', {
         category: 'rpa',
-        color: "#a6bbcf",
+        color: "#87A980",
+        paletteLabel: 'workflow',
+        icon: "font-awesome/fa-indent",
         defaults: {
             queue: { value: "", required: true },
             rpa: { value: false, required: true },
@@ -34,7 +36,6 @@ msg.user will contain the TokenUser of the calling user<br>
         },
         inputs: 0,
         outputs: 1,
-        icon: "bridge.png",
         label: function () {
             return this.name || "workflow in";
         },
@@ -85,7 +86,9 @@ If you have buttons on the form, you can get the name of the button clicked in m
 <script type="text/javascript">
     RED.nodes.registerType('workflow out', {
         category: 'rpa',
-        color: "#a6bbcf",
+        color: "#87A980",
+        paletteLabel: 'workflow',
+        icon: "font-awesome/fa-dedent",
         defaults: {
             name: { value: "" },
             form: { value: "" },
@@ -93,7 +96,6 @@ If you have buttons on the form, you can get the name of the button clicked in m
         },
         inputs: 1,
         outputs: 1,
-        icon: "bridge.png",
         align: "right",
         label: function () {
             return this.name || "workflow out";
@@ -190,7 +192,9 @@ If you have buttons on the form, you can get the name of the button clicked in m
 
     RED.nodes.registerType('assign workflow', {
         category: 'rpa',
-        color: "#a6bbcf",
+        color: "#DEB887",
+        paletteLabel: 'assign',
+        icon: "font-awesome/fa-user-plus",
         defaults: {
             name: { value: "", required: true },
             queue: { value: "", required: true },
@@ -201,7 +205,6 @@ If you have buttons on the form, you can get the name of the button clicked in m
         inputs: 1,
         outputs: 2,
         outputLabels: ["scheduled", "result"],
-        icon: "bridge.png",
         label: function () {
             return this.name || "assign workflow";
         },
