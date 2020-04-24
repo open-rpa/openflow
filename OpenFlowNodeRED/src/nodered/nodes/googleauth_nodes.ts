@@ -5,6 +5,29 @@ const { GoogleAuth, OAuth2Client } = require('google-auth-library');
 var fs = require("fs");
 const request = require('request');
 
+function GetGoogleAuthClient(config: Igoogleauth_credentials): any {
+    if (config != null) {
+        if (typeof config.serviceaccount === "string" && !NoderedUtil.IsNullEmpty(config.serviceaccount)) {
+            config.serviceaccount = JSON.parse(config.serviceaccount);
+        }
+        if (!NoderedUtil.IsNullEmpty(config.serviceaccount)) {
+            this.auth = new GoogleAuth({
+                scopes: config.scopes,
+                credentials: config.serviceaccount
+            });
+        }
+        if (!NoderedUtil.IsNullEmpty(config.clientid) || !NoderedUtil.IsNullEmpty(config.clientsecret) || !NoderedUtil.IsNullEmpty(config.redirecturi)) {
+            this.Client = new OAuth2Client(
+                config.clientid,
+                config.clientsecret,
+                config.redirecturi
+            );
+            if (!NoderedUtil.IsNullEmpty(config.tokens)) {
+                this.Client.setCredentials(JSON.parse(config.tokens));
+            }
+        }
+    }
+}
 
 export interface Igoogleauth_credentials {
     name: string;
@@ -166,41 +189,14 @@ export class googleauth_request {
             this._config = RED.nodes.getNode(this.config.config);
             this.method = this.config.method;
             this.url = this.config.url;
-            this.init();
+            this.Client = GetGoogleAuthClient(this._config);
             this.node.on('input', this.oninput);
-        } catch (error) {
-            NoderedUtil.HandleError(this, error);
-        }
-    }
-    init() {
-        try {
-            if (this._config != null) {
-                if (typeof this._config.serviceaccount === "string" && !NoderedUtil.IsNullEmpty(this._config.serviceaccount)) {
-                    this._config.serviceaccount = JSON.parse(this._config.serviceaccount);
-                }
-                if (!NoderedUtil.IsNullEmpty(this._config.serviceaccount)) {
-                    this.auth = new GoogleAuth({
-                        scopes: this._config.scopes,
-                        credentials: this._config.serviceaccount
-                    });
-                }
-                if (!NoderedUtil.IsNullEmpty(this._config.clientid) || !NoderedUtil.IsNullEmpty(this._config.clientsecret) || !NoderedUtil.IsNullEmpty(this._config.redirecturi)) {
-                    this.Client = new OAuth2Client(
-                        this._config.clientid,
-                        this._config.clientsecret,
-                        this._config.redirecturi
-                    );
-                    if (!NoderedUtil.IsNullEmpty(this._config.tokens)) {
-                        this.Client.setCredentials(JSON.parse(this._config.tokens));
-                    }
-                }
-            }
             this.node.status({});
         } catch (error) {
             NoderedUtil.HandleError(this, error);
-
         }
     }
+
     async oninput(msg: any, send: any, done: any) {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Getting client" });
