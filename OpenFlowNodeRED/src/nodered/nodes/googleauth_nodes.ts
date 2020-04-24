@@ -236,20 +236,14 @@ export class googleauth_request {
             this.node.status({ fill: "blue", shape: "dot", text: "Requesting" });
             var res: any;
             if (this.Client != null) {
-                msg.Client = this.Client.request;
                 res = await this.Client.request(options);
-                msg.config = res.config;
                 msg.status = res.status;
                 msg.statusText = res.statusText;
-                msg.request = res.request;
                 msg.payload = res.data;
                 this.node.status({});
                 send(msg);
                 done();
             } else {
-                msg.Client = request;
-                // options.body = JSON.stringify(options.data);
-
                 options.body = options.data;
                 options.json = true;
                 delete options.data;
@@ -260,6 +254,7 @@ export class googleauth_request {
                     }
                     msg.payload = body;
                     msg.status = response.statusCode;
+                    msg.statusText = response.statusText;
                     this.node.status({});
                     send(msg);
                     done();

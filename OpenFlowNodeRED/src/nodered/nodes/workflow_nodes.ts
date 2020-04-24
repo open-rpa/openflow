@@ -150,10 +150,10 @@ export class workflow_in_node {
                     if (data.payload._id !== null && data.payload._id !== undefined && data.payload._id !== "") _id = data.payload._id;
                 }
             }
-            this.node.status({ fill: "blue", shape: "dot", text: "Processing " + _id });
+
             console.log(data);
             if (_id !== null && _id !== undefined && _id !== "") {
-
+                this.node.status({ fill: "blue", shape: "dot", text: "Processing id " + _id });
                 var jwt = data.jwt;
                 delete data.jwt;
 
@@ -195,6 +195,7 @@ export class workflow_in_node {
                 // }
                 // result.workflow = this.workflow._id;
             } else {
+                this.node.status({ fill: "blue", shape: "dot", text: "Processing new instance " });
                 var queue: string = this.config.queue;
                 if (!NoderedUtil.IsNullUndefinded(Config.queue_prefix)) {
                     queue = Config.queue_prefix + this.config.queue;
@@ -204,6 +205,7 @@ export class workflow_in_node {
 
                 var who = WebSocketClient.instance.user;
                 var me = WebSocketClient.instance.user;
+                this.node.status({ fill: "blue", shape: "dot", text: "Renew token " });
                 if (!NoderedUtil.IsNullEmpty(jwt)) {
                     var signin = await NoderedUtil.RenewToken(jwt, true);
                     who = signin.user;
@@ -214,11 +216,13 @@ export class workflow_in_node {
                 item = Base.assign(item);
                 item.addRight(who._id, who.name, [-1]);
                 if (who._id != me._id) item.addRight(me._id, me.name, [-1]);
+                this.node.status({ fill: "blue", shape: "dot", text: "Create instance " });
                 var res2 = await NoderedUtil.InsertOne("workflow_instances", item, 1, true, jwt);
 
                 // Logger.instanse.info("workflow in activated creating a new workflow instance with id " + res2._id);
                 // OpenFlow Controller.ts needs the id, when creating a new intance !
                 data._id = res2._id;
+                this.node.status({ fill: "blue", shape: "dot", text: "Processing new id " + res2._id });
                 if (data.payload !== null && data.payload != undefined) {
                     try {
                         data.payload._id = res2._id;
