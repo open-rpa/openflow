@@ -2546,7 +2546,12 @@ module openflow {
         async handlefilter(e) {
             this.e = e;
             // console.log(e.keyCode);
-            var ids: string[] = this.model._acl.map(item => item._id);
+            var ids: string[];
+            if (this.collection == "files") {
+                ids = (this.model as any).metadata._acl.map(item => item._id);
+            } else {
+                ids = this.model._acl.map(item => item._id);
+            }
             this.searchFilteredList = await this.api.Query("users",
                 {
                     $and: [
