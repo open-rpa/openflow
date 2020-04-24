@@ -2645,6 +2645,9 @@ module openflow {
         public instancelog: string = "";
         public name: string = "";
         public userid: string = "";
+        public user: NoderedUser = null;
+        public limitsmemory: string = "";
+        public loading: boolean = false;
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -2654,25 +2657,57 @@ module openflow {
         ) {
             console.debug("NoderedCtrl");
             WebSocketClient.onSignedin(async (user: TokenUser) => {
+                this.loading = true;
                 await api.RegisterQueue();
                 this.userid = $routeParams.id;
                 if (this.userid == null || this.userid == undefined || this.userid == "") {
                     this.name = WebSocketClient.user.username;
                     this.userid = WebSocketClient.user._id;
+                    var users: NoderedUser[] = await this.api.Query("users", { _id: this.userid }, null, null, 1);
+                    this.user = NoderedUser.assign(users[0]);
+                    this.name = users[0].username;
                 } else {
-                    var users = await this.api.Query("users", { _id: this.userid }, null, null, 1);
+                    var users: NoderedUser[] = await this.api.Query("users", { _id: this.userid }, null, null, 1);
                     if (users.length == 0) {
                         this.instancestatus = "Unknown id!";
                         return;
                     }
+                    this.user = NoderedUser.assign(users[0]);
                     this.name = users[0].username;
                 }
+                if (this.user.nodered != null && this.user.nodered.resources != null && this.user.nodered.resources.limits != null) {
+                    this.limitsmemory = this.user.nodered.resources.limits.memory;
+                }
+                console.log(this.limitsmemory);
                 this.name = this.name.split("@").join("").split(".").join("");
                 this.name = this.name.toLowerCase();
                 this.noderedurl = "https://" + WebSocketClient.nodered_domain_schema.replace("$nodered_id$", this.name);
                 // // this.GetNoderedInstance();
                 this.GetNoderedInstance();
             });
+        }
+        async save() {
+            if (this.limitsmemory != "") {
+                if (this.user.nodered == null) this.user.nodered = new noderedconfig();
+                if (this.user.nodered.resources == null) this.user.nodered.resources = new resources();
+                if (this.user.nodered.resources.limits == null) this.user.nodered.resources.limits = new resourcevalues();
+                if (this.user.nodered.resources.limits.memory != this.limitsmemory) {
+                    this.user.nodered.resources.limits.memory = this.limitsmemory;
+                }
+            } else {
+                if (this.user.nodered != null && this.user.nodered.resources != null && this.user.nodered.resources.limits != null) {
+                    if (this.limitsmemory != this.user.nodered.resources.limits.memory) {
+                        this.user.nodered.resources.limits.memory = this.limitsmemory;
+                    }
+                }
+            }
+            this.loading = true;
+            this.messages += 'Updating ' + this.user.name + "\n";
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            await this.api.Update("users", this.user);
+            this.loading = false;
+            this.messages += 'update complete\n';
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async GetNoderedInstance() {
             try {
@@ -2696,6 +2731,7 @@ module openflow {
                 this.instancestatus = "";
                 console.error(error);
             }
+            this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async GetNoderedInstanceLog() {

@@ -13,16 +13,16 @@
 </script>
 <script type="text/javascript">
     RED.nodes.registerType('smtpserver in', {
-        category: 'rpa',
-        color: "rgb(215, 215, 160)",
+        category: 'api',
+        color: "#A6BBCF",
+        paletteLabel: 'smtpserver',
+        icon: "font-awesome/fa-envelope",
         defaults: {
             name: { value: "", required: false },
             email: { value: 'allan@demo1.openrpa.dk', required: true }
         },
         inputs: 0,
         outputs: 1,
-        icon: "parser-html.png",     // saved in icons/myicon.png
-        //align: "right",
         label: function () {
             return this.name || this.email || "smtpserver in";
         },

@@ -201,6 +201,36 @@ export class User extends Base {
     //     user = User.assign(user);
     //     return user;
     // }
-
+}
+export class resourcevalues {
+    public cpu: string;
+    public memory: string;
+}
+export class resources {
+    public limits: resourcevalues;
+    public requests: resourcevalues;
+}
+export class noderedconfig {
+    constructor() {
+        // this.resources = new resources();
+    }
+    public resources: resources;
+    public api_allow_anonymous: boolean = false;
+    public queue_prefix: string = "";
 }
 
+export class NoderedUser extends User {
+    public nodered: noderedconfig;
+    constructor() {
+        super();
+        this._type = "user";
+    }
+    static assign<NoderedUser>(o: any): NoderedUser {
+        var res = Object.assign(new NoderedUser(), o);
+        if (res.nodered === null || res.nodered === undefined) {
+            res.nodered = new noderedconfig();
+        }
+        return res;
+    }
+
+}

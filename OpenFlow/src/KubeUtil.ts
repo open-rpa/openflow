@@ -16,7 +16,21 @@ export class KubeUtil {
     }
     constructor() {
         const kc = new k8s.KubeConfig();
-        kc.loadFromCluster();
+        var success: boolean = false;
+        try {
+            kc.loadFromDefault();
+            success = true;
+        } catch (error) {
+            console.log(error);
+        }
+        if (success == false) {
+            try {
+                kc.loadFromCluster();
+                success = true;
+            } catch (error) {
+                console.log(error);
+            }
+        }
         this.CoreV1Api = kc.makeApiClient(k8s.CoreV1Api);
         this.AppsV1Api = kc.makeApiClient(k8s.AppsV1Api);
         this.ExtensionsV1beta1Api = kc.makeApiClient(k8s.ExtensionsV1beta1Api);

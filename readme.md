@@ -70,8 +70,8 @@ at the top level create a folder called config and inside create a file called .
 and add this content to the file
 
 ```bash
-nodered_id=modered1
-nodered_sa=modered1
+nodered_id=nodered1
+nodered_sa=nodered1
 port=80
 nodered_port=1880
 nodered_domain_schema=$nodered_id$.localhost.openrpa.dk
@@ -95,7 +95,7 @@ allow_user_registration=true
 
 # api_bypass_perm_check=true
 update_acl_based_on_groups=true
-multi_tenant=true
+multi_tenant=false
 
 websocket_max_package_count=1048576
 

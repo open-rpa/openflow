@@ -49,6 +49,36 @@
     </div>
   </div>
 </section>
+<section ng-show="menuctrl.hasrole('admins')">
+  <div class="form-group">
+    <label class="col-sm-3 control-label"><span translate lib="web">api_allow_anonymous</span>: </label>
+    <div class="col-sm-9">
+      <input type="checkbox" class='form-control' ng-model="ctrl.user.nodered.api_allow_anonymous"></input>
+    </div>
+  </div>
+  <div class="form-group">
+    <label class="col-sm-3 control-label"><span translate lib="web">memory</span>: </label>
+    <div class="col-sm-9">
+      <select class="form-control" ng-model="ctrl.limitsmemory">
+        <option value="">Fair usage</option>
+        <option value="256Mi">512Mi</option>
+        <option value="512Mi">512Mi</option>
+        <option value="1Gi">1Gi</option>
+        <option value="1536Mi">1,5Gi</option>
+        <option value="2Gi">2Gi</option>
+        <option value="2560Mi">5,5Gi</option>
+        <option value="3Gi">3Gi</option>
+      </select>
+    </div>
+  </div>
+  <div class="form-group">
+    <div class="col-sm-offset-3 col-sm-9">
+      <button type="button" ng-disabled="ctrl.loading==true" class="btn btn-success" translate lib="web"
+        ng-click="ctrl.save()">save</button>
+    </div>
+  </div>
+</section>
+
 
 <pre>{{ ctrl.messages }}</pre>
 <p>If this is your first time creating a NodeRed instance, please signout and signin again, to refresh group

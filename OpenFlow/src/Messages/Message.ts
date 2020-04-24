@@ -5,7 +5,7 @@ import { WebSocketClient, QueuedMessage } from "../WebSocketClient";
 import { QueryMessage } from "./QueryMessage";
 import { Base, Rights, WellknownIds } from "../base";
 import { SigninMessage } from "./SigninMessage";
-import { User } from "../User";
+import { User, NoderedUser } from "../User";
 import { Auth } from "../Auth";
 import { Crypt } from "../Crypt";
 import { TokenUser } from "../TokenUser";
@@ -753,13 +753,21 @@ export class Message {
     private async EnsureNoderedInstance(cli: WebSocketClient): Promise<void> {
         this.Reply();
         var msg: EnsureNoderedInstanceMessage;
-        var user: User;
+        var user: NoderedUser;
         try {
             cli._logger.debug("[" + cli.user.username + "] EnsureNoderedInstance");
             msg = EnsureNoderedInstanceMessage.assign(this.data);
             var name = await this.GetInstanceName(cli, msg._id, msg.name);
             var _id = msg._id;
             if (_id === null || _id === undefined || _id === "") _id = cli.user._id;
+
+            var users = await Config.db.query<NoderedUser>({ _id: _id }, null, 1, 0, null, "users", cli.jwt);
+            if (users.length == 0) {
+                throw new Error("Unknown userid " + _id);
+            }
+            user = NoderedUser.assign(users[0]);
+
+
             var namespace = Config.namespace;
             var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
@@ -767,9 +775,8 @@ export class Message {
             var tuser: TokenUser = new TokenUser(nodereduser);
             var nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
 
-            var queue_prefix: string = "";
             if (Config.force_queue_prefix) {
-                queue_prefix = nodereduser.username;
+                user.nodered.queue_prefix = nodereduser.username;
             }
 
             cli._logger.debug("[" + cli.user.username + "] ensure nodered role " + name + "noderedadmins");
@@ -799,6 +806,7 @@ export class Message {
                                         image: Config.nodered_image,
                                         imagePullPolicy: "Always",
                                         ports: [{ containerPort: 80 }, { containerPort: 5858 }],
+                                        resources: user.nodered.resources,
                                         env: [
                                             { name: "saml_federation_metadata", value: Config.saml_federation_metadata },
                                             { name: "saml_issuer", value: Config.saml_issuer },
@@ -806,7 +814,7 @@ export class Message {
                                             { name: "nodered_id", value: name },
                                             { name: "nodered_sa", value: nodereduser.username },
                                             { name: "jwt", value: nodered_jwt },
-                                            { name: "queue_prefix", value: queue_prefix },
+                                            { name: "queue_prefix", value: user.nodered.queue_prefix },
                                             { name: "api_ws_url", value: Config.api_ws_url },
                                             { name: "amqp_url", value: Config.amqp_url },
                                             { name: "nodered_domain_schema", value: hostname },
@@ -815,6 +823,8 @@ export class Message {
                                             { name: "port", value: Config.port.toString() },
                                             { name: "noderedusers", value: (name + "noderedusers") },
                                             { name: "noderedadmins", value: (name + "noderedadmins") },
+                                            { name: "api_allow_anonymous", value: user.nodered.api_allow_anonymous.toString() },
+                                            { name: "NODE_ENV", value: Config.NODE_ENV },
                                         ],
                                         livenessProbe: {
                                             httpGet: {
@@ -889,6 +899,7 @@ export class Message {
         } catch (error) {
             this.data = "";
             cli._logger.error(error);
+            console.log(JSON.stringify(error, null, 2));
             //msg.error = JSON.stringify(error, null, 2);
             if (msg !== null && msg !== undefined) msg.error = "Request failed!"
         }
