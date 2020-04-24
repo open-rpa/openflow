@@ -17,7 +17,7 @@ function GetGoogleAuthClient(config: Igoogleauth_credentials): any {
         }
         if (!NoderedUtil.IsNullEmpty(config.serviceaccount)) {
             result.auth = new GoogleAuth({
-                scopes: config.scopes,
+                scopes: config.scopes.split(",").join(" "),
                 credentials: config.serviceaccount
             });
         }
