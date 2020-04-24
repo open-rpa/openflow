@@ -3,30 +3,36 @@ import { Red } from "node-red";
 import { NoderedUtil } from "./NoderedUtil";
 const { GoogleAuth, OAuth2Client } = require('google-auth-library');
 var fs = require("fs");
-const request = require('request');
+// const request = require('request');
+var request = require("request");
 
 function GetGoogleAuthClient(config: Igoogleauth_credentials): any {
+    var result = {
+        auth: null,
+        Client: null
+    }
     if (config != null) {
         if (typeof config.serviceaccount === "string" && !NoderedUtil.IsNullEmpty(config.serviceaccount)) {
             config.serviceaccount = JSON.parse(config.serviceaccount);
         }
         if (!NoderedUtil.IsNullEmpty(config.serviceaccount)) {
-            this.auth = new GoogleAuth({
+            result.auth = new GoogleAuth({
                 scopes: config.scopes,
                 credentials: config.serviceaccount
             });
         }
         if (!NoderedUtil.IsNullEmpty(config.clientid) || !NoderedUtil.IsNullEmpty(config.clientsecret) || !NoderedUtil.IsNullEmpty(config.redirecturi)) {
-            this.Client = new OAuth2Client(
+            result.Client = new OAuth2Client(
                 config.clientid,
                 config.clientsecret,
                 config.redirecturi
             );
             if (!NoderedUtil.IsNullEmpty(config.tokens)) {
-                this.Client.setCredentials(JSON.parse(config.tokens));
+                result.Client.setCredentials(JSON.parse(config.tokens));
             }
         }
     }
+    return result;
 }
 
 export interface Igoogleauth_credentials {
@@ -77,8 +83,8 @@ export class googleauth_credentials {
         if (this.node.credentials && this.node.credentials.hasOwnProperty("tokens")) {
             this.tokens = this.node.credentials.tokens;
         }
-        if (this.node.credentials && this.node.credentials.hasOwnProperty("tokens")) {
-            this.tokens = this.node.credentials.tokens;
+        if (this.node.credentials && this.node.credentials.hasOwnProperty("serviceaccount")) {
+            this.serviceaccount = this.node.credentials.serviceaccount;
         }
         if (this.node.credentials && this.node.credentials.hasOwnProperty("apikey")) {
             this.apikey = this.node.credentials.apikey;
@@ -189,7 +195,9 @@ export class googleauth_request {
             this._config = RED.nodes.getNode(this.config.config);
             this.method = this.config.method;
             this.url = this.config.url;
-            this.Client = GetGoogleAuthClient(this._config);
+            var cli = GetGoogleAuthClient(this._config);
+            this.Client = cli.Client;
+            this.auth = cli.auth;
             this.node.on('input', this.oninput);
             this.node.status({});
         } catch (error) {
@@ -208,6 +216,13 @@ export class googleauth_request {
             if (NoderedUtil.IsNullEmpty(this.url)) this.url = msg.url;
             if (NoderedUtil.IsNullEmpty(this.url)) throw new Error("url is mandaotry");
             var url = this.url;
+            if (this._config.authtype == "apikey" && !NoderedUtil.IsNullEmpty(this._config.apikey)) {
+                if (url.indexOf("?") > -1) {
+                    url = url + "&key=" + this._config.apikey;
+                } else {
+                    url = url + "?key=" + this._config.apikey;
+                }
+            }
             var options: any = {
                 method: this.method,
                 url,
@@ -217,32 +232,39 @@ export class googleauth_request {
                 // }
             };
             if (this.method == "GET") delete options.data;
-            if (this._config.authtype == "apikey" && !NoderedUtil.IsNullEmpty(this._config.apikey)) {
-                if (this.url.indexOf("?") > -1) {
-                    this.url = this.url + "&key=" + this._config.apikey;
-                } else {
-                    this.url = this.url + "?key=" + this._config.apikey;
-                }
-            }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Requesting" });
             var res: any;
             if (this.Client != null) {
                 msg.Client = this.Client.request;
                 res = await this.Client.request(options);
+                msg.config = res.config;
+                msg.status = res.status;
+                msg.statusText = res.statusText;
+                msg.request = res.request;
+                msg.payload = res.data;
+                this.node.status({});
+                send(msg);
+                done();
             } else {
                 msg.Client = request;
-                res = await request(options);
-                request
+                // options.body = JSON.stringify(options.data);
+
+                options.body = options.data;
+                options.json = true;
+                delete options.data;
+                request(options, (error, response, body) => {
+                    if (error) {
+                        NoderedUtil.HandleError(this, error);
+                        return done();
+                    }
+                    msg.payload = body;
+                    msg.status = response.statusCode;
+                    this.node.status({});
+                    send(msg);
+                    done();
+                });
             }
-            msg.config = res.config;
-            msg.status = res.status;
-            msg.statusText = res.statusText;
-            msg.request = res.request;
-            msg.payload = res.data;
-            this.node.status({});
-            send(msg);
-            done();
         } catch (error) {
             done();
             NoderedUtil.HandleError(this, error);

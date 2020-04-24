@@ -10,7 +10,8 @@ export = function (RED: Red) {
             redirecturi: { type: "text" },
             code: { type: "password" },
             tokens: { type: "password" },
-            serviceaccount: { type: "password" }
+            serviceaccount: { type: "password" },
+            apikey: { type: "password" }
         }
     });
 
