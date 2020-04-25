@@ -3,6 +3,7 @@
         <h1 class="pagetitle">{{ctrl.model.name}}</h1>
     </div>
 </div>
+<div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <pre ng-show="ctrl.message!=null">{{ ctrl.message }}</pre>
 <form ng-submit="ctrl.submit()" class="form-horizontal" role="form" autocomplete="off" ng-hide="ctrl.showjson==true">
     <section>

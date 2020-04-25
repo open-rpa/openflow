@@ -12,6 +12,7 @@
   ng-disabled="ctrl.loading==true" translate lib="web" />
 <div id="dvMessage" ng-model="ctrl.message"> </div>
 <br />
+<div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <pre>{{ ctrl.messages }}</pre>
 
 

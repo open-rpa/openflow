@@ -170,7 +170,7 @@ module openflow {
             var msg: Message = new Message(); msg.command = "dropcollection"; msg.data = JSON.stringify(q);
             q = await this.WebSocketClient.Send<DropCollectionMessage>(msg);
         }
-        async Query(collection: string, query: any, projection: any = null, orderby: any = { _created: -1 }, top: number = 100, skip: number = 0, queryas: string = null): Promise<any[]> {
+        async Query(collection: string, query: any, projection: any = null, orderby: any = { _id: -1 }, top: number = 100, skip: number = 0, queryas: string = null): Promise<any[]> {
             var q: QueryMessage = new QueryMessage();
             q.collectionname = collection; q.query = query; q.queryas = queryas;
             q.query = JSON.stringify(query, (key, value) => {
@@ -598,7 +598,7 @@ module openflow {
         public baseprojection: any = {};
         public collection: string = "entities";
         public models: T[] = [];
-        public orderby: any = { _created: -1 };
+        public orderby: any = { _id: -1 };
         public autorefresh: boolean = false;
         public autorefreshinterval: number = 30 * 1000;
         public autorefreshpromise: any = null;
@@ -607,6 +607,7 @@ module openflow {
         public searchstring: string = "";
         public searchfields: string[] = ["name"];
         public basequeryas: string = null;
+        public errormessage: string = "";
 
         public static $inject = [
             "$scope",
@@ -642,52 +643,60 @@ module openflow {
             }
         }
         async loadData(): Promise<void> {
-            if (this.loading == true) { console.log("allready loading data, exit"); return; }
-            this.loading = true;
-            if (this.preloadData != null) {
-                this.preloadData();
-            }
-            var query = this.basequery;
-            if (this.searchstring !== "") {
-                var finalor = [];
-                for (var i = 0; i < this.searchfields.length; i++) {
-                    var newq: any = {};
-                    // exact match case sensitive
-                    // newq[this.searchfields[i]] = this.searchstring;
-                    // exact match case insensitive
-                    newq[this.searchfields[i]] = new RegExp(["^", this.searchstring, "$"].join(""), "i");
-
-                    // exact match string contains
-                    newq[this.searchfields[i]] = new RegExp([this.searchstring].join(""), "i");
-
-                    finalor.push(newq);
+            try {
+                if (this.loading == true) { console.log("allready loading data, exit"); return; }
+                this.errormessage = "";
+                this.loading = true;
+                if (this.preloadData != null) {
+                    this.preloadData();
                 }
-                if (Object.keys(query).length == 0) {
-                    query = { $or: finalor.concat() };
-                } else {
-                    query = { $and: [query, { $or: finalor.concat() }] };
-                }
-            }
-            this.models = await this.api.Query(this.collection, query, this.baseprojection, this.orderby, 100, 0, this.basequeryas);
-            this.loading = false;
-            if (this.autorefresh) {
-                if (this.models.length >= 100) {
-                    // console.warn("Disabling auto refresh, result has more than 100 entries");
-                } else {
-                    if (this.autorefreshpromise == null && this.searchstring === "") {
-                        //if (this.autorefreshpromise == null) {
-                        this.autorefreshpromise = this.$interval(() => {
-                            this.loadData();
-                        }, this.autorefreshinterval);
-                        this.$scope.$on('$destroy', () => {
-                            this.$interval.cancel(this.autorefreshpromise);
-                        });
+                var query = this.basequery;
+                if (this.searchstring !== "") {
+                    var finalor = [];
+                    for (var i = 0; i < this.searchfields.length; i++) {
+                        var newq: any = {};
+                        // exact match case sensitive
+                        // newq[this.searchfields[i]] = this.searchstring;
+                        // exact match case insensitive
+                        newq[this.searchfields[i]] = new RegExp(["^", this.searchstring, "$"].join(""), "i");
+
+                        // exact match string contains
+                        newq[this.searchfields[i]] = new RegExp([this.searchstring].join(""), "i");
+
+                        finalor.push(newq);
+                    }
+                    if (Object.keys(query).length == 0) {
+                        query = { $or: finalor.concat() };
+                    } else {
+                        query = { $and: [query, { $or: finalor.concat() }] };
                     }
                 }
-            }
-            if (this.postloadData != null) {
-                this.postloadData();
-            } else {
+                console.log(this.orderby);
+                this.models = await this.api.Query(this.collection, query, this.baseprojection, this.orderby, 100, 0, this.basequeryas);
+                this.loading = false;
+                if (this.autorefresh) {
+                    if (this.models.length >= 100) {
+                        // console.warn("Disabling auto refresh, result has more than 100 entries");
+                    } else {
+                        if (this.autorefreshpromise == null && this.searchstring === "") {
+                            //if (this.autorefreshpromise == null) {
+                            this.autorefreshpromise = this.$interval(() => {
+                                this.loadData();
+                            }, this.autorefreshinterval);
+                            this.$scope.$on('$destroy', () => {
+                                this.$interval.cancel(this.autorefreshpromise);
+                            });
+                        }
+                    }
+                }
+                if (this.postloadData != null) {
+                    this.postloadData();
+                } else {
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                }
+            } catch (error) {
+                this.loading = false;
+                this.errormessage = JSON.stringify(error);
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
         }
@@ -745,6 +754,7 @@ module openflow {
         public autorefreshpromise: any = null;
         public preloadData: any = null;
         public postloadData: any = null;
+        public errormessage: string = "";
 
         public static $inject = [
             "$scope",
@@ -766,47 +776,54 @@ module openflow {
             this.basequery = { _id: this.id };
         }
         async loadData(): Promise<void> {
-            if (this.loading == true) { console.log("allready loading data, exit"); return; }
-            var updated: boolean = false;
-            this.loading = true;
-            if (this.preloadData != null) {
-                this.preloadData();
-            }
+            try {
+                if (this.loading == true) { console.log("allready loading data, exit"); return; }
+                this.errormessage = "";
+                var updated: boolean = false;
+                this.loading = true;
+                if (this.preloadData != null) {
+                    this.preloadData();
+                }
 
-            var result = await this.api.Query(this.collection, this.basequery, this.baseprojection, null, 1);
-            if (result.length > 0) {
-                if (this.model == null) {
-                    this.model = result[0];
-                    updated = true;
-                } else {
-                    if (!angular.equals(this.model, result[0])) {
+                var result = await this.api.Query(this.collection, this.basequery, this.baseprojection, null, 1);
+                if (result.length > 0) {
+                    if (this.model == null) {
                         this.model = result[0];
                         updated = true;
+                    } else {
+                        if (!angular.equals(this.model, result[0])) {
+                            this.model = result[0];
+                            updated = true;
+                        }
+                    }
+
+                }
+                if (updated) {
+                    this.keys = Object.keys(this.model);
+                    for (var i: number = this.keys.length - 1; i >= 0; i--) {
+                        if (this.keys[i].startsWith('_')) this.keys.splice(i, 1);
                     }
                 }
-
-            }
-            if (updated) {
-                this.keys = Object.keys(this.model);
-                for (var i: number = this.keys.length - 1; i >= 0; i--) {
-                    if (this.keys[i].startsWith('_')) this.keys.splice(i, 1);
+                this.loading = false;
+                if (this.postloadData != null) {
+                    this.postloadData();
+                } else {
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 }
-            }
-            this.loading = false;
-            if (this.postloadData != null) {
-                this.postloadData();
-            } else {
+                if (this.autorefresh) {
+                    if (this.autorefreshpromise == null) {
+                        this.autorefreshpromise = this.$interval(() => {
+                            this.loadData();
+                        }, this.autorefreshinterval);
+                        this.$scope.$on('$destroy', () => {
+                            this.$interval.cancel(this.autorefreshpromise);
+                        });
+                    }
+                }
+            } catch (error) {
+                this.loading = false;
+                this.errormessage = JSON.stringify(error);
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            }
-            if (this.autorefresh) {
-                if (this.autorefreshpromise == null) {
-                    this.autorefreshpromise = this.$interval(() => {
-                        this.loadData();
-                    }, this.autorefreshinterval);
-                    this.$scope.$on('$destroy', () => {
-                        this.$interval.cancel(this.autorefreshpromise);
-                    });
-                }
             }
         }
     }

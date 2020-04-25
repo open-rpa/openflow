@@ -94,7 +94,8 @@
 </section>
 
 
-<pre ng-show="ErrorMessage!=null">{{ ErrorMessage }}</pre>
+<pre ng-show="ErrorMessage!=null" class=" alert alert-danger" role="alert">{{ ErrorMessage }}</pre>
+<div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <pre>{{ctrl.message}}</pre>
 <a href="" ng-hide="ctrl.showjson==true" ng-click="ctrl.togglejson()" translate lib="web">showjson</a>
 <a href="" ng-hide="ctrl.showjson==false" ng-click="ctrl.togglejson()" translate lib="web">showproperties</a>
