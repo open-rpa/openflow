@@ -20,6 +20,7 @@
 </style>
 
 <pre ng-show="ErrorMessage!=null">{{ ErrorMessage }}</pre>
+<div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <form ng-submit="ctrl.submit()" class="form-horizontal" role="form" autocomplete="off">
 
     <div class="form-group">

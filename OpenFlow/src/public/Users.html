@@ -13,6 +13,7 @@
 <div class="col-sm-12 text-right">
   <a href="#/User" class="btn btn-info" translate lib="web">Adduser</a>
 </div>
+<div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;">
   <thead class="thead-dark">
     <tr>

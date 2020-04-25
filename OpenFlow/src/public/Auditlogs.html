@@ -19,6 +19,7 @@
     border-style: solid
   }
 </style>
+<div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;">
   <thead class="thead-dark">
     <tr>

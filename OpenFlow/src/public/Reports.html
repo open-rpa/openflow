@@ -4,6 +4,7 @@
 </div>
 
 <pre>{{ ctrl.message }}</pre>
+<div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <a href ng-click="ctrl.settimeframe(0, 1, '1 hour')">1 hour</a>
 <a href ng-click="ctrl.settimeframe(0, 6, '6 hour')">6 hour</a>
 <a href ng-click="ctrl.settimeframe(1, 0, '1 day')">1 day</a>

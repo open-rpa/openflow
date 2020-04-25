@@ -2,7 +2,7 @@
   <h1 translate lib="web">sockets</h1>
 </div>
 
-
+<div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <form ng-submit="ctrl.submit()" class="form-horizontal" role="form" autocomplete="off" ng-hide="ctrl.showjson==true">
   <section>
     <div class="form-group">
