@@ -15,7 +15,7 @@
   <table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;">
     <thead class="thead-dark">
       <tr>
-        <th ng-click="ctrl.ToggleOrder('name')"><b translate lib="web">name</b></th>
+        <th ng-click="ctrl.ToggleOrder('projectandname')"><b translate lib="web">projectandname</b></th>
         <th ng-click="ctrl.ToggleOrder('_createdby')"><b translate lib="web">who</b></th>
         <th ng-click="ctrl.ToggleOrder('_modified')"><b translate lib="web">updated</b></th>
         <th>Runs last 5 days</th>
@@ -24,7 +24,7 @@
     </thead>
     <tbody>
       <tr ng-repeat="model in ctrl.models">
-        <td>{{model.name}}</td>
+        <td>{{model.projectandname}}</td>
         <td>{{model._createdby}}</td>
         <td>
           <timesince ng-model="model._modified" />

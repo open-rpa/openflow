@@ -46,6 +46,15 @@ module openflow {
                         if (data.data.command == "invokecompleted") {
                             this.arguments = data.data.data;
                         }
+                        if (data.data.command == "invokefailed") {
+                            if (data.data && data.data.data && data.data.data.Message) {
+                                this.errormessage = data.data.data.Message;
+                            } else {
+                                this.errormessage = JSON.stringify(data.data);
+                            }
+
+                        }
+
                         if (!this.$scope.$$phase) { this.$scope.$apply(); }
                     });
 
@@ -64,16 +73,13 @@ module openflow {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async submit(): Promise<void> {
+            this.errormessage = "";
             var rpacommand = {
                 command: "invoke",
                 workflowid: this.model._id,
                 data: this.arguments
             }
             if (this.arguments === null || this.arguments === undefined) { this.arguments = {}; }
-            // var message = {
-            //     jwt: this.WebSocketClient.jwt,
-            //     payload: rpacommand
-            // }
             var result: any = await this.api.QueueMessage(this.user._id, rpacommand);
             try {
                 // result = JSON.parse(result);
@@ -98,7 +104,7 @@ module openflow {
             console.debug("RPAWorkflowsCtrl");
             this.collection = "openrpa";
             this.basequery = { _type: "workflow" };
-            this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
+            this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1, projectandname: 1 };
             this.postloadData = this.processdata;
             WebSocketClient.onSignedin((user: TokenUser) => {
                 this.loadData();
@@ -2642,8 +2648,8 @@ module openflow {
             "api"
         ];
         public messages: string = "";
+        public errormessage: string = "";
         public queuename: string = "webtest";
-        public message: string = "Hi mom";
         public noderedurl: string = "";
         public instance: any = null;
         public instancestatus: string = "";
@@ -2692,30 +2698,37 @@ module openflow {
             });
         }
         async save() {
-            if (this.limitsmemory != "") {
-                if (this.user.nodered == null) this.user.nodered = new noderedconfig();
-                if (this.user.nodered.resources == null) this.user.nodered.resources = new resources();
-                if (this.user.nodered.resources.limits == null) this.user.nodered.resources.limits = new resourcevalues();
-                if (this.user.nodered.resources.limits.memory != this.limitsmemory) {
-                    this.user.nodered.resources.limits.memory = this.limitsmemory;
-                }
-            } else {
-                if (this.user.nodered != null && this.user.nodered.resources != null && this.user.nodered.resources.limits != null) {
-                    if (this.limitsmemory != this.user.nodered.resources.limits.memory) {
+            try {
+                this.errormessage = "";
+                if (this.limitsmemory != "") {
+                    if (this.user.nodered == null) this.user.nodered = new noderedconfig();
+                    if (this.user.nodered.resources == null) this.user.nodered.resources = new resources();
+                    if (this.user.nodered.resources.limits == null) this.user.nodered.resources.limits = new resourcevalues();
+                    if (this.user.nodered.resources.limits.memory != this.limitsmemory) {
                         this.user.nodered.resources.limits.memory = this.limitsmemory;
                     }
+                } else {
+                    if (this.user.nodered != null && this.user.nodered.resources != null && this.user.nodered.resources.limits != null) {
+                        if (this.limitsmemory != this.user.nodered.resources.limits.memory) {
+                            this.user.nodered.resources.limits.memory = this.limitsmemory;
+                        }
+                    }
                 }
+                this.loading = true;
+                this.messages += 'Updating ' + this.user.name + "\n";
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                await this.api.Update("users", this.user);
+                this.loading = false;
+                this.messages += 'update complete\n';
+            } catch (error) {
+                this.errormessage = error;
             }
-            this.loading = true;
-            this.messages += 'Updating ' + this.user.name + "\n";
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            await this.api.Update("users", this.user);
             this.loading = false;
-            this.messages += 'update complete\n';
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async GetNoderedInstance() {
             try {
+                this.errormessage = "";
                 this.instancestatus = "fetching status";
 
                 this.instance = await this.api.GetNoderedInstance(this.userid, this.name);
@@ -2732,6 +2745,7 @@ module openflow {
                 }
                 this.messages += "GetNoderedInstance completed, status " + this.instancestatus + "\n";
             } catch (error) {
+                this.errormessage = error;
                 this.messages += error + "\n";
                 this.instancestatus = "";
                 console.error(error);
@@ -2741,6 +2755,7 @@ module openflow {
         }
         async GetNoderedInstanceLog() {
             try {
+                this.errormessage = "";
                 this.instancestatus = "fetching log";
                 console.debug("GetNoderedInstanceLog:");
                 this.instancelog = await this.api.GetNoderedInstanceLog(this.userid, this.name);
@@ -2748,6 +2763,7 @@ module openflow {
                 this.messages += "GetNoderedInstanceLog completed\n";
                 this.instancestatus = "";
             } catch (error) {
+                this.errormessage = error;
                 this.messages += error + "\n";
                 this.instancestatus = "";
                 console.error(error);
@@ -2756,9 +2772,11 @@ module openflow {
         }
         async EnsureNoderedInstance() {
             try {
+                this.errormessage = "";
                 await this.api.EnsureNoderedInstance(this.userid, this.name);
                 this.messages += "EnsureNoderedInstance completed" + "\n";
             } catch (error) {
+                this.errormessage = error;
                 this.messages += error + "\n";
                 console.error(error);
             }
@@ -2767,9 +2785,11 @@ module openflow {
         }
         async DeleteNoderedInstance() {
             try {
+                this.errormessage = "";
                 await this.api.DeleteNoderedInstance(this.userid, this.name);
                 this.messages += "DeleteNoderedInstance completed" + "\n";
             } catch (error) {
+                this.errormessage = error;
                 this.messages += error + "\n";
                 console.error(error);
             }
@@ -2778,9 +2798,11 @@ module openflow {
         }
         async RestartNoderedInstance() {
             try {
+                this.errormessage = "";
                 await this.api.RestartNoderedInstance(this.userid, this.name);
                 this.messages += "RestartNoderedInstance completed" + "\n";
             } catch (error) {
+                this.errormessage = error;
                 this.messages += error + "\n";
                 console.error(error);
             }
@@ -2789,9 +2811,11 @@ module openflow {
         }
         async StartNoderedInstance() {
             try {
+                this.errormessage = "";
                 await this.api.StartNoderedInstance(this.userid, this.name);
                 this.messages += "StartNoderedInstance completed" + "\n";
             } catch (error) {
+                this.errormessage = error;
                 this.messages += error + "\n";
                 console.error(error);
             }
@@ -2800,24 +2824,24 @@ module openflow {
         }
         async StopNoderedInstance() {
             try {
+                this.errormessage = "";
                 await this.api.StopNoderedInstance(this.userid, this.name);
                 this.messages += "StopNoderedInstance completed" + "\n";
             } catch (error) {
+                this.errormessage = error;
                 this.messages += error + "\n";
                 console.error(error);
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             this.GetNoderedInstance();
         }
-
-        async submit() {
-            await this.SendOne(this.queuename, this.message);
-        }
         async SendOne(queuename: string, message: any): Promise<void> {
             var result: any = await this.api.QueueMessage(queuename, message);
             try {
+                this.errormessage = "";
                 // result = JSON.parse(result);
             } catch (error) {
+                this.errormessage = error;
             }
             this.messages += result + "\n";
             if (!this.$scope.$$phase) { this.$scope.$apply(); }

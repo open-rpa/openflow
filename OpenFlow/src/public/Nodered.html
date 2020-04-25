@@ -2,7 +2,7 @@
   <h1 translate lib="web">sockets</h1>
 </div>
 
-<form ng-submit="ctrl.submit()" class="form-horizontal" role="form" autocomplete="off" ng-hide="ctrl.showjson==true">
+<form class="form-horizontal" role="form" autocomplete="off" ng-hide="ctrl.showjson==true">
   <section>
     <div class="form-group">
       <div class="col-sm-offset-2 col-sm-10">
@@ -87,8 +87,9 @@
   </div>
 </section>
 
+<div ng-show="ctrl.errormessage != ''"" class=" alert alert-primary" role="alert">{{ctrl.messages}}</div>
 
-<pre>{{ ctrl.messages }}</pre>
+
 <p>If this is your first time creating a NodeRed instance, please signout and signin again, to refresh group
   memberships for your user</p>
 <p>It can take a few minutes from you order a deletion of NodeRed, til it stops running. If accessing nodered in a

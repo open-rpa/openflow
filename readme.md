@@ -115,4 +115,6 @@ Lastly we need to start a background job that copies asserts to the dist folder,
 
 `gulp`
 
+You can now access openflow web on [http://localhost.openrpa.dk](http://localhost.openrpa.dk) and nodered on [http://localhost.openrpa.dk:1880](http://localhost.openrpa.dk:1880)
+
 For further help or education contact [OpenIAP](https://openrpa.dk/) for a support agreement
