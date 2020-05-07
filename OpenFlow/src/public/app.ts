@@ -80,6 +80,10 @@ module openflow {
 
                 .when('/Auditlogs', { templateUrl: 'Auditlogs.html', controller: AuditlogsCtrl, controllerAs: 'ctrl' })
 
+                .when('/Signup', { templateUrl: 'Signup.html', controller: SignupCtrl, controllerAs: 'ctrl' })
+                .when('/Payment', { templateUrl: 'Payment.html', controller: PaymentCtrl, controllerAs: 'ctrl' })
+                .when('/Payment/:result', { templateUrl: 'Payment.html', controller: PaymentCtrl, controllerAs: 'ctrl' })
+
                 .otherwise({ redirectTo: '/main' });
         }
     ])

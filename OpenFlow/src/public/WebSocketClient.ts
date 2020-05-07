@@ -25,6 +25,7 @@ module openflow {
     export class WebSocketClient {
         private _socketObject: ReconnectingWebSocket = null;
 
+        public stripe_api_key: string = "";
         public domain: string = null;
         public allow_personal_nodered: boolean = false;
         public allow_user_registration: boolean = false;
@@ -272,6 +273,7 @@ module openflow {
                 this.nodered_domain_schema = data.nodered_domain_schema;
                 this.websocket_package_size = data.websocket_package_size;
                 this.version = data.version;
+                this.stripe_api_key = data.stripe_api_key;
                 this._socketObject = new ReconnectingWebSocket(data.wshost);
                 this._socketObject.onopen = (this.onopen).bind(this);
                 this._socketObject.onmessage = (this.onmessage).bind(this);
@@ -351,19 +353,34 @@ module openflow {
                 callback(this.user);
             });
         }
+        onConnected(callback) {
+            if (this.connected) {
+                callback();
+                return;
+            }
+            var cleanup = this.$rootScope.$on('socketopen', (event, data) => {
+                if (event && data) { }
+                cleanup();
+                callback();
+            });
+        }
         timeout(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
         }
+        private connected: boolean = false;
         private onopen(evt: Event) {
             // console.debug("WebSocketClient::onopen: connected");
             this.$rootScope.$broadcast("socketopen");
             setTimeout(this.scanForCordova.bind(this), 200);
+            this.connected = true;
         }
         private onclose(evt: CloseEvent): void {
             var me: WebSocketClient = WebSocketClient.instance;
+            this.connected = false;
         }
         private onerror(evt: ErrorEvent): void {
             var me: WebSocketClient = WebSocketClient.instance;
+            this.connected = false;
         }
         private onmessage(evt: MessageEvent): void {
             var me: WebSocketClient = WebSocketClient.instance;

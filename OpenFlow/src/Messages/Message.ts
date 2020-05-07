@@ -41,6 +41,10 @@ import * as path from "path";
 import { UpdateFileMessage } from "./UpdateFileMessage";
 import { DatabaseConnection } from "../DatabaseConnection";
 import { CreateWorkflowInstanceMessage } from "./CreateWorkflowInstanceMessage";
+import { StripeMessage } from "./StripeMessage";
+var request = require("request");
+var got = require("got");
+
 
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 export class Message {
@@ -179,6 +183,9 @@ export class Message {
                     break;
                 case "createworkflowinstance":
                     this.CreateWorkflowInstance(cli);
+                    break;
+                case "stripemessage":
+                    this.StripeMessage(cli);
                     break;
                 default:
                     this.UnknownCommand(cli);
@@ -1394,6 +1401,150 @@ export class Message {
         }
         this.Send(cli);
     }
+
+    async async_request(options: any) {
+        return new Promise<any>(async (resolve, reject) => {
+            try {
+                request(options, (error, response, body) => {
+                    if (error) return reject(error);
+                    if (response.statusCode != 200) {
+                        if (body != null) return reject(body);
+                        return reject(response.statusText);
+                    }
+                    resolve(body);
+                });
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+    isObject(obj) {
+        const type = typeof obj;
+        return (type === 'function' || type === 'object') && !!obj;
+    }
+    flattenAndStringify(data) {
+        const result = {};
+
+        const step = (obj, prevKey) => {
+            Object.keys(obj).forEach((key) => {
+                const value = obj[key];
+
+                const newKey = prevKey ? `${prevKey}[${key}]` : key;
+
+                if (this.isObject(value)) {
+                    if (!Buffer.isBuffer(value) && !value.hasOwnProperty('data')) {
+                        // Non-buffer non-file Objects are recursively flattened
+                        return step(value, newKey);
+                    } else {
+                        // Buffers and file objects are stored without modification
+                        result[newKey] = value;
+                    }
+                } else {
+                    // Primitives are converted to strings
+                    result[newKey] = String(value);
+                }
+            });
+        };
+        step(data, undefined);
+        return result;
+    }
+    async StripeMessage(cli: WebSocketClient) {
+        this.Reply();
+        var msg: StripeMessage;
+        try {
+            msg = StripeMessage.assign(this.data);
+
+            if (Util.IsNullEmpty(msg.object)) throw new Error("object is mandatory");
+            var url = "https://api.stripe.com/v1/" + msg.object;
+            if (!Util.IsNullEmpty(msg.id)) url = url + "/" + msg.id;
+            if (!Util.IsNullEmpty(msg.url)) url = msg.url;
+            if (!cli.user.HasRoleName("admins")) {
+                if (!Util.IsNullEmpty(msg.url)) throw new Error("Custom url not allowed");
+                if (msg.object != "customers" && msg.object != "tax_ids"
+                    && msg.object != "products" && msg.object != "plans" &&
+                    msg.object != "checkout.sessions" && msg.object != "tax_rates") throw new Error("Access to " + msg.object + " is not allowed");
+            }
+            if (msg.object == "tax_ids") {
+                if (Util.IsNullEmpty(msg.customerid)) throw new Error("Need customer to work with tax_id");
+                url = "https://api.stripe.com/v1/customers/" + msg.customerid + "/tax_ids";
+                if (msg.method == "DELETE" || msg.method == "PUT") {
+                    if (Util.IsNullEmpty(msg.id)) throw new Error("Need id");
+                    url = "https://api.stripe.com/v1/customers/" + msg.customerid + "/tax_ids/" + msg.id;
+                }
+                if (!Util.IsNullEmpty(msg.id)) {
+                    url = "https://api.stripe.com/v1/customers/" + msg.customerid + "/tax_ids/" + msg.id;
+                }
+            }
+            if (msg.object == "checkout.sessions") {
+                if (msg.method != "GET") {
+                    if (Util.IsNullEmpty(msg.customerid)) throw new Error("Need customer to work with sessions");
+                }
+                url = "https://api.stripe.com/v1/checkout/sessions";
+                if (!Util.IsNullEmpty(msg.id)) {
+                    url = "https://api.stripe.com/v1/checkout/sessions/" + msg.id;
+                }
+            }
+
+
+            var auth = "Basic " + new Buffer(Config.stripe_api_secret + ":").toString("base64");
+
+            var options = {
+                headers: {
+                    'Content-type': 'application/x-www-form-urlencoded',
+                    'Authorization': auth
+                }
+                // , body: JSON.stringify(msg.payload)
+            };
+            if (msg.payload != null && msg.method != "GET" && msg.method != "DELETE") {
+                var flattenedData = this.flattenAndStringify(msg.payload);
+                (options as any).form = flattenedData;
+            }
+            if (msg.method == "POST") {
+                var response = await got.post(url, options);
+                msg.payload = JSON.parse(response.body);
+            }
+            if (msg.method == "GET") {
+                var response = await got.get(url, options);
+                msg.payload = JSON.parse(response.body);
+            }
+            if (msg.method == "PUT") {
+                var response = await got.put(url, options);
+                msg.payload = JSON.parse(response.body);
+            }
+            if (msg.method == "DELETE") {
+                var response = await got.delete(url, options);
+                msg.payload = JSON.parse(response.body);
+            }
+            if (msg.payload != null) {
+                if (msg.payload.deleted) {
+                    msg.payload = null;
+                }
+            }
+
+            // msg.payload = JSON.parse(result);
+        } catch (error) {
+            if (error == null) new Error("Unknown error");
+            cli._logger.error(error);
+            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) {
+                msg.error = error;
+                if (error.message) msg.error = error.message;
+                // if (error.stack) msg.error = error.stack;
+                if (error.response && error.response.body) {
+                    msg.error = error.response.body;
+                }
+            }
+            cli._logger.error(error);
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            cli._logger.error(error);
+        }
+        this.Send(cli);
+    }
+
 }
 
 export class JSONfn {
