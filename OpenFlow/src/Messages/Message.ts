@@ -33,7 +33,7 @@ import { GetNoderedInstanceLogMessage } from "./GetNoderedInstanceLogMessage";
 import { Util } from "../Util";
 import { SaveFileMessage } from "./SaveFileMessage";
 import { Readable, Stream } from "stream";
-import { GridFSBucket, ObjectID, Db, Cursor } from "mongodb";
+import { GridFSBucket, ObjectID, Db, Cursor, MongoNetworkError } from "mongodb";
 import { GetFileMessage } from "./GetFileMessage";
 import { ListCollectionsMessage } from "./ListCollectionsMessage";
 import { DropCollectionMessage } from "./DropCollectionMessage";
@@ -1462,7 +1462,9 @@ export class Message {
                 if (!Util.IsNullEmpty(msg.url)) throw new Error("Custom url not allowed");
                 if (msg.object != "customers" && msg.object != "tax_ids"
                     && msg.object != "products" && msg.object != "plans" &&
-                    msg.object != "checkout.sessions" && msg.object != "tax_rates") throw new Error("Access to " + msg.object + " is not allowed");
+                    msg.object != "checkout.sessions" && msg.object != "tax_rates"
+                    && msg.object != "subscriptions" && msg.object != "subscription_items"
+                    && msg.object != "usage_records") throw new Error("Access to " + msg.object + " is not allowed");
             }
             if (msg.object == "tax_ids") {
                 if (Util.IsNullEmpty(msg.customerid)) throw new Error("Need customer to work with tax_id");
@@ -1475,6 +1477,9 @@ export class Message {
                     url = "https://api.stripe.com/v1/customers/" + msg.customerid + "/tax_ids/" + msg.id;
                 }
             }
+            if (msg.object == "subscriptions") { //  && msg.object == "subscription_items"
+                if (Util.IsNullEmpty(msg.customerid)) throw new Error("Need customer to work with tax_id");
+            }
             if (msg.object == "checkout.sessions") {
                 if (msg.method != "GET") {
                     if (Util.IsNullEmpty(msg.customerid)) throw new Error("Need customer to work with sessions");
@@ -1483,6 +1488,9 @@ export class Message {
                 if (!Util.IsNullEmpty(msg.id)) {
                     url = "https://api.stripe.com/v1/checkout/sessions/" + msg.id;
                 }
+            }
+            if (msg.object == "usage_records") {
+                url = "https://api.stripe.com/v1/subscription_items/" + msg.id + "/usage_records";
             }
 
 

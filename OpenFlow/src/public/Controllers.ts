@@ -73,18 +73,23 @@ module openflow {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async submit(): Promise<void> {
-            this.errormessage = "";
-            var rpacommand = {
-                command: "invoke",
-                workflowid: this.model._id,
-                data: this.arguments
-            }
-            if (this.arguments === null || this.arguments === undefined) { this.arguments = {}; }
-            var result: any = await this.api.QueueMessage(this.user._id, rpacommand);
             try {
-                // result = JSON.parse(result);
+                this.errormessage = "";
+                var rpacommand = {
+                    command: "invoke",
+                    workflowid: this.model._id,
+                    data: this.arguments
+                }
+                if (this.arguments === null || this.arguments === undefined) { this.arguments = {}; }
+                var result: any = await this.api.QueueMessage(this.user._id, rpacommand);
+                try {
+                    // result = JSON.parse(result);
+                } catch (error) {
+                }
             } catch (error) {
+                this.errormessage = JSON.stringify(error);
             }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
     }
 
@@ -3128,13 +3133,35 @@ module openflow {
         public basicprice: number;
         public plusprice: number;
         public premiumprice: number;
+        public basicsupportprice: number;
+        public premiumsupportprice: number;
         public hastaxtext: string;
 
         public taxstatus: string = "";
         public taxaddress: string = "";
         public hascustomer: boolean = false;
-        public allowselectplan: boolean = false;
+        public allowopenflowsignup: boolean = false;
+        public allowsupportsignup: boolean = false;
         public hastaxinfo: boolean = false;
+        public openflowplan: stripeplan;
+        public supportplan: stripeplan;
+        public supporthoursplan: stripeplan;
+        public supportsubscription: stripe_subscription_item;
+        public supporthourssubscription: stripe_subscription_item;
+
+        public openflowplans: stripeplan[] = [
+            { id: "plan_HECATxbGlff4Pv", name: "Basic User", price: 70, subtitle: "256Mb memory", text: "Basic nodered with a minimum of ram, and CPU usage. Ideal for testing and light workflows, or schedulering robots. You also get up to 5 email support requests a month" }
+            , { id: "plan_HEDSUl6qdOE4ru", name: "Plus User", price: 350, subtitle: "512Mb memory", text: "A plus user account gets more ram and more cpu time. And can handle more load than a basic. You also get up to 5 email support requests a month" }
+            , { id: "plan_HEDTJQBGaVGnvl", name: "Premium User", price: 1750, subtitle: "1Gb memory", text: "With a Premium User you get plenty of ram for big workflows, you also get priority support per slack or email or up to one hour of support over zoom or google meet." }
+        ];
+        public supportplans: stripeplan[] = [
+            { id: "plan_HEGjLCtwsVbIx8", name: "Basic Support Plan", price: 500, subtitle: "1400 per hour excl tax", text: "With Basic support you get access to real people answering emails or setting up remote session with you helping you with your problems, at the end of each month you will be bill per effective hour spent." }
+            , { id: "plan_HEZoQXwXSxDM2r", name: "Premium Support Plan", price: 500, subtitle: "1000 per hour excl tax", text: "With Premium support you get access to real people answering emails or setting up remote session with you helping you with your problems, at the end of each month you will be bill per effective hour spent." }
+        ];
+        public supporthoursplans: stripeplan[] = [
+            { id: "plan_HEZAsA1DfkiQ6k", name: "Basic Support Hours", price: 1400, subtitle: "", text: "With Basic support you get access to real people answering emails or setting up remote session with you helping you with your problems, at the end of each month you will be bill per effective hour spent." }
+            , { id: "plan_HEZp4Q4In2XcXe", name: "Premium Support Hours", price: 1000, subtitle: "", text: "With Premium support you get access to real people answering emails or setting up remote session with you helping you with your problems, at the end of each month you will be bill per effective hour spent." }
+        ];
 
         constructor(
             public $scope: ng.IScope,
@@ -3151,9 +3178,7 @@ module openflow {
             this.postloadData = this.processdata;
             this.collection = "users";
 
-            console.log(this.result);
             WebSocketClient.onSignedin(async (_user: TokenUser) => {
-                console.log(WebSocketClient);
                 this.basequery = { "_id": _user._id };
                 this.stripe = Stripe(this.WebSocketClient.stripe_api_key);
 
@@ -3165,7 +3190,8 @@ module openflow {
                 this.taxstatus = "";
                 this.taxstatus = "";
                 this.hascustomer = false;
-                this.allowselectplan = false;
+                this.allowopenflowsignup = false;
+                this.allowsupportsignup = false;
                 this.hastaxinfo = false;
 
                 this.cardmessage = "";
@@ -3173,12 +3199,11 @@ module openflow {
                 if (model.billing == null) {
                     model.billing = { name: "", vattype: "", vatnumber: "", customerid: "", taxrate: "" };
                 } else {
-                    console.log('billing', model.billing);
                     if (model.billing != null && model.billing.customerid != null && model.billing.customerid != "") {
                         var payload: stripe_customer = new stripe_customer;
                         this.stripe_customer = await this.api.Stripe("GET", "customers", null, model.billing.customerid, payload);
                         this.hascustomer = (this.stripe_customer != null);
-                        console.log('stripe_customer', this.stripe_customer);
+                        console.log(this.stripe_customer);
                     }
                 }
                 if (this.stripe_customer && this.stripe_customer) {
@@ -3187,30 +3212,34 @@ module openflow {
                         this.taxstatus = this.stripe_customer.tax_ids.data[0].verification.status;
                         this.taxaddress = this.stripe_customer.tax_ids.data[0].verification.verified_address;
                         if (this.stripe_customer.tax_ids.data[0].verification.status == 'verified') {
-                            this.allowselectplan = true;
+                            this.allowopenflowsignup = true;
+                            this.allowsupportsignup = true;
                         }
                     } else {
-                        this.allowselectplan = true;
+                        this.allowopenflowsignup = true;
+                        this.allowsupportsignup = true;
                     }
                 }
-                if (this.allowselectplan) {
+                if (this.allowopenflowsignup || this.allowsupportsignup) {
+                    model.billing.taxrate = "";
                     // this.stripe_products = (await this.api.Stripe("GET", "products", null, null, null) as any);
-                    // console.log(this.stripe_products);
                     // this.stripe_plans = (await this.api.Stripe("GET", "plans", null, null, null) as any);
-                    // console.log(this.stripe_plans);
                     this.tax_rates = (await this.api.Stripe("GET", "tax_rates", null, null, null) as any);
-                    console.log(this.tax_rates);
                     this.basicprice = 70;
                     this.plusprice = 350;
                     this.premiumprice = 1750;
+
+                    this.basicsupportprice = 500;
+                    this.premiumsupportprice = 5000;
+
                     this.hastaxtext = "excl vat";
                     if (this.stripe_customer.tax_ids.total_count > 0) {
-                        if (this.stripe_customer.tax_ids[0].country == "DK") {
-                            model.billing.taxrate = this.tax_rates.data[0].id;
-                            this.basicprice *= 1.25;
-                            this.plusprice *= 1.25;
-                            this.premiumprice *= 1.25;
-                            this.hastaxtext = "vat included";
+                        if (this.stripe_customer.tax_ids.data[0].country == "DK") {
+                            // model.billing.taxrate = this.tax_rates.data[0].id;
+                            // this.basicprice *= 1.25;
+                            // this.plusprice *= 1.25;
+                            // this.premiumprice *= 1.25;
+                            // this.hastaxtext = "vat included";
                         }
                     } else {
                         model.billing.taxrate = this.tax_rates.data[0].id;
@@ -3220,7 +3249,67 @@ module openflow {
                         this.hastaxtext = "vat included";
                     }
                 }
+                if (this.hascustomer) {
+                    var hasOpenflow = this.openflowplans.filter(plan => {
+                        var hasit = this.stripe_customer.subscriptions.data.filter(s => s.items.data.filter(y => y.plan.id == plan.id).length > 0);
+                        if (hasit.length > 0) return true;
+                        return false;
+                    });
+                    if (hasOpenflow.length > 0) {
+                        this.allowopenflowsignup = false;
+                        this.openflowplan = hasOpenflow[0];
+                    }
+                    var hasSupport = this.supportplans.filter(plan => {
+                        var hasit = this.stripe_customer.subscriptions.data.filter(s => {
+                            var arr = s.items.data.filter(y => y.plan.id == plan.id);
+                            if (arr.length == 1) this.supportsubscription = arr[0];
+                            return arr.length > 0;
+                        });
+                        if (hasit.length > 0) return true;
+                        return false;
+                    });
+                    if (hasSupport.length > 0) {
+                        this.allowsupportsignup = false;
+                        this.supportplan = hasSupport[0];
+                    }
+                    var hasSupportHours = this.supporthoursplans.filter(plan => {
+                        var hasit = this.stripe_customer.subscriptions.data.filter(s => {
+                            var arr = s.items.data.filter(y => y.plan.id == plan.id);
+                            if (arr.length == 1) this.supporthourssubscription = arr[0];
+                            return arr.length > 0;
+                        });
+                        if (hasit.length > 0) return true;
+                        return false;
+                    });
+                    if (hasSupportHours.length > 0) {
+                        this.allowsupportsignup = false;
+                        this.supporthoursplan = hasSupportHours[0];
+                    } else if (this.supportplan != null) {
+                        var hasSupportHours = this.supporthoursplans.filter(plan => {
+                            if (plan.name.indexOf("Basic") > -1 && this.supportplan.name.indexOf("Basic") > -1) return true;
+                            if (plan.name.indexOf("Premium") > -1 && this.supportplan.name.indexOf("Premium") > -1) return true;
+                            return false;
+                        });
+                        this.supporthoursplan = hasSupportHours[0];
+                        var subscriptions = this.stripe_customer.subscriptions.data.filter(sub => {
+                            if (sub.plan.id == this.supportplan.id) return true;
+                            return false;
+                        });
+                        var subscription = subscriptions[0];
+                        // (payload as any) = { subscription: subscription.id, plan: this.supporthoursplan.id, quantity: 1 };
+                        (payload as any) = { subscription: subscription.id, plan: this.supporthoursplan.id };
+
+                        console.log('supporthoursplan', this.supporthoursplan);
+                        console.log('subscription', subscription);
+                        console.log('payload', payload);
+                        this.stripe_customer = await this.api.Stripe("POST", "subscription_items", null, null, payload);
+                        this.loadData();
+                    }
+                    console.log("hasOpenflow", hasOpenflow);
+                }
+                console.log('taxrate', model.billing.taxrate);
             } catch (error) {
+                console.error(error);
                 this.cardmessage = error;
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -3244,34 +3333,58 @@ module openflow {
                     if (this.WebSocketClient.user.username.indexOf("@") > -1) {
                         payload.email = this.WebSocketClient.user.username;
                     }
-                    console.log(payload);
                     customer = await this.api.Stripe<stripe_customer>("POST", "customers", null, null, payload);
                     model.billing.customerid = customer.id;
                     await this.api.Update(this.collection, model);
                 }
 
                 if (customer != null && model.billing.vattype != "" && model.billing.vatnumber != "") {
-                    console.log(customer);
                     if (customer.tax_ids.total_count == 0) {
                         (payload as any) = { value: model.billing.vatnumber, type: model.billing.vattype };
                         var taxinfo = await this.api.Stripe("POST", "tax_ids", customer.id, null, payload);
                     }
                 }
-                // //  
-                //     console.log(customer);
-                //     model.billing.customerid = customer.id;
-                //     await this.api.Update(this.collection, model);
-                //     (payload as any) = { value: model.billing.vatnumber, type: model.billing.vattype };
-                //     var taxinfo = await this.api.Stripe("POST", "tax_ids", customer.id, null, payload);
-                //     console.log(taxinfo);
-                // }
                 this.loadData();
             } catch (error) {
+                console.error(error);
                 this.cardmessage = error;
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
-        async CheckOut(plan: string) {
+        async CancelPlan(plan: string) {
+            try {
+                var hasit = this.stripe_customer.subscriptions.data.filter(s => s.plan.id == plan);
+                if (hasit.length == 0) return;
+                var subscription = hasit[0];
+                console.log(subscription);
+                var res = await this.api.Stripe("DELETE", "subscriptions", this.stripe_customer.id, subscription.id, null);
+            } catch (error) {
+                console.error(error);
+                this.cardmessage = error;
+            }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            this.loadData();
+        }
+        async AddHours(plan: string) {
+            try {
+                console.log(this.supporthourssubscription);
+                if (this.supporthourssubscription == null) return;
+                var hours: number = parseInt(window.prompt("Number of hours", "1"));
+                if (hours > 0) {
+                    var dt = parseInt((new Date().getTime() / 1000).toFixed(0))
+                    var payload: any = { "quantity": hours, "timestamp": dt };
+                    console.log('payload', payload);
+                    console.log('id', this.supporthourssubscription.id);
+                    var res = await this.api.Stripe("POST", "usage_records", null, this.supporthourssubscription.id, payload);
+                }
+                this.loadData();
+            } catch (error) {
+                console.error(error);
+                this.cardmessage = error;
+            }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        async CheckOut(plan: string, secondplan: string) {
             var model: any = this.model;
             var baseurl: string = "https://" + this.WebSocketClient.domain + "/#/Payment";
             try {
@@ -3279,13 +3392,21 @@ module openflow {
                     success_url: baseurl + "/success", cancel_url: baseurl + "/cancel",
                     payment_method_types: ["card"], customer: this.stripe_customer.id, mode: "subscription",
                     subscription_data: {
-                        items: [{ plan: plan, tax_rates: [model.billing.taxrate] }],
+                        items: [],
                     }
-                    //, default_tax_rates: [model.billing.taxrate]
                 };
-                console.log(payload);
+                if (model.billing.taxrate == null || model.billing.taxrate == "") {
+                    payload.subscription_data.items.push({ plan: plan });
+                    // if (secondplan != null && secondplan != "") {
+                    //     payload.subscription_data.items.push({ plan: secondplan });
+                    // }
+                } else {
+                    payload.subscription_data.items.push({ plan: plan, tax_rates: [model.billing.taxrate] });
+                    // if (secondplan != null && secondplan != "") {
+                    //     payload.subscription_data.items.push({ plan: secondplan, tax_rates: [model.billing.taxrate] });
+                    // }
+                }
                 var checkout = await this.api.Stripe("POST", "checkout.sessions", model.billing.customerid, null, payload);
-                console.log(checkout);
 
 
                 var stripe = Stripe(this.WebSocketClient.stripe_api_key);
@@ -3297,6 +3418,7 @@ module openflow {
                         if (event.complete) {
                             // enable payment button
                         } else if (event.error) {
+                            console.error(event.error);
                             if (event.error && event.error.message) {
                                 this.cardmessage = event.error.message;
                             } else {
@@ -3306,51 +3428,17 @@ module openflow {
 
                             // show validation to customer
                         } else {
-                            console.log('cardElement.change');
                         }
-                        console.log(event);
                     }).catch((error) => {
+                        console.error(error);
                         this.cardmessage = error;
                     });
             } catch (error) {
+                console.error(error);
                 this.cardmessage = error;
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            // https://stripe.com/docs/payments/checkout/subscriptions/starting
-            // tax_id: "txr_1Gf0TwC2vUMc6gvhgxXuTQbX",
-            // var stripe = Stripe(this.WebSocketClient.stripe_api_key);
-            // try {
-            //     stripe
-            //         .redirectToCheckout({
-            //             items: [
-            //                 // Replace with the ID of your SKU
-            //                 { plan: 'plan_HDC1houLg8Gu46', quantity: 1 },
-            //             ],
-            //             successUrl: 'https://pc.openrpa.dk/#/Payment/success',
-            //             cancelUrl: 'https://pc.openrpa.dk/#/Payment/canceled',
-            //         })
-            //         .then(function (event) {
-            //             if (event.complete) {
-            //                 // enable payment button
-            //             } else if (event.error) {
-            //                 if (event.error && event.error.message) {
-            //                     this.cardmessage = event.error.message;
-            //                 } else {
-            //                     this.cardmessage = event.error;
-            //                 }
-            //                 console.error(event.error);
 
-            //                 // show validation to customer
-            //             } else {
-            //                 console.log('cardElement.change');
-            //             }
-            //             console.log(event);
-            //         }).catch((error) => {
-            //             this.cardmessage = error;
-            //         });
-            // } catch(error) {
-            //     this.cardmessage = error;
-            // }
         }
     }
 }

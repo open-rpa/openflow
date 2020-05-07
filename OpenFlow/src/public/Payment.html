@@ -387,56 +387,59 @@
         </div>
     </div>
 </div>
+<div ng-show="ctrl.supportplan!=null" class="alert alert-primary">
+    You are currently subscribed to the {{ ctrl.supportplan.name }}. <br>
+    And the corresponding {{ ctrl.supporthoursplan.name }} plan.<br>
+    Please contact us if you wish to update this or click <a href ng-click="ctrl.CancelPlan(ctrl.supportplan.id)">here
+        to
+        cancel</a> this subscription.
+    <div><br><a href ng-click="ctrl.AddHours()">Add hours</a></div>
+
+    <!-- ng-show="menuctrl.hasrole('admins')" -->
+</div>
+<div ng-show="ctrl.openflowplan!=null" class="alert alert-primary">
+    You are currently subscribed to the {{ ctrl.openflowplan.name }} for 1 users <br>
+    Please contact us if you wish to update this or click <a href ng-click="ctrl.CancelPlan(ctrl.openflowplan.id)">here
+        to
+        cancel</a> this subscription
+</div>
 <div ng-show="ctrl.cardmessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.cardmessage}}</div>
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <pre ng-show="ctrl.messages!=''" class=" alert alert-primary" role="alert">{{ ctrl.messages }}</pre>
-<div class="row" ng-show="ctrl.allowselectplan">
-    <div>
+<h3 ng-show="ctrl.allowopenflowsignup">OpenFlow User with a NodeRed instace with SLA</h3>
+<div class="row">
+    <div ng-show="ctrl.allowopenflowsignup" ng-repeat="model in ctrl.openflowplans">
         <div class="card" style="width: 18rem;height: 332px;">
             <div class="card-body">
-                <h5 class="card-title">Basic User</h5>
-                <h6 class="card-subtitle mb-2 text-muted">256Mb memory</h6>
-                <p class="card-text">Basic nodered with a minimum of ram, and CPU usage. Ideal for testing and light
-                    workflows, or schedulering robots. You also get up to 5 email support requests a month</p>
+                <h5 class="card-title">{{model.name}}</h5>
+                <h6 class="card-subtitle mb-2 text-muted">{{model.subtitle}}</h6>
+                <p class="card-text">{{model.text}}</p>
 
-                <a href ng-click="ctrl.CheckOut('plan_HECATxbGlff4Pv')" class="card-link">Buy now</a>
+                <a href ng-click="ctrl.CheckOut(model.id)" class="card-link">Buy now</a>
             </div>
             <div class="card-footer text-muted">
-                {{ctrl.basicprice}} DKR/month {{ctrl.hastaxtext}}
+                {{model.price}} DKR/month {{ctrl.hastaxtext}}
             </div>
         </div>
     </div>
-    <div>
+</div>
+<h3 ng-show="ctrl.allowsupportsignup">Support agreements</h3>
+<div class="row">
+    <div ng-show="ctrl.allowsupportsignup" ng-repeat="model in ctrl.supportplans">
         <div class="card" style="width: 18rem;height: 332px;">
             <div class="card-body">
-                <h5 class="card-title">Plus User</h5>
-                <h6 class="card-subtitle mb-2 text-muted">512Mb memory</h6>
-                <p class="card-text">A plus user account gets more ram and more cpu time. And can handle more load than
-                    a basic. You also get up to 5 email
-                    support requests a month</p>
-                <p></p>
-                <a href ng-click="ctrl.CheckOut('plan_HEDSUl6qdOE4ru')" class="card-link">Buy now</a>
+                <h5 class="card-title">{{model.name}}</h5>
+                <h6 class="card-subtitle mb-2 text-muted">{{model.subtitle}}</h6>
+                <p class="card-text">{{model.text}}</p>
+
+                <a href ng-click="ctrl.CheckOut(model.id)" class="card-link">Buy now</a>
             </div>
             <div class="card-footer text-muted">
-                {{ctrl.plusprice}} DKR/month {{ctrl.hastaxtext}}
+                {{model.price}} DKR/month {{ctrl.hastaxtext}}
             </div>
         </div>
     </div>
-    <div>
-        <div class="card" style="width: 18rem;height: 332px;">
-            <div class="card-body">
-                <h5 class="card-title">Premium User</h5>
-                <h6 class="card-subtitle mb-2 text-muted">1Gb memory</h6>
-                <p class="card-text">With a Premium User you get plenty of ram for big workflows, you also get priority
-                    support per slack or email or up to one hour of support over zoom or google meet.</p>
-                <p></p>
-                <a href ng-click="ctrl.CheckOut('plan_HEDTJQBGaVGnvl')" class="card-link">Buy now</a>
-            </div>
-            <div class="card-footer text-muted">
-                {{ctrl.premiumprice}} DKR/month {{ctrl.hastaxtext}}
-            </div>
-        </div>
-    </div>
+
 </div>
 <br />
 <br />
