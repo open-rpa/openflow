@@ -63,6 +63,9 @@
 
             <a class="dropdown-item" href>ver {{menuctrl.WebSocketClient.version}}</a>
 
+            <a class="dropdown-item" href="#/Payment" ng-show="menuctrl.WebSocketClient.stripe_api_key != ''"><span
+                translate lib="web">billing</span></a>
+
           </div>
         </li>
       </ul>
@@ -76,10 +79,13 @@
     </div>
   </nav>
 
-  <main role="main" class="container" ng-show="menuctrl.signedin || menuctrl.path=='/Login'">
+  <main role="main" class="container"
+    ng-show="menuctrl.signedin || menuctrl.path=='/Login' || menuctrl.path=='/Signup'">
     <div ng-view class="starter-template">
     </div>
   </main>
+
+  <script src="https://js.stripe.com/v3/"></script>
 
   <script src="main.js"></script>
   <script>

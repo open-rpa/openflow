@@ -97,7 +97,7 @@ module openflow {
                         }
                     }
                     if (data === null || data === undefined) {
-                        if (this.$location.path() !== "/Login") {
+                        if (this.$location.path() !== "/Login" && this.$location.path() !== "/Signup") {
                             var _url = this.$location.absUrl();
                             this.setCookie("url", _url, 365);
                             this.$location.path("/Login");
@@ -314,6 +314,13 @@ module openflow {
             msg.data = JSONfn.stringify(q);
             var result: UpdateFileMessage = await this.WebSocketClient.Send<UpdateFileMessage>(msg);
             return;
+        }
+        async Stripe<T extends stripe_base>(method: string, object: string, customerid: string, id: string, payload: stripe_base): Promise<T> {
+            var q: StripeMessage = new StripeMessage();
+            q.method = method; q.object = object; q.customerid = customerid; q.id = id; q.payload = payload;
+            var msg: Message = new Message(); msg.command = "stripemessage"; msg.data = JSON.stringify(q);
+            q = await this.WebSocketClient.Send<StripeMessage>(msg);
+            return (q.payload as any);
         }
 
         setCookie(cname, cvalue, exdays) {
@@ -671,7 +678,6 @@ module openflow {
                         query = { $and: [query, { $or: finalor.concat() }] };
                     }
                 }
-                console.log(this.orderby);
                 this.models = await this.api.Query(this.collection, query, this.baseprojection, this.orderby, 100, 0, this.basequeryas);
                 this.loading = false;
                 if (this.autorefresh) {

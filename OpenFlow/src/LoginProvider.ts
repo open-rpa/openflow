@@ -237,7 +237,8 @@ export class LoginProvider {
                 namespace: Config.namespace,
                 nodered_domain_schema: Config.nodered_domain_schema,
                 websocket_package_size: Config.websocket_package_size,
-                version: Config.version
+                version: Config.version,
+                stripe_api_key: Config.stripe_api_key
             }
             res.end(JSON.stringify(res2));
         });

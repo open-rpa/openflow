@@ -881,6 +881,10 @@ module openflow {
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
+        Signup() {
+            this.$location.path("/Signup");
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
     }
     export class MenuCtrl {
         public user: TokenUser;
@@ -3070,6 +3074,283 @@ module openflow {
                 this.model = arr[0];
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+    }
+
+
+    export class SignupCtrl extends entityCtrl<openflow.Base> {
+        searchFilteredList: openflow.TokenUser[] = [];
+        searchSelectedItem: openflow.TokenUser = null;
+        searchtext: string = "";
+        e: any = null;
+
+        public newkey: string = "";
+        public showjson: boolean = false;
+        public jsonmodel: string = "";
+        public message: string = "";
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
+            public WebSocketClient: WebSocketClient,
+            public api: api
+        ) {
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
+            console.debug("SignupCtrl");
+            this.collection = $routeParams.collection;
+            this.postloadData = this.processdata;
+            WebSocketClient.onConnected(async () => {
+                console.log(this.WebSocketClient.stripe_api_key);
+                if (this.id !== null && this.id !== undefined) {
+                    await this.loadData();
+                } else {
+                    this.processdata();
+                }
+            });
+        }
+        processdata() {
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+    }
+
+    declare var Stripe: any;
+    export class PaymentCtrl extends entityCtrl<openflow.Base> {
+        public messages: string = "";
+        public cardmessage: string = "";
+        public errormessage: string = "";
+        public result: string = "";
+        public stripe: any = null;
+        public stripe_customer: stripe_customer;
+        public stripe_products: stripe_list<stripe_base>;
+        public stripe_plans: stripe_list<stripe_base>;
+        public tax_rates: stripe_list<stripe_base>;
+        public basicprice: number;
+        public plusprice: number;
+        public premiumprice: number;
+        public hastaxtext: string;
+
+        public taxstatus: string = "";
+        public taxaddress: string = "";
+        public hascustomer: boolean = false;
+        public allowselectplan: boolean = false;
+        public hastaxinfo: boolean = false;
+
+        constructor(
+            public $scope: ng.IScope,
+            public $location: ng.ILocationService,
+            public $routeParams: ng.route.IRouteParamsService,
+            public $interval: ng.IIntervalService,
+            public WebSocketClient: WebSocketClient,
+            public api: api
+        ) {
+            super($scope, $location, $routeParams, $interval, WebSocketClient, api);
+            console.debug("PaymentCtrl");
+            //this.collection = $routeParams.collection;
+            this.result = $routeParams.result;
+            this.postloadData = this.processdata;
+            this.collection = "users";
+
+            console.log(this.result);
+            WebSocketClient.onSignedin(async (_user: TokenUser) => {
+                console.log(WebSocketClient);
+                this.basequery = { "_id": _user._id };
+                this.stripe = Stripe(this.WebSocketClient.stripe_api_key);
+
+                this.loadData();
+            });
+        }
+        async processdata() {
+            try {
+                this.taxstatus = "";
+                this.taxstatus = "";
+                this.hascustomer = false;
+                this.allowselectplan = false;
+                this.hastaxinfo = false;
+
+                this.cardmessage = "";
+                var model: any = this.model;
+                if (model.billing == null) {
+                    model.billing = { name: "", vattype: "", vatnumber: "", customerid: "", taxrate: "" };
+                } else {
+                    console.log('billing', model.billing);
+                    if (model.billing != null && model.billing.customerid != null && model.billing.customerid != "") {
+                        var payload: stripe_customer = new stripe_customer;
+                        this.stripe_customer = await this.api.Stripe("GET", "customers", null, model.billing.customerid, payload);
+                        this.hascustomer = (this.stripe_customer != null);
+                        console.log('stripe_customer', this.stripe_customer);
+                    }
+                }
+                if (this.stripe_customer && this.stripe_customer) {
+                    if (this.stripe_customer.tax_ids.total_count > 0) {
+                        this.hastaxinfo = true;
+                        this.taxstatus = this.stripe_customer.tax_ids.data[0].verification.status;
+                        this.taxaddress = this.stripe_customer.tax_ids.data[0].verification.verified_address;
+                        if (this.stripe_customer.tax_ids.data[0].verification.status == 'verified') {
+                            this.allowselectplan = true;
+                        }
+                    } else {
+                        this.allowselectplan = true;
+                    }
+                }
+                if (this.allowselectplan) {
+                    // this.stripe_products = (await this.api.Stripe("GET", "products", null, null, null) as any);
+                    // console.log(this.stripe_products);
+                    // this.stripe_plans = (await this.api.Stripe("GET", "plans", null, null, null) as any);
+                    // console.log(this.stripe_plans);
+                    this.tax_rates = (await this.api.Stripe("GET", "tax_rates", null, null, null) as any);
+                    console.log(this.tax_rates);
+                    this.basicprice = 70;
+                    this.plusprice = 350;
+                    this.premiumprice = 1750;
+                    this.hastaxtext = "excl vat";
+                    if (this.stripe_customer.tax_ids.total_count > 0) {
+                        if (this.stripe_customer.tax_ids[0].country == "DK") {
+                            model.billing.taxrate = this.tax_rates.data[0].id;
+                            this.basicprice *= 1.25;
+                            this.plusprice *= 1.25;
+                            this.premiumprice *= 1.25;
+                            this.hastaxtext = "vat included";
+                        }
+                    } else {
+                        model.billing.taxrate = this.tax_rates.data[0].id;
+                        this.basicprice *= 1.25;
+                        this.plusprice *= 1.25;
+                        this.premiumprice *= 1.25;
+                        this.hastaxtext = "vat included";
+                    }
+                }
+            } catch (error) {
+                this.cardmessage = error;
+            }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        async Save() {
+            var model: any = this.model;
+            try {
+                await this.api.Update(this.collection, this.model);
+                var customer: stripe_customer = null;
+
+                if (model.billing != null && model.billing.customerid != null && model.billing.customerid != "") {
+                    var payload: stripe_customer = new stripe_customer;
+                    customer = await this.api.Stripe("GET", "customers", null, model.billing.customerid, payload);
+                }
+
+                if (customer == null && model.name != null) {
+                    var payload: stripe_customer = new stripe_customer;
+                    payload.metadata = { userid: this.WebSocketClient.user._id };
+                    payload.description = this.WebSocketClient.user.name;
+                    payload.name = this.WebSocketClient.user.name;
+                    if (this.WebSocketClient.user.username.indexOf("@") > -1) {
+                        payload.email = this.WebSocketClient.user.username;
+                    }
+                    console.log(payload);
+                    customer = await this.api.Stripe<stripe_customer>("POST", "customers", null, null, payload);
+                    model.billing.customerid = customer.id;
+                    await this.api.Update(this.collection, model);
+                }
+
+                if (customer != null && model.billing.vattype != "" && model.billing.vatnumber != "") {
+                    console.log(customer);
+                    if (customer.tax_ids.total_count == 0) {
+                        (payload as any) = { value: model.billing.vatnumber, type: model.billing.vattype };
+                        var taxinfo = await this.api.Stripe("POST", "tax_ids", customer.id, null, payload);
+                    }
+                }
+                // //  
+                //     console.log(customer);
+                //     model.billing.customerid = customer.id;
+                //     await this.api.Update(this.collection, model);
+                //     (payload as any) = { value: model.billing.vatnumber, type: model.billing.vattype };
+                //     var taxinfo = await this.api.Stripe("POST", "tax_ids", customer.id, null, payload);
+                //     console.log(taxinfo);
+                // }
+                this.loadData();
+            } catch (error) {
+                this.cardmessage = error;
+            }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+        async CheckOut(plan: string) {
+            var model: any = this.model;
+            var baseurl: string = "https://" + this.WebSocketClient.domain + "/#/Payment";
+            try {
+                var payload: any = {
+                    success_url: baseurl + "/success", cancel_url: baseurl + "/cancel",
+                    payment_method_types: ["card"], customer: this.stripe_customer.id, mode: "subscription",
+                    subscription_data: {
+                        items: [{ plan: plan, tax_rates: [model.billing.taxrate] }],
+                    }
+                    //, default_tax_rates: [model.billing.taxrate]
+                };
+                console.log(payload);
+                var checkout = await this.api.Stripe("POST", "checkout.sessions", model.billing.customerid, null, payload);
+                console.log(checkout);
+
+
+                var stripe = Stripe(this.WebSocketClient.stripe_api_key);
+                stripe
+                    .redirectToCheckout({
+                        sessionId: checkout.id,
+                    })
+                    .then(function (event) {
+                        if (event.complete) {
+                            // enable payment button
+                        } else if (event.error) {
+                            if (event.error && event.error.message) {
+                                this.cardmessage = event.error.message;
+                            } else {
+                                this.cardmessage = event.error;
+                            }
+                            console.error(event.error);
+
+                            // show validation to customer
+                        } else {
+                            console.log('cardElement.change');
+                        }
+                        console.log(event);
+                    }).catch((error) => {
+                        this.cardmessage = error;
+                    });
+            } catch (error) {
+                this.cardmessage = error;
+            }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            // https://stripe.com/docs/payments/checkout/subscriptions/starting
+            // tax_id: "txr_1Gf0TwC2vUMc6gvhgxXuTQbX",
+            // var stripe = Stripe(this.WebSocketClient.stripe_api_key);
+            // try {
+            //     stripe
+            //         .redirectToCheckout({
+            //             items: [
+            //                 // Replace with the ID of your SKU
+            //                 { plan: 'plan_HDC1houLg8Gu46', quantity: 1 },
+            //             ],
+            //             successUrl: 'https://pc.openrpa.dk/#/Payment/success',
+            //             cancelUrl: 'https://pc.openrpa.dk/#/Payment/canceled',
+            //         })
+            //         .then(function (event) {
+            //             if (event.complete) {
+            //                 // enable payment button
+            //             } else if (event.error) {
+            //                 if (event.error && event.error.message) {
+            //                     this.cardmessage = event.error.message;
+            //                 } else {
+            //                     this.cardmessage = event.error;
+            //                 }
+            //                 console.error(event.error);
+
+            //                 // show validation to customer
+            //             } else {
+            //                 console.log('cardElement.change');
+            //             }
+            //             console.log(event);
+            //         }).catch((error) => {
+            //             this.cardmessage = error;
+            //         });
+            // } catch(error) {
+            //     this.cardmessage = error;
+            // }
         }
     }
 }
