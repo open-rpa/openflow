@@ -185,15 +185,9 @@ module openflow {
             }
         }
         async Download(model: any) {
-            // console.log("Create file");
-            // var file = new File(["Hello, world!"], "hello world.txt", { type: "text/plain;charset=utf-8" });
-            // console.log("SaveAs");
-            // debugger;
-            // FileSaver.saveAs(file);
             var workflows = await this.api.Query("openrpa", { _type: "workflow", _id: model._id }, null, null);
             if (workflows.length > 0) {
                 model = workflows[0];
-                console.log(model);
                 this.download(model.Xaml, model.name + ".xaml", "application/xaml+xml");
             }
         }
@@ -280,11 +274,9 @@ module openflow {
         }
         settimeframe(days, hours, desc) {
             this.datatimeframe = new Date(new Date().toISOString());
-            console.log(this.datatimeframe);
             if (days > 0) this.datatimeframe.setDate(this.datatimeframe.getDate() - days);
             if (hours > 0) this.datatimeframe.setHours(this.datatimeframe.getHours() - hours);
             this.timeframedesc = desc;
-            console.log(this.datatimeframe);
 
             this.onlinetimeframe = new Date(new Date().toISOString());
             this.onlinetimeframe.setMinutes(this.onlinetimeframe.getMinutes() - 1);
@@ -305,7 +297,7 @@ module openflow {
             this.userdata.data.ReportsCtrl.run(this.userdata.data.ReportsCtrl.points);
         }
         async processData(): Promise<void> {
-            console.log('processData');
+            console.debug('processData');
             this.userdata.data.ReportsCtrl.run = this.processData.bind(this);
             this.userdata.data.ReportsCtrl.points = null;
             this.loading = true;
@@ -390,7 +382,7 @@ module openflow {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async robotsclick(points, evt): Promise<void> {
-            console.log('robotsclick');
+            console.debug('robotsclick');
             this.userdata.data.ReportsCtrl.run = this.robotsclick.bind(this);
             this.userdata.data.ReportsCtrl.points = points;
             if (points.length > 0) {
@@ -437,7 +429,6 @@ module openflow {
             ];
 
             var data = await this.api.Aggregate("users", agg);
-            console.log(data);
 
             chart = new chartset();
             if (points[0]._index == 0) // Online robots
@@ -499,7 +490,6 @@ module openflow {
                 { "$limit": 20 }
             ];
             var workflowruns = await this.api.Aggregate("openrpa_instances", agg);
-            console.log(workflowruns);
 
             chart = new chartset();
             if (points[0]._index == 0) // Online robots
@@ -523,11 +513,10 @@ module openflow {
 
         }
         async robotclick(points, evt): Promise<void> {
-            console.log('robotclick');
+            console.debug('robotclick');
             if (points.length > 0) {
             } else { return; }
             var userid = this.charts[0].ids[points[0]._index];
-            console.log(userid);
             var chart: chartset = null;
             var agg: any = {};
             var data: any = {};
@@ -540,7 +529,6 @@ module openflow {
                 { "$limit": 20 }
             ];
             var workflowruns = await this.api.Aggregate("openrpa_instances", agg);
-            console.log(workflowruns);
 
             chart = new chartset();
             if (workflowruns.length > 0) // Online robots
@@ -565,7 +553,7 @@ module openflow {
 
         }
         async workflowclick(points, evt): Promise<void> {
-            console.log('workflowclick');
+            console.debug('workflowclick');
             if (points.length > 0) {
             } else { return; }
 
@@ -595,7 +583,6 @@ module openflow {
                 { "$limit": 20 }
             ];
             var workflowruns = await this.api.Aggregate("openrpa_instances", agg);
-            console.log(workflowruns);
 
             chart = new chartset();
             if (workflowruns.length > 0) {
@@ -1061,7 +1048,7 @@ module openflow {
 
             var list = await this.api.Query("users", { _type: "role", name: name + "noderedadmins" });
             if (list.length == 1) {
-                console.log("Deleting " + name + "noderedadmins")
+                console.debug("Deleting " + name + "noderedadmins")
                 await this.api.Delete("users", list[0]);
             }
 
@@ -1149,10 +1136,10 @@ module openflow {
                 if (this.memberof == null || this.memberof == undefined) this.memberof = [];
                 var exists = this.memberof.filter(x => x._id == memberof._id);
                 if (exists.length == 0) {
-                    console.log("Updating members of " + memberof.name + " " + memberof._id);
-                    console.log("members: " + memberof.members.length);
+                    console.debug("Updating members of " + memberof.name + " " + memberof._id);
+                    console.debug("members: " + memberof.members.length);
                     memberof.members = memberof.members.filter(x => x._id != this.model._id);
-                    console.log("members: " + memberof.members.length);
+                    console.debug("members: " + memberof.members.length);
                     await this.api.Update("users", memberof);
                 }
             }
@@ -1469,7 +1456,7 @@ module openflow {
             var fileinfo = await this.api.GetFile(null, id, (msg, index, count) => {
                 var p: number = ((index + 1) / count * 100) | 0;
                 if (p > lastp || (index + 1) == count) {
-                    console.log(index + "/" + count + " " + p + "%");
+                    console.debug(index + "/" + count + " " + p + "%");
                     lastp = p;
                 }
                 var elem = document.getElementById("myBar");
@@ -1519,29 +1506,29 @@ module openflow {
             const xhr = new XMLHttpRequest();
             xhr.onload = () => {
                 if (xhr.status >= 200 && xhr.status < 300) {
-                    console.log("upload complete");
+                    console.debug("upload complete");
                     // we done!
                     if (!this.$scope.$$phase) { this.$scope.$apply(); }
                     this.loadData();
 
                 }
             };
-            console.log("open");
+            console.debug("open");
             xhr.open('POST', '/upload', true);
-            console.log("send");
+            console.debug("send");
             xhr.send(fd);
         }
         async Upload_usingapi() {
             var filename = (this.$scope as any).filename;
             var type = (this.$scope as any).type;
-            console.log("filename: " + filename + " type: " + type);
+            console.debug("filename: " + filename + " type: " + type);
             this.loading = true;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             var lastp: number = 0;
             await this.api.SaveFile(filename, type, null, this.file, (msg, index, count) => {
                 var p: number = ((index + 1) / count * 100) | 0;
                 if (p > lastp || (index + 1) == count) {
-                    console.log(index + "/" + count + " " + p + "%");
+                    console.debug(index + "/" + count + " " + p + "%");
                     lastp = p;
                 }
                 var elem = document.getElementById("myBar");
@@ -1832,9 +1819,9 @@ module openflow {
             if (this.instanceid !== null && this.instanceid !== undefined && this.instanceid !== "") {
                 var res = await this.api.Query("workflow_instances", { _id: this.instanceid }, null, { _created: -1 }, 1);
                 if (res.length > 0) { this.model = res[0]; } else { console.error(this.id + " workflow instances not found!"); return; }
-                // console.log(this.model);
-                // console.log(this.model.form);
-                console.log("form: " + this.model.form);
+                // console.debug(this.model);
+                // console.debug(this.model.form);
+                // console.debug("form: " + this.model.form);
                 if (this.model.payload === null || this.model.payload === undefined) {
                     this.model.payload = { _id: this.instanceid };
                 }
@@ -1949,20 +1936,14 @@ module openflow {
                         for (var x = 0; x < item.components.length; x++) {
                             obj[item.components[x].key] = "";
                         }
-                        console.log("add default array for " + item.key, obj);
+                        console.debug("add default array for " + item.key, obj);
                         this.model.payload[item.key] = [obj];
                     } else {
-                        console.log("payload already have values for " + item.key);
-                        console.log("isArray: " + Array.isArray(this.model.payload[item.key]))
+                        console.debug("payload already have values for " + item.key);
+                        console.debug("isArray: " + Array.isArray(this.model.payload[item.key]))
                         if (Array.isArray(this.model.payload[item.key])) {
-                            // console.log("convert payload for " + item.key + " from array to object");
-                            // var obj2: any = {};
-                            // for (var x = 0; x < values.length; x++) {
-                            //     obj2[x] = values[x];
-                            // }
-                            // this.model.payload[item.key] = obj2;
                         } else {
-                            console.log("convert payload for " + item.key + " from object to array");
+                            console.debug("convert payload for " + item.key + " from object to array");
                             var keys = Object.keys(this.model.payload[item.key]);
                             var arr: any[] = [];
                             for (var x = 0; x < keys.length; x++) {
@@ -1988,10 +1969,9 @@ module openflow {
                         var values = this.model.payload.values[keys[i]];
                         for (var y = 0; y < components.length; y++) {
                             var item = components[y];
-                            // console.log(item);
                             if (item.key == keys[i]) {
                                 if (Array.isArray(values)) {
-                                    console.log("handle " + item.key + " as array");
+                                    console.debug("handle " + item.key + " as array");
                                     var obj2: any = {};
                                     for (var x = 0; x < values.length; x++) {
                                         obj2[x] = values[x];
@@ -1999,24 +1979,24 @@ module openflow {
                                     if (item.data != null && item.data != undefined) {
                                         item.data.values = obj2;
                                         item.data.json = JSON.stringify(values);
-                                        // console.log("Setting values for " + keys[i], JSON.stringify(obj));
+                                        // console.debug("Setting values for " + keys[i], JSON.stringify(obj));
                                     } else {
                                         item.values = values;
                                     }
                                 } else {
-                                    console.log("handle " + item.key + " as an object");
+                                    console.debug("handle " + item.key + " as an object");
                                     if (item.data != null && item.data != undefined) {
                                         item.data.values = values;
                                         item.data.json = JSON.stringify(values);
-                                        // console.log("Setting values for " + keys[i], JSON.stringify(values));
+                                        // console.debug("Setting values for " + keys[i], JSON.stringify(values));
                                     } else {
                                         item.values = values;
                                     }
                                 }
                                 // if (item.data != null && item.data != undefined) {
-                                //     console.log(keys[i], item.data);
+                                //     console.debug(keys[i], item.data);
                                 // } else {
-                                //     console.log(keys[i], item);
+                                //     console.debug(keys[i], item);
                                 // }
                             }
                         }
@@ -2065,31 +2045,31 @@ module openflow {
                     var value = this.model.payload[this.form.formData[i].name];
                     if (value == undefined || value == null) { value = ""; }
                     if (value != "" || this.form.formData[i].type != "button") {
-                        // console.log("0:" + this.form.formData[i].label + " -> " + value);
+                        // console.debug("0:" + this.form.formData[i].label + " -> " + value);
                         this.form.formData[i].userData = [value];
                     }
                     if (Array.isArray(value)) {
-                        // console.log("1:" + this.form.formData[i].userData + " -> " + value);
+                        // console.debug("1:" + this.form.formData[i].userData + " -> " + value);
                         this.form.formData[i].userData = value;
                     }
                     if (this.model.payload[this.form.formData[i].label] !== null && this.model.payload[this.form.formData[i].label] !== undefined) {
                         value = this.model.payload[this.form.formData[i].label];
                         if (value == undefined || value == null) { value = ""; }
                         if (this.form.formData[i].type != "button") {
-                            // console.log("2:" + this.form.formData[i].label + " -> " + value);
+                            // console.debug("2:" + this.form.formData[i].label + " -> " + value);
                             this.form.formData[i].label = value;
                         } else if (value != "") {
-                            // console.log("2button:" + this.form.formData[i].label + " -> " + value);
+                            // console.debug("2button:" + this.form.formData[i].label + " -> " + value);
                             this.form.formData[i].label = value;
                         } else {
-                            // console.log("skip " + this.form.formData[i].label);
+                            // console.debug("skip " + this.form.formData[i].label);
                         }
                     }
                     if (this.model.values !== null && this.model.values !== undefined) {
                         if (this.model.values[this.form.formData[i].name] !== null && this.model.values[this.form.formData[i].name] !== undefined) {
                             value = this.model.values[this.form.formData[i].name];
                             if (value == undefined || value == null) { value = []; }
-                            // console.log("3:" + this.form.formData[i].values + " -> " + value);
+                            // console.debug("3:" + this.form.formData[i].values + " -> " + value);
                             this.form.formData[i].values = value;
                         }
                     }
@@ -2130,35 +2110,14 @@ module openflow {
                 }
 
                 setTimeout(() => {
-                    console.log("Attach buttons! 2");
+                    console.debug("Attach buttons! 2");
                     $('button[type="button"]').each(function () {
                         var cur: any = $(this)[0];
-                        console.log("set submit");
-                        console.log(cur);
+                        console.debug("set submit");
                         cur.type = "submit";
                     });
-                    // $('input[type="button"]').click(function (evt) {
-                    //     // var input = $("<input>").attr("type", "hidden").attr("name", evt.target.id).val((evt.target as any).value);
-                    //     // $('#workflowform').append(input);
-                    //     // $('button[type="button"]').replaceWith('<input>' + $('target').html() +'</newTag>')
-                    //     // evt.preventDefault();
-                    //     console.log(evt);
-                    //     console.log("button clicked!");
-                    //     $('#workflowform').submit();
-                    // });
-                    // $('button[type="button"]').click(function (evt) {
-                    //     var input = $("<input>").attr("type", "hidden").attr("name", "clicked").val(evt.target.id);
-                    //     $('#workflowform').append(input);
-                    //     $('#workflowform').submit();
-                    // });
-
                     var click = function (evt) {
                         this.submitbutton = evt.target.id;
-                        // console.log(this);
-                        // var input = $("<input>").attr("type", "hidden").attr("name", "clicked").val(evt.target.id);
-                        // $('#workflowform').append(input);
-                        // evt.preventDefault();
-                        // $('#workflowform').submit();
                     }
                     $('button[type="submit"]').click(click.bind(this));
 
@@ -2186,7 +2145,7 @@ module openflow {
                     });
                 // wizard
                 this.formioRender.on('change', form => {
-                    //console.log('change', form);
+                    //console.debug('change', form);
                     // setTimeout(() => {
                     //     this.formioRender.submit();
                     // }, 200);
@@ -2200,7 +2159,7 @@ module openflow {
                     this.formioRender.submission = { data: this.model.payload };
                 }
                 this.formioRender.on('submit', async submission => {
-                    console.log('onsubmit', submission);
+                    console.debug('onsubmit', submission);
                     $(".alert-success").hide();
                     setTimeout(() => {
                         // just to be safe
@@ -2323,7 +2282,6 @@ module openflow {
         processdata() {
             var ids: string[] = [];
             if (this.collection == "files") {
-                console.log(this.model);
                 for (var i: number = 0; i < (this.model as any).metadata._acl.length; i++) {
                     ids.push((this.model as any).metadata._acl[i]._id);
                 }
@@ -2526,7 +2484,7 @@ module openflow {
                     if (idx <= 0) {
                         idx = 0;
                     } else { idx--; }
-                    console.log("idx: " + idx);
+                    console.debug("idx: " + idx);
                     // this.searchtext = this.searchFilteredList[idx].name;
                     this.searchSelectedItem = this.searchFilteredList[idx];
                     return;
@@ -2535,7 +2493,7 @@ module openflow {
                     if (idx >= this.searchFilteredList.length) {
                         idx = this.searchFilteredList.length - 1;
                     } else { idx++; }
-                    console.log("idx: " + idx);
+                    console.debug("idx: " + idx);
                     // this.searchtext = this.searchFilteredList[idx].name;
                     this.searchSelectedItem = this.searchFilteredList[idx];
                     return;
@@ -2550,7 +2508,7 @@ module openflow {
                     return;
                 }
                 else {
-                    // console.log(this.e.keyCode);
+                    // console.debug(this.e.keyCode);
                 }
             } else {
                 if (this.e.keyCode == 13 && this.searchSelectedItem != null) {
@@ -2560,7 +2518,7 @@ module openflow {
         }
         async handlefilter(e) {
             this.e = e;
-            // console.log(e.keyCode);
+            // console.debug(e.keyCode);
             var ids: string[];
             if (this.collection == "files") {
                 ids = (this.model as any).metadata._acl.map(item => item._id);
@@ -2698,7 +2656,6 @@ module openflow {
                 if (this.user.nodered != null && this.user.nodered.resources != null && this.user.nodered.resources.limits != null) {
                     this.limitsmemory = this.user.nodered.resources.limits.memory;
                 }
-                console.log(this.limitsmemory);
                 this.name = this.name.split("@").join("").split(".").join("");
                 this.name = this.name.toLowerCase();
                 this.noderedurl = "https://" + WebSocketClient.nodered_domain_schema.replace("$nodered_id$", this.name);
@@ -3106,7 +3063,6 @@ module openflow {
             this.collection = $routeParams.collection;
             this.postloadData = this.processdata;
             WebSocketClient.onConnected(async () => {
-                console.log(this.WebSocketClient.stripe_api_key);
                 if (this.id !== null && this.id !== undefined) {
                     await this.loadData();
                 } else {
@@ -3120,22 +3076,16 @@ module openflow {
     }
 
     declare var Stripe: any;
-    export class PaymentCtrl extends entityCtrl<openflow.Base> {
+    export class PaymentCtrl extends entityCtrl<Billing> {
         public messages: string = "";
         public cardmessage: string = "";
         public errormessage: string = "";
-        public result: string = "";
         public stripe: any = null;
         public stripe_customer: stripe_customer;
         public stripe_products: stripe_list<stripe_base>;
-        public stripe_plans: stripe_list<stripe_base>;
-        public tax_rates: stripe_list<stripe_base>;
-        public basicprice: number;
-        public plusprice: number;
-        public premiumprice: number;
-        public basicsupportprice: number;
-        public premiumsupportprice: number;
+        public stripe_plans: stripe_list<stripe_plan>;
         public hastaxtext: string;
+        public userid: string;
 
         public taxstatus: string = "";
         public taxaddress: string = "";
@@ -3143,25 +3093,16 @@ module openflow {
         public allowopenflowsignup: boolean = false;
         public allowsupportsignup: boolean = false;
         public hastaxinfo: boolean = false;
-        public openflowplan: stripeplan;
-        public supportplan: stripeplan;
-        public supporthoursplan: stripeplan;
+        public openflowplan: stripe_plan;
+        public supportplan: stripe_plan;
+        public supporthoursplan: stripe_plan;
         public supportsubscription: stripe_subscription_item;
         public supporthourssubscription: stripe_subscription_item;
 
-        public openflowplans: stripeplan[] = [
-            { id: "plan_HECATxbGlff4Pv", name: "Basic User", price: 70, subtitle: "256Mb memory", text: "Basic nodered with a minimum of ram, and CPU usage. Ideal for testing and light workflows, or schedulering robots. You also get up to 5 email support requests a month" }
-            , { id: "plan_HEDSUl6qdOE4ru", name: "Plus User", price: 350, subtitle: "512Mb memory", text: "A plus user account gets more ram and more cpu time. And can handle more load than a basic. You also get up to 5 email support requests a month" }
-            , { id: "plan_HEDTJQBGaVGnvl", name: "Premium User", price: 1750, subtitle: "1Gb memory", text: "With a Premium User you get plenty of ram for big workflows, you also get priority support per slack or email or up to one hour of support over zoom or google meet." }
-        ];
-        public supportplans: stripeplan[] = [
-            { id: "plan_HEGjLCtwsVbIx8", name: "Basic Support Plan", price: 500, subtitle: "1400 per hour excl tax", text: "With Basic support you get access to real people answering emails or setting up remote session with you helping you with your problems, at the end of each month you will be bill per effective hour spent." }
-            , { id: "plan_HEZoQXwXSxDM2r", name: "Premium Support Plan", price: 500, subtitle: "1000 per hour excl tax", text: "With Premium support you get access to real people answering emails or setting up remote session with you helping you with your problems, at the end of each month you will be bill per effective hour spent." }
-        ];
-        public supporthoursplans: stripeplan[] = [
-            { id: "plan_HEZAsA1DfkiQ6k", name: "Basic Support Hours", price: 1400, subtitle: "", text: "With Basic support you get access to real people answering emails or setting up remote session with you helping you with your problems, at the end of each month you will be bill per effective hour spent." }
-            , { id: "plan_HEZp4Q4In2XcXe", name: "Premium Support Hours", price: 1000, subtitle: "", text: "With Premium support you get access to real people answering emails or setting up remote session with you helping you with your problems, at the end of each month you will be bill per effective hour spent." }
-        ];
+        public openflowplans: stripe_plan[] = [];
+        public supportplans: stripe_plan[] = [];
+        public supporthoursplans: stripe_plan[] = [];
+
 
         constructor(
             public $scope: ng.IScope,
@@ -3174,12 +3115,17 @@ module openflow {
             super($scope, $location, $routeParams, $interval, WebSocketClient, api);
             console.debug("PaymentCtrl");
             //this.collection = $routeParams.collection;
-            this.result = $routeParams.result;
+            this.userid = $routeParams.userid;
             this.postloadData = this.processdata;
             this.collection = "users";
 
             WebSocketClient.onSignedin(async (_user: TokenUser) => {
-                this.basequery = { "_id": _user._id };
+                if (this.userid == null || this.userid == "" || this.userid == "success" || this.userid == "cancel") {
+                    this.userid = _user._id;
+                }
+
+                this.basequery = { "userid": this.userid, "_type": "billing" };
+                // this.basequery = { "userid": this.userid };
                 this.stripe = Stripe(this.WebSocketClient.stripe_api_key);
 
                 this.loadData();
@@ -3187,23 +3133,50 @@ module openflow {
         }
         async processdata() {
             try {
-                this.taxstatus = "";
+
                 this.taxstatus = "";
                 this.hascustomer = false;
                 this.allowopenflowsignup = false;
                 this.allowsupportsignup = false;
                 this.hastaxinfo = false;
 
+                this.messages = "";
                 this.cardmessage = "";
-                var model: any = this.model;
-                if (model.billing == null) {
-                    model.billing = { name: "", vattype: "", vatnumber: "", customerid: "", taxrate: "" };
+                this.errormessage = "";
+                this.stripe = null;
+                this.stripe_products = null;
+                this.stripe_plans = null;
+                this.hastaxtext = "vat included";
+
+                this.taxstatus = "";
+                this.taxaddress = "";
+                this.hascustomer = false;
+                this.allowopenflowsignup = false;
+                this.allowsupportsignup = false;
+                this.hastaxinfo = false;
+                this.openflowplan = null;
+                this.supportplan = null;
+                this.supporthoursplan = null;
+                this.supportsubscription = null;
+                this.supporthourssubscription = null;
+
+                this.cardmessage = "";
+                if (this.model == null) {
+                    this.model = new Billing(this.WebSocketClient.user._id);
+                    this.model.name = this.WebSocketClient.user.name;
+                    if (this.WebSocketClient.user.username.indexOf("@") > -1) {
+                        this.model.email = this.WebSocketClient.user.username;
+                    }
                 } else {
-                    if (model.billing != null && model.billing.customerid != null && model.billing.customerid != "") {
+                    if (this.model != null && this.model.stripeid != null && this.model.stripeid != "") {
                         var payload: stripe_customer = new stripe_customer;
-                        this.stripe_customer = await this.api.Stripe("GET", "customers", null, model.billing.customerid, payload);
+                        this.stripe_customer = await this.api.EnsureStripeCustomer(this.model, this.userid);
                         this.hascustomer = (this.stripe_customer != null);
-                        console.log(this.stripe_customer);
+                        if (this.model.tax != 1) {
+                            this.hastaxtext = "vat included";
+                        } else {
+                            this.hastaxtext = "excl vat";
+                        }
                     }
                 }
                 if (this.stripe_customer && this.stripe_customer) {
@@ -3212,6 +3185,8 @@ module openflow {
                         this.taxstatus = this.stripe_customer.tax_ids.data[0].verification.status;
                         this.taxaddress = this.stripe_customer.tax_ids.data[0].verification.verified_address;
                         if (this.stripe_customer.tax_ids.data[0].verification.status == 'verified') {
+                            this.model.name = this.stripe_customer.tax_ids.data[0].verification.verified_name;
+                            this.model.address = this.stripe_customer.tax_ids.data[0].verification.verified_address;
                             this.allowopenflowsignup = true;
                             this.allowsupportsignup = true;
                         }
@@ -3221,39 +3196,48 @@ module openflow {
                     }
                 }
                 if (this.allowopenflowsignup || this.allowsupportsignup) {
-                    model.billing.taxrate = "";
-                    // this.stripe_products = (await this.api.Stripe("GET", "products", null, null, null) as any);
-                    // this.stripe_plans = (await this.api.Stripe("GET", "plans", null, null, null) as any);
-                    this.tax_rates = (await this.api.Stripe("GET", "tax_rates", null, null, null) as any);
-                    this.basicprice = 70;
-                    this.plusprice = 350;
-                    this.premiumprice = 1750;
-
-                    this.basicsupportprice = 500;
-                    this.premiumsupportprice = 5000;
-
-                    this.hastaxtext = "excl vat";
-                    if (this.stripe_customer.tax_ids.total_count > 0) {
-                        if (this.stripe_customer.tax_ids.data[0].country == "DK") {
-                            // model.billing.taxrate = this.tax_rates.data[0].id;
-                            // this.basicprice *= 1.25;
-                            // this.plusprice *= 1.25;
-                            // this.premiumprice *= 1.25;
-                            // this.hastaxtext = "vat included";
+                    this.model.taxrate = "";
+                    if (this.openflowplans.length == 0) {
+                        this.stripe_plans = (await this.api.Stripe("GET", "plans", null, null, null) as any);
+                        for (var x = 0; x < this.stripe_plans.data.length; x++) {
+                            var stripeplan = this.stripe_plans.data[x];
+                            if (stripeplan.metadata.openflowuser == "true") {
+                                this.openflowplans.push(stripeplan);
+                            }
+                            if (stripeplan.metadata.supportplan == "true") {
+                                this.supportplans.push(stripeplan);
+                            }
                         }
-                    } else {
-                        model.billing.taxrate = this.tax_rates.data[0].id;
-                        this.basicprice *= 1.25;
-                        this.plusprice *= 1.25;
-                        this.premiumprice *= 1.25;
-                        this.hastaxtext = "vat included";
+                        for (var y = 0; y < this.supportplans.length; y++) {
+                            var supportplan = this.supportplans[y];
+                            for (var x = 0; x < this.stripe_plans.data.length; x++) {
+                                var stripeplan = this.stripe_plans.data[x];
+                                if (stripeplan.id == supportplan.metadata.subplan) {
+                                    this.supporthoursplans.push(stripeplan);
+                                    (supportplan as any).subplan = stripeplan;
+                                }
+                            }
+
+                        }
                     }
                 }
                 if (this.hascustomer) {
                     var hasOpenflow = this.openflowplans.filter(plan => {
-                        var hasit = this.stripe_customer.subscriptions.data.filter(s => s.items.data.filter(y => y.plan.id == plan.id).length > 0);
+                        var hasit = this.stripe_customer.subscriptions.data.filter(s => {
+                            var arr = s.items.data.filter(y => y.plan.id == plan.id);
+                            if (arr.length == 1) {
+                                if (arr[0].quantity > 0) {
+                                    // this.openflowplan = arr[0];
+                                    return true;
+                                }
+                            }
+                            return false;
+                        });
                         if (hasit.length > 0) return true;
                         return false;
+                        // var hasit = this.stripe_customer.subscriptions.data.filter(s => s.items.data.filter(y => y.plan.id == plan.id).length > 0);
+                        // if (hasit.length > 0) return true;
+                        // return false;
                     });
                     if (hasOpenflow.length > 0) {
                         this.allowopenflowsignup = false;
@@ -3262,8 +3246,13 @@ module openflow {
                     var hasSupport = this.supportplans.filter(plan => {
                         var hasit = this.stripe_customer.subscriptions.data.filter(s => {
                             var arr = s.items.data.filter(y => y.plan.id == plan.id);
-                            if (arr.length == 1) this.supportsubscription = arr[0];
-                            return arr.length > 0;
+                            if (arr.length == 1) {
+                                if (arr[0].quantity > 0) {
+                                    this.supportsubscription = arr[0];
+                                    return true;
+                                }
+                            }
+                            return false;
                         });
                         if (hasit.length > 0) return true;
                         return false;
@@ -3275,8 +3264,13 @@ module openflow {
                     var hasSupportHours = this.supporthoursplans.filter(plan => {
                         var hasit = this.stripe_customer.subscriptions.data.filter(s => {
                             var arr = s.items.data.filter(y => y.plan.id == plan.id);
-                            if (arr.length == 1) this.supporthourssubscription = arr[0];
-                            return arr.length > 0;
+                            if (arr.length == 1) {
+                                //if (arr[0].quantity > 0) {
+                                this.supporthourssubscription = arr[0];
+                                return true;
+                                //}
+                            }
+                            return false;
                         });
                         if (hasit.length > 0) return true;
                         return false;
@@ -3285,29 +3279,20 @@ module openflow {
                         this.allowsupportsignup = false;
                         this.supporthoursplan = hasSupportHours[0];
                     } else if (this.supportplan != null) {
-                        var hasSupportHours = this.supporthoursplans.filter(plan => {
-                            if (plan.name.indexOf("Basic") > -1 && this.supportplan.name.indexOf("Basic") > -1) return true;
-                            if (plan.name.indexOf("Premium") > -1 && this.supportplan.name.indexOf("Premium") > -1) return true;
-                            return false;
-                        });
-                        this.supporthoursplan = hasSupportHours[0];
-                        var subscriptions = this.stripe_customer.subscriptions.data.filter(sub => {
-                            if (sub.plan.id == this.supportplan.id) return true;
-                            return false;
+                        this.supporthoursplan = (this.supportplan as any).subplan;
+                        var subscriptions = this.stripe_customer.subscriptions.data.filter(s => {
+                            var arr = s.items.data.filter(y => y.plan.id == this.supportplan.id);
+                            return arr.length > 0;
                         });
                         var subscription = subscriptions[0];
                         // (payload as any) = { subscription: subscription.id, plan: this.supporthoursplan.id, quantity: 1 };
                         (payload as any) = { subscription: subscription.id, plan: this.supporthoursplan.id };
 
-                        console.log('supporthoursplan', this.supporthoursplan);
-                        console.log('subscription', subscription);
-                        console.log('payload', payload);
-                        this.stripe_customer = await this.api.Stripe("POST", "subscription_items", null, null, payload);
-                        this.loadData();
+                        // await this.api.Stripe("POST", "subscription_items", null, null, payload);
+                        var result = await this.api.StripeAddPlan(this.userid, this.supporthoursplan.id, null);
+                        // this.loadData();
                     }
-                    console.log("hasOpenflow", hasOpenflow);
                 }
-                console.log('taxrate', model.billing.taxrate);
             } catch (error) {
                 console.error(error);
                 this.cardmessage = error;
@@ -3315,35 +3300,14 @@ module openflow {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async Save() {
-            var model: any = this.model;
             try {
-                await this.api.Update(this.collection, this.model);
+                // await this.api.Update(this.collection, this.model);
                 var customer: stripe_customer = null;
 
-                if (model.billing != null && model.billing.customerid != null && model.billing.customerid != "") {
-                    var payload: stripe_customer = new stripe_customer;
-                    customer = await this.api.Stripe("GET", "customers", null, model.billing.customerid, payload);
+                if (customer == null && this.model.name != null) {
+                    customer = await this.api.EnsureStripeCustomer(this.model, this.userid);
                 }
 
-                if (customer == null && model.name != null) {
-                    var payload: stripe_customer = new stripe_customer;
-                    payload.metadata = { userid: this.WebSocketClient.user._id };
-                    payload.description = this.WebSocketClient.user.name;
-                    payload.name = this.WebSocketClient.user.name;
-                    if (this.WebSocketClient.user.username.indexOf("@") > -1) {
-                        payload.email = this.WebSocketClient.user.username;
-                    }
-                    customer = await this.api.Stripe<stripe_customer>("POST", "customers", null, null, payload);
-                    model.billing.customerid = customer.id;
-                    await this.api.Update(this.collection, model);
-                }
-
-                if (customer != null && model.billing.vattype != "" && model.billing.vatnumber != "") {
-                    if (customer.tax_ids.total_count == 0) {
-                        (payload as any) = { value: model.billing.vatnumber, type: model.billing.vattype };
-                        var taxinfo = await this.api.Stripe("POST", "tax_ids", customer.id, null, payload);
-                    }
-                }
                 this.loadData();
             } catch (error) {
                 console.error(error);
@@ -3351,30 +3315,24 @@ module openflow {
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
-        async CancelPlan(plan: string) {
+        async CancelPlan(planid: string) {
             try {
-                var hasit = this.stripe_customer.subscriptions.data.filter(s => s.plan.id == plan);
-                if (hasit.length == 0) return;
-                var subscription = hasit[0];
-                console.log(subscription);
-                var res = await this.api.Stripe("DELETE", "subscriptions", this.stripe_customer.id, subscription.id, null);
+                var result = await this.api.StripeCancelPlan(this.userid, planid);
+                this.loadData();
             } catch (error) {
                 console.error(error);
                 this.cardmessage = error;
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            this.loadData();
+
         }
         async AddHours(plan: string) {
             try {
-                console.log(this.supporthourssubscription);
                 if (this.supporthourssubscription == null) return;
                 var hours: number = parseInt(window.prompt("Number of hours", "1"));
                 if (hours > 0) {
                     var dt = parseInt((new Date().getTime() / 1000).toFixed(0))
                     var payload: any = { "quantity": hours, "timestamp": dt };
-                    console.log('payload', payload);
-                    console.log('id', this.supporthourssubscription.id);
                     var res = await this.api.Stripe("POST", "usage_records", null, this.supporthourssubscription.id, payload);
                 }
                 this.loadData();
@@ -3384,55 +3342,37 @@ module openflow {
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
-        async CheckOut(plan: string, secondplan: string) {
-            var model: any = this.model;
-            var baseurl: string = "https://" + this.WebSocketClient.domain + "/#/Payment";
+        async CheckOut(planid: string, subplanid: string) {
             try {
-                var payload: any = {
-                    success_url: baseurl + "/success", cancel_url: baseurl + "/cancel",
-                    payment_method_types: ["card"], customer: this.stripe_customer.id, mode: "subscription",
-                    subscription_data: {
-                        items: [],
-                    }
-                };
-                if (model.billing.taxrate == null || model.billing.taxrate == "") {
-                    payload.subscription_data.items.push({ plan: plan });
-                    // if (secondplan != null && secondplan != "") {
-                    //     payload.subscription_data.items.push({ plan: secondplan });
-                    // }
-                } else {
-                    payload.subscription_data.items.push({ plan: plan, tax_rates: [model.billing.taxrate] });
-                    // if (secondplan != null && secondplan != "") {
-                    //     payload.subscription_data.items.push({ plan: secondplan, tax_rates: [model.billing.taxrate] });
-                    // }
-                }
-                var checkout = await this.api.Stripe("POST", "checkout.sessions", model.billing.customerid, null, payload);
+                var result = await this.api.StripeAddPlan(this.userid, planid, subplanid);
+                if (result.checkout) {
+                    var stripe = Stripe(this.WebSocketClient.stripe_api_key);
+                    stripe
+                        .redirectToCheckout({
+                            sessionId: result.checkout.id,
+                        })
+                        .then(function (event) {
+                            if (event.complete) {
+                                // enable payment button
+                            } else if (event.error) {
+                                console.error(event.error);
+                                if (event.error && event.error.message) {
+                                    this.cardmessage = event.error.message;
+                                } else {
+                                    this.cardmessage = event.error;
+                                }
+                                console.error(event.error);
 
-
-                var stripe = Stripe(this.WebSocketClient.stripe_api_key);
-                stripe
-                    .redirectToCheckout({
-                        sessionId: checkout.id,
-                    })
-                    .then(function (event) {
-                        if (event.complete) {
-                            // enable payment button
-                        } else if (event.error) {
-                            console.error(event.error);
-                            if (event.error && event.error.message) {
-                                this.cardmessage = event.error.message;
+                                // show validation to customer
                             } else {
-                                this.cardmessage = event.error;
                             }
-                            console.error(event.error);
-
-                            // show validation to customer
-                        } else {
-                        }
-                    }).catch((error) => {
-                        console.error(error);
-                        this.cardmessage = error;
-                    });
+                        }).catch((error) => {
+                            console.error(error);
+                            this.cardmessage = error;
+                        });
+                } else {
+                    this.loadData();
+                }
             } catch (error) {
                 console.error(error);
                 this.cardmessage = error;

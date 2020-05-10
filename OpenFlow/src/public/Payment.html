@@ -10,24 +10,29 @@
 </section>
 <a href ng-click="ctrl.Test()" class="button">Test</a> -->
 
-<div id="customer-info">
+<div id="customer-info" ng-hide="ctrl.loading==true">
     <div class="form-inline">
-        <label class="col-sm-2 control-label" translate lib="web">Legal Name</label>
+        <label class="col-sm-3 control-label" translate lib="web">Legal Name</label>
         <div class="col-sm-4">
-            <input type="text" class='form-control' ng-model="ctrl.model.billing.name"
-                ng-disabled="ctrl.hascustomer"></input>
-        </div>
-    </div>
-    <div class="form-inline" ng-show="ctrl.taxaddress != ''">
-        <label class="col-sm-2 control-label" translate lib="web">Address</label>
-        <div class="col-sm-4">
-            <input type="text" class='form-control' ng-model="ctrl.taxaddress" ng-disabled="true"></input>
+            <input type="text" class='form-control' ng-model="ctrl.model.name" ng-disabled="ctrl.hascustomer"></input>
         </div>
     </div>
     <div class="form-inline">
-        <label class="col-sm-2 control-label" translate lib="web">Country</label>
+        <label class="col-sm-3 control-label" translate lib="web">Billing email</label>
         <div class="col-sm-4">
-            <select class='form-control' ng-model="ctrl.model.billing.country" ng-disabled="ctrl.hascustomer">
+            <input type="text" class='form-control' ng-model="ctrl.model.email" ng-disabled="ctrl.hascustomer"></input>
+        </div>
+    </div>
+    <div class="form-inline" ng-show="ctrl.model.address != ''">
+        <label class="col-sm-3 control-label" translate lib="web">Address</label>
+        <div class="col-sm-4">
+            <input type="text" class='form-control' ng-model="ctrl.model.address" ng-disabled="true"></input>
+        </div>
+    </div>
+    <div class="form-inline">
+        <label class="col-sm-3 control-label" translate lib="web">Country</label>
+        <div class="col-sm-4">
+            <select class='form-control' ng-model="ctrl.model.country" ng-disabled="ctrl.hascustomer">
                 <option value="  " selected>(please select a country)</option>
                 <option value="AF">Afghanistan</option>
                 <option value="AL">Albania</option>
@@ -272,9 +277,9 @@
         </div>
     </div>
     <div class="form-inline">
-        <label class="col-sm-2 control-label" translate lib="web">TAX/VAT Country</label>
+        <label class="col-sm-3 control-label" translate lib="web">TAX/VAT type</label>
         <div class="col-sm-4">
-            <!-- <select class='form-control' ng-model="ctrl.model.billing.vattype"
+            <!-- <select class='form-control' ng-model="ctrl.model.vattype"
                 ng-disabled="ctrl.stripe_customer.tax_info_verification != null">
                 <option value="au_abn">Australian Business Number (AU ABN)</option>
                 <option value="br_cnpj">Brazilian CNPJ number</option>
@@ -328,7 +333,7 @@
                 <option value="us_ein">United States EIN</option>
                 <option value="za_vat">South African VAT number</option>
             </select> -->
-            <select class='form-control' ng-model="ctrl.model.billing.vattype" ng-disabled="ctrl.hastaxinfo">
+            <select class='form-control' ng-model="ctrl.model.vattype" ng-disabled="ctrl.hastaxinfo">
                 <option value="au_abn">Australian Business Number (AU ABN)</option>
                 <option value="br_cnpj">Brazilian CNPJ number</option>
                 <option value="br_cpf">Brazilian CPF number</option>
@@ -358,14 +363,14 @@
         </div>
     </div>
     <div class="form-inline">
-        <label class="col-sm-2 control-label" translate lib="web">TAX/VAT ID</label>
+        <label class="col-sm-3 control-label" translate lib="web">TAX/VAT ID</label>
         <div class="col-sm-4">
-            <input type="text" class='form-control' ng-model="ctrl.model.billing.vatnumber"
+            <input type="text" class='form-control' ng-model="ctrl.model.vatnumber"
                 ng-disabled="ctrl.hastaxinfo"></input>
         </div>
     </div>
     <div class="form-inline" ng-hide="!ctrl.hastaxinfo">
-        <label class="col-sm-2 control-label" translate lib="web">VAT CHECK</label>
+        <label class="col-sm-3 control-label" translate lib="web">VAT CHECK</label>
         <div class="col-sm-4">
             <input type="text" class='form-control' ng-model="ctrl.taxstatus" ng-disabled="true"></input>
         </div>
@@ -379,7 +384,7 @@
     <!-- If you are based in Denmark, or you are based in an EU country and do not have a valid VAT number, you will be
     charged 25% VAT. -->
 </div>
-<div id="customer-info" ng-hide="!ctrl.hastaxinfo">
+<div id="customer-info" ng-hide="!ctrl.hastaxinfo || ctrl.loading==true">
     <div class="form-inline" ng-show="ctrl.taxstatus != 'verified'">
         <div class="col-sm-4">
             Pleace wait, while your vatnumber is being validated, once status is verified, you can continue to signup
@@ -387,55 +392,59 @@
         </div>
     </div>
 </div>
-<div ng-show="ctrl.supportplan!=null" class="alert alert-primary">
-    You are currently subscribed to the {{ ctrl.supportplan.name }}. <br>
-    And the corresponding {{ ctrl.supporthoursplan.name }} plan.<br>
-    Please contact us if you wish to update this or click <a href ng-click="ctrl.CancelPlan(ctrl.supportplan.id)">here
-        to
-        cancel</a> this subscription.
-    <div><br><a href ng-click="ctrl.AddHours()">Add hours</a></div>
+<div ng-show="ctrl.supportplan!=null && ctrl.loading==false" class="alert alert-primary">
+    You are currently subscribed to the {{ ctrl.supportplan.metadata.webname }} at
+    {{(ctrl.supportplan.amount / 100)*ctrl.model.tax}}
+    DKK/month<br>
+    Click <a href ng-click="ctrl.CancelPlan(ctrl.supportplan.id)">here to cancel</a> this subscription.
+    <div ng-show="menuctrl.hasrole('admins')"><br>
+        <a href ng-click="ctrl.AddHours()">Add hours</a>
+    </div>
 
-    <!-- ng-show="menuctrl.hasrole('admins')" -->
+    <!--  -->
 </div>
-<div ng-show="ctrl.openflowplan!=null" class="alert alert-primary">
-    You are currently subscribed to the {{ ctrl.openflowplan.name }} for 1 users <br>
-    Please contact us if you wish to update this or click <a href ng-click="ctrl.CancelPlan(ctrl.openflowplan.id)">here
-        to
-        cancel</a> this subscription
+<div ng-show="ctrl.openflowplan!=null && ctrl.loading==false" class="alert alert-primary">
+    You are currently subscribed to the {{ ctrl.openflowplan.metadata.webname }} for 1 users at
+    {{(ctrl.openflowplan.amount / 100)*ctrl.model.tax}}
+    DKK/month <br>
+    Please contact us if you wish to have more users or click <a href
+        ng-click="ctrl.CancelPlan(ctrl.openflowplan.id)">here to cancel</a> this subscription
 </div>
 <div ng-show="ctrl.cardmessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.cardmessage}}</div>
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <pre ng-show="ctrl.messages!=''" class=" alert alert-primary" role="alert">{{ ctrl.messages }}</pre>
-<h3 ng-show="ctrl.allowopenflowsignup">OpenFlow User with a NodeRed instace with SLA</h3>
-<div class="row">
+<h3 ng-show="ctrl.allowopenflowsignup">OpenFlow User w/NodeRed with a SLA</h3>
+<div class="row" ng-hide="ctrl.loading==true">
     <div ng-show="ctrl.allowopenflowsignup" ng-repeat="model in ctrl.openflowplans">
         <div class="card" style="width: 18rem;height: 332px;">
             <div class="card-body">
-                <h5 class="card-title">{{model.name}}</h5>
-                <h6 class="card-subtitle mb-2 text-muted">{{model.subtitle}}</h6>
-                <p class="card-text">{{model.text}}</p>
+                <h5 class="card-title">{{model.metadata.webname}}</h5>
+                <h6 class="card-subtitle mb-2 text-muted">{{model.metadata.subtitle}}</h6>
+                <p class="card-text">{{model.metadata.text}}</p>
 
                 <a href ng-click="ctrl.CheckOut(model.id)" class="card-link">Buy now</a>
             </div>
             <div class="card-footer text-muted">
-                {{model.price}} DKR/month {{ctrl.hastaxtext}}
+                {{(model.amount / 100)*ctrl.model.tax}} DKK/month {{ctrl.hastaxtext}}
             </div>
         </div>
     </div>
 </div>
 <h3 ng-show="ctrl.allowsupportsignup">Support agreements</h3>
-<div class="row">
+<div class="row" ng-hide="ctrl.loading==true">
     <div ng-show="ctrl.allowsupportsignup" ng-repeat="model in ctrl.supportplans">
-        <div class="card" style="width: 18rem;height: 332px;">
+        <div class="card" style="width: 18rem;height: 362px;">
             <div class="card-body">
-                <h5 class="card-title">{{model.name}}</h5>
-                <h6 class="card-subtitle mb-2 text-muted">{{model.subtitle}}</h6>
-                <p class="card-text">{{model.text}}</p>
+                <h5 class="card-title">{{model.metadata.webname}}</h5>
+                <h6 class="card-subtitle mb-2 text-muted">{{(model.subplan.amount / 100)*ctrl.model.tax}} DKK/hour
+                    {{ctrl.hastaxtext}}
+                </h6>
+                <p class="card-text">{{model.metadata.text}}</p>
 
-                <a href ng-click="ctrl.CheckOut(model.id)" class="card-link">Buy now</a>
+                <a href ng-click="ctrl.CheckOut(model.id, model.subplan.id)" class="card-link">Buy now</a>
             </div>
             <div class="card-footer text-muted">
-                {{model.price}} DKR/month {{ctrl.hastaxtext}}
+                {{(model.amount / 100)*ctrl.model.tax}} DKK/month {{ctrl.hastaxtext}}
             </div>
         </div>
     </div>

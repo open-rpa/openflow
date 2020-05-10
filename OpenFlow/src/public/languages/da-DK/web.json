@@ -84,5 +84,17 @@
     "clientagent": "Agent",
     "clientversion": "Version",
     "lastclientagent": "Agent",
-    "lastclientversion": "Version"
+    "lastclientversion": "Version",
+    "demo": "demo",
+    "role": "Rolle",
+    "projectandname": "Projekt og navn",
+    "showinactive": "Vis inaktive",
+    "robot": "Robot",
+    "web": "Web",
+    "api_allow_anonymous": "Tillad annonym API adgang",
+    "memory": "Hukommelse",
+    "billing": "Fakturering",
+    "version": "Version",
+    "now": "Nu",
+    "then": "Dengang"
 }

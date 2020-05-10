@@ -82,7 +82,7 @@ module openflow {
 
                 .when('/Signup', { templateUrl: 'Signup.html', controller: SignupCtrl, controllerAs: 'ctrl' })
                 .when('/Payment', { templateUrl: 'Payment.html', controller: PaymentCtrl, controllerAs: 'ctrl' })
-                .when('/Payment/:result', { templateUrl: 'Payment.html', controller: PaymentCtrl, controllerAs: 'ctrl' })
+                .when('/Payment/:userid', { templateUrl: 'Payment.html', controller: PaymentCtrl, controllerAs: 'ctrl' })
 
                 .otherwise({ redirectTo: '/main' });
         }

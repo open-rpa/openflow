@@ -848,6 +848,9 @@ export class DatabaseConnection {
             }
         }
         var _query: Object = {};
+        if (!Util.IsNullEmpty(Config.stripe_api_secret) && q.collectionname === "users") {
+            if (!user.hasrolename("admins")) throw new Error("Access denied, no authorization to UpdateMany");
+        }
         if (q.collectionname === "files") { q.collectionname = "fs.files"; }
         if (q.collectionname === "fs.files") {
             _query = { $and: [q.query, this.getbasequery(q.jwt, "metadata._acl", [Rights.update])] };

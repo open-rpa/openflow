@@ -41,7 +41,7 @@ import * as path from "path";
 import { UpdateFileMessage } from "./UpdateFileMessage";
 import { DatabaseConnection } from "../DatabaseConnection";
 import { CreateWorkflowInstanceMessage } from "./CreateWorkflowInstanceMessage";
-import { StripeMessage } from "./StripeMessage";
+import { StripeMessage, EnsureStripeCustomerMessage, Billing, stripe_customer, stripe_base, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription, stripe_subscription_item, stripe_plan } from "./StripeMessage";
 var request = require("request");
 var got = require("got");
 
@@ -183,6 +183,15 @@ export class Message {
                     break;
                 case "createworkflowinstance":
                     this.CreateWorkflowInstance(cli);
+                    break;
+                case "stripeaddplan":
+                    this.StripeAddPlan(cli);
+                    break;
+                case "stripecancelplan":
+                    this.StripeCancelPlan(cli);
+                    break;
+                case "ensurestripecustomer":
+                    this.EnsureStripeCustomer(cli);
                     break;
                 case "stripemessage":
                     this.StripeMessage(cli);
@@ -1448,88 +1457,430 @@ export class Message {
         step(data, undefined);
         return result;
     }
+    async StripeCancelPlan(cli: WebSocketClient) {
+        this.Reply();
+        var msg: StripeCancelPlanMessage;
+        var rootjwt = TokenUser.rootToken();
+        try {
+            msg = StripeAddPlanMessage.assign(this.data);
+            if (Util.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+            if (Util.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
+
+            var billings = await Config.db.query<Billing>({ userid: msg.userid, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
+            if (billings.length == 0) throw new Error("Need billing info and a stripe customer in order to cancel plan");
+            var billing: Billing = billings[0];
+            if (Util.IsNullEmpty(billing.stripeid)) throw new Error("Need a stripe customer in order to cancel plan");
+            var customer: stripe_customer = await this.Stripe<stripe_customer>("GET", "customers", billing.stripeid, null, null);
+            if (customer == null) throw new Error("Failed locating stripe customer at stribe");
+
+
+            var subscription: stripe_subscription = null;
+            var subscriptionitem: stripe_base = null; // stripe_subscription_item
+            var hasit = customer.subscriptions.data.filter(s => {
+                var arr = s.items.data.filter(y => y.plan.id == msg.planid);
+                if (arr.length > 0) {
+                    subscription = s;
+                    subscriptionitem = arr[0];
+                }
+                return arr.length > 0;
+            });
+
+
+            var hasit = customer.subscriptions.data.filter(s => {
+                var arr = s.items.data.filter(y => y.plan.id == msg.planid);
+                return arr.length > 0;
+            });
+            if (hasit.length == 0) throw new Error("Customer does not have this plan");
+
+            // if (hasit[0].items.total_count == 1 || hasit[0].items.total_count == 2) {
+            //     var payload: any = null;
+            //     if (hasit[0].items.total_count == 2) { // support agrement, so bill used  hours right away
+            //         // payload = { invoice_now: true };
+            //         // payload = { prorate: true }
+            //     }
+            //     var res = await this.Stripe("DELETE", "subscriptions", subscription.id, payload, customer.id);
+            // } else {
+            //     var res = await this.Stripe("DELETE", "subscription_items", subscriptionitem.id, null, customer.id);
+            // }
+            var payload: any = { quantity: 0 };
+            var res = await this.Stripe("POST", "subscription_items", subscriptionitem.id, payload, customer.id);
+
+
+            msg.customer = customer;
+        } catch (error) {
+            if (error == null) new Error("Unknown error");
+            cli._logger.error(error);
+            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) {
+                msg.error = error;
+                if (error.message) msg.error = error.message;
+                // if (error.stack) msg.error = error.stack;
+                if (error.response && error.response.body) {
+                    msg.error = error.response.body;
+                }
+            }
+            cli._logger.error(error);
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            cli._logger.error(error);
+        }
+        this.Send(cli);
+    }
+    async StripeAddPlan(cli: WebSocketClient) {
+        this.Reply();
+        var msg: StripeAddPlanMessage;
+        var rootjwt = TokenUser.rootToken();
+        try {
+            msg = StripeAddPlanMessage.assign(this.data);
+            if (Util.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+            if (Util.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
+
+            var billings = await Config.db.query<Billing>({ userid: msg.userid, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
+            if (billings.length == 0) throw new Error("Need billing info and a stripe customer in order to add plan");
+            var billing: Billing = billings[0];
+            if (Util.IsNullEmpty(billing.stripeid)) throw new Error("Need a stripe customer in order to add plan");
+            var customer: stripe_customer = await this.Stripe<stripe_customer>("GET", "customers", billing.stripeid, null, null);
+            if (customer == null) throw new Error("Failed locating stripe customer at stribe");
+
+            var subscription: stripe_subscription = null;
+            var subscription_item: stripe_subscription_item = null;
+
+            var hasPlan = customer.subscriptions.data.filter(s => {
+                var arr = s.items.data.filter(y => y.plan.id == msg.planid);
+                if (arr.length == 1) {
+                    subscription = s;
+                    subscription_item = arr[0];
+                    if (arr[0].quantity > 0) {
+                        return true;
+                    }
+                } else if (subscription == null) { subscription = s; }
+                return false;
+            });
+
+            if (subscription != null && subscription.default_tax_rates.length == 0 && !Util.IsNullEmpty(billing.taxrate)) {
+                var payload: any = { default_tax_rates: [billing.taxrate] };
+                await this.Stripe("POST", "subscriptions", subscription.id, payload, customer.id);
+            } else if (subscription != null && subscription.default_tax_rates.length != 0 && Util.IsNullEmpty(billing.taxrate)) {
+                var payload: any = { default_tax_rates: [] };
+                await this.Stripe("POST", "subscriptions", subscription.id, payload, customer.id);
+            }
+
+            if (hasPlan.length > 0) throw new Error("Customer already has this plan");
+
+            var plan = await this.Stripe<stripe_plan>("GET", "plans", msg.planid, null, null);
+
+
+            if (subscription == null) {
+                var baseurl = Config.baseurl() + "/#/Payment";
+                var payload: any = {
+                    success_url: baseurl + "/success", cancel_url: baseurl + "/cancel",
+                    payment_method_types: ["card"], customer: customer.id, mode: "subscription",
+                    subscription_data: {
+                        items: [],
+                    }
+                };
+
+                if (!Util.IsNullEmpty(billing.taxrate)) {
+                    payload.subscription_data.default_tax_rates = [billing.taxrate]
+                    //payload.subscription_data.items.push({ plan: msg.planid });
+                } else {
+                    //payload.subscription_data.items.push({ plan: msg.planid, tax_rates: [billing.taxrate] });
+                }
+                payload.subscription_data.items.push({ plan: msg.planid });
+                msg.checkout = await this.Stripe("POST", "checkout.sessions", null, payload, null);
+            } else {
+                if (subscription_item != null) {
+                    var payload: any = { quantity: 1 };
+                    if (plan.usage_type != "metered") {
+                        var res = await this.Stripe("POST", "subscription_items", subscription_item.id, payload, customer.id);
+                    }
+                } else {
+                    var payload: any = { subscription: subscription.id, plan: msg.planid };
+                    if (plan.usage_type != "metered") {
+                        payload.quantity = 1;
+                    }
+                    var res = await this.Stripe("POST", "subscription_items", null, payload, customer.id);
+                }
+
+            }
+
+            // var default_payment_method: string = "";
+            // if (customer != null) {
+            //     var sources = await this.Stripe<stripe_list<stripe_base>>("GET", "sources", null, null, customer.id);
+            //     if ((sources.data.length > 0) != billing.hascard) {
+            //         billing.hascard = (sources.data.length > 0);
+            //         billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
+            //     }
+            //     if (sources.data.length > 0) {
+            //         var card = sources.data[0];
+            //         default_payment_method = sources.data[0].id;
+            //     }
+
+            // }
+
+            // if (!billing.hascard) {
+            //     var baseurl = Config.baseurl() + "/#/Payment";
+            //     var payload: any = {
+            //         success_url: baseurl + "/success", cancel_url: baseurl + "/cancel",
+            //         payment_method_types: ["card"], customer: customer.id, mode: "subscription",
+            //         subscription_data: {
+            //             items: [],
+            //         }
+            //     };
+            //     if (Util.IsNullEmpty(billing.taxrate)) {
+            //         payload.subscription_data.items.push({ plan: msg.planid });
+            //     } else {
+            //         payload.subscription_data.items.push({ plan: msg.planid, tax_rates: [billing.taxrate] });
+            //     }
+            //     msg.checkout = await this.Stripe("POST", "checkout.sessions", null, payload, null);
+            // } else {
+            //     var payload: any = { customer: customer.id, items: [], default_payment_method: default_payment_method };
+            //     if (Util.IsNullEmpty(billing.taxrate)) {
+            //         payload.items.push({ plan: msg.planid });
+            //     } else {
+            //         payload.items.push({ plan: msg.planid, tax_rates: [billing.taxrate] });
+            //     }
+            //     if (!Util.IsNullEmpty(msg.subplanid)) {
+            //         if (Util.IsNullEmpty(billing.taxrate)) {
+            //             payload.items.push({ plan: msg.subplanid });
+            //         } else {
+            //             payload.items.push({ plan: msg.subplanid, tax_rates: [billing.taxrate] });
+            //         }
+            //     }
+            //     var subscription = await this.Stripe("POST", "subscriptions ", null, payload, null);
+            // }
+
+            msg.customer = customer;
+        } catch (error) {
+            if (error == null) new Error("Unknown error");
+            cli._logger.error(error);
+            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) {
+                msg.error = error;
+                if (error.message) msg.error = error.message;
+                // if (error.stack) msg.error = error.stack;
+                if (error.response && error.response.body) {
+                    msg.error = error.response.body;
+                }
+            }
+            cli._logger.error(error);
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            cli._logger.error(error);
+        }
+        this.Send(cli);
+    }
+    async EnsureStripeCustomer(cli: WebSocketClient) {
+        this.Reply();
+        var msg: EnsureStripeCustomerMessage;
+        var rootjwt = TokenUser.rootToken();
+        try {
+            msg = EnsureStripeCustomerMessage.assign(this.data);
+            if (Util.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+            if (Util.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
+            var users = await Config.db.query({ _id: msg.userid, _type: "user" }, null, 1, 0, null, "users", msg.jwt);
+            if (users.length == 0) throw new Error("Unknown userid");
+            var user = users[0];
+            var dirty: boolean = false;
+
+            var billings = await Config.db.query<Billing>({ userid: msg.userid, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
+            var billing: Billing;
+            if (billings.length == 0) {
+                var tax_rates = await this.Stripe<stripe_list<stripe_base>>("GET", "tax_rates", null, null, null);
+                if (tax_rates == null || tax_rates.total_count == 0) throw new Error("Failed getting tax_rates from stripe");
+
+                billing = Billing.assign(msg.billing);
+                billing.taxrate = tax_rates.data[0].id;
+                billing.tax = 1 + ((tax_rates.data[0] as any).percentage / 100);
+                if (Util.IsNullEmpty(billing.name)) throw new Error("Name is mandatory");
+                if (Util.IsNullEmpty(billing.email)) throw new Error("Email is mandatory");
+                billing.addRight(user._id, user.name, [Rights.read]);
+                billing.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
+                billing = await Config.db.InsertOne(billing, "users", 3, true, rootjwt);
+            } else {
+                billing = billings[0];
+                if (billing.email != msg.billing.email || billing.vatnumber != msg.billing.vatnumber || billing.vattype != msg.billing.vattype) {
+                    billing.email = msg.billing.email;
+                    billing.vatnumber = msg.billing.vatnumber;
+                    billing.vattype = msg.billing.vattype;
+                    billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
+                }
+            }
+            var customer: stripe_customer;
+            if (!Util.IsNullEmpty(billing.stripeid)) {
+                customer = await this.Stripe<stripe_customer>("GET", "customers", billing.stripeid, null, null);
+            }
+            if (customer == null) {
+                var payload: any = { name: billing.name, email: billing.email, metadata: { userid: msg.userid }, description: user.name };
+                customer = await this.Stripe<stripe_customer>("POST", "customers", null, payload, null);
+                billing.stripeid = customer.id;
+                billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
+            }
+            if (customer != null && !Util.IsNullEmpty(billing.vattype) && !Util.IsNullEmpty(billing.vatnumber)) {
+                if (customer.tax_ids.total_count == 0) {
+                    (payload as any) = { value: billing.vatnumber, type: billing.vattype };
+                    await this.Stripe<stripe_customer>("POST", "tax_ids", null, payload, customer.id);
+                    dirty = true;
+                }
+            }
+
+            if ((billing.tax != 1 || billing.taxrate != "") && customer.tax_ids.total_count > 0) {
+                if (customer.tax_ids.data[0].verification.status == 'verified') {
+                    if (billing.name != customer.tax_ids.data[0].verification.verified_name ||
+                        billing.address != customer.tax_ids.data[0].verification.verified_address) {
+                        billing.name = customer.tax_ids.data[0].verification.verified_name;
+                        billing.address = customer.tax_ids.data[0].verification.verified_address;
+                        dirty = true;
+                    }
+                    if ((billing.tax != 1 || billing.taxrate != "") && customer.tax_ids.data[0].country != "DK") {
+                        billing.tax = 1;
+                        billing.taxrate = "";
+                        dirty = true;
+                    }
+                    if (dirty == true) {
+                        billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
+                    }
+                }
+            } else if (billing.tax == 1 && customer.tax_ids.total_count == 0) {
+                var tax_rates = await this.Stripe<stripe_list<stripe_base>>("GET", "tax_rates", null, null, null);
+                if (tax_rates == null || tax_rates.total_count == 0) throw new Error("Failed getting tax_rates from stripe");
+                billing.taxrate = tax_rates.data[0].id;
+                billing.tax = 1 + ((tax_rates.data[0] as any).percentage / 100);
+                billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
+            } else if (customer.tax_ids.total_count > 0 && customer.tax_ids.data[0].verification.status != 'verified' && billing.tax == 1) {
+                var tax_rates = await this.Stripe<stripe_list<stripe_base>>("GET", "tax_rates", null, null, null);
+                if (tax_rates == null || tax_rates.total_count == 0) throw new Error("Failed getting tax_rates from stripe");
+                billing.taxrate = tax_rates.data[0].id;
+                billing.tax = 1 + ((tax_rates.data[0] as any).percentage / 100);
+                billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
+            }
+            if (dirty) {
+                if (!Util.IsNullEmpty(billing.stripeid)) {
+                    customer = await this.Stripe<stripe_customer>("GET", "customers", null, null, billing.stripeid);
+                }
+            }
+            if (customer != null) {
+                var sources = await this.Stripe<stripe_list<stripe_base>>("GET", "sources", null, null, billing.stripeid);
+                if ((sources.data.length > 0) != billing.hascard) {
+                    billing.hascard = (sources.data.length > 0);
+                    billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
+                }
+            }
+            msg.customer = customer;
+
+        } catch (error) {
+            if (error == null) new Error("Unknown error");
+            cli._logger.error(error);
+            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) {
+                msg.error = error;
+                if (error.message) msg.error = error.message;
+                // if (error.stack) msg.error = error.stack;
+                if (error.response && error.response.body) {
+                    msg.error = error.response.body;
+                }
+            }
+            cli._logger.error(error);
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            cli._logger.error(error);
+        }
+        this.Send(cli);
+    }
+    async Stripe<T>(method: string, object: string, id: string, payload: any, customerid: string): Promise<T> {
+        var url = "https://api.stripe.com/v1/" + object;
+        if (!Util.IsNullEmpty(id)) url = url + "/" + id;
+        if (object == "tax_ids") {
+            if (Util.IsNullEmpty(customerid)) throw new Error("Need customer to work with tax_id");
+            url = "https://api.stripe.com/v1/customers/" + customerid + "/tax_ids";
+            if (method == "DELETE" || method == "PUT") {
+                if (Util.IsNullEmpty(id)) throw new Error("Need id");
+            }
+            if (!Util.IsNullEmpty(id)) {
+                url = "https://api.stripe.com/v1/customers/" + customerid + "/tax_ids/" + id;
+            }
+        }
+        if (object == "checkout.sessions") {
+            url = "https://api.stripe.com/v1/checkout/sessions";
+            if (!Util.IsNullEmpty(id)) {
+                url = "https://api.stripe.com/v1/checkout/sessions/" + id;
+            }
+        }
+        if (object == "usage_records") {
+            url = "https://api.stripe.com/v1/subscription_items/" + id + "/usage_records";
+        }
+        if (object == "sources") {
+            if (Util.IsNullEmpty(customerid)) throw new Error("Need customer to work with sources");
+            url = "https://api.stripe.com/v1/customers/" + customerid + "/sources";
+            if (!Util.IsNullEmpty(id)) {
+                url = "https://api.stripe.com/v1/customers/" + customerid + "/sources/" + id;
+            }
+
+        }
+        var auth = "Basic " + new Buffer(Config.stripe_api_secret + ":").toString("base64");
+
+        var options = {
+            headers: {
+                'Content-type': 'application/x-www-form-urlencoded',
+                'Authorization': auth
+            }
+        };
+        if (payload != null && method != "GET" && method != "DELETE") {
+            var flattenedData = this.flattenAndStringify(payload);
+            (options as any).form = flattenedData;
+        }
+        if (method == "POST") {
+            var response = await got.post(url, options);
+            payload = JSON.parse(response.body);
+        }
+        if (method == "GET") {
+            var response = await got.get(url, options);
+            payload = JSON.parse(response.body);
+        }
+        if (method == "PUT") {
+            var response = await got.put(url, options);
+            payload = JSON.parse(response.body);
+        }
+        if (method == "DELETE") {
+            var response = await got.delete(url, options);
+            payload = JSON.parse(response.body);
+        }
+        if (payload != null) {
+            if (payload.deleted) {
+                payload = null;
+            }
+        }
+        return payload;
+    }
     async StripeMessage(cli: WebSocketClient) {
         this.Reply();
         var msg: StripeMessage;
         try {
             msg = StripeMessage.assign(this.data);
-
+            if (Util.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
             if (Util.IsNullEmpty(msg.object)) throw new Error("object is mandatory");
-            var url = "https://api.stripe.com/v1/" + msg.object;
-            if (!Util.IsNullEmpty(msg.id)) url = url + "/" + msg.id;
-            if (!Util.IsNullEmpty(msg.url)) url = msg.url;
             if (!cli.user.HasRoleName("admins")) {
                 if (!Util.IsNullEmpty(msg.url)) throw new Error("Custom url not allowed");
-                if (msg.object != "customers" && msg.object != "tax_ids"
-                    && msg.object != "products" && msg.object != "plans" &&
-                    msg.object != "checkout.sessions" && msg.object != "tax_rates"
-                    && msg.object != "subscriptions" && msg.object != "subscription_items"
-                    && msg.object != "usage_records") throw new Error("Access to " + msg.object + " is not allowed");
-            }
-            if (msg.object == "tax_ids") {
-                if (Util.IsNullEmpty(msg.customerid)) throw new Error("Need customer to work with tax_id");
-                url = "https://api.stripe.com/v1/customers/" + msg.customerid + "/tax_ids";
-                if (msg.method == "DELETE" || msg.method == "PUT") {
-                    if (Util.IsNullEmpty(msg.id)) throw new Error("Need id");
-                    url = "https://api.stripe.com/v1/customers/" + msg.customerid + "/tax_ids/" + msg.id;
-                }
-                if (!Util.IsNullEmpty(msg.id)) {
-                    url = "https://api.stripe.com/v1/customers/" + msg.customerid + "/tax_ids/" + msg.id;
-                }
-            }
-            if (msg.object == "subscriptions") { //  && msg.object == "subscription_items"
-                if (Util.IsNullEmpty(msg.customerid)) throw new Error("Need customer to work with tax_id");
-            }
-            if (msg.object == "checkout.sessions") {
-                if (msg.method != "GET") {
-                    if (Util.IsNullEmpty(msg.customerid)) throw new Error("Need customer to work with sessions");
-                }
-                url = "https://api.stripe.com/v1/checkout/sessions";
-                if (!Util.IsNullEmpty(msg.id)) {
-                    url = "https://api.stripe.com/v1/checkout/sessions/" + msg.id;
-                }
-            }
-            if (msg.object == "usage_records") {
-                url = "https://api.stripe.com/v1/subscription_items/" + msg.id + "/usage_records";
-            }
+                // if (msg.object != "customers" && msg.object != "tax_ids"
+                //     && msg.object != "products" && msg.object != "plans" &&
+                //     msg.object != "checkout.sessions" && msg.object != "tax_rates"
+                //     && msg.object != "subscriptions" && msg.object != "subscription_items"
+                //     && msg.object != "usage_records") throw new Error("Access to " + msg.object + " is not allowed");
+                if (msg.object != "plans" && msg.object != "subscription_items") throw new Error("Access to " + msg.object + " is not allowed");
 
-
-            var auth = "Basic " + new Buffer(Config.stripe_api_secret + ":").toString("base64");
-
-            var options = {
-                headers: {
-                    'Content-type': 'application/x-www-form-urlencoded',
-                    'Authorization': auth
-                }
-                // , body: JSON.stringify(msg.payload)
-            };
-            if (msg.payload != null && msg.method != "GET" && msg.method != "DELETE") {
-                var flattenedData = this.flattenAndStringify(msg.payload);
-                (options as any).form = flattenedData;
+                if (msg.object == "subscription_items" && msg.method != "POST") throw new Error("Access to " + msg.object + " is not allowed");
+                if (msg.object == "plans" && msg.method != "GET") throw new Error("Access to " + msg.object + " is not allowed");
             }
-            if (msg.method == "POST") {
-                var response = await got.post(url, options);
-                msg.payload = JSON.parse(response.body);
-            }
-            if (msg.method == "GET") {
-                var response = await got.get(url, options);
-                msg.payload = JSON.parse(response.body);
-            }
-            if (msg.method == "PUT") {
-                var response = await got.put(url, options);
-                msg.payload = JSON.parse(response.body);
-            }
-            if (msg.method == "DELETE") {
-                var response = await got.delete(url, options);
-                msg.payload = JSON.parse(response.body);
-            }
-            if (msg.payload != null) {
-                if (msg.payload.deleted) {
-                    msg.payload = null;
-                }
-            }
-
-            // msg.payload = JSON.parse(result);
+            msg.payload = await this.Stripe(msg.method, msg.object, msg.id, msg.payload, msg.customerid);
         } catch (error) {
             if (error == null) new Error("Unknown error");
             cli._logger.error(error);
