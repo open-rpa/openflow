@@ -1693,7 +1693,7 @@ export class Message {
             var billing: Billing;
             if (billings.length == 0) {
                 var tax_rates = await this.Stripe<stripe_list<stripe_base>>("GET", "tax_rates", null, null, null);
-                if (tax_rates == null || tax_rates.total_count == 0) throw new Error("Failed getting tax_rates from stripe");
+                if (tax_rates == null || tax_rates.data.length == 0) throw new Error("Failed getting tax_rates from stripe");
 
                 billing = Billing.assign(msg.billing);
                 billing.taxrate = tax_rates.data[0].id;
