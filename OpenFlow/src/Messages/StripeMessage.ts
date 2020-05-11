@@ -11,6 +11,7 @@ export class Billing extends Base {
     public taxrate: string;
     public tax: number;
     public hascard: boolean;
+    public coupon: string;
     constructor() {
         super();
         this._type = "billing";
@@ -130,12 +131,26 @@ export class stripe_checkout_session extends stripe_base {
     public mode: string = "subscription";
     public subscription_data: stripe_subscription_data;
 }
+
+export class stripe_coupon extends stripe_base {
+    public duration: string;
+    public duration_in_months: number;
+    public name: string;
+    //public duration: string;
+}
+export class stripe_customer_discount extends stripe_base {
+    public subscription: string;
+    public start: number;
+    public customer: string;
+    public coupon: stripe_coupon;
+}
 export class stripe_customer extends stripe_base {
     public description: string;
     public name: string;
     public email: string;
     public tax_ids: stripe_list<stripe_tax_id>;
     public subscriptions: stripe_list<stripe_subscription>;
+    public discount: stripe_customer_discount;
     // deprecated tax_info and tax_info_verification 
     // public tax_info: tax_info;
     // public tax_info_verification: tax_info_verification;

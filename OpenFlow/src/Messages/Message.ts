@@ -41,7 +41,7 @@ import * as path from "path";
 import { UpdateFileMessage } from "./UpdateFileMessage";
 import { DatabaseConnection } from "../DatabaseConnection";
 import { CreateWorkflowInstanceMessage } from "./CreateWorkflowInstanceMessage";
-import { StripeMessage, EnsureStripeCustomerMessage, Billing, stripe_customer, stripe_base, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription, stripe_subscription_item, stripe_plan } from "./StripeMessage";
+import { StripeMessage, EnsureStripeCustomerMessage, Billing, stripe_customer, stripe_base, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription, stripe_subscription_item, stripe_plan, stripe_coupon } from "./StripeMessage";
 var request = require("request");
 var got = require("got");
 
@@ -1606,53 +1606,6 @@ export class Message {
                 }
 
             }
-
-            // var default_payment_method: string = "";
-            // if (customer != null) {
-            //     var sources = await this.Stripe<stripe_list<stripe_base>>("GET", "sources", null, null, customer.id);
-            //     if ((sources.data.length > 0) != billing.hascard) {
-            //         billing.hascard = (sources.data.length > 0);
-            //         billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
-            //     }
-            //     if (sources.data.length > 0) {
-            //         var card = sources.data[0];
-            //         default_payment_method = sources.data[0].id;
-            //     }
-
-            // }
-
-            // if (!billing.hascard) {
-            //     var baseurl = Config.baseurl() + "/#/Payment";
-            //     var payload: any = {
-            //         success_url: baseurl + "/success", cancel_url: baseurl + "/cancel",
-            //         payment_method_types: ["card"], customer: customer.id, mode: "subscription",
-            //         subscription_data: {
-            //             items: [],
-            //         }
-            //     };
-            //     if (Util.IsNullEmpty(billing.taxrate)) {
-            //         payload.subscription_data.items.push({ plan: msg.planid });
-            //     } else {
-            //         payload.subscription_data.items.push({ plan: msg.planid, tax_rates: [billing.taxrate] });
-            //     }
-            //     msg.checkout = await this.Stripe("POST", "checkout.sessions", null, payload, null);
-            // } else {
-            //     var payload: any = { customer: customer.id, items: [], default_payment_method: default_payment_method };
-            //     if (Util.IsNullEmpty(billing.taxrate)) {
-            //         payload.items.push({ plan: msg.planid });
-            //     } else {
-            //         payload.items.push({ plan: msg.planid, tax_rates: [billing.taxrate] });
-            //     }
-            //     if (!Util.IsNullEmpty(msg.subplanid)) {
-            //         if (Util.IsNullEmpty(billing.taxrate)) {
-            //             payload.items.push({ plan: msg.subplanid });
-            //         } else {
-            //             payload.items.push({ plan: msg.subplanid, tax_rates: [billing.taxrate] });
-            //         }
-            //     }
-            //     var subscription = await this.Stripe("POST", "subscriptions ", null, payload, null);
-            // }
-
             msg.customer = customer;
         } catch (error) {
             if (error == null) new Error("Unknown error");
@@ -1705,10 +1658,11 @@ export class Message {
                 billing = await Config.db.InsertOne(billing, "users", 3, true, rootjwt);
             } else {
                 billing = billings[0];
-                if (billing.email != msg.billing.email || billing.vatnumber != msg.billing.vatnumber || billing.vattype != msg.billing.vattype) {
+                if (billing.email != msg.billing.email || billing.vatnumber != msg.billing.vatnumber || billing.vattype != msg.billing.vattype || billing.coupon != msg.billing.coupon) {
                     billing.email = msg.billing.email;
                     billing.vatnumber = msg.billing.vatnumber;
                     billing.vattype = msg.billing.vattype;
+                    billing.coupon = msg.billing.coupon;
                     billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
                 }
             }
@@ -1764,6 +1718,33 @@ export class Message {
                 if (!Util.IsNullEmpty(billing.stripeid)) {
                     customer = await this.Stripe<stripe_customer>("GET", "customers", null, null, billing.stripeid);
                 }
+            }
+            console.log(JSON.stringify(customer.discount, null, 2))
+            if (customer != null && Util.IsNullEmpty(billing.coupon) && customer.discount != null) {
+                var payload: any = { coupon: "" };
+                customer = await this.Stripe<stripe_customer>("POST", "customers", billing.stripeid, payload, null);
+            }
+            if (customer != null && !Util.IsNullEmpty(billing.coupon) && customer.discount != null) {
+                if (billing.coupon != customer.discount.coupon.name) {
+                    var payload: any = { coupon: "" };
+                    customer = await this.Stripe<stripe_customer>("POST", "customers", billing.stripeid, payload, null);
+
+                    var coupons: stripe_list<stripe_coupon> = await this.Stripe<stripe_list<stripe_coupon>>("GET", "coupons", null, null, null);
+                    var isvalid = coupons.data.filter(c => c.name == billing.coupon);
+                    if (isvalid.length == 0) throw new Error("Unknown coupons '" + billing.coupon + "'");
+
+                    var payload: any = { coupon: coupons.data[0].id };
+                    customer = await this.Stripe<stripe_customer>("POST", "customers", billing.stripeid, payload, null);
+
+                }
+            }
+            if (customer != null && !Util.IsNullEmpty(billing.coupon) && customer.discount == null) {
+                var coupons: stripe_list<stripe_coupon> = await this.Stripe<stripe_list<stripe_coupon>>("GET", "coupons", null, null, null);
+                var isvalid = coupons.data.filter(c => c.name == billing.coupon);
+                if (isvalid.length == 0) throw new Error("Unknown coupons '" + billing.coupon + "'");
+
+                var payload: any = { coupon: coupons.data[0].id };
+                customer = await this.Stripe<stripe_customer>("POST", "customers", billing.stripeid, payload, null);
             }
             if (customer != null) {
                 var sources = await this.Stripe<stripe_list<stripe_base>>("GET", "sources", null, null, billing.stripeid);
