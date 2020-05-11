@@ -322,6 +322,28 @@ module openflow {
             q = await this.WebSocketClient.Send<StripeMessage>(msg);
             return (q.payload as any);
         }
+        async EnsureStripeCustomer(billing: Billing, userid: string): Promise<stripe_customer> {
+            var q: EnsureStripeCustomerMessage = new EnsureStripeCustomerMessage();
+            q.billing = billing; q.userid = userid;
+            var msg: Message = new Message(); msg.command = "ensurestripecustomer"; msg.data = JSON.stringify(q);
+            q = await this.WebSocketClient.Send<EnsureStripeCustomerMessage>(msg);
+            return q.customer;
+        }
+        async StripeAddPlan(userid: string, planid: string, subplanid: string): Promise<StripeAddPlanMessage> {
+            var q: StripeAddPlanMessage = new StripeAddPlanMessage();
+            q.userid = userid; q.planid = planid; q.subplanid = subplanid;
+            var msg: Message = new Message(); msg.command = "stripeaddplan"; msg.data = JSON.stringify(q);
+            q = await this.WebSocketClient.Send<StripeAddPlanMessage>(msg);
+            return q;
+        }
+        async StripeCancelPlan(userid: string, planid: string): Promise<StripeAddPlanMessage> {
+            var q: StripeAddPlanMessage = new StripeAddPlanMessage();
+            q.userid = userid; q.planid = planid;
+            var msg: Message = new Message(); msg.command = "stripecancelplan"; msg.data = JSON.stringify(q);
+            q = await this.WebSocketClient.Send<StripeAddPlanMessage>(msg);
+            return q;
+        }
+
 
         setCookie(cname, cvalue, exdays) {
             var d = new Date();

@@ -84,5 +84,17 @@
     "clientagent": "Agent",
     "clientversion": "Version",
     "lastclientagent": "Agent",
-    "lastclientversion": "Version"
+    "lastclientversion": "Version",
+    "demo": "demo",
+    "role": "Role",
+    "projectandname": "Project and name",
+    "showinactive": "Show inactive",
+    "robot": "Robot",
+    "web": "Web",
+    "api_allow_anonymous": "Allow Anonymous API access",
+    "memory": "Memory",
+    "billing": "Billing",
+    "version": "Version",
+    "now": "Now",
+    "then": "Then"
 }

@@ -324,8 +324,61 @@ module openflow {
             return Object.assign(new UpdateFileMessage(), o);
         }
     }
+    export class Billing {
+        public _id: string;
+        public _type: string;
+        public stripeid: string;
+        public userid: string;
+        public name: string;
+        public email: string;
+        public address: string;
+        public vattype: string;
+        public vatnumber: string;
+        public taxrate: string;
+        public tax: number;
+        constructor(userid) {
+            // super();
+            this._type = "billing";
+            this.stripeid = "";
+            this.userid = userid;
+            this.name = "";
+            this.email = "";
+            this.address = "";
+            this.vattype = "";
+            this.vatnumber = "";
+        }
+    }
 
+    export class EnsureStripeCustomerMessage implements IReplyMessage {
+        public error: string;
+        public jwt: string;
 
+        public userid: string;
+        public billing: Billing;
+        public customer: stripe_customer;
+        static assign(o: any): EnsureStripeCustomerMessage {
+            if (typeof o === "string" || o instanceof String) {
+                return Object.assign(new EnsureStripeCustomerMessage(), JSON.parse(o.toString()));
+            }
+            return Object.assign(new EnsureStripeCustomerMessage(), o);
+        }
+    }
+    export class StripeAddPlanMessage implements IReplyMessage {
+        public error: string;
+        public jwt: string;
+
+        public userid: string;
+        public planid: string;
+        public subplanid: string;
+        public customer: stripe_customer;
+        public checkout: any;
+        static assign(o: any): StripeAddPlanMessage {
+            if (typeof o === "string" || o instanceof String) {
+                return Object.assign(new StripeAddPlanMessage(), JSON.parse(o.toString()));
+            }
+            return Object.assign(new StripeAddPlanMessage(), o);
+        }
+    }
 
     export class stripe_base {
         public id: string;
@@ -351,6 +404,14 @@ module openflow {
             return Object.assign(new StripeMessage(), o);
         }
     }
+    export class stripeplan {
+        public id: string;
+        public name: string;
+        public price: number;
+        public subtitle: string;
+        public text: string;
+        public subplan: stripeplan;
+    }
     export class stripe_list<T> {
         public object: string;
         public has_more: boolean;
@@ -366,11 +427,18 @@ module openflow {
         public status: string;
         public verified_name: string;
     }
+    export class stripe_plan extends stripe_base {
+        public status: boolean;
+        public nickname: string;
+        public product: string;
+        public amount: number;
+    }
     export class stripe_customer extends stripe_base {
         public description: string;
         public name: string;
         public email: string;
         public tax_ids: stripe_list<stripe_tax_id>;
+        public subscriptions: stripe_list<stripe_subscription>;
         // deprecated tax_info and tax_info_verification 
         // public tax_info: tax_info;
         // public tax_info_verification: tax_info_verification;
@@ -387,12 +455,20 @@ module openflow {
         public value: string;
         public verification: stripe_tax_verification;
     }
+    export class stripe_subscription_item extends stripe_base {
+        public id: string;
+        public quantity: number;
+        public subscription: string;
+        public plan: stripe_plan;
+    }
     export class stripe_subscription extends stripe_base {
+        // public plan: stripe_plan;
         public address: string;
         public balance: number;
         public currency: string;
         public subscriptions: stripe_list<stripe_subscription>;
         public tax_ids: stripe_list<stripe_tax_id>;
+        public items: stripe_list<stripe_subscription_item>;
     }
 
     export class Message {
