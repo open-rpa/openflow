@@ -26,12 +26,29 @@
 </form>
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <section>
-  <div class="form-group">
-    <label class="col-sm-3 control-label"><span translate lib="web">status</span>: </label>
-    <div class="col-sm-9">
-      <span ng-show="ctrl.instance!=null">{{ ctrl.instancestatus }}</span>
+  <div ng-repeat="instance in ctrl.instances"
+    ng-class="{alert: true, 'alert-primary': instance.status.phase != 'Failed', 'alert-danger': instance.status.phase == 'Failed'}">
+    <div class="row">
+      <label class="col-sm-1 control-label"><span translate lib="web">name</span>: </label>
+      <div class="col">
+        <span ng-show="ctrl.instance!=null">{{ instance.metadata.name }}</span>
+      </div>
+      <label class="col-sm-1 control-label"><span translate lib="web">status</span>: </label>
+      <div class="col">
+        <span ng-show="ctrl.instance!=null">{{ instance.status.phase }}</span>
+      </div>
+      <div class="col" ng-show="instance.status.phase == 'Failed'">
+        <!-- <button type="button" class="btn btn-secondary"
+          ng-click="ctrl.GetNoderedInstanceLog(instance.metadata.name)">Logs</button> -->
+        <button type="button" class="btn btn-secondary"
+          ng-click="ctrl.DeleteNoderedPod(instance.metadata.name)">Delete</button>
+      </div>
+    </div>
+    <div class="row" ng-show="instance.status.phase == 'Failed'">
+      <span>{{ instance.status.message }}</span>
     </div>
   </div>
+
 </section>
 <section>
   <div class="form-group">

@@ -2619,9 +2619,11 @@ module openflow {
         public queuename: string = "webtest";
         public noderedurl: string = "";
         public instance: any = null;
+        public instances: any[] = null;
         public instancestatus: string = "";
         public instancelog: string = "";
         public name: string = "";
+        public instancename: string = "";
         public userid: string = "";
         public user: NoderedUser = null;
         public limitsmemory: string = "";
@@ -2697,7 +2699,11 @@ module openflow {
                 this.errormessage = "";
                 this.instancestatus = "fetching status";
 
-                this.instance = await this.api.GetNoderedInstance(this.userid, this.name);
+                this.instances = await this.api.GetNoderedInstance(this.userid, null);
+                if (this.instances != null && this.instances.length > 0) {
+                    this.instance = this.instances[0];
+                }
+
                 console.debug("GetNoderedInstance:");
                 if (this.instance !== null && this.instance !== undefined) {
                     if (this.instance.metadata.deletionTimestamp !== undefined) {
@@ -2709,6 +2715,7 @@ module openflow {
                     this.instancestatus = "non existent";
                     // this.messages += "GetNoderedInstance completed, status unknown/non existent" + "\n";
                 }
+
                 this.messages += "GetNoderedInstance completed, status " + this.instancestatus + "\n";
             } catch (error) {
                 this.errormessage = error;
@@ -2719,12 +2726,12 @@ module openflow {
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
-        async GetNoderedInstanceLog() {
+        async GetNoderedInstanceLog(instancename: string) {
             try {
                 this.errormessage = "";
                 this.instancestatus = "fetching log";
                 console.debug("GetNoderedInstanceLog:");
-                this.instancelog = await this.api.GetNoderedInstanceLog(this.userid, this.name);
+                this.instancelog = await this.api.GetNoderedInstanceLog(this.userid, instancename);
                 this.instancelog = this.instancelog.split("\n").reverse().join("\n");
                 this.messages += "GetNoderedInstanceLog completed\n";
                 this.instancestatus = "";
@@ -2761,6 +2768,20 @@ module openflow {
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             this.GetNoderedInstance();
+        }
+        async DeleteNoderedPod(instancename: string) {
+            try {
+                this.errormessage = "";
+                await this.api.DeleteNoderedPod(this.userid, instancename);
+                this.messages += "DeleteNoderedPod completed" + "\n";
+            } catch (error) {
+                this.errormessage = error;
+                this.messages += error + "\n";
+                console.error(error);
+            }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            this.GetNoderedInstance();
+
         }
         async RestartNoderedInstance() {
             try {
