@@ -1732,7 +1732,7 @@ export class Message {
             }
 
             if ((billing.tax != 1 || billing.taxrate != "") && customer.tax_ids.total_count > 0) {
-                if (customer.tax_ids.data[0].verification.status == 'verified') {
+                if (customer.tax_ids.data[0].verification.status == 'verified' || customer.tax_ids.data[0].verification.status == 'unavailable') {
                     if (billing.name != customer.tax_ids.data[0].verification.verified_name ||
                         billing.address != customer.tax_ids.data[0].verification.verified_address) {
                         billing.name = customer.tax_ids.data[0].verification.verified_name;
@@ -1754,7 +1754,8 @@ export class Message {
                 billing.taxrate = tax_rates.data[0].id;
                 billing.tax = 1 + ((tax_rates.data[0] as any).percentage / 100);
                 billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
-            } else if (customer.tax_ids.total_count > 0 && customer.tax_ids.data[0].verification.status != 'verified' && billing.tax == 1) {
+            } else if (customer.tax_ids.total_count > 0 && (customer.tax_ids.data[0].verification.status != 'verified' &&
+                customer.tax_ids.data[0].verification.status != 'unavailable') && billing.tax == 1) {
                 var tax_rates = await this.Stripe<stripe_list<stripe_base>>("GET", "tax_rates", null, null, null);
                 if (tax_rates == null || tax_rates.total_count == 0) throw new Error("Failed getting tax_rates from stripe");
                 billing.taxrate = tax_rates.data[0].id;
