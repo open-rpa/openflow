@@ -1733,11 +1733,13 @@ export class Message {
 
             if ((billing.tax != 1 || billing.taxrate != "") && customer.tax_ids.total_count > 0) {
                 if (customer.tax_ids.data[0].verification.status == 'verified' || customer.tax_ids.data[0].verification.status == 'unavailable') {
-                    if (billing.name != customer.tax_ids.data[0].verification.verified_name ||
-                        billing.address != customer.tax_ids.data[0].verification.verified_address) {
-                        billing.name = customer.tax_ids.data[0].verification.verified_name;
-                        billing.address = customer.tax_ids.data[0].verification.verified_address;
-                        dirty = true;
+                    if (customer.tax_ids.data[0].verification.status == 'verified') {
+                        if (billing.name != customer.tax_ids.data[0].verification.verified_name ||
+                            billing.address != customer.tax_ids.data[0].verification.verified_address) {
+                            billing.name = customer.tax_ids.data[0].verification.verified_name;
+                            billing.address = customer.tax_ids.data[0].verification.verified_address;
+                            dirty = true;
+                        }
                     }
                     if ((billing.tax != 1 || billing.taxrate != "") && customer.tax_ids.data[0].country != "DK") {
                         billing.tax = 1;

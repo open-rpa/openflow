@@ -3206,8 +3206,10 @@ module openflow {
                         this.taxstatus = this.stripe_customer.tax_ids.data[0].verification.status;
                         this.taxaddress = this.stripe_customer.tax_ids.data[0].verification.verified_address;
                         if (this.stripe_customer.tax_ids.data[0].verification.status == 'verified' || this.stripe_customer.tax_ids.data[0].verification.status == 'unavailable') {
-                            this.model.name = this.stripe_customer.tax_ids.data[0].verification.verified_name;
-                            this.model.address = this.stripe_customer.tax_ids.data[0].verification.verified_address;
+                            if (this.stripe_customer.tax_ids.data[0].verification.status == 'verified') {
+                                this.model.name = this.stripe_customer.tax_ids.data[0].verification.verified_name;
+                                this.model.address = this.stripe_customer.tax_ids.data[0].verification.verified_address;
+                            }
                             this.allowopenflowsignup = true;
                             this.allowsupportsignup = true;
                         }
