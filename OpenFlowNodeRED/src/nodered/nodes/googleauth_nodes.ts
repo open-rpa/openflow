@@ -211,6 +211,9 @@ export class googleauth_request {
             if (this.auth != null) {
                 this.Client = await this.auth.getClient();
             }
+            if (!NoderedUtil.IsNullEmpty(msg.method)) this.method = msg.method;
+            if (!NoderedUtil.IsNullEmpty(msg.url)) this.url = msg.url;
+
             if (NoderedUtil.IsNullEmpty(this.method)) this.method = msg.method;
             if (NoderedUtil.IsNullEmpty(this.method)) this.method = "GET";
             if (NoderedUtil.IsNullEmpty(this.url)) this.url = msg.url;
