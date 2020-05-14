@@ -27,7 +27,7 @@ import { EnsureNoderedInstanceMessage } from "./EnsureNoderedInstanceMessage";
 import { KubeUtil } from "../KubeUtil";
 import { Role } from "../Role";
 import { RestartNoderedInstanceMessage } from "./RestartNoderedInstanceMessage";
-import { DeleteNoderedInstanceMessage } from "./DeleteNoderedInstanceMessage";
+import { DeleteNoderedInstanceMessage, DeleteNoderedPodMessage } from "./DeleteNoderedInstanceMessage";
 import { GetNoderedInstanceMessage } from "./GetNoderedInstanceMessage";
 import { GetNoderedInstanceLogMessage } from "./GetNoderedInstanceLogMessage";
 import { Util } from "../Util";
@@ -171,6 +171,9 @@ export class Message {
                     break;
                 case "stopnoderedinstance":
                     this.StopNoderedInstance(cli);
+                    break;
+                case "deletenoderedpod":
+                    this.DeleteNoderedPod(cli);
                     break;
                 case "savefile":
                     this.SaveFile(cli);
@@ -743,7 +746,8 @@ export class Message {
         this.Send(cli);
     }
 
-    private async GetInstanceName(cli: WebSocketClient, _id: string, name: string): Promise<string> {
+    private async GetInstanceName(cli: WebSocketClient, _id: string): Promise<string> {
+        var name: string = "";
         if (_id !== null && _id !== undefined && _id !== "" && _id != cli.user._id) {
             var res = await Config.db.query<User>({ _id: _id }, null, 1, 0, null, "users", cli.jwt);
             if (res.length == 0) {
@@ -773,7 +777,7 @@ export class Message {
         try {
             cli._logger.debug("[" + cli.user.username + "] EnsureNoderedInstance");
             msg = EnsureNoderedInstanceMessage.assign(this.data);
-            var name = await this.GetInstanceName(cli, msg._id, msg.name);
+            var name = await this.GetInstanceName(cli, msg._id);
             var _id = msg._id;
             if (_id === null || _id === undefined || _id === "") _id = cli.user._id;
 
@@ -934,7 +938,7 @@ export class Message {
         try {
             cli._logger.debug("[" + cli.user.username + "] DeleteNoderedInstance");
             msg = DeleteNoderedInstanceMessage.assign(this.data);
-            var name = await this.GetInstanceName(cli, msg._id, msg.name);
+            var name = await this.GetInstanceName(cli, msg._id);
             var namespace = Config.namespace;
             var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
@@ -995,13 +999,46 @@ export class Message {
         }
         this.Send(cli);
     }
+    private async DeleteNoderedPod(cli: WebSocketClient): Promise<void> {
+        this.Reply();
+        var msg: DeleteNoderedPodMessage;
+        var user: User;
+        try {
+            cli._logger.debug("[" + cli.user.username + "] DeleteNoderedInstance");
+            msg = DeleteNoderedPodMessage.assign(this.data);
+            var namespace = Config.namespace;
+            var list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
+            if (list.body.items.length > 0) {
+                for (var i = 0; i < list.body.items.length; i++) {
+                    var item = list.body.items[i];
+                    if (item.metadata.name == msg.name) {
+                        await KubeUtil.instance().CoreV1Api.deleteNamespacedPod(item.metadata.name, namespace);
+                    }
+                }
+            } else {
+                cli._logger.warn("[" + cli.user.username + "] GetNoderedInstance: found NO Namespaced Pods ???");
+            }
+        } catch (error) {
+            this.data = "";
+            cli._logger.error(error);
+            //msg.error = JSON.stringify(error, null, 2);
+            if (msg !== null && msg !== undefined) msg.error = "Request failed!"
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            cli._logger.error(error);
+        }
+        this.Send(cli);
+    }
     private async RestartNoderedInstance(cli: WebSocketClient): Promise<void> {
         this.Reply();
         var msg: RestartNoderedInstanceMessage;
         try {
             cli._logger.debug("[" + cli.user.username + "] RestartNoderedInstance");
             msg = RestartNoderedInstanceMessage.assign(this.data);
-            var name = await this.GetInstanceName(cli, msg._id, msg.name);
+            var name = await this.GetInstanceName(cli, msg._id);
             var namespace = Config.namespace;
             // var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
@@ -1033,7 +1070,7 @@ export class Message {
         try {
             cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance");
             msg = GetNoderedInstanceMessage.assign(this.data);
-            var name = await this.GetInstanceName(cli, msg._id, msg.name);
+            var name = await this.GetInstanceName(cli, msg._id);
             var namespace = Config.namespace;
             // var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
@@ -1041,15 +1078,20 @@ export class Message {
 
             var found: any = null;
             msg.result = null;
+            msg.results = [];
             if (list.body.items.length > 0) {
                 for (var i = 0; i < list.body.items.length; i++) {
                     var item = list.body.items[i];
-                    if (item.metadata.labels.app === name) {
+                    if (!Util.IsNullEmpty(msg.name) && item.metadata.name == msg.name && cli.user.HasRoleName("admins")) {
+                        found = item;
+                        msg.results.push(item);
+                    } else if (item.metadata.labels.app === name) {
                         found = item;
                         if (item.status.phase != "Failed") {
                             msg.result = item;
                             cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance:" + name + " found one");
                         }
+                        msg.results.push(item);
                     }
                 }
                 if (msg.result == null) msg.result = found;
@@ -1076,7 +1118,7 @@ export class Message {
         try {
             cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance");
             msg = GetNoderedInstanceLogMessage.assign(this.data);
-            var name = await this.GetInstanceName(cli, msg._id, msg.name);
+            var name = await this.GetInstanceName(cli, msg._id);
             var namespace = Config.namespace;
 
             var list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
@@ -1084,7 +1126,11 @@ export class Message {
             if (list.body.items.length > 0) {
                 for (var i = 0; i < list.body.items.length; i++) {
                     var item = list.body.items[i];
-                    if (item.metadata.labels.app === name) {
+                    if (!Util.IsNullEmpty(msg.name) && item.metadata.name == msg.name && cli.user.HasRoleName("admins")) {
+                        cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance:" + name + " found one as " + item.metadata.name);
+                        var obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
+                        msg.result = obj.body;
+                    } else if (item.metadata.labels.app === name) {
                         cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance:" + name + " found one as " + item.metadata.name);
                         var obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
                         msg.result = obj.body;
@@ -1092,13 +1138,14 @@ export class Message {
                 }
             }
 
-
-
         } catch (error) {
             this.data = "";
             cli._logger.error(error);
             //msg.error = JSON.stringify(error, null, 2);
             if (msg !== null && msg !== undefined) msg.error = "Request failed!"
+            if (error.response && error.response.body && !Util.IsNullEmpty(error.response.body.message)) {
+                msg.error = error.response.body.message;
+            }
         }
         try {
             this.data = JSON.stringify(msg);
@@ -1685,12 +1732,14 @@ export class Message {
             }
 
             if ((billing.tax != 1 || billing.taxrate != "") && customer.tax_ids.total_count > 0) {
-                if (customer.tax_ids.data[0].verification.status == 'verified') {
-                    if (billing.name != customer.tax_ids.data[0].verification.verified_name ||
-                        billing.address != customer.tax_ids.data[0].verification.verified_address) {
-                        billing.name = customer.tax_ids.data[0].verification.verified_name;
-                        billing.address = customer.tax_ids.data[0].verification.verified_address;
-                        dirty = true;
+                if (customer.tax_ids.data[0].verification.status == 'verified' || customer.tax_ids.data[0].verification.status == 'unavailable') {
+                    if (customer.tax_ids.data[0].verification.status == 'verified') {
+                        if (billing.name != customer.tax_ids.data[0].verification.verified_name ||
+                            billing.address != customer.tax_ids.data[0].verification.verified_address) {
+                            billing.name = customer.tax_ids.data[0].verification.verified_name;
+                            billing.address = customer.tax_ids.data[0].verification.verified_address;
+                            dirty = true;
+                        }
                     }
                     if ((billing.tax != 1 || billing.taxrate != "") && customer.tax_ids.data[0].country != "DK") {
                         billing.tax = 1;
@@ -1707,7 +1756,8 @@ export class Message {
                 billing.taxrate = tax_rates.data[0].id;
                 billing.tax = 1 + ((tax_rates.data[0] as any).percentage / 100);
                 billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
-            } else if (customer.tax_ids.total_count > 0 && customer.tax_ids.data[0].verification.status != 'verified' && billing.tax == 1) {
+            } else if (customer.tax_ids.total_count > 0 && (customer.tax_ids.data[0].verification.status != 'verified' &&
+                customer.tax_ids.data[0].verification.status != 'unavailable') && billing.tax == 1) {
                 var tax_rates = await this.Stripe<stripe_list<stripe_base>>("GET", "tax_rates", null, null, null);
                 if (tax_rates == null || tax_rates.total_count == 0) throw new Error("Failed getting tax_rates from stripe");
                 billing.taxrate = tax_rates.data[0].id;

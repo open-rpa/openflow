@@ -351,7 +351,7 @@
     charged 25% VAT. -->
 </div>
 <div id="customer-info" ng-hide="!ctrl.hastaxinfo || ctrl.loading==true">
-    <div class="form-inline" ng-show="ctrl.taxstatus != 'verified'">
+    <div class="form-inline" ng-show="ctrl.taxstatus != 'verified' && ctrl.taxstatus != 'unavailable'">
         <div class="col-sm-4">
             Pleace wait, while your vatnumber is being validated, once status is verified, you can continue to signup
             for a plan. <a href ng-click="ctrl.loadData()">Refresh</a>

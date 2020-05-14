@@ -196,8 +196,10 @@ module openflow {
         public error: string;
         public jwt: any;
         public name: string;
+        public instancename: string;
         public _id: string;
         public result: any;
+        public results: any[];
         static assign(o: any): GetNoderedInstanceMessage {
             if (typeof o === "string" || o instanceof String) {
                 return Object.assign(new GetNoderedInstanceMessage(), JSON.parse(o.toString()));
@@ -209,6 +211,7 @@ module openflow {
         public error: string;
         public jwt: any;
         public name: string;
+        public instancename: string;
         public _id: string;
         public result: string;
         static assign(o: any): GetNoderedInstanceMessage {
@@ -240,6 +243,18 @@ module openflow {
                 return Object.assign(new DeleteNoderedInstanceMessage(), JSON.parse(o.toString()));
             }
             return Object.assign(new DeleteNoderedInstanceMessage(), o);
+        }
+    }
+    export class DeleteNoderedPodMessage {
+        public error: string;
+        public jwt: any;
+        public name: string;
+        public _id: string;
+        static assign(o: any): DeleteNoderedPodMessage {
+            if (typeof o === "string" || o instanceof String) {
+                return Object.assign(new DeleteNoderedPodMessage(), JSON.parse(o.toString()));
+            }
+            return Object.assign(new DeleteNoderedPodMessage(), o);
         }
     }
     export class RestartNoderedInstanceMessage {

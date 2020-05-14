@@ -251,11 +251,11 @@ module openflow {
             }
             return msg;
         }
-        async GetNoderedInstance(_id: string, name: string): Promise<any> {
+        async GetNoderedInstance(_id: string, name: string): Promise<any[]> {
             var q: GetNoderedInstanceMessage = new GetNoderedInstanceMessage(); q.name = name; q._id = _id;
             var msg: Message = new Message(); msg.command = "getnoderedinstance"; msg.data = JSON.stringify(q);
             q = await this.WebSocketClient.Send<GetNoderedInstanceMessage>(msg);
-            return q.result;
+            return q.results;
         }
         async GetNoderedInstanceLog(_id: string, name: string): Promise<string> {
             var q: GetNoderedInstanceLogMessage = new GetNoderedInstanceLogMessage(); q.name = name; q._id = _id;
@@ -272,6 +272,11 @@ module openflow {
             var q: DeleteNoderedInstanceMessage = new DeleteNoderedInstanceMessage(); q.name = name; q._id = _id;
             var msg: Message = new Message(); msg.command = "deletenoderedinstance"; msg.data = JSON.stringify(q);
             q = await this.WebSocketClient.Send<DeleteNoderedInstanceMessage>(msg);
+        }
+        async DeleteNoderedPod(_id: string, name: string): Promise<void> {
+            var q: DeleteNoderedPodMessage = new DeleteNoderedPodMessage(); q.name = name; q._id = _id;
+            var msg: Message = new Message(); msg.command = "deletenoderedpod"; msg.data = JSON.stringify(q);
+            q = await this.WebSocketClient.Send<DeleteNoderedPodMessage>(msg);
         }
         async RestartNoderedInstance(_id: string, name: string): Promise<void> {
             var q: RestartNoderedInstanceMessage = new RestartNoderedInstanceMessage(); q.name = name; q._id = _id;
