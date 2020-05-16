@@ -353,7 +353,7 @@
 <div id="customer-info" ng-hide="!ctrl.hastaxinfo || ctrl.loading==true">
     <div class="form-inline" ng-show="ctrl.taxstatus != 'verified' && ctrl.taxstatus != 'unavailable'">
         <div class="col-sm-4">
-            Pleace wait, while your vatnumber is being validated, once status is verified, you can continue to signup
+            Please wait, while your vatnumber is being validated, once status is verified, you can continue to signup
             for a plan. <a href ng-click="ctrl.loadData()">Refresh</a>
         </div>
     </div>
@@ -379,16 +379,17 @@
 <div ng-show="ctrl.cardmessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.cardmessage}}</div>
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <pre ng-show="ctrl.messages!=''" class=" alert alert-primary" role="alert">{{ ctrl.messages }}</pre>
-<h3 ng-show="ctrl.allowopenflowsignup && ctrl.openflowplans.length > 0">OpenFlow User w/NodeRed with a SLA</h3>
+<h3 ng-show="ctrl.openflowplans.length > 0">OpenFlow User w/NodeRed with a SLA</h3>
 <div class="row" ng-hide="ctrl.loading==true">
-    <div ng-show="ctrl.allowopenflowsignup" ng-repeat="model in ctrl.openflowplans">
+    <div ng-repeat="model in ctrl.openflowplans">
         <div class="card" style="width: 18rem;height: 332px;">
             <div class="card-body">
                 <h5 class="card-title">{{model.metadata.webname}}</h5>
                 <h6 class="card-subtitle mb-2 text-muted">{{model.metadata.subtitle}}</h6>
                 <p class="card-text">{{model.metadata.text}}</p>
 
-                <a href ng-click="ctrl.CheckOut(model.id)" class="card-link">Buy now</a>
+                <a href ng-show="ctrl.allowopenflowsignup" ng-click="ctrl.CheckOut(model.id)" class="card-link">Buy
+                    now</a>
             </div>
             <div class="card-footer text-muted">
                 {{(model.amount / 100)*ctrl.model.tax}} DKK/month {{ctrl.hastaxtext}}
@@ -396,9 +397,9 @@
         </div>
     </div>
 </div>
-<h3 ng-show="ctrl.allowsupportsignup">Support agreements</h3>
+<h3 ng-show="ctrl.supportplans.length > 0">Support agreements</h3>
 <div class="row" ng-hide="ctrl.loading==true">
-    <div ng-show="ctrl.allowsupportsignup" ng-repeat="model in ctrl.supportplans">
+    <div ng-repeat="model in ctrl.supportplans">
         <div class="card" style="width: 18rem;height: 362px;">
             <div class="card-body">
                 <h5 class="card-title">{{model.metadata.webname}}</h5>
@@ -407,7 +408,8 @@
                 </h6>
                 <p class="card-text">{{model.metadata.text}}</p>
 
-                <a href ng-click="ctrl.CheckOut(model.id, model.subplan.id)" class="card-link">Buy now</a>
+                <a ng-show="ctrl.allowsupportsignup" href ng-click="ctrl.CheckOut(model.id, model.subplan.id)"
+                    class="card-link">Buy now</a>
             </div>
             <div class="card-footer text-muted">
                 {{(model.amount / 100)*ctrl.model.tax}} DKK/month {{ctrl.hastaxtext}}

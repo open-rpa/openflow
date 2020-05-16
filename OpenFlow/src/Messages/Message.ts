@@ -776,7 +776,7 @@ export class Message {
         var msg: EnsureNoderedInstanceMessage;
         try {
             msg = EnsureNoderedInstanceMessage.assign(this.data);
-            await this._EnsureNoderedInstance(cli, msg._id);
+            await this._EnsureNoderedInstance(cli, msg._id, false);
         } catch (error) {
             this.data = "";
             cli._logger.error(error);
@@ -792,7 +792,7 @@ export class Message {
         }
         this.Send(cli);
     }
-    private async _EnsureNoderedInstance(cli: WebSocketClient, _id: string): Promise<void> {
+    private async _EnsureNoderedInstance(cli: WebSocketClient, _id: string, skipcreate: boolean): Promise<void> {
         var user: NoderedUser;
         cli._logger.debug("[" + cli.user.username + "] EnsureNoderedInstance");
         if (_id === null || _id === undefined || _id === "") _id = cli.user._id;
@@ -853,6 +853,7 @@ export class Message {
         cli._logger.debug("[" + cli.user.username + "] GetDeployments");
         var deployment = await KubeUtil.instance().GetDeployment(namespace, name);
         if (deployment == null) {
+            if (skipcreate) return;
             cli._logger.debug("[" + cli.user.username + "] Deployment " + name + " not found in " + namespace + " so creating it");
             var _deployment = {
                 metadata: { name: name, namespace: namespace, app: name },
@@ -1826,7 +1827,7 @@ export class Message {
             if (billing.memory != newmemory) {
                 billing.memory = newmemory;
                 billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
-                this._EnsureNoderedInstance(cli, msg.userid);
+                this._EnsureNoderedInstance(cli, msg.userid, true);
             }
             if (customer != null && !Util.IsNullEmpty(billing.coupon) && customer.discount != null) {
                 if (billing.coupon != customer.discount.coupon.name) {
