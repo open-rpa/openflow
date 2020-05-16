@@ -82,13 +82,9 @@
       <input type="checkbox" class='form-control' ng-model="ctrl.user.nodered.api_allow_anonymous"></input>
     </div>
   </div>
-  <div>
-    You need to delete and re-create your nodered instance, for this to take effect
-  </div>
 </section>
 <section>
-  <!-- ng-show="menuctrl.hasrole('admins')" -->
-  <div class="form-group">
+  <div class="form-group" ng-show="menuctrl.hasrole('admins')">
     <label class="col-sm-3 control-label"><span translate lib="web">memory</span>: </label>
     <div class="col-sm-9">
       <select class="form-control" ng-model="ctrl.limitsmemory">
