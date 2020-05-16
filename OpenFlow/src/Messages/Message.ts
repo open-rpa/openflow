@@ -1818,7 +1818,7 @@ export class Message {
             if (customer != null && billing != null && customer.subscriptions != null && customer.subscriptions.total_count > 0) {
                 for (var i = 0; i < customer.subscriptions.data.length; i++) {
                     var sub = customer.subscriptions.data[i];
-                    if (sub.plan.metadata.memory != null) {
+                    if (sub.plan != null && sub.plan.metadata != null && sub.plan.metadata.memory != null) {
                         newmemory = sub.plan.metadata.memory;
                     }
                 }
