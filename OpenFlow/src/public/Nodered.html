@@ -9,6 +9,8 @@
         <button type="button" class="btn btn-secondary" ng-click="ctrl.GetNoderedInstance()">Reload</button>
         <button type="button" class="btn btn-secondary" ng-click="ctrl.EnsureNoderedInstance()"
           ng-show="ctrl.instance==null || ctrl.instancestatus == 'pending deletion (Running)' ">Create Nodered </button>
+        <button type="button" class="btn btn-secondary" ng-click="ctrl.EnsureNoderedInstance()"
+          ng-show="ctrl.instance!=null && ctrl.instancestatus != 'pending deletion (Running)' ">Ensure Nodered </button>
         <button type="button" class="btn btn-secondary" ng-click="ctrl.RestartNoderedInstance()"
           ng-show="ctrl.instance!=null && ctrl.instancestatus != 'pending deletion (Running)' && ctrl.instancestatus != 'Pending'">Restart
           Nodered</button>
@@ -62,16 +64,6 @@
   </div>
 
 </section>
-
-<section>
-  <div class="form-group">
-    <label class="col-sm-3 control-label"><span translate lib="web">image</span>: </label>
-    <div class="col-sm-9">
-      <span ng-show="ctrl.instance==null"></span>
-      <span ng-show="ctrl.instance!=null">{{ ctrl.instance.spec.containers[0].image }}</span>
-    </div>
-  </div>
-</section>
 <section ng-show="ctrl.instancelog!=''">
   <div class="form-group">
     <label class="col-sm-3 control-label"><span translate lib="web">console</span>: </label>
@@ -80,6 +72,9 @@
     </div>
   </div>
 </section>
+<div ng-show="ctrl.messages != ''"" class=" alert alert-primary" role="alert">
+  <pre>{{ctrl.messages}}</pre>
+</div>
 <section>
   <div class="form-group">
     <label class="col-sm-3 control-label"><span translate lib="web">api_allow_anonymous</span>: </label>
@@ -91,7 +86,8 @@
     You need to delete and re-create your nodered instance, for this to take effect
   </div>
 </section>
-<section ng-show="menuctrl.hasrole('admins')">
+<section>
+  <!-- ng-show="menuctrl.hasrole('admins')" -->
   <div class="form-group">
     <label class="col-sm-3 control-label"><span translate lib="web">memory</span>: </label>
     <div class="col-sm-9">
@@ -117,7 +113,6 @@
   </div>
 </section>
 
-<div ng-show="ctrl.errormessage != ''"" class=" alert alert-primary" role="alert">{{ctrl.messages}}</div>
 
 
 <p>If this is your first time creating a NodeRed instance, please signout and signin again, to refresh group

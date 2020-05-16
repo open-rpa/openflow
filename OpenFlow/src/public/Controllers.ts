@@ -2688,6 +2688,7 @@ module openflow {
                 await this.api.Update("users", this.user);
                 this.loading = false;
                 this.messages += 'update complete\n';
+                this.EnsureNoderedInstance();
             } catch (error) {
                 this.errormessage = error;
             }
