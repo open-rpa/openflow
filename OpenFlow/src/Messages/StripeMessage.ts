@@ -13,6 +13,9 @@ export class Billing extends Base {
     public hascard: boolean;
     public coupon: string;
     public memory: string;
+    public openflowuserplan: string;
+    public supportplan: string;
+    public supporthourplan: string;
     constructor() {
         super();
         this._type = "billing";

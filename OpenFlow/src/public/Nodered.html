@@ -84,7 +84,7 @@
   </div>
 </section>
 <section>
-  <div class="form-group" ng-show="menuctrl.hasrole('admins')">
+  <div class="form-group" ng-show="menuctrl.hasrole('admins') && menuctrl.WebSocketClient.stripe_api_key == ''">
     <label class="col-sm-3 control-label"><span translate lib="web">memory</span>: </label>
     <div class="col-sm-9">
       <select class="form-control" ng-model="ctrl.limitsmemory">

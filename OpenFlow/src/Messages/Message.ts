@@ -747,26 +747,17 @@ export class Message {
         this.Send(cli);
     }
 
-    private async GetInstanceName(cli: WebSocketClient, _id: string): Promise<string> {
+    private async GetInstanceName(_id: string, myid: string, myusername: string, jwt: string): Promise<string> {
         var name: string = "";
-        if (_id !== null && _id !== undefined && _id !== "" && _id != cli.user._id) {
-            var res = await Config.db.query<User>({ _id: _id }, null, 1, 0, null, "users", cli.jwt);
+        if (_id !== null && _id !== undefined && _id !== "" && _id != myid) {
+            var res = await Config.db.query<User>({ _id: _id }, null, 1, 0, null, "users", jwt);
             if (res.length == 0) {
                 throw new Error("Unknown userid " + _id);
             }
             name = res[0].username;
-            // if (name !== null && name !== undefined && name !== "" && name != username) {
-            // }
-            // var exists = await User.FindByUsername(name, cli.jwt);
         } else {
-            name = cli.user.username;
+            name = myusername;
         }
-        // if (name !== null && name !== undefined && name !== "" && name != username) {
-        //     var exists = await User.FindByUsername(name, cli.jwt);
-        //     if (exists == null) {
-        //         throw new Error("Unknown name " + name);
-        //     }
-        // }
         name = name.split("@").join("").split(".").join("");
         name = name.toLowerCase();
         return name;
@@ -796,7 +787,7 @@ export class Message {
         var user: NoderedUser;
         cli._logger.debug("[" + cli.user.username + "] EnsureNoderedInstance");
         if (_id === null || _id === undefined || _id === "") _id = cli.user._id;
-        var name = await this.GetInstanceName(cli, _id);
+        var name = await this.GetInstanceName(_id, cli.user._id, cli.user.username, cli.jwt);
 
         var users = await Config.db.query<NoderedUser>({ _id: _id }, null, 1, 0, null, "users", cli.jwt);
         if (users.length == 0) {
@@ -827,6 +818,7 @@ export class Message {
         await noderedadmins.Save(cli.jwt);
 
         var resources = new V1ResourceRequirements();
+        var hasbilling: boolean = false;
         if (user.nodered && user.nodered.resources) {
             if (Util.IsNullEmpty(Config.stripe_api_secret)) {
                 if (user.nodered.resources.limits) {
@@ -845,6 +837,9 @@ export class Message {
                     var billing: Billing = billings[0];
                     resources.limits = {};
                     resources.limits.memory = billing.memory;
+                    if (!Util.IsNullEmpty(billing.openflowuserplan)) {
+                        hasbilling = true;
+                    }
                 }
 
             }
@@ -856,11 +851,11 @@ export class Message {
             if (skipcreate) return;
             cli._logger.debug("[" + cli.user.username + "] Deployment " + name + " not found in " + namespace + " so creating it");
             var _deployment = {
-                metadata: { name: name, namespace: namespace, app: name },
+                metadata: { name: name, namespace: namespace, app: name, labels: { billed: hasbilling.toString(), userid: _id } },
                 spec: {
                     replicas: 1,
                     template: {
-                        metadata: { labels: { name: name, app: name } },
+                        metadata: { labels: { name: name, app: name, billed: hasbilling.toString(), userid: _id } },
                         spec: {
                             containers: [
                                 {
@@ -908,17 +903,22 @@ export class Message {
             // await KubeUtil.instance().ExtensionsV1beta1Api.createNamespacedDeployment(namespace, (_deployment as any));
             await KubeUtil.instance().ExtensionsV1beta1Api.createNamespacedDeployment(namespace, (_deployment as any));
         } else {
-            console.log(deployment.spec.template.spec.containers[0].resources);
-            if (deployment.spec.template.spec.containers[0].resources && resources) {
-                deployment.spec.template.spec.containers[0].resources = resources;
-            }
+            deployment.spec.template.spec.containers[0].resources = resources;
             var f = deployment.spec.template.spec.containers[0].env.filter(x => x.name == "api_allow_anonymous");
             if (f.length > 0) {
                 f[0].value = user.nodered.api_allow_anonymous.toString();
             }
-
-
-            await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedDeployment(name, namespace, (deployment as any));
+            deployment.metadata.labels.billed = hasbilling.toString();
+            deployment.spec.template.metadata.labels.billed = hasbilling.toString();
+            deployment.metadata.labels.userid = _id;
+            deployment.spec.template.metadata.labels.userid = _id;
+            try {
+                await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedDeployment(name, namespace, (deployment as any));
+            } catch (error) {
+                cli._logger.error("[" + cli.user.username + "] failed updating noeredinstance");
+                cli._logger.error("[" + cli.user.username + "] " + JSON.stringify(error));
+                throw new Error("failed updating noeredinstance");
+            }
         }
 
         cli._logger.debug("[" + cli.user.username + "] GetService");
@@ -972,61 +972,51 @@ export class Message {
             throw new Error("failed locating useringress");
         }
     }
+    private async _DeleteNoderedInstance(_id: string, myuserid: string, myusername: string, jwt: string): Promise<void> {
+        var name = await this.GetInstanceName(_id, myuserid, myusername, jwt);
+        var namespace = Config.namespace;
+        var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
+
+        var deployment = await KubeUtil.instance().GetDeployment(namespace, name);
+        if (deployment != null) {
+            await KubeUtil.instance().ExtensionsV1beta1Api.deleteNamespacedDeployment(name, namespace);
+        }
+        var service = await KubeUtil.instance().GetService(namespace, name);
+        if (service != null) {
+            await KubeUtil.instance().CoreV1Api.deleteNamespacedService(name, namespace);
+        }
+        var replicaset = await KubeUtil.instance().GetReplicaset(namespace, "app", name);
+        if (replicaset !== null) {
+            KubeUtil.instance().AppsV1Api.deleteNamespacedReplicaSet(replicaset.metadata.name, namespace);
+        }
+        var ingress = await KubeUtil.instance().GetIngress(namespace, "useringress");
+        if (ingress !== null) {
+            var updated = false;
+            for (var i = ingress.spec.rules.length - 1; i >= 0; i--) {
+                if (ingress.spec.rules[i].host == hostname) {
+                    ingress.spec.rules.splice(i, 1);
+                    updated = true;
+                }
+            }
+            if (updated) {
+                delete ingress.metadata.creationTimestamp;
+                await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("useringress", namespace, ingress);
+            }
+        } else {
+            throw new Error("failed locating useringress");
+        }
+    }
     private async DeleteNoderedInstance(cli: WebSocketClient): Promise<void> {
         this.Reply();
         var msg: DeleteNoderedInstanceMessage;
         var user: User;
         try {
-            cli._logger.debug("[" + cli.user.username + "] DeleteNoderedInstance");
             msg = DeleteNoderedInstanceMessage.assign(this.data);
-            var name = await this.GetInstanceName(cli, msg._id);
-            var namespace = Config.namespace;
-            var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
+            cli._logger.debug("[" + cli.user.username + "] DeleteNoderedInstance");
+            await this._DeleteNoderedInstance(msg._id, cli.user._id, cli.user.username, cli.jwt);
 
-            // for now, lets not delete role
-            // var role: Role = await Role.FindByNameOrId(name + "noderedadmins", null);
-            // if (role !== null) {
-            //     var jwt: string = TokenUser.rootToken();
-            //     await Config.db.DeleteOne(role._id, "users", jwt);
-            // }
-            var deployment = await KubeUtil.instance().GetDeployment(namespace, name);
-            if (deployment != null) {
-                await KubeUtil.instance().ExtensionsV1beta1Api.deleteNamespacedDeployment(name, namespace);
-            }
-            var service = await KubeUtil.instance().GetService(namespace, name);
-            if (service != null) {
-                await KubeUtil.instance().CoreV1Api.deleteNamespacedService(name, namespace);
-            }
-            var replicaset = await KubeUtil.instance().GetReplicaset(namespace, "app", name);
-            if (replicaset !== null) {
-                KubeUtil.instance().AppsV1Api.deleteNamespacedReplicaSet(replicaset.metadata.name, namespace);
-            }
-            // var list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
-            // for (var i = 0; i < list.body.items.length; i++) {
-            //     var item = list.body.items[i];
-            //     // if (item.metadata.labels.app === name || item.metadata.labels.name === name) {
-            //     if (item.metadata.labels.app === name) {
-            //         await KubeUtil.instance().CoreV1Api.deleteNamespacedPod(item.metadata.name, namespace);
-            //     }
-            // }
-            var ingress = await KubeUtil.instance().GetIngress(namespace, "useringress");
-            if (ingress !== null) {
-                var updated = false;
-                for (var i = ingress.spec.rules.length - 1; i >= 0; i--) {
-                    if (ingress.spec.rules[i].host == hostname) {
-                        ingress.spec.rules.splice(i, 1);
-                        updated = true;
-                    }
-                }
-                if (updated) {
-                    delete ingress.metadata.creationTimestamp;
-                    await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("useringress", namespace, ingress);
-                }
-            } else {
-                cli._logger.error("[" + cli.user.username + "] failed locating useringress");
-                if (msg !== null && msg !== undefined) msg.error = "failed locating useringress";
-            }
         } catch (error) {
+            cli._logger.error("[" + cli.user.username + "] failed locating useringress");
             this.data = "";
             cli._logger.error(error);
             //msg.error = JSON.stringify(error, null, 2);
@@ -1079,7 +1069,7 @@ export class Message {
         try {
             cli._logger.debug("[" + cli.user.username + "] RestartNoderedInstance");
             msg = RestartNoderedInstanceMessage.assign(this.data);
-            var name = await this.GetInstanceName(cli, msg._id);
+            var name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt);
             var namespace = Config.namespace;
             // var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
@@ -1111,7 +1101,7 @@ export class Message {
         try {
             cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance");
             msg = GetNoderedInstanceMessage.assign(this.data);
-            var name = await this.GetInstanceName(cli, msg._id);
+            var name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt);
             var namespace = Config.namespace;
             // var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
@@ -1120,9 +1110,31 @@ export class Message {
             var found: any = null;
             msg.result = null;
             msg.results = [];
+            var rootjwt = TokenUser.rootToken();
             if (list.body.items.length > 0) {
                 for (var i = 0; i < list.body.items.length; i++) {
-                    var item = list.body.items[i];
+                    if (!Util.IsNullEmpty(Config.stripe_api_secret)) {
+                        var item = list.body.items[i];
+                        var create = item.metadata.creationTimestamp;
+                        var billed = item.metadata.labels.billed;
+                        var image = item.spec.containers[0].image
+                        var userid = item.metadata.labels.userid;
+                        if (image.indexOf("openflownodered") > 0 && !Util.IsNullEmpty(userid)) {
+                            try {
+                                var date = new Date();
+                                var a: number = (date as any) - (create as any);
+                                // var diffminutes = a / (1000 * 60);
+                                var diffhours = a / (1000 * 60 * 60);
+                                if (billed != "true" && diffhours > 24) {
+                                    cli._logger.debug("[" + cli.user.username + "] Remove un billed nodered instance " + item.metadata.name + " that has been running for " + diffhours + " hours");
+                                    await this._DeleteNoderedInstance(userid, cli.user._id, cli.user.username, rootjwt);
+                                }
+                                // console.log(item.metadata.name + " " + diffminutes + " min / " + diffhours + " hours");
+                            } catch (error) {
+                            }
+                        }
+                    }
+
                     if (!Util.IsNullEmpty(msg.name) && item.metadata.name == msg.name && cli.user.HasRoleName("admins")) {
                         found = item;
                         msg.results.push(item);
@@ -1159,7 +1171,7 @@ export class Message {
         try {
             cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance");
             msg = GetNoderedInstanceLogMessage.assign(this.data);
-            var name = await this.GetInstanceName(cli, msg._id);
+            var name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt);
             var namespace = Config.namespace;
 
             var list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
@@ -1819,8 +1831,12 @@ export class Message {
             if (customer != null && billing != null && customer.subscriptions != null && customer.subscriptions.total_count > 0) {
                 for (var i = 0; i < customer.subscriptions.data.length; i++) {
                     var sub = customer.subscriptions.data[i];
-                    if (sub.plan != null && sub.plan.metadata != null && sub.plan.metadata.memory != null) {
-                        newmemory = sub.plan.metadata.memory;
+                    for (var y = 0; y < sub.items.data.length; y++) {
+                        var subitem = sub.items.data[y];
+                        if (subitem.plan != null && subitem.plan.metadata != null && subitem.plan.metadata.memory != null) {
+                            newmemory = subitem.plan.metadata.memory;
+                        }
+
                     }
                 }
             }
@@ -1855,6 +1871,32 @@ export class Message {
                 var sources = await this.Stripe<stripe_list<stripe_base>>("GET", "sources", null, null, billing.stripeid);
                 if ((sources.data.length > 0) != billing.hascard) {
                     billing.hascard = (sources.data.length > 0);
+                    billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
+                }
+            }
+            if (customer != null && billing != null) {
+                var openflowuserplan: string = "";
+                var supportplan: string = "";
+                var supporthourplan: string = "";
+
+                customer.subscriptions.data.filter(s => {
+                    s.items.data.filter(y => {
+                        if (y.plan.metadata.supporthourplan == "true") {
+                            supporthourplan = y.id;
+                        }
+                        if (y.plan.metadata.supportplan == "true") {
+                            supportplan = y.id;
+                        }
+                        if (y.plan.metadata.openflowuser == "true") {
+                            openflowuserplan = y.id;
+                        }
+                    });
+                    return false;
+                });
+                if (billing.openflowuserplan != openflowuserplan || billing.supportplan != supportplan || billing.supporthourplan != supporthourplan) {
+                    billing.openflowuserplan = openflowuserplan;
+                    billing.supportplan = supportplan;
+                    billing.supporthourplan = supporthourplan;
                     billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
                 }
             }
