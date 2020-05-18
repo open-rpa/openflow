@@ -1114,7 +1114,7 @@ export class Message {
                 for (var i = 0; i < list.body.items.length; i++) {
                     if (!Util.IsNullEmpty(Config.stripe_api_secret)) {
                         var item = list.body.items[i];
-                        var name = item.metadata.name;
+                        var itemname = item.metadata.name;
                         var create = item.metadata.creationTimestamp;
                         var billed = item.metadata.labels.billed;
                         var image = item.spec.containers[0].image
@@ -1126,17 +1126,17 @@ export class Message {
                         if (image.indexOf("openflownodered") > 0 && !Util.IsNullEmpty(userid)) {
                             try {
                                 if (billed != "true" && diffhours > 24) {
-                                    cli._logger.debug("[" + cli.user.username + "] Remove un billed nodered instance " + name + " that has been running for " + diffhours + " hours");
+                                    cli._logger.debug("[" + cli.user.username + "] Remove un billed nodered instance " + itemname + " that has been running for " + diffhours + " hours");
                                     // await this._DeleteNoderedInstance(userid, cli.user._id, cli.user.username, rootjwt);
                                 }
-                                // console.log(name + " " + diffminutes + " min / " + diffhours + " hours");
+                                // console.log(itemname + " " + diffminutes + " min / " + diffhours + " hours");
                             } catch (error) {
                             }
                         } else if (image.indexOf("openflownodered") > 0) {
                             if (billed != "true" && diffhours > 24) {
-                                console.log("unbilled " + name + " with no userid, should be removed, it has been running for " + diffhours + " hours");
+                                console.log("unbilled " + itemname + " with no userid, should be removed, it has been running for " + diffhours + " hours");
                             } else {
-                                console.log("unbilled " + name + " with no userid, has been running for " + diffhours + " hours");
+                                console.log("unbilled " + itemname + " with no userid, has been running for " + diffhours + " hours");
                             }
                         }
                     }
