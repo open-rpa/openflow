@@ -3125,6 +3125,7 @@ module openflow {
         public supportplans: stripe_plan[] = [];
         public supporthoursplans: stripe_plan[] = [];
 
+        public nextbill: string;
 
         constructor(
             public $scope: ng.IScope,
@@ -3319,6 +3320,13 @@ module openflow {
                         // this.loadData();
                     }
                 }
+
+
+                // if (this.stripe_customer && this.stripe_customer) {
+                //     this.nextbill = (await this.api.Stripe<stripe_invoice>("GET", "invoices_upcoming", this.stripe_customer.id, null, null) as any);
+                //     console.log(this.nextbill);
+                // }
+
             } catch (error) {
                 console.error(error);
                 this.cardmessage = error;

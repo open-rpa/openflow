@@ -485,6 +485,38 @@ module openflow {
         public tax_ids: stripe_list<stripe_tax_id>;
         public items: stripe_list<stripe_subscription_item>;
     }
+    export class stripe_period {
+        public end: number;
+        public start: number;
+    }
+    export class stripe_invoice_line extends stripe_base {
+        public amount: number;
+        public currency: string;
+        public description: string;
+        public discountable: boolean;
+        public period: stripe_period;
+        public subplan: stripeplan;
+        public proration: boolean;
+        public quantity: number;
+        public type: string;
+        public unique_id: string;
+    }
+    export class stripe_invoice extends stripe_base {
+        public account_country: string;
+        public account_name: string;
+        public amount_due: number;
+        public amount_paid: number;
+        public amount_remaining: number;
+        public application_fee_amount: number;
+        public attempt_count: number;
+        public attempted: boolean;
+        public billing: string;
+        public billing_reason: string;
+        public collection_method: string;
+        public currency: string;
+        public customer: string;
+        public lines: stripe_list<stripe_invoice_line>;
+    }
 
     export class Message {
         public id: string;

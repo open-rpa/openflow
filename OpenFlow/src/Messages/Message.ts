@@ -1959,6 +1959,11 @@ export class Message {
             }
 
         }
+        if (object == "invoices_upcoming") {
+            if (Util.IsNullEmpty(customerid)) throw new Error("Need customer to work with invoices_upcoming");
+            url = "https://api.stripe.com/v1/invoices/upcoming?customer=" + customerid;
+        }
+
         var auth = "Basic " + new Buffer(Config.stripe_api_secret + ":").toString("base64");
 
         var options = {
@@ -2008,10 +2013,11 @@ export class Message {
                 //     msg.object != "checkout.sessions" && msg.object != "tax_rates"
                 //     && msg.object != "subscriptions" && msg.object != "subscription_items"
                 //     && msg.object != "usage_records") throw new Error("Access to " + msg.object + " is not allowed");
-                if (msg.object != "plans" && msg.object != "subscription_items") throw new Error("Access to " + msg.object + " is not allowed");
+                if (msg.object != "plans" && msg.object != "subscription_items" && msg.object != "invoices_upcoming") throw new Error("Access to " + msg.object + " is not allowed");
 
                 if (msg.object == "subscription_items" && msg.method != "POST") throw new Error("Access to " + msg.object + " is not allowed");
                 if (msg.object == "plans" && msg.method != "GET") throw new Error("Access to " + msg.object + " is not allowed");
+                if (msg.object == "invoices_upcoming" && msg.method != "GET") throw new Error("Access to " + msg.object + " is not allowed");
             }
             msg.payload = await this.Stripe(msg.method, msg.object, msg.id, msg.payload, msg.customerid);
         } catch (error) {

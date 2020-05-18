@@ -376,6 +376,9 @@
     Please contact us if you wish to have more users or click <a href
         ng-click="ctrl.CancelPlan(ctrl.openflowplan.id)">here to cancel</a> this subscription
 </div>
+<!-- <div ng-show="(ctrl.supportplan!=null || ctrl.openflowplan!=null) && ctrl.loading==false" class="alert alert-primary">
+    {{ctrl.nextbill}}
+</div> -->
 <div ng-show="ctrl.cardmessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.cardmessage}}</div>
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <pre ng-show="ctrl.messages!=''" class=" alert alert-primary" role="alert">{{ ctrl.messages }}</pre>
