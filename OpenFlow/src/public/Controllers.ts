@@ -3223,7 +3223,7 @@ module openflow {
                 }
                 //if (this.allowopenflowsignup || this.allowsupportsignup) {
                 this.model.taxrate = "";
-                if (this.openflowplans.length == 0) {
+                if (this.openflowplans.length == 0 && this.supportplans.length == 0) {
                     this.stripe_plans = (await this.api.Stripe("GET", "plans", null, null, null) as any);
                     for (var x = 0; x < this.stripe_plans.data.length; x++) {
                         var stripeplan = this.stripe_plans.data[x];

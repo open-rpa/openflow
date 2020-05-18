@@ -771,7 +771,6 @@ export class Message {
         } catch (error) {
             this.data = "";
             cli._logger.error(error);
-            console.log(JSON.stringify(error, null, 2));
             //msg.error = JSON.stringify(error, null, 2);
             if (msg !== null && msg !== undefined) msg.error = "Request failed!"
         }
@@ -1115,22 +1114,29 @@ export class Message {
                 for (var i = 0; i < list.body.items.length; i++) {
                     if (!Util.IsNullEmpty(Config.stripe_api_secret)) {
                         var item = list.body.items[i];
+                        var name = item.metadata.name;
                         var create = item.metadata.creationTimestamp;
                         var billed = item.metadata.labels.billed;
                         var image = item.spec.containers[0].image
                         var userid = item.metadata.labels.userid;
+                        var date = new Date();
+                        var a: number = (date as any) - (create as any);
+                        // var diffminutes = a / (1000 * 60);
+                        var diffhours = a / (1000 * 60 * 60);
                         if (image.indexOf("openflownodered") > 0 && !Util.IsNullEmpty(userid)) {
                             try {
-                                var date = new Date();
-                                var a: number = (date as any) - (create as any);
-                                // var diffminutes = a / (1000 * 60);
-                                var diffhours = a / (1000 * 60 * 60);
                                 if (billed != "true" && diffhours > 24) {
-                                    cli._logger.debug("[" + cli.user.username + "] Remove un billed nodered instance " + item.metadata.name + " that has been running for " + diffhours + " hours");
-                                    await this._DeleteNoderedInstance(userid, cli.user._id, cli.user.username, rootjwt);
+                                    cli._logger.debug("[" + cli.user.username + "] Remove un billed nodered instance " + name + " that has been running for " + diffhours + " hours");
+                                    // await this._DeleteNoderedInstance(userid, cli.user._id, cli.user.username, rootjwt);
                                 }
-                                // console.log(item.metadata.name + " " + diffminutes + " min / " + diffhours + " hours");
+                                // console.log(name + " " + diffminutes + " min / " + diffhours + " hours");
                             } catch (error) {
+                            }
+                        } else if (image.indexOf("openflownodered") > 0) {
+                            if (billed != "true" && diffhours > 24) {
+                                console.log("unbilled " + name + " with no userid, should be removed, it has been running for " + diffhours + " hours");
+                            } else {
+                                console.log("unbilled " + name + " with no userid, has been running for " + diffhours + " hours");
                             }
                         }
                     }
@@ -1822,7 +1828,6 @@ export class Message {
                     customer = await this.Stripe<stripe_customer>("GET", "customers", null, null, billing.stripeid);
                 }
             }
-            console.log(JSON.stringify(customer.discount, null, 2))
             if (customer != null && Util.IsNullEmpty(billing.coupon) && customer.discount != null) {
                 var payload: any = { coupon: "" };
                 customer = await this.Stripe<stripe_customer>("POST", "customers", billing.stripeid, payload, null);
