@@ -40,6 +40,7 @@
       <th></th>
       <th></th>
       <th></th>
+      <th></th>
     </tr>
   </thead>
   <tbody>
@@ -66,11 +67,16 @@
             class="fas fa-user-secret" style="color: #007bff;"></i></a>
       </td>
       <td class="btn-cell">
-        <a href ng-click="ctrl.OpenNodered(model)" ng-show="model.hasnodered==true" class="table-btn">nodered</a>
+        <a href ng-click="ctrl.OpenNodered(model)" ng-show="model.hasnodered==true" class="table-btn"><i
+            class="fas fa-project-diagram"></i></a>
       </td>
       <td class="btn-cell">
-        <!-- <a href ng-click="ctrl.ManageNodered(model)" class="table-btn">manage</a> -->
-        <a ng-href="#/Nodered/{{model._id}}" class="table-btn">manage</a>
+        <a ng-href="#/Payment/{{model._id}}" class="table-btn"
+          ng-show="menuctrl.WebSocketClient.stripe_api_key != '' && menuctrl.hasrole('admins') && model._hasbilling == true"><i
+            class="fas fa-money-bill-wave"></i></a>
+      </td>
+      <td class="btn-cell">
+        <a ng-href="#/Nodered/{{model._id}}" class="table-btn"><i class="fas fa-tools"></i></a>
       </td>
       <td class="btn-cell">
         <a ng-href="#/Entity/{{ctrl.collection}}/{{model._id}}" class="table-btn"><i class="az-edit"></i></a>

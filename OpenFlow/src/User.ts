@@ -30,6 +30,7 @@ export class User extends Base {
     _lastclientversion: string;
     _lastopenrpaclientversion: string;
     _lastnoderedclientversion: string;
+    _hasbilling: boolean;
     username: string;
     passwordhash: string;
     sid: string;

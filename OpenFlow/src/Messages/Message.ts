@@ -1114,7 +1114,7 @@ export class Message {
                 for (var i = 0; i < list.body.items.length; i++) {
                     if (!Util.IsNullEmpty(Config.stripe_api_secret)) {
                         var item = list.body.items[i];
-                        var name = item.metadata.name;
+                        var itemname = item.metadata.name;
                         var create = item.metadata.creationTimestamp;
                         var billed = item.metadata.labels.billed;
                         var image = item.spec.containers[0].image
@@ -1126,17 +1126,17 @@ export class Message {
                         if (image.indexOf("openflownodered") > 0 && !Util.IsNullEmpty(userid)) {
                             try {
                                 if (billed != "true" && diffhours > 24) {
-                                    cli._logger.debug("[" + cli.user.username + "] Remove un billed nodered instance " + name + " that has been running for " + diffhours + " hours");
+                                    cli._logger.debug("[" + cli.user.username + "] Remove un billed nodered instance " + itemname + " that has been running for " + diffhours + " hours");
                                     // await this._DeleteNoderedInstance(userid, cli.user._id, cli.user.username, rootjwt);
                                 }
-                                // console.log(name + " " + diffminutes + " min / " + diffhours + " hours");
+                                // console.log(itemname + " " + diffminutes + " min / " + diffhours + " hours");
                             } catch (error) {
                             }
                         } else if (image.indexOf("openflownodered") > 0) {
                             if (billed != "true" && diffhours > 24) {
-                                console.log("unbilled " + name + " with no userid, should be removed, it has been running for " + diffhours + " hours");
+                                console.log("unbilled " + itemname + " with no userid, should be removed, it has been running for " + diffhours + " hours");
                             } else {
-                                console.log("unbilled " + name + " with no userid, has been running for " + diffhours + " hours");
+                                console.log("unbilled " + itemname + " with no userid, has been running for " + diffhours + " hours");
                             }
                         }
                     }
@@ -1745,8 +1745,9 @@ export class Message {
             if (Util.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
             var users = await Config.db.query({ _id: msg.userid, _type: "user" }, null, 1, 0, null, "users", msg.jwt);
             if (users.length == 0) throw new Error("Unknown userid");
-            var user = users[0];
+            var user: User = users[0] as any;
             var dirty: boolean = false;
+            var hasbilling: boolean = false;
 
             var billings = await Config.db.query<Billing>({ userid: msg.userid, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
             var billing: Billing;
@@ -1904,6 +1905,12 @@ export class Message {
                     billing.supporthourplan = supporthourplan;
                     billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
                 }
+            }
+
+            hasbilling = (customer != null);
+            if (user._hasbilling != hasbilling) {
+                user._hasbilling = hasbilling;
+                await Config.db._UpdateOne(null, user, "users", 3, true, rootjwt);
             }
             msg.customer = customer;
 

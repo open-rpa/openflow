@@ -3125,7 +3125,7 @@ module openflow {
         public supportplans: stripe_plan[] = [];
         public supporthoursplans: stripe_plan[] = [];
 
-        public nextbill: string;
+        public nextbill: stripe_invoice;
 
         constructor(
             public $scope: ng.IScope,
@@ -3322,10 +3322,16 @@ module openflow {
                 }
 
 
-                // if (this.stripe_customer && this.stripe_customer) {
-                //     this.nextbill = (await this.api.Stripe<stripe_invoice>("GET", "invoices_upcoming", this.stripe_customer.id, null, null) as any);
-                //     console.log(this.nextbill);
-                // }
+                if (this.stripe_customer && this.stripe_customer) {
+                    try {
+                        this.nextbill = (await this.api.Stripe<stripe_invoice>("GET", "invoices_upcoming", this.stripe_customer.id, null, null) as any);
+                        console.log(this.nextbill);
+                        this.nextbill.dtperiod_start = new Date(this.nextbill.period_start * 1000);
+                        this.nextbill.dtperiod_end = new Date(this.nextbill.period_end * 1000);
+                    } catch (error) {
+                        console.error(error);
+                    }
+                }
 
             } catch (error) {
                 console.error(error);
