@@ -516,6 +516,10 @@ module openflow {
         public currency: string;
         public customer: string;
         public lines: stripe_list<stripe_invoice_line>;
+        public period_start: number;
+        public period_end: number;
+        public dtperiod_start: Date;
+        public dtperiod_end: Date;
     }
 
     export class Message {

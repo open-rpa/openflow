@@ -1745,8 +1745,9 @@ export class Message {
             if (Util.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
             var users = await Config.db.query({ _id: msg.userid, _type: "user" }, null, 1, 0, null, "users", msg.jwt);
             if (users.length == 0) throw new Error("Unknown userid");
-            var user = users[0];
+            var user: User = users[0] as any;
             var dirty: boolean = false;
+            var hasbilling: boolean = false;
 
             var billings = await Config.db.query<Billing>({ userid: msg.userid, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
             var billing: Billing;
@@ -1904,6 +1905,12 @@ export class Message {
                     billing.supporthourplan = supporthourplan;
                     billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
                 }
+            }
+
+            hasbilling = (customer != null);
+            if (user._hasbilling != hasbilling) {
+                user._hasbilling = hasbilling;
+                await Config.db._UpdateOne(null, user, "users", 3, true, rootjwt);
             }
             msg.customer = customer;
 
