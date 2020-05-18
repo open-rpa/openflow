@@ -157,19 +157,29 @@ export class rpa_workflow_node {
     async oninput(msg: any) {
         try {
             this.node.status({});
+            let targetid = NoderedUtil.IsNullEmpty(this.config.queue) || this.config.queue === 'none' ? msg.targetid : this.config.queue;
+            let workflowid = NoderedUtil.IsNullEmpty(this.config.workflow) ? msg.workflowid : this.config.workflow;
             var correlationId = Math.random().toString(36).substr(2, 9);
             this.messages[correlationId] = msg;
             if (msg.payload == null || typeof msg.payload == "string" || typeof msg.payload == "number") {
                 msg.payload = { "data": msg.payload };
             }
+            if(NoderedUtil.IsNullEmpty(targetid)) {
+                this.node.status({ fill: "red", shape: "dot", text: "robot is mandatory" });
+                return;
+            }
+            if(NoderedUtil.IsNullEmpty(workflowid)) {
+                this.node.status({ fill: "red", shape: "dot", text: "workflow is mandatory" });
+                return;
+            }
             var rpacommand = {
                 command: "invoke",
-                workflowid: this.config.workflow,
+                workflowid: workflowid,
                 jwt: msg.jwt,
                 data: { payload: msg.payload }
             }
             this.node.status({ fill: "blue", shape: "dot", text: "Robot running..." });
-            this.con.SendMessage(JSON.stringify(rpacommand), this.config.queue, correlationId, true);
+            this.con.SendMessage(JSON.stringify(rpacommand), targetid, correlationId, true);
         } catch (error) {
             NoderedUtil.HandleError(this, error);
             try {
