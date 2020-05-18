@@ -12,6 +12,10 @@ export class Billing extends Base {
     public tax: number;
     public hascard: boolean;
     public coupon: string;
+    public memory: string;
+    public openflowuserplan: string;
+    public supportplan: string;
+    public supporthourplan: string;
     constructor() {
         super();
         this._type = "billing";
@@ -112,10 +116,9 @@ export class tax_info_verification {
     public status: string;
     public verified_name: string;
 }
-export class stripe_plan {
+export class stripe_plan extends stripe_base {
     public status: boolean;
     public nickname: string;
-    public id: string;
     public product: string;
     public amount: number;
     public usage_type: string;
@@ -176,6 +179,7 @@ export class stripe_subscription_item extends stripe_base {
 }
 export class stripe_subscription extends stripe_base {
     // public plan: stripe_plan;
+    public plan: stripe_plan;
     public address: string;
     public balance: number;
     public currency: string;

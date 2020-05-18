@@ -42,6 +42,7 @@ import { UpdateFileMessage } from "./UpdateFileMessage";
 import { DatabaseConnection } from "../DatabaseConnection";
 import { CreateWorkflowInstanceMessage } from "./CreateWorkflowInstanceMessage";
 import { StripeMessage, EnsureStripeCustomerMessage, Billing, stripe_customer, stripe_base, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription, stripe_subscription_item, stripe_plan, stripe_coupon } from "./StripeMessage";
+import { V1ResourceRequirements } from "@kubernetes/client-node";
 var request = require("request");
 var got = require("got");
 
@@ -746,26 +747,17 @@ export class Message {
         this.Send(cli);
     }
 
-    private async GetInstanceName(cli: WebSocketClient, _id: string): Promise<string> {
+    private async GetInstanceName(_id: string, myid: string, myusername: string, jwt: string): Promise<string> {
         var name: string = "";
-        if (_id !== null && _id !== undefined && _id !== "" && _id != cli.user._id) {
-            var res = await Config.db.query<User>({ _id: _id }, null, 1, 0, null, "users", cli.jwt);
+        if (_id !== null && _id !== undefined && _id !== "" && _id != myid) {
+            var res = await Config.db.query<User>({ _id: _id }, null, 1, 0, null, "users", jwt);
             if (res.length == 0) {
                 throw new Error("Unknown userid " + _id);
             }
             name = res[0].username;
-            // if (name !== null && name !== undefined && name !== "" && name != username) {
-            // }
-            // var exists = await User.FindByUsername(name, cli.jwt);
         } else {
-            name = cli.user.username;
+            name = myusername;
         }
-        // if (name !== null && name !== undefined && name !== "" && name != username) {
-        //     var exists = await User.FindByUsername(name, cli.jwt);
-        //     if (exists == null) {
-        //         throw new Error("Unknown name " + name);
-        //     }
-        // }
         name = name.split("@").join("").split(".").join("");
         name = name.toLowerCase();
         return name;
@@ -773,153 +765,12 @@ export class Message {
     private async EnsureNoderedInstance(cli: WebSocketClient): Promise<void> {
         this.Reply();
         var msg: EnsureNoderedInstanceMessage;
-        var user: NoderedUser;
         try {
-            cli._logger.debug("[" + cli.user.username + "] EnsureNoderedInstance");
             msg = EnsureNoderedInstanceMessage.assign(this.data);
-            var name = await this.GetInstanceName(cli, msg._id);
-            var _id = msg._id;
-            if (_id === null || _id === undefined || _id === "") _id = cli.user._id;
-
-            var users = await Config.db.query<NoderedUser>({ _id: _id }, null, 1, 0, null, "users", cli.jwt);
-            if (users.length == 0) {
-                throw new Error("Unknown userid " + _id);
-            }
-            user = NoderedUser.assign(users[0]);
-
-
-            var namespace = Config.namespace;
-            var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
-
-            var nodereduser = await User.FindById(_id, cli.jwt);
-            var tuser: TokenUser = new TokenUser(nodereduser);
-            var nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
-
-            if (Config.force_queue_prefix) {
-                user.nodered.queue_prefix = nodereduser.username;
-            }
-
-            cli._logger.debug("[" + cli.user.username + "] ensure nodered role " + name + "noderedadmins");
-            var noderedadmins = await User.ensureRole(cli.jwt, name + "noderedadmins", null);
-            noderedadmins.addRight(nodereduser._id, nodereduser.username, [Rights.full_control]);
-            noderedadmins.removeRight(nodereduser._id, [Rights.delete]);
-            noderedadmins.addRight(cli.user._id, cli.user.username, [Rights.full_control]);
-            noderedadmins.removeRight(cli.user._id, [Rights.delete]);
-            noderedadmins.AddMember(nodereduser);
-            cli._logger.debug("[" + cli.user.username + "] update nodered role " + name + "noderedadmins");
-            await noderedadmins.Save(cli.jwt);
-
-            cli._logger.debug("[" + cli.user.username + "] GetDeployments");
-            var deployment = await KubeUtil.instance().GetDeployment(namespace, name);
-            if (deployment == null) {
-                cli._logger.debug("[" + cli.user.username + "] Deployment " + name + " not found in " + namespace + " so creating it");
-                var _deployment = {
-                    metadata: { name: name, namespace: namespace, app: name },
-                    spec: {
-                        replicas: 1,
-                        template: {
-                            metadata: { labels: { name: name, app: name } },
-                            spec: {
-                                containers: [
-                                    {
-                                        name: 'nodered',
-                                        image: Config.nodered_image,
-                                        imagePullPolicy: "Always",
-                                        ports: [{ containerPort: 80 }, { containerPort: 5858 }],
-                                        resources: user.nodered.resources,
-                                        env: [
-                                            { name: "saml_federation_metadata", value: Config.saml_federation_metadata },
-                                            { name: "saml_issuer", value: Config.saml_issuer },
-                                            { name: "saml_baseurl", value: Config.protocol + "://" + hostname + "/" },
-                                            { name: "nodered_id", value: name },
-                                            { name: "nodered_sa", value: nodereduser.username },
-                                            { name: "jwt", value: nodered_jwt },
-                                            { name: "queue_prefix", value: user.nodered.queue_prefix },
-                                            { name: "api_ws_url", value: Config.api_ws_url },
-                                            { name: "amqp_url", value: Config.amqp_url },
-                                            { name: "nodered_domain_schema", value: hostname },
-                                            { name: "domain", value: hostname },
-                                            { name: "protocol", value: Config.protocol },
-                                            { name: "port", value: Config.port.toString() },
-                                            { name: "noderedusers", value: (name + "noderedusers") },
-                                            { name: "noderedadmins", value: (name + "noderedadmins") },
-                                            { name: "api_allow_anonymous", value: user.nodered.api_allow_anonymous.toString() },
-                                            { name: "NODE_ENV", value: Config.NODE_ENV },
-                                        ],
-                                        livenessProbe: {
-                                            httpGet: {
-                                                path: "/",
-                                                port: 80,
-                                                scheme: "HTTP"
-                                            },
-                                            initialDelaySeconds: Config.nodered_initial_liveness_delay,
-                                            periodSeconds: 5,
-                                            failureThreshold: 5,
-                                            timeoutSeconds: 5
-                                        },
-                                    }
-                                ]
-                            }
-                        }
-                    }
-                }
-                // await KubeUtil.instance().ExtensionsV1beta1Api.createNamespacedDeployment(namespace, (_deployment as any));
-                await KubeUtil.instance().ExtensionsV1beta1Api.createNamespacedDeployment(namespace, (_deployment as any));
-            }
-            cli._logger.debug("[" + cli.user.username + "] GetService");
-            var service = await KubeUtil.instance().GetService(namespace, name);
-            if (service == null) {
-                cli._logger.debug("[" + cli.user.username + "] Service " + name + " not found in " + namespace + " creating it");
-                var _service = {
-                    metadata: { name: name, namespace: namespace },
-                    spec: {
-                        type: "NodePort",
-                        sessionAffinity: "ClientIP",
-                        selector: { app: name },
-                        ports: [
-                            { port: 80, name: "www" }
-                        ]
-                    }
-                }
-                await KubeUtil.instance().CoreV1Api.createNamespacedService(namespace, _service);
-            }
-            cli._logger.debug("[" + cli.user.username + "] GetIngress useringress");
-            var ingress = await KubeUtil.instance().GetIngress(namespace, "useringress");
-            if (ingress !== null) {
-                var rule = null;
-                for (var i = 0; i < ingress.spec.rules.length; i++) {
-                    if (ingress.spec.rules[i].host == hostname) {
-                        rule = ingress.spec.rules[i];
-                    }
-                }
-                if (rule == null) {
-                    cli._logger.debug("[" + cli.user.username + "] ingress " + hostname + " not found in useringress creating it");
-                    rule = {
-                        host: hostname,
-                        http: {
-                            paths: [{
-                                path: "/",
-                                backend: {
-                                    serviceName: name,
-                                    servicePort: "www"
-                                }
-                            }]
-                        }
-                    }
-                    delete ingress.metadata.creationTimestamp;
-                    delete ingress.status;
-                    ingress.spec.rules.push(rule);
-                    cli._logger.debug("[" + cli.user.username + "] replaceNamespacedIngress");
-                    await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("useringress", namespace, ingress);
-                }
-            } else {
-                cli._logger.error("[" + cli.user.username + "] failed locating useringress");
-                if (msg !== null && msg !== undefined) msg.error = "failed locating useringress";
-            }
+            await this._EnsureNoderedInstance(cli, msg._id, false);
         } catch (error) {
             this.data = "";
             cli._logger.error(error);
-            console.log(JSON.stringify(error, null, 2));
             //msg.error = JSON.stringify(error, null, 2);
             if (msg !== null && msg !== undefined) msg.error = "Request failed!"
         }
@@ -931,61 +782,240 @@ export class Message {
         }
         this.Send(cli);
     }
+    private async _EnsureNoderedInstance(cli: WebSocketClient, _id: string, skipcreate: boolean): Promise<void> {
+        var user: NoderedUser;
+        cli._logger.debug("[" + cli.user.username + "] EnsureNoderedInstance");
+        if (_id === null || _id === undefined || _id === "") _id = cli.user._id;
+        var name = await this.GetInstanceName(_id, cli.user._id, cli.user.username, cli.jwt);
+
+        var users = await Config.db.query<NoderedUser>({ _id: _id }, null, 1, 0, null, "users", cli.jwt);
+        if (users.length == 0) {
+            throw new Error("Unknown userid " + _id);
+        }
+        user = NoderedUser.assign(users[0]);
+        var rootjwt = TokenUser.rootToken();
+
+        var namespace = Config.namespace;
+        var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
+
+        var nodereduser = await User.FindById(_id, cli.jwt);
+        var tuser: TokenUser = new TokenUser(nodereduser);
+        var nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
+
+        if (Config.force_queue_prefix) {
+            user.nodered.queue_prefix = nodereduser.username;
+        }
+
+        cli._logger.debug("[" + cli.user.username + "] ensure nodered role " + name + "noderedadmins");
+        var noderedadmins = await User.ensureRole(cli.jwt, name + "noderedadmins", null);
+        noderedadmins.addRight(nodereduser._id, nodereduser.username, [Rights.full_control]);
+        noderedadmins.removeRight(nodereduser._id, [Rights.delete]);
+        noderedadmins.addRight(cli.user._id, cli.user.username, [Rights.full_control]);
+        noderedadmins.removeRight(cli.user._id, [Rights.delete]);
+        noderedadmins.AddMember(nodereduser);
+        cli._logger.debug("[" + cli.user.username + "] update nodered role " + name + "noderedadmins");
+        await noderedadmins.Save(cli.jwt);
+
+        var resources = new V1ResourceRequirements();
+        var hasbilling: boolean = false;
+        if (user.nodered && user.nodered.resources) {
+            if (Util.IsNullEmpty(Config.stripe_api_secret)) {
+                if (user.nodered.resources.limits) {
+                    resources.limits = {};
+                    resources.limits.memory = user.nodered.resources.limits.memory;
+                    resources.limits.cpu = user.nodered.resources.limits.cpu;
+                }
+                if (user.nodered.resources.requests) {
+                    resources.limits = {};
+                    resources.requests.memory = user.nodered.resources.requests.memory;
+                    resources.requests.cpu = user.nodered.resources.requests.cpu;
+                }
+            } else {
+                var billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
+                if (billings.length > 0) {
+                    var billing: Billing = billings[0];
+                    resources.limits = {};
+                    resources.limits.memory = billing.memory;
+                    if (!Util.IsNullEmpty(billing.openflowuserplan)) {
+                        hasbilling = true;
+                    }
+                }
+
+            }
+        }
+
+        cli._logger.debug("[" + cli.user.username + "] GetDeployments");
+        var deployment = await KubeUtil.instance().GetDeployment(namespace, name);
+        if (deployment == null) {
+            if (skipcreate) return;
+            cli._logger.debug("[" + cli.user.username + "] Deployment " + name + " not found in " + namespace + " so creating it");
+            var _deployment = {
+                metadata: { name: name, namespace: namespace, app: name, labels: { billed: hasbilling.toString(), userid: _id } },
+                spec: {
+                    replicas: 1,
+                    template: {
+                        metadata: { labels: { name: name, app: name, billed: hasbilling.toString(), userid: _id } },
+                        spec: {
+                            containers: [
+                                {
+                                    name: 'nodered',
+                                    image: Config.nodered_image,
+                                    imagePullPolicy: "Always",
+                                    ports: [{ containerPort: 80 }, { containerPort: 5858 }],
+                                    resources: resources,
+                                    env: [
+                                        { name: "saml_federation_metadata", value: Config.saml_federation_metadata },
+                                        { name: "saml_issuer", value: Config.saml_issuer },
+                                        { name: "saml_baseurl", value: Config.protocol + "://" + hostname + "/" },
+                                        { name: "nodered_id", value: name },
+                                        { name: "nodered_sa", value: nodereduser.username },
+                                        { name: "jwt", value: nodered_jwt },
+                                        { name: "queue_prefix", value: user.nodered.queue_prefix },
+                                        { name: "api_ws_url", value: Config.api_ws_url },
+                                        { name: "amqp_url", value: Config.amqp_url },
+                                        { name: "nodered_domain_schema", value: hostname },
+                                        { name: "domain", value: hostname },
+                                        { name: "protocol", value: Config.protocol },
+                                        { name: "port", value: Config.port.toString() },
+                                        { name: "noderedusers", value: (name + "noderedusers") },
+                                        { name: "noderedadmins", value: (name + "noderedadmins") },
+                                        { name: "api_allow_anonymous", value: user.nodered.api_allow_anonymous.toString() },
+                                        { name: "NODE_ENV", value: Config.NODE_ENV },
+                                    ],
+                                    livenessProbe: {
+                                        httpGet: {
+                                            path: "/",
+                                            port: 80,
+                                            scheme: "HTTP"
+                                        },
+                                        initialDelaySeconds: Config.nodered_initial_liveness_delay,
+                                        periodSeconds: 5,
+                                        failureThreshold: 5,
+                                        timeoutSeconds: 5
+                                    },
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+            // await KubeUtil.instance().ExtensionsV1beta1Api.createNamespacedDeployment(namespace, (_deployment as any));
+            await KubeUtil.instance().ExtensionsV1beta1Api.createNamespacedDeployment(namespace, (_deployment as any));
+        } else {
+            deployment.spec.template.spec.containers[0].resources = resources;
+            var f = deployment.spec.template.spec.containers[0].env.filter(x => x.name == "api_allow_anonymous");
+            if (f.length > 0) {
+                f[0].value = user.nodered.api_allow_anonymous.toString();
+            }
+            deployment.metadata.labels.billed = hasbilling.toString();
+            deployment.spec.template.metadata.labels.billed = hasbilling.toString();
+            deployment.metadata.labels.userid = _id;
+            deployment.spec.template.metadata.labels.userid = _id;
+            try {
+                await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedDeployment(name, namespace, (deployment as any));
+            } catch (error) {
+                cli._logger.error("[" + cli.user.username + "] failed updating noeredinstance");
+                cli._logger.error("[" + cli.user.username + "] " + JSON.stringify(error));
+                throw new Error("failed updating noeredinstance");
+            }
+        }
+
+        cli._logger.debug("[" + cli.user.username + "] GetService");
+        var service = await KubeUtil.instance().GetService(namespace, name);
+        if (service == null) {
+            cli._logger.debug("[" + cli.user.username + "] Service " + name + " not found in " + namespace + " creating it");
+            var _service = {
+                metadata: { name: name, namespace: namespace },
+                spec: {
+                    type: "NodePort",
+                    sessionAffinity: "ClientIP",
+                    selector: { app: name },
+                    ports: [
+                        { port: 80, name: "www" }
+                    ]
+                }
+            }
+            await KubeUtil.instance().CoreV1Api.createNamespacedService(namespace, _service);
+        }
+        cli._logger.debug("[" + cli.user.username + "] GetIngress useringress");
+        var ingress = await KubeUtil.instance().GetIngress(namespace, "useringress");
+        if (ingress !== null) {
+            var rule = null;
+            for (var i = 0; i < ingress.spec.rules.length; i++) {
+                if (ingress.spec.rules[i].host == hostname) {
+                    rule = ingress.spec.rules[i];
+                }
+            }
+            if (rule == null) {
+                cli._logger.debug("[" + cli.user.username + "] ingress " + hostname + " not found in useringress creating it");
+                rule = {
+                    host: hostname,
+                    http: {
+                        paths: [{
+                            path: "/",
+                            backend: {
+                                serviceName: name,
+                                servicePort: "www"
+                            }
+                        }]
+                    }
+                }
+                delete ingress.metadata.creationTimestamp;
+                delete ingress.status;
+                ingress.spec.rules.push(rule);
+                cli._logger.debug("[" + cli.user.username + "] replaceNamespacedIngress");
+                await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("useringress", namespace, ingress);
+            }
+        } else {
+            cli._logger.error("[" + cli.user.username + "] failed locating useringress");
+            throw new Error("failed locating useringress");
+        }
+    }
+    private async _DeleteNoderedInstance(_id: string, myuserid: string, myusername: string, jwt: string): Promise<void> {
+        var name = await this.GetInstanceName(_id, myuserid, myusername, jwt);
+        var namespace = Config.namespace;
+        var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
+
+        var deployment = await KubeUtil.instance().GetDeployment(namespace, name);
+        if (deployment != null) {
+            await KubeUtil.instance().ExtensionsV1beta1Api.deleteNamespacedDeployment(name, namespace);
+        }
+        var service = await KubeUtil.instance().GetService(namespace, name);
+        if (service != null) {
+            await KubeUtil.instance().CoreV1Api.deleteNamespacedService(name, namespace);
+        }
+        var replicaset = await KubeUtil.instance().GetReplicaset(namespace, "app", name);
+        if (replicaset !== null) {
+            KubeUtil.instance().AppsV1Api.deleteNamespacedReplicaSet(replicaset.metadata.name, namespace);
+        }
+        var ingress = await KubeUtil.instance().GetIngress(namespace, "useringress");
+        if (ingress !== null) {
+            var updated = false;
+            for (var i = ingress.spec.rules.length - 1; i >= 0; i--) {
+                if (ingress.spec.rules[i].host == hostname) {
+                    ingress.spec.rules.splice(i, 1);
+                    updated = true;
+                }
+            }
+            if (updated) {
+                delete ingress.metadata.creationTimestamp;
+                await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("useringress", namespace, ingress);
+            }
+        } else {
+            throw new Error("failed locating useringress");
+        }
+    }
     private async DeleteNoderedInstance(cli: WebSocketClient): Promise<void> {
         this.Reply();
         var msg: DeleteNoderedInstanceMessage;
         var user: User;
         try {
-            cli._logger.debug("[" + cli.user.username + "] DeleteNoderedInstance");
             msg = DeleteNoderedInstanceMessage.assign(this.data);
-            var name = await this.GetInstanceName(cli, msg._id);
-            var namespace = Config.namespace;
-            var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
+            cli._logger.debug("[" + cli.user.username + "] DeleteNoderedInstance");
+            await this._DeleteNoderedInstance(msg._id, cli.user._id, cli.user.username, cli.jwt);
 
-            // for now, lets not delete role
-            // var role: Role = await Role.FindByNameOrId(name + "noderedadmins", null);
-            // if (role !== null) {
-            //     var jwt: string = TokenUser.rootToken();
-            //     await Config.db.DeleteOne(role._id, "users", jwt);
-            // }
-            var deployment = await KubeUtil.instance().GetDeployment(namespace, name);
-            if (deployment != null) {
-                await KubeUtil.instance().ExtensionsV1beta1Api.deleteNamespacedDeployment(name, namespace);
-            }
-            var service = await KubeUtil.instance().GetService(namespace, name);
-            if (service != null) {
-                await KubeUtil.instance().CoreV1Api.deleteNamespacedService(name, namespace);
-            }
-            var replicaset = await KubeUtil.instance().GetReplicaset(namespace, "app", name);
-            if (replicaset !== null) {
-                KubeUtil.instance().AppsV1Api.deleteNamespacedReplicaSet(replicaset.metadata.name, namespace);
-            }
-            // var list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
-            // for (var i = 0; i < list.body.items.length; i++) {
-            //     var item = list.body.items[i];
-            //     // if (item.metadata.labels.app === name || item.metadata.labels.name === name) {
-            //     if (item.metadata.labels.app === name) {
-            //         await KubeUtil.instance().CoreV1Api.deleteNamespacedPod(item.metadata.name, namespace);
-            //     }
-            // }
-            var ingress = await KubeUtil.instance().GetIngress(namespace, "useringress");
-            if (ingress !== null) {
-                var updated = false;
-                for (var i = ingress.spec.rules.length - 1; i >= 0; i--) {
-                    if (ingress.spec.rules[i].host == hostname) {
-                        ingress.spec.rules.splice(i, 1);
-                        updated = true;
-                    }
-                }
-                if (updated) {
-                    delete ingress.metadata.creationTimestamp;
-                    await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("useringress", namespace, ingress);
-                }
-            } else {
-                cli._logger.error("[" + cli.user.username + "] failed locating useringress");
-                if (msg !== null && msg !== undefined) msg.error = "failed locating useringress";
-            }
         } catch (error) {
+            cli._logger.error("[" + cli.user.username + "] failed locating useringress");
             this.data = "";
             cli._logger.error(error);
             //msg.error = JSON.stringify(error, null, 2);
@@ -1038,7 +1068,7 @@ export class Message {
         try {
             cli._logger.debug("[" + cli.user.username + "] RestartNoderedInstance");
             msg = RestartNoderedInstanceMessage.assign(this.data);
-            var name = await this.GetInstanceName(cli, msg._id);
+            var name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt);
             var namespace = Config.namespace;
             // var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
@@ -1070,7 +1100,7 @@ export class Message {
         try {
             cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance");
             msg = GetNoderedInstanceMessage.assign(this.data);
-            var name = await this.GetInstanceName(cli, msg._id);
+            var name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt);
             var namespace = Config.namespace;
             // var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
@@ -1079,9 +1109,38 @@ export class Message {
             var found: any = null;
             msg.result = null;
             msg.results = [];
+            var rootjwt = TokenUser.rootToken();
             if (list.body.items.length > 0) {
                 for (var i = 0; i < list.body.items.length; i++) {
-                    var item = list.body.items[i];
+                    if (!Util.IsNullEmpty(Config.stripe_api_secret)) {
+                        var item = list.body.items[i];
+                        var name = item.metadata.name;
+                        var create = item.metadata.creationTimestamp;
+                        var billed = item.metadata.labels.billed;
+                        var image = item.spec.containers[0].image
+                        var userid = item.metadata.labels.userid;
+                        var date = new Date();
+                        var a: number = (date as any) - (create as any);
+                        // var diffminutes = a / (1000 * 60);
+                        var diffhours = a / (1000 * 60 * 60);
+                        if (image.indexOf("openflownodered") > 0 && !Util.IsNullEmpty(userid)) {
+                            try {
+                                if (billed != "true" && diffhours > 24) {
+                                    cli._logger.debug("[" + cli.user.username + "] Remove un billed nodered instance " + name + " that has been running for " + diffhours + " hours");
+                                    // await this._DeleteNoderedInstance(userid, cli.user._id, cli.user.username, rootjwt);
+                                }
+                                // console.log(name + " " + diffminutes + " min / " + diffhours + " hours");
+                            } catch (error) {
+                            }
+                        } else if (image.indexOf("openflownodered") > 0) {
+                            if (billed != "true" && diffhours > 24) {
+                                console.log("unbilled " + name + " with no userid, should be removed, it has been running for " + diffhours + " hours");
+                            } else {
+                                console.log("unbilled " + name + " with no userid, has been running for " + diffhours + " hours");
+                            }
+                        }
+                    }
+
                     if (!Util.IsNullEmpty(msg.name) && item.metadata.name == msg.name && cli.user.HasRoleName("admins")) {
                         found = item;
                         msg.results.push(item);
@@ -1118,7 +1177,7 @@ export class Message {
         try {
             cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance");
             msg = GetNoderedInstanceLogMessage.assign(this.data);
-            var name = await this.GetInstanceName(cli, msg._id);
+            var name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt);
             var namespace = Config.namespace;
 
             var list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
@@ -1769,10 +1828,27 @@ export class Message {
                     customer = await this.Stripe<stripe_customer>("GET", "customers", null, null, billing.stripeid);
                 }
             }
-            console.log(JSON.stringify(customer.discount, null, 2))
             if (customer != null && Util.IsNullEmpty(billing.coupon) && customer.discount != null) {
                 var payload: any = { coupon: "" };
                 customer = await this.Stripe<stripe_customer>("POST", "customers", billing.stripeid, payload, null);
+            }
+            var newmemory: string = "";
+            if (customer != null && billing != null && customer.subscriptions != null && customer.subscriptions.total_count > 0) {
+                for (var i = 0; i < customer.subscriptions.data.length; i++) {
+                    var sub = customer.subscriptions.data[i];
+                    for (var y = 0; y < sub.items.data.length; y++) {
+                        var subitem = sub.items.data[y];
+                        if (subitem.plan != null && subitem.plan.metadata != null && subitem.plan.metadata.memory != null) {
+                            newmemory = subitem.plan.metadata.memory;
+                        }
+
+                    }
+                }
+            }
+            if (billing.memory != newmemory) {
+                billing.memory = newmemory;
+                billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
+                this._EnsureNoderedInstance(cli, msg.userid, true);
             }
             if (customer != null && !Util.IsNullEmpty(billing.coupon) && customer.discount != null) {
                 if (billing.coupon != customer.discount.coupon.name) {
@@ -1800,6 +1876,32 @@ export class Message {
                 var sources = await this.Stripe<stripe_list<stripe_base>>("GET", "sources", null, null, billing.stripeid);
                 if ((sources.data.length > 0) != billing.hascard) {
                     billing.hascard = (sources.data.length > 0);
+                    billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
+                }
+            }
+            if (customer != null && billing != null) {
+                var openflowuserplan: string = "";
+                var supportplan: string = "";
+                var supporthourplan: string = "";
+
+                customer.subscriptions.data.filter(s => {
+                    s.items.data.filter(y => {
+                        if (y.plan.metadata.supporthourplan == "true") {
+                            supporthourplan = y.id;
+                        }
+                        if (y.plan.metadata.supportplan == "true") {
+                            supportplan = y.id;
+                        }
+                        if (y.plan.metadata.openflowuser == "true") {
+                            openflowuserplan = y.id;
+                        }
+                    });
+                    return false;
+                });
+                if (billing.openflowuserplan != openflowuserplan || billing.supportplan != supportplan || billing.supporthourplan != supporthourplan) {
+                    billing.openflowuserplan = openflowuserplan;
+                    billing.supportplan = supportplan;
+                    billing.supporthourplan = supporthourplan;
                     billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
                 }
             }

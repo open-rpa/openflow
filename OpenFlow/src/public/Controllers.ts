@@ -2688,6 +2688,7 @@ module openflow {
                 await this.api.Update("users", this.user);
                 this.loading = false;
                 this.messages += 'update complete\n';
+                this.EnsureNoderedInstance();
             } catch (error) {
                 this.errormessage = error;
             }
@@ -3188,6 +3189,8 @@ module openflow {
                     if (this.WebSocketClient.user.username.indexOf("@") > -1) {
                         this.model.email = this.WebSocketClient.user.username;
                     }
+                    this.model.tax = 1.0;
+                    this.hastaxtext = "excl vat";
                 } else {
                     if (this.model != null && this.model.stripeid != null && this.model.stripeid != "") {
                         var payload: stripe_customer = new stripe_customer;
@@ -3218,32 +3221,32 @@ module openflow {
                         this.allowsupportsignup = true;
                     }
                 }
-                if (this.allowopenflowsignup || this.allowsupportsignup) {
-                    this.model.taxrate = "";
-                    if (this.openflowplans.length == 0) {
-                        this.stripe_plans = (await this.api.Stripe("GET", "plans", null, null, null) as any);
-                        for (var x = 0; x < this.stripe_plans.data.length; x++) {
-                            var stripeplan = this.stripe_plans.data[x];
-                            if (stripeplan.metadata.openflowuser == "true") {
-                                this.openflowplans.push(stripeplan);
-                            }
-                            if (stripeplan.metadata.supportplan == "true") {
-                                this.supportplans.push(stripeplan);
-                            }
+                //if (this.allowopenflowsignup || this.allowsupportsignup) {
+                this.model.taxrate = "";
+                if (this.openflowplans.length == 0 && this.supportplans.length == 0) {
+                    this.stripe_plans = (await this.api.Stripe("GET", "plans", null, null, null) as any);
+                    for (var x = 0; x < this.stripe_plans.data.length; x++) {
+                        var stripeplan = this.stripe_plans.data[x];
+                        if (stripeplan.metadata.openflowuser == "true") {
+                            this.openflowplans.push(stripeplan);
                         }
-                        for (var y = 0; y < this.supportplans.length; y++) {
-                            var supportplan = this.supportplans[y];
-                            for (var x = 0; x < this.stripe_plans.data.length; x++) {
-                                var stripeplan = this.stripe_plans.data[x];
-                                if (stripeplan.id == supportplan.metadata.subplan) {
-                                    this.supporthoursplans.push(stripeplan);
-                                    (supportplan as any).subplan = stripeplan;
-                                }
-                            }
-
+                        if (stripeplan.metadata.supportplan == "true") {
+                            this.supportplans.push(stripeplan);
                         }
                     }
+                    for (var y = 0; y < this.supportplans.length; y++) {
+                        var supportplan = this.supportplans[y];
+                        for (var x = 0; x < this.stripe_plans.data.length; x++) {
+                            var stripeplan = this.stripe_plans.data[x];
+                            if (stripeplan.id == supportplan.metadata.subplan) {
+                                this.supporthoursplans.push(stripeplan);
+                                (supportplan as any).subplan = stripeplan;
+                            }
+                        }
+
+                    }
                 }
+                //}
                 if (this.hascustomer) {
                     var hasOpenflow = this.openflowplans.filter(plan => {
                         var hasit = this.stripe_customer.subscriptions.data.filter(s => {
