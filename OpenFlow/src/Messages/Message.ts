@@ -818,19 +818,33 @@ export class Message {
 
         var resources = new V1ResourceRequirements();
         var hasbilling: boolean = false;
+        resources.limits = {};
+        resources.requests = {};
+        resources.requests.memory = "70Mi";
+        resources.limits.memory = "256Mi";
         if (user.nodered && user.nodered.resources) {
             if (Util.IsNullEmpty(Config.stripe_api_secret)) {
                 if (user.nodered.resources.limits) {
-                    resources.limits = {};
                     resources.limits.memory = user.nodered.resources.limits.memory;
                     resources.limits.cpu = user.nodered.resources.limits.cpu;
                 }
                 if (user.nodered.resources.requests) {
-                    resources.limits = {};
                     resources.requests.memory = user.nodered.resources.requests.memory;
                     resources.requests.cpu = user.nodered.resources.requests.cpu;
                 }
             } else {
+                var billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
+                if (billings.length > 0) {
+                    var billing: Billing = billings[0];
+                    resources.limits.memory = billing.memory;
+                    if (!Util.IsNullEmpty(billing.openflowuserplan)) {
+                        hasbilling = true;
+                    }
+                }
+
+            }
+        } else {
+            if (!Util.IsNullEmpty(Config.stripe_api_secret)) {
                 var billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
                 if (billings.length > 0) {
                     var billing: Billing = billings[0];
@@ -840,7 +854,6 @@ export class Message {
                         hasbilling = true;
                     }
                 }
-
             }
         }
 
