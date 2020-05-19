@@ -1112,8 +1112,8 @@ export class Message {
             var rootjwt = TokenUser.rootToken();
             if (list.body.items.length > 0) {
                 for (var i = 0; i < list.body.items.length; i++) {
+                    var item = list.body.items[i];
                     if (!Util.IsNullEmpty(Config.stripe_api_secret)) {
-                        var item = list.body.items[i];
                         var itemname = item.metadata.name;
                         var create = item.metadata.creationTimestamp;
                         var billed = item.metadata.labels.billed;
