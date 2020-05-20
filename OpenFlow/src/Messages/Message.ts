@@ -848,8 +848,7 @@ export class Message {
                 var billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
                 if (billings.length > 0) {
                     var billing: Billing = billings[0];
-                    resources.limits = {};
-                    resources.limits.memory = billing.memory;
+                    if (!Util.IsNullEmpty(billing.memory)) resources.limits.memory = billing.memory;
                     if (!Util.IsNullEmpty(billing.openflowuserplan)) {
                         hasbilling = true;
                     }
@@ -929,6 +928,9 @@ export class Message {
             } catch (error) {
                 cli._logger.error("[" + cli.user.username + "] failed updating noeredinstance");
                 cli._logger.error("[" + cli.user.username + "] " + JSON.stringify(error));
+                if (error.response && error.response.body && !Util.IsNullEmpty(error.response.body.message)) {
+                    throw new Error(error.response.body.message);
+                }
                 throw new Error("failed updating noeredinstance");
             }
         }

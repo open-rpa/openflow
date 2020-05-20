@@ -2749,79 +2749,79 @@ module openflow {
                 this.errormessage = "";
                 await this.api.EnsureNoderedInstance(this.userid, this.name);
                 this.messages += "EnsureNoderedInstance completed" + "\n";
+                this.GetNoderedInstance();
             } catch (error) {
                 this.errormessage = error;
                 this.messages += error + "\n";
                 console.error(error);
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            this.GetNoderedInstance();
         }
         async DeleteNoderedInstance() {
             try {
                 this.errormessage = "";
                 await this.api.DeleteNoderedInstance(this.userid, this.name);
                 this.messages += "DeleteNoderedInstance completed" + "\n";
+                this.GetNoderedInstance();
             } catch (error) {
                 this.errormessage = error;
                 this.messages += error + "\n";
                 console.error(error);
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            this.GetNoderedInstance();
         }
         async DeleteNoderedPod(instancename: string) {
             try {
                 this.errormessage = "";
                 await this.api.DeleteNoderedPod(this.userid, instancename);
                 this.messages += "DeleteNoderedPod completed" + "\n";
+                this.GetNoderedInstance();
             } catch (error) {
                 this.errormessage = error;
                 this.messages += error + "\n";
                 console.error(error);
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            this.GetNoderedInstance();
-
         }
         async RestartNoderedInstance() {
             try {
                 this.errormessage = "";
                 await this.api.RestartNoderedInstance(this.userid, this.name);
                 this.messages += "RestartNoderedInstance completed" + "\n";
+                this.GetNoderedInstance();
             } catch (error) {
                 this.errormessage = error;
                 this.messages += error + "\n";
                 console.error(error);
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            this.GetNoderedInstance();
         }
         async StartNoderedInstance() {
             try {
                 this.errormessage = "";
                 await this.api.StartNoderedInstance(this.userid, this.name);
                 this.messages += "StartNoderedInstance completed" + "\n";
+                this.GetNoderedInstance();
             } catch (error) {
                 this.errormessage = error;
                 this.messages += error + "\n";
                 console.error(error);
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            this.GetNoderedInstance();
         }
         async StopNoderedInstance() {
             try {
                 this.errormessage = "";
                 await this.api.StopNoderedInstance(this.userid, this.name);
                 this.messages += "StopNoderedInstance completed" + "\n";
+                this.GetNoderedInstance();
             } catch (error) {
                 this.errormessage = error;
                 this.messages += error + "\n";
                 console.error(error);
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            this.GetNoderedInstance();
+
         }
         async SendOne(queuename: string, message: any): Promise<void> {
             var result: any = await this.api.QueueMessage(queuename, message);
