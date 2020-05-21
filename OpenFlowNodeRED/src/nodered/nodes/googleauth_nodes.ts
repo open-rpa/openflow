@@ -46,6 +46,8 @@ export interface Igoogleauth_credentials {
     serviceaccount: string;
     authtype: string;
     apikey: string;
+    username: string;
+    password: string;
 }
 export class googleauth_credentials {
     public node: Red = null;
@@ -59,6 +61,8 @@ export class googleauth_credentials {
     public serviceaccount: string = "";
     public apikey: string = "";
     public authtype: string = "";
+    public username: string = "";
+    public password: string = "";
     constructor(public config: Igoogleauth_credentials) {
         RED.nodes.createNode(this, config);
         this.node = this;
@@ -88,6 +92,12 @@ export class googleauth_credentials {
         }
         if (this.node.credentials && this.node.credentials.hasOwnProperty("apikey")) {
             this.apikey = this.node.credentials.apikey;
+        }
+        if (this.node.credentials && this.node.credentials.hasOwnProperty("username")) {
+            this.username = this.node.credentials.username;
+        }
+        if (this.node.credentials && this.node.credentials.hasOwnProperty("password")) {
+            this.password = this.node.credentials.password;
         }
         this.init();
     }
@@ -247,6 +257,12 @@ export class googleauth_request {
                 send(msg);
                 done();
             } else {
+                if (this._config.authtype == "username") {
+                    if (!NoderedUtil.IsNullEmpty(this._config.username)) {
+                        options.headers = {};
+                        options.headers["Authorization"] = "Basic " + new Buffer(this._config.username + ":" + this._config.password).toString("base64");
+                    }
+                }
                 options.body = options.data;
                 options.json = true;
                 delete options.data;

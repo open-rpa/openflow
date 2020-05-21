@@ -5,6 +5,7 @@
             <option value="serviceaccount">ServiceAccount</option>
             <option value="oauth2">OAuth 2( on behalf of user)</option>
             <option value="apikey">API Key</option>
+            <option value="username">Username/Password</option>
         </select>
     </div>
     <div class="form-row" id="clientid">
@@ -42,6 +43,14 @@
         <label for="node-config-input-apikey"><i class="fa fa-globe"></i> API Key</label>
         <input type="password" id="node-config-input-apikey" placeholder="Code from google page">
     </div>
+    <div class="form-row" id="username">
+        <label for="node-config-input-username"><i class="fa fa-globe"></i> Username</label>
+        <input type="text" id="node-config-input-username" placeholder="Username">
+    </div>
+    <div class="form-row" id="password">
+        <label for="node-config-input-password"><i class="fa fa-globe"></i> Password</label>
+        <input type="password" id="node-config-input-password" placeholder="Password">
+    </div>
     <div class="form-row">
         <label ><i class="fa fa-tag"></i> Name</label>
         <input type="text" id="node-config-input-name" placeholder="Node name">
@@ -69,6 +78,8 @@
             tokens: { type: "password" },
             serviceaccount: { type: "password" },
             apikey: { type: "password" },
+            username: { type: "text" },
+            password: { type: "password" },
         },
         defaults: {
             name: { value: "" },
@@ -87,6 +98,9 @@
                 if (type != "oauth2") { $('#redirecturi').hide(); } else { $('#redirecturi').show(); }
                 if (type != "oauth2" && type != "serviceaccount") { $('#scopes').hide(); } else { $('#scopes').show(); }
                 if (type != "oauth2") { $('#signin').hide(); } else { $('#signin').show(); }
+
+                if (type != "username") { $('#username').hide(); } else { $('#username').show(); }
+                if (type != "username") { $('#password').hide(); } else { $('#password').show(); }
                 //if (type != "oauth2") { $('#code').hide(); } else { $('#code').show(); }
                 $('#code').hide();
                 if (type != "oauth2") { $('#tokens').hide(); } else {

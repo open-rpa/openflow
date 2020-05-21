@@ -11,7 +11,9 @@ export = function (RED: Red) {
             code: { type: "password" },
             tokens: { type: "password" },
             serviceaccount: { type: "password" },
-            apikey: { type: "password" }
+            apikey: { type: "password" },
+            username: { type: "text" },
+            password: { type: "password" }
         }
     });
 
