@@ -818,15 +818,17 @@ export class Message {
 
         var resources = new V1ResourceRequirements();
         var hasbilling: boolean = false;
+        resources.limits = {};
+        resources.requests = {};
+        resources.requests.memory = "70Mi";
+        resources.limits.memory = "256Mi";
         if (user.nodered && user.nodered.resources) {
             if (Util.IsNullEmpty(Config.stripe_api_secret)) {
                 if (user.nodered.resources.limits) {
-                    resources.limits = {};
                     resources.limits.memory = user.nodered.resources.limits.memory;
                     resources.limits.cpu = user.nodered.resources.limits.cpu;
                 }
                 if (user.nodered.resources.requests) {
-                    resources.limits = {};
                     resources.requests.memory = user.nodered.resources.requests.memory;
                     resources.requests.cpu = user.nodered.resources.requests.cpu;
                 }
@@ -834,13 +836,23 @@ export class Message {
                 var billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
                 if (billings.length > 0) {
                     var billing: Billing = billings[0];
-                    resources.limits = {};
                     resources.limits.memory = billing.memory;
                     if (!Util.IsNullEmpty(billing.openflowuserplan)) {
                         hasbilling = true;
                     }
                 }
 
+            }
+        } else {
+            if (!Util.IsNullEmpty(Config.stripe_api_secret)) {
+                var billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
+                if (billings.length > 0) {
+                    var billing: Billing = billings[0];
+                    if (!Util.IsNullEmpty(billing.memory)) resources.limits.memory = billing.memory;
+                    if (!Util.IsNullEmpty(billing.openflowuserplan)) {
+                        hasbilling = true;
+                    }
+                }
             }
         }
 
@@ -916,6 +928,9 @@ export class Message {
             } catch (error) {
                 cli._logger.error("[" + cli.user.username + "] failed updating noeredinstance");
                 cli._logger.error("[" + cli.user.username + "] " + JSON.stringify(error));
+                if (error.response && error.response.body && !Util.IsNullEmpty(error.response.body.message)) {
+                    throw new Error(error.response.body.message);
+                }
                 throw new Error("failed updating noeredinstance");
             }
         }
@@ -1112,8 +1127,8 @@ export class Message {
             var rootjwt = TokenUser.rootToken();
             if (list.body.items.length > 0) {
                 for (var i = 0; i < list.body.items.length; i++) {
+                    var item = list.body.items[i];
                     if (!Util.IsNullEmpty(Config.stripe_api_secret)) {
-                        var item = list.body.items[i];
                         var itemname = item.metadata.name;
                         var create = item.metadata.creationTimestamp;
                         var billed = item.metadata.labels.billed;
@@ -1127,7 +1142,7 @@ export class Message {
                             try {
                                 if (billed != "true" && diffhours > 24) {
                                     cli._logger.debug("[" + cli.user.username + "] Remove un billed nodered instance " + itemname + " that has been running for " + diffhours + " hours");
-                                    // await this._DeleteNoderedInstance(userid, cli.user._id, cli.user.username, rootjwt);
+                                    await this._DeleteNoderedInstance(userid, cli.user._id, cli.user.username, rootjwt);
                                 }
                                 // console.log(itemname + " " + diffminutes + " min / " + diffhours + " hours");
                             } catch (error) {

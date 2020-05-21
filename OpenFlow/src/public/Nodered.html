@@ -35,6 +35,11 @@
       <div class="col">
         <span ng-show="ctrl.instance!=null">{{ instance.metadata.name }}</span>
       </div>
+      <label class="col-sm-1 control-label"><span translate lib="web">mem</span>: </label>
+      <div class="col-sm-2">
+        <span
+          ng-show="ctrl.instance!=null">{{ instance.spec.containers[0].resources.requests.memory + "/" + instance.spec.containers[0].resources.limits.memory  }}</span>
+      </div>
       <label class="col-sm-1 control-label"><span translate lib="web">status</span>: </label>
       <div class="col-sm-1">
         <span
@@ -76,9 +81,9 @@
   <pre>{{ctrl.messages}}</pre>
 </div>
 <section>
-  <div class="form-group">
-    <label class="col-sm-3 control-label"><span translate lib="web">api_allow_anonymous</span>: </label>
-    <div class="col-sm-9">
+  <div class="row">
+    <label class="col-sm-4 control-label"><span translate lib="web">api_allow_anonymous</span>: </label>
+    <div class="col-sm-1">
       <input type="checkbox" class='form-control' ng-model="ctrl.user.nodered.api_allow_anonymous"></input>
     </div>
   </div>
@@ -108,10 +113,3 @@
     </div>
   </div>
 </section>
-
-
-
-<p>If this is your first time creating a NodeRed instance, please signout and signin again, to refresh group
-  memberships for your user</p>
-<p>It can take a few minutes from you order a deletion of NodeRed, til it stops running. If accessing nodered in a
-  browser reports 404, you can safely assume it will be gone soon.</p>

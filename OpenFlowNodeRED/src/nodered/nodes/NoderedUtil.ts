@@ -1,5 +1,5 @@
 import { Red } from "node-red";
-import { QueryMessage, Message, InsertOneMessage, UpdateOneMessage, DeleteOneMessage, InsertOrUpdateOneMessage, SigninMessage, TokenUser, mapFunc, reduceFunc, finalizeFunc, MapReduceMessage, JSONfn, UpdateManyMessage, GetFileMessage, SaveFileMessage, AggregateMessage, CreateWorkflowInstanceMessage } from "../../Message";
+import { QueryMessage, Message, InsertOneMessage, UpdateOneMessage, DeleteOneMessage, InsertOrUpdateOneMessage, SigninMessage, TokenUser, mapFunc, reduceFunc, finalizeFunc, MapReduceMessage, JSONfn, UpdateManyMessage, GetFileMessage, SaveFileMessage, AggregateMessage, CreateWorkflowInstanceMessage, GetNoderedInstanceMessage } from "../../Message";
 import { WebSocketClient } from "../../WebSocketClient";
 import { Crypt } from "../../Crypt";
 import { Config } from "../../Config";
@@ -199,6 +199,15 @@ export class NoderedUtil {
         msg.data = JSONfn.stringify(q);
         var result: SaveFileMessage = await WebSocketClient.instance.Send<SaveFileMessage>(msg);
         return result;
+    }
+
+    public static async GetNoderedInstance(_id: string, name: string, jwt: string): Promise<any[]> {
+        var q: GetNoderedInstanceMessage = new GetNoderedInstanceMessage();
+        q._id = _id; q.name = name; q.jwt = jwt;
+        var _msg: Message = new Message();
+        _msg.command = "getnoderedinstance"; _msg.data = JSON.stringify(q);
+        var result: GetNoderedInstanceMessage = await WebSocketClient.instance.Send<GetNoderedInstanceMessage>(_msg);
+        return result.results;
     }
 
     public static async CreateWorkflowInstance(targetid: string, workflowid: string, correlationId: string, resultqueue: string, parentid: string, payload: any, initialrun: boolean, jwt: string): Promise<string> {
