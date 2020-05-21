@@ -1142,7 +1142,7 @@ export class Message {
                             try {
                                 if (billed != "true" && diffhours > 24) {
                                     cli._logger.debug("[" + cli.user.username + "] Remove un billed nodered instance " + itemname + " that has been running for " + diffhours + " hours");
-                                    // await this._DeleteNoderedInstance(userid, cli.user._id, cli.user.username, rootjwt);
+                                    await this._DeleteNoderedInstance(userid, cli.user._id, cli.user.username, rootjwt);
                                 }
                                 // console.log(itemname + " " + diffminutes + " min / " + diffhours + " hours");
                             } catch (error) {

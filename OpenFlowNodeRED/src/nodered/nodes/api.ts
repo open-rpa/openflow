@@ -30,5 +30,6 @@ export = function (RED: Red) {
 
     RED.httpAdmin.get("/api_roles", RED.auth.needsPermission('serial.read'), api.get_api_roles);
     RED.httpAdmin.get("/api_userroles", RED.auth.needsPermission('serial.read'), api.get_api_userroles);
+    RED.httpAdmin.get("/api_users", RED.auth.needsPermission('serial.read'), api.get_api_users);
 
 }
