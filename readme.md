@@ -108,6 +108,9 @@ auto_create_users=true
 auto_create_domains=
 skip_history_collections=audit,jslog
 ```
+Lastly you need to allow powershell scripts to run, i don't know what is the recommended setting, i normally just go with bypass
+
+`Set-ExecutionPolicy Bypass -Force`
 
 Now you can run this by going to run ( Ctrl+Shit+D) and selecting OpenFlow in the dropdown box and press play button, select OpenFlowNodeRed in the dropdown and press play again
 
