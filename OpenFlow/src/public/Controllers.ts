@@ -2582,13 +2582,21 @@ module openflow {
                     delete this.model[key];
                 }
             });
-            this.models = await this.api.Query(this.collection + "_hist", { id: this.id }, null, this.orderby);
+            this.models = await this.api.Query(this.collection + "_hist", { id: this.id }, { name: 1, _createdby: 1, _modified: 1, _version: 1 }, this.orderby);
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
-        CompareNow(model) {
+        async CompareNow(model) {
             var modal: any = $("#exampleModal");
             modal.modal()
             // var delta = jsondiffpatch.diff(this.model, model.item);
+            if (model.item == null) {
+                console.log("loading " + model._id);
+                var items = await this.api.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby);
+                if (items.length > 0) {
+                    model.item = items[0].item;
+                    model.delta = items[0].delta;
+                }
+            }
             var keys = Object.keys(model.item);
             keys.forEach(key => {
                 if (key.startsWith("_")) {
@@ -2599,10 +2607,39 @@ module openflow {
             var delta = jsondiffpatch.diff(model.item, this.model);
             document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(delta, this.model);
         }
-        CompareThen(model) {
+        async CompareThen(model) {
+            if (model.item == null || model.delta == null) {
+                console.log("loading " + model._id);
+                var items = await this.api.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby);
+                if (items.length > 0) {
+                    model.item = items[0].item;
+                    model.delta = items[0].delta;
+                }
+            }
             var modal: any = $("#exampleModal");
-            modal.modal()
+            modal.modal();
             document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(model.delta, model.item);
+        }
+        async RevertTo(model) {
+            if (model.item == null) {
+                console.log("loading " + model._id);
+                var items = await this.api.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby);
+                if (items.length > 0) {
+                    model.item = items[0].item;
+                    model.delta = items[0].delta;
+                }
+            }
+            let result = window.confirm("Overwrite current version with version " + model._version + "?");
+            if (result) {
+                console.log(this.collection + " " + this.id, model.item);
+                jsondiffpatch.patch(model.item, model.delta);
+                console.log(this.collection + " " + this.id, model.item);
+
+
+                model.item._id = this.id;
+                await this.api.Update(this.collection, model.item);
+                this.loadData();
+            }
         }
     }
 
