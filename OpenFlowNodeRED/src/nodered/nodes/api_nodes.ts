@@ -938,8 +938,11 @@ export class api_aggregate {
             this.node.status({});
             // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
 
-            if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
-            if (!NoderedUtil.IsNullUndefinded(msg.aggregates)) { this.config.aggregates = msg.aggregates; }
+            var collection = this.config.collection;
+            var aggregates = this.config.aggregates;
+
+            if (!NoderedUtil.IsNullEmpty(msg.collection)) { collection = msg.collection; }
+            if (!NoderedUtil.IsNullUndefinded(msg.aggregates)) { aggregates = msg.aggregates; }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Running aggregate" });
             var result = await NoderedUtil.Aggregate(this.config.collection, this.config.aggregates, msg.jwt);

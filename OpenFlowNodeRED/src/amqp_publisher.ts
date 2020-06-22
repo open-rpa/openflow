@@ -1,6 +1,7 @@
 import * as winston from "winston";
 import * as amqplib from "amqplib";
 import { NoderedUtil } from "./nodered/nodes/NoderedUtil";
+import { Config } from "./Config";
 
 
 interface IHashTable<T> {
@@ -50,8 +51,7 @@ export class amqp_publisher {
             if (NoderedUtil.IsNullEmpty(this.localqueuename)) {
                 this._ok = await this.channel.assertQueue(this.localqueuename, { exclusive: true });
             } else {
-                this._ok = await this.channel.assertQueue(this.localqueuename, { durable: false });
-
+                this._ok = await this.channel.assertQueue(this.localqueuename, { autoDelete: true });
             }
             await this.channel.consume(this._ok.queue, (msg) => { this._OnMessage(this, msg); }, { noAck: true });
             this._logger.info("Connected to " + new URL(this.connectionstring).hostname);
@@ -65,14 +65,24 @@ export class amqp_publisher {
         if (this.channel != null && this.channel != undefined) { await this.channel.close(); this.channel = null; }
         if (this.conn != null && this.conn != undefined) { await this.conn.close(); this.conn = null; }
     }
-    SendMessage(msg: string, queue: string, correlationId: string, sendreply: boolean): void {
+    SendMessage(msg: string, queue: string, correlationId: string, sendreply: boolean, expiration: Number): void {
         if (correlationId == null || correlationId == "") { correlationId = this.generateUuid(); }
         this._logger.info("SendMessage " + msg);
-        if (sendreply) {
-            this.channel.sendToQueue(queue, Buffer.from(msg), { correlationId: correlationId, replyTo: this._ok.queue });
-        } else {
-            this.channel.sendToQueue(queue, Buffer.from(msg), { correlationId: correlationId });
+        var options: any = { correlationId: correlationId };
+
+        if (sendreply) { options.replyTo = this._ok.queue; }
+        if (expiration > 0) {
+            options.messageTtl = expiration;
+            options.expiration = expiration;
+            options.deadLetterExchange = Config.deadLetterExchange;
+            options.headers = {};
+            options.headers['x-dead-letter-exchange'] = Config.deadLetterExchange;
+            //options.headers['x-dead-letter-routing-key'] = '';
+            options.headers['x-message-ttl'] = 15000;
+            options.headers['x-expires'] = 100000;
+            //options.deadLetterRoutingKey
         }
+        this.channel.sendToQueue(queue, Buffer.from(msg), options);
     }
     private _OnMessage(sender: amqp_publisher, msg: amqplib.ConsumeMessage): void {
         try {

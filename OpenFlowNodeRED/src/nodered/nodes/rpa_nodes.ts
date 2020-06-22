@@ -164,11 +164,11 @@ export class rpa_workflow_node {
             if (msg.payload == null || typeof msg.payload == "string" || typeof msg.payload == "number") {
                 msg.payload = { "data": msg.payload };
             }
-            if(NoderedUtil.IsNullEmpty(targetid)) {
+            if (NoderedUtil.IsNullEmpty(targetid)) {
                 this.node.status({ fill: "red", shape: "dot", text: "robot is mandatory" });
                 return;
             }
-            if(NoderedUtil.IsNullEmpty(workflowid)) {
+            if (NoderedUtil.IsNullEmpty(workflowid)) {
                 this.node.status({ fill: "red", shape: "dot", text: "workflow is mandatory" });
                 return;
             }
@@ -178,8 +178,12 @@ export class rpa_workflow_node {
                 jwt: msg.jwt,
                 data: { payload: msg.payload }
             }
+            var expiration: number = (60 * 1000); // 1 min
+            if (typeof msg.expiration == 'number') {
+                expiration = msg.expiration;
+            }
             this.node.status({ fill: "blue", shape: "dot", text: "Robot running..." });
-            this.con.SendMessage(JSON.stringify(rpacommand), targetid, correlationId, true);
+            this.con.SendMessage(JSON.stringify(rpacommand), targetid, correlationId, true, expiration);
         } catch (error) {
             NoderedUtil.HandleError(this, error);
             try {

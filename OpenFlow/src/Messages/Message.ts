@@ -43,6 +43,7 @@ import { DatabaseConnection } from "../DatabaseConnection";
 import { CreateWorkflowInstanceMessage } from "./CreateWorkflowInstanceMessage";
 import { StripeMessage, EnsureStripeCustomerMessage, Billing, stripe_customer, stripe_base, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription, stripe_subscription_item, stripe_plan, stripe_coupon } from "./StripeMessage";
 import { V1ResourceRequirements } from "@kubernetes/client-node";
+import { amqpwrapper } from "../amqpwrapper";
 var request = require("request");
 var got = require("got");
 
@@ -213,7 +214,7 @@ export class Message {
         var msg: RegisterQueueMessage<Base>
         try {
             msg = RegisterQueueMessage.assign(this.data);
-            await cli.CreateConsumer(msg.queuename);
+            msg.queuename = await cli.CreateConsumer(msg.queuename);
         } catch (error) {
             cli._logger.error(error);
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -248,15 +249,24 @@ export class Message {
                     msg.data.jwt = msg.jwt;
                 }
             }
+            var expiration: number = -1;
+            if (typeof msg.expiration == 'number') expiration = msg.expiration;
             if (Util.IsNullEmpty(msg.replyto)) {
-                await cli.sendToQueue(msg);
+                // var sendthis = { data: msg.data, jwt: cli.jwt, user: cli.user };
+                var sendthis = msg.data;
+                await amqpwrapper.Instance().send("", msg.queuename, sendthis, expiration, msg.correlationId);
             } else {
                 if (msg.queuename === msg.replyto) {
                     cli._logger.warn("Ignore reply to self queuename:" + msg.queuename + " correlationId:" + msg.correlationId);
                     return
                 }
+                //var sendthis = { data: msg.data, jwt: cli.jwt, user: cli.user };
+                var sendthis = msg.data;
+                var result = await amqpwrapper.Instance().sendWithReplyTo("", msg.queuename, msg.replyto, sendthis, expiration, msg.correlationId);
+                // var result = await amqpwrapper.Instance().sendWithReply("", msg.queuename, sendthis, expiration, msg.correlationId);
+
                 this.replyto = msg.correlationId;
-                await cli.sendQueueReply(msg);
+                // await cli.sendQueueReply(msg, expiration);
             }
         } catch (error) {
             cli._logger.error(error);
@@ -1475,10 +1485,10 @@ export class Message {
             var tuser = Crypt.verityToken(msg.jwt);
             msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
 
-            if (cli.consumers.length == 0) {
-                await cli.CreateConsumer("nodered." + Math.random().toString(36).substr(2, 9));
-                // throw new Error("Client not connected to any message queues");
-            }
+            // if (cli.consumers.length == 0) {
+            //     await cli.CreateConsumer("nodered." + Math.random().toString(36).substr(2, 9));
+            //     // throw new Error("Client not connected to any message queues");
+            // }
             if (Util.IsNullEmpty(msg.queue)) {
                 var workflow: any = null;
                 var user: any = null;
@@ -1515,7 +1525,8 @@ export class Message {
 
             if (msg.initialrun) {
                 var message = { _id: res2._id };
-                cli.consumers[0].sendToQueueWithReply(msg.queue, msg.resultqueue, msg.correlationId, message);
+                amqpwrapper.Instance().sendWithReplyTo("", msg.queue, msg.resultqueue, message, (60 * (60 * 1000)), msg.correlationId);
+                // cli.consumers[0].sendToQueueWithReply(msg.queue, msg.resultqueue, msg.correlationId, message, (60 * (60 * 1000))); // 1 hour
             }
         } catch (error) {
             cli._logger.error(error);

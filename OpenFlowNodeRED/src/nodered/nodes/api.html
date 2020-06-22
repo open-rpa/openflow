@@ -1147,8 +1147,8 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         icon: "font-awesome/fa-bar-chart",
         defaults: {
             name: { value: "" },
-            aggregates: { value: "[ {\"$group\" : {\"_id\":\"$_type\", \"count\":{\"$sum\":1}} } ]", required: true },
-            collection: { value: "entities", required: true }
+            aggregates: { value: "[ {\"$group\" : {\"_id\":\"$_type\", \"count\":{\"$sum\":1}} } ]" },
+            collection: { value: "entities" }
         },
         inputs: 1,
         outputs: 1,

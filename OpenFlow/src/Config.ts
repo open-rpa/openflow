@@ -40,6 +40,10 @@ export class Config {
 
 
     public static amqp_url: string = Config.getEnv("amqp_url", "amqp://localhost"); // used to register queues and by personal nodered
+    public static amqp_check_for_consumer: boolean = Config.parseBoolean(Config.getEnv("amqp_check_for_consumer", "true"));
+    // public static deadLetterExchange: string = Config.getEnv("deadletterexchange", "openflow-dlx");  // queue used to handle messages, that was not picked up.
+    // public static dlxmessagettl: number = parseInt(Config.getEnv("dlxmessagettl", "2000"));  // time to live for messages in miliseconds
+    // public static dlxmessageexpires: number = parseInt(Config.getEnv("dlxmessageexpires", "1500"));  // expire messages after this amount of miliseconds
     public static mongodb_url: string = Config.getEnv("mongodb_url", "mongodb://localhost:27017");
     public static mongodb_db: string = Config.getEnv("mongodb_db", "openflow");
 

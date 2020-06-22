@@ -27,6 +27,7 @@ export class Config {
 
     public static api_ws_url: string = Config.getEnv("api_ws_url", "ws://localhost:3000");
     public static amqp_url: string = Config.getEnv("amqp_url", "amqp://localhost");
+    public static deadLetterExchange: string = Config.getEnv("deadletterexchange", "openflow-dlx");  // queue used to handle messages, that was not picked up.
 
     public static api_credential_cache_seconds: number = parseInt(Config.getEnv("api_credential_cache_seconds", "300"));
     public static api_allow_anonymous: boolean = Config.parseBoolean(Config.getEnv("api_allow_anonymous", "false"));

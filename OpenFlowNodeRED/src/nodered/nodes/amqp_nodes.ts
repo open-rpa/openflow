@@ -203,7 +203,11 @@ export class amqp_publisher_node {
             data.payload = msg.payload;
             data.jwt = msg.jwt;
             data._id = msg._id;
-            this.con.SendMessage(JSON.stringify(data), this.config.queue, null, true);
+            var expiration: number = (60 * 1000); // 1 min
+            if (typeof msg.expiration == 'number') {
+                expiration = msg.expiration;
+            }
+            this.con.SendMessage(JSON.stringify(data), this.config.queue, null, true, expiration);
             this.node.status({});
         } catch (error) {
             NoderedUtil.HandleError(this, error);

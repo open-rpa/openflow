@@ -338,8 +338,12 @@ export class workflow_out_node {
                 data.payload = msg.payload;
                 data.values = msg.values;
                 data.jwt = msg.jwt;
+                var expiration: number = (60 * 1000); // 1 min
+                if (typeof msg.expiration == 'number') {
+                    expiration = msg.expiration;
+                }
 
-                this.con.SendMessage(JSON.stringify(data), msg.resultqueue, msg.correlationId, false);
+                this.con.SendMessage(JSON.stringify(data), msg.resultqueue, msg.correlationId, false, expiration);
             }
         } catch (error) {
             NoderedUtil.HandleError(this, error);
@@ -359,7 +363,11 @@ export class workflow_out_node {
                 data.payload = msg.payload;
                 data.values = msg.values;
                 data.jwt = msg.jwt;
-                this.con.SendMessage(JSON.stringify(data), msg._replyTo, msg._correlationId, false);
+                var expiration: number = (60 * 1000); // 1 min
+                if (typeof msg.expiration == 'number') {
+                    expiration = msg.expiration;
+                }
+                this.con.SendMessage(JSON.stringify(data), msg._replyTo, msg._correlationId, false, expiration);
             }
         } catch (error) {
             NoderedUtil.HandleError(this, error);

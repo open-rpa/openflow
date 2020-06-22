@@ -22,6 +22,8 @@ module openflow {
         public users: TokenUser[];
         public user: TokenUser;
         public messages: string;
+        public queuename: string = "";
+        public timeout: string = "2000";
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -36,12 +38,14 @@ module openflow {
             this.messages = "";
             WebSocketClient.onSignedin(async (_user: TokenUser) => {
                 if (this.id !== null && this.id !== undefined) {
-                    await api.RegisterQueue();
+                    this.queuename = await api.RegisterQueue();
+                    console.log(this.queuename);
                     await this.loadData();
                     await this.loadUsers();
                     $scope.$on('queuemessage', (event, data: QueueMessage) => {
                         if (event && data) { }
                         console.debug(data);
+                        if (data.data.command == undefined && data.data.data != null) data.data = data.data.data;
                         this.messages += data.data.command + "\n";
                         if (data.data.command == "invokecompleted") {
                             this.arguments = data.data.data;
@@ -73,6 +77,7 @@ module openflow {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async submit(): Promise<void> {
+
             try {
                 this.errormessage = "";
                 var rpacommand = {
@@ -81,7 +86,7 @@ module openflow {
                     data: this.arguments
                 }
                 if (this.arguments === null || this.arguments === undefined) { this.arguments = {}; }
-                var result: any = await this.api.QueueMessage(this.user._id, rpacommand);
+                var result: any = await this.api.QueueMessage(this.user._id, this.queuename, rpacommand, parseInt(this.timeout));
                 try {
                     // result = JSON.parse(result);
                 } catch (error) {
@@ -1404,18 +1409,6 @@ module openflow {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
 
-        async submit() {
-            await this.SendOne(this.queuename, this.message);
-        }
-        async SendOne(queuename: string, message: any): Promise<void> {
-            var result: any = await this.api.QueueMessage(queuename, message);
-            try {
-                // result = JSON.parse(result);
-            } catch (error) {
-            }
-            this.messages += result + "\n";
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
-        }
     }
 
 
@@ -1784,6 +1777,7 @@ module openflow {
         public instanceid: string;
         public myid: string;
         public submitbutton: string;
+        public queuename: string;
 
         constructor(
             public $scope: ng.IScope,
@@ -1803,7 +1797,8 @@ module openflow {
 
             this.basequery = { _id: this.id };
             WebSocketClient.onSignedin(async (user: TokenUser) => {
-                await api.RegisterQueue();
+                this.queuename = await api.RegisterQueue();
+                console.log(this.queuename);
                 if (this.id !== null && this.id !== undefined && this.id !== "") {
                     this.basequery = { _id: this.id };
                     this.loadData();
@@ -1862,7 +1857,7 @@ module openflow {
         }
         async SendOne(queuename: string, message: any): Promise<void> {
             // console.debug("SendOne: queuename " + queuename + " / " + this.myid);
-            var result: any = await this.api.QueueMessage(queuename, message);
+            var result: any = await this.api.QueueMessage(queuename, this.queuename, message, -1);
             try {
                 result = JSON.parse(result);
             } catch (error) {
@@ -2857,18 +2852,6 @@ module openflow {
                 this.messages += error + "\n";
                 console.error(error);
             }
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
-
-        }
-        async SendOne(queuename: string, message: any): Promise<void> {
-            var result: any = await this.api.QueueMessage(queuename, message);
-            try {
-                this.errormessage = "";
-                // result = JSON.parse(result);
-            } catch (error) {
-                this.errormessage = error;
-            }
-            this.messages += result + "\n";
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
     }

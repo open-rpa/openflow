@@ -36,7 +36,7 @@ export class WebSocketServer {
         // });
         setInterval(this.pingClients, 10000);
     }
-    private static async  pingClients(): Promise<void> {
+    private static async pingClients(): Promise<void> {
         let count: number = WebSocketServer._clients.length;
         WebSocketServer._clients = WebSocketServer._clients.filter(function (cli: WebSocketClient): boolean {
             try {
@@ -94,7 +94,7 @@ export class WebSocketServer {
                                 console.log(err);
                             });
                     }
-                    else if (cli.consumers != null && cli.consumers.length > 0) {
+                    else {
                         // Should proberly turn this a little down, so we dont update all online users every 10th second
                         Config.db.db.collection("users").updateOne({ _id: cli.user._id }, { $set: { _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
                             console.log(err);
