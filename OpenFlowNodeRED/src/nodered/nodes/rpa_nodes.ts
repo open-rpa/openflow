@@ -117,9 +117,10 @@ export class rpa_workflow_node {
             var command = data.command;
             result.jwt = data.jwt;
             var correlationId = msg.properties.correlationId;
+
             if (correlationId != null && this.messages[correlationId] != null) {
                 result = this.messages[correlationId];
-                if (command == "invokecompleted" || command == "invokefailed" || command == "invokeaborted" || command == "error") {
+                if (command == "invokecompleted" || command == "invokefailed" || command == "invokeaborted" || command == "error" || command == "timeout") {
                     delete this.messages[correlationId];
                 }
             }
@@ -134,7 +135,7 @@ export class rpa_workflow_node {
                 console.log("********************");
                 this.node.send(result);
             }
-            else if (command == "invokefailed" || command == "invokeaborted" || command == "error") {
+            else if (command == "invokefailed" || command == "invokeaborted" || command == "error" || command == "timeout") {
                 result.payload = data;
                 if (data.user != null) result.user = data.user;
                 if (result.payload == null || result.payload == undefined) { result.payload = {}; }
@@ -176,6 +177,9 @@ export class rpa_workflow_node {
                 command: "invoke",
                 workflowid: workflowid,
                 jwt: msg.jwt,
+                // Adding expiry to the rpacommand as a timestamp for when the RPA message is expected to timeout from the message queue
+                // Currently set to 20 seconds into the future
+                expiry: Math.floor((new Date().getTime()) / 1000) + Config.amqp_message_ttl,
                 data: { payload: msg.payload }
             }
             var expiration: number = (60 * 1000); // 1 min

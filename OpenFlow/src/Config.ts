@@ -68,6 +68,14 @@ export class Config {
     public static nodered_domain_schema: string = Config.getEnv("nodered_domain_schema", ""); // also sent to website
     public static nodered_initial_liveness_delay: number = parseInt(Config.getEnv("nodered_initial_liveness_delay", "60"));
 
+    // Environment variables to set a prefix for RabbitMQs Dead Letter Exchange, Dead Letter Routing Key,
+    // Dead Letter Queue, and Message Time to Live - to enable timeouts for RabbitMQ messages
+    // These values must be the same for OpenFlowNodeRED and OpenFlow, or will cause errors when asserting queues
+    public static amqp_dlx_prefix: string = Config.getEnv("amqp_dlx_prefix", "DLX.");
+    public static amqp_dlrk_prefix: string = Config.getEnv("amqp_dlrk_prefix", "dlx.");
+    public static amqp_dlq_prefix: string = Config.getEnv("amqp_dlq_prefix", "dlq.");
+    public static amqp_message_ttl: number = parseInt(Config.getEnv("amqp_message_ttl", "20000"));
+
     public static baseurl(): string {
         var result: string = "";
         if (Config.tls_crt != '' && Config.tls_key != '') {

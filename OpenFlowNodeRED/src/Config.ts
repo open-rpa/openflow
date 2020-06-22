@@ -40,6 +40,14 @@ export class Config {
     public static tls_ca: string = Config.getEnv("tls_ca", "");
     public static tls_passphrase: string = Config.getEnv("tls_passphrase", "");
 
+    // Environment variables to set a prefix for RabbitMQs Dead Letter Exchange, Dead Letter Routing Key,
+    // Dead Letter Queue, and Message Time to Live - to enable timeouts for RabbitMQ messages
+    // These values must be the same for OpenFlowNodeRED and OpenFlow, or will cause errors when asserting queues
+    public static amqp_dlx_prefix: string = Config.getEnv("amqp_dlx_prefix", "DLX.");
+    public static amqp_dlrk_prefix: string = Config.getEnv("amqp_dlrk_prefix", "dlx.");
+    public static amqp_dlq_prefix: string = Config.getEnv("amqp_dlq_prefix", "dlq.");
+    public static amqp_message_ttl: number = parseInt(Config.getEnv("amqp_message_ttl", "20000"));
+
 
     public static baseurl(): string {
         if (NoderedUtil.IsNullEmpty(Config.domain)) {
