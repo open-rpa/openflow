@@ -1,6 +1,7 @@
 import * as winston from "winston";
 import * as amqplib from "amqplib";
 import { NoderedUtil } from "./nodered/nodes/NoderedUtil";
+import { Config } from './Config';
 
 
 interface IHashTable<T> {
@@ -65,10 +66,42 @@ export class amqp_publisher {
         if (this.channel != null && this.channel != undefined) { await this.channel.close(); this.channel = null; }
         if (this.conn != null && this.conn != undefined) { await this.conn.close(); this.conn = null; }
     }
-    SendMessage(msg: string, queue: string, correlationId: string, sendreply: boolean): void {
+    async SendMessage(msg: string, queue: string, correlationId: string, sendreply: boolean): Promise<void> {
         if (correlationId == null || correlationId == "") { correlationId = this.generateUuid(); }
         this._logger.info("SendMessage " + msg);
+
         if (sendreply) {
+            // Before sending the message, need to assert the exchange and queue to handle timed out messages
+            // This is done via a dead letter exchange, and dead letter queue
+            const dlx = await this.channel.assertExchange(Config.amqp_dlx_prefix + queue, 'topic', { durable: false });
+            const dlq = await this.channel.assertQueue(Config.amqp_dlq_prefix + queue, { durable: false });
+            // Bind the dead letter queue to the dead letter exchange, routing with the dead letter routing key
+            await this.channel.bindQueue(dlq.queue, dlx.exchange, Config.amqp_dlrk_prefix + queue);
+
+            // Must also consume messages in the dead letter queue, to catch messages that have timed out
+            await this.channel.consume(dlq.queue, msg => {
+                // This is the function to run when the dead letter (timed out) message is picked up
+                var data = JSON.parse(msg.content.toString());
+                // Change the command and return back to the correct queue (replyTo) to be handled
+                // Clear x-first-death-reason header
+                msg.properties.headers["x-first-death-reason"] = null;
+                // Set command to timeout to be handled when collected from the node's queue
+                data.command = "timeout";
+                // Resend message, this time to the reply queue for the correct node (replyTo)
+                this.SendMessage(JSON.stringify(data), msg.properties.replyTo, msg.properties.correlationId, false);
+            },
+                { noAck: true });
+
+            // Need to assert new queue first to ensure it has the timeout arguments added to it
+            await this.channel.assertQueue(queue, {
+                durable: false,
+                arguments: {
+                    'x-dead-letter-exchange': Config.amqp_dlx_prefix + queue,
+                    'x-dead-letter-routing-key': Config.amqp_dlrk_prefix + queue,
+                    'x-message-ttl': Config.amqp_message_ttl
+                }
+            });
+
             this.channel.sendToQueue(queue, Buffer.from(msg), { correlationId: correlationId, replyTo: this._ok.queue });
         } else {
             this.channel.sendToQueue(queue, Buffer.from(msg), { correlationId: correlationId });
