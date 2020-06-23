@@ -187,7 +187,7 @@ export class rpa_workflow_node {
                 expiration = msg.expiration;
             }
             this.node.status({ fill: "blue", shape: "dot", text: "Robot running..." });
-            this.con.SendMessage(JSON.stringify(rpacommand), targetid, correlationId, true, expiration);
+            this.con.SendMessage(JSON.stringify(rpacommand), targetid, correlationId, true);
         } catch (error) {
             NoderedUtil.HandleError(this, error);
             try {

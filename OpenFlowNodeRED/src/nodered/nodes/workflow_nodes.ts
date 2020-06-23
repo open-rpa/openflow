@@ -343,7 +343,7 @@ export class workflow_out_node {
                     expiration = msg.expiration;
                 }
 
-                this.con.SendMessage(JSON.stringify(data), msg.resultqueue, msg.correlationId, false, expiration);
+                this.con.SendMessage(JSON.stringify(data), msg.resultqueue, msg.correlationId, false);
             }
         } catch (error) {
             NoderedUtil.HandleError(this, error);
@@ -367,7 +367,7 @@ export class workflow_out_node {
                 if (typeof msg.expiration == 'number') {
                     expiration = msg.expiration;
                 }
-                this.con.SendMessage(JSON.stringify(data), msg._replyTo, msg._correlationId, false, expiration);
+                this.con.SendMessage(JSON.stringify(data), msg._replyTo, msg._correlationId, false);
             }
         } catch (error) {
             NoderedUtil.HandleError(this, error);

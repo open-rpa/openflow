@@ -91,15 +91,15 @@ export class amqp_publisher {
             },
                 { noAck: true });
 
-            // Need to assert new queue first to ensure it has the timeout arguments added to it
-            await this.channel.assertQueue(queue, {
-                durable: false,
-                arguments: {
-                    'x-dead-letter-exchange': Config.amqp_dlx_prefix + queue,
-                    'x-dead-letter-routing-key': Config.amqp_dlrk_prefix + queue,
-                    'x-message-ttl': Config.amqp_message_ttl
-                }
-            });
+            // // Need to assert new queue first to ensure it has the timeout arguments added to it
+            // await this.channel.assertQueue(queue, {
+            //     durable: false,
+            //     arguments: {
+            //         'x-dead-letter-exchange': Config.amqp_dlx_prefix + queue,
+            //         'x-dead-letter-routing-key': Config.amqp_dlrk_prefix + queue,
+            //         'x-message-ttl': Config.amqp_message_ttl
+            //     }
+            // });
 
             this.channel.sendToQueue(queue, Buffer.from(msg), { correlationId: correlationId, replyTo: this._ok.queue });
         } else {

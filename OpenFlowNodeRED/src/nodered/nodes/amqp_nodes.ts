@@ -207,7 +207,7 @@ export class amqp_publisher_node {
             if (typeof msg.expiration == 'number') {
                 expiration = msg.expiration;
             }
-            this.con.SendMessage(JSON.stringify(data), this.config.queue, null, true, expiration);
+            this.con.SendMessage(JSON.stringify(data), this.config.queue, null, true);
             this.node.status({});
         } catch (error) {
             NoderedUtil.HandleError(this, error);

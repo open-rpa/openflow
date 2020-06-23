@@ -16,7 +16,7 @@ import { DeleteOneMessage } from "./Messages/DeleteOneMessage";
 import { Base } from "./base";
 import { UpdateManyMessage } from "./Messages/UpdateManyMessage";
 import { Util } from "./Util";
-import { amqpwrapper } from "./amqpwrapper";
+import { amqpwrapper, QueueMessageOptions } from "./amqpwrapper";
 
 interface IHashTable<T> {
     [key: string]: T;
@@ -118,10 +118,10 @@ export class WebSocketClient {
         var autoDelete: boolean = false; // Should we keep the queue around ? for robots and roles
         if (Util.IsNullEmpty(queuename)) { queuename = "web." + Math.random().toString(36).substr(2, 9); autoDelete = true; }
 
-        var queuename = await amqpwrapper.Instance().AddQueueConsumer(queuename, { autoDelete: autoDelete }, async (msg: any, ack: any, correlationId: string, replyTo: string, done: any) => {
+        var queuename = await amqpwrapper.Instance().AddQueueConsumer(queuename, { autoDelete: autoDelete }, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
             var _data = msg;
             try {
-                _data = await this.Queue(msg, replyTo, correlationId, queuename);
+                _data = await this.Queue(msg, queuename, options);
                 ack();
                 done(_data);
             } catch (error) {
@@ -277,7 +277,7 @@ export class WebSocketClient {
         // tslint:disable-next-line: quotemark
         return str.match(new RegExp('.{1,' + length + '}', 'g'));
     }
-    async Queue(data: string, replyTo: string, correlationId: string, queuename: string): Promise<any[]> {
+    async Queue(data: string, queuename: string, options: QueueMessageOptions): Promise<any[]> {
         var d: any = JSON.parse(data);
         var q: QueueMessage = new QueueMessage();
         if (this.clientversion == "1.0.80.0" || this.clientversion == "1.0.81.0" || this.clientversion == "1.0.82.0" || this.clientversion == "1.0.83.0" || this.clientversion == "1.0.84.0" || this.clientversion == "1.0.85.0") {
@@ -286,9 +286,13 @@ export class WebSocketClient {
             q.data = d;
         }
         // q.data = d.payload; 
-        q.replyto = replyTo;
+        q.replyto = options.replyTo;
         q.error = d.error;
-        q.correlationId = correlationId; q.queuename = queuename;
+        q.correlationId = options.correlationId; q.queuename = queuename;
+        q.consumerTag = options.consumerTag;
+        q.routingkey = options.routingkey;
+        q.exchange = options.exchange;
+
         let m: Message = Message.fromcommand("queuemessage");
         if (Util.IsNullEmpty(q.correlationId)) { q.correlationId = m.id; }
         m.data = JSON.stringify(q);

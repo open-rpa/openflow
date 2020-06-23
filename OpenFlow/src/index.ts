@@ -18,7 +18,7 @@ import { Auth } from "./Auth";
 import { Role } from "./Role";
 import { Config } from "./Config";
 import { KubeUtil } from "./KubeUtil";
-import { amqpwrapper } from "./amqpwrapper";
+import { amqpwrapper, QueueMessageOptions } from "./amqpwrapper";
 
 const logger: winston.Logger = Logger.configure();
 Config.db = new DatabaseConnection(logger, Config.mongodb_url, Config.mongodb_db);
@@ -32,40 +32,42 @@ async function initamqp() {
     amqpwrapper.SetTestInstance(testamqp);
     await testamqp.connect();
 
-    // await amqp.AddExchangeConsumer("testexchange", "fanout", "", null, (msg: any, ack: any, correlationId: string, replyTo: string, done: any) => {
-    //     console.log("testexchange: " + msg);
-    //     ack();
-    //     done(msg + " hi from testexchange");
-    // });
-    // await amqp.AddQueueConsumer("testqueue", null, (msg: any, ack: any, correlationId: string, replyTo: string, done: any) => {
-    //     console.log("testqueue: " + msg);
-    //     ack();
-    //     done(msg + " hi from testqueue.1");
-    // });
-    // await amqp.AddQueueConsumer("testqueue", null, (msg: any, ack: any, correlationId: string, replyTo: string, done: any) => {
-    //     console.log("tempqueue: " + msg);
-    //     ack();
-    //     done(msg + " hi from testqueue.2");
-    // });
-    // doitagain();
+    await amqp.AddExchangeConsumer("testexchange", "fanout", "", null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+        console.log("testexchange: " + msg);
+        ack();
+        done(msg + " hi from testexchange");
+    });
+    await amqp.AddQueueConsumer("testqueue", null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+        console.log("testqueue: " + msg);
+        ack();
+        done(msg + " hi from testqueue.1");
+    });
+    await amqp.AddQueueConsumer("testqueue", null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+        console.log("tempqueue: " + msg);
+        ack();
+        done(msg + " hi from testqueue.2");
+    });
+    doitagain();
 }
-// var flipper: boolean = false;
-// async function doitagain() {
-//     try {
-//         flipper = !flipper;
-//         if (flipper) {
-//             console.log(await amqpwrapper.Instance().sendWithReply("", "testqueue", "Hi mom", 2000));
-//         } else {
-//             // console.log(await amqpwrapper.Instance().sendWithReply("", "testqueue2", "Hi mom", 2000));
-//             console.log(await amqpwrapper.Instance().sendWithReply("testexchange", "", "Hi mom", 2000));
-//         }
-//     } catch (error) {
-//         console.log(error);
-//     }
-//     setTimeout(() => {
-//         doitagain()
-//     }, 5000);
-// }
+var flipper: boolean = false;
+async function doitagain() {
+    try {
+        flipper = !flipper;
+        console.log("***************************");
+        if (flipper) {
+            console.log(await amqpwrapper.Instance().sendWithReply("", "testqueue", "Hi mom", 20000, ""));
+        } else {
+            // console.log(await amqpwrapper.Instance().sendWithReply("", "testqueue2", "Hi mom", 2000));
+            console.log(await amqpwrapper.Instance().sendWithReply("testexchange", "", "Hi mom", 20000, ""));
+        }
+        console.log("***************************");
+    } catch (error) {
+        console.log(error);
+    }
+    setTimeout(() => {
+        doitagain()
+    }, 5000);
+}
 
 
 initamqp();

@@ -3,11 +3,17 @@ import * as amqplib from "amqplib";
 import { Util } from "./Util";
 import { Config } from "./Config";
 
-type QueueOnMessage = (msg: string, ack: any, correlationId: string, replyTo: string, done: any) => void;
+type QueueOnMessage = (msg: string, options: QueueMessageOptions, ack: any, done: any) => void;
 interface IHashTable<T> {
     [key: string]: T;
 }
-
+export type QueueMessageOptions = {
+    correlationId: string,
+    replyTo: string,
+    consumerTag: string,
+    routingkey: string,
+    exchange: string
+}
 type AssertQueue = {
     consumerCount: number;
     messageCount: number;
@@ -125,11 +131,11 @@ export class amqpwrapper {
         if (!Util.IsNullEmpty(this.replyqueue)) {
             delete this.queues[this.replyqueue];
         }
-        this.replyqueue = await this.AddQueueConsumer("", null, (msg: any, ack: any, correlationId: string, replyTo: string, done: any) => {
-            if (!Util.IsNullUndefinded(this.activecalls[correlationId])) {
-                this.activecalls[correlationId].resolve(msg);
-                this.activecalls[correlationId] = null;
-                delete this.activecalls[correlationId];
+        this.replyqueue = await this.AddQueueConsumer("", null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+            if (!Util.IsNullUndefinded(this.activecalls[options.correlationId])) {
+                this.activecalls[options.correlationId].resolve(msg);
+                this.activecalls[options.correlationId] = null;
+                delete this.activecalls[options.correlationId];
             }
             ack();
             done();
@@ -227,7 +233,18 @@ export class amqpwrapper {
         // sender._logger.info("OnMessage " + msg.content.toString());
         var correlationId: string = msg.properties.correlationId;
         var replyTo: string = msg.properties.replyTo;
-        callback(msg.content.toString(), (nack: boolean) => {
+        var consumerTag: string = msg.fields.consumerTag;
+        var routingkey: string = msg.fields.routingkey;
+        var exchange: string = msg.fields.exchange;
+        var options: QueueMessageOptions = {
+            correlationId: correlationId,
+            replyTo: replyTo,
+            consumerTag: consumerTag,
+            routingkey: routingkey,
+            exchange: exchange
+        }
+        var data: string = msg.content.toString();
+        callback(data, options, (nack: boolean) => {
             if (nack == false) {
                 console.log("nack message");
                 this.channel.nack(msg);
@@ -236,7 +253,7 @@ export class amqpwrapper {
                 return;
             }
             this.channel.ack(msg);
-        }, correlationId, replyTo, (result) => {
+        }, (result) => {
             if (msg != null && !Util.IsNullEmpty(replyTo)) {
                 try {
                     this.channel.sendToQueue(replyTo, Buffer.from(result), { correlationId: msg.properties.correlationId });
@@ -247,7 +264,7 @@ export class amqpwrapper {
         });
     }
     async sendWithReply(exchange: string, queue: string, data: any, expiration: number, correlationId: string): Promise<string> {
-        if (!Util.IsNullEmpty(correlationId)) correlationId = this.generateUuid();
+        if (Util.IsNullEmpty(correlationId)) correlationId = this.generateUuid();
         this.activecalls[correlationId] = new Deferred();
         await this.sendWithReplyTo(exchange, queue, this.replyqueue, data, expiration, correlationId);
         return this.activecalls[correlationId].promise;
