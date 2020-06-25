@@ -27,7 +27,10 @@ export class Config {
 
     public static api_ws_url: string = Config.getEnv("api_ws_url", "ws://localhost:3000");
     public static amqp_url: string = Config.getEnv("amqp_url", "amqp://localhost");
-    public static deadLetterExchange: string = Config.getEnv("deadletterexchange", "openflow-dlx");  // queue used to handle messages, that was not picked up.
+    // public static amqp_reply_expiration: number = parseInt(Config.getEnv("amqp_reply_expiration", (60 * 1000).toString())); // 1 min
+    // public static amqp_workflow_out_expiration: number = parseInt(Config.getEnv("amqp_workflow_out_expiration", (60 * 1000).toString())); // 1 min
+    public static amqp_reply_expiration: number = parseInt(Config.getEnv("amqp_reply_expiration", "10000")); // 10 seconds
+    public static amqp_workflow_out_expiration: number = parseInt(Config.getEnv("amqp_workflow_out_expiration", "10000")); // 10 seconds
 
     public static api_credential_cache_seconds: number = parseInt(Config.getEnv("api_credential_cache_seconds", "300"));
     public static api_allow_anonymous: boolean = Config.parseBoolean(Config.getEnv("api_allow_anonymous", "false"));
@@ -121,7 +124,7 @@ export class Config {
                 require('https').globalAgent.options.ca = rootCas;
             }
         } catch (error) {
-            console.log(error);
+            console.error(error);
         }
 
         // if anything throws, we retry

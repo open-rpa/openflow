@@ -23,7 +23,7 @@ module openflow {
         public user: TokenUser;
         public messages: string;
         public queuename: string = "";
-        public timeout: string = "2000";
+        public timeout: string = (60 * 1000).toString(); // 1 min;
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -1778,6 +1778,7 @@ module openflow {
         public myid: string;
         public submitbutton: string;
         public queuename: string;
+        public queue_message_timeout: number = (60 * 1000); // 1 min
 
         constructor(
             public $scope: ng.IScope,
@@ -1806,6 +1807,20 @@ module openflow {
                     console.error("missing id");
                 }
             });
+            $scope.$on('queuemessage', (event, data: QueueMessage) => {
+                if (event && data) { }
+                console.debug(data);
+                if (data.queuename == this.queuename) {
+                    if (this.instanceid == null && data.data._id != null) {
+                        this.instanceid = data.data._id;
+                        this.$location.path("/Form/" + this.id + "/" + this.instanceid);
+                        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                        return;
+                    }
+                }
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            });
+
         }
         async loadData(): Promise<void> {
             this.loading = true;
@@ -1857,17 +1872,17 @@ module openflow {
         }
         async SendOne(queuename: string, message: any): Promise<void> {
             // console.debug("SendOne: queuename " + queuename + " / " + this.myid);
-            var result: any = await this.api.QueueMessage(queuename, this.queuename, message, -1);
+            var result: any = await this.api.QueueMessage(queuename, this.queuename, message, this.queue_message_timeout);
             try {
                 result = JSON.parse(result);
             } catch (error) {
             }
             // console.debug(result);
-            if ((this.instanceid === undefined || this.instanceid === null) && (result !== null && result !== unescape)) {
-                this.instanceid = result._id;
-                this.$location.path("/Form/" + this.id + "/" + this.instanceid);
-                if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            }
+            // if ((this.instanceid === undefined || this.instanceid === null) && (result !== null && result !== unescape)) {
+            //     this.instanceid = result._id;
+            //     this.$location.path("/Form/" + this.id + "/" + this.instanceid);
+            //     if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            // }
         }
         async Save() {
             if (this.form !== null && this.form !== undefined && this.form.fbeditor === true) {
@@ -2585,7 +2600,6 @@ module openflow {
             modal.modal()
             // var delta = jsondiffpatch.diff(this.model, model.item);
             if (model.item == null) {
-                console.log("loading " + model._id);
                 var items = await this.api.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby);
                 if (items.length > 0) {
                     model.item = items[0].item;
@@ -2604,7 +2618,6 @@ module openflow {
         }
         async CompareThen(model) {
             if (model.item == null || model.delta == null) {
-                console.log("loading " + model._id);
                 var items = await this.api.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby);
                 if (items.length > 0) {
                     model.item = items[0].item;
@@ -2617,7 +2630,6 @@ module openflow {
         }
         async RevertTo(model) {
             if (model.item == null) {
-                console.log("loading " + model._id);
                 var items = await this.api.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby);
                 if (items.length > 0) {
                     model.item = items[0].item;
@@ -2626,11 +2638,7 @@ module openflow {
             }
             let result = window.confirm("Overwrite current version with version " + model._version + "?");
             if (result) {
-                console.log(this.collection + " " + this.id, model.item);
                 jsondiffpatch.patch(model.item, model.delta);
-                console.log(this.collection + " " + this.id, model.item);
-
-
                 model.item._id = this.id;
                 await this.api.Update(this.collection, model.item);
                 this.loadData();
@@ -3345,7 +3353,6 @@ module openflow {
                 if (this.stripe_customer && this.stripe_customer) {
                     try {
                         this.nextbill = (await this.api.Stripe<stripe_invoice>("GET", "invoices_upcoming", this.stripe_customer.id, null, null) as any);
-                        console.log(this.nextbill);
                         this.nextbill.dtperiod_start = new Date(this.nextbill.period_start * 1000);
                         this.nextbill.dtperiod_end = new Date(this.nextbill.period_end * 1000);
                     } catch (error) {

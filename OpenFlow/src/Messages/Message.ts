@@ -239,17 +239,17 @@ export class Message {
                 if (typeof msg.data == 'string') {
                     try {
                         var obj = JSON.parse(msg.data);
-                        if (Util.IsNullUndefinded(obj.jwt)) {
-                            obj.jwt = msg.jwt;
-                            msg.data = JSON.stringify(obj);
-                        }
+                        // if (Util.IsNullUndefinded(obj.jwt)) {
+                        //     obj.jwt = msg.jwt;
+                        //     msg.data = JSON.stringify(obj);
+                        // }
                     } catch (error) {
                     }
                 } else {
                     msg.data.jwt = msg.jwt;
                 }
             }
-            var expiration: number = -1;
+            var expiration: number = Config.amqp_default_expiration;
             if (typeof msg.expiration == 'number') expiration = msg.expiration;
             if (Util.IsNullEmpty(msg.replyto)) {
                 // var sendthis = { data: msg.data, jwt: cli.jwt, user: cli.user };
@@ -1154,14 +1154,13 @@ export class Message {
                                     cli._logger.debug("[" + cli.user.username + "] Remove un billed nodered instance " + itemname + " that has been running for " + diffhours + " hours");
                                     await this._DeleteNoderedInstance(userid, cli.user._id, cli.user.username, rootjwt);
                                 }
-                                // console.log(itemname + " " + diffminutes + " min / " + diffhours + " hours");
                             } catch (error) {
                             }
                         } else if (image.indexOf("openflownodered") > 0) {
                             if (billed != "true" && diffhours > 24) {
-                                console.log("unbilled " + itemname + " with no userid, should be removed, it has been running for " + diffhours + " hours");
+                                console.debug("unbilled " + itemname + " with no userid, should be removed, it has been running for " + diffhours + " hours");
                             } else {
-                                console.log("unbilled " + itemname + " with no userid, has been running for " + diffhours + " hours");
+                                console.debug("unbilled " + itemname + " with no userid, has been running for " + diffhours + " hours");
                             }
                         }
                     }
@@ -1525,7 +1524,7 @@ export class Message {
 
             if (msg.initialrun) {
                 var message = { _id: res2._id };
-                amqpwrapper.Instance().sendWithReplyTo("", msg.queue, msg.resultqueue, message, (60 * (60 * 1000)), msg.correlationId);
+                amqpwrapper.Instance().sendWithReplyTo("", msg.queue, msg.resultqueue, message, Config.amqp_default_expiration, msg.correlationId);
                 // cli.consumers[0].sendToQueueWithReply(msg.queue, msg.resultqueue, msg.correlationId, message, (60 * (60 * 1000))); // 1 hour
             }
         } catch (error) {

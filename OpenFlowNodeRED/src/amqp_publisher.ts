@@ -49,7 +49,7 @@ export class amqp_publisher {
             this.conn.on("error", this.onerror.bind(this));
             this.channel = await this.conn.createChannel();
             if (NoderedUtil.IsNullEmpty(this.localqueuename)) {
-                this._ok = await this.channel.assertQueue(this.localqueuename, { exclusive: true });
+                this._ok = await this.channel.assertQueue(this.localqueuename, { autoDelete: true });
             } else {
                 this._ok = await this.channel.assertQueue(this.localqueuename, { autoDelete: true });
             }
@@ -163,7 +163,7 @@ export class amqp_rpc_publisher {
             this.conn = await amqplib.connect(this.connectionstring + "?heartbeat=60");
             this.conn.on("error", this.onerror.bind(this));
             this.channel = await this.conn.createChannel();
-            this._ok = await this.channel.assertQueue("", { exclusive: true });
+            this._ok = await this.channel.assertQueue("", { autoDelete: true });
             await this.channel.consume(this._ok.queue, (msg) => { this.OnMessage(me, msg); }, { noAck: true });
             this._logger.info("Connected to " + new URL(this.connectionstring).hostname);
             this.conn.on("close", this.onclose.bind(this));

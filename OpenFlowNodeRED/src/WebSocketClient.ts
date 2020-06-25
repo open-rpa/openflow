@@ -109,7 +109,9 @@ export class WebSocketClient {
     public async Send<T>(message: Message): Promise<T> {
         return new Promise<T>(async (resolve, reject) => {
             this._Send(message, ((msg) => {
-                if (msg.error !== null && msg.error !== undefined) { return reject(msg.error); }
+                if (msg.error !== null && msg.error !== undefined) {
+                    return reject(msg.error);
+                }
                 resolve(msg);
             }).bind(this));
         });

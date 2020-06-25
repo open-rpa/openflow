@@ -147,13 +147,11 @@ export class noderedcontribopenflowstorage {
                         _encrypt: ["credentials"]
                     };
                     var subresult = await NoderedUtil.InsertOne("nodered", item, 1, true, null);
-                    console.log(subresult);
                 } else {
                     var item: any = result[0];
                     item.credentials = credentials;
                     item.credentialsarray = credentialsarray;
                     var subresult = await NoderedUtil._UpdateOne("nodered", null, item, 1, true, null);
-                    console.log(subresult);
                 }
         } catch (error) {
             if (error.message) { this._logger.error(error.message); }

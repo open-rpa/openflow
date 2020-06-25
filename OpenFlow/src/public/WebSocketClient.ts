@@ -58,24 +58,16 @@ module openflow {
             this.init();
         }
         onbackbutton() {
-            console.log("Handle the onbackbutton event");
         }
-
         onPause() {
-            console.log("Handle the pause event");
         }
-
         onResume() {
-            console.log("Handle the resume event");
         }
-
         onMenuKeyDown() {
-            console.log("Handle the menubutton event");
         }
         getids(oneSignal: any): Promise<string> {
             return new Promise<string>(async (resolve, reject) => {
                 oneSignal.getIds(function (ids) {
-                    console.log("oneSignal.getIds: " + ids.userId);
                     resolve(ids.userId);
                 });
             });
@@ -93,7 +85,7 @@ module openflow {
                         speed: position.coords.speed,
                         timestamp: position.coords.timestamp
                     }
-                    console.log('Latitude: ' + result.latitude + '\n' +
+                    console.debug('Latitude: ' + result.latitude + '\n' +
                         'Longitude: ' + result.longitude + '\n' +
                         'Altitude: ' + result.altitude + '\n' +
                         'Accuracy: ' + result.accuracy + '\n' +
@@ -118,10 +110,8 @@ module openflow {
                 };
                 try {
                     if (navigator && navigator.geolocation) {
-                        console.log("getCurrentPosition");
                         navigator.geolocation.getCurrentPosition(onSuccess, onError, options);
                     } else {
-                        console.log("geolocation not installed");
                         reject(new Error("geolocation not installed!"));
                     }
                 } catch (error) {
@@ -160,10 +150,8 @@ module openflow {
             if (this.usingCordova == true) return;
             try {
                 if (cordova !== undefined) {
-                    console.log("Found cordova");
                     this.usingCordova = true;
                     document.addEventListener("deviceready", async () => {
-                        console.log("deviceready");
                         if ((window as any).plugins) {
                             this.plugins = (window as any).plugins;
                             var oneSignal = (window as any).plugins.OneSignal;
@@ -185,13 +173,12 @@ module openflow {
                                         handleNotificationReceived(this.notificationReceivedCallback).
                                         endInit();
                                     this.oneSignalId = await this.getids(oneSignal);
-                                    console.log("oneSignalId: " + this.oneSignalId);
 
                                 } catch (error) {
                                     console.error(error);
                                 }
                             } else {
-                                console.log("Missing oneSignal plugin");
+                                console.debug("Missing oneSignal plugin");
                             }
                         }
                         try {
@@ -254,7 +241,7 @@ module openflow {
                 parser.host;     // => "example.com:3000"
                 if (location.protocol == 'https:' && parser.protocol == "ws:") {
                     data.wshost = "wss://" + parser.hostname;
-                    console.log("new wshost: " + data.wshost);
+                    console.debug("new wshost: " + data.wshost);
                     if (parser.port != "80") {
                         data.wshost = "wss://" + parser.hostname + parser.port;
                     }
@@ -283,47 +270,39 @@ module openflow {
             });
         }
         notificationOpenedCallback(notification) {
-            console.log("notificationOpenedCallback");
             var state = notification.notification;
             console.debug(JSON.stringify(state));
             try {
                 //if (state.isAppInFocus) {
                 if (state.payload.additionalData.URL != undefined && state.payload.additionalData.URL != null && state.payload.additionalData.URL != "") {
-                    console.log("set window.location.href:" + state.payload.additionalData.URL);
                     window.location.href = state.payload.additionalData.URL;
                 }
                 if (state.payload.additionalData.customurl != undefined && state.payload.additionalData.customurl != null && state.payload.additionalData.customurl != "") {
-                    console.log("set window.location.href:" + state.payload.additionalData.customurl);
                     window.location.href = state.payload.additionalData.customurl;
                 }
                 return;
                 //}
                 // {"isAppInFocus":true,"shown":true,"androidNotificationId":-1616162934,"displayType":0,"payload":{"notificationID":"aee1f7a2-2108-489d-a401-86dba6a1ad99","body":"Android 2019-06-02T20:58:25.876Z","additionalData":{"URL":"https://aiotdev-frontend.openrpa.dk/#/Alert/5cf25ad801530ae6396519b8"},"launchURL":"https://aiotdev-frontend.openrpa.dk/#/Alert/5cf25ad801530ae6396519b8","lockScreenVisibility":1,"fromProjectNumber":"906036108091","priority":0,"rawPayload":"{\"google.delivered_priority\":\"normal\",\"google.sent_time\":1559509106669,\"google.ttl\":259200,\"google.original_priority\":\"normal\",\"custom\":\"{\\\"a\\\":{\\\"URL\\\":\\\"https:\\\\\\/\\\\\\/aiotdev-frontend.openrpa.dk\\\\\\/#\\\\\\/Alert\\\\\\/5cf25ad801530ae6396519b8\\\"},\\\"u\\\":\\\"https:\\\\\\/\\\\\\/aiotdev-frontend.openrpa.dk\\\\\\/#\\\\\\/Alert\\\\\\/5cf25ad801530ae6396519b8\\\",\\\"i\\\":\\\"aee1f7a2-2108-489d-a401-86dba6a1ad99\\\"}\",\"from\":\"906036108091\",\"alert\":\"Android 2019-06-02T20:58:25.876Z\",\"google.message_id\":\"0:1559509106674108%6c875f80f9fd7ecd\",\"notificationId\":-1616162934}"}}
-                //console.log(state);
             } catch (error) {
-                console.log(error);
+                console.error(error);
             }
 
         }
         notificationReceivedCallback(state) {
-            // console.log("notificationReceivedCallback");
             // console.debug(JSON.stringify(state));
             // try {
             //     //if (state.isAppInFocus) {
             //     if (state.payload.additionalData.URL != undefined && state.payload.additionalData.URL != null && state.payload.additionalData.URL != "") {
-            //         console.log("set window.location.href:" + state.payload.additionalData.URL);
             //         window.location.href = state.payload.additionalData.URL;
             //     }
             //     if (state.payload.additionalData.customurl != undefined && state.payload.additionalData.customurl != null && state.payload.additionalData.customurl != "") {
-            //         console.log("set window.location.href:" + state.payload.additionalData.customurl);
             //         window.location.href = state.payload.additionalData.customurl;
             //     }
             //     return;
             //     //}
             //     // {"isAppInFocus":true,"shown":true,"androidNotificationId":-1616162934,"displayType":0,"payload":{"notificationID":"aee1f7a2-2108-489d-a401-86dba6a1ad99","body":"Android 2019-06-02T20:58:25.876Z","additionalData":{"URL":"https://aiotdev-frontend.openrpa.dk/#/Alert/5cf25ad801530ae6396519b8"},"launchURL":"https://aiotdev-frontend.openrpa.dk/#/Alert/5cf25ad801530ae6396519b8","lockScreenVisibility":1,"fromProjectNumber":"906036108091","priority":0,"rawPayload":"{\"google.delivered_priority\":\"normal\",\"google.sent_time\":1559509106669,\"google.ttl\":259200,\"google.original_priority\":\"normal\",\"custom\":\"{\\\"a\\\":{\\\"URL\\\":\\\"https:\\\\\\/\\\\\\/aiotdev-frontend.openrpa.dk\\\\\\/#\\\\\\/Alert\\\\\\/5cf25ad801530ae6396519b8\\\"},\\\"u\\\":\\\"https:\\\\\\/\\\\\\/aiotdev-frontend.openrpa.dk\\\\\\/#\\\\\\/Alert\\\\\\/5cf25ad801530ae6396519b8\\\",\\\"i\\\":\\\"aee1f7a2-2108-489d-a401-86dba6a1ad99\\\"}\",\"from\":\"906036108091\",\"alert\":\"Android 2019-06-02T20:58:25.876Z\",\"google.message_id\":\"0:1559509106674108%6c875f80f9fd7ecd\",\"notificationId\":-1616162934}"}}
-            //     //console.log(state);
             // } catch (error) {
-            //     console.log(error);
+            //     console.error(error);
             // }
         }
         public connect(): void {
@@ -448,9 +427,7 @@ module openflow {
                     }
                     this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
                 } else {
-                    // console.log(msgs.length + " out of " + first.count);
                     var qm: QueuedMessage = this.messageQueue[first.replyto];
-                    // console.log(first);
                     if (qm != null && qm != undefined) {
                         if (qm.status != null && qm.status != undefined) {
                             qm.status(first, msgs.length, first.count);

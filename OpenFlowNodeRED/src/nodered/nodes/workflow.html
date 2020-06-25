@@ -118,8 +118,8 @@ If you have buttons on the form, you can get the name of the button clicked in m
                 });
                 $('#node-input-form-select').val($('#node-input-form').val());
             }).error(function (jqXHR, textStatus, errorThrown) {
-                console.log("error " + textStatus);
-                console.log("incoming Text " + jqXHR.responseText);
+                console.error("error " + textStatus);
+                console.error("incoming Text " + jqXHR.responseText);
                 alert("error:" + jqXHR.responseText);
             });
         },
@@ -248,8 +248,8 @@ If you have buttons on the form, you can get the name of the button clicked in m
                     //     $('#node-input-targetid-select').val($('#node-input-targetid').val());
                     // }
                 }).error(function (jqXHR, textStatus, errorThrown) {
-                    console.log("error " + textStatus);
-                    console.log("incoming Text " + jqXHR.responseText);
+                    console.error("error " + textStatus);
+                    console.error("incoming Text " + jqXHR.responseText);
                     alert("error:" + jqXHR.responseText);
                 });
             }
@@ -285,8 +285,8 @@ If you have buttons on the form, you can get the name of the button clicked in m
                     //     $('#node-input-workflowid-select').val($('#node-input-workflowid').val());
                     // }
                 }).error(function (jqXHR, textStatus, errorThrown) {
-                    console.log("error " + textStatus);
-                    console.log("incoming Text " + jqXHR.responseText);
+                    console.error("error " + textStatus);
+                    console.error("incoming Text " + jqXHR.responseText);
                     alert("error:" + jqXHR.responseText);
                 });
             }

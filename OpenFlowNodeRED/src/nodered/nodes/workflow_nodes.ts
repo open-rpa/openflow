@@ -2,13 +2,10 @@ import * as RED from "node-red";
 import { Red } from "node-red";
 import { NoderedUtil } from "./NoderedUtil";
 import { Logger } from "../../Logger";
-import { amqp_consumer } from "../../amqp_consumer";
-import { amqp_publisher } from "../../amqp_publisher";
 import { Config } from "../../Config";
-import { inherits } from "util";
 import { Base } from "../../Base";
 import { WebSocketClient } from "../../WebSocketClient";
-import { Rolemember, Role } from "../../Message";
+import { Rolemember, Role, QueueMessage } from "../../Message";
 
 export interface Iworkflow_in_node {
     queue: string;
@@ -19,7 +16,6 @@ export interface Iworkflow_in_node {
 export class workflow_in_node {
     public node: Red = null;
     public name: string = "";
-    public con: amqp_consumer;
     public host: string = null;
     public workflow: any;
     constructor(public config: Iworkflow_in_node) {
@@ -28,6 +24,17 @@ export class workflow_in_node {
             this.node = this;
             this.node.on("close", this.onclose);
             this.host = Config.amqp_url;
+
+            // WebSocketClient.instance.events.on("onopen", () => {
+            //     this.connect();
+            // });
+            WebSocketClient.instance.events.on("onsignedin", () => {
+                this.connect();
+            });
+            WebSocketClient.instance.events.on("onclose", (message) => {
+                this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
+                this.onclose();
+            });
             this.connect();
         } catch (error) {
             NoderedUtil.HandleError(this, error);
@@ -47,9 +54,10 @@ export class workflow_in_node {
             if (!NoderedUtil.IsNullUndefinded(Config.queue_prefix)) {
                 queue = Config.queue_prefix + this.config.queue;
             }
-            this.con = new amqp_consumer(Logger.instanse, this.host, queue);
-            this.con.OnMessage = this.OnMessage.bind(this);
-            await this.con.connect(false);
+
+            await NoderedUtil.RegisterQueue(queue, (msg: QueueMessage, ack: any) => {
+                this.OnMessage(msg, ack);
+            });
             this.node.status({ fill: "green", shape: "dot", text: "Connected" });
         } catch (error) {
             NoderedUtil.HandleError(this, error);
@@ -86,9 +94,7 @@ export class workflow_in_node {
                     this.workflow = wf;
                 }
             }
-
         }
-
         var res = await NoderedUtil.Query("users", { "_type": "role", "$or": [{ "workflowid": this.workflow._id }, { "name": queue + "users" }] }, null, null, 1, 0, null);
         var role: Base = null;
         if (res.length == 0) {
@@ -134,24 +140,25 @@ export class workflow_in_node {
         }
         return target;
     }
-    async OnMessage(msg: any, ack: any) {
+    async OnMessage(msg: QueueMessage, ack: any) {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Processing" });
-
-            var data = JSON.parse(msg.content.toString());
+            var data: any = msg.data;
+            try {
+                data = JSON.parse(msg.data);
+            } catch (error) {
+                data = msg.data;
+            }
             try {
                 data.payload = JSON.parse(data.payload);
             } catch (error) {
             }
-
             var _id = data._id;
             if (_id === null || _id === undefined || _id === "") {
                 if (data.payload !== null && data.payload !== undefined) {
                     if (data.payload._id !== null && data.payload._id !== undefined && data.payload._id !== "") _id = data.payload._id;
                 }
             }
-
-            console.log(data);
             if (_id !== null && _id !== undefined && _id !== "") {
                 this.node.status({ fill: "blue", shape: "dot", text: "Processing id " + _id });
                 var jwt = data.jwt;
@@ -160,7 +167,7 @@ export class workflow_in_node {
                 var res = await NoderedUtil.Query("workflow_instances", { "_id": _id }, null, null, 1, 0, jwt);
                 if (res.length == 0) {
                     NoderedUtil.HandleError(this, "Unknown workflow_instances id " + _id);
-                    if (ack !== null && ack !== undefined) ack();
+                    if (ack !== null && ack !== undefined) ack(false, "Unknown workflow_instances id " + _id);
                     return;
                 }
                 var orgmsg = res[0];
@@ -177,7 +184,6 @@ export class workflow_in_node {
                     data = orgmsg;
                 }
                 data.jwt = jwt;
-                // console.log(data.payload);
                 // data = Object.assign(res[0], { payload: data });
                 // Logger.instanse.info("workflow in activated id " + data._id);
                 // result.name = res[0].name;
@@ -213,6 +219,8 @@ export class workflow_in_node {
                 }
                 // delete data.jwt;                
                 var item: Base = ({ _type: "instance", "queue": queue, "name": this.workflow.name, payload: data, workflow: this.workflow._id, targetid: who._id }) as any;
+                (item as any)._replyTo = msg.replyto;
+                (item as any)._correlationId = msg.correlationId;
                 item = Base.assign(item);
                 item.addRight(who._id, who.name, [-1]);
                 if (who._id != me._id) item.addRight(me._id, me.name, [-1]);
@@ -240,8 +248,8 @@ export class workflow_in_node {
             // result.values = data.values;
             // result.jwt = data.jwt;
             data.amqpacknowledgment = ack;
-            data._replyTo = msg.properties.replyTo;
-            data._correlationId = msg.properties.correlationId;
+            data._replyTo = msg.replyto;
+            data._correlationId = msg.correlationId;
 
             this.node.send(data);
             // this.node.send(result);
@@ -252,27 +260,18 @@ export class workflow_in_node {
 
                 var data: any = {};
                 data.error = error;
-                data.payload = msg.payload;
+                data.payload = msg.data;
                 data.jwt = msg.jwt;
                 if (data.payload === null || data.payload === undefined) {
                     data.payload = {};
                 }
-                ack(JSON.stringify(data));
+                ack(false, JSON.stringify(data));
             } catch (error) {
                 Logger.instanse.error(error);
             }
         }
     }
     onclose() {
-        if (!NoderedUtil.IsNullUndefinded(this.con)) {
-            try {
-                this.con.close().catch((error) => {
-                    Logger.instanse.error(error);
-                });
-            } catch (error) {
-                Logger.instanse.error(error);
-            }
-        }
     }
 }
 
@@ -286,7 +285,6 @@ export class workflow_out_node {
     public node: Red = null;
     public name: string = "";
     public host: string = "";
-    public con: amqp_publisher;
     constructor(public config: Iworkflow_out_node) {
         RED.nodes.createNode(this, config);
         this.node = this;
@@ -294,24 +292,7 @@ export class workflow_out_node {
         this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
-        this.connect();
     }
-    generateUuid(): string {
-        return Math.random().toString() +
-            Math.random().toString() +
-            Math.random().toString();
-    }
-    async connect() {
-        try {
-            this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
-            this.con = new amqp_publisher(Logger.instanse, this.host, this.generateUuid());
-            await this.con.connect();
-            this.node.status({ fill: "green", shape: "dot", text: "Connected" });
-        } catch (error) {
-            NoderedUtil.HandleError(this, error);
-        }
-    }
-
     async oninput(msg: any) {
         try {
             this.node.status({});
@@ -343,13 +324,14 @@ export class workflow_out_node {
                     expiration = msg.expiration;
                 }
 
-                this.con.SendMessage(JSON.stringify(data), msg.resultqueue, msg.correlationId, false);
+                await NoderedUtil.QueueMessage(msg.resultqueue, null, data, msg.correlationId, Config.amqp_workflow_out_expiration);
+                // this.con.SendMessage(JSON.stringify(data), msg.resultqueue, msg.correlationId, false);
             }
         } catch (error) {
             NoderedUtil.HandleError(this, error);
         }
         try {
-            if (!NoderedUtil.IsNullEmpty(msg._replyTo)) {
+            if (!NoderedUtil.IsNullEmpty(msg._replyTo) && NoderedUtil.IsNullEmpty(msg.resultqueue)) {
                 if (msg.payload === null || msg.payload === undefined) { msg.payload == {}; }
                 var data: any = {};
                 data.state = msg.state;
@@ -367,7 +349,8 @@ export class workflow_out_node {
                 if (typeof msg.expiration == 'number') {
                     expiration = msg.expiration;
                 }
-                this.con.SendMessage(JSON.stringify(data), msg._replyTo, msg._correlationId, false);
+                await NoderedUtil.QueueMessage(msg._replyTo, null, data, msg.correlationId, Config.amqp_workflow_out_expiration);
+                //this.con.SendMessage(JSON.stringify(data), msg._replyTo, msg._correlationId, false);
             }
         } catch (error) {
             NoderedUtil.HandleError(this, error);
@@ -387,7 +370,7 @@ export class workflow_out_node {
                 data.payload = msg.payload;
                 data.values = msg.values;
                 data.jwt = msg.jwt;
-                msg.amqpacknowledgment(JSON.stringify(data));
+                msg.amqpacknowledgment(true, JSON.stringify(data));
             }
         } catch (error) {
             NoderedUtil.HandleError(this, error);
@@ -397,15 +380,6 @@ export class workflow_out_node {
         this.node.status({});
     }
     onclose() {
-        if (!NoderedUtil.IsNullUndefinded(this.con)) {
-            try {
-                this.con.close().catch((error) => {
-                    Logger.instanse.error(error);
-                });
-            } catch (error) {
-                Logger.instanse.error(error);
-            }
-        }
     }
 }
 
@@ -464,7 +438,6 @@ export class assign_workflow_node {
     public node: Red = null;
     public name: string = "";
     public host: string;
-    public con: amqp_consumer;
     constructor(public config: Iassign_workflow_node) {
         RED.nodes.createNode(this, config);
         this.node = this;
@@ -474,9 +447,19 @@ export class assign_workflow_node {
             return;
         }
         this.host = Config.amqp_url;
-        this.connect();
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
+        // WebSocketClient.instance.events.on("onopen", () => {
+        //     this.connect();
+        // });
+        WebSocketClient.instance.events.on("onsignedin", () => {
+            this.connect();
+        });
+        WebSocketClient.instance.events.on("onclose", (message) => {
+            this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
+            this.onclose();
+        });
+        this.connect();
     }
 
     async connect() {
@@ -487,10 +470,11 @@ export class assign_workflow_node {
                 queue = Config.queue_prefix + this.config.queue;
             }
 
-            this.con = new amqp_consumer(Logger.instanse, this.host, queue);
-            this.con.OnMessage = this.OnMessage.bind(this);
-            await this.con.connect(true);
+            await NoderedUtil.RegisterQueue(queue, (msg: QueueMessage, ack: any) => {
+                this.OnMessage(msg, ack);
+            });
             this.node.status({ fill: "green", shape: "dot", text: "Connected" });
+
 
 
             if (!NoderedUtil.IsNullUndefinded(this.config.targetid) && !NoderedUtil.IsNullUndefinded(this.config.workflowid)) {
@@ -512,9 +496,9 @@ export class assign_workflow_node {
     async OnMessage(msg: any, ack: any) {
         try {
             var result: any = {};
-            var data: any = null;
+            var data: any = msg.data;
             try {
-                data = JSON.parse(msg.content.toString());
+                data = JSON.parse(msg.data);
             } catch (error) {
 
             }
@@ -526,13 +510,12 @@ export class assign_workflow_node {
             // delete data.jwt;
             var _id = data._id;
             if (_id === null || _id === undefined || _id === "") {
-                if (data.payload !== null || data.payload !== undefined) {
+                if (data.payload !== null && data.payload !== undefined) {
                     if (data.payload._id !== null && data.payload._id !== undefined && data.payload._id !== "") _id = data.payload._id;
                 }
             }
             if (_id !== null && _id !== undefined && _id !== "") {
                 var res = await NoderedUtil.Query("workflow_instances", { "_id": _id }, { parentid: 1 }, null, 1, 0, data.jwt);
-                console.log("1: " + res.length);
                 if (res.length == 0) {
                     NoderedUtil.HandleError(this, "Unknown workflow_instances id " + _id);
                     if (ack !== null && ack !== undefined) ack();
@@ -542,7 +525,6 @@ export class assign_workflow_node {
                 var _parentid = res[0].parentid;
                 if (_parentid !== null && _parentid !== undefined && _parentid !== "") {
                     res = await NoderedUtil.Query("workflow_instances", { "_id": _parentid }, null, null, 1, 0, null);
-                    console.log("2: " + res.length);
                     if (res.length == 0) {
                         NoderedUtil.HandleError(this, "Unknown workflow_instances parentid " + _parentid);
                         if (ack !== null && ack !== undefined) ack();
@@ -613,7 +595,6 @@ export class assign_workflow_node {
             var who = WebSocketClient.instance.user;
             runnerinstance.addRight(who._id, who.name, [-1]);
 
-            // Logger.instanse.info("**************************************");
             var res3 = await NoderedUtil.InsertOne("workflow_instances", runnerinstance, 1, true, jwt);
             // Logger.instanse.info("created runner instance with id " + res3._id + " (" + res3.name + ")");
             msg._parentid = res3._id;
@@ -627,14 +608,5 @@ export class assign_workflow_node {
         }
     }
     onclose() {
-        if (!NoderedUtil.IsNullUndefinded(this.con)) {
-            try {
-                this.con.close().catch((error) => {
-                    Logger.instanse.error(error);
-                });
-            } catch (error) {
-                Logger.instanse.error(error);
-            }
-        }
     }
 }

@@ -1,5 +1,7 @@
 import { WebSocketClient, QueuedMessage } from "./WebSocketClient";
 import { Base } from "./Base";
+import { NoderedUtil } from "./nodered/nodes/NoderedUtil";
+import { Config } from "./Config";
 
 function isNumber(value: string | number): boolean {
     return ((value != null) && !isNaN(Number(value.toString())));
@@ -333,6 +335,40 @@ export class CreateWorkflowInstanceMessage {
 
 }
 
+
+export class RegisterQueueMessage {
+    public error: string;
+    public jwt: any;
+
+    public queuename: string;
+    static assign(o: any): RegisterQueueMessage {
+        if (typeof o === "string" || o instanceof String) {
+            return Object.assign(new RegisterQueueMessage(), JSON.parse(o.toString()));
+        }
+        return Object.assign(new RegisterQueueMessage(), o);
+    }
+}
+export class QueueMessage {
+    public error: string;
+    public jwt: any;
+
+    public correlationId: string;
+    public replyto: string;
+    public queuename: string;
+    public data: any;
+    public expiration: number;
+
+    public consumerTag: string;
+    public routingkey: string;
+    public exchange: string;
+    static assign(o: any): QueueMessage {
+        if (typeof o === "string" || o instanceof String) {
+            return Object.assign(new QueueMessage(), JSON.parse(o.toString()));
+        }
+        return Object.assign(new QueueMessage(), o);
+    }
+}
+
 export class JSONfn {
     public static stringify(obj) {
         return JSON.stringify(obj, function (key, value) {
@@ -388,6 +424,9 @@ export class Message {
                 case "refreshtoken":
                     this.RefreshToken(cli);
                     break;
+                case "queuemessage":
+                    this.QueueMessage(cli);
+                    break;
                 default:
                     console.error("Unknown command " + command);
                     this.UnknownCommand(cli);
@@ -398,16 +437,28 @@ export class Message {
         }
     }
     public async Send(cli: WebSocketClient): Promise<void> {
-        await cli.Send(this);
+        try {
+            await cli.Send(this);
+        } catch (error) {
+            throw error;
+        }
     }
     private async UnknownCommand(cli: WebSocketClient): Promise<void> {
         this.Reply("error");
         this.data = "Unknown command";
-        await this.Send(cli);
+        try {
+            await this.Send(cli);
+        } catch (error) {
+            throw error;
+        }
     }
     private async Ping(cli: WebSocketClient): Promise<void> {
         this.Reply("pong");
-        await this.Send(cli);
+        try {
+            await this.Send(cli);
+        } catch (error) {
+            throw error;
+        }
     }
     public Reply(command: string): void {
         this.command = command;
@@ -435,6 +486,55 @@ export class Message {
         if (qmsg !== undefined && qmsg !== null) {
             if (qmsg.cb !== undefined && qmsg.cb !== null) { qmsg.cb(msg); }
             delete cli.messageQueue[this.id];
+        }
+    }
+    private async QueueMessage(cli: WebSocketClient): Promise<void> {
+        this.Reply(this.command);
+        var handled: boolean = false;
+        var msg: QueueMessage = QueueMessage.assign(this.data);
+        if (!NoderedUtil.IsNullEmpty(msg.correlationId)) {
+            if (NoderedUtil.messageQueue[msg.correlationId] != null) {
+                NoderedUtil.messageQueue[msg.correlationId].callback(msg);
+                delete NoderedUtil.messageQueue[msg.correlationId];
+                handled = true;
+                try {
+                    await this.Send(cli);
+                } catch (error) {
+                    throw error;
+                }
+            }
+        }
+        if (!handled) {
+            if (!NoderedUtil.IsNullEmpty(msg.queuename)) {
+                if (NoderedUtil.messageQueuecb[msg.queuename] != null) {
+                    NoderedUtil.messageQueuecb[msg.queuename](msg, async (nack: boolean, result: any) => {
+                        if (nack == false) {
+                            this.Reply("error");
+                            this.data = "nack message";
+                            if (typeof result === 'string' || result instanceof String) {
+                                this.data = (result as any);
+                            }
+                        } else {
+
+                            if (this.command != "error" && !NoderedUtil.IsNullEmpty(msg.replyto)) {
+                                try {
+                                    await NoderedUtil.QueueMessage(msg.replyto, "", result, msg.correlationId, Config.amqp_reply_expiration);
+                                } catch (error) {
+                                    console.error("Error sending response to " + msg.replyto + " " + JSON.stringify(error))
+                                }
+                            }
+
+                            this.data = "";
+                        }
+                        try {
+                            await this.Send(cli);
+                        } catch (error) {
+                            throw error;
+                        }
+                    });
+                    handled = true;
+                }
+            }
         }
 
     }

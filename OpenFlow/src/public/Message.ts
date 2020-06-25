@@ -606,8 +606,14 @@ module openflow {
         private QueueMessage(cli: WebSocketClient): void {
             var msg: QueueMessage = QueueMessage.assign(this.data);
             msg.replyto = msg.correlationId;
-            cli.$rootScope.$broadcast("queuemessage", msg);
-            this.Reply("queuemessage");
+            try {
+                cli.$rootScope.$broadcast("queuemessage", msg);
+                this.Reply("queuemessage");
+            } catch (error) {
+                console.debug(error);
+                this.Reply("error");
+                this.data = JSON.stringify(error);
+            }
             this.Send(cli);
         }
 

@@ -48,8 +48,8 @@ Active everytime a trigger gets triggered on a robot
                 });
                 $('#node-input-queue-select').val($('#node-input-queue').val());
             }).error(function (jqXHR, textStatus, errorThrown) {
-                console.log("error " + textStatus);
-                console.log("incoming Text " + jqXHR.responseText);
+                console.error("error " + textStatus);
+                console.error("incoming Text " + jqXHR.responseText);
                 alert("error:" + jqXHR.responseText);
             });
         },
@@ -131,8 +131,8 @@ You can set Target using msg.targetid<br>
                     reloadWorkflows(false);
                 })
             }).error(function (jqXHR, textStatus, errorThrown) {
-                console.log("error " + textStatus);
-                console.log("incoming Text " + jqXHR.responseText);
+                console.error("error " + textStatus);
+                console.error("incoming Text " + jqXHR.responseText);
                 alert("error:" + jqXHR.responseText);
             });
             var reloadWorkflows = function (firstrun) {
@@ -159,8 +159,8 @@ You can set Target using msg.targetid<br>
                         $('#node-input-workflow-select').val($('#node-input-workflow').val());
                     }
                 }).error(function (jqXHR, textStatus, errorThrown) {
-                    console.log("error " + textStatus);
-                    console.log("incoming Text " + jqXHR.responseText);
+                    console.error("error " + textStatus);
+                    console.error("incoming Text " + jqXHR.responseText);
                     alert("error:" + jqXHR.responseText);
                 });
             }

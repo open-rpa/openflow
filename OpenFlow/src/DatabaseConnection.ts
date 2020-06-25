@@ -46,20 +46,6 @@ Object.defineProperty(Promise, 'retry', {
     }
 })
 
-// (Promise as any).retry(100, (resolve, reject) => {
-//     // your sendFile core logic with proper
-//     // calls to resolve and reject goes here
-//     const rand = Math.random()
-
-//     console.log(rand)
-
-//     if (rand < 0.1) resolve(rand)
-//     else reject(rand)
-// }).then(
-//     value => console.log(`resolved: ${value}`),
-//     error => console.log(`rejected: ${error}`)
-// )
-
 export class DatabaseConnection {
     private mongodburl: string;
     private cli: MongoClient;
@@ -94,14 +80,13 @@ export class DatabaseConnection {
         }
         this.cli = await (Promise as any).retry(100, (resolve, reject) => {
             MongoClient.connect(this.mongodburl, { autoReconnect: false, useNewUrlParser: true }).then((cli) => {
-                console.log(`Connected to mongodb`);
                 resolve(cli);
             }).catch((reason) => {
-                console.log(reason);
+                console.error(reason);
                 reject(reason);
             });
         });
-        console.log(`Really connected to mongodb`);
+        this._logger.info(`Really connected to mongodb`);
         // this.cli = await MongoClient.connect(this.mongodburl, { autoReconnect: false, useNewUrlParser: true });
         this.cli.on("error", (error) => {
             this.isConnected = false;
@@ -916,10 +901,16 @@ export class DatabaseConnection {
                 }
             });
         } else {
-            query = { _id: q.item._id };
+            // has no id, and no uniqeness defined, so we assume its a new item we should insert
+            if (q.item._id != null) {
+                query = { _id: q.item._id };
+            }
         }
         var user: TokenUser = Crypt.verityToken(q.jwt);
-        var exists = await this.query(query, { name: 1 }, 2, 0, null, q.collectionname, q.jwt);
+        var exists: Base[] = [];
+        if (query != null) {
+            exists = await this.query(query, { name: 1 }, 2, 0, null, q.collectionname, q.jwt);
+        }
         if (exists.length == 1) {
             q.item._id = exists[0]._id;
         }
@@ -1178,6 +1169,10 @@ export class DatabaseConnection {
         }
 
         if (item._acl != null && item._acl != undefined) {
+            if (typeof item._acl === 'string' || item._acl instanceof String) {
+                item._acl = JSON.parse((item._acl as any));
+            }
+
             var a = item._acl.filter(x => x._id == user._id);
             if (a.length > 0) {
                 let _ace = Ace.assign(a[0]);

@@ -32,8 +32,10 @@
             "program": "${workspaceRoot}/OpenFlow/src/index.ts",
             "request": "launch",
             "runtimeArgs": [
-                "--nolazy"
+                "--nolazy",
+                "--trace-warnings"
             ],
+            "showAsyncStacks": true,
             "trace": true,
             "runtimeExecutable": null,
             "sourceMaps": true,
@@ -53,8 +55,10 @@
             "program": "${workspaceRoot}/OpenFlowNodeRED/src/index.ts",
             "request": "launch",
             "runtimeArgs": [
-                "--nolazy"
+                "--nolazy",
+                "--trace-warnings"
             ],
+            "showAsyncStacks": true,
             "trace": true,
             "runtimeExecutable": null,
             "sourceMaps": true,

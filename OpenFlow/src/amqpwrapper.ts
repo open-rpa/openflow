@@ -280,6 +280,7 @@ export class amqpwrapper {
         this._logger.info("send to queue: " + queue + " exchange: " + exchange + " with reply to " + replyTo);
         var options: any = { mandatory: true };
         options.replyTo = replyTo;
+        if (Util.IsNullEmpty(correlationId)) correlationId = this.generateUuid();
         if (!Util.IsNullEmpty(correlationId)) options.correlationId = correlationId;
         if (!Util.IsNullEmpty(expiration)) {
             if (expiration > 0) options.expiration = expiration.toString();
@@ -315,7 +316,7 @@ export class amqpwrapper {
         if (typeof data !== 'string' && !(data instanceof String)) {
             data = JSON.stringify(data);
         }
-        if (!Util.IsNullEmpty(correlationId)) correlationId = this.generateUuid();
+        if (Util.IsNullEmpty(correlationId)) correlationId = this.generateUuid();
 
         this._logger.info("send to queue: " + queue + " exchange: " + exchange);
         var options: any = { mandatory: true };

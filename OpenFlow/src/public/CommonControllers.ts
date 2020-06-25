@@ -92,7 +92,7 @@ module openflow {
                         if (data.jwt === null || data.jwt === undefined || data.jwt.trim() === "") { data.jwt = null; }
                         if (data.rawAssertion === null || data.rawAssertion === undefined || data.rawAssertion.trim() === "") { data.rawAssertion = null; }
                         if (data.jwt === null && data.rawAssertion === null) {
-                            console.log("data.jwt and data.rawAssertion is null");
+                            console.debug("data.jwt and data.rawAssertion is null");
                             data = null;
                         }
                     }
@@ -482,22 +482,15 @@ module openflow {
                         height: 0,
                         minHeight: 0
                     });
-
                     var contentHeight = (this as any).scrollHeight;
                     var borderHeight = (this as any).offsetHeight;
-
-                    console.log("before: " + currentContentHeight + currentBorderHeight);
-
                     element.css({
                         paddingTop: ~~Math.max(0, minHeight - contentHeight) / 2 + "px",
                         minHeight: null, // remove property
                         height: contentHeight + borderHeight + "px" // because we're using border-box
                     });
-
                     contentHeight = (this as any).scrollHeight;
                     borderHeight = (this as any).offsetHeight;
-                    console.log("after: " + contentHeight + borderHeight);
-
                 }
             });
 
