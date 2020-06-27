@@ -276,9 +276,12 @@ export class DatabaseConnection {
             if (typeof orderby === "string" || orderby instanceof String) {
                 var neworderby = null;
                 try {
-                    neworderby = JSON.parse((orderby as string));
-                    mysort = neworderby;
+                    if (orderby.indexOf("{") > -1) {
+                        neworderby = JSON.parse((orderby as string));
+                        mysort = neworderby;
+                    }
                 } catch (error) {
+                    console.log(error);
                 }
                 if (neworderby == null) mysort[(orderby as string)] = 1;
             } else {

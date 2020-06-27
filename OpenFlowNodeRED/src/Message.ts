@@ -402,14 +402,20 @@ export class Message {
             var command: string = "";
             if (this.command !== null && this.command !== undefined) { command = this.command.toLowerCase(); }
             if (this.command !== "ping" && this.command !== "pong") {
+
                 if (this.replyto !== null && this.replyto !== undefined) {
                     var qmsg: QueuedMessage = cli.messageQueue[this.replyto];
                     if (qmsg !== undefined && qmsg !== null) {
+                        // console.log("[RESC][" + this.command + "][" + this.id + "][" + this.replyto + "][CB]");
                         qmsg.message = Object.assign(qmsg.message, JSON.parse(this.data));
                         if (qmsg.cb !== undefined && qmsg.cb !== null) { qmsg.cb(qmsg.message); }
                         delete cli.messageQueue[this.id];
+                    } else {
+                        // console.log("[RESC][" + this.command + "][" + this.id + "][" + this.replyto + "][NO CB!]");
                     }
                     return;
+                } else {
+                    // console.log("[RESC][" + this.command + "][" + this.id + "][" + this.replyto + "]");
                 }
             }
             switch (command) {
@@ -492,50 +498,58 @@ export class Message {
         this.Reply(this.command);
         var handled: boolean = false;
         var msg: QueueMessage = QueueMessage.assign(this.data);
-        if (!NoderedUtil.IsNullEmpty(msg.correlationId)) {
-            if (NoderedUtil.messageQueue[msg.correlationId] != null) {
-                NoderedUtil.messageQueue[msg.correlationId].callback(msg);
-                delete NoderedUtil.messageQueue[msg.correlationId];
+
+        if (!NoderedUtil.IsNullEmpty(msg.queuename)) {
+            if (NoderedUtil.messageQueuecb[msg.queuename] != null) {
+                NoderedUtil.messageQueuecb[msg.queuename](msg, async (nack: boolean, result: any) => {
+                    if (nack == false) {
+                        this.Reply("error");
+                        this.data = "nack message";
+                        if (typeof result === 'string' || result instanceof String) {
+                            this.data = (result as any);
+                        }
+                    } else {
+                        if (result != null && !NoderedUtil.IsNullEmpty(msg.replyto) && this.command != "error") {
+                            try {
+                                await NoderedUtil.QueueMessage(msg.replyto, "", result, msg.correlationId, Config.amqp_reply_expiration);
+                            } catch (error) {
+                                console.error("Error sending response to " + msg.replyto + " " + JSON.stringify(error))
+                            }
+                        }
+                        // ROLLBACK
+                        // if (this.command != "error" && !NoderedUtil.IsNullEmpty(msg.replyto)) {
+                        //     try {
+                        //         await NoderedUtil.QueueMessage(msg.replyto, "", result, msg.correlationId, Config.amqp_reply_expiration);
+                        //     } catch (error) {
+                        //         console.error("Error sending response to " + msg.replyto + " " + JSON.stringify(error))
+                        //     }
+                        // }
+                        //this.data = "";
+                    }
+                    try {
+                        await this.Send(cli);
+                    } catch (error) {
+                        throw error;
+                    }
+                });
                 handled = true;
-                try {
-                    await this.Send(cli);
-                } catch (error) {
-                    throw error;
-                }
             }
         }
-        if (!handled) {
-            if (!NoderedUtil.IsNullEmpty(msg.queuename)) {
-                if (NoderedUtil.messageQueuecb[msg.queuename] != null) {
-                    NoderedUtil.messageQueuecb[msg.queuename](msg, async (nack: boolean, result: any) => {
-                        if (nack == false) {
-                            this.Reply("error");
-                            this.data = "nack message";
-                            if (typeof result === 'string' || result instanceof String) {
-                                this.data = (result as any);
-                            }
-                        } else {
-
-                            if (this.command != "error" && !NoderedUtil.IsNullEmpty(msg.replyto)) {
-                                try {
-                                    await NoderedUtil.QueueMessage(msg.replyto, "", result, msg.correlationId, Config.amqp_reply_expiration);
-                                } catch (error) {
-                                    console.error("Error sending response to " + msg.replyto + " " + JSON.stringify(error))
-                                }
-                            }
-
-                            this.data = "";
-                        }
-                        try {
-                            await this.Send(cli);
-                        } catch (error) {
-                            throw error;
-                        }
-                    });
-                    handled = true;
-                }
-            }
-        }
+        // ROLLBACK
+        // if (!handled) {
+        //     if (!NoderedUtil.IsNullEmpty(msg.correlationId)) {
+        //         if (NoderedUtil.messageQueue[msg.correlationId] != null) {
+        //             NoderedUtil.messageQueue[msg.correlationId].callback(msg);
+        //             delete NoderedUtil.messageQueue[msg.correlationId];
+        //             handled = true;
+        //             try {
+        //                 await this.Send(cli);
+        //             } catch (error) {
+        //                 throw error;
+        //             }
+        //         }
+        //     }
+        // }
 
     }
 }

@@ -257,15 +257,16 @@ export class Message {
                 await amqpwrapper.Instance().send("", msg.queuename, sendthis, expiration, msg.correlationId);
             } else {
                 if (msg.queuename === msg.replyto) {
-                    cli._logger.warn("Ignore reply to self queuename:" + msg.queuename + " correlationId:" + msg.correlationId);
-                    return
+                    throw new Error("Cannot send reply to self queuename:" + msg.queuename + " correlationId:" + msg.correlationId);
+                    // cli._logger.warn("Ignore reply to self queuename:" + msg.queuename + " correlationId:" + msg.correlationId);
+                    // return
                 }
                 //var sendthis = { data: msg.data, jwt: cli.jwt, user: cli.user };
                 var sendthis = msg.data;
                 var result = await amqpwrapper.Instance().sendWithReplyTo("", msg.queuename, msg.replyto, sendthis, expiration, msg.correlationId);
                 // var result = await amqpwrapper.Instance().sendWithReply("", msg.queuename, sendthis, expiration, msg.correlationId);
 
-                this.replyto = msg.correlationId;
+                // this.replyto = msg.correlationId;
                 // await cli.sendQueueReply(msg, expiration);
             }
         } catch (error) {
@@ -812,9 +813,9 @@ export class Message {
         var tuser: TokenUser = new TokenUser(nodereduser);
         var nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
 
-        if (Config.force_queue_prefix) {
-            user.nodered.queue_prefix = nodereduser.username;
-        }
+        // if (Config.force_queue_prefix) {
+        //     user.nodered.queue_prefix = nodereduser.username;
+        // }
 
         cli._logger.debug("[" + cli.user.username + "] ensure nodered role " + name + "noderedadmins");
         var noderedadmins = await User.ensureRole(cli.jwt, name + "noderedadmins", null);

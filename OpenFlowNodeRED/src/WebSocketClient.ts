@@ -2,6 +2,7 @@ import { SocketMessage, TokenUser, Message } from "./Message";
 import * as events from "events";
 import * as WebSocket from "ws";
 import winston = require("winston");
+import { NoderedUtil } from "./nodered/nodes/NoderedUtil";
 
 interface IHashTable<T> {
     [key: string]: T;
@@ -33,6 +34,7 @@ export class WebSocketClient {
         this._url = url;
         this._logger.info("connecting to " + url);
         this.events = new events.EventEmitter();
+        this.events.setMaxListeners(200);
 
         this.connect();
         if (WebSocketClient.instance === null) {
@@ -71,6 +73,12 @@ export class WebSocketClient {
         // _ OPEN:1
         // _ CONNECTING:0
     }
+    public isConnected(): boolean {
+        if (this._socketObject === null || this._socketObject.readyState !== this._socketObject.OPEN) {
+            return false;
+        }
+        return true;
+    }
     private pingServer(): void {
         var me: WebSocketClient = WebSocketClient.instance;
         try {
@@ -107,6 +115,12 @@ export class WebSocketClient {
         me.ProcessQueue.bind(me)();
     }
     public async Send<T>(message: Message): Promise<T> {
+        if (NoderedUtil.IsNullEmpty(message.id)) message.id = Math.random().toString(36).substr(2, 9);
+        if (message.command != "pong") {
+            var reply = message.replyto;
+            if (NoderedUtil.IsNullEmpty(reply)) reply = "";
+            // console.log("[SEND][" + message.command + "][" + message.id + "][" + reply + "]");
+        }
         return new Promise<T>(async (resolve, reject) => {
             this._Send(message, ((msg) => {
                 if (msg.error !== null && msg.error !== undefined) {

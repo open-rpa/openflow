@@ -14,6 +14,7 @@ export class rpa_detector_node {
     public node: Red = null;
     public name: string = "";
     public host: string = null;
+    public localqueue: string = "";
     constructor(public config: Irpa_detector_node) {
         RED.nodes.createNode(this, config);
         try {
@@ -25,6 +26,7 @@ export class rpa_detector_node {
                 this.connect();
             });
             WebSocketClient.instance.events.on("onclose", (message) => {
+                if (message == null) message = "";
                 this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
                 this.onclose();
             });
@@ -37,7 +39,7 @@ export class rpa_detector_node {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
 
-            await NoderedUtil.RegisterQueue(this.config.queue, (msg: QueueMessage, ack: any) => {
+            this.localqueue = await NoderedUtil.RegisterQueue(this.config.queue, (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
             });
             this.node.status({ fill: "green", shape: "dot", text: "Connected" });
@@ -69,6 +71,10 @@ export class rpa_detector_node {
         }
     }
     onclose() {
+        if (!NoderedUtil.IsNullEmpty(this.localqueue)) {
+            NoderedUtil.CloseQueue(this.localqueue);
+            this.localqueue = "";
+        }
     }
 }
 
@@ -96,6 +102,7 @@ export class rpa_workflow_node {
                 this.connect();
             });
             WebSocketClient.instance.events.on("onclose", (message) => {
+                if (message == null) message = "";
                 this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
                 this.onclose();
             });
@@ -108,7 +115,7 @@ export class rpa_workflow_node {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
             this.localqueue = this.config.localqueue;
-            if (this.localqueue !== null && this.localqueue !== undefined && this.localqueue !== "") { this.localqueue = Config.queue_prefix + this.localqueue; }
+            // if (this.localqueue !== null && this.localqueue !== undefined && this.localqueue !== "") { this.localqueue = Config.queue_prefix + this.localqueue; }
             this.localqueue = await NoderedUtil.RegisterQueue(this.localqueue, (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
             });
@@ -135,7 +142,7 @@ export class rpa_workflow_node {
             var data = msg;
             var command = data.command;
             if (command == undefined && data.data != null && data.data.command != null) { command = data.data.command; }
-            result.jwt = data.jwt;
+            // result.jwt = data.jwt;
 
 
             if (correlationId != null && this.messages[correlationId] != null) {
@@ -144,26 +151,35 @@ export class rpa_workflow_node {
                 if (command == "invokecompleted" || command == "invokefailed" || command == "invokeaborted" || command == "error" || command == "timeout") {
                     delete this.messages[correlationId];
                 }
+            } else {
+                result.jwt = data.jwt;
             }
             if (command == "invokecompleted") {
                 result.payload = data.payload;
-                if (!NoderedUtil.IsNullEmpty(data.jwt)) { result.jwt = data.jwt; }
+                // if (!NoderedUtil.IsNullEmpty(data.jwt)) { result.jwt = data.jwt; }
                 if (data.user != null) result.user = data.user;
                 if (result.payload == null || result.payload == undefined) { result.payload = {}; }
                 this.node.status({ fill: "green", shape: "dot", text: command });
                 this.node.send(result);
             }
             else if (command == "invokefailed" || command == "invokeaborted" || command == "error" || command == "timeout") {
-                result.payload = data;
-                if (!NoderedUtil.IsNullEmpty(data.jwt)) { result.jwt = data.jwt; }
+                result.payload = data.payload;
+                result.error = data.payload;
+                if (command == "timeout") {
+                    result.error = "request timed out, no robot picked up the message in a timely fashion";
+                }
+                if (result.error != null && result.error.Message != null && result.error.Message != "") {
+                    result.error = result.error.Message;
+                }
+                // if (!NoderedUtil.IsNullEmpty(data.jwt)) { result.jwt = data.jwt; }
                 if (data.user != null) result.user = data.user;
                 if (result.payload == null || result.payload == undefined) { result.payload = {}; }
                 this.node.status({ fill: "red", shape: "dot", text: command });
                 this.node.send([null, null, result]);
             }
             else {
-                result.payload = data;
-                if (!NoderedUtil.IsNullEmpty(data.jwt)) { result.jwt = data.jwt; }
+                result.payload = data.payload;
+                // if (!NoderedUtil.IsNullEmpty(data.jwt)) { result.jwt = data.jwt; }
                 if (data.user != null) result.user = data.user;
                 if (result.payload == null || result.payload == undefined) { result.payload = {}; }
                 this.node.send([null, result]);
@@ -203,12 +219,12 @@ export class rpa_workflow_node {
                 expiry: Math.floor((new Date().getTime()) / 1000) + Config.amqp_message_ttl,
                 data: { payload: msg.payload }
             }
-            var expiration: number = (60 * 1000); // 1 min
-            if (typeof msg.expiration == 'number') {
+            var expiration: number = Config.amqp_workflow_out_expiration;
+            if (!NoderedUtil.IsNullEmpty(msg.expiration)) {
                 expiration = msg.expiration;
             }
             // this.con.SendMessage(JSON.stringify(rpacommand), targetid, correlationId, true);
-            await NoderedUtil.QueueMessage(targetid, this.localqueue, rpacommand, correlationId, Config.amqp_workflow_out_expiration);
+            await NoderedUtil.QueueMessage(targetid, this.localqueue, rpacommand, correlationId, expiration);
             this.node.status({ fill: "blue", shape: "dot", text: "Robot running..." });
         } catch (error) {
             // NoderedUtil.HandleError(this, error);
@@ -221,6 +237,10 @@ export class rpa_workflow_node {
         }
     }
     onclose() {
+        if (!NoderedUtil.IsNullEmpty(this.localqueue)) {
+            NoderedUtil.CloseQueue(this.localqueue);
+            this.localqueue = "";
+        }
     }
 }
 

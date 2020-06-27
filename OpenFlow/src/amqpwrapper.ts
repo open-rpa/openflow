@@ -2,6 +2,8 @@ import * as winston from "winston";
 import * as amqplib from "amqplib";
 import { Util } from "./Util";
 import { Config } from "./Config";
+import { cli } from "winston/lib/winston/config";
+import { Crypt } from "./Crypt";
 
 type QueueOnMessage = (msg: string, options: QueueMessageOptions, ack: any, done: any) => void;
 interface IHashTable<T> {
@@ -104,6 +106,16 @@ export class amqpwrapper {
         // Bad idear ... 
         // this.AssertExchangeOptions.arguments['alternate-exchange'] = Config.deadLetterExchange;
         //}
+
+        if (!Util.IsNullEmpty(Config.amqp_dlx)) {
+            this.AssertQueueOptions.arguments = {};
+            this.AssertQueueOptions.arguments['x-dead-letter-exchange'] = Config.amqp_dlx;
+            //             //     arguments: {
+            //             //         'x-dead-letter-exchange': Config.amqp_dlx_prefix + queue,
+            //             //         'x-dead-letter-routing-key': Config.amqp_dlrk_prefix + queue,
+            //             //         'x-message-ttl': Config.amqp_message_ttl
+
+        }
     }
     private timeout: NodeJS.Timeout = null;
     async connect(): Promise<void> {
@@ -131,7 +143,7 @@ export class amqpwrapper {
         if (!Util.IsNullEmpty(this.replyqueue)) {
             delete this.queues[this.replyqueue];
         }
-        this.replyqueue = await this.AddQueueConsumer("", null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+        this.replyqueue = await this.AddQueueConsumer("", null, null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
             if (!Util.IsNullUndefinded(this.activecalls[options.correlationId])) {
                 this.activecalls[options.correlationId].resolve(msg);
                 this.activecalls[options.correlationId] = null;
@@ -163,13 +175,13 @@ export class amqpwrapper {
         var keys = Object.keys(this.exchanges);
         for (var i = 0; i < keys.length; i++) {
             var q1: amqpexchange = this.exchanges[keys[i]];
-            this.AddExchangeConsumer(q1.exchange, q1.algorithm, q1.routingkey, q1.ExchangeOptions, q1.callback);
+            this.AddExchangeConsumer(q1.exchange, q1.algorithm, q1.routingkey, q1.ExchangeOptions, null, q1.callback);
         }
         var keys = Object.keys(this.queues);
         for (var i = 0; i < keys.length; i++) {
             if (keys[i] != this.replyqueue) {
                 var q2: amqpqueue = this.queues[keys[i]];
-                this.AddQueueConsumer(q2.queue, q2.QueueOptions, q2.callback);
+                this.AddQueueConsumer(q2.queue, q2.QueueOptions, null, q2.callback);
             }
         }
     }
@@ -183,8 +195,16 @@ export class amqpwrapper {
         await this.channel.cancel(q.consumerTag);
         delete this.queues[q.queue];
     }
-    async AddQueueConsumer(queue: string, QueueOptions: any, callback: QueueOnMessage): Promise<string> {
+    async AddQueueConsumer(queue: string, QueueOptions: any, jwt: string, callback: QueueOnMessage): Promise<string> {
         var q: amqpqueue = null;
+        if (Config.amqp_force_queue_prefix && !Util.IsNullEmpty(jwt)) {
+            var tuser = Crypt.verityToken(jwt);
+            var name = tuser.username.split("@").join("").split(".").join("");
+            name = name.toLowerCase();
+            var isrole = tuser.roles.filter(x => x._id == queue);
+            if (isrole.length == 0 && tuser._id != queue) queue = name + queue;
+        }
+
         if (this.exchanges[queue] != null) {
             q = this.queues[queue];
         } else {
@@ -211,8 +231,15 @@ export class amqpwrapper {
         this.queues[q.queue] = q;
         return q.queue;
     }
-    async AddExchangeConsumer(exchange: string, algorithm: string, routingkey: string, ExchangeOptions: any, callback: QueueOnMessage): Promise<void> {
+    async AddExchangeConsumer(exchange: string, algorithm: string, routingkey: string, ExchangeOptions: any, jwt: string, callback: QueueOnMessage): Promise<void> {
         var q: amqpexchange = null;
+        if (Config.amqp_force_exchange_prefix && !Util.IsNullEmpty(jwt)) {
+            var tuser = Crypt.verityToken(jwt);
+            var name = tuser.username.split("@").join("").split(".").join("");
+            name = name.toLowerCase();
+            exchange = name + exchange;
+        }
+
         if (this.exchanges[exchange] != null) {
             q = this.exchanges[exchange];
         } else {
@@ -224,7 +251,12 @@ export class amqpwrapper {
         q.ExchangeOptions = new Object((ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));
         q.exchange = exchange; q.algorithm = algorithm; q.routingkey = routingkey; q.callback = callback;
         this._ok = await this.channel.assertExchange(q.exchange, q.algorithm, q.ExchangeOptions);
-        q.queue = await this.AddQueueConsumer("", null, q.callback);
+        var AssertQueueOptions = null;
+        if (!Util.IsNullEmpty(Config.amqp_dlx) && exchange == Config.amqp_dlx) {
+            AssertQueueOptions = Object.create(this.AssertQueueOptions);
+            delete AssertQueueOptions.arguments;
+        }
+        q.queue = await this.AddQueueConsumer("", AssertQueueOptions, jwt, q.callback);
         this.channel.bindQueue(q.queue, q.exchange, q.routingkey);
         this._logger.info("[AMQP] Added exchange consumer " + q.exchange);
         this.exchanges[exchange] = q;
@@ -254,13 +286,14 @@ export class amqpwrapper {
             }
             this.channel.ack(msg);
         }, (result) => {
-            if (msg != null && !Util.IsNullEmpty(replyTo)) {
-                try {
-                    this.channel.sendToQueue(replyTo, Buffer.from(result), { correlationId: msg.properties.correlationId });
-                } catch (error) {
-                    console.error("Error sending response to " + replyTo + " " + JSON.stringify(error))
-                }
-            }
+            // ROLLBACK
+            // if (msg != null && !Util.IsNullEmpty(replyTo)) {
+            //     try {
+            //         this.channel.sendToQueue(replyTo, Buffer.from(result), { correlationId: msg.properties.correlationId });
+            //     } catch (error) {
+            //         console.error("Error sending response to " + replyTo + " " + JSON.stringify(error))
+            //     }
+            // }
         });
     }
     async sendWithReply(exchange: string, queue: string, data: any, expiration: number, correlationId: string): Promise<string> {

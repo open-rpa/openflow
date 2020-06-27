@@ -116,19 +116,36 @@ export class WebSocketClient {
     }
     public async CreateConsumer(queuename: string): Promise<string> {
         var autoDelete: boolean = false; // Should we keep the queue around ? for robots and roles
-        if (Util.IsNullEmpty(queuename)) { queuename = "web." + Math.random().toString(36).substr(2, 9); autoDelete = true; }
-
-        var queuename = await amqpwrapper.Instance().AddQueueConsumer(queuename, { autoDelete: autoDelete }, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+        if (Util.IsNullEmpty(queuename)) {
+            if (this.clientagent == "nodered") {
+                queuename = "nodered." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+            } else if (this.clientagent == "webapp") {
+                queuename = "webapp." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+            } else if (this.clientagent == "web") {
+                queuename = "web." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+            } else {
+                queuename = "unknown." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+            }
+        }
+        var AssertQueueOptions: any = new Object(amqpwrapper.Instance().AssertQueueOptions);
+        AssertQueueOptions.autoDelete = autoDelete;
+        var queuename = await amqpwrapper.Instance().AddQueueConsumer(queuename, AssertQueueOptions, this.jwt, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
             var _data = msg;
             try {
                 _data = await this.Queue(msg, queuename, options);
                 ack();
                 done(_data);
             } catch (error) {
-                // ack(false);
-                ack(); // just eat the error 
-                done(_data);
-                console.log(queuename + " failed message queue message, discarding error and message: ", error);
+                setTimeout(() => {
+                    ack(false);
+                    // ack(); // just eat the error 
+                    done(_data);
+                    if (error.message != null && error.message != "") {
+                        console.log(queuename + " failed message queue message, nack and re queue message: ", error.message);
+                    } else {
+                        console.log(queuename + " failed message queue message, nack and re queue message: ", error);
+                    }
+                }, Config.amqp_requeue_time);
             }
         });
         this.queues[queuename] = queuename;

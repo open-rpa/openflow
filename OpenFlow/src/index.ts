@@ -19,6 +19,7 @@ import { Role } from "./Role";
 import { Config } from "./Config";
 import { KubeUtil } from "./KubeUtil";
 import { amqpwrapper, QueueMessageOptions } from "./amqpwrapper";
+import { Util } from "./Util";
 
 const logger: winston.Logger = Logger.configure();
 Config.db = new DatabaseConnection(logger, Config.mongodb_url, Config.mongodb_db);
@@ -31,6 +32,32 @@ async function initamqp() {
     var testamqp = new amqpwrapper(logger, Config.amqp_url);
     amqpwrapper.SetTestInstance(testamqp);
     await testamqp.connect();
+
+    // Must also consume messages in the dead letter queue, to catch messages that have timed out
+    await amqp.AddExchangeConsumer(Config.amqp_dlx, "fanout", "", null, null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+        // This is the function to run when the dead letter (timed out) message is picked up
+        // var data = JSON.parse(msg.content.toString());
+        // Change the command and return back to the correct queue (replyTo) to be handled
+        // Clear x-first-death-reason header
+        // msg.properties.headers["x-first-death-reason"] = null;
+        // Set command to timeout to be handled when collected from the node's queue
+        if (typeof msg === "string" || msg instanceof String) {
+            try {
+                msg = JSON.parse((msg as any));
+            } catch (error) {
+            }
+        }
+        try {
+            msg.command = "timeout";
+            // Resend message, this time to the reply queue for the correct node (replyTo)
+            // this.SendMessage(JSON.stringify(data), msg.properties.replyTo, msg.properties.correlationId, false);
+            console.log("[DLX][" + options.exchange + "] Send timeout to " + options.replyTo)
+            amqpwrapper.Instance().sendWithReply("", options.replyTo, msg, 20000, options.correlationId);
+        } catch (error) {
+        }
+        ack();
+        done();
+    });
 
     // await amqp.AddExchangeConsumer("testexchange", "fanout", "", null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
     //     console.log("testexchange: " + msg);

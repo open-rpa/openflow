@@ -39,9 +39,14 @@ export class Config {
     public static domain: string = Config.getEnv("domain", "localhost"); // sent to website and used in baseurl()
 
 
+    public static amqp_force_queue_prefix: boolean = Config.parseBoolean(Config.getEnv("amqp_force_queue_prefix", "true"));
+    public static amqp_force_exchange_prefix: boolean = Config.parseBoolean(Config.getEnv("amqp_force_exchange_prefix", "true"));
     public static amqp_url: string = Config.getEnv("amqp_url", "amqp://localhost"); // used to register queues and by personal nodered
     public static amqp_check_for_consumer: boolean = Config.parseBoolean(Config.getEnv("amqp_check_for_consumer", "true"));
     public static amqp_default_expiration: number = parseInt(Config.getEnv("amqp_default_expiration", "10000")); // 10 seconds
+    public static amqp_requeue_time: number = parseInt(Config.getEnv("amqp_requeue_time", "1000")); // 1 seconds    
+    public static amqp_dlx: string = Config.getEnv("amqp_dlx", "openflow-dlx");  // Dead letter exchange, used to pickup dead or timeout messages
+
     // public static amqp_default_expiration: number = parseInt(Config.getEnv("amqp_default_expiration", (60 * 1000).toString())); // 1 min
     // public static deadLetterExchange: string = Config.getEnv("deadletterexchange", "openflow-dlx");  // queue used to handle messages, that was not picked up.
     // public static dlxmessagettl: number = parseInt(Config.getEnv("dlxmessagettl", "2000"));  // time to live for messages in miliseconds
@@ -62,7 +67,7 @@ export class Config {
     public static personalnoderedtoken_expires_in: string = Config.getEnv("personalnoderedtoken_expires_in", "365d");
 
     // Used to configure personal nodered's
-    public static force_queue_prefix: boolean = Config.parseBoolean(Config.getEnv("force_queue_prefix", "true"));
+    // public static force_queue_prefix: boolean = Config.parseBoolean(Config.getEnv("force_queue_prefix", "true"));
     public static nodered_image: string = Config.getEnv("nodered_image", "cloudhack/openflownodered:edge");
     public static saml_federation_metadata: string = Config.getEnv("saml_federation_metadata", "");
     public static api_ws_url: string = Config.getEnv("api_ws_url", "ws://localhost:3000");
@@ -73,10 +78,10 @@ export class Config {
     // Environment variables to set a prefix for RabbitMQs Dead Letter Exchange, Dead Letter Routing Key,
     // Dead Letter Queue, and Message Time to Live - to enable timeouts for RabbitMQ messages
     // These values must be the same for OpenFlowNodeRED and OpenFlow, or will cause errors when asserting queues
-    public static amqp_dlx_prefix: string = Config.getEnv("amqp_dlx_prefix", "DLX.");
-    public static amqp_dlrk_prefix: string = Config.getEnv("amqp_dlrk_prefix", "dlx.");
-    public static amqp_dlq_prefix: string = Config.getEnv("amqp_dlq_prefix", "dlq.");
-    public static amqp_message_ttl: number = parseInt(Config.getEnv("amqp_message_ttl", "20000"));
+    // public static amqp_dlx_prefix: string = Config.getEnv("amqp_dlx_prefix", "DLX.");
+    // public static amqp_dlrk_prefix: string = Config.getEnv("amqp_dlrk_prefix", "dlx.");
+    // public static amqp_dlq_prefix: string = Config.getEnv("amqp_dlq_prefix", "dlq.");
+    // public static amqp_message_ttl: number = parseInt(Config.getEnv("amqp_message_ttl", "20000"));
 
     public static baseurl(): string {
         var result: string = "";

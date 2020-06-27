@@ -18,6 +18,7 @@ export class workflow_in_node {
     public name: string = "";
     public host: string = null;
     public workflow: any;
+    public localqueue: string = "";
     constructor(public config: Iworkflow_in_node) {
         RED.nodes.createNode(this, config);
         try {
@@ -32,6 +33,7 @@ export class workflow_in_node {
                 this.connect();
             });
             WebSocketClient.instance.events.on("onclose", (message) => {
+                if (message == null) message = "";
                 this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
                 this.onclose();
             });
@@ -46,43 +48,34 @@ export class workflow_in_node {
                 this.node.status({ fill: "red", shape: "dot", text: "Missing queue name" });
                 return;
             }
-            await this.init();
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
-
-
-            var queue: string = this.config.queue;
-            if (!NoderedUtil.IsNullUndefinded(Config.queue_prefix)) {
-                queue = Config.queue_prefix + this.config.queue;
-            }
-
-            await NoderedUtil.RegisterQueue(queue, (msg: QueueMessage, ack: any) => {
+            // if (this.localqueue !== null && this.localqueue !== undefined && this.localqueue !== "") { this.localqueue = Config.queue_prefix + this.localqueue; }
+            this.localqueue = this.config.queue;
+            this.localqueue = await NoderedUtil.RegisterQueue(this.localqueue, (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
             });
+            await this.init();
             this.node.status({ fill: "green", shape: "dot", text: "Connected" });
         } catch (error) {
             NoderedUtil.HandleError(this, error);
         }
     }
     async init() {
-        var queue: string = this.config.queue;
-        if (!NoderedUtil.IsNullUndefinded(Config.queue_prefix)) {
-            queue = Config.queue_prefix + this.config.queue;
-        }
         if (!NoderedUtil.IsNullUndefinded(this.config.name)) {
             this.config.name = this.config.queue;
         }
 
-        var res = await NoderedUtil.Query("workflow", { "queue": queue }, null, null, 1, 0, null);
+        var res = await NoderedUtil.Query("workflow", { "queue": this.localqueue }, null, null, 1, 0, null);
         if (res.length == 0) {
             var noderedadmins = await NoderedUtil.GetRole(null, Config.noderedadmins);
             var wf: Base = new Base();
             wf._type = "workflow";
             wf.name = this.config.name;
-            (wf as any).queue = queue;
+            (wf as any).queue = this.localqueue;
             if (noderedadmins != null) {
                 wf.addRight(noderedadmins._id, noderedadmins.name, [-1]);
             }
-            this.workflow = await NoderedUtil.InsertOne("workflow", { _type: "workflow", "queue": queue, "name": this.config.name }, 0, false, null);
+            this.workflow = await NoderedUtil.InsertOne("workflow", { _type: "workflow", "queue": this.localqueue, "name": this.config.name }, 0, false, null);
         } else {
             this.workflow = res[0];
             var hasnoderedadmins = this.workflow._acl.filter(x => x.name == Config.noderedadmins);
@@ -95,11 +88,11 @@ export class workflow_in_node {
                 }
             }
         }
-        var res = await NoderedUtil.Query("users", { "_type": "role", "$or": [{ "workflowid": this.workflow._id }, { "name": queue + "users" }] }, null, null, 1, 0, null);
+        var res = await NoderedUtil.Query("users", { "_type": "role", "$or": [{ "workflowid": this.workflow._id }, { "name": this.localqueue + "users" }] }, null, null, 1, 0, null);
         var role: Base = null;
         if (res.length == 0) {
             var who = WebSocketClient.instance.user;
-            (role as any) = { _type: "role", "name": queue + "users", members: [{ "_id": who._id, "name": who.name }], "workflowid": this.workflow._id };
+            (role as any) = { _type: "role", "name": this.localqueue + "users", members: [{ "_id": who._id, "name": who.name }], "workflowid": this.workflow._id };
             role = await NoderedUtil.InsertOne("users", role, 0, false, null);
         } else {
             role = res[0];
@@ -107,7 +100,7 @@ export class workflow_in_node {
         var wf: Base = Base.assign(this.workflow);
         wf.addRight(role._id, role.name, [-1]);
         this.workflow = wf;
-        this.workflow.queue = queue;
+        this.workflow.queue = this.localqueue;
         this.workflow.name = this.config.name;
         this.workflow.rpa = this.config.rpa;
         this.workflow.web = this.config.web;
@@ -202,11 +195,7 @@ export class workflow_in_node {
                 // result.workflow = this.workflow._id;
             } else {
                 this.node.status({ fill: "blue", shape: "dot", text: "Processing new instance " });
-                var queue: string = this.config.queue;
-                if (!NoderedUtil.IsNullUndefinded(Config.queue_prefix)) {
-                    queue = Config.queue_prefix + this.config.queue;
-                }
-
+                // if (this.localqueue !== null && this.localqueue !== undefined && this.localqueue !== "") { this.localqueue = Config.queue_prefix + this.localqueue; }
                 var jwt = data.jwt;
 
                 var who = WebSocketClient.instance.user;
@@ -218,7 +207,7 @@ export class workflow_in_node {
                     data.jwt = signin.jwt;
                 }
                 // delete data.jwt;                
-                var item: Base = ({ _type: "instance", "queue": queue, "name": this.workflow.name, payload: data, workflow: this.workflow._id, targetid: who._id }) as any;
+                var item: Base = ({ _type: "instance", "queue": this.localqueue, "name": this.workflow.name, payload: data, workflow: this.workflow._id, targetid: who._id }) as any;
                 (item as any)._replyTo = msg.replyto;
                 (item as any)._correlationId = msg.correlationId;
                 item = Base.assign(item);
@@ -272,6 +261,10 @@ export class workflow_in_node {
         }
     }
     onclose() {
+        if (!NoderedUtil.IsNullEmpty(this.localqueue)) {
+            NoderedUtil.CloseQueue(this.localqueue);
+            this.localqueue = "";
+        }
     }
 }
 
@@ -306,6 +299,29 @@ export class workflow_out_node {
             NoderedUtil.HandleError(this, error);
         }
         try {
+            if (msg.amqpacknowledgment) {
+                if (msg.payload === null || msg.payload === undefined) { msg.payload == {}; }
+                var data: any = {};
+                data.state = msg.state;
+                if (msg.error) {
+                    data.error = "error";
+                    if (msg.error.message) {
+                        data.error = msg.error.message;
+                    }
+                }
+                data._id = msg._id;
+                data.payload = msg.payload;
+                data.values = msg.values;
+                data.jwt = msg.jwt;
+                // ROLLBACK
+                // msg.amqpacknowledgment(true, JSON.stringify(data));
+                msg.amqpacknowledgment(true);
+            }
+        } catch (error) {
+            NoderedUtil.HandleError(this, error);
+            return;
+        }
+        try {
             if (!NoderedUtil.IsNullEmpty(msg.resultqueue) && (msg.state == "completed" || msg.state == "failed")) {
                 var data: any = {};
                 data.state = msg.state;
@@ -323,8 +339,8 @@ export class workflow_out_node {
                 if (typeof msg.expiration == 'number') {
                     expiration = msg.expiration;
                 }
-
-                await NoderedUtil.QueueMessage(msg.resultqueue, null, data, msg.correlationId, Config.amqp_workflow_out_expiration);
+                var expiration = Config.amqp_workflow_out_expiration;
+                var res = await NoderedUtil.QueueMessage(msg.resultqueue, null, data, msg.correlationId, expiration);
                 // this.con.SendMessage(JSON.stringify(data), msg.resultqueue, msg.correlationId, false);
             }
         } catch (error) {
@@ -349,32 +365,14 @@ export class workflow_out_node {
                 if (typeof msg.expiration == 'number') {
                     expiration = msg.expiration;
                 }
-                await NoderedUtil.QueueMessage(msg._replyTo, null, data, msg.correlationId, Config.amqp_workflow_out_expiration);
+                // ROLLBACK
+                // Don't wait for ack(), we don't care if the receiver is there, right ?
+                var result = await NoderedUtil.QueueMessage(msg._replyTo, null, data, msg.correlationId, Config.amqp_workflow_out_expiration);
+                console.log("Send reply data to " + msg._replyTo, data);
                 //this.con.SendMessage(JSON.stringify(data), msg._replyTo, msg._correlationId, false);
             }
         } catch (error) {
             NoderedUtil.HandleError(this, error);
-        }
-        try {
-            if (msg.amqpacknowledgment) {
-                if (msg.payload === null || msg.payload === undefined) { msg.payload == {}; }
-                var data: any = {};
-                data.state = msg.state;
-                if (msg.error) {
-                    data.error = "error";
-                    if (msg.error.message) {
-                        data.error = msg.error.message;
-                    }
-                }
-                data._id = msg._id;
-                data.payload = msg.payload;
-                data.values = msg.values;
-                data.jwt = msg.jwt;
-                msg.amqpacknowledgment(true, JSON.stringify(data));
-            }
-        } catch (error) {
-            NoderedUtil.HandleError(this, error);
-            return;
         }
         this.node.send(msg);
         this.node.status({});
@@ -438,6 +436,7 @@ export class assign_workflow_node {
     public node: Red = null;
     public name: string = "";
     public host: string;
+    public localqueue: string = "";
     constructor(public config: Iassign_workflow_node) {
         RED.nodes.createNode(this, config);
         this.node = this;
@@ -456,6 +455,7 @@ export class assign_workflow_node {
             this.connect();
         });
         WebSocketClient.instance.events.on("onclose", (message) => {
+            if (message == null) message = "";
             this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
             this.onclose();
         });
@@ -465,12 +465,8 @@ export class assign_workflow_node {
     async connect() {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
-            var queue: string = this.config.queue;
-            if (!NoderedUtil.IsNullUndefinded(Config.queue_prefix)) {
-                queue = Config.queue_prefix + this.config.queue;
-            }
-
-            await NoderedUtil.RegisterQueue(queue, (msg: QueueMessage, ack: any) => {
+            // if (this.localqueue !== null && this.localqueue !== undefined && this.localqueue !== "") { this.localqueue = Config.queue_prefix + this.localqueue; }
+            this.localqueue = await NoderedUtil.RegisterQueue(this.localqueue, (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
             });
             this.node.status({ fill: "green", shape: "dot", text: "Connected" });
@@ -551,10 +547,7 @@ export class assign_workflow_node {
     async oninput(msg: any) {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Processing" });
-            var resultqueue: string = this.config.queue;
-            if (!NoderedUtil.IsNullUndefinded(Config.queue_prefix)) {
-                resultqueue = Config.queue_prefix + this.config.queue;
-            }
+            // if (this.localqueue !== null && this.localqueue !== undefined && this.localqueue !== "") { this.localqueue = Config.queue_prefix + this.localqueue; }
             var jwt = msg.jwt;
             var workflowid = this.config.workflowid;
             if (NoderedUtil.IsNullEmpty(workflowid)) workflowid = msg.workflowid;
@@ -588,7 +581,7 @@ export class assign_workflow_node {
             var runnerinstance = new Base();
             runnerinstance._type = "instance";
             runnerinstance.name = "runner: " + name;
-            (runnerinstance as any).queue = resultqueue;
+            (runnerinstance as any).queue = this.localqueue;
             (runnerinstance as any).state = "idle";
             (runnerinstance as any).msg = msg;
             (runnerinstance as any).jwt = msg.jwt;
@@ -599,7 +592,7 @@ export class assign_workflow_node {
             // Logger.instanse.info("created runner instance with id " + res3._id + " (" + res3.name + ")");
             msg._parentid = res3._id;
 
-            msg.newinstanceid = await NoderedUtil.CreateWorkflowInstance(targetid, workflowid, null, resultqueue, res3._id, msg.payload, initialrun, jwt);;
+            msg.newinstanceid = await NoderedUtil.CreateWorkflowInstance(targetid, workflowid, null, this.localqueue, res3._id, msg.payload, initialrun, jwt);;
 
             this.node.send(msg);
             this.node.status({ fill: "green", shape: "dot", text: "Connected" });
@@ -608,5 +601,9 @@ export class assign_workflow_node {
         }
     }
     onclose() {
+        if (!NoderedUtil.IsNullEmpty(this.localqueue)) {
+            NoderedUtil.CloseQueue(this.localqueue);
+            this.localqueue = "";
+        }
     }
 }

@@ -7,7 +7,6 @@ export class Config {
     public static version: string = fs.readFileSync("VERSION", "utf8");;
     public static nodered_id: string = Config.getEnv("nodered_id", "1");
     public static nodered_sa: string = Config.getEnv("nodered_sa", "");
-    public static queue_prefix: string = Config.getEnv("queue_prefix", "");
 
     public static NODE_ENV: string = Config.getEnv("NODE_ENV", "development");
 
@@ -46,9 +45,9 @@ export class Config {
     // Environment variables to set a prefix for RabbitMQs Dead Letter Exchange, Dead Letter Routing Key,
     // Dead Letter Queue, and Message Time to Live - to enable timeouts for RabbitMQ messages
     // These values must be the same for OpenFlowNodeRED and OpenFlow, or will cause errors when asserting queues
-    public static amqp_dlx_prefix: string = Config.getEnv("amqp_dlx_prefix", "DLX.");
-    public static amqp_dlrk_prefix: string = Config.getEnv("amqp_dlrk_prefix", "dlx.");
-    public static amqp_dlq_prefix: string = Config.getEnv("amqp_dlq_prefix", "dlq.");
+    // public static amqp_dlx_prefix: string = Config.getEnv("amqp_dlx_prefix", "DLX.");
+    // public static amqp_dlrk_prefix: string = Config.getEnv("amqp_dlrk_prefix", "dlx.");
+    // public static amqp_dlq_prefix: string = Config.getEnv("amqp_dlq_prefix", "dlq.");
     public static amqp_message_ttl: number = parseInt(Config.getEnv("amqp_message_ttl", "20000"));
 
 

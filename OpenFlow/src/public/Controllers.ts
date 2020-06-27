@@ -696,7 +696,8 @@ module openflow {
                 this.basequery = {};
                 this.basequery = { $or: ors };
                 if (!this.showcompleted) {
-                    this.basequery.state = { $ne: "completed" };
+                    // this.basequery.state = { $ne: "completed" };
+                    this.basequery["$and"] = [{ state: { $ne: "completed" } }, { state: { $ne: "failed" } }];
                     this.basequery.form = { $exists: true };
                     // this.basequery.$or = ors;
                 } else {
@@ -1813,9 +1814,12 @@ module openflow {
                 if (data.queuename == this.queuename) {
                     if (this.instanceid == null && data.data._id != null) {
                         this.instanceid = data.data._id;
-                        this.$location.path("/Form/" + this.id + "/" + this.instanceid);
-                        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                        // this.$location.path("/Form/" + this.id + "/" + this.instanceid);
+                        // if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                        this.loadData();
                         return;
+                    } else {
+                        this.loadData();
                     }
                 }
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -2193,6 +2197,18 @@ module openflow {
 
                 $('#workflowform :button').hide();
                 $('input[type="submit"]').hide();
+                if (this.model.state == "failed") {
+                    if (!this.model.payload) {
+                        this.errormessage = "An unknown error occurred";
+                    } else if (this.model.payload.message != null && this.model.payload.message != "") {
+                        this.errormessage = this.model.payload.message;
+                    } else if (this.model.payload.Message != null && this.model.payload.Message != "") {
+                        this.errormessage = this.model.payload.Message;
+                    } else {
+                        this.errormessage = this.model.payload;
+                    }
+                    console.log(this.model.payload);
+                }
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
