@@ -2198,7 +2198,9 @@ module openflow {
                 $('#workflowform :button').hide();
                 $('input[type="submit"]').hide();
                 if (this.model.state == "failed") {
-                    if (!this.model.payload) {
+                    if ((this.model as any).error != null && (this.model as any).error != "") {
+                        this.errormessage = (this.model as any).error;
+                    } else if (!this.model.payload) {
                         this.errormessage = "An unknown error occurred";
                     } else if (this.model.payload.message != null && this.model.payload.message != "") {
                         this.errormessage = this.model.payload.message;
