@@ -1,11 +1,21 @@
 import { Red } from "node-red";
-import { QueryMessage, Message, InsertOneMessage, UpdateOneMessage, DeleteOneMessage, InsertOrUpdateOneMessage, SigninMessage, TokenUser, mapFunc, reduceFunc, finalizeFunc, MapReduceMessage, JSONfn, UpdateManyMessage, GetFileMessage, SaveFileMessage, AggregateMessage, CreateWorkflowInstanceMessage, GetNoderedInstanceMessage } from "../../Message";
+import { QueryMessage, Message, InsertOneMessage, UpdateOneMessage, DeleteOneMessage, InsertOrUpdateOneMessage, SigninMessage, TokenUser, mapFunc, reduceFunc, finalizeFunc, MapReduceMessage, JSONfn, UpdateManyMessage, GetFileMessage, SaveFileMessage, AggregateMessage, CreateWorkflowInstanceMessage, GetNoderedInstanceMessage, RegisterQueueMessage, QueueMessage } from "../../Message";
 import { WebSocketClient } from "../../WebSocketClient";
 import { Crypt } from "../../Crypt";
 import { Config } from "../../Config";
 import { Logger } from "../../Logger";
 import { Base } from "../../Base";
 
+// export type messageQueueCallback = (msg: QueueMessage) => void;
+export type QueueOnMessage = (msg: QueueMessage, ack: any) => void;
+export interface IHashTable<T> {
+    [key: string]: T;
+}
+export class messagequeue {
+    constructor(
+        public msg: QueueMessage,
+        public callback: any) { }
+}
 export class NoderedUtil {
     public static IsNullUndefinded(obj: any) {
         if (obj === null || obj === undefined) { return true; }
@@ -273,5 +283,53 @@ export class NoderedUtil {
         var result: SigninMessage = await WebSocketClient.instance.Send<SigninMessage>(_msg);
         Logger.instanse.debug("Created token as " + result.user.username);
         return result;
+    }
+
+
+
+
+    // public static messageQueue: IHashTable<messagequeue> = {};
+    public static messageQueuecb: IHashTable<QueueOnMessage> = {};
+    public static async RegisterQueue(websocket: WebSocketClient, queuename: string, callback: any): Promise<string> {
+        var q: RegisterQueueMessage = new RegisterQueueMessage();
+        q.queuename = queuename;
+        var msg: Message = new Message(); msg.command = "registerqueue"; msg.data = JSON.stringify(q);
+        var result: RegisterQueueMessage = await websocket.Send(msg);
+        this.messageQueuecb[result.queuename] = callback;
+        return result.queuename;
+    }
+    public static async CloseQueue(websocket: WebSocketClient, queuename: string): Promise<void> {
+        if (!websocket.isConnected()) return;
+        if (queuename == null || queuename == "") {
+            var b = true;
+        }
+        var q: RegisterQueueMessage = new RegisterQueueMessage();
+        q.queuename = queuename;
+        var msg: Message = new Message(); msg.command = "closequeue"; msg.data = JSON.stringify(q);
+        var result: RegisterQueueMessage = await websocket.Send(msg);
+        delete this.messageQueuecb[result.queuename];
+    }
+    // ROLLBACK
+    // Promise<QueueMessage>
+    public static async _QueueMessage(websocket: WebSocketClient, queuename: string, replyto: string, data: any, correlationId: string, expiration: number): Promise<void> {
+        return new Promise<void>(async (resolve, reject) => {
+            try {
+                var q: QueueMessage = new QueueMessage();
+                q.correlationId = correlationId;
+                if (NoderedUtil.IsNullEmpty(q.correlationId)) q.correlationId = Math.random().toString(36).substr(2, 9);
+                q.expiration = expiration;
+                q.queuename = queuename; q.data = JSON.stringify(data);
+                q.replyto = replyto;
+                var msg: Message = new Message(); msg.command = "queuemessage"; msg.data = JSON.stringify(q);
+                var res = await websocket.Send(msg);
+                resolve();
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+    public static async QueueMessage(websocket: WebSocketClient, queuename: string, replyto: string, data: any, correlationId: string, expiration: number): Promise<void> {
+        if (!websocket.isConnected()) throw new Error("Cannot send, not connected");
+        await this._QueueMessage(websocket, queuename, replyto, data, correlationId, expiration);
     }
 }

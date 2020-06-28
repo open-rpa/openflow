@@ -92,7 +92,7 @@ module openflow {
                         if (data.jwt === null || data.jwt === undefined || data.jwt.trim() === "") { data.jwt = null; }
                         if (data.rawAssertion === null || data.rawAssertion === undefined || data.rawAssertion.trim() === "") { data.rawAssertion = null; }
                         if (data.jwt === null && data.rawAssertion === null) {
-                            console.log("data.jwt and data.rawAssertion is null");
+                            console.debug("data.jwt and data.rawAssertion is null");
                             data = null;
                         }
                     }
@@ -223,27 +223,34 @@ module openflow {
             var msg: Message = new Message(); msg.command = "deleteone"; msg.data = JSON.stringify(q);
             q = await this.WebSocketClient.Send<DeleteOneMessage>(msg);
         }
-        async RegisterQueue(queuename: string = undefined): Promise<void> {
+        async RegisterQueue(queuename: string = undefined): Promise<string> {
             var q: RegisterQueueMessage = new RegisterQueueMessage();
             q.queuename = queuename;
             var msg: Message = new Message(); msg.command = "registerqueue"; msg.data = JSON.stringify(q);
-            await this.WebSocketClient.Send(msg);
+            var result: RegisterQueueMessage = await this.WebSocketClient.Send(msg);
+            return result.queuename;
         }
-        async _QueueMessage(queuename: string, data: any): Promise<QueueMessage> {
+        async _QueueMessage(queuename: string, replyto: string, data: any, expiration: number): Promise<QueueMessage> {
             return new Promise<QueueMessage>(async (resolve, reject) => {
-                var q: QueueMessage = new QueueMessage();
-                q.correlationId = Math.random().toString(36).substr(2, 9);
-                q.queuename = queuename; q.data = JSON.stringify(data);
-                var msg: Message = new Message(); msg.command = "queuemessage"; msg.data = JSON.stringify(q);
-                this.messageQueue[q.correlationId] = new messagequeue(q, (msgresult: QueueMessage) => {
-                    resolve(msgresult);
-                    delete this.messageQueue[q.correlationId];
-                });
-                var res = await this.WebSocketClient.Send(msg);
+                try {
+                    var q: QueueMessage = new QueueMessage();
+                    q.correlationId = Math.random().toString(36).substr(2, 9);
+                    q.expiration = expiration;
+                    q.queuename = queuename; q.data = JSON.stringify(data);
+                    q.replyto = replyto;
+                    var msg: Message = new Message(); msg.command = "queuemessage"; msg.data = JSON.stringify(q);
+                    this.messageQueue[q.correlationId] = new messagequeue(q, (msgresult: QueueMessage) => {
+                        resolve(msgresult);
+                        delete this.messageQueue[q.correlationId];
+                    });
+                    var res = await this.WebSocketClient.Send(msg);
+                } catch (error) {
+                    reject(error);
+                }
             });
         }
-        async QueueMessage(queuename: string, data: any): Promise<any> {
-            var result: any = await this._QueueMessage(queuename, data);
+        async QueueMessage(queuename: string, replyto: string, data: any, expiration: number): Promise<any> {
+            var result: any = await this._QueueMessage(queuename, replyto, data, expiration);
             var msg = result.data;
             try {
                 result.data = JSON.parse(result.data);
@@ -475,22 +482,15 @@ module openflow {
                         height: 0,
                         minHeight: 0
                     });
-
                     var contentHeight = (this as any).scrollHeight;
                     var borderHeight = (this as any).offsetHeight;
-
-                    console.log("before: " + currentContentHeight + currentBorderHeight);
-
                     element.css({
                         paddingTop: ~~Math.max(0, minHeight - contentHeight) / 2 + "px",
                         minHeight: null, // remove property
                         height: contentHeight + borderHeight + "px" // because we're using border-box
                     });
-
                     contentHeight = (this as any).scrollHeight;
                     borderHeight = (this as any).offsetHeight;
-                    console.log("after: " + contentHeight + borderHeight);
-
                 }
             });
 

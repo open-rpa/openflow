@@ -48,8 +48,8 @@ Active everytime a trigger gets triggered on a robot
                 });
                 $('#node-input-queue-select').val($('#node-input-queue').val());
             }).error(function (jqXHR, textStatus, errorThrown) {
-                console.log("error " + textStatus);
-                console.log("incoming Text " + jqXHR.responseText);
+                console.error("error " + textStatus);
+                console.error("incoming Text " + jqXHR.responseText);
                 alert("error:" + jqXHR.responseText);
             });
         },
@@ -90,6 +90,8 @@ Active everytime a trigger gets triggered on a robot
 Send payload as data to a robot, requesting it to run the selected Workflow.<br>
 You can set Workflow using msg.workflowid<br>
 You can set Target using msg.targetid<br>
+You can set the timeout using msg.expiration<br>
+Expiration controls how long to wait for a robot to pickup the message, it does not effect how long the robot can run for.
 </script>
 <script type="text/javascript">
     RED.nodes.registerType('rpa workflow', {
@@ -131,8 +133,8 @@ You can set Target using msg.targetid<br>
                     reloadWorkflows(false);
                 })
             }).error(function (jqXHR, textStatus, errorThrown) {
-                console.log("error " + textStatus);
-                console.log("incoming Text " + jqXHR.responseText);
+                console.error("error " + textStatus);
+                console.error("incoming Text " + jqXHR.responseText);
                 alert("error:" + jqXHR.responseText);
             });
             var reloadWorkflows = function (firstrun) {
@@ -159,8 +161,8 @@ You can set Target using msg.targetid<br>
                         $('#node-input-workflow-select').val($('#node-input-workflow').val());
                     }
                 }).error(function (jqXHR, textStatus, errorThrown) {
-                    console.log("error " + textStatus);
-                    console.log("incoming Text " + jqXHR.responseText);
+                    console.error("error " + textStatus);
+                    console.error("incoming Text " + jqXHR.responseText);
                     alert("error:" + jqXHR.responseText);
                 });
             }

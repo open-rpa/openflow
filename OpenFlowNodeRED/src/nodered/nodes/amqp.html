@@ -31,25 +31,28 @@
 
 <script type="text/x-red" data-template-name="amqp consumer">
     <!-- readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" -->
-    <div class="form-row">
-        <label for="node-input-config"><i class="fa fa-globe"></i> Config</label>
-        <input type="text" id="node-input-config">
-    </div>
-    <div class="form-row">
-        <label ><i class="fa fa-tag"></i> Queue name</label>
-        <input type="text" id="node-input-queue" placeholder="Queue name">
-    </div>
-    <div class="form-row">
-        <label><i class="fa fa-tag"></i> Auto acknowledgment</label>
-        <input type="checkbox" id="node-input-noack" style="width: auto;">
-    </div>
-    <div class="form-row">
-        <label ><i class="fa fa-tag"></i> Name</label>
-        <input type="text" id="node-input-name" placeholder="Node name">
-    </div>
+<div class="form-row">
+    <label for="node-input-config"><i class="fa fa-globe"></i> Config</label>
+    <input type="text" id="node-input-config">
+</div>
+<div class="form-row">
+    <label><i class="fa fa-tag"></i> Queue name</label>
+    <input type="text" id="node-input-queue" placeholder="Queue name">
+</div>
+<div class="form-row">
+    <label><i class="fa fa-tag"></i> Auto acknowledgment</label>
+    <input type="checkbox" id="node-input-noack" style="width: auto;">
+</div>
+<div class="form-row">
+    <label><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" placeholder="Node name">
+</div>
 </script>
 <script type="text/x-red" data-help-name="amqp consumer">
-AMQP consumer, listening for messages
+AMQP consumer, listening for messages.<br>
+if no connection is added, it will connect to your current openflow, but you
+can add a connection to another openflow and send/receive message queue message using that.<br>
+Remember that your queue maybe get prefixed with your usename, if amqp_force_queue_prefix is enabled in the openflow api<br>
 </script>
 <script type="text/javascript">
     RED.nodes.registerType('amqp consumer', {
@@ -79,26 +82,29 @@ AMQP consumer, listening for messages
 
 <script type="text/x-red" data-template-name="amqp publisher">
     <!-- readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" -->
-    <div class="form-row">
-        <label for="node-input-config"><i class="fa fa-globe"></i> Config</label>
-        <input type="text" id="node-input-config">
-    </div>
-    <div class="form-row">
-        <label ><i class="fa fa-tag"></i> Queue name</label>
-        <input type="text" id="node-input-queue" placeholder="Queue name">
-    </div>
-    <div class="form-row">
-        <label ><i class="fa fa-tag"></i> Local queue name</label>
-        <input type="text" id="node-input-localqueue" placeholder="Queue name">
-    </div>
-    <div class="form-row">
-        <label ><i class="fa fa-tag"></i> Name</label>
-        <input type="text" id="node-input-name" placeholder="Node name">
-    </div>
+<div class="form-row">
+    <label for="node-input-config"><i class="fa fa-globe"></i> Config</label>
+    <input type="text" id="node-input-config">
+</div>
+<div class="form-row">
+    <label><i class="fa fa-tag"></i> Queue name</label>
+    <input type="text" id="node-input-queue" placeholder="Queue name">
+</div>
+<div class="form-row">
+    <label><i class="fa fa-tag"></i> Local queue name</label>
+    <input type="text" id="node-input-localqueue" placeholder="Queue name">
+</div>
+<div class="form-row">
+    <label><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" placeholder="Node name">
+</div>
 </script>
 <script type="text/x-red" data-help-name="amqp publisher">
-AMQP publisher, sends messages to queue. queue is the exchange to send message too.
-localqueue is this nodes personal queue, leave blank for auto generated ( will change on every restart/Deploy )
+AMQP publisher, sends messages to queue. queue is the exchange to send message too.<br>
+localqueue is this nodes personal queue, leave blank for auto generated ( will change on every restart/Deploy )<br>
+if no connection is added, it will connect to your current openflow, but you
+can add a connection to another openflow and send/receive message queue message using that.<br>
+Remember that your <b>consumer queue</b> maybe get prefixed with your usename, if amqp_force_queue_prefix is enabled in the openflow api<br>
 </script>
 <script type="text/javascript">
     RED.nodes.registerType('amqp publisher', {

@@ -21,14 +21,14 @@ export class KubeUtil {
             kc.loadFromDefault();
             success = true;
         } catch (error) {
-            console.log(error);
+            console.error(error);
         }
         if (success == false) {
             try {
                 kc.loadFromCluster();
                 success = true;
             } catch (error) {
-                console.log(error);
+                console.error(error);
             }
         }
         this.CoreV1Api = kc.makeApiClient(k8s.CoreV1Api);

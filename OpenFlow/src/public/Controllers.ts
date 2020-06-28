@@ -22,6 +22,8 @@ module openflow {
         public users: TokenUser[];
         public user: TokenUser;
         public messages: string;
+        public queuename: string = "";
+        public timeout: string = (60 * 1000).toString(); // 1 min;
         constructor(
             public $scope: ng.IScope,
             public $location: ng.ILocationService,
@@ -36,12 +38,14 @@ module openflow {
             this.messages = "";
             WebSocketClient.onSignedin(async (_user: TokenUser) => {
                 if (this.id !== null && this.id !== undefined) {
-                    await api.RegisterQueue();
+                    this.queuename = await api.RegisterQueue();
+                    console.log(this.queuename);
                     await this.loadData();
                     await this.loadUsers();
                     $scope.$on('queuemessage', (event, data: QueueMessage) => {
                         if (event && data) { }
                         console.debug(data);
+                        if (data.data.command == undefined && data.data.data != null) data.data = data.data.data;
                         this.messages += data.data.command + "\n";
                         if (data.data.command == "invokecompleted") {
                             this.arguments = data.data.data;
@@ -73,6 +77,7 @@ module openflow {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         async submit(): Promise<void> {
+
             try {
                 this.errormessage = "";
                 var rpacommand = {
@@ -81,7 +86,7 @@ module openflow {
                     data: this.arguments
                 }
                 if (this.arguments === null || this.arguments === undefined) { this.arguments = {}; }
-                var result: any = await this.api.QueueMessage(this.user._id, rpacommand);
+                var result: any = await this.api.QueueMessage(this.user._id, this.queuename, rpacommand, parseInt(this.timeout));
                 try {
                     // result = JSON.parse(result);
                 } catch (error) {
@@ -691,7 +696,8 @@ module openflow {
                 this.basequery = {};
                 this.basequery = { $or: ors };
                 if (!this.showcompleted) {
-                    this.basequery.state = { $ne: "completed" };
+                    // this.basequery.state = { $ne: "completed" };
+                    this.basequery["$and"] = [{ state: { $ne: "completed" } }, { state: { $ne: "failed" } }];
                     this.basequery.form = { $exists: true };
                     // this.basequery.$or = ors;
                 } else {
@@ -1404,18 +1410,6 @@ module openflow {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
 
-        async submit() {
-            await this.SendOne(this.queuename, this.message);
-        }
-        async SendOne(queuename: string, message: any): Promise<void> {
-            var result: any = await this.api.QueueMessage(queuename, message);
-            try {
-                // result = JSON.parse(result);
-            } catch (error) {
-            }
-            this.messages += result + "\n";
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
-        }
     }
 
 
@@ -1784,6 +1778,8 @@ module openflow {
         public instanceid: string;
         public myid: string;
         public submitbutton: string;
+        public queuename: string;
+        public queue_message_timeout: number = (60 * 1000); // 1 min
 
         constructor(
             public $scope: ng.IScope,
@@ -1803,7 +1799,8 @@ module openflow {
 
             this.basequery = { _id: this.id };
             WebSocketClient.onSignedin(async (user: TokenUser) => {
-                await api.RegisterQueue();
+                this.queuename = await api.RegisterQueue();
+                console.log(this.queuename);
                 if (this.id !== null && this.id !== undefined && this.id !== "") {
                     this.basequery = { _id: this.id };
                     this.loadData();
@@ -1811,6 +1808,23 @@ module openflow {
                     console.error("missing id");
                 }
             });
+            $scope.$on('queuemessage', (event, data: QueueMessage) => {
+                if (event && data) { }
+                console.debug(data);
+                if (data.queuename == this.queuename) {
+                    if (this.instanceid == null && data.data._id != null) {
+                        this.instanceid = data.data._id;
+                        // this.$location.path("/Form/" + this.id + "/" + this.instanceid);
+                        // if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                        this.loadData();
+                        return;
+                    } else {
+                        this.loadData();
+                    }
+                }
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            });
+
         }
         async loadData(): Promise<void> {
             this.loading = true;
@@ -1862,17 +1876,17 @@ module openflow {
         }
         async SendOne(queuename: string, message: any): Promise<void> {
             // console.debug("SendOne: queuename " + queuename + " / " + this.myid);
-            var result: any = await this.api.QueueMessage(queuename, message);
+            var result: any = await this.api.QueueMessage(queuename, this.queuename, message, this.queue_message_timeout);
             try {
                 result = JSON.parse(result);
             } catch (error) {
             }
             // console.debug(result);
-            if ((this.instanceid === undefined || this.instanceid === null) && (result !== null && result !== unescape)) {
-                this.instanceid = result._id;
-                this.$location.path("/Form/" + this.id + "/" + this.instanceid);
-                if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            }
+            // if ((this.instanceid === undefined || this.instanceid === null) && (result !== null && result !== unescape)) {
+            //     this.instanceid = result._id;
+            //     this.$location.path("/Form/" + this.id + "/" + this.instanceid);
+            //     if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            // }
         }
         async Save() {
             if (this.form !== null && this.form !== undefined && this.form.fbeditor === true) {
@@ -2183,6 +2197,20 @@ module openflow {
 
                 $('#workflowform :button').hide();
                 $('input[type="submit"]').hide();
+                if (this.model.state == "failed") {
+                    if ((this.model as any).error != null && (this.model as any).error != "") {
+                        this.errormessage = (this.model as any).error;
+                    } else if (!this.model.payload) {
+                        this.errormessage = "An unknown error occurred";
+                    } else if (this.model.payload.message != null && this.model.payload.message != "") {
+                        this.errormessage = this.model.payload.message;
+                    } else if (this.model.payload.Message != null && this.model.payload.Message != "") {
+                        this.errormessage = this.model.payload.Message;
+                    } else {
+                        this.errormessage = this.model.payload;
+                    }
+                    console.log(this.model.payload);
+                }
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
@@ -2590,7 +2618,6 @@ module openflow {
             modal.modal()
             // var delta = jsondiffpatch.diff(this.model, model.item);
             if (model.item == null) {
-                console.log("loading " + model._id);
                 var items = await this.api.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby);
                 if (items.length > 0) {
                     model.item = items[0].item;
@@ -2609,7 +2636,6 @@ module openflow {
         }
         async CompareThen(model) {
             if (model.item == null || model.delta == null) {
-                console.log("loading " + model._id);
                 var items = await this.api.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby);
                 if (items.length > 0) {
                     model.item = items[0].item;
@@ -2622,7 +2648,6 @@ module openflow {
         }
         async RevertTo(model) {
             if (model.item == null) {
-                console.log("loading " + model._id);
                 var items = await this.api.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby);
                 if (items.length > 0) {
                     model.item = items[0].item;
@@ -2631,11 +2656,7 @@ module openflow {
             }
             let result = window.confirm("Overwrite current version with version " + model._version + "?");
             if (result) {
-                console.log(this.collection + " " + this.id, model.item);
                 jsondiffpatch.patch(model.item, model.delta);
-                console.log(this.collection + " " + this.id, model.item);
-
-
                 model.item._id = this.id;
                 await this.api.Update(this.collection, model.item);
                 this.loadData();
@@ -2857,18 +2878,6 @@ module openflow {
                 this.messages += error + "\n";
                 console.error(error);
             }
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
-
-        }
-        async SendOne(queuename: string, message: any): Promise<void> {
-            var result: any = await this.api.QueueMessage(queuename, message);
-            try {
-                this.errormessage = "";
-                // result = JSON.parse(result);
-            } catch (error) {
-                this.errormessage = error;
-            }
-            this.messages += result + "\n";
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
     }
@@ -3362,7 +3371,6 @@ module openflow {
                 if (this.stripe_customer && this.stripe_customer) {
                     try {
                         this.nextbill = (await this.api.Stripe<stripe_invoice>("GET", "invoices_upcoming", this.stripe_customer.id, null, null) as any);
-                        console.log(this.nextbill);
                         this.nextbill.dtperiod_start = new Date(this.nextbill.period_start * 1000);
                         this.nextbill.dtperiod_end = new Date(this.nextbill.period_end * 1000);
                     } catch (error) {

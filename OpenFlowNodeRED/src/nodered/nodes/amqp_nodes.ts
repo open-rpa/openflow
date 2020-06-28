@@ -2,11 +2,16 @@ import * as RED from "node-red";
 import { Red } from "node-red";
 import { NoderedUtil } from "./NoderedUtil";
 import { Logger } from "../../Logger";
-import { amqp_consumer } from "../../amqp_consumer";
-import { amqp_publisher } from "../../amqp_publisher";
+//import { amqp_consumer } from "../../amqp_consumer";
+//import { amqp_publisher } from "../../amqp_publisher";
 import { Config } from "../../Config";
+import { WebSocketClient } from "../../WebSocketClient";
+import { QueueMessage, SigninMessage, Message } from "../../Message";
 
 export interface Iamqp_connection {
+    name: string;
+    username: string;
+    password: string;
     host: string;
 }
 export class amqp_connection {
@@ -15,10 +20,13 @@ export class amqp_connection {
     public username: string = "";
     public password: string = "";
     public host: string = "";
+    public credentials: Iamqp_connection;
+    public webcli: WebSocketClient;
     constructor(public config: Iamqp_connection) {
         RED.nodes.createNode(this, config);
         this.node = this;
         this.node.status({});
+        this.credentials = this.node.credentials;
         if (this.node.credentials && this.node.credentials.hasOwnProperty("username")) {
             this.username = this.node.credentials.username;
         }
@@ -26,6 +34,32 @@ export class amqp_connection {
             this.password = this.node.credentials.password;
         }
         this.host = this.config.host;
+        if (!NoderedUtil.IsNullUndefinded(this.host)) {
+            this.webcli = new WebSocketClient(WebSocketClient.instance._logger, this.host);
+            this.webcli._logger.info("amqp_condig: connecting to " + this.host);
+            this.webcli.events.on("onopen", async () => {
+                try {
+                    var q: SigninMessage = new SigninMessage();
+                    q.clientagent = "nodered";
+                    q.clientversion = Config.version;
+                    q.username = this.username;
+                    q.password = this.password;
+                    var msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
+                    this.webcli._logger.info("amqp_condig: signing into " + this.host + " as " + this.username);
+                    var result: SigninMessage = await this.webcli.Send<SigninMessage>(msg);
+                    this.webcli._logger.info("signed in to " + this.host + " as " + result.user.name + " with id " + result.user._id);
+                    this.webcli.user = result.user;
+                    this.webcli.jwt = result.jwt;
+                    this.webcli.events.emit("onsignedin", result.user);
+                } catch (error) {
+                    this.webcli._logger.error(error.message);
+                    console.error(error);
+                }
+            });
+            this.webcli.events.on("onsignedin", async (user) => {
+                this.webcli._logger.info("signed in to " + this.host + " as " + user.name + " with id " + user._id);
+            });
+        }
     }
 }
 
@@ -37,37 +71,31 @@ export interface Iamqp_consumer_node {
 export class amqp_consumer_node {
     public node: Red = null;
     public name: string = "";
-    public con: amqp_consumer;
     public host: string = null;
+    public localqueue: string = "";
+    private connection: amqp_connection;
+    private websocket: WebSocketClient;
     constructor(public config: Iamqp_consumer_node) {
         RED.nodes.createNode(this, config);
         try {
             this.node = this;
             this.node.status({});
             this.node.on("close", this.onclose);
-            var _config: amqp_connection = RED.nodes.getNode(this.config.config);
-            let username: string = null;
-            let password: string = null;
-            if (!NoderedUtil.IsNullUndefinded(_config) && !NoderedUtil.IsNullEmpty(_config.username)) {
-                username = _config.username;
+            this.connection = RED.nodes.getNode(this.config.config);
+            this.websocket = WebSocketClient.instance;
+            if (this.connection != null && !NoderedUtil.IsNullEmpty(this.connection.host)) {
+                this.websocket = this.connection.webcli;
             }
-            if (!NoderedUtil.IsNullUndefinded(_config) && !NoderedUtil.IsNullEmpty(_config.password)) {
-                password = _config.password;
-            }
-            if (!NoderedUtil.IsNullUndefinded(_config) && !NoderedUtil.IsNullEmpty(_config.host)) {
-                this.host = _config.host;
-            }
-            if (!NoderedUtil.IsNullEmpty(username) && !NoderedUtil.IsNullEmpty(password)) {
-                this.host = "amqp://" + username + ":" + password + "@" + this.host;
-            } else {
-                if (!NoderedUtil.IsNullUndefinded(Config.queue_prefix)) {
-                    if (NoderedUtil.IsNullUndefinded(_config) || NoderedUtil.IsNullEmpty(_config.username)) {
-                        this.config.queue = Config.queue_prefix + this.config.queue;
-                    }
-                }
-                // this.host = "amqp://" + this.host;
-                this.host = Config.amqp_url;
-            }
+
+
+            this.websocket.events.on("onsignedin", () => {
+                this.connect();
+            });
+            this.websocket.events.on("onclose", (message) => {
+                if (message == null) message = "";
+                this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
+                this.onclose();
+            });
             this.connect();
         } catch (error) {
             NoderedUtil.HandleError(this, error);
@@ -76,9 +104,11 @@ export class amqp_consumer_node {
     async connect() {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
-            this.con = new amqp_consumer(Logger.instanse, this.host, this.config.queue);
-            this.con.OnMessage = this.OnMessage.bind(this);
-            await this.con.connect(this.config.noack);
+
+            this.localqueue = await NoderedUtil.RegisterQueue(this.websocket, this.config.queue, (msg: QueueMessage, ack: any) => {
+                this.OnMessage(msg, ack);
+            });
+            this.websocket._logger.info("registed amqp consumer as " + this.localqueue);
             this.node.status({ fill: "green", shape: "dot", text: "Connected" });
         } catch (error) {
             NoderedUtil.HandleError(this, error);
@@ -90,7 +120,8 @@ export class amqp_consumer_node {
             result.amqpacknowledgment = ack;
             var data: any = null;
             try {
-                data = JSON.parse(msg.content.toString());
+                // data = JSON.parse(msg.content.toString());
+                data = msg.data;
             } catch (error) {
 
             }
@@ -101,19 +132,15 @@ export class amqp_consumer_node {
             result.payload = data.payload;
             result.jwt = data.jwt;
             this.node.send(result);
+            ack();
         } catch (error) {
             NoderedUtil.HandleError(this, error);
         }
     }
     onclose() {
-        if (!NoderedUtil.IsNullUndefinded(this.con)) {
-            try {
-                this.con.close().catch((error) => {
-                    Logger.instanse.error(error);
-                });
-            } catch (error) {
-                Logger.instanse.error(error);
-            }
+        if (!NoderedUtil.IsNullEmpty(this.localqueue)) {
+            NoderedUtil.CloseQueue(this.websocket, this.localqueue);
+            this.localqueue = "";
         }
     }
 }
@@ -130,8 +157,10 @@ export interface Iamqp_publisher_node {
 export class amqp_publisher_node {
     public node: Red = null;
     public name: string = "";
-    public con: amqp_publisher;
     public host: string = null;
+    public localqueue: string = "";
+    private connection: amqp_connection;
+    private websocket: WebSocketClient;
     constructor(public config: Iamqp_publisher_node) {
         RED.nodes.createNode(this, config);
         try {
@@ -142,31 +171,21 @@ export class amqp_publisher_node {
 
             let username: string = null;
             let password: string = null;
-            var _config: amqp_connection = RED.nodes.getNode(this.config.config);
-            if (NoderedUtil.IsNullEmpty(this.config.localqueue)) { this.config.localqueue = ""; }
 
-            if (!NoderedUtil.IsNullUndefinded(_config) && !NoderedUtil.IsNullEmpty(_config.username)) {
-                username = _config.username;
-            }
-            if (!NoderedUtil.IsNullUndefinded(_config) && !NoderedUtil.IsNullEmpty(_config.password)) {
-                password = _config.password;
-            }
-            if (!NoderedUtil.IsNullUndefinded(_config) && !NoderedUtil.IsNullEmpty(_config.host)) {
-                this.host = _config.host;
-            }
-            if (!NoderedUtil.IsNullEmpty(username) && !NoderedUtil.IsNullEmpty(password)) {
-                this.host = "amqp://" + username + ":" + password + "@" + this.host;
-            } else {
-                // this.host = "amqp://" + this.host;
-                this.host = Config.amqp_url;
-            }
-            if (!NoderedUtil.IsNullUndefinded(Config.queue_prefix)) {
-                if (NoderedUtil.IsNullUndefinded(_config) || NoderedUtil.IsNullEmpty(_config.username)) {
-                    this.config.queue = Config.queue_prefix + this.config.queue;
-                    this.config.localqueue = Config.queue_prefix + this.config.localqueue;
-                }
+            this.connection = RED.nodes.getNode(this.config.config);
+            this.websocket = WebSocketClient.instance;
+            if (this.connection != null && !NoderedUtil.IsNullEmpty(this.connection.host)) {
+                this.websocket = this.connection.webcli;
             }
 
+            this.websocket.events.on("onsignedin", () => {
+                this.connect();
+            });
+            this.websocket.events.on("onclose", (message) => {
+                if (message == null) message = "";
+                this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
+                this.onclose();
+            });
             this.connect();
         } catch (error) {
             NoderedUtil.HandleError(this, error);
@@ -175,10 +194,14 @@ export class amqp_publisher_node {
     async connect() {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
-            this.con = new amqp_publisher(Logger.instanse, this.host, this.config.localqueue);
-            this.con.OnMessage = this.OnMessage.bind(this);
-            await this.con.connect();
+            this.localqueue = this.config.localqueue;
+            // if (this.localqueue !== null && this.localqueue !== undefined && this.localqueue !== "") { this.localqueue = Config.queue_prefix + this.localqueue; }
+            this.localqueue = await NoderedUtil.RegisterQueue(this.websocket, this.localqueue, (msg: QueueMessage, ack: any) => {
+                this.OnMessage(msg, ack);
+            });
+            this.websocket._logger.info("registed amqp published return queue as " + this.localqueue);
             this.node.status({ fill: "green", shape: "dot", text: "Connected" });
+
         } catch (error) {
             NoderedUtil.HandleError(this, error);
         }
@@ -187,11 +210,13 @@ export class amqp_publisher_node {
         try {
             var result: any = {};
             result.amqpacknowledgment = ack;
-            var json: string = msg.content.toString();
-            var data = JSON.parse(json);
+            // var json: string = msg.content.toString();
+            // var data = JSON.parse(json);
+            var data = msg.data;
             result.payload = data.payload;
             result.jwt = data.jwt;
             this.node.send(result);
+            ack();
         } catch (error) {
             NoderedUtil.HandleError(this, error);
         }
@@ -203,21 +228,27 @@ export class amqp_publisher_node {
             data.payload = msg.payload;
             data.jwt = msg.jwt;
             data._id = msg._id;
-            this.con.SendMessage(JSON.stringify(data), this.config.queue, null, true);
-            this.node.status({});
+            var expiration: number = (60 * 1000); // 1 min
+            if (typeof msg.expiration == 'number') {
+                expiration = msg.expiration;
+            }
+            var queue = this.config.queue;
+            //this.localqueue = this.config.queue;
+            // if (this.localqueue !== null && this.localqueue !== undefined && this.localqueue !== "") { this.localqueue = Config.queue_prefix + this.localqueue; }
+            var expiration: number = Config.amqp_workflow_out_expiration;
+            if (!NoderedUtil.IsNullEmpty(msg.expiration)) expiration = msg.expiration;
+            this.node.status({ fill: "blue", shape: "dot", text: "Sending message ..." });
+            await NoderedUtil.QueueMessage(this.websocket, queue, this.localqueue, data, null, expiration);
+            // this.con.SendMessage(JSON.stringify(data), this.config.queue, null, true);
+            this.node.status({ fill: "green", shape: "dot", text: "Connected" });
         } catch (error) {
             NoderedUtil.HandleError(this, error);
         }
     }
     onclose() {
-        if (!NoderedUtil.IsNullUndefinded(this.con)) {
-            try {
-                this.con.close().catch((error) => {
-                    Logger.instanse.error(error);
-                });
-            } catch (error) {
-                Logger.instanse.error(error);
-            }
+        if (!NoderedUtil.IsNullEmpty(this.localqueue)) {
+            NoderedUtil.CloseQueue(this.websocket, this.localqueue);
+            this.localqueue = "";
         }
     }
 }
@@ -228,7 +259,6 @@ export interface Iamqp_acknowledgment_node {
 export class amqp_acknowledgment_node {
     public node: Red = null;
     public name: string = "";
-    public con: amqp_publisher;
     constructor(public config: Iamqp_acknowledgment_node) {
         RED.nodes.createNode(this, config);
         this.node = this;
@@ -243,7 +273,7 @@ export class amqp_acknowledgment_node {
                 var data: any = {};
                 data.payload = msg.payload;
                 data.jwt = msg.jwt;
-                msg.amqpacknowledgment(JSON.stringify(data));
+                msg.amqpacknowledgment(true, data);
             }
             this.node.send(msg);
             this.node.status({});

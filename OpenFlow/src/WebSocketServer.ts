@@ -36,7 +36,7 @@ export class WebSocketServer {
         // });
         setInterval(this.pingClients, 10000);
     }
-    private static async  pingClients(): Promise<void> {
+    private static async pingClients(): Promise<void> {
         let count: number = WebSocketServer._clients.length;
         WebSocketServer._clients = WebSocketServer._clients.filter(function (cli: WebSocketClient): boolean {
             try {
@@ -73,31 +73,31 @@ export class WebSocketServer {
                     if (cli.clientagent == "openrpa") {
                         Config.db.db.collection("users").updateOne({ _id: cli.user._id },
                             { $set: { _rpaheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
-                                console.log(err);
+                                console.error(err);
                             });
                     }
                     if (cli.clientagent == "nodered") {
                         Config.db.db.collection("users").updateOne({ _id: cli.user._id },
                             { $set: { _noderedheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
-                                console.log(err);
+                                console.error(err);
                             });
                     }
                     if (cli.clientagent == "webapp" || cli.clientagent == "aiotwebapp") {
                         Config.db.db.collection("users").updateOne({ _id: cli.user._id },
                             { $set: { _webheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
-                                console.log(err);
+                                console.error(err);
                             });
                     }
                     if (cli.clientagent == "mobileapp" || cli.clientagent == "aiotmobileapp") {
                         Config.db.db.collection("users").updateOne({ _id: cli.user._id },
                             { $set: { _webheartbeat: new Date(new Date().toISOString()), _mobilheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
-                                console.log(err);
+                                console.error(err);
                             });
                     }
-                    else if (cli.consumers != null && cli.consumers.length > 0) {
+                    else {
                         // Should proberly turn this a little down, so we dont update all online users every 10th second
                         Config.db.db.collection("users").updateOne({ _id: cli.user._id }, { $set: { _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
-                            console.log(err);
+                            console.error(err);
                         });
                     }
                 }

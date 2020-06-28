@@ -90,9 +90,7 @@
         },
         oneditprepare: function () {
             var me = this;
-            console.log(me);
             function updateui(type) {
-                console.log("type: '" + type + "'");
                 if (type != "oauth2") { $('#clientid').hide(); } else { $('#clientid').show(); }
                 if (type != "oauth2") { $('#clientsecret').hide(); } else { $('#clientsecret').show(); }
                 if (type != "oauth2") { $('#redirecturi').hide(); } else { $('#redirecturi').show(); }
@@ -138,8 +136,8 @@
                         var win = window.open(data.url, '_blank');
                         win.focus();
                     }).error(function (jqXHR, textStatus, errorThrown) {
-                        console.log("error " + textStatus);
-                        console.log("incoming Text " + jqXHR.responseText);
+                        console.error("error " + textStatus);
+                        console.error("incoming Text " + jqXHR.responseText);
                         alert("error:" + jqXHR.responseText);
                     });
             });
@@ -149,8 +147,8 @@
                     $('#tokens').show();
                     $('#node-config-input-tokens').val(JSON.stringify(data.tokens));
                 }).error(function (jqXHR, textStatus, errorThrown) {
-                    console.log("error " + textStatus);
-                    console.log("incoming Text " + jqXHR.responseText);
+                    console.error("error " + textStatus);
+                    console.error("incoming Text " + jqXHR.responseText);
                     alert("error:" + jqXHR.responseText);
                 });
             });

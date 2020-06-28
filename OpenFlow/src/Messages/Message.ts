@@ -43,6 +43,7 @@ import { DatabaseConnection } from "../DatabaseConnection";
 import { CreateWorkflowInstanceMessage } from "./CreateWorkflowInstanceMessage";
 import { StripeMessage, EnsureStripeCustomerMessage, Billing, stripe_customer, stripe_base, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription, stripe_subscription_item, stripe_plan, stripe_coupon } from "./StripeMessage";
 import { V1ResourceRequirements } from "@kubernetes/client-node";
+import { amqpwrapper } from "../amqpwrapper";
 var request = require("request");
 var got = require("got");
 
@@ -213,7 +214,7 @@ export class Message {
         var msg: RegisterQueueMessage<Base>
         try {
             msg = RegisterQueueMessage.assign(this.data);
-            await cli.CreateConsumer(msg.queuename);
+            msg.queuename = await cli.CreateConsumer(msg.queuename);
         } catch (error) {
             cli._logger.error(error);
             if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -238,25 +239,35 @@ export class Message {
                 if (typeof msg.data == 'string') {
                     try {
                         var obj = JSON.parse(msg.data);
-                        if (Util.IsNullUndefinded(obj.jwt)) {
-                            obj.jwt = msg.jwt;
-                            msg.data = JSON.stringify(obj);
-                        }
+                        // if (Util.IsNullUndefinded(obj.jwt)) {
+                        //     obj.jwt = msg.jwt;
+                        //     msg.data = JSON.stringify(obj);
+                        // }
                     } catch (error) {
                     }
                 } else {
                     msg.data.jwt = msg.jwt;
                 }
             }
+            var expiration: number = Config.amqp_default_expiration;
+            if (typeof msg.expiration == 'number') expiration = msg.expiration;
             if (Util.IsNullEmpty(msg.replyto)) {
-                await cli.sendToQueue(msg);
+                // var sendthis = { data: msg.data, jwt: cli.jwt, user: cli.user };
+                var sendthis = msg.data;
+                await amqpwrapper.Instance().send("", msg.queuename, sendthis, expiration, msg.correlationId);
             } else {
                 if (msg.queuename === msg.replyto) {
-                    cli._logger.warn("Ignore reply to self queuename:" + msg.queuename + " correlationId:" + msg.correlationId);
-                    return
+                    throw new Error("Cannot send reply to self queuename:" + msg.queuename + " correlationId:" + msg.correlationId);
+                    // cli._logger.warn("Ignore reply to self queuename:" + msg.queuename + " correlationId:" + msg.correlationId);
+                    // return
                 }
-                this.replyto = msg.correlationId;
-                await cli.sendQueueReply(msg);
+                //var sendthis = { data: msg.data, jwt: cli.jwt, user: cli.user };
+                var sendthis = msg.data;
+                var result = await amqpwrapper.Instance().sendWithReplyTo("", msg.queuename, msg.replyto, sendthis, expiration, msg.correlationId);
+                // var result = await amqpwrapper.Instance().sendWithReply("", msg.queuename, sendthis, expiration, msg.correlationId);
+
+                // this.replyto = msg.correlationId;
+                // await cli.sendQueueReply(msg, expiration);
             }
         } catch (error) {
             cli._logger.error(error);
@@ -802,9 +813,9 @@ export class Message {
         var tuser: TokenUser = new TokenUser(nodereduser);
         var nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
 
-        if (Config.force_queue_prefix) {
-            user.nodered.queue_prefix = nodereduser.username;
-        }
+        // if (Config.force_queue_prefix) {
+        //     user.nodered.queue_prefix = nodereduser.username;
+        // }
 
         cli._logger.debug("[" + cli.user.username + "] ensure nodered role " + name + "noderedadmins");
         var noderedadmins = await User.ensureRole(cli.jwt, name + "noderedadmins", null);
@@ -1144,14 +1155,13 @@ export class Message {
                                     cli._logger.debug("[" + cli.user.username + "] Remove un billed nodered instance " + itemname + " that has been running for " + diffhours + " hours");
                                     await this._DeleteNoderedInstance(userid, cli.user._id, cli.user.username, rootjwt);
                                 }
-                                // console.log(itemname + " " + diffminutes + " min / " + diffhours + " hours");
                             } catch (error) {
                             }
                         } else if (image.indexOf("openflownodered") > 0) {
                             if (billed != "true" && diffhours > 24) {
-                                console.log("unbilled " + itemname + " with no userid, should be removed, it has been running for " + diffhours + " hours");
+                                console.debug("unbilled " + itemname + " with no userid, should be removed, it has been running for " + diffhours + " hours");
                             } else {
-                                console.log("unbilled " + itemname + " with no userid, has been running for " + diffhours + " hours");
+                                console.debug("unbilled " + itemname + " with no userid, has been running for " + diffhours + " hours");
                             }
                         }
                     }
@@ -1475,10 +1485,10 @@ export class Message {
             var tuser = Crypt.verityToken(msg.jwt);
             msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
 
-            if (cli.consumers.length == 0) {
-                await cli.CreateConsumer("nodered." + Math.random().toString(36).substr(2, 9));
-                // throw new Error("Client not connected to any message queues");
-            }
+            // if (cli.consumers.length == 0) {
+            //     await cli.CreateConsumer("nodered." + Math.random().toString(36).substr(2, 9));
+            //     // throw new Error("Client not connected to any message queues");
+            // }
             if (Util.IsNullEmpty(msg.queue)) {
                 var workflow: any = null;
                 var user: any = null;
@@ -1515,7 +1525,8 @@ export class Message {
 
             if (msg.initialrun) {
                 var message = { _id: res2._id };
-                cli.consumers[0].sendToQueueWithReply(msg.queue, msg.resultqueue, msg.correlationId, message);
+                amqpwrapper.Instance().sendWithReplyTo("", msg.queue, msg.resultqueue, message, Config.amqp_default_expiration, msg.correlationId);
+                // cli.consumers[0].sendToQueueWithReply(msg.queue, msg.resultqueue, msg.correlationId, message, (60 * (60 * 1000))); // 1 hour
             }
         } catch (error) {
             cli._logger.error(error);

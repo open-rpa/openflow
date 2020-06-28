@@ -2,9 +2,9 @@ import * as RED from "node-red";
 import { Red } from "node-red";
 import { NoderedUtil } from "./NoderedUtil";
 import { Logger } from "../../Logger";
-import { amqp_consumer } from "../../amqp_consumer";
-import { amqp_publisher } from "../../amqp_publisher";
 import { Config } from "../../Config";
+import { WebSocketClient } from "../../WebSocketClient";
+import { QueueMessage } from "../../Message";
 
 export interface Irpa_detector_node {
     queue: string;
@@ -13,8 +13,8 @@ export interface Irpa_detector_node {
 export class rpa_detector_node {
     public node: Red = null;
     public name: string = "";
-    public con: amqp_consumer;
     public host: string = null;
+    public localqueue: string = "";
     constructor(public config: Irpa_detector_node) {
         RED.nodes.createNode(this, config);
         try {
@@ -22,6 +22,14 @@ export class rpa_detector_node {
             this.node.status({});
             this.node.on("close", this.onclose);
             this.host = Config.amqp_url;
+            WebSocketClient.instance.events.on("onsignedin", () => {
+                this.connect();
+            });
+            WebSocketClient.instance.events.on("onclose", (message) => {
+                if (message == null) message = "";
+                this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
+                this.onclose();
+            });
             this.connect();
         } catch (error) {
             NoderedUtil.HandleError(this, error);
@@ -30,9 +38,10 @@ export class rpa_detector_node {
     async connect() {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
-            this.con = new amqp_consumer(Logger.instanse, this.host, this.config.queue);
-            this.con.OnMessage = this.OnMessage.bind(this);
-            await this.con.connect(this.config.noack);
+
+            this.localqueue = await NoderedUtil.RegisterQueue(WebSocketClient.instance, this.config.queue, (msg: QueueMessage, ack: any) => {
+                this.OnMessage(msg, ack);
+            });
             this.node.status({ fill: "green", shape: "dot", text: "Connected" });
         } catch (error) {
             NoderedUtil.HandleError(this, error);
@@ -40,8 +49,12 @@ export class rpa_detector_node {
     }
     async OnMessage(msg: any, ack: any) {
         try {
-            var msg = JSON.parse(msg.content.toString());
             if (msg.data && !msg.payload) {
+                msg.payload = msg.data;
+                delete msg.data;
+            }
+            if (msg.payload.data) {
+                msg = msg.payload;
                 msg.payload = msg.data;
                 delete msg.data;
             }
@@ -58,14 +71,9 @@ export class rpa_detector_node {
         }
     }
     onclose() {
-        if (!NoderedUtil.IsNullUndefinded(this.con)) {
-            try {
-                this.con.close().catch((error) => {
-                    Logger.instanse.error(error);
-                });
-            } catch (error) {
-                Logger.instanse.error(error);
-            }
+        if (!NoderedUtil.IsNullEmpty(this.localqueue)) {
+            NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
+            this.localqueue = "";
         }
     }
 }
@@ -80,8 +88,8 @@ export interface Irpa_workflow_node {
 export class rpa_workflow_node {
     public node: Red = null;
     public name: string = "";
-    public con: amqp_publisher;
     public host: string = null;
+    private localqueue: string = "";
     constructor(public config: Irpa_workflow_node) {
         RED.nodes.createNode(this, config);
         try {
@@ -90,6 +98,14 @@ export class rpa_workflow_node {
             this.node.on("input", this.oninput);
             this.node.on("close", this.onclose);
             this.host = Config.amqp_url;
+            WebSocketClient.instance.events.on("onsignedin", () => {
+                this.connect();
+            });
+            WebSocketClient.instance.events.on("onclose", (message) => {
+                if (message == null) message = "";
+                this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
+                this.onclose();
+            });
             this.connect();
         } catch (error) {
             NoderedUtil.HandleError(this, error);
@@ -98,12 +114,13 @@ export class rpa_workflow_node {
     async connect() {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
-            var localqueue = this.config.localqueue;
-            if (localqueue !== null && localqueue !== undefined && localqueue !== "") { localqueue = Config.queue_prefix + localqueue; }
-            this.con = new amqp_publisher(Logger.instanse, this.host, localqueue);
-            this.con.OnMessage = this.OnMessage.bind(this);
-            await this.con.connect();
+            this.localqueue = this.config.localqueue;
+            // if (this.localqueue !== null && this.localqueue !== undefined && this.localqueue !== "") { this.localqueue = Config.queue_prefix + this.localqueue; }
+            this.localqueue = await NoderedUtil.RegisterQueue(WebSocketClient.instance, this.localqueue, (msg: QueueMessage, ack: any) => {
+                this.OnMessage(msg, ack);
+            });
             this.node.status({ fill: "green", shape: "dot", text: "Connected" });
+
         } catch (error) {
             NoderedUtil.HandleError(this, error);
         }
@@ -111,43 +128,63 @@ export class rpa_workflow_node {
     async OnMessage(msg: any, ack: any) {
         try {
             var result: any = {};
-            result.amqpacknowledgment = ack;
-            var json: string = msg.content.toString();
-            var data = JSON.parse(json);
+
+            var correlationId = msg.correlationId;
+            if (msg.data && !msg.payload) {
+                msg.payload = msg.data;
+                delete msg.data;
+            }
+            if (msg.payload.data) {
+                msg = msg.payload;
+                msg.payload = msg.data;
+                delete msg.data;
+            }
+            var data = msg;
             var command = data.command;
-            result.jwt = data.jwt;
-            var correlationId = msg.properties.correlationId;
+            if (command == undefined && data.data != null && data.data.command != null) { command = data.data.command; }
+            // result.jwt = data.jwt;
+
 
             if (correlationId != null && this.messages[correlationId] != null) {
-                result = this.messages[correlationId];
+
+                result = new Object(this.messages[correlationId]);
                 if (command == "invokecompleted" || command == "invokefailed" || command == "invokeaborted" || command == "error" || command == "timeout") {
                     delete this.messages[correlationId];
                 }
+            } else {
+                result.jwt = data.jwt;
             }
-
             if (command == "invokecompleted") {
-                result.payload = data.data;
+                result.payload = data.payload;
+                // if (!NoderedUtil.IsNullEmpty(data.jwt)) { result.jwt = data.jwt; }
                 if (data.user != null) result.user = data.user;
                 if (result.payload == null || result.payload == undefined) { result.payload = {}; }
                 this.node.status({ fill: "green", shape: "dot", text: command });
-                console.log("********************");
-                console.log(result);
-                console.log("********************");
                 this.node.send(result);
             }
             else if (command == "invokefailed" || command == "invokeaborted" || command == "error" || command == "timeout") {
-                result.payload = data;
+                result.payload = data.payload;
+                result.error = data.payload;
+                if (command == "timeout") {
+                    result.error = "request timed out, no robot picked up the message in a timely fashion";
+                }
+                if (result.error != null && result.error.Message != null && result.error.Message != "") {
+                    result.error = result.error.Message;
+                }
+                // if (!NoderedUtil.IsNullEmpty(data.jwt)) { result.jwt = data.jwt; }
                 if (data.user != null) result.user = data.user;
                 if (result.payload == null || result.payload == undefined) { result.payload = {}; }
                 this.node.status({ fill: "red", shape: "dot", text: command });
                 this.node.send([null, null, result]);
             }
             else {
-                result.payload = data;
+                result.payload = data.payload;
+                // if (!NoderedUtil.IsNullEmpty(data.jwt)) { result.jwt = data.jwt; }
                 if (data.user != null) result.user = data.user;
                 if (result.payload == null || result.payload == undefined) { result.payload = {}; }
                 this.node.send([null, result]);
             }
+            ack();
             // this.node.send(result);
         } catch (error) {
             this.node.status({});
@@ -182,25 +219,27 @@ export class rpa_workflow_node {
                 expiry: Math.floor((new Date().getTime()) / 1000) + Config.amqp_message_ttl,
                 data: { payload: msg.payload }
             }
+            var expiration: number = Config.amqp_workflow_out_expiration;
+            if (!NoderedUtil.IsNullEmpty(msg.expiration)) {
+                expiration = msg.expiration;
+            }
+            // this.con.SendMessage(JSON.stringify(rpacommand), targetid, correlationId, true);
+            await NoderedUtil.QueueMessage(WebSocketClient.instance, targetid, this.localqueue, rpacommand, correlationId, expiration);
             this.node.status({ fill: "blue", shape: "dot", text: "Robot running..." });
-            this.con.SendMessage(JSON.stringify(rpacommand), targetid, correlationId, true);
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            // NoderedUtil.HandleError(this, error);
             try {
                 this.node.status({ fill: "red", shape: "dot", text: error });
+                msg.error = error;
+                this.node.send([null, null, msg]);
             } catch (error) {
             }
         }
     }
     onclose() {
-        if (!NoderedUtil.IsNullUndefinded(this.con)) {
-            try {
-                this.con.close().catch((error) => {
-                    Logger.instanse.error(error);
-                });
-            } catch (error) {
-                Logger.instanse.error(error);
-            }
+        if (!NoderedUtil.IsNullEmpty(this.localqueue)) {
+            NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
+            this.localqueue = "";
         }
     }
 }

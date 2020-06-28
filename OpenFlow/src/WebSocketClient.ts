@@ -6,7 +6,7 @@ import { Message, JSONfn } from "./Messages/Message";
 import { User } from "./User";
 import { DatabaseConnection, mapFunc, reduceFunc, finalizeFunc } from "./DatabaseConnection";
 import { Config } from "./Config";
-import { amqp_consumer } from "./amqp_consumer";
+// import { amqp_consumer } from "./amqp_consumer";
 import { QueueMessage } from "./Messages/QueueMessage";
 import { QueryMessage } from "./Messages/QueryMessage";
 import { MapReduceMessage } from "./Messages/MapReduceMessage";
@@ -16,6 +16,7 @@ import { DeleteOneMessage } from "./Messages/DeleteOneMessage";
 import { Base } from "./base";
 import { UpdateManyMessage } from "./Messages/UpdateManyMessage";
 import { Util } from "./Util";
+import { amqpwrapper, QueueMessageOptions } from "./amqpwrapper";
 
 interface IHashTable<T> {
     [key: string]: T;
@@ -42,8 +43,11 @@ export class WebSocketClient {
     public clientagent: string;
     public clientversion: string;
 
+
     user: User;
-    public consumers: amqp_consumer[] = [];
+    // public consumers: amqp_consumer[] = [];
+    private queues: IHashTable<string> = {};
+
     constructor(logger: winston.Logger, socketObject: WebSocket) {
         this._logger = logger;
         this._socketObject = socketObject;
@@ -81,87 +85,76 @@ export class WebSocketClient {
         }
     }
     public async CloseConsumers(): Promise<void> {
-        for (let i = 0; i < this.consumers.length; i++) {
+        var keys = Object.keys(this.queues);
+        for (let i = 0; i < keys.length; i++) {
             try {
-                this.consumers[i].OnMessage = null;
-                await this.consumers[i].close();
+                await this.CloseConsumer(keys[i]);
             } catch (error) {
                 this._logger.error("WebSocketclient::closeconsumers " + error);
             }
         }
-        this.consumers = [];
     }
     public async Close(): Promise<void> {
+        await this.CloseConsumers();
         if (this._socketObject != null) {
-            await this.CloseConsumers();
             try {
                 this._socketObject.close();
             } catch (error) {
                 this._logger.error("WebSocketclient::Close " + error);
             }
         }
-
-    }
-    public async CreateConsumer(queuename: string): Promise<void> {
-        var autoDelete: boolean = false;
-
-        if (Util.IsNullEmpty(queuename)) { queuename = "web." + Math.random().toString(36).substr(2, 9); autoDelete = true; }
-        var consumer = new amqp_consumer(this._logger, Config.amqp_url, queuename);
-        consumer.OnMessage = this.OnMessage.bind(this);
-        this.consumers.push(consumer);
-        await consumer.connect(false, autoDelete);
     }
     public async CloseConsumer(queuename: string): Promise<void> {
-        var index = -1;
-        for (let i = 0; i < this.consumers.length; i++) {
-            if (this.consumers[i].queue == queuename) index = i;
-        }
-        if (index == -1) return;
-        var consumer: amqp_consumer = this.consumers[index];
-        this.consumers = this.consumers.splice(index, 1);
-        consumer.OnMessage = null;
-        await consumer.close();
-    }
-    public async sendQueueReply(msg: QueueMessage) {
-        try {
-            var index = -1;
-            for (let i = 0; i < this.consumers.length; i++) {
-                if (this.consumers[i].queue == msg.queuename) index = i;
+        if (this.queues[queuename] != null) {
+            try {
+                await amqpwrapper.Instance().RemoveQueueConsumer(queuename);
+                delete this.queues[queuename];
+            } catch (error) {
+                this._logger.error("WebSocketclient::CloseConsumer " + error);
             }
-            if (index == -1) return;
-            this.consumers[index].sendToQueue(msg.replyto, msg.correlationId, msg.data);
-        } catch (error) {
-            this._logger.error("WebSocketclient::WebSocket error encountered " + error);
         }
     }
-    public async sendToQueue(msg: QueueMessage) {
-        if (Util.IsNullEmpty(msg.queuename)) { throw new Error("sendToQueue, queuename is mandatory") }
-        if (this.consumers.length === 0) { throw new Error("No consumers for client available to send message through") }
-        // var result = this.consumers[0].sendToQueue(msg.queuename, msg.correlationId, { payload: msg.data, jwt: this.jwt, user: this.user });
-        var result = this.consumers[0].sendToQueue(msg.queuename, msg.correlationId, msg.data);
+    public async CreateConsumer(queuename: string): Promise<string> {
+        var autoDelete: boolean = false; // Should we keep the queue around ? for robots and roles
+        if (Util.IsNullEmpty(queuename)) {
+            if (this.clientagent == "nodered") {
+                queuename = "nodered." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+            } else if (this.clientagent == "webapp") {
+                queuename = "webapp." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+            } else if (this.clientagent == "web") {
+                queuename = "web." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+            } else {
+                queuename = "unknown." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+            }
+        }
+        var AssertQueueOptions: any = new Object(amqpwrapper.Instance().AssertQueueOptions);
+        AssertQueueOptions.autoDelete = autoDelete;
+        var queuename = await amqpwrapper.Instance().AddQueueConsumer(queuename, AssertQueueOptions, this.jwt, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+            var _data = msg;
+            try {
+                _data = await this.Queue(msg, queuename, options);
+                ack();
+                done(_data);
+            } catch (error) {
+                setTimeout(() => {
+                    ack(false);
+                    // ack(); // just eat the error 
+                    done(_data);
+                    if (error.message != null && error.message != "") {
+                        console.log(queuename + " failed message queue message, nack and re queue message: ", error.message);
+                    } else {
+                        console.log(queuename + " failed message queue message, nack and re queue message: ", error);
+                    }
+                }, Config.amqp_requeue_time);
+            }
+        });
+        this.queues[queuename] = queuename;
+        return queuename;
     }
     sleep(ms) {
         return new Promise(resolve => {
             setTimeout(resolve, ms)
         })
-    }
-    async OnMessage(sender: amqp_consumer, msg: amqplib.ConsumeMessage) {
-        try {
-            this._logger.debug("WebSocketclient::WebSocket Send message to socketclient, from " + msg.properties.replyTo + " correlationId: " + msg.properties.correlationId);
-            var _data = msg.content.toString();
-            var data = await this.Queue(_data, msg.properties.replyTo, msg.properties.correlationId, sender.queue);
-            this._logger.debug("WebSocketclient::WebSocket ack message in queue " + sender.queue);
-            sender.channel.ack(msg);
-        } catch (error) {
-            this._logger.error("WebSocketclient::WebSocket error in queue " + sender.queue + " / " + error);
-            setTimeout(() => {
-                try {
-                    sender.channel.nack(msg);
-                } catch (error) {
-                    this._logger.error("WebSocketclient::WebSocket nack message in queue " + sender.queue);
-                }
-            }, 2000);
-        }
     }
     public ping(): boolean {
         try {
@@ -215,10 +208,6 @@ export class WebSocketClient {
             }
         });
         this._sendQueue.forEach(msg => {
-            if (msg.command !== "pong") {
-                var b = msg.command;
-                // console.log(JSON.stringify(msg));
-            }
             let id: string = msg.id;
             try {
                 this._socketObject.send(JSON.stringify(msg));
@@ -267,7 +256,7 @@ export class WebSocketClient {
         // tslint:disable-next-line: quotemark
         return str.match(new RegExp('.{1,' + length + '}', 'g'));
     }
-    async Queue(data: string, replyTo: string, correlationId: string, queuename: string): Promise<any[]> {
+    async Queue(data: string, queuename: string, options: QueueMessageOptions): Promise<any[]> {
         var d: any = JSON.parse(data);
         var q: QueueMessage = new QueueMessage();
         if (this.clientversion == "1.0.80.0" || this.clientversion == "1.0.81.0" || this.clientversion == "1.0.82.0" || this.clientversion == "1.0.83.0" || this.clientversion == "1.0.84.0" || this.clientversion == "1.0.85.0") {
@@ -276,9 +265,13 @@ export class WebSocketClient {
             q.data = d;
         }
         // q.data = d.payload; 
-        q.replyto = replyTo;
+        q.replyto = options.replyTo;
         q.error = d.error;
-        q.correlationId = correlationId; q.queuename = queuename;
+        q.correlationId = options.correlationId; q.queuename = queuename;
+        q.consumerTag = options.consumerTag;
+        q.routingkey = options.routingkey;
+        q.exchange = options.exchange;
+
         let m: Message = Message.fromcommand("queuemessage");
         if (Util.IsNullEmpty(q.correlationId)) { q.correlationId = m.id; }
         m.data = JSON.stringify(q);

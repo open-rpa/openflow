@@ -5,10 +5,10 @@ import * as WebSocket from "ws";
 import { Logger } from "./Logger";
 import { WebServer } from "./WebServer";
 import { WebSocketServer } from "./WebSocketServer";
-import { amqp_consumer, amqp_rpc_consumer } from "./amqp_consumer";
-import { amqp_publisher, amqp_rpc_publisher } from "./amqp_publisher";
-import { amqp_exchange_consumer } from "./amqp_exchange_consumer";
-import { amqp_exchange_publisher } from "./amqp_exchange_publisher";
+// import { amqp_consumer, amqp_rpc_consumer } from "./amqp_consumer";
+// import { amqp_publisher, amqp_rpc_publisher } from "./amqp_publisher";
+// import { amqp_exchange_consumer } from "./amqp_exchange_consumer";
+// import { amqp_exchange_publisher } from "./amqp_exchange_publisher";
 import { DatabaseConnection } from "./DatabaseConnection";
 import { Base, WellknownIds, Rights } from "./base";
 import { User, FederationId } from "./User";
@@ -18,21 +18,84 @@ import { Auth } from "./Auth";
 import { Role } from "./Role";
 import { Config } from "./Config";
 import { KubeUtil } from "./KubeUtil";
+import { amqpwrapper, QueueMessageOptions } from "./amqpwrapper";
+import { Util } from "./Util";
 
 const logger: winston.Logger = Logger.configure();
 Config.db = new DatabaseConnection(logger, Config.mongodb_url, Config.mongodb_db);
 
-var con: amqp_consumer = new amqp_consumer(logger, Config.amqp_url, "hello1");
-var pub: amqp_publisher = new amqp_publisher(logger, Config.amqp_url, "hello1");
-var excon1: amqp_exchange_consumer = new amqp_exchange_consumer(logger, Config.amqp_url, "hello2");
-var excon2: amqp_exchange_consumer = new amqp_exchange_consumer(logger, Config.amqp_url, "hello2");
-var expub: amqp_exchange_publisher = new amqp_exchange_publisher(logger, Config.amqp_url, "hello2");
-var rpccon: amqp_rpc_consumer = new amqp_rpc_consumer(logger, Config.amqp_url, "rpchello", (msg: string): string => {
-    return "server response! " + msg;
-});
-var rpcpub: amqp_rpc_publisher = new amqp_rpc_publisher(logger, Config.amqp_url);
+
+async function initamqp() {
+    var amqp: amqpwrapper = new amqpwrapper(logger, Config.amqp_url);
+    amqpwrapper.SetInstance(amqp);
+    await amqp.connect();
+    var testamqp = new amqpwrapper(logger, Config.amqp_url);
+    amqpwrapper.SetTestInstance(testamqp);
+    await testamqp.connect();
+
+    // Must also consume messages in the dead letter queue, to catch messages that have timed out
+    await amqp.AddExchangeConsumer(Config.amqp_dlx, "fanout", "", null, null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+        // This is the function to run when the dead letter (timed out) message is picked up
+        // var data = JSON.parse(msg.content.toString());
+        // Change the command and return back to the correct queue (replyTo) to be handled
+        // Clear x-first-death-reason header
+        // msg.properties.headers["x-first-death-reason"] = null;
+        // Set command to timeout to be handled when collected from the node's queue
+        if (typeof msg === "string" || msg instanceof String) {
+            try {
+                msg = JSON.parse((msg as any));
+            } catch (error) {
+            }
+        }
+        try {
+            msg.command = "timeout";
+            // Resend message, this time to the reply queue for the correct node (replyTo)
+            // this.SendMessage(JSON.stringify(data), msg.properties.replyTo, msg.properties.correlationId, false);
+            console.log("[DLX][" + options.exchange + "] Send timeout to " + options.replyTo)
+            amqpwrapper.Instance().sendWithReply("", options.replyTo, msg, 20000, options.correlationId);
+        } catch (error) {
+        }
+        ack();
+        done();
+    });
+
+    // await amqp.AddExchangeConsumer("testexchange", "fanout", "", null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+    //     console.log("testexchange: " + msg);
+    //     ack();
+    //     done(msg + " hi from testexchange");
+    // });
+    // await amqp.AddQueueConsumer("testqueue", null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+    //     console.log("testqueue: " + msg);
+    //     ack();
+    //     done(msg + " hi from testqueue.1");
+    // });
+    // await amqp.AddQueueConsumer("testqueue", null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+    //     console.log("tempqueue: " + msg);
+    //     ack();
+    //     done(msg + " hi from testqueue.2");
+    // });
+    // doitagain();
+}
+// var flipper: boolean = false;
+// async function doitagain() {
+//     try {
+//         flipper = !flipper;
+//         if (flipper) {
+//             console.log(await amqpwrapper.Instance().sendWithReply("", "testqueue", "Hi mom", 20000, ""));
+//         } else {
+//             // console.log(await amqpwrapper.Instance().sendWithReply("", "testqueue2", "Hi mom", 2000));
+//             console.log(await amqpwrapper.Instance().sendWithReply("testexchange", "", "Hi mom", 20000, ""));
+//         }
+//     } catch (error) {
+//         console.log(error);
+//     }
+//     setTimeout(() => {
+//         doitagain()
+//     }, 5000);
+// }
 
 
+initamqp();
 async function initDatabase(): Promise<boolean> {
     try {
         var jwt: string = TokenUser.rootToken();
