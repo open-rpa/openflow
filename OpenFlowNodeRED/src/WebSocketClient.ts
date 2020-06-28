@@ -41,7 +41,7 @@ export class WebSocketClient {
             WebSocketClient.instance = this;
         }
 
-        setInterval(this.pingServer, 10000);
+        setInterval(this.pingServer.bind(this), 10000);
     }
     public connect(): void {
         try {
@@ -80,20 +80,19 @@ export class WebSocketClient {
         return true;
     }
     private pingServer(): void {
-        var me: WebSocketClient = WebSocketClient.instance;
         try {
-            if (me._socketObject !== null && me._socketObject.readyState === me._socketObject.OPEN) {
+            if (this._socketObject !== null && this._socketObject.readyState === this._socketObject.OPEN) {
                 let msg: SocketMessage = SocketMessage.fromcommand("ping");
-                me._socketObject.send(JSON.stringify(msg));
+                this._socketObject.send(JSON.stringify(msg));
             }
-            if (me._socketObject === null ||
-                me._socketObject.readyState !== me._socketObject.CONNECTING || me._socketObject.readyState !== me._socketObject.OPEN) {
-                me.connect();
+            if (this._socketObject === null ||
+                this._socketObject.readyState !== this._socketObject.CONNECTING || this._socketObject.readyState !== this._socketObject.OPEN) {
+                this.connect();
             }
         } catch (error) {
-            me._logger.error(error.message);
+            this._logger.error(error.message);
             console.error(error);
-            me.connect();
+            this.connect();
         }
     }
     private async onopen(evt: Event): Promise<void> {
