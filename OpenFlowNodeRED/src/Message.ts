@@ -511,7 +511,7 @@ export class Message {
                     } else {
                         if (result != null && !NoderedUtil.IsNullEmpty(msg.replyto) && this.command != "error") {
                             try {
-                                await NoderedUtil.QueueMessage(msg.replyto, "", result, msg.correlationId, Config.amqp_reply_expiration);
+                                await NoderedUtil.QueueMessage(cli, msg.replyto, "", result, msg.correlationId, Config.amqp_reply_expiration);
                             } catch (error) {
                                 console.error("Error sending response to " + msg.replyto + " " + JSON.stringify(error))
                             }

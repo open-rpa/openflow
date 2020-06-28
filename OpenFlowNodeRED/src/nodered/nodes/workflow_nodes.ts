@@ -51,7 +51,7 @@ export class workflow_in_node {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
             // if (this.localqueue !== null && this.localqueue !== undefined && this.localqueue !== "") { this.localqueue = Config.queue_prefix + this.localqueue; }
             this.localqueue = this.config.queue;
-            this.localqueue = await NoderedUtil.RegisterQueue(this.localqueue, (msg: QueueMessage, ack: any) => {
+            this.localqueue = await NoderedUtil.RegisterQueue(WebSocketClient.instance, this.localqueue, (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
             });
             await this.init();
@@ -262,7 +262,7 @@ export class workflow_in_node {
     }
     onclose() {
         if (!NoderedUtil.IsNullEmpty(this.localqueue)) {
-            NoderedUtil.CloseQueue(this.localqueue);
+            NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
             this.localqueue = "";
         }
     }
@@ -340,7 +340,7 @@ export class workflow_out_node {
                     expiration = msg.expiration;
                 }
                 var expiration = Config.amqp_workflow_out_expiration;
-                var res = await NoderedUtil.QueueMessage(msg.resultqueue, null, data, msg.correlationId, expiration);
+                var res = await NoderedUtil.QueueMessage(WebSocketClient.instance, msg.resultqueue, null, data, msg.correlationId, expiration);
                 // this.con.SendMessage(JSON.stringify(data), msg.resultqueue, msg.correlationId, false);
             }
         } catch (error) {
@@ -367,7 +367,7 @@ export class workflow_out_node {
                 }
                 // ROLLBACK
                 // Don't wait for ack(), we don't care if the receiver is there, right ?
-                var result = await NoderedUtil.QueueMessage(msg._replyTo, null, data, msg.correlationId, Config.amqp_workflow_out_expiration);
+                var result = await NoderedUtil.QueueMessage(WebSocketClient.instance, msg._replyTo, null, data, msg.correlationId, Config.amqp_workflow_out_expiration);
                 console.log("Send reply data to " + msg._replyTo, data);
                 //this.con.SendMessage(JSON.stringify(data), msg._replyTo, msg._correlationId, false);
             }
@@ -466,7 +466,7 @@ export class assign_workflow_node {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
             // if (this.localqueue !== null && this.localqueue !== undefined && this.localqueue !== "") { this.localqueue = Config.queue_prefix + this.localqueue; }
-            this.localqueue = await NoderedUtil.RegisterQueue(this.localqueue, (msg: QueueMessage, ack: any) => {
+            this.localqueue = await NoderedUtil.RegisterQueue(WebSocketClient.instance, this.localqueue, (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
             });
             this.node.status({ fill: "green", shape: "dot", text: "Connected" });
@@ -602,7 +602,7 @@ export class assign_workflow_node {
     }
     onclose() {
         if (!NoderedUtil.IsNullEmpty(this.localqueue)) {
-            NoderedUtil.CloseQueue(this.localqueue);
+            NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
             this.localqueue = "";
         }
     }

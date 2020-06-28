@@ -39,7 +39,7 @@ export class rpa_detector_node {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
 
-            this.localqueue = await NoderedUtil.RegisterQueue(this.config.queue, (msg: QueueMessage, ack: any) => {
+            this.localqueue = await NoderedUtil.RegisterQueue(WebSocketClient.instance, this.config.queue, (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
             });
             this.node.status({ fill: "green", shape: "dot", text: "Connected" });
@@ -72,7 +72,7 @@ export class rpa_detector_node {
     }
     onclose() {
         if (!NoderedUtil.IsNullEmpty(this.localqueue)) {
-            NoderedUtil.CloseQueue(this.localqueue);
+            NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
             this.localqueue = "";
         }
     }
@@ -116,7 +116,7 @@ export class rpa_workflow_node {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
             this.localqueue = this.config.localqueue;
             // if (this.localqueue !== null && this.localqueue !== undefined && this.localqueue !== "") { this.localqueue = Config.queue_prefix + this.localqueue; }
-            this.localqueue = await NoderedUtil.RegisterQueue(this.localqueue, (msg: QueueMessage, ack: any) => {
+            this.localqueue = await NoderedUtil.RegisterQueue(WebSocketClient.instance, this.localqueue, (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
             });
             this.node.status({ fill: "green", shape: "dot", text: "Connected" });
@@ -224,7 +224,7 @@ export class rpa_workflow_node {
                 expiration = msg.expiration;
             }
             // this.con.SendMessage(JSON.stringify(rpacommand), targetid, correlationId, true);
-            await NoderedUtil.QueueMessage(targetid, this.localqueue, rpacommand, correlationId, expiration);
+            await NoderedUtil.QueueMessage(WebSocketClient.instance, targetid, this.localqueue, rpacommand, correlationId, expiration);
             this.node.status({ fill: "blue", shape: "dot", text: "Robot running..." });
         } catch (error) {
             // NoderedUtil.HandleError(this, error);
@@ -238,7 +238,7 @@ export class rpa_workflow_node {
     }
     onclose() {
         if (!NoderedUtil.IsNullEmpty(this.localqueue)) {
-            NoderedUtil.CloseQueue(this.localqueue);
+            NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
             this.localqueue = "";
         }
     }

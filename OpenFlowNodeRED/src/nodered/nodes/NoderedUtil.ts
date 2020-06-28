@@ -290,28 +290,28 @@ export class NoderedUtil {
 
     // public static messageQueue: IHashTable<messagequeue> = {};
     public static messageQueuecb: IHashTable<QueueOnMessage> = {};
-    public static async RegisterQueue(queuename: string, callback: any): Promise<string> {
+    public static async RegisterQueue(websocket: WebSocketClient, queuename: string, callback: any): Promise<string> {
         var q: RegisterQueueMessage = new RegisterQueueMessage();
         q.queuename = queuename;
         var msg: Message = new Message(); msg.command = "registerqueue"; msg.data = JSON.stringify(q);
-        var result: RegisterQueueMessage = await WebSocketClient.instance.Send(msg);
+        var result: RegisterQueueMessage = await websocket.Send(msg);
         this.messageQueuecb[result.queuename] = callback;
         return result.queuename;
     }
-    public static async CloseQueue(queuename: string): Promise<void> {
-        if (!WebSocketClient.instance.isConnected()) return;
+    public static async CloseQueue(websocket: WebSocketClient, queuename: string): Promise<void> {
+        if (!websocket.isConnected()) return;
         if (queuename == null || queuename == "") {
             var b = true;
         }
         var q: RegisterQueueMessage = new RegisterQueueMessage();
         q.queuename = queuename;
         var msg: Message = new Message(); msg.command = "closequeue"; msg.data = JSON.stringify(q);
-        var result: RegisterQueueMessage = await WebSocketClient.instance.Send(msg);
+        var result: RegisterQueueMessage = await websocket.Send(msg);
         delete this.messageQueuecb[result.queuename];
     }
     // ROLLBACK
     // Promise<QueueMessage>
-    public static async _QueueMessage(queuename: string, replyto: string, data: any, correlationId: string, expiration: number): Promise<void> {
+    public static async _QueueMessage(websocket: WebSocketClient, queuename: string, replyto: string, data: any, correlationId: string, expiration: number): Promise<void> {
         return new Promise<void>(async (resolve, reject) => {
             try {
                 var q: QueueMessage = new QueueMessage();
@@ -321,25 +321,15 @@ export class NoderedUtil {
                 q.queuename = queuename; q.data = JSON.stringify(data);
                 q.replyto = replyto;
                 var msg: Message = new Message(); msg.command = "queuemessage"; msg.data = JSON.stringify(q);
-                // this.messageQueue[q.correlationId] = new messagequeue(q, (msgresult: QueueMessage) => {
-                //     resolve(msgresult);
-                //     delete this.messageQueue[q.correlationId];
-                // });
-                var res = await WebSocketClient.instance.Send(msg);
+                var res = await websocket.Send(msg);
                 resolve();
             } catch (error) {
                 reject(error);
             }
         });
     }
-    public static async QueueMessage(queuename: string, replyto: string, data: any, correlationId: string, expiration: number): Promise<void> {
+    public static async QueueMessage(websocket: WebSocketClient, queuename: string, replyto: string, data: any, correlationId: string, expiration: number): Promise<void> {
         if (!WebSocketClient.instance.isConnected()) throw new Error("Cannot send, not connected");
-        await this._QueueMessage(queuename, replyto, data, correlationId, expiration);
-        // var result: any = await this._QueueMessage(queuename, replyto, data, correlationId, expiration);
-        // var msg = result.data;
-        // if (typeof result.data === "string" || result.data instanceof String) {
-        //     result.data = JSON.parse(result.data);
-        // }
-        // return result;
+        await this._QueueMessage(websocket, queuename, replyto, data, correlationId, expiration);
     }
 }
