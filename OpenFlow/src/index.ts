@@ -233,22 +233,22 @@ rejectionEmitter.on("unhandledRejection", (error, promise) => {
 rejectionEmitter.on("rejectionHandled", (error, promise) => {
     console.log('Rejection handled at: Promise', promise, 'reason:', error);
     console.dir(error.stack);
-})
+});
 
-    (async function (): Promise<void> {
-        try {
-            // await Config.get_login_providers();
-            const server: http.Server = await WebServer.configure(logger, Config.baseurl());
-            WebSocketServer.configure(logger, server);
-            logger.info("listening on " + Config.baseurl());
-            logger.info("namespace: " + Config.namespace);
-            if (!await initDatabase()) {
-                process.exit(404);
-            }
-        } catch (error) {
-            // logger.error(error.message);
-            var json = JSON.stringify(error, null, 3);
-            console.error(json);
-
+(async function (): Promise<void> {
+    try {
+        // await Config.get_login_providers();
+        const server: http.Server = await WebServer.configure(logger, Config.baseurl());
+        WebSocketServer.configure(logger, server);
+        logger.info("listening on " + Config.baseurl());
+        logger.info("namespace: " + Config.namespace);
+        if (!await initDatabase()) {
+            process.exit(404);
         }
-    })();
+    } catch (error) {
+        // logger.error(error.message);
+        var json = JSON.stringify(error, null, 3);
+        console.error(json);
+
+    }
+})();
