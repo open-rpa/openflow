@@ -66,7 +66,6 @@ export class amqp_connection {
 export interface Iamqp_consumer_node {
     config: any;
     queue: string;
-    noack: boolean;
 }
 export class amqp_consumer_node {
     public node: Red = null;
@@ -169,9 +168,6 @@ export class amqp_publisher_node {
             this.node.on("input", this.oninput);
             this.node.on("close", this.onclose);
 
-            let username: string = null;
-            let password: string = null;
-
             this.connection = RED.nodes.getNode(this.config.config);
             this.websocket = WebSocketClient.instance;
             if (this.connection != null && !NoderedUtil.IsNullEmpty(this.connection.host)) {
@@ -195,10 +191,12 @@ export class amqp_publisher_node {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
             this.localqueue = this.config.localqueue;
+            console.log(this.localqueue);
             // if (this.localqueue !== null && this.localqueue !== undefined && this.localqueue !== "") { this.localqueue = Config.queue_prefix + this.localqueue; }
             this.localqueue = await NoderedUtil.RegisterQueue(this.websocket, this.localqueue, (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
             });
+            console.log(this.localqueue);
             this.websocket._logger.info("registed amqp published return queue as " + this.localqueue);
             this.node.status({ fill: "green", shape: "dot", text: "Connected" });
 
@@ -228,7 +226,7 @@ export class amqp_publisher_node {
             data.payload = msg.payload;
             data.jwt = msg.jwt;
             data._id = msg._id;
-            var expiration: number = (60 * 1000); // 1 min
+            var expiration: number = Config.amqp_message_ttl; // 1 min
             if (typeof msg.expiration == 'number') {
                 expiration = msg.expiration;
             }

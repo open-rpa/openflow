@@ -263,38 +263,46 @@ export class amqpwrapper {
     }
     OnMessage(sender: amqpwrapper, msg: amqplib.ConsumeMessage, callback: QueueOnMessage): void {
         // sender._logger.info("OnMessage " + msg.content.toString());
-        var correlationId: string = msg.properties.correlationId;
-        var replyTo: string = msg.properties.replyTo;
-        var consumerTag: string = msg.fields.consumerTag;
-        var routingkey: string = msg.fields.routingkey;
-        var exchange: string = msg.fields.exchange;
-        var options: QueueMessageOptions = {
-            correlationId: correlationId,
-            replyTo: replyTo,
-            consumerTag: consumerTag,
-            routingkey: routingkey,
-            exchange: exchange
-        }
-        var data: string = msg.content.toString();
-        callback(data, options, (nack: boolean) => {
-            if (nack == false) {
-                console.log("nack message");
-                this.channel.nack(msg);
-                // this.channel.nack(msg, false, true);
-                msg = null;
-                return;
+        try {
+            var correlationId: string = msg.properties.correlationId;
+            var replyTo: string = msg.properties.replyTo;
+            var consumerTag: string = msg.fields.consumerTag;
+            var routingkey: string = msg.fields.routingkey;
+            var exchange: string = msg.fields.exchange;
+            var options: QueueMessageOptions = {
+                correlationId: correlationId,
+                replyTo: replyTo,
+                consumerTag: consumerTag,
+                routingkey: routingkey,
+                exchange: exchange
             }
-            this.channel.ack(msg);
-        }, (result) => {
-            // ROLLBACK
-            // if (msg != null && !Util.IsNullEmpty(replyTo)) {
-            //     try {
-            //         this.channel.sendToQueue(replyTo, Buffer.from(result), { correlationId: msg.properties.correlationId });
-            //     } catch (error) {
-            //         console.error("Error sending response to " + replyTo + " " + JSON.stringify(error))
-            //     }
-            // }
-        });
+            var data: string = msg.content.toString();
+            callback(data, options, (nack: boolean) => {
+                try {
+                    if (nack == false) {
+                        console.log("nack message");
+                        this.channel.nack(msg);
+                        // this.channel.nack(msg, false, true);
+                        msg = null;
+                        return;
+                    }
+                    this.channel.ack(msg);
+                } catch (error) {
+                    console.error(error);
+                }
+            }, (result) => {
+                // ROLLBACK
+                // if (msg != null && !Util.IsNullEmpty(replyTo)) {
+                //     try {
+                //         this.channel.sendToQueue(replyTo, Buffer.from(result), { correlationId: msg.properties.correlationId });
+                //     } catch (error) {
+                //         console.error("Error sending response to " + replyTo + " " + JSON.stringify(error))
+                //     }
+                // }
+            });
+        } catch (error) {
+            console.error(error);
+        }
     }
     async sendWithReply(exchange: string, queue: string, data: any, expiration: number, correlationId: string): Promise<string> {
         if (Util.IsNullEmpty(correlationId)) correlationId = this.generateUuid();

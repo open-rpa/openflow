@@ -40,10 +40,6 @@
     <input type="text" id="node-input-queue" placeholder="Queue name">
 </div>
 <div class="form-row">
-    <label><i class="fa fa-tag"></i> Auto acknowledgment</label>
-    <input type="checkbox" id="node-input-noack" style="width: auto;">
-</div>
-<div class="form-row">
     <label><i class="fa fa-tag"></i> Name</label>
     <input type="text" id="node-input-name" placeholder="Node name">
 </div>
@@ -60,7 +56,6 @@ Remember that your queue maybe get prefixed with your usename, if amqp_force_que
         color: "#a6bbcf",
         defaults: {
             queue: { value: "", required: true },
-            noack: { value: true, required: true },
             name: { value: "" },
             config: { value: "", type: "amqp-connection", required: false }
         },
