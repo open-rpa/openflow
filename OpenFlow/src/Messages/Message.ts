@@ -884,7 +884,7 @@ export class Message {
                                     name: 'nodered',
                                     image: Config.nodered_image,
                                     imagePullPolicy: "Always",
-                                    ports: [{ containerPort: 80 }, { containerPort: 5858 }],
+                                    ports: [{ containerPort: 80 }, { containerPort: 5859 }],
                                     resources: resources,
                                     env: [
                                         { name: "saml_federation_metadata", value: Config.saml_federation_metadata },

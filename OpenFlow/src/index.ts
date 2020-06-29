@@ -219,25 +219,36 @@ async function initDatabase(): Promise<boolean> {
 }
 
 
-process.on('unhandledRejection', up => {
-    console.error(up);
-    throw up
+
+const unhandledRejection = require("unhandled-rejection");
+let rejectionEmitter = unhandledRejection({
+    timeout: 20
 });
 
-(async function (): Promise<void> {
-    try {
-        // await Config.get_login_providers();
-        const server: http.Server = await WebServer.configure(logger, Config.baseurl());
-        WebSocketServer.configure(logger, server);
-        logger.info("listening on " + Config.baseurl());
-        logger.info("namespace: " + Config.namespace);
-        if (!await initDatabase()) {
-            process.exit(404);
-        }
-    } catch (error) {
-        // logger.error(error.message);
-        var json = JSON.stringify(error, null, 3);
-        console.error(json);
+rejectionEmitter.on("unhandledRejection", (error, promise) => {
+    console.log('Unhandled Rejection at: Promise', promise, 'reason:', error);
+    console.dir(error.stack);
+});
 
-    }
-})();
+rejectionEmitter.on("rejectionHandled", (error, promise) => {
+    console.log('Rejection handled at: Promise', promise, 'reason:', error);
+    console.dir(error.stack);
+})
+
+    (async function (): Promise<void> {
+        try {
+            // await Config.get_login_providers();
+            const server: http.Server = await WebServer.configure(logger, Config.baseurl());
+            WebSocketServer.configure(logger, server);
+            logger.info("listening on " + Config.baseurl());
+            logger.info("namespace: " + Config.namespace);
+            if (!await initDatabase()) {
+                process.exit(404);
+            }
+        } catch (error) {
+            // logger.error(error.message);
+            var json = JSON.stringify(error, null, 3);
+            console.error(json);
+
+        }
+    })();
