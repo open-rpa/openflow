@@ -1903,7 +1903,7 @@ module openflow {
             var result: any = await this.api.QueueMessage(queuename, this.queuename, message, this.queue_message_timeout);
             try {
                 if (typeof result === "string" || result instanceof String) {
-                    result = JSON.parse(result);
+                    result = JSON.parse((result as any));
                 }
             } catch (error) {
                 console.log(result);
