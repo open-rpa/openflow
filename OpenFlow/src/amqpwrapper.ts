@@ -368,10 +368,15 @@ export class amqpwrapper {
     }
     async checkQueue(queue: string): Promise<boolean> {
         if (Config.amqp_check_for_consumer) {
+            var q: amqpqueue = this.queues[queue];
+
             var test: AssertQueue = null;
             try {
                 // var test: AssertQueue = await this.channel.assertQueue(this.queue, this.AssertQueueOptions);
                 test = await this.channel.checkQueue(queue);
+                if (q != null) {
+                    q.ok = test;
+                }
             } catch (error) {
                 test = null;
             }
