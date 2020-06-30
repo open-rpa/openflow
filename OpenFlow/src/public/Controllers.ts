@@ -1879,9 +1879,9 @@ module openflow {
                         }
                     }
                 } else {
-                    this.errormessage = "Model contains no form";
-                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
-                    console.error(this.errormessage);
+                    // this.errormessage = "Model contains no form";
+                    // if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    // console.error(this.errormessage);
                 }
                 this.renderform();
             } else {
