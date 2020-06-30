@@ -130,7 +130,7 @@ export class WebSocketClient {
         }
         var AssertQueueOptions: any = new Object(amqpwrapper.Instance().AssertQueueOptions);
         AssertQueueOptions.autoDelete = autoDelete;
-        var queuename = await amqpwrapper.Instance().AddQueueConsumer(queuename, AssertQueueOptions, this.jwt, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+        var queuename = await amqpwrapper.Instance().AddQueueConsumer(this, queuename, AssertQueueOptions, this.jwt, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
             var _data = msg;
             try {
                 _data = await this.Queue(msg, queuename, options);

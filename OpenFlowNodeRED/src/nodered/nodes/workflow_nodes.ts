@@ -147,6 +147,13 @@ export class workflow_in_node {
                 data.jwt = data.payload.jwt;
                 delete data.payload.jwt;
             }
+            while (data.payload != null && data.payload.payload != null) {
+                data.payload = data.payload.payload;
+            }
+            // if (data.payload != null && data.payload.payload != null) {
+            //     // UGLy ROLLBACK!
+            //     data.payload = data.payload.payload;
+            // }
             var _id = data._id;
             if (_id === null || _id === undefined || _id === "") {
                 if (data.payload !== null && data.payload !== undefined) {
@@ -170,10 +177,10 @@ export class workflow_in_node {
                     data = orgmsg;
                 } else {
                     if (typeof orgmsg.payload === "object") {
-                        orgmsg.payload = Object.assign(orgmsg.payload, data);
+                        orgmsg.payload = Object.assign(orgmsg.payload, data.payload);
                     } else {
                         orgmsg.payload = { message: orgmsg.payload };
-                        orgmsg.payload = Object.assign(orgmsg.payload, data);
+                        orgmsg.payload = Object.assign(orgmsg.payload, data.payload);
                     }
                     data = orgmsg;
                 }

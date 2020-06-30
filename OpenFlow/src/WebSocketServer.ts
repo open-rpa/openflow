@@ -62,7 +62,7 @@ export class WebSocketServer {
             }
             var now = new Date();
             var seconds = (now.getTime() - cli.lastheartbeat.getTime()) / 1000;
-            if (seconds >= 20) {
+            if (seconds >= Config.client_heartbeat_timeout) {
                 if (cli.user != null) {
                     WebSocketServer._logger.info("client " + cli.user.name + "/" + cli.clientagent + " timeout, close down");
                 } else {
