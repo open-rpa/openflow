@@ -51,6 +51,7 @@
     "jquery": "^3.5.1",
     "jquery-ui": "^1.12.1",
     "jquery-ui-bundle": "^1.12.1",
+    "json-stringify-safe": "^5.0.1",
     "jsondiffpatch": "^0.4.1",
     "jsonwebtoken": "^8.5.1",
     "mimetype": "0.0.8",

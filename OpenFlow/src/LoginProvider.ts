@@ -29,7 +29,11 @@ import { Util } from "./Util";
 var multer = require('multer');
 var GridFsStorage = require('multer-gridfs-storage');
 import { GridFSBucket, ObjectID, Db, Cursor } from "mongodb";
+import { WebSocketServer } from "./WebSocketServer";
+import { amqpwrapper } from "./amqpwrapper";
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
+
+var stringify = require('json-stringify-safe');
 
 interface IVerifyFunction { (error: any, profile: any): void; }
 export class Provider extends Base {
@@ -151,6 +155,33 @@ export class LoginProvider {
             res.header('Expires', '-1');
             res.header('Pragma', 'no-cache');
             next();
+        });
+        // app.get("/clients", async (req: any, res: any, next: any): Promise<void> => {
+        //     try {
+        //         var result: any[] = WebSocketServer._clients;
+        //         res.setHeader("Content-Type", "application/json");
+        //         var json = stringify(result, null, 2);
+        //         // res.json(result);
+        //         res.end(json);
+        //         res.end();
+        //     } catch (error) {
+        //         res.end(error);
+        //         console.error(error);
+        //     }
+        // });
+        // ROLLBACK
+        app.get("/amqp", async (req: any, res: any, next: any): Promise<void> => {
+            try {
+                var result: any[] = (amqpwrapper.Instance().queues as any);
+                res.setHeader("Content-Type", "application/json");
+                var json = stringify(result, null, 2);
+                // res.json(result);
+                res.end(json);
+                res.end();
+            } catch (error) {
+                res.end(error);
+                console.error(error);
+            }
         });
 
         app.get("/Signout", (req: any, res: any, next: any): void => {
