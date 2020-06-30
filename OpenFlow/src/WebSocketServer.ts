@@ -60,6 +60,17 @@ export class WebSocketServer {
                 console.error(error);
                 cli.Close();
             }
+            var now = new Date();
+            var seconds = (now.getTime() - cli.lastheartbeat.getTime()) / 1000;
+            if (seconds >= 20) {
+                if (cli.user != null) {
+                    WebSocketServer._logger.info("client " + cli.user.name + "/" + cli.clientagent + " timeout, close down");
+                } else {
+                    WebSocketServer._logger.info("client not signed/" + cli.clientagent + " timeout, close down");
+                }
+                cli.Close();
+                return false;
+            }
             return cli.ping();
         });
         if (count !== WebSocketServer._clients.length) {

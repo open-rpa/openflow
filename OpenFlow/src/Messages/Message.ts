@@ -102,6 +102,7 @@ export class Message {
                     this.Ping(cli);
                     break;
                 case "pong":
+                    cli.lastheartbeat = new Date();
                     break;
                 case "listcollections":
                     this.ListCollections(cli);

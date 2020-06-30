@@ -190,8 +190,10 @@ export class amqpwrapper {
         if (this.queues[queue] != null) {
             q = this.queues[queue];
         } else {
+            this._logger.error("[AMQP] Request for removing unknown consumer " + queue);
             return;
         }
+        this._logger.info("[AMQP] Remove queue consumer " + queue);
         await this.channel.cancel(q.consumerTag);
         delete this.queues[q.queue];
     }
