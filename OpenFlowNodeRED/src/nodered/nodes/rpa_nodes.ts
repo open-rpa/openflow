@@ -119,7 +119,7 @@ export class rpa_workflow_node {
             this.localqueue = await NoderedUtil.RegisterQueue(WebSocketClient.instance, this.localqueue, (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
             });
-            this.node.status({ fill: "green", shape: "dot", text: "Connected" });
+            this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
 
         } catch (error) {
             NoderedUtil.HandleError(this, error);
@@ -159,7 +159,7 @@ export class rpa_workflow_node {
                 // if (!NoderedUtil.IsNullEmpty(data.jwt)) { result.jwt = data.jwt; }
                 if (data.user != null) result.user = data.user;
                 if (result.payload == null || result.payload == undefined) { result.payload = {}; }
-                this.node.status({ fill: "green", shape: "dot", text: command });
+                this.node.status({ fill: "green", shape: "dot", text: command + "  " + this.localqueue });
                 this.node.send(result);
             }
             else if (command == "invokefailed" || command == "invokeaborted" || command == "error" || command == "timeout") {
@@ -174,7 +174,7 @@ export class rpa_workflow_node {
                 // if (!NoderedUtil.IsNullEmpty(data.jwt)) { result.jwt = data.jwt; }
                 if (data.user != null) result.user = data.user;
                 if (result.payload == null || result.payload == undefined) { result.payload = {}; }
-                this.node.status({ fill: "red", shape: "dot", text: command });
+                this.node.status({ fill: "red", shape: "dot", text: command + "  " + this.localqueue });
                 this.node.send([null, null, result]);
             }
             else {
@@ -225,7 +225,7 @@ export class rpa_workflow_node {
             }
             // this.con.SendMessage(JSON.stringify(rpacommand), targetid, correlationId, true);
             await NoderedUtil.QueueMessage(WebSocketClient.instance, targetid, this.localqueue, rpacommand, correlationId, expiration);
-            this.node.status({ fill: "blue", shape: "dot", text: "Robot running..." });
+            this.node.status({ fill: "blue", shape: "dot", text: "Robot running " + this.localqueue });
         } catch (error) {
             // NoderedUtil.HandleError(this, error);
             try {

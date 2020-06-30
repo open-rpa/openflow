@@ -16,7 +16,7 @@ import { DeleteOneMessage } from "./Messages/DeleteOneMessage";
 import { Base } from "./base";
 import { UpdateManyMessage } from "./Messages/UpdateManyMessage";
 import { Util } from "./Util";
-import { amqpwrapper, QueueMessageOptions } from "./amqpwrapper";
+import { amqpwrapper, QueueMessageOptions, amqpqueue } from "./amqpwrapper";
 
 interface IHashTable<T> {
     [key: string]: T;
@@ -47,7 +47,7 @@ export class WebSocketClient {
 
     user: User;
     // public consumers: amqp_consumer[] = [];
-    private queues: IHashTable<string> = {};
+    private queues: IHashTable<amqpqueue> = {};
 
     constructor(logger: winston.Logger, socketObject: WebSocket) {
         this._logger = logger;
@@ -108,7 +108,7 @@ export class WebSocketClient {
     public async CloseConsumer(queuename: string): Promise<void> {
         if (this.queues[queuename] != null) {
             try {
-                await amqpwrapper.Instance().RemoveQueueConsumer(queuename);
+                await amqpwrapper.Instance().RemoveQueueConsumer(this.queues[queuename]);
                 delete this.queues[queuename];
             } catch (error) {
                 this._logger.error("WebSocketclient::CloseConsumer " + error);
@@ -117,24 +117,29 @@ export class WebSocketClient {
     }
     public async CreateConsumer(queuename: string): Promise<string> {
         var autoDelete: boolean = false; // Should we keep the queue around ? for robots and roles
-        if (Util.IsNullEmpty(queuename)) {
+        var qname = queuename;
+        if (Util.IsNullEmpty(qname)) {
             if (this.clientagent == "nodered") {
-                queuename = "nodered." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+                qname = "nodered." + Math.random().toString(36).substr(2, 9); autoDelete = true;
             } else if (this.clientagent == "webapp") {
-                queuename = "webapp." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+                qname = "webapp." + Math.random().toString(36).substr(2, 9); autoDelete = true;
             } else if (this.clientagent == "web") {
-                queuename = "web." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+                qname = "web." + Math.random().toString(36).substr(2, 9); autoDelete = true;
             } else {
-                queuename = "unknown." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+                qname = "unknown." + Math.random().toString(36).substr(2, 9); autoDelete = true;
             }
+        }
+        if (this.queues[qname] != null) {
+            await amqpwrapper.Instance().RemoveQueueConsumer(this.queues[qname]);
+            delete this.queues[qname];
         }
         // var AssertQueueOptions: any = new Object(amqpwrapper.Instance().AssertQueueOptions);
         var AssertQueueOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertQueueOptions));
         AssertQueueOptions.autoDelete = autoDelete;
-        var queuename = await amqpwrapper.Instance().AddQueueConsumer(queuename, AssertQueueOptions, this.jwt, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+        var queue = await amqpwrapper.Instance().AddQueueConsumer(qname, AssertQueueOptions, this.jwt, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
             var _data = msg;
             try {
-                _data = await this.Queue(msg, queuename, options);
+                _data = await this.Queue(msg, qname, options);
                 ack();
                 done(_data);
             } catch (error) {
@@ -143,15 +148,19 @@ export class WebSocketClient {
                     // ack(); // just eat the error 
                     done(_data);
                     if (error.message != null && error.message != "") {
-                        console.log(queuename + " failed message queue message, nack and re queue message: ", error.message);
+                        console.log(qname + " failed message queue message, nack and re queue message: ", error.message);
                     } else {
-                        console.log(queuename + " failed message queue message, nack and re queue message: ", error);
+                        console.log(qname + " failed message queue message, nack and re queue message: ", error);
                     }
                 }, Config.amqp_requeue_time);
             }
         });
-        this.queues[queuename] = queuename;
-        return queuename;
+        qname = queue.queue;
+        if (this.queues[qname] != null) {
+            await amqpwrapper.Instance().RemoveQueueConsumer(this.queues[qname]);
+        }
+        this.queues[qname] = queue;
+        return queue.queue;
     }
     sleep(ms) {
         return new Promise(resolve => {
