@@ -234,7 +234,8 @@ export class amqpwrapper {
             q.queue = "";
         }
         q.callback = callback;
-        q.QueueOptions = new Object((QueueOptions != null ? QueueOptions : this.AssertQueueOptions));
+        // q.QueueOptions = new Object((QueueOptions != null ? QueueOptions : this.AssertQueueOptions));
+        q.QueueOptions = Object.assign({}, (QueueOptions != null ? QueueOptions : this.AssertQueueOptions));
         if (Util.IsNullEmpty(queue)) queue = "";
         if (queue.startsWith("amq.")) queue = "";
         if (Util.IsNullEmpty(queue)) q.QueueOptions.autoDelete = true;
@@ -266,7 +267,8 @@ export class amqpwrapper {
         if (!Util.IsNullEmpty(q.queue)) {
             delete this.queues[q.queue];
         }
-        q.ExchangeOptions = new Object((ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));
+        // q.ExchangeOptions = new Object((ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));
+        q.ExchangeOptions = Object.assign({}, (ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));
         q.exchange = exchange; q.algorithm = algorithm; q.routingkey = routingkey; q.callback = callback;
         this._ok = await this.channel.assertExchange(q.exchange, q.algorithm, q.ExchangeOptions);
         var AssertQueueOptions = null;
