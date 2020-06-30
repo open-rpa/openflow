@@ -1902,9 +1902,12 @@ module openflow {
             // console.debug("SendOne: queuename " + queuename + " / " + this.myid);
             var result: any = await this.api.QueueMessage(queuename, this.queuename, message, this.queue_message_timeout);
             try {
-                result = JSON.parse(result);
+                if (typeof result === "string" || result instanceof String) {
+                    result = JSON.parse(result);
+                }
             } catch (error) {
-                this.errormessage = "Model contains no form";
+                console.log(result);
+                this.errormessage = error;
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 console.error(this.errormessage);
             }
