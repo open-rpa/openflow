@@ -14,7 +14,7 @@ export class WebSocketServer {
     private static _logger: winston.Logger;
     private static _socketserver: WebSocket.Server;
     private static _server: http.Server;
-    private static _clients: WebSocketClient[];
+    public static _clients: WebSocketClient[];
     private static _db: DatabaseConnection;
 
     static configure(logger: winston.Logger, server: http.Server): void {

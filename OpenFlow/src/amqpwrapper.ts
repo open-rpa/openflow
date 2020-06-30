@@ -2,9 +2,7 @@ import * as winston from "winston";
 import * as amqplib from "amqplib";
 import { Util } from "./Util";
 import { Config } from "./Config";
-import { cli } from "winston/lib/winston/config";
 import { Crypt } from "./Crypt";
-import { WebSocketClient } from "./WebSocketClient";
 
 type QueueOnMessage = (msg: string, options: QueueMessageOptions, ack: any, done: any) => void;
 interface IHashTable<T> {
@@ -40,17 +38,17 @@ export class amqpqueue {
     public ok: AssertQueue;
     public QueueOptions: any;
     public consumerTag: string;
-    public cli: WebSocketClient;
+    // public cli: WebSocketClient;
 }
 export class amqpexchange {
     public exchange: string;
     public algorithm: string;
     public routingkey: string;
-    public queue: string;
+    public queue: amqpqueue;
     public callback: QueueOnMessage;
     public ok: amqplib.Replies.AssertExchange;
     public ExchangeOptions: any;
-    public cli: WebSocketClient;
+    // public cli: WebSocketClient;
 }
 
 // tslint:disable-next-line: class-name
@@ -62,9 +60,11 @@ export class amqpwrapper {
     public AssertExchangeOptions: any = { durable: false, confirm: true };
     public AssertQueueOptions: any = {};
     private activecalls: IHashTable<Deferred<string>> = {};
-    private queues: IHashTable<amqpqueue> = {};
-    private exchanges: IHashTable<amqpexchange> = {};
-    private replyqueue: string;
+    // public queues: IHashTable<amqpqueue> = {};
+    // private exchanges: IHashTable<amqpexchange> = {};
+    public queues: amqpqueue[] = [];
+    private exchanges: amqpexchange[] = [];
+    private replyqueue: amqpqueue;
 
     private static _instance: amqpwrapper = null;
     public static Instance(): amqpwrapper {
@@ -145,9 +145,9 @@ export class amqpwrapper {
             }
             this.channel = await this.conn.createChannel();
             if (!Util.IsNullEmpty(this.replyqueue)) {
-                delete this.queues[this.replyqueue];
+                this.queues = this.queues.filter(x => x.consumerTag != this.replyqueue.consumerTag);
             }
-            this.replyqueue = await this.AddQueueConsumer(null, "", null, null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+            this.replyqueue = await this.AddQueueConsumer("", null, null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
                 if (!Util.IsNullUndefinded(this.activecalls[options.correlationId])) {
                     this.activecalls[options.correlationId].resolve(msg);
                     this.activecalls[options.correlationId] = null;
@@ -194,19 +194,13 @@ export class amqpwrapper {
             this.timeout = setTimeout(this.connect.bind(this), 1000);
         }
     }
-    async RemoveQueueConsumer(queue: string): Promise<string> {
-        var q: amqpqueue = null;
-        if (this.queues[queue] != null) {
-            q = this.queues[queue];
-        } else {
-            this._logger.error("[AMQP] Request for removing unknown consumer " + queue);
-            return;
+    async RemoveQueueConsumer(queue: amqpqueue): Promise<void> {
+        if (queue != null) {
+            this._logger.info("[AMQP] Remove queue consumer " + queue.queue);
+            if (this.channel != null) await this.channel.cancel(queue.consumerTag);
         }
-        this._logger.info("[AMQP] Remove queue consumer " + queue);
-        if (this.channel != null) await this.channel.cancel(q.consumerTag);
-        delete this.queues[q.queue];
     }
-    async AddQueueConsumer(cli: WebSocketClient, queue: string, QueueOptions: any, jwt: string, callback: QueueOnMessage): Promise<string> {
+    async AddQueueConsumer(queue: string, QueueOptions: any, jwt: string, callback: QueueOnMessage): Promise<amqpqueue> {
         if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Queue Consumer, not connected to rabbitmq");
         var q: amqpqueue = null;
         if (Config.amqp_force_queue_prefix && !Util.IsNullEmpty(jwt)) {
@@ -217,25 +211,20 @@ export class amqpwrapper {
             if (isrole.length == 0 && tuser._id != queue) queue = name + queue;
         }
 
-        if (this.exchanges[queue] != null) {
-            q = this.queues[queue];
-            try {
-                if (this.channel != null && !Util.IsNullEmpty(q.consumerTag)) await this.channel.cancel(q.consumerTag);
-            } catch (error) {
-                console.error(error);
-            }
-        } else {
-            q = new amqpqueue();
-        }
-        q.cli = cli;
-        if (!Util.IsNullEmpty(q.queue)) {
-            if (q.queue.startsWith("amq.")) {
-                delete this.queues[q.queue];
-            }
-            q.queue = "";
-        }
+        // if (this.queues[queue] != null) {
+        //     q = this.queues[queue];
+        //     try {
+        //         if (this.channel != null && !Util.IsNullEmpty(q.consumerTag)) await this.channel.cancel(q.consumerTag);
+        //     } catch (error) {
+        //         console.error(error);
+        //     }
+        // } else {
+        //     q = new amqpqueue();
+        // }
+        q = new amqpqueue();
         q.callback = callback;
-        q.QueueOptions = new Object((QueueOptions != null ? QueueOptions : this.AssertQueueOptions));
+        // q.QueueOptions = new Object((QueueOptions != null ? QueueOptions : this.AssertQueueOptions));
+        q.QueueOptions = Object.assign({}, (QueueOptions != null ? QueueOptions : this.AssertQueueOptions));
         if (Util.IsNullEmpty(queue)) queue = "";
         if (queue.startsWith("amq.")) queue = "";
         if (Util.IsNullEmpty(queue)) q.QueueOptions.autoDelete = true;
@@ -246,10 +235,12 @@ export class amqpwrapper {
             this.OnMessage(q, msg, q.callback);
         }, { noAck: false });
         q.consumerTag = consumeresult.consumerTag;
-        this.queues[q.queue] = q;
-        return q.queue;
+        // this.queues[q.queue] = q;
+        this.queues.push(q);
+        this.checkQueue(q.queue);
+        return q;
     }
-    async AddExchangeConsumer(cli: WebSocketClient, exchange: string, algorithm: string, routingkey: string, ExchangeOptions: any, jwt: string, callback: QueueOnMessage): Promise<void> {
+    async AddExchangeConsumer(exchange: string, algorithm: string, routingkey: string, ExchangeOptions: any, jwt: string, callback: QueueOnMessage): Promise<amqpexchange> {
         if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Exchange Consumer, not connected to rabbitmq");
         var q: amqpexchange = null;
         if (Config.amqp_force_exchange_prefix && !Util.IsNullEmpty(jwt)) {
@@ -258,17 +249,17 @@ export class amqpwrapper {
             name = name.toLowerCase();
             exchange = name + exchange;
         }
-
-        if (this.exchanges[exchange] != null) {
-            q = this.exchanges[exchange];
-        } else {
-            q = new amqpexchange();
-        }
-        q.cli = cli;
+        q = new amqpexchange();
+        // if (this.exchanges[exchange] != null) {
+        //     q = this.exchanges[exchange];
+        // } else {
+        //     q = new amqpexchange();
+        // }
         if (!Util.IsNullEmpty(q.queue)) {
-            delete this.queues[q.queue];
+            this.RemoveQueueConsumer(q.queue);
         }
-        q.ExchangeOptions = new Object((ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));
+        // q.ExchangeOptions = new Object((ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));
+        q.ExchangeOptions = Object.assign({}, (ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));
         q.exchange = exchange; q.algorithm = algorithm; q.routingkey = routingkey; q.callback = callback;
         this._ok = await this.channel.assertExchange(q.exchange, q.algorithm, q.ExchangeOptions);
         var AssertQueueOptions = null;
@@ -276,26 +267,28 @@ export class amqpwrapper {
             AssertQueueOptions = Object.create(this.AssertQueueOptions);
             delete AssertQueueOptions.arguments;
         }
-        q.queue = await this.AddQueueConsumer(cli, "", AssertQueueOptions, jwt, q.callback);
+        q.queue = await this.AddQueueConsumer("", AssertQueueOptions, jwt, q.callback);
         this.channel.bindQueue(q.queue, q.exchange, q.routingkey);
         this._logger.info("[AMQP] Added exchange consumer " + q.exchange);
-        this.exchanges[exchange] = q;
+        // this.exchanges[exchange] = q;
+        this.exchanges.push(q);
+        return q;
     }
     OnMessage(sender: amqpqueue, msg: amqplib.ConsumeMessage, callback: QueueOnMessage): void {
         // sender._logger.info("OnMessage " + msg.content.toString());
         try {
             var now = new Date();
-            var seconds = (now.getTime() - sender.cli.lastheartbeat.getTime()) / 1000;
-            if (seconds >= Config.client_heartbeat_timeout) {
-                try {
-                    sender.cli._logger.info("amqpwrapper.OnMessage: receive message for inactive client, nack message and try and close");
-                    this.channel.nack(msg);
-                    sender.cli.Close();
-                } catch (error) {
-                    console.error(error);
-                }
-                return;
-            }
+            // var seconds = (now.getTime() - sender.cli.lastheartbeat.getTime()) / 1000;
+            // if (seconds >= Config.client_heartbeat_timeout) {
+            //     try {
+            //         sender.cli._logger.info("amqpwrapper.OnMessage: receive message for inactive client, nack message and try and close");
+            //         this.channel.nack(msg);
+            //         sender.cli.Close();
+            //     } catch (error) {
+            //         console.error(error);
+            //     }
+            //     return;
+            // }
 
             var correlationId: string = msg.properties.correlationId;
             var replyTo: string = msg.properties.replyTo;
@@ -340,7 +333,7 @@ export class amqpwrapper {
     async sendWithReply(exchange: string, queue: string, data: any, expiration: number, correlationId: string): Promise<string> {
         if (Util.IsNullEmpty(correlationId)) correlationId = this.generateUuid();
         this.activecalls[correlationId] = new Deferred();
-        await this.sendWithReplyTo(exchange, queue, this.replyqueue, data, expiration, correlationId);
+        await this.sendWithReplyTo(exchange, queue, this.replyqueue.queue, data, expiration, correlationId);
         return this.activecalls[correlationId].promise;
     }
     async sendWithReplyTo(exchange: string, queue: string, replyTo: string, data: any, expiration: number, correlationId: string): Promise<void> {
@@ -370,10 +363,15 @@ export class amqpwrapper {
     }
     async checkQueue(queue: string): Promise<boolean> {
         if (Config.amqp_check_for_consumer) {
+            var q: amqpqueue = this.queues[queue];
+
             var test: AssertQueue = null;
             try {
                 // var test: AssertQueue = await this.channel.assertQueue(this.queue, this.AssertQueueOptions);
                 test = await this.channel.checkQueue(queue);
+                if (q != null) {
+                    q.ok = test;
+                }
             } catch (error) {
                 test = null;
             }

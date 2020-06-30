@@ -223,12 +223,16 @@ module openflow {
             var msg: Message = new Message(); msg.command = "deleteone"; msg.data = JSON.stringify(q);
             q = await this.WebSocketClient.Send<DeleteOneMessage>(msg);
         }
+        private queuename: string = "";
         async RegisterQueue(queuename: string = undefined): Promise<string> {
-            var q: RegisterQueueMessage = new RegisterQueueMessage();
-            q.queuename = queuename;
-            var msg: Message = new Message(); msg.command = "registerqueue"; msg.data = JSON.stringify(q);
-            var result: RegisterQueueMessage = await this.WebSocketClient.Send(msg);
-            return result.queuename;
+            if (this.queuename == "") {
+                var q: RegisterQueueMessage = new RegisterQueueMessage();
+                q.queuename = queuename;
+                var msg: Message = new Message(); msg.command = "registerqueue"; msg.data = JSON.stringify(q);
+                var result: RegisterQueueMessage = await this.WebSocketClient.Send(msg);
+                this.queuename = result.queuename;
+            }
+            return this.queuename;
         }
         async _QueueMessage(queuename: string, replyto: string, data: any, expiration: number): Promise<QueueMessage> {
             return new Promise<QueueMessage>(async (resolve, reject) => {
