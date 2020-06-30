@@ -146,8 +146,8 @@ export class rpa_workflow_node {
 
 
             if (correlationId != null && this.messages[correlationId] != null) {
-
-                result = new Object(this.messages[correlationId]);
+                // result = new Object(this.messages[correlationId]);
+                result = Object.assign({}, this.messages[correlationId]);
                 if (command == "invokecompleted" || command == "invokefailed" || command == "invokeaborted" || command == "error" || command == "timeout") {
                     delete this.messages[correlationId];
                 }
