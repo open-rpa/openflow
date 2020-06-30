@@ -286,7 +286,7 @@ export class amqpwrapper {
         try {
             var now = new Date();
             var seconds = (now.getTime() - sender.cli.lastheartbeat.getTime()) / 1000;
-            if (seconds >= 20) {
+            if (seconds >= Config.client_heartbeat_timeout) {
                 try {
                     sender.cli._logger.info("amqpwrapper.OnMessage: receive message for inactive client, nack message and try and close");
                     this.channel.nack(msg);
