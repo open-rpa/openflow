@@ -177,10 +177,10 @@ export class workflow_in_node {
                     data = orgmsg;
                 } else {
                     if (typeof orgmsg.payload === "object") {
-                        orgmsg.payload = Object.assign(orgmsg.payload, data);
+                        orgmsg.payload = Object.assign(orgmsg.payload, data.payload);
                     } else {
                         orgmsg.payload = { message: orgmsg.payload };
-                        orgmsg.payload = Object.assign(orgmsg.payload, data);
+                        orgmsg.payload = Object.assign(orgmsg.payload, data.payload);
                     }
                     data = orgmsg;
                 }
