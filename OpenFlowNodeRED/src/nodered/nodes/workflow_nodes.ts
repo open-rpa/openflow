@@ -355,7 +355,8 @@ export class workflow_out_node {
             NoderedUtil.HandleError(this, error);
         }
         try {
-            if (!NoderedUtil.IsNullEmpty(msg._replyTo) && NoderedUtil.IsNullEmpty(msg.resultqueue)) {
+            // if (!NoderedUtil.IsNullEmpty(msg._replyTo) && NoderedUtil.IsNullEmpty(msg.resultqueue)) {
+            if (!NoderedUtil.IsNullEmpty(msg._replyTo)) {
                 if (msg.payload === null || msg.payload === undefined) { msg.payload == {}; }
                 var data: any = {};
                 data.state = msg.state;
