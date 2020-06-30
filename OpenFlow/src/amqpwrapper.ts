@@ -209,7 +209,6 @@ export class amqpwrapper {
     async AddQueueConsumer(cli: WebSocketClient, queue: string, QueueOptions: any, jwt: string, callback: QueueOnMessage): Promise<string> {
         if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Queue Consumer, not connected to rabbitmq");
         var q: amqpqueue = null;
-        q.cli = cli;
         if (Config.amqp_force_queue_prefix && !Util.IsNullEmpty(jwt)) {
             var tuser = Crypt.verityToken(jwt);
             var name = tuser.username.split("@").join("").split(".").join("");
@@ -220,9 +219,15 @@ export class amqpwrapper {
 
         if (this.exchanges[queue] != null) {
             q = this.queues[queue];
+            try {
+                if (this.channel != null && !Util.IsNullEmpty(q.consumerTag)) await this.channel.cancel(q.consumerTag);
+            } catch (error) {
+                console.error(error);
+            }
         } else {
             q = new amqpqueue();
         }
+        q.cli = cli;
         if (!Util.IsNullEmpty(q.queue)) {
             if (q.queue.startsWith("amq.")) {
                 delete this.queues[q.queue];
@@ -247,7 +252,6 @@ export class amqpwrapper {
     async AddExchangeConsumer(cli: WebSocketClient, exchange: string, algorithm: string, routingkey: string, ExchangeOptions: any, jwt: string, callback: QueueOnMessage): Promise<void> {
         if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Exchange Consumer, not connected to rabbitmq");
         var q: amqpexchange = null;
-        q.cli = cli;
         if (Config.amqp_force_exchange_prefix && !Util.IsNullEmpty(jwt)) {
             var tuser = Crypt.verityToken(jwt);
             var name = tuser.username.split("@").join("").split(".").join("");
@@ -260,6 +264,7 @@ export class amqpwrapper {
         } else {
             q = new amqpexchange();
         }
+        q.cli = cli;
         if (!Util.IsNullEmpty(q.queue)) {
             delete this.queues[q.queue];
         }
