@@ -1805,7 +1805,9 @@ module openflow {
                     this.basequery = { _id: this.id };
                     this.loadData();
                 } else {
-                    console.error("missing id");
+                    this.errormessage = "missing id";
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    console.error(this.errormessage);
                 }
             });
             $scope.$on('queuemessage', (event, data: QueueMessage) => {
@@ -1829,10 +1831,20 @@ module openflow {
         async loadData(): Promise<void> {
             this.loading = true;
             var res = await this.api.Query(this.collection, this.basequery, null, { _created: -1 }, 1);
-            if (res.length > 0) { this.workflow = res[0]; } else { console.error(this.id + " workflow not found!"); return; }
+            if (res.length > 0) { this.workflow = res[0]; } else {
+                this.errormessage = this.id + " workflow not found!";
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                console.error(this.errormessage);
+                return;
+            }
             if (this.instanceid !== null && this.instanceid !== undefined && this.instanceid !== "") {
                 var res = await this.api.Query("workflow_instances", { _id: this.instanceid }, null, { _created: -1 }, 1);
-                if (res.length > 0) { this.model = res[0]; } else { console.error(this.id + " workflow instances not found!"); return; }
+                if (res.length > 0) { this.model = res[0]; } else {
+                    this.errormessage = this.id + " workflow instances not found!";
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    console.error(this.errormessage);
+                    return;
+                }
                 // console.debug(this.model);
                 // console.debug(this.model.form);
                 // console.debug("form: " + this.model.form);
@@ -1860,11 +1872,16 @@ module openflow {
                             if (!this.$scope.$$phase) { this.$scope.$apply(); }
                             return;
                         } else {
-                            console.error(this.model.form + " form not found! " + this.model.state); return;
+                            this.errormessage = this.model.form + " form not found! " + this.model.state;
+                            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                            console.error(this.errormessage);
+                            return;
                         }
                     }
                 } else {
-                    console.debug("Model contains no form");
+                    this.errormessage = "Model contains no form";
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    console.error(this.errormessage);
                 }
                 this.renderform();
             } else {
@@ -1880,6 +1897,9 @@ module openflow {
             try {
                 result = JSON.parse(result);
             } catch (error) {
+                this.errormessage = "Model contains no form";
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                console.error(this.errormessage);
             }
             // console.debug(result);
             // if ((this.instanceid === undefined || this.instanceid === null) && (result !== null && result !== unescape)) {
@@ -2186,7 +2206,9 @@ module openflow {
                     this.Save();
                 })
                 this.formioRender.on('error', (errors) => {
-                    console.error(errors);
+                    this.errormessage = errors;
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    console.error(this.errormessage);
                 });
             }
             if (this.model.state == "completed" || this.model.state == "failed") {
