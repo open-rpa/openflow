@@ -1844,7 +1844,7 @@ module openflow {
                 }
 
 
-                if (this.model.form === "none") {
+                if (this.model.form === "none" || this.model.form === "") {
                     this.$location.path("/main");
                     if (!this.$scope.$$phase) { this.$scope.$apply(); }
                     return;
