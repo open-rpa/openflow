@@ -241,6 +241,7 @@ export class amqpwrapper {
         }, { noAck: false });
         q.consumerTag = consumeresult.consumerTag;
         this.queues[q.queue] = q;
+        this.checkQueue(q.queue);
         return q.queue;
     }
     async AddExchangeConsumer(exchange: string, algorithm: string, routingkey: string, ExchangeOptions: any, jwt: string, callback: QueueOnMessage): Promise<void> {
