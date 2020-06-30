@@ -147,6 +147,10 @@ export class workflow_in_node {
                 data.jwt = data.payload.jwt;
                 delete data.payload.jwt;
             }
+            if (data.payload != null && data.payload.payload != null) {
+                // UGLy ROLLBACK!
+                data.payload = data.payload.payload;
+            }
             var _id = data._id;
             if (_id === null || _id === undefined || _id === "") {
                 if (data.payload !== null && data.payload !== undefined) {
