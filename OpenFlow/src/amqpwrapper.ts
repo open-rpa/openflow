@@ -119,70 +119,75 @@ export class amqpwrapper {
     }
     private timeout: NodeJS.Timeout = null;
     async connect(): Promise<void> {
-        if (this.timeout != null) {
-            this.timeout = null;
-        }
-        var me: amqpwrapper = this;
-        if (this.conn == null) {
-            this.conn = await amqplib.connect(this.connectionstring);
-            this.conn.on('error', (error) => {
-                if (error.code != 404) {
-                    this._logger.error(JSON.stringify(error));
-                    console.log(error);
+        try {
+            if (this.timeout != null) {
+                this.timeout = null;
+            }
+            var me: amqpwrapper = this;
+            if (this.conn == null) {
+                this.conn = await amqplib.connect(this.connectionstring);
+                this.conn.on('error', (error) => {
+                    if (error.code != 404) {
+                        this._logger.error(JSON.stringify(error));
+                        console.log(error);
+                    }
+                });
+                this.conn.on("close", () => {
+                    this._logger.info("[AMQP] reconnecting");
+                    this.conn = null;
+                    if (this.timeout == null) {
+                        this.timeout = setTimeout(this.connect.bind(this), 1000);
+                    }
+                });
+            }
+            this.channel = await this.conn.createChannel();
+            if (!Util.IsNullEmpty(this.replyqueue)) {
+                delete this.queues[this.replyqueue];
+            }
+            this.replyqueue = await this.AddQueueConsumer("", null, null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+                if (!Util.IsNullUndefinded(this.activecalls[options.correlationId])) {
+                    this.activecalls[options.correlationId].resolve(msg);
+                    this.activecalls[options.correlationId] = null;
+                    delete this.activecalls[options.correlationId];
                 }
+                ack();
+                done();
             });
-            this.conn.on("close", () => {
-                this._logger.info("[AMQP] reconnecting");
+
+            // this.channel.on('ack', (e) => {
+            // });
+            // this.channel.on('cancel', (e) => {
+            // });
+            this.channel.on('close', (e) => {
+                try {
+                    if (this.conn != null) this.conn.close();
+                } catch (error) {
+                }
                 this.conn = null;
+                this.channel = null;
                 if (this.timeout == null) {
                     this.timeout = setTimeout(this.connect.bind(this), 1000);
                 }
             });
-        }
-        this.channel = await this.conn.createChannel();
-        if (!Util.IsNullEmpty(this.replyqueue)) {
-            delete this.queues[this.replyqueue];
-        }
-        this.replyqueue = await this.AddQueueConsumer("", null, null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
-            if (!Util.IsNullUndefinded(this.activecalls[options.correlationId])) {
-                this.activecalls[options.correlationId].resolve(msg);
-                this.activecalls[options.correlationId] = null;
-                delete this.activecalls[options.correlationId];
+            //this.channel.on('delivery', (e) => {
+            //});
+            // this.channel.on('nack', (e) => {
+            // });
+            var keys = Object.keys(this.exchanges);
+            for (var i = 0; i < keys.length; i++) {
+                var q1: amqpexchange = this.exchanges[keys[i]];
+                this.AddExchangeConsumer(q1.exchange, q1.algorithm, q1.routingkey, q1.ExchangeOptions, null, q1.callback);
             }
-            ack();
-            done();
-        });
-
-        // this.channel.on('ack', (e) => {
-        // });
-        // this.channel.on('cancel', (e) => {
-        // });
-        this.channel.on('close', (e) => {
-            try {
-                if (this.conn != null) this.conn.close();
-            } catch (error) {
+            var keys = Object.keys(this.queues);
+            for (var i = 0; i < keys.length; i++) {
+                if (keys[i] != this.replyqueue) {
+                    var q2: amqpqueue = this.queues[keys[i]];
+                    this.AddQueueConsumer(q2.queue, q2.QueueOptions, null, q2.callback);
+                }
             }
-            this.conn = null;
-            this.channel = null;
-            if (this.timeout == null) {
-                this.timeout = setTimeout(this.connect.bind(this), 1000);
-            }
-        });
-        //this.channel.on('delivery', (e) => {
-        //});
-        // this.channel.on('nack', (e) => {
-        // });
-        var keys = Object.keys(this.exchanges);
-        for (var i = 0; i < keys.length; i++) {
-            var q1: amqpexchange = this.exchanges[keys[i]];
-            this.AddExchangeConsumer(q1.exchange, q1.algorithm, q1.routingkey, q1.ExchangeOptions, null, q1.callback);
-        }
-        var keys = Object.keys(this.queues);
-        for (var i = 0; i < keys.length; i++) {
-            if (keys[i] != this.replyqueue) {
-                var q2: amqpqueue = this.queues[keys[i]];
-                this.AddQueueConsumer(q2.queue, q2.QueueOptions, null, q2.callback);
-            }
+        } catch (error) {
+            console.error(error);
+            this.timeout = setTimeout(this.connect.bind(this), 1000);
         }
     }
     async RemoveQueueConsumer(queue: string): Promise<string> {
@@ -194,10 +199,11 @@ export class amqpwrapper {
             return;
         }
         this._logger.info("[AMQP] Remove queue consumer " + queue);
-        await this.channel.cancel(q.consumerTag);
+        if (this.channel != null) await this.channel.cancel(q.consumerTag);
         delete this.queues[q.queue];
     }
     async AddQueueConsumer(queue: string, QueueOptions: any, jwt: string, callback: QueueOnMessage): Promise<string> {
+        if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Queue Consumer, not connected to rabbitmq");
         var q: amqpqueue = null;
         if (Config.amqp_force_queue_prefix && !Util.IsNullEmpty(jwt)) {
             var tuser = Crypt.verityToken(jwt);
@@ -234,6 +240,7 @@ export class amqpwrapper {
         return q.queue;
     }
     async AddExchangeConsumer(exchange: string, algorithm: string, routingkey: string, ExchangeOptions: any, jwt: string, callback: QueueOnMessage): Promise<void> {
+        if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Exchange Consumer, not connected to rabbitmq");
         var q: amqpexchange = null;
         if (Config.amqp_force_exchange_prefix && !Util.IsNullEmpty(jwt)) {
             var tuser = Crypt.verityToken(jwt);
