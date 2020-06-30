@@ -1885,10 +1885,17 @@ module openflow {
                 }
                 this.renderform();
             } else {
-                console.debug("No instance id found, send empty message");
-                console.debug("SendOne: " + this.workflow._id + " / " + this.workflow.queue);
-                await this.SendOne(this.workflow.queue, {});
-                this.loadData();
+                try {
+                    console.debug("No instance id found, send empty message");
+                    console.debug("SendOne: " + this.workflow._id + " / " + this.workflow.queue);
+                    await this.SendOne(this.workflow.queue, {});
+                    this.loadData();
+                } catch (error) {
+                    this.errormessage = error;
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    console.error(this.errormessage);
+
+                }
             }
         }
         async SendOne(queuename: string, message: any): Promise<void> {
