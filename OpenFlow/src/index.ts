@@ -219,9 +219,20 @@ async function initDatabase(): Promise<boolean> {
 }
 
 
-process.on('unhandledRejection', up => {
-    console.error(up);
-    throw up
+
+const unhandledRejection = require("unhandled-rejection");
+let rejectionEmitter = unhandledRejection({
+    timeout: 20
+});
+
+rejectionEmitter.on("unhandledRejection", (error, promise) => {
+    console.log('Unhandled Rejection at: Promise', promise, 'reason:', error);
+    console.dir(error.stack);
+});
+
+rejectionEmitter.on("rejectionHandled", (error, promise) => {
+    console.log('Rejection handled at: Promise', promise, 'reason:', error);
+    console.dir(error.stack);
 });
 
 (async function (): Promise<void> {

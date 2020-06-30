@@ -136,15 +136,16 @@ export class workflow_in_node {
     async OnMessage(msg: QueueMessage, ack: any) {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Processing" });
-            var data: any = msg.data;
-            try {
-                data = JSON.parse(msg.data);
-            } catch (error) {
-                data = msg.data;
-            }
+            var data: any = msg;
+            data.payload = msg.data;
+            delete data.data;
             try {
                 data.payload = JSON.parse(data.payload);
             } catch (error) {
+            }
+            if (data.payload != null && data.payload.jwt != null && data.jwt == null) {
+                data.jwt = data.payload.jwt;
+                delete data.payload.jwt;
             }
             var _id = data._id;
             if (_id === null || _id === undefined || _id === "") {
@@ -300,19 +301,19 @@ export class workflow_out_node {
         }
         try {
             if (msg.amqpacknowledgment) {
-                if (msg.payload === null || msg.payload === undefined) { msg.payload == {}; }
-                var data: any = {};
-                data.state = msg.state;
-                if (msg.error) {
-                    data.error = "error";
-                    if (msg.error.message) {
-                        data.error = msg.error.message;
-                    }
-                }
-                data._id = msg._id;
-                data.payload = msg.payload;
-                data.values = msg.values;
-                data.jwt = msg.jwt;
+                // if (msg.payload === null || msg.payload === undefined) { msg.payload == {}; }
+                // var data: any = {};
+                // data.state = msg.state;
+                // if (msg.error) {
+                //     data.error = "error";
+                //     if (msg.error.message) {
+                //         data.error = msg.error.message;
+                //     }
+                // }
+                // data._id = msg._id;
+                // data.payload = msg.payload;
+                // data.values = msg.values;
+                // data.jwt = msg.jwt;
                 // ROLLBACK
                 // msg.amqpacknowledgment(true, JSON.stringify(data));
                 msg.amqpacknowledgment(true);
@@ -368,7 +369,7 @@ export class workflow_out_node {
                 // ROLLBACK
                 // Don't wait for ack(), we don't care if the receiver is there, right ?
                 var result = await NoderedUtil.QueueMessage(WebSocketClient.instance, msg._replyTo, null, data, msg.correlationId, Config.amqp_workflow_out_expiration);
-                console.log("Send reply data to " + msg._replyTo, data);
+                // console.log("Send reply data to " + msg._replyTo, data);
                 //this.con.SendMessage(JSON.stringify(data), msg._replyTo, msg._correlationId, false);
             }
         } catch (error) {

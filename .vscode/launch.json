@@ -15,7 +15,7 @@
             "request": "attach",
             "name": "Attach to localhost (NodeRed)",
             "address": "localhost",
-            "port": 5858,
+            "port": 5859,
             "localRoot": "${workspaceFolder}/OpenFlowNodeRED/dist",
             "remoteRoot": "/data"
         },

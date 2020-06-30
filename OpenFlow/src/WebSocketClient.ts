@@ -42,6 +42,7 @@ export class WebSocketClient {
     public remoteip: string;
     public clientagent: string;
     public clientversion: string;
+    public lastheartbeat: Date = new Date();
 
 
     user: User;
