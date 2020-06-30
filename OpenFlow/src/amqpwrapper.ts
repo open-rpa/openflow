@@ -227,12 +227,6 @@ export class amqpwrapper {
         } else {
             q = new amqpqueue();
         }
-        if (!Util.IsNullEmpty(q.queue)) {
-            if (q.queue.startsWith("amq.")) {
-                delete this.queues[q.queue];
-            }
-            q.queue = "";
-        }
         q.callback = callback;
         // q.QueueOptions = new Object((QueueOptions != null ? QueueOptions : this.AssertQueueOptions));
         q.QueueOptions = Object.assign({}, (QueueOptions != null ? QueueOptions : this.AssertQueueOptions));
