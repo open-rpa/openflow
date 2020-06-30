@@ -61,7 +61,7 @@ export class workflow_in_node {
         }
     }
     async init() {
-        if (!NoderedUtil.IsNullUndefinded(this.config.name)) {
+        if (NoderedUtil.IsNullUndefinded(this.config.name)) {
             this.config.name = this.config.queue;
         }
 
