@@ -34,7 +34,7 @@ async function initamqp() {
     await testamqp.connect();
 
     // Must also consume messages in the dead letter queue, to catch messages that have timed out
-    await amqp.AddExchangeConsumer(Config.amqp_dlx, "fanout", "", null, null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+    await amqp.AddExchangeConsumer(null, Config.amqp_dlx, "fanout", "", null, null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
         // This is the function to run when the dead letter (timed out) message is picked up
         // var data = JSON.parse(msg.content.toString());
         // Change the command and return back to the correct queue (replyTo) to be handled
