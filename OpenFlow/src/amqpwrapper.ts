@@ -381,14 +381,16 @@ export class amqpwrapper {
             Math.random().toString() +
             Math.random().toString();
     }
-
-
-
-    parseurl(amqp_url): url.URL {
-        var q: url.URL = url.parse(amqp_url, true) as any;
-        if (q.username == null || q.username == "") { q.username = "guest"; }
-        if (q.password == null || q.password == "") { q.password = "guest"; }
+    parseurl(amqp_url): url.UrlWithParsedQuery {
+        var q = url.parse(amqp_url, true);
+        (q as any).username = "guest";
+        (q as any).password = "guest";
         if (q.port == null || q.port == "") { q.port = "15672"; }
+        if (q.auth != null && q.auth != "") {
+            var arr = q.auth.split(':');
+            (q as any).username = arr[0];
+            (q as any).password = arr[1];
+        }
         q.protocol = 'http://';
         return q;
     }
