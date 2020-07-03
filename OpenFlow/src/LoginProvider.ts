@@ -170,19 +170,19 @@ export class LoginProvider {
         //     }
         // });
         // ROLLBACK
-        app.get("/amqp", async (req: any, res: any, next: any): Promise<void> => {
-            try {
-                var result: any[] = (amqpwrapper.Instance().queues as any);
-                res.setHeader("Content-Type", "application/json");
-                var json = stringify(result, null, 2);
-                // res.json(result);
-                res.end(json);
-                res.end();
-            } catch (error) {
-                res.end(error);
-                console.error(error);
-            }
-        });
+        // app.get("/amqp", async (req: any, res: any, next: any): Promise<void> => {
+        //     try {
+        //         var result: any[] = (amqpwrapper.Instance().queues as any);
+        //         res.setHeader("Content-Type", "application/json");
+        //         var json = stringify(result, null, 2);
+        //         // res.json(result);
+        //         res.end(json);
+        //         res.end();
+        //     } catch (error) {
+        //         res.end(error);
+        //         console.error(error);
+        //     }
+        // });
 
         app.get("/Signout", (req: any, res: any, next: any): void => {
             // var providerid: string = req.cookies.provider;
