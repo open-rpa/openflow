@@ -409,8 +409,8 @@ export class amqpwrapper {
             headers: {
                 'Content-type': 'application/x-www-form-urlencoded'
             },
-            username: q.username,
-            password: q.password
+            username: (q as any).username,
+            password: (q as any).password
         };
         var _url = 'http://' + q.host + ':' + q.port + '/api/vhosts';
         var response = await got.get(_url, options);
@@ -423,8 +423,8 @@ export class amqpwrapper {
             headers: {
                 'Content-type': 'application/x-www-form-urlencoded'
             },
-            username: q.username,
-            password: q.password
+            username: (q as any).username,
+            password: (q as any).password
         };
         var _url = 'http://' + q.host + ':' + q.port + '/api/queues/' + encodeURIComponent(vhost);
         var response = await got.get(_url, options);
@@ -437,8 +437,8 @@ export class amqpwrapper {
             headers: {
                 'Content-type': 'application/x-www-form-urlencoded'
             },
-            username: q.username,
-            password: q.password
+            username: (q as any).username,
+            password: (q as any).password
         };
         var _url = 'http://' + q.host + ':' + q.port + '/api/queues/' + encodeURIComponent(vhost) + '/' + queuename;
         var response = await got.get(_url, options);
