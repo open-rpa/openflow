@@ -210,17 +210,11 @@ export class amqpwrapper {
             var isrole = tuser.roles.filter(x => x._id == queue);
             if (isrole.length == 0 && tuser._id != queue) queue = name + queue;
         }
-
-        // if (this.queues[queue] != null) {
-        //     q = this.queues[queue];
-        //     try {
-        //         if (this.channel != null && !Util.IsNullEmpty(q.consumerTag)) await this.channel.cancel(q.consumerTag);
-        //     } catch (error) {
-        //         console.error(error);
-        //     }
-        // } else {
-        //     q = new amqpqueue();
-        // }
+        if (!await amqpwrapper.TestInstance().checkQueue(queue)) {
+            if (amqpwrapper.TestInstance().conn == null || amqpwrapper.TestInstance().channel == null) {
+                throw new Error("checkQueue failed for " + queue);
+            }
+        }
         q = new amqpqueue();
         q.callback = callback;
         // q.QueueOptions = new Object((QueueOptions != null ? QueueOptions : this.AssertQueueOptions));
@@ -237,7 +231,6 @@ export class amqpwrapper {
         q.consumerTag = consumeresult.consumerTag;
         // this.queues[q.queue] = q;
         this.queues.push(q);
-        this.checkQueue(q.queue);
         return q;
     }
     async AddExchangeConsumer(exchange: string, algorithm: string, routingkey: string, ExchangeOptions: any, jwt: string, callback: QueueOnMessage): Promise<amqpexchange> {
