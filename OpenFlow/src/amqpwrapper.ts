@@ -438,7 +438,8 @@ export class amqpwrapper {
                 'Content-type': 'application/x-www-form-urlencoded'
             },
             username: (q as any).username,
-            password: (q as any).password
+            password: (q as any).password,
+            timeout: 500, retry: 1
         };
         var _url = 'http://' + q.host + ':' + q.port + '/api/queues/' + encodeURIComponent(vhost) + '/' + queuename;
         var response = await got.get(_url, options);
