@@ -281,7 +281,7 @@ export class DatabaseConnection {
                         mysort = neworderby;
                     }
                 } catch (error) {
-                    console.log(error);
+                    console.log(error, orderby);
                 }
                 if (neworderby == null) mysort[(orderby as string)] = 1;
             } else {
