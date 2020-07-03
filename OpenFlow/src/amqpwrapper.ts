@@ -202,6 +202,7 @@ export class amqpwrapper {
     }
     async AddQueueConsumer(queue: string, QueueOptions: any, jwt: string, callback: QueueOnMessage): Promise<amqpqueue> {
         if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Queue Consumer, not connected to rabbitmq");
+        if (queue == null) queue = "";
         var q: amqpqueue = null;
         if (Config.amqp_force_queue_prefix && !Util.IsNullEmpty(jwt)) {
             var tuser = Crypt.verityToken(jwt);
