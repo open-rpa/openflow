@@ -211,11 +211,11 @@ export class amqpwrapper {
             var isrole = tuser.roles.filter(x => x._id == queue);
             if (isrole.length == 0 && tuser._id != queue) queue = name + queue;
         }
-        if (!await amqpwrapper.TestInstance().checkQueue(queue)) {
-            if (amqpwrapper.TestInstance().conn == null || amqpwrapper.TestInstance().channel == null) {
-                throw new Error("checkQueue failed for " + queue);
-            }
-        }
+        // if (!await amqpwrapper.TestInstance().checkQueue(queue)) {
+        //     if (amqpwrapper.TestInstance().conn == null || amqpwrapper.TestInstance().channel == null) {
+        //         throw new Error("checkQueue failed for " + queue);
+        //     }
+        // }
         q = new amqpqueue();
         q.callback = callback;
         // q.QueueOptions = new Object((QueueOptions != null ? QueueOptions : this.AssertQueueOptions));
