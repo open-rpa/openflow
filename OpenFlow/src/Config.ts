@@ -10,7 +10,7 @@ import { Util } from "./Util";
 
 export class Config {
     public static reload(): void {
-        Config.version = (fs.existsSync("VERSION") ? fs.readFileSync("VERSION", "utf8") : "UNKNOWN-VERSION");
+        Config.version = (fs.existsSync("VERSION") ? fs.readFileSync("VERSION", "utf8") : "1.0.34");
 
         Config.NODE_ENV = Config.getEnv("NODE_ENV", "development");
 
@@ -74,7 +74,7 @@ export class Config {
         Config.nodered_initial_liveness_delay = parseInt(Config.getEnv("nodered_initial_liveness_delay", "60"));
     }
     public static db: DatabaseConnection = null;
-    public static version: string = (fs.existsSync("VERSION") ? fs.readFileSync("VERSION", "utf8") : "UNKNOWN-VERSION");
+    public static version: string = (fs.existsSync("VERSION") ? fs.readFileSync("VERSION", "utf8") : "1.0.34");
 
     public static NODE_ENV: string = Config.getEnv("NODE_ENV", "development");
 
