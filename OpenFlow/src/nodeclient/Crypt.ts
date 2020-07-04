@@ -1,7 +1,7 @@
 import * as crypto from "crypto";
 import * as bcrypt from "bcryptjs";
 import * as jsonwebtoken from "jsonwebtoken";
-import { Config } from "./Config";
+import { Config } from "../Config";
 import { TokenUser } from "./Message";
 
 export class Crypt {

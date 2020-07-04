@@ -1,10 +1,10 @@
 import * as RED from "node-red";
 import { Red } from "node-red";
-import { TokenUser, SigninMessage, Message, QueryMessage, mapFunc, reduceFunc, finalizeFunc, UpdateOneMessage } from "../../Message";
-import { Crypt } from "../../Crypt";
-import { WebSocketClient } from "../../WebSocketClient";
-import { NoderedUtil } from "./NoderedUtil";
-import { Base } from "../../Base";
+import { TokenUser, SigninMessage, Message, QueryMessage, mapFunc, reduceFunc, finalizeFunc, UpdateOneMessage } from "../../nodeclient/Message";
+import { Crypt } from "../../nodeclient/Crypt";
+import { WebSocketClient } from "../../nodeclient/WebSocketClient";
+import { NoderedUtil } from "../../nodeclient/NoderedUtil";
+import { Base } from "../../nodeclient/Base";
 import { Config } from "../../Config";
 import { Logger } from "../../Logger";
 

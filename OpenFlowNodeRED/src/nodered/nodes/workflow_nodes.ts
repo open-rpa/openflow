@@ -1,11 +1,11 @@
 import * as RED from "node-red";
 import { Red } from "node-red";
-import { NoderedUtil } from "./NoderedUtil";
+import { NoderedUtil } from "../../nodeclient/NoderedUtil";
 import { Logger } from "../../Logger";
 import { Config } from "../../Config";
-import { Base } from "../../Base";
-import { WebSocketClient } from "../../WebSocketClient";
-import { Rolemember, Role, QueueMessage } from "../../Message";
+import { Base } from "../../nodeclient/Base";
+import { WebSocketClient } from "../../nodeclient/WebSocketClient";
+import { Rolemember, Role, QueueMessage } from "../../nodeclient/Message";
 
 export interface Iworkflow_in_node {
     queue: string;

@@ -1,6 +1,6 @@
 import * as RED from "node-red";
 import { Red } from "node-red";
-import { NoderedUtil } from "./NoderedUtil";
+import { NoderedUtil } from "../../nodeclient/NoderedUtil";
 const { GoogleAuth, OAuth2Client } = require('google-auth-library');
 var fs = require("fs");
 // const request = require('request');
