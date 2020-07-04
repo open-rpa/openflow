@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import * as winston from "winston";
 import * as http from "http";
 

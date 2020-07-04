@@ -45,7 +45,7 @@ export class Config {
 
         Config.amqp_message_ttl = parseInt(Config.getEnv("amqp_message_ttl", "20000"));
     }
-    public static version: string = (fs.existsSync("VERSION") ? fs.readFileSync("VERSION", "utf8") : "UNKNOWN-VERSION");
+    public static version: string = (fs.existsSync("VERSION") ? fs.readFileSync("VERSION", "utf8") : "1.0.34");
     public static nodered_id: string = Config.getEnv("nodered_id", "1");
     public static nodered_sa: string = Config.getEnv("nodered_sa", "");
 
