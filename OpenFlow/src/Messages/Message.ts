@@ -1,7 +1,7 @@
 import * as crypto from "crypto";
 import { lookup } from "mimetype";
 import { SocketMessage } from "../SocketMessage";
-import { WebSocketClient, QueuedMessage } from "../WebSocketClient";
+import { WebSocketClient, QueuedMessage } from "../WebSocketServerClient";
 import { QueryMessage } from "./QueryMessage";
 import { Base, Rights, WellknownIds } from "../base";
 import { SigninMessage } from "./SigninMessage";

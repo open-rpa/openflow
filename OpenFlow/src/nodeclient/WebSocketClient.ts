@@ -2,7 +2,7 @@ import { SocketMessage, TokenUser, Message } from "./Message";
 import * as events from "events";
 import * as WebSocket from "ws";
 import winston = require("winston");
-import { NoderedUtil } from "./nodered/nodes/NoderedUtil";
+import { NoderedUtil } from "./NoderedUtil";
 
 interface IHashTable<T> {
     [key: string]: T;
@@ -29,6 +29,8 @@ export class WebSocketClient {
     public jwt: string;
     public messageQueue: IHashTable<QueuedMessage> = {};
     public events: events.EventEmitter = null;
+    private pinghandle: NodeJS.Timeout = null;
+    private processqueuehandle: NodeJS.Timeout = null;
     constructor(logger: winston.Logger, url: string) {
         this._logger = logger;
         this._url = url;
@@ -41,7 +43,38 @@ export class WebSocketClient {
             WebSocketClient.instance = this;
         }
 
-        setInterval(this.pingServer.bind(this), 10000);
+        this.pinghandle = setInterval(this.pingServer.bind(this), 10000);
+    }
+    public close(code: number, message: string): void {
+        this._logger.verbose("websocket.close");
+        if (this._socketObject !== null) {
+            this._socketObject.onopen = null;
+            this._socketObject.onmessage = null;
+            this._socketObject.onclose = null;
+            this._socketObject.onerror = null;
+            try {
+                this._socketObject.close(code, message);
+            } catch (error) {
+                this._logger.error(error);
+            }
+            try {
+                this._socketObject.terminate();
+            } catch (error) {
+                this._logger.error(error);
+            }
+            this._socketObject = null;
+        }
+        if (this.pinghandle != null) {
+            clearTimeout(this.pinghandle);
+            this.pinghandle = null;
+        }
+        if (this.processqueuehandle != null) {
+            clearTimeout(this.processqueuehandle);
+            this.processqueuehandle = null;
+        }
+        this.events.removeAllListeners();
+        this.events = null;
+        WebSocketClient.instance = this;
     }
     public connect(): void {
         try {
@@ -90,8 +123,8 @@ export class WebSocketClient {
                 this.connect();
             }
         } catch (error) {
-            this._logger.error(error.message);
-            console.error(error);
+            if (error.message) { this._logger.error(error.message); }
+            else { this._logger.error(error); }
             this.connect();
         }
     }
@@ -114,7 +147,7 @@ export class WebSocketClient {
         if (message.command != "pong") {
             var reply = message.replyto;
             if (NoderedUtil.IsNullEmpty(reply)) reply = "";
-            // console.log("[SEND][" + message.command + "][" + message.id + "][" + reply + "]");
+            this._logger.debug("[SEND][" + message.command + "][" + message.id + "][" + reply + "]");
         }
         return new Promise<T>(async (resolve, reject) => {
             this._Send(message, ((msg) => {
@@ -143,7 +176,7 @@ export class WebSocketClient {
         if (message.replyto === null || message.replyto === undefined) {
             this.messageQueue[message.id] = new QueuedMessage(message, cb);
         }
-        setTimeout(() => {
+        this.processqueuehandle = setTimeout(() => {
             this.ProcessQueue();
         }, 500);
     }
@@ -180,13 +213,13 @@ export class WebSocketClient {
                         this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
                     }
                 } catch (error) {
-                    this._logger.error(error.message);
-                    console.error(error);
+                    if (error.message) { this._logger.error(error.message); }
+                    else { this._logger.error(error); }
                 }
             });
         } catch (error) {
-            this._logger.error(error.message);
-            console.error(error);
+            if (error.message) { this._logger.error(error.message); }
+            else { this._logger.error(error); }
         }
         if (this._socketObject === null || this._socketObject.readyState !== this._socketObject.OPEN) {
             this._logger.info("Cannot send, not connected");
@@ -198,8 +231,8 @@ export class WebSocketClient {
                 this._socketObject.send(JSON.stringify(msg));
                 this._sendQueue = this._sendQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
             } catch (error) {
-                this._logger.error(error.message);
-                console.error(error);
+                if (error.message) { this._logger.error(error.message); }
+                else { this._logger.error(error); }
                 return;
             }
         });

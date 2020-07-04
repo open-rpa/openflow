@@ -1,12 +1,12 @@
 import * as fs from "fs";
 import * as path from "path";
-import { WebSocketClient } from "./WebSocketClient";
+import { WebSocketClient } from "./nodeclient/WebSocketClient";
 import winston = require("winston");
 import { nodered_settings } from "./nodered_settings";
-import { QueryMessage, Message, DeleteOneMessage, InsertOneMessage } from "./Message";
+import { QueryMessage, Message, DeleteOneMessage, InsertOneMessage } from "./nodeclient/Message";
 import { Config } from "./Config";
 import { json } from "body-parser";
-import { NoderedUtil } from "./nodered/nodes/NoderedUtil";
+import { NoderedUtil } from "./nodeclient/NoderedUtil";
 // tslint:disable-next-line: class-name
 export class noderedcontribopenflowstorage {
 
@@ -73,13 +73,13 @@ export class noderedcontribopenflowstorage {
             try {
                 return JSON.parse(result[0].flows);
             } catch (error) {
-                console.error(error);
+                if (error.message) { this._logger.error(error.message); }
+                else { this._logger.error(error); }
                 return [];
             }
         } catch (error) {
             if (error.message) { this._logger.error(error.message); }
             else { this._logger.error(error); }
-            console.error(error);
             return [];
         }
     }
@@ -100,7 +100,6 @@ export class noderedcontribopenflowstorage {
         } catch (error) {
             if (error.message) { this._logger.error(error.message); }
             else { this._logger.error(error); }
-            console.error(error);
         }
     }
     public async _getCredentials(): Promise<any> {
@@ -122,7 +121,6 @@ export class noderedcontribopenflowstorage {
         } catch (error) {
             if (error.message) { this._logger.error(error.message); }
             else { this._logger.error(error); }
-            console.error(error);
             return [];
         }
     }
@@ -156,7 +154,6 @@ export class noderedcontribopenflowstorage {
         } catch (error) {
             if (error.message) { this._logger.error(error.message); }
             else { this._logger.error(error); }
-            console.error(error);
         }
     }
     // private firstrun: boolean = true;
@@ -205,7 +202,6 @@ export class noderedcontribopenflowstorage {
         } catch (error) {
             if (error.message) { this._logger.error(error.message); }
             else { this._logger.error(error); }
-            console.error(error);
             return {};
         }
     }
@@ -226,7 +222,6 @@ export class noderedcontribopenflowstorage {
         } catch (error) {
             if (error.message) { this._logger.error(error.message); }
             else { this._logger.error(error); }
-            console.error(error);
         }
     }
 
@@ -240,7 +235,6 @@ export class noderedcontribopenflowstorage {
         } catch (error) {
             if (error.message) { this._logger.error(error.message); }
             else { this._logger.error(error); }
-            console.error(error);
             return [];
         }
     }
@@ -262,7 +256,6 @@ export class noderedcontribopenflowstorage {
         } catch (error) {
             if (error.message) { this._logger.error(error.message); }
             else { this._logger.error(error); }
-            console.error(error);
         }
     }
 

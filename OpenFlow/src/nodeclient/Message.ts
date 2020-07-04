@@ -1,7 +1,7 @@
 import { WebSocketClient, QueuedMessage } from "./WebSocketClient";
 import { Base } from "./Base";
-import { NoderedUtil } from "./nodered/nodes/NoderedUtil";
-import { Config } from "./Config";
+import { NoderedUtil } from "./NoderedUtil";
+import { Config } from "../Config";
 
 function isNumber(value: string | number): boolean {
     return ((value != null) && !isNaN(Number(value.toString())));
@@ -439,7 +439,8 @@ export class Message {
                     break;
             }
         } catch (error) {
-            console.error(error);
+            if (error.message) { cli._logger.error(error.message); }
+            else { cli._logger.error(error); }
         }
     }
     public async Send(cli: WebSocketClient): Promise<void> {

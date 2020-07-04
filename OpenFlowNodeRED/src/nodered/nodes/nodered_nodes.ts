@@ -1,6 +1,6 @@
 import * as RED from "node-red";
 import { Red } from "node-red";
-import { NoderedUtil } from "./NoderedUtil";
+import { NoderedUtil } from "../../nodeclient/NoderedUtil";
 
 
 export interface Iget_pods {

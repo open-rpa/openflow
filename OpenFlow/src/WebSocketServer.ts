@@ -1,7 +1,7 @@
 import * as winston from "winston";
 import * as http from "http";
 import * as WebSocket from "ws";
-import { WebSocketClient } from "./WebSocketClient";
+import { WebSocketClient } from "./WebSocketServerClient";
 import { DatabaseConnection } from "./DatabaseConnection";
 import { Crypt } from "./Crypt";
 import { SigninMessage } from "./Messages/SigninMessage";

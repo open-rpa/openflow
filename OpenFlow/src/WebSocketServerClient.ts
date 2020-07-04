@@ -1,10 +1,9 @@
 import * as winston from "winston";
 import * as WebSocket from "ws";
-import * as amqplib from "amqplib";
 import { SocketMessage } from "./SocketMessage";
 import { Message, JSONfn } from "./Messages/Message";
 import { User } from "./User";
-import { DatabaseConnection, mapFunc, reduceFunc, finalizeFunc } from "./DatabaseConnection";
+import { mapFunc, reduceFunc, finalizeFunc } from "./DatabaseConnection";
 import { Config } from "./Config";
 // import { amqp_consumer } from "./amqp_consumer";
 import { QueueMessage } from "./Messages/QueueMessage";

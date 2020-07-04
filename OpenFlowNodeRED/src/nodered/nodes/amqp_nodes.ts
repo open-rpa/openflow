@@ -1,12 +1,12 @@
 import * as RED from "node-red";
 import { Red } from "node-red";
-import { NoderedUtil } from "./NoderedUtil";
+import { NoderedUtil } from "../../nodeclient/NoderedUtil";
 import { Logger } from "../../Logger";
 //import { amqp_consumer } from "../../amqp_consumer";
 //import { amqp_publisher } from "../../amqp_publisher";
 import { Config } from "../../Config";
-import { WebSocketClient } from "../../WebSocketClient";
-import { QueueMessage, SigninMessage, Message } from "../../Message";
+import { WebSocketClient } from "../../nodeclient/WebSocketClient";
+import { QueueMessage, SigninMessage, Message } from "../../nodeclient/Message";
 
 export interface Iamqp_connection {
     name: string;
@@ -52,8 +52,8 @@ export class amqp_connection {
                     this.webcli.jwt = result.jwt;
                     this.webcli.events.emit("onsignedin", result.user);
                 } catch (error) {
-                    this.webcli._logger.error(error.message);
-                    console.error(error);
+                    if (error.message) { this.webcli._logger.error(error.message); }
+                    else { this.webcli._logger.error(error); }
                 }
             });
             this.webcli.events.on("onsignedin", async (user) => {
