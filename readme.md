@@ -11,8 +11,18 @@ Build to run on docker, how to setup docker is not supported on GitHub/slack
 For now only Linux (tested on ubuntu 18LTS) and windows is supported
 Install NodeJS version 10 (google how to do that, if in doubt, hint, use nvm if you got the wrong version installed)
 
-To install and run OpenFlow, install the openiap package 
-on window, run from a command prompt with admin rights
+On window, run from a command prompt with admin rights
+
+On windows this will require build tools to be present, install using
+
+`npm install --global windows-build-tools`
+
+On linux this will require build tools to be present. On ubuntu you can install using
+
+`sudo apt-get install gcc g++ make`
+
+Then to install and run OpenFlow, install the openiap package 
+
 `npm i openiap -g`
 
 On Linux run with sudo
@@ -22,7 +32,7 @@ On Linux run with sudo
 then create a template configuration file using 
 `openflow-cli --init`
 
-open and edit this, if needed then install using
+open and edit openflow.env, if needed, then install the service using
 
 on windows
 
@@ -39,8 +49,17 @@ then open a browser and visit [localhost.openrpa.dk](http://localhost.openrpa.dk
 For now only Linux (tested on ubuntu 18LTS) and windows is supported
 Install NodeJS version 10 (google how to do that, if in doubt, hint, use nvm if you got the wrong version installed)
 
-To install and run OpenFlow, install the openflow-nodered package 
-on window, run from a command prompt with admin rights
+On window, run from a command prompt with admin rights
+
+On windows this will require build tools to be present, install using
+
+`npm install --global windows-build-tools`
+
+On linux this will require build tools to be present. On ubuntu you can install using
+
+`sudo apt-get install gcc g++ make`
+
+Then to install and run OpenFlow Nodered, install the openflow-nodered package 
 `npm i openflow-nodered -g`
 
 On Linux run with sudo
