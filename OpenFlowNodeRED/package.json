@@ -1,6 +1,6 @@
 {
   "name": "openflow-nodered",
-  "version": "1.0.36",
+  "version": "1.0.37",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -32,6 +32,7 @@
     "compression": "^1.7.4",
     "cookie-parser": "^1.4.5",
     "cookie-session": "^1.4.0",
+    "envfile": "^6.9.0",
     "express": "^4.17.1",
     "google-auth-library": "^6.0.0",
     "gulp-shell": "^0.8.0",
