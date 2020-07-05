@@ -39,7 +39,7 @@
     "jsonwebtoken": "^8.5.1",
     "morgan": "^1.10.0",
     "node-gyp": "^7.0.0",
-    "node-red": "^1.0.6",
+    "node-red": "^1.1.0",
     "node-red-node-email": "^1.7.8",
     "os-service": "^2.2.0",
     "passport-google-oauth20": "^2.0.0",
