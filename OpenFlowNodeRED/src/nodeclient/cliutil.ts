@@ -105,7 +105,8 @@ export function loadenv() {
     logger.info("Loading config " + sourceenv);
     for (const k in parsedFile) {
         process.env[k] = parsedFile[k];
-        // console.log(k + " = " + parsedFile[k]);
+        // logger.verbose(k + " = " + parsedFile[k]);
     }
+    logger.info("version: " + process.version);
     Config.reload();
 }

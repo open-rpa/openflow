@@ -147,7 +147,7 @@ export class WebSocketClient {
         if (message.command != "pong") {
             var reply = message.replyto;
             if (NoderedUtil.IsNullEmpty(reply)) reply = "";
-            this._logger.debug("[SEND][" + message.command + "][" + message.id + "][" + reply + "]");
+            this._logger.verbose("[SEND][" + message.command + "][" + message.id + "][" + reply + "]");
         }
         return new Promise<T>(async (resolve, reject) => {
             this._Send(message, ((msg) => {

@@ -5,7 +5,7 @@ import * as fs from "fs";
 import { WebSocketClient } from "./nodeclient/WebSocketClient";
 import { SigninMessage, Message } from "./nodeclient/Message";
 import { Config } from "./Config";
-import { logger, StopService, StartService, loadenv, copyenv, envfilename, servicename, isOpenFlow } from "./nodeclient/cliutil";
+import { logger, StopService, StartService, loadenv, copyenv, envfilename, servicename, isOpenFlow, getlocaldir } from "./nodeclient/cliutil";
 
 const optionDefinitions = [
     { name: 'verbose', alias: 'v', type: Boolean },
@@ -85,7 +85,7 @@ async function doit() {
                 copyenv();
                 let jwt = await getToken();
                 logger.info("Received token, update " + envfilename + " file");
-                let localenv = path.join(process.cwd(), envfilename);
+                let localenv = path.join(getlocaldir(), envfilename);
                 let parsedFile = envfile.parse(fs.readFileSync(localenv));
                 parsedFile.jwt = jwt;
                 fs.writeFileSync(localenv, envfile.stringify(parsedFile));
