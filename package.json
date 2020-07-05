@@ -1,6 +1,6 @@
 {
-  "name": "openflow",
-  "version": "1.0.4",
+  "name": "openflow-cli",
+  "version": "1.0.6",
   "description": "Simple wrapper around NodeRed, RabbitMQ and MongoDB to support a more scaleable NodeRed implementation.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {
@@ -18,7 +18,6 @@
   },
   "homepage": "https://github.com/open-rpa/openflow",
   "bin": {
-    "openflow-nodered-cli": "./OpenFlowNodeRED/dist/cli.js",
     "openflow-cli": "./dist/cli.js"
   },
   "dependencies": {

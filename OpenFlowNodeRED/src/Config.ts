@@ -6,6 +6,8 @@ import { NoderedUtil } from "./nodeclient/NoderedUtil";
 export class Config {
     public static reload(): void {
         Config.version = (fs.existsSync("VERSION") ? fs.readFileSync("VERSION", "utf8") : "1.0.34");
+        Config.logpath = Config.getEnv("logpath", __dirname);
+
         Config.nodered_id = Config.getEnv("nodered_id", "1");
         Config.nodered_sa = Config.getEnv("nodered_sa", "");
 
@@ -46,6 +48,7 @@ export class Config {
         Config.amqp_message_ttl = parseInt(Config.getEnv("amqp_message_ttl", "20000"));
     }
     public static version: string = (fs.existsSync("VERSION") ? fs.readFileSync("VERSION", "utf8") : "1.0.34");
+    public static logpath: string = Config.getEnv("logpath", __dirname);
     public static nodered_id: string = Config.getEnv("nodered_id", "1");
     public static nodered_sa: string = Config.getEnv("nodered_sa", "");
 

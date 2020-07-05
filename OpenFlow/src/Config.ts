@@ -11,6 +11,7 @@ import { Util } from "./Util";
 export class Config {
     public static reload(): void {
         Config.version = (fs.existsSync("VERSION") ? fs.readFileSync("VERSION", "utf8") : "1.0.34");
+        Config.logpath = Config.getEnv("logpath", __dirname);
 
         Config.NODE_ENV = Config.getEnv("NODE_ENV", "development");
 
@@ -75,6 +76,7 @@ export class Config {
     }
     public static db: DatabaseConnection = null;
     public static version: string = (fs.existsSync("VERSION") ? fs.readFileSync("VERSION", "utf8") : "1.0.34");
+    public static logpath: string = Config.getEnv("logpath", __dirname);
 
     public static NODE_ENV: string = Config.getEnv("NODE_ENV", "development");
 
