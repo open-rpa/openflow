@@ -1,13 +1,24 @@
 {
   "name": "openflow-nodered",
-  "version": "1.0.34",
+  "version": "1.0.36",
   "description": "",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
-  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/open-rpa/openflow.git"
+  },
+  "author": "OpenRPA / Allan Zimmermann",
+  "license": "MPL-2.0",
+  "bugs": {
+    "url": "https://github.com/open-rpa/openflow/issues"
+  },
+  "homepage": "https://github.com/open-rpa/openflow",
+  "bin": {
+    "openflow-nodered-cli": "./dist/cli.js"
+  },
   "dependencies": {
     "@nodemailer/mailparser2": "^1.0.3",
     "@types/amqplib": "^0.5.13",

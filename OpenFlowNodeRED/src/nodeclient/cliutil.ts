@@ -6,7 +6,9 @@ const cp = require('child_process');
 const path = require('path');
 const envfile = require('envfile')
 export var envfilename = ".env";
+export var envfilepathname = "";
 export var servicename = "openflow-nodered";
+const service = require("os-service");
 
 export function isWin() {
     return process.platform === "win32";
@@ -48,6 +50,29 @@ export function StopService(servicename: string) {
         logger.info(error.message);
     }
 }
+export function RemoveService(servicename: string) {
+    StopService(servicename);
+    logger.info("Uninstalling service" + servicename);
+    service.remove(servicename, function (error) {
+        if (error) { logger.info(error.message); return }
+        logger.info("Service" + servicename + " uninstalled");
+    });
+}
+export function InstallService(servicename: string, configfile: string) {
+    logger.info("Installing service" + servicename);
+    service.add(servicename, { programArgs: [servicename, "--run", "--config", configfile] }, function (error) {
+        if (error) { logger.info(error.message); return }
+        logger.info("Service" + servicename + " installed");
+        StartService(servicename);
+    });
+}
+export function RunService(callback: any) {
+    service.run(function () {
+        logger.info("Service" + servicename + " stopping");
+        if (callback != null) callback();
+        service.stop(0);
+    });
+}
 // use and copy current env file, unless we have a /config folder in root
 export function getlocaldir(): string {
     var local = __dirname;
@@ -83,30 +108,27 @@ export function hassourceenv(): boolean {
     return fs.existsSync(sourceenv);
 }
 
-export function copyenv() {
-    var source = getsourcedir();
-    var local = getlocaldir();
+// export function copyenv() {
+//     var source = getsourcedir();
+//     var local = getlocaldir();
 
 
-    var localenv = path.join(local, envfilename);
-    var sourceenv = path.join(source, envfilename);
-    if (localenv != sourceenv && fs.existsSync(localenv)) {
-        logger.info("localenv : " + localenv);
-        logger.info("sourceenv: " + sourceenv);
-        logger.info("copy local " + envfilename + " file to " + source);
-        fs.copyFileSync(localenv, sourceenv);
-    }
-    loadenv();
-}
+//     var localenv = path.join(local, envfilename);
+//     var sourceenv = path.join(source, envfilename);
+//     if (localenv != sourceenv && fs.existsSync(localenv)) {
+//         logger.info("localenv : " + localenv);
+//         logger.info("sourceenv: " + sourceenv);
+//         logger.info("copy local " + envfilename + " file to " + source);
+//         fs.copyFileSync(localenv, sourceenv);
+//     }
+//     loadenv();
+// }
 export function loadenv() {
-    var source = getsourcedir();
-    var sourceenv = path.join(source, envfilename);
-    let parsedFile = envfile.parse(fs.readFileSync(sourceenv));
-    logger.info("Loading config " + sourceenv);
+    logger.info("NodeJS version " + process.version + " Config " + envfilepathname);
+    let parsedFile = envfile.parse(fs.readFileSync(envfilepathname));
     for (const k in parsedFile) {
         process.env[k] = parsedFile[k];
         // logger.verbose(k + " = " + parsedFile[k]);
     }
-    logger.info("version: " + process.version);
     Config.reload();
 }
