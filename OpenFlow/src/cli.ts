@@ -93,11 +93,7 @@ async function doit() {
             copyenv();
             logger.info("Install service " + servicename);
             service.add(servicename, { programArgs: ["--run", options.name] }, function (error) {
-                if (error) {
-                    logger.info(error.message);
-                    return;
-                }
-                logger.info("Starting service " + servicename);
+                if (error) logger.info(error.message);
                 StartService(servicename);
             });
             logger.info("Quit");
