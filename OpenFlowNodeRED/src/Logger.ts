@@ -1,9 +1,10 @@
 import * as winston from "winston";
+import { Config } from "./Config";
 const path = require('path');
 
 export class Logger {
     static configure(): winston.Logger {
-        var filename = path.join(__dirname, "nodered.log");
+        var filename = path.join(Config.logpath, "nodered.log");
         var options: any = {
             file: {
                 level: "debug",
