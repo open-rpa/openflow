@@ -2,9 +2,53 @@ import * as https from "https";
 import * as retry from "async-retry";
 import * as fs from "fs";
 import { fetch, toPassportConfig } from "passport-saml-metadata";
-import { NoderedUtil } from "./nodered/nodes/NoderedUtil";
+import { NoderedUtil } from "./nodeclient/NoderedUtil";
 export class Config {
-    public static version: string = fs.readFileSync("VERSION", "utf8");;
+    public static reload(): void {
+        Config.version = (fs.existsSync("VERSION") ? fs.readFileSync("VERSION", "utf8") : "1.0.34");
+        Config.logpath = Config.getEnv("logpath", __dirname);
+
+        Config.nodered_id = Config.getEnv("nodered_id", "1");
+        Config.nodered_sa = Config.getEnv("nodered_sa", "");
+
+        Config.NODE_ENV = Config.getEnv("NODE_ENV", "development");
+
+        Config.saml_federation_metadata = Config.getEnv("saml_federation_metadata", "");
+        Config.saml_issuer = Config.getEnv("saml_issuer", "");
+        Config.saml_entrypoint = Config.getEnv("saml_entrypoint", "");
+        Config.saml_baseurl = Config.getEnv("saml_baseurl", "");
+        Config.saml_crt = Config.getEnv("saml_crt", "");
+
+        Config.port = parseInt(Config.getEnv("port", "1880"));
+        Config.nodered_port = parseInt(Config.getEnv("nodered_port", "0"));
+        Config.domain = Config.getEnv("domain", "localhost");
+        Config.protocol = Config.getEnv("protocol", "http");
+        Config.nodered_domain_schema = Config.getEnv("nodered_domain_schema", "");
+        Config.noderedusers = Config.getEnv("noderedusers", "");
+        Config.noderedadmins = Config.getEnv("noderedadmins", "");
+
+        Config.api_ws_url = Config.getEnv("api_ws_url", "ws://localhost:3000");
+        Config.amqp_url = Config.getEnv("amqp_url", "amqp://localhost");
+        Config.amqp_reply_expiration = parseInt(Config.getEnv("amqp_reply_expiration", (60 * 1000).toString())); // 1 min
+        Config.amqp_workflow_out_expiration = parseInt(Config.getEnv("amqp_workflow_out_expiration", (60 * 1000).toString())); // 1 min
+        Config.amqp_reply_expiration = parseInt(Config.getEnv("amqp_reply_expiration", "10000")); // 10 seconds
+        Config.amqp_workflow_out_expiration = parseInt(Config.getEnv("amqp_workflow_out_expiration", "10000")); // 10 seconds
+
+        Config.api_credential_cache_seconds = parseInt(Config.getEnv("api_credential_cache_seconds", "300"));
+        Config.api_allow_anonymous = Config.parseBoolean(Config.getEnv("api_allow_anonymous", "false"));
+
+        Config.jwt = Config.getEnv("jwt", "");
+
+        Config.aes_secret = Config.getEnv("aes_secret", "");
+        Config.tls_crt = Config.getEnv("tls_crt", "");
+        Config.tls_key = Config.getEnv("tls_key", "");
+        Config.tls_ca = Config.getEnv("tls_ca", "");
+        Config.tls_passphrase = Config.getEnv("tls_passphrase", "");
+
+        Config.amqp_message_ttl = parseInt(Config.getEnv("amqp_message_ttl", "20000"));
+    }
+    public static version: string = (fs.existsSync("VERSION") ? fs.readFileSync("VERSION", "utf8") : "1.0.34");
+    public static logpath: string = Config.getEnv("logpath", __dirname);
     public static nodered_id: string = Config.getEnv("nodered_id", "1");
     public static nodered_sa: string = Config.getEnv("nodered_sa", "");
 

@@ -6,7 +6,66 @@ Join slack for giving feedback [#openrpa](https://slack.openrpa.dk/)
 
 Build to run on docker, how to setup docker is not supported on GitHub/slack
 
-#### Quick start
+#### Quick start running openflow using npm
+
+For now only Linux (tested on ubuntu 18LTS) and windows is supported
+Install NodeJS version 10 (google how to do that, if in doubt, hint, use nvm if you got the wrong version installed)
+
+To install and run OpenFlow, install the openiap package 
+on window, run from a command prompt with admin rights
+`npm i openiap -g`
+
+On Linux run with sudo
+
+`sudo npm i openiap -g`
+
+then create a template configuration file using 
+`openflow-cli --init`
+
+open and edit this, if needed then install using
+
+on windows
+
+`openflow-cli --install openflow`
+
+and on Linux remember to use sudo
+
+`sudo openflow-cli --install openflow`
+
+then open a browser and visit [localhost.openrpa.dk](http://localhost.openrpa.dk) 
+
+#### Quick start running openflow nodered using npm
+
+For now only Linux (tested on ubuntu 18LTS) and windows is supported
+Install NodeJS version 10 (google how to do that, if in doubt, hint, use nvm if you got the wrong version installed)
+
+To install and run OpenFlow, install the openflow-nodered package 
+on window, run from a command prompt with admin rights
+`npm i openflow-nodered -g`
+
+On Linux run with sudo
+
+`sudo npm i openflow-nodered -g`
+
+then create a template configuration file using 
+`openflow-nodered-cli --init`
+
+this will create 2 environment files with an example of how to connect to a locally installed openflow or how to connect to [app.openiap.io](https://app.openiap.io)
+So lets assume you want to run a remote openflow connected to [app.openiap.io](https://app.openiap.io) 
+
+on windows
+
+`openflow-nodered-cli --install noderedremote`
+
+and on Linux remember to use sudo
+
+`openflow-nodered-cli --install noderedremote`
+
+this will prompt for a pre-created username and password, and then install a local service with the name noderedremote and start it
+
+then open a browser and visit [localhost.openrpa.dk:1880](http://localhost.openrpa.dk:1880) 
+
+#### Quick start using docker
 
 To quickly get started with your own installation you can use one of these docker-compose files.
 download the file you want

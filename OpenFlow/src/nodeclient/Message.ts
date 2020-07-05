@@ -1,7 +1,7 @@
 import { WebSocketClient, QueuedMessage } from "./WebSocketClient";
 import { Base } from "./Base";
-import { NoderedUtil } from "./nodered/nodes/NoderedUtil";
-import { Config } from "./Config";
+import { NoderedUtil } from "./NoderedUtil";
+import { Config } from "../Config";
 
 function isNumber(value: string | number): boolean {
     return ((value != null) && !isNaN(Number(value.toString())));
@@ -406,16 +406,16 @@ export class Message {
                 if (this.replyto !== null && this.replyto !== undefined) {
                     var qmsg: QueuedMessage = cli.messageQueue[this.replyto];
                     if (qmsg !== undefined && qmsg !== null) {
-                        // console.log("[RESC][" + this.command + "][" + this.id + "][" + this.replyto + "][CB]");
+                        cli._logger.verbose("[RESC][" + this.command + "][" + this.id + "][" + this.replyto + "][CB]");
                         qmsg.message = Object.assign(qmsg.message, JSON.parse(this.data));
                         if (qmsg.cb !== undefined && qmsg.cb !== null) { qmsg.cb(qmsg.message); }
                         delete cli.messageQueue[this.id];
                     } else {
-                        // console.log("[RESC][" + this.command + "][" + this.id + "][" + this.replyto + "][NO CB!]");
+                        cli._logger.verbose("[RESC][" + this.command + "][" + this.id + "][" + this.replyto + "][NO CB!]");
                     }
                     return;
                 } else {
-                    // console.log("[RESC][" + this.command + "][" + this.id + "][" + this.replyto + "]");
+                    cli._logger.verbose("[RESC][" + this.command + "][" + this.id + "][" + this.replyto + "]");
                 }
             }
             switch (command) {
@@ -439,7 +439,8 @@ export class Message {
                     break;
             }
         } catch (error) {
-            console.error(error);
+            if (error.message) { cli._logger.error(error.message); }
+            else { cli._logger.error(error); }
         }
     }
     public async Send(cli: WebSocketClient): Promise<void> {

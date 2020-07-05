@@ -29,9 +29,6 @@ async function initamqp() {
     var amqp: amqpwrapper = new amqpwrapper(logger, Config.amqp_url);
     amqpwrapper.SetInstance(amqp);
     await amqp.connect();
-    var testamqp = new amqpwrapper(logger, Config.amqp_url);
-    amqpwrapper.SetTestInstance(testamqp);
-    await testamqp.connect();
 
     // Must also consume messages in the dead letter queue, to catch messages that have timed out
     await amqp.AddExchangeConsumer(Config.amqp_dlx, "fanout", "", null, null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {

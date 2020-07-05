@@ -9,17 +9,18 @@ import * as cookieParser from "cookie-parser";
 import * as nodered from "node-red";
 import * as morgan from "morgan";
 
-import * as samlauth from "node-red-contrib-auth-saml";
+// import * as samlauth from "./node-red-contrib-auth-saml";
 import * as cookieSession from "cookie-session";
 
 import { nodered_settings } from "./nodered_settings";
 import { Config } from "./Config";
-import { WebSocketClient } from "./WebSocketClient";
+import { WebSocketClient } from "./nodeclient/WebSocketClient";
 import { noderedcontribopenflowstorage } from "./node-red-contrib-openflow-storage";
 import { noderedcontribmiddlewareauth } from "./node-red-contrib-middleware-auth";
 
 import * as passport from "passport";
-import { NoderedUtil } from "./nodered/nodes/NoderedUtil";
+import { NoderedUtil } from "./nodeclient/NoderedUtil";
+import { noderedcontribauthsaml } from "./node-red-contrib-auth-saml";
 
 export class WebServer {
     private static _logger: winston.Logger;
@@ -87,18 +88,18 @@ export class WebServer {
                     server = https.createServer(options, this.app);
 
                     var redirapp = express();
-                    var _http = http.createServer(redirapp);
+                    // var _http = http.createServer(redirapp);
                     redirapp.get('*', function (req, res) {
                         // res.redirect('https://' + req.headers.host + req.url);
                         res.status(200).json({ status: "ok" });
                     })
-                    _http.listen(80);
+                    // _http.listen(80);
                 } else {
                     server = http.createServer(this.app);
                 }
                 server.on("error", (error) => {
-                    this._logger.error(error);
-                    console.error(error);
+                    if (error.message) { this._logger.error(error.message); }
+                    else { this._logger.error(error); }
                     process.exit(404);
                 });
 
@@ -125,7 +126,7 @@ export class WebServer {
                 if (NoderedUtil.IsNullEmpty(baseurl)) {
                     baseurl = Config.baseurl();
                 }
-                this.settings.adminAuth = await samlauth.noderedcontribauthsaml.configure(baseurl, Config.saml_federation_metadata, Config.saml_issuer,
+                this.settings.adminAuth = await noderedcontribauthsaml.configure(baseurl, Config.saml_federation_metadata, Config.saml_issuer,
                     (profile: string | any, done: any) => {
                         var roles: string[] = profile["http://schemas.xmlsoap.org/claims/Group"];
                         if (roles !== undefined) {
@@ -138,7 +139,7 @@ export class WebServer {
                         }
                         // profile.permissions = "*";
                         done(profile);
-                    }, "", Config.saml_entrypoint);
+                    }, "", Config.saml_entrypoint, null);
                 // this.settings.adminAuth = await noderedcontribauthsaml.configure(this._logger, Config.baseurl());clear
 
                 // settings.adminAuth = new noderedcontribauthopenid(this._logger, Config.baseurl());
@@ -208,7 +209,8 @@ export class WebServer {
                     err = error;
                     errorCounter++;
                     hasErrors = true;
-                    console.error(error);
+                    if (error.message) { this._logger.error(error.message); }
+                    else { this._logger.error(error); }
                 }
                 if (errorCounter == 10) {
                     throw err;
@@ -219,9 +221,8 @@ export class WebServer {
             }
             return server;
         } catch (error) {
-            console.error(JSON.stringify(options));
-            this._logger.error(error);
-            console.error(error);
+            if (error.message) { this._logger.error(error.message); }
+            else { this._logger.error(error); }
             process.exit(404);
         }
         return null;

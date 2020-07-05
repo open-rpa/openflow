@@ -1,6 +1,6 @@
 import { Node } from "node-red";
 import { libmailserver } from "./libmailserver";
-import { NoderedUtil } from "./NoderedUtil";
+import { NoderedUtil } from "../../nodeclient/NoderedUtil";
 
 module.exports = function (RED) {
     "use strict";

@@ -9,8 +9,74 @@ import { Logger } from "./Logger";
 import { Util } from "./Util";
 
 export class Config {
+    public static reload(): void {
+        Config.version = (fs.existsSync("VERSION") ? fs.readFileSync("VERSION", "utf8") : "1.0.34");
+        Config.logpath = Config.getEnv("logpath", __dirname);
+
+        Config.NODE_ENV = Config.getEnv("NODE_ENV", "development");
+
+        Config.stripe_api_key = Config.getEnv("stripe_api_key", "");
+        Config.stripe_api_secret = Config.getEnv("stripe_api_secret", "");
+
+        Config.auto_create_users = Config.parseBoolean(Config.getEnv("auto_create_users", "false"));
+        Config.auto_create_domains = Config.parseArray(Config.getEnv("auto_create_domains", ""));
+        Config.allow_user_registration = Config.parseBoolean(Config.getEnv("allow_user_registration", "false"));
+        Config.allow_personal_nodered = Config.parseBoolean(Config.getEnv("allow_personal_nodered", "false"));
+        Config.auto_create_personal_nodered_group = Config.parseBoolean(Config.getEnv("auto_create_personal_nodered_group", "false"));
+
+        Config.tls_crt = Config.getEnv("tls_crt", "");
+        Config.tls_key = Config.getEnv("tls_key", "");
+        Config.tls_ca = Config.getEnv("tls_ca", "");
+        Config.tls_passphrase = Config.getEnv("tls_passphrase", "");
+
+
+        Config.client_heartbeat_timeout = parseInt(Config.getEnv("client_heartbeat_timeout", "60"));
+
+        Config.expected_max_roles = parseInt(Config.getEnv("expected_max_roles", "4000"));
+        Config.update_acl_based_on_groups = Config.parseBoolean(Config.getEnv("update_acl_based_on_groups", "false"));
+        Config.multi_tenant = Config.parseBoolean(Config.getEnv("multi_tenant", "false"));
+        Config.api_bypass_perm_check = Config.parseBoolean(Config.getEnv("api_bypass_perm_check", "false"));
+        Config.websocket_package_size = parseInt(Config.getEnv("websocket_package_size", "4096"), 10);
+        Config.websocket_max_package_count = parseInt(Config.getEnv("websocket_max_package_count", "1024"), 10);
+        Config.protocol = Config.getEnv("protocol", "http"); // used by personal nodered and baseurl()
+        Config.port = parseInt(Config.getEnv("port", "3000"));
+        Config.domain = Config.getEnv("domain", "localhost"); // sent to website and used in baseurl()
+
+
+        Config.amqp_reply_expiration = parseInt(Config.getEnv("amqp_reply_expiration", "10000")); // 10 seconds
+        Config.amqp_force_queue_prefix = Config.parseBoolean(Config.getEnv("amqp_force_queue_prefix", "true"));
+        Config.amqp_force_exchange_prefix = Config.parseBoolean(Config.getEnv("amqp_force_exchange_prefix", "true"));
+        Config.amqp_url = Config.getEnv("amqp_url", "amqp://localhost"); // used to register queues and by personal nodered
+        Config.amqp_check_for_consumer = Config.parseBoolean(Config.getEnv("amqp_check_for_consumer", "true"));
+        Config.amqp_default_expiration = parseInt(Config.getEnv("amqp_default_expiration", "10000")); // 10 seconds
+        Config.amqp_requeue_time = parseInt(Config.getEnv("amqp_requeue_time", "1000")); // 1 seconds    
+        Config.amqp_dlx = Config.getEnv("amqp_dlx", "openflow-dlx");  // Dead letter exchange, used to pickup dead or timeout messages
+
+        Config.mongodb_url = Config.getEnv("mongodb_url", "mongodb://localhost:27017");
+        Config.mongodb_db = Config.getEnv("mongodb_db", "openflow");
+
+        Config.skip_history_collections = Config.getEnv("skip_history_collections", "");
+        Config.allow_skiphistory = Config.parseBoolean(Config.getEnv("allow_skiphistory", "true"));
+
+        Config.saml_issuer = Config.getEnv("saml_issuer", "the-issuer"); // define uri of STS, also sent to personal nodereds
+        Config.aes_secret = Config.getEnv("aes_secret", "");
+        Config.signing_crt = Config.getEnv("signing_crt", "");
+        Config.singing_key = Config.getEnv("singing_key", "");
+        Config.shorttoken_expires_in = Config.getEnv("shorttoken_expires_in", "5m");
+        Config.longtoken_expires_in = Config.getEnv("longtoken_expires_in", "365d");
+        Config.downloadtoken_expires_in = Config.getEnv("downloadtoken_expires_in", "15m");
+        Config.personalnoderedtoken_expires_in = Config.getEnv("personalnoderedtoken_expires_in", "365d");
+
+        Config.nodered_image = Config.getEnv("nodered_image", "cloudhack/openflownodered:edge");
+        Config.saml_federation_metadata = Config.getEnv("saml_federation_metadata", "");
+        Config.api_ws_url = Config.getEnv("api_ws_url", "ws://localhost:3000");
+        Config.namespace = Config.getEnv("namespace", ""); // also sent to website 
+        Config.nodered_domain_schema = Config.getEnv("nodered_domain_schema", ""); // also sent to website
+        Config.nodered_initial_liveness_delay = parseInt(Config.getEnv("nodered_initial_liveness_delay", "60"));
+    }
     public static db: DatabaseConnection = null;
-    public static version: string = fs.readFileSync("VERSION", "utf8");
+    public static version: string = (fs.existsSync("VERSION") ? fs.readFileSync("VERSION", "utf8") : "1.0.34");
+    public static logpath: string = Config.getEnv("logpath", __dirname);
 
     public static NODE_ENV: string = Config.getEnv("NODE_ENV", "development");
 
@@ -42,6 +108,7 @@ export class Config {
     public static domain: string = Config.getEnv("domain", "localhost"); // sent to website and used in baseurl()
 
 
+    public static amqp_reply_expiration: number = parseInt(Config.getEnv("amqp_reply_expiration", "10000")); // 10 seconds
     public static amqp_force_queue_prefix: boolean = Config.parseBoolean(Config.getEnv("amqp_force_queue_prefix", "true"));
     public static amqp_force_exchange_prefix: boolean = Config.parseBoolean(Config.getEnv("amqp_force_exchange_prefix", "true"));
     public static amqp_url: string = Config.getEnv("amqp_url", "amqp://localhost"); // used to register queues and by personal nodered

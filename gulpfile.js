@@ -53,6 +53,24 @@ gulp.task("compose", shell.task([
     'docker push cloudhack/openflow:' + version
 ]));
 
+gulp.task("build", shell.task([
+    'gulp copyfiles1',
+    'echo "compile OpenFlowNodeRED"',
+    'cd OpenFlowNodeRED && tsc -p tsconfig.json',
+    'echo "compile OpenFlow"',
+    'npx webpack',
+    'tsc -p OpenFlow/tsconfig.json'
+]));
+
+gulp.task("pushopenflow", shell.task([
+    'gulp copyfiles1',
+    'echo "compile OpenFlowNodeRED"',
+    'cd OpenFlowNodeRED && tsc -p tsconfig.json',
+    'echo "compile OpenFlow"',
+    'npx webpack',
+    'tsc -p OpenFlow/tsconfig.json'
+]));
+
 gulp.task("bumpflow", function () {
     console.log('cloudhack/openflow:' + version);
     return gulp.src(["config/**/controllers.yml"])

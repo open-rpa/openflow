@@ -71,7 +71,7 @@ export class samlauthstrategyoptions {
     public verify: any;
 }
 export class LoginProvider {
-    private static _logger: winston.Logger;
+    public static _logger: winston.Logger;
     public static _providers: any = {};
     public static login_providers: Provider[] = [];
 
@@ -132,7 +132,7 @@ export class LoginProvider {
         return result;
     }
     static async configure(logger: winston.Logger, app: express.Express, baseurl: string): Promise<void> {
-        this._logger = logger;
+        LoginProvider._logger = logger;
         app.use(cookieSession({
             name: "session",
             keys: ["key1", "key2"]
@@ -170,19 +170,19 @@ export class LoginProvider {
         //     }
         // });
         // ROLLBACK
-        app.get("/amqp", async (req: any, res: any, next: any): Promise<void> => {
-            try {
-                var result: any[] = (amqpwrapper.Instance().queues as any);
-                res.setHeader("Content-Type", "application/json");
-                var json = stringify(result, null, 2);
-                // res.json(result);
-                res.end(json);
-                res.end();
-            } catch (error) {
-                res.end(error);
-                console.error(error);
-            }
-        });
+        // app.get("/amqp", async (req: any, res: any, next: any): Promise<void> => {
+        //     try {
+        //         var result: any[] = (amqpwrapper.Instance().queues as any);
+        //         res.setHeader("Content-Type", "application/json");
+        //         var json = stringify(result, null, 2);
+        //         // res.json(result);
+        //         res.end(json);
+        //         res.end();
+        //     } catch (error) {
+        //         res.end(error);
+        //         console.error(error);
+        //     }
+        // });
 
         app.get("/Signout", (req: any, res: any, next: any): void => {
             // var providerid: string = req.cookies.provider;
@@ -467,7 +467,7 @@ export class LoginProvider {
         strategy = new GoogleStrategy.Strategy(options, options.verify);
         passport.use(key, strategy);
         strategy.name = key;
-        this._logger.info(options.callbackURL);
+        LoginProvider._logger.info(options.callbackURL);
         app.use("/" + key,
             bodyParser.urlencoded({ extended: false }),
             passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),
@@ -497,7 +497,7 @@ export class LoginProvider {
         strategy = new SAMLStrategy.Strategy(options, options.verify);
         passport.use(key, strategy);
         strategy.name = key;
-        this._logger.info(options.callbackUrl);
+        LoginProvider._logger.info(options.callbackUrl);
 
         // app.get("/" + key + "/FederationMetadata/2007-06/FederationMetadata.xml",
         //     wsfed.metadata({
@@ -639,23 +639,44 @@ export class LoginProvider {
         app.use("/local",
             bodyParser.urlencoded({ extended: false }),
             function (req: any, res: any, next: any): void {
+                LoginProvider._logger.debug("passport.authenticate local");
                 passport.authenticate("local", function (err, user, info) {
                     var originalUrl: any = req.cookies.originalUrl;
+                    LoginProvider._logger.debug("originalUrl: " + originalUrl);
+                    if (err) {
+                        LoginProvider._logger.error(err);
+                    }
                     if (!err && user) {
+                        LoginProvider._logger.info(user);
                         req.logIn(user, function (err: any) {
-                            if (err) { }
+                            if (err) {
+                                LoginProvider._logger.info("req.logIn failed");
+                                LoginProvider._logger.error(err);
+                                return next(err);
+                            }
+                            LoginProvider._logger.info("req.logIn success");
                             // if (err) { return next(err); }
                             if (!Util.IsNullEmpty(originalUrl)) {
                                 try {
                                     res.cookie("originalUrl", "", { expires: new Date(0) });
                                     LoginProvider.redirect(res, originalUrl);
+                                    LoginProvider._logger.debug("redirect: " + originalUrl);
+                                    return;
                                 } catch (error) {
                                     console.error(error);
                                 }
                             } else {
+                                LoginProvider._logger.debug("redirect: to /");
                                 res.redirect("/");
+                                return next();
+                                // var url = Config.protocol + "://" + Config.domain + ":" + Config.port;
+                                // LoginProvider._logger.debug("redirect.url: " + url);
+                                // LoginProvider.redirect(res, url);
+                                // return;
+
                             }
                         });
+                        return;
                     }
                     if (!Util.IsNullEmpty(originalUrl)) {
                         if (originalUrl.indexOf("?") == -1) {
@@ -664,14 +685,18 @@ export class LoginProvider {
                             originalUrl = originalUrl + "&error=1"
                         }
                         try {
+                            LoginProvider._logger.debug("remove originalUrl");
                             res.cookie("originalUrl", "", { expires: new Date(0) });
+                            LoginProvider._logger.debug("redirect: " + originalUrl);
                             LoginProvider.redirect(res, originalUrl);
                         } catch (error) {
                             console.error(error);
                         }
                     } else {
                         try {
+                            LoginProvider._logger.debug("redirect: to /");
                             res.redirect("/");
+                            return next();
                         } catch (error) {
                             console.error(error);
                         }
@@ -685,7 +710,7 @@ export class LoginProvider {
     static async samlverify(profile: any, done: IVerifyFunction): Promise<void> {
         var username: string = (profile.nameID || profile.username);
         if (username !== null && username != undefined) { username = username.toLowerCase(); }
-        this._logger.debug("verify: " + username);
+        LoginProvider._logger.debug("verify: " + username);
         var _user: User = await User.FindByUsernameOrFederationid(username);
 
         if (Util.IsNullUndefinded(_user)) {
@@ -749,7 +774,7 @@ export class LoginProvider {
         }
         var username: string = (profile.username || profile.id);
         if (username !== null && username != undefined) { username = username.toLowerCase(); }
-        this._logger.debug("verify: " + username);
+        LoginProvider._logger.debug("verify: " + username);
         var _user: User = await User.FindByUsernameOrFederationid(username);
         if (Util.IsNullUndefinded(_user)) {
             var createUser: boolean = Config.auto_create_users;

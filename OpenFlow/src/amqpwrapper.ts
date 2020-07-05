@@ -3,6 +3,10 @@ import * as amqplib from "amqplib";
 import { Util } from "./Util";
 import { Config } from "./Config";
 import { Crypt } from "./Crypt";
+import * as url from "url";
+//import * as got from "got";
+var got = require("got");
+// var url = require('url');
 
 type QueueOnMessage = (msg: string, options: QueueMessageOptions, ack: any, done: any) => void;
 interface IHashTable<T> {
@@ -72,13 +76,6 @@ export class amqpwrapper {
     }
     public static SetInstance(instance: amqpwrapper): void {
         this._instance = instance;
-    }
-    private static _testinstance: amqpwrapper = null;
-    public static TestInstance(): amqpwrapper {
-        return this._testinstance;
-    }
-    public static SetTestInstance(instance: amqpwrapper): void {
-        this._testinstance = instance;
     }
 
     // private callback: QueueOnMessage;
@@ -202,6 +199,7 @@ export class amqpwrapper {
     }
     async AddQueueConsumer(queue: string, QueueOptions: any, jwt: string, callback: QueueOnMessage): Promise<amqpqueue> {
         if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Queue Consumer, not connected to rabbitmq");
+        if (queue == null) queue = "";
         var q: amqpqueue = null;
         if (Config.amqp_force_queue_prefix && !Util.IsNullEmpty(jwt)) {
             var tuser = Crypt.verityToken(jwt);
@@ -210,16 +208,10 @@ export class amqpwrapper {
             var isrole = tuser.roles.filter(x => x._id == queue);
             if (isrole.length == 0 && tuser._id != queue) queue = name + queue;
         }
-
-        // if (this.queues[queue] != null) {
-        //     q = this.queues[queue];
-        //     try {
-        //         if (this.channel != null && !Util.IsNullEmpty(q.consumerTag)) await this.channel.cancel(q.consumerTag);
-        //     } catch (error) {
-        //         console.error(error);
+        // if (!await amqpwrapper.TestInstance().checkQueue(queue)) {
+        //     if (amqpwrapper.TestInstance().conn == null || amqpwrapper.TestInstance().channel == null) {
+        //         throw new Error("checkQueue failed for " + queue);
         //     }
-        // } else {
-        //     q = new amqpqueue();
         // }
         q = new amqpqueue();
         q.callback = callback;
@@ -237,7 +229,6 @@ export class amqpwrapper {
         q.consumerTag = consumeresult.consumerTag;
         // this.queues[q.queue] = q;
         this.queues.push(q);
-        this.checkQueue(q.queue);
         return q;
     }
     async AddExchangeConsumer(exchange: string, algorithm: string, routingkey: string, ExchangeOptions: any, jwt: string, callback: QueueOnMessage): Promise<amqpexchange> {
@@ -268,8 +259,8 @@ export class amqpwrapper {
             delete AssertQueueOptions.arguments;
         }
         q.queue = await this.AddQueueConsumer("", AssertQueueOptions, jwt, q.callback);
-        this.channel.bindQueue(q.queue, q.exchange, q.routingkey);
-        this._logger.info("[AMQP] Added exchange consumer " + q.exchange);
+        this.channel.bindQueue(q.queue.queue, q.exchange, q.routingkey);
+        this._logger.info("[AMQP] Added exchange consumer " + q.exchange + ' to queue ' + q.queue.queue);
         // this.exchanges[exchange] = q;
         this.exchanges.push(q);
         return q;
@@ -353,33 +344,13 @@ export class amqpwrapper {
             if (expiration > 0) options.expiration = expiration.toString();
         }
         if (Util.IsNullEmpty(exchange)) {
-            if (!await amqpwrapper.TestInstance().checkQueue(queue)) {
+            if (!await this.checkQueue(queue)) {
                 throw new Error("No consumer listening at " + queue);
             }
             this.channel.sendToQueue(queue, Buffer.from(data), options);
         } else {
             this.channel.publish(exchange, "", Buffer.from(data), options);
         }
-    }
-    async checkQueue(queue: string): Promise<boolean> {
-        if (Config.amqp_check_for_consumer) {
-            var q: amqpqueue = this.queues[queue];
-
-            var test: AssertQueue = null;
-            try {
-                // var test: AssertQueue = await this.channel.assertQueue(this.queue, this.AssertQueueOptions);
-                test = await this.channel.checkQueue(queue);
-                if (q != null) {
-                    q.ok = test;
-                }
-            } catch (error) {
-                test = null;
-            }
-            if (test == null || test.consumerCount == 0) {
-                return false;
-            }
-        }
-        return true;
     }
     async send(exchange: string, queue: string, data: any, expiration: number, correlationId: string): Promise<void> {
         if (this.channel == null || this.conn == null) {
@@ -397,7 +368,7 @@ export class amqpwrapper {
             if (expiration > 0) options.expiration = expiration.toString();
         }
         if (Util.IsNullEmpty(exchange)) {
-            if (!await amqpwrapper.TestInstance().checkQueue(queue)) {
+            if (!await this.checkQueue(queue)) {
                 throw new Error("No consumer listening at " + queue);
             }
             this.channel.sendToQueue(queue, Buffer.from(data), options);
@@ -410,5 +381,90 @@ export class amqpwrapper {
             Math.random().toString() +
             Math.random().toString();
     }
+    parseurl(amqp_url): url.UrlWithParsedQuery {
+        var q = url.parse(amqp_url, true);
+        (q as any).username = "guest";
+        (q as any).password = "guest";
+        if (q.port == null || q.port == "") { q.port = "15672"; }
+        if (q.auth != null && q.auth != "") {
+            var arr = q.auth.split(':');
+            (q as any).username = arr[0];
+            (q as any).password = arr[1];
+        }
+        q.protocol = 'http://';
+        return q;
+    }
+    async checkQueue(queuename: string): Promise<boolean> {
+        try {
+            var queue = await this.getqueue(Config.amqp_url, '/', queuename);
+            if (queue.consumers == 0) return false;
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+    async getvhosts(amqp_url) {
+        var q = this.parseurl(amqp_url);
+        var options = {
+            headers: {
+                'Content-type': 'application/x-www-form-urlencoded'
+            },
+            username: (q as any).username,
+            password: (q as any).password
+        };
+        var _url = 'http://' + q.host + ':' + q.port + '/api/vhosts';
+        var response = await got.get(_url, options);
+        var payload = JSON.parse(response.body);
+        return payload;
+    }
+    async getqueues(amqp_url, vhost) {
+        var q = this.parseurl(amqp_url);
+        var options = {
+            headers: {
+                'Content-type': 'application/x-www-form-urlencoded'
+            },
+            username: (q as any).username,
+            password: (q as any).password
+        };
+        var _url = 'http://' + q.host + ':' + q.port + '/api/queues/' + encodeURIComponent(vhost);
+        var response = await got.get(_url, options);
+        var payload = JSON.parse(response.body);
+        return payload;
+    }
+    async getqueue(amqp_url, vhost, queuename) {
+        var q = this.parseurl(amqp_url);
+        var options = {
+            headers: {
+                'Content-type': 'application/x-www-form-urlencoded'
+            },
+            username: (q as any).username,
+            password: (q as any).password,
+            timeout: 500, retry: 1
+        };
+        var _url = 'http://' + q.host + ':' + q.port + '/api/queues/' + encodeURIComponent(vhost) + '/' + queuename;
+        var response = await got.get(_url, options);
+        var payload = JSON.parse(response.body);
+        return payload;
+    }
 
+    // async checkQueue(queue: string): Promise<boolean> {
+    //     if (Config.amqp_check_for_consumer) {
+    //         var q: amqpqueue = this.queues[queue];
+
+    //         var test: AssertQueue = null;
+    //         try {
+    //             // var test: AssertQueue = await this.channel.assertQueue(this.queue, this.AssertQueueOptions);
+    //             test = await this.channel.checkQueue(queue);
+    //             if (q != null) {
+    //                 q.ok = test;
+    //             }
+    //         } catch (error) {
+    //             test = null;
+    //         }
+    //         if (test == null || test.consumerCount == 0) {
+    //             return false;
+    //         }
+    //     }
+    //     return true;
+    // }
 }

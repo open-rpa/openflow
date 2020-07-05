@@ -1,6 +1,6 @@
 import * as RED from "node-red";
 import { Red } from "node-red";
-import { NoderedUtil } from "./NoderedUtil";
+import { NoderedUtil } from "../../nodeclient/NoderedUtil";
 import { Logger } from "../../Logger";
 import { Config } from "../../Config";
 import * as request from "request";

@@ -1,15 +1,20 @@
 import * as winston from "winston";
 import * as http from "http";
 
+
 import { Logger } from "./Logger";
 import { WebServer } from "./WebServer";
-import { WebSocketClient } from "./WebSocketClient";
-import { SigninMessage, Message, TokenUser } from "./Message";
+import { WebSocketClient } from "./nodeclient/WebSocketClient";
+import { SigninMessage, Message, TokenUser } from "./nodeclient/Message";
 import { Config } from "./Config";
-import { Crypt } from "./Crypt";
-import { NoderedUtil } from "./nodered/nodes/NoderedUtil";
+import { Crypt } from "./nodeclient/Crypt";
+import { NoderedUtil } from "./nodeclient/NoderedUtil";
+
+const service = require("os-service");
+
 
 const logger: winston.Logger = Logger.configure();
+logger.info("starting openflow nodered");
 
 const unhandledRejection = require("unhandled-rejection");
 let rejectionEmitter = unhandledRejection({
@@ -83,13 +88,15 @@ function isNumeric(num) {
                 logger.info("listening on " + baseurl);
                 socket.events.emit("onsignedin", result.user);
             } catch (error) {
-                logger.error(error.message);
-                console.error(error);
+                var closemsg: any = error;
+                if (error.message) { logger.error(error.message); closemsg = error.message; }
+                else { logger.error(error); }
+                socket.close(1000, closemsg);
             }
         });
     } catch (error) {
-        logger.error(error.message);
-        console.error(error);
+        if (error.message) { logger.error(error.message); }
+        else { logger.error(error); }
     }
 })();
 

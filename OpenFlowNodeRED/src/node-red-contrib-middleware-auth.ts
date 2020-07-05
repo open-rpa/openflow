@@ -1,6 +1,6 @@
 import * as express from "express";
-import { SigninMessage, Message, TokenUser } from "./Message";
-import { WebSocketClient } from "./WebSocketClient";
+import { SigninMessage, Message, TokenUser } from "./nodeclient/Message";
+import { WebSocketClient } from "./nodeclient/WebSocketClient";
 import { Config } from "./Config";
 import { Logger } from "./Logger";
 
