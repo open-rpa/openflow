@@ -59,7 +59,7 @@ on windows
 
 and on Linux remember to use sudo
 
-`openflow-nodered-cli --install noderedremote`
+`sudo openflow-nodered-cli --install noderedremote`
 
 this will prompt for a pre-created username and password, and then install a local service with the name noderedremote and start it
 
