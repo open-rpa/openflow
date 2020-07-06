@@ -873,10 +873,13 @@ export class Message {
         if (deployment == null) {
             if (skipcreate) return;
             cli._logger.debug("[" + cli.user.username + "] Deployment " + name + " not found in " + namespace + " so creating it");
+            // metadata: { name: name, namespace: namespace, app: name, labels: { billed: hasbilling.toString(), userid: _id } },
+            // metadata: { labels: { name: name, app: name, billed: hasbilling.toString(), userid: _id } },
             var _deployment = {
-                metadata: { name: name, namespace: namespace, app: name, labels: { billed: hasbilling.toString(), userid: _id } },
+                metadata: { name: name, namespace: namespace, labels: { billed: hasbilling.toString(), userid: _id, app: name } },
                 spec: {
                     replicas: 1,
+                    selector: { matchLabels: { app: name } },
                     template: {
                         metadata: { labels: { name: name, app: name, billed: hasbilling.toString(), userid: _id } },
                         spec: {
@@ -924,7 +927,16 @@ export class Message {
                 }
             }
             // await KubeUtil.instance().ExtensionsV1beta1Api.createNamespacedDeployment(namespace, (_deployment as any));
-            await KubeUtil.instance().AppsV1Api.createNamespacedDeployment(namespace, (_deployment as any));
+            try {
+                await KubeUtil.instance().AppsV1Api.createNamespacedDeployment(namespace, (_deployment as any));
+            } catch (error) {
+                if (error.response && error.response.body && error.response.body.message) {
+                    cli._logger.error(error);
+                    throw new Error(error.response.body.message);
+                }
+                cli._logger.error(error);
+                throw error;
+            }
         } else {
             deployment.spec.template.spec.containers[0].resources = resources;
             var f = deployment.spec.template.spec.containers[0].env.filter(x => x.name == "api_allow_anonymous");
