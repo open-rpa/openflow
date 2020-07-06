@@ -1966,7 +1966,13 @@ module openflow {
             }
             // console.debug("SendOne: " + this.workflow._id + " / " + this.workflow.queue);
             this.model.payload._id = this.instanceid;
-            await this.SendOne(this.workflow.queue, this.model.payload);
+            try {
+                await this.SendOne(this.workflow.queue, this.model.payload);
+            } catch (error) {
+                this.errormessage = error;
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                console.error(this.errormessage);
+            }
             this.loadData();
         }
         traversecomponentsPostProcess(components: any[], data: any) {

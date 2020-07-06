@@ -108,7 +108,7 @@ export class amqp_consumer_node {
                 this.OnMessage(msg, ack);
             });
             this.websocket._logger.info("registed amqp consumer as " + this.localqueue);
-            this.node.status({ fill: "green", shape: "dot", text: "Connected" });
+            this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
         } catch (error) {
             NoderedUtil.HandleError(this, error);
         }
@@ -198,7 +198,7 @@ export class amqp_publisher_node {
             });
             console.log(this.localqueue);
             this.websocket._logger.info("registed amqp published return queue as " + this.localqueue);
-            this.node.status({ fill: "green", shape: "dot", text: "Connected" });
+            this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
 
         } catch (error) {
             NoderedUtil.HandleError(this, error);
@@ -238,7 +238,7 @@ export class amqp_publisher_node {
             this.node.status({ fill: "blue", shape: "dot", text: "Sending message ..." });
             await NoderedUtil.QueueMessage(this.websocket, queue, this.localqueue, data, null, expiration);
             // this.con.SendMessage(JSON.stringify(data), this.config.queue, null, true);
-            this.node.status({ fill: "green", shape: "dot", text: "Connected" });
+            this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
         } catch (error) {
             NoderedUtil.HandleError(this, error);
         }

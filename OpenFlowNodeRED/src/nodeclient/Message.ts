@@ -536,6 +536,11 @@ export class Message {
                 handled = true;
             }
         }
+        if (!handled) {
+            this.Reply("error");
+            this.data = "nack message";
+            await this.Send(cli);
+        }
         // ROLLBACK
         // if (!handled) {
         //     if (!NoderedUtil.IsNullEmpty(msg.correlationId)) {

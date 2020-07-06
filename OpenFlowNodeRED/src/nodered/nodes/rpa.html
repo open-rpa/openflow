@@ -7,10 +7,6 @@
         <input id="node-input-queue" type="hidden">
     </div>
     <div class="form-row">
-        <label><i class="fa fa-tag"></i> Auto acknowledgment</label>
-        <input type="checkbox" id="node-input-noack" style="width: auto;">
-    </div>
-    <div class="form-row">
         <label ><i class="fa fa-tag"></i> Name</label>
         <input type="text" id="node-input-name" placeholder="Node name">
     </div>
@@ -26,7 +22,6 @@ Active everytime a trigger gets triggered on a robot
         icon: "font-awesome/fa-signal",
         defaults: {
             queue: { value: "", required: true },
-            noack: { value: true, required: true },
             name: { value: "" }
         },
         inputs: 0,

@@ -252,6 +252,27 @@ export class Message {
             }
             var expiration: number = Config.amqp_default_expiration;
             if (typeof msg.expiration == 'number') expiration = msg.expiration;
+            if (typeof msg.data === 'string' || msg.data instanceof String) {
+                try {
+                    msg.data = JSON.parse((msg.data as any));
+                } catch (error) {
+                }
+            }
+            try {
+                if (!Util.IsNullEmpty(msg.data) && Util.IsNullEmpty(msg.data.jwt)) {
+                    if (!Util.IsNullEmpty(msg.jwt)) {
+                        msg.data.jwt = msg.jwt;
+                    } else {
+                        msg.data.jwt = cli.jwt;
+                    }
+                }
+            } catch (error) {
+                cli._logger.error(error);
+            }
+            if (!Util.IsNullEmpty(msg.data) && !Util.IsNullEmpty(msg.data.jwt)) {
+                var tuser = Crypt.verityToken(msg.data.jwt);
+                msg.data.user = tuser;
+            }
             if (Util.IsNullEmpty(msg.replyto)) {
                 // var sendthis = { data: msg.data, jwt: cli.jwt, user: cli.user };
                 var sendthis = msg.data;

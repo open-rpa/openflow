@@ -201,12 +201,56 @@ export class amqpwrapper {
         if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Queue Consumer, not connected to rabbitmq");
         if (queue == null) queue = "";
         var q: amqpqueue = null;
-        if (Config.amqp_force_queue_prefix && !Util.IsNullEmpty(jwt)) {
-            var tuser = Crypt.verityToken(jwt);
-            var name = tuser.username.split("@").join("").split(".").join("");
-            name = name.toLowerCase();
+        if (Config.amqp_force_queue_prefix && !Util.IsNullEmpty(jwt) && !Util.IsNullEmpty(queue)) {
+            if (queue.length == 24) {
+                var tuser = Crypt.verityToken(jwt);
+                var name = tuser.username.split("@").join("").split(".").join("");
+                name = name.toLowerCase();
+                var isrole = tuser.roles.filter(x => x._id == queue);
+                if (isrole.length == 0 && tuser._id != queue) {
+                    var skip: boolean = false;
+                    var arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "users", jwt);
+                    if (arr.length == 0) skip = true;
+                    if (!skip) {
+                        var arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "openrpa", jwt);
+                        if (arr.length == 0) skip = true;
+                    }
+                    if (!skip) {
+                        var arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "workflow", jwt);
+                        if (arr.length == 0) skip = true;
+                    }
+                    if (!skip) {
+                        queue = name + queue;
+                    } else {
+                        this._logger.info("[SKIP] skipped force prefix for " + queue);
+                    }
+                } else {
+                    this._logger.info("[SKIP] skipped force prefix for " + queue);
+                }
+            } else {
+                var tuser = Crypt.verityToken(jwt);
+                var name = tuser.username.split("@").join("").split(".").join("");
+                name = name.toLowerCase();
+                queue = name + queue;
+            }
+        } else if (queue.length == 24) {
             var isrole = tuser.roles.filter(x => x._id == queue);
-            if (isrole.length == 0 && tuser._id != queue) queue = name + queue;
+            if (isrole.length == 0 && tuser._id != queue) {
+                var skip: boolean = false;
+                var arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "users", jwt);
+                if (arr.length == 0) skip = true;
+                if (!skip) {
+                    var arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "openrpa", jwt);
+                    if (arr.length == 0) skip = true;
+                }
+                if (!skip) {
+                    var arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "workflow", jwt);
+                    if (arr.length == 0) skip = true;
+                }
+                if (!skip) {
+                    throw new Error("Access denied creating consumer for " + queue);
+                }
+            }
         }
         // if (!await amqpwrapper.TestInstance().checkQueue(queue)) {
         //     if (amqpwrapper.TestInstance().conn == null || amqpwrapper.TestInstance().channel == null) {
@@ -340,9 +384,8 @@ export class amqpwrapper {
         options.replyTo = replyTo;
         if (Util.IsNullEmpty(correlationId)) correlationId = this.generateUuid();
         if (!Util.IsNullEmpty(correlationId)) options.correlationId = correlationId;
-        if (!Util.IsNullEmpty(expiration)) {
-            if (expiration > 0) options.expiration = expiration.toString();
-        }
+        if (expiration < 1) expiration = Config.amqp_default_expiration;
+        options.expiration = expiration.toString();
         if (Util.IsNullEmpty(exchange)) {
             if (!await this.checkQueue(queue)) {
                 throw new Error("No consumer listening at " + queue);
@@ -364,9 +407,8 @@ export class amqpwrapper {
         this._logger.info("send to queue: " + queue + " exchange: " + exchange);
         var options: any = { mandatory: true };
         if (!Util.IsNullEmpty(correlationId)) options.correlationId = correlationId;
-        if (!Util.IsNullEmpty(expiration)) {
-            if (expiration > 0) options.expiration = expiration.toString();
-        }
+        if (expiration < 1) expiration = Config.amqp_default_expiration;
+        options.expiration = expiration.toString();
         if (Util.IsNullEmpty(exchange)) {
             if (!await this.checkQueue(queue)) {
                 throw new Error("No consumer listening at " + queue);

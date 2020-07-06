@@ -8,7 +8,6 @@ import { QueueMessage } from "../../nodeclient/Message";
 
 export interface Irpa_detector_node {
     queue: string;
-    noack: boolean;
 }
 export class rpa_detector_node {
     public node: Red = null;
@@ -28,7 +27,7 @@ export class rpa_detector_node {
             WebSocketClient.instance.events.on("onclose", (message) => {
                 if (message == null) message = "";
                 this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
-                this.onclose();
+                this.onclose(null);
             });
             this.connect();
         } catch (error) {
@@ -70,11 +69,12 @@ export class rpa_detector_node {
             NoderedUtil.HandleError(this, error);
         }
     }
-    onclose() {
+    async onclose(done: any) {
         if (!NoderedUtil.IsNullEmpty(this.localqueue)) {
-            NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
+            await NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
             this.localqueue = "";
         }
+        if (done != null) done();
     }
 }
 
