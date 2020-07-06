@@ -79,7 +79,7 @@ export class DatabaseConnection {
             return;
         }
         this.cli = await (Promise as any).retry(100, (resolve, reject) => {
-            MongoClient.connect(this.mongodburl, { autoReconnect: false, useNewUrlParser: true }).then((cli) => {
+            MongoClient.connect(this.mongodburl, { autoReconnect: false, useNewUrlParser: true, useUnifiedTopology: true }).then((cli) => {
                 resolve(cli);
             }).catch((reason) => {
                 console.error(reason);
@@ -398,6 +398,7 @@ export class DatabaseConnection {
                     return value;
             });
         }
+
         aggregates = JSON.parse(json, (key, value) => {
             if (typeof value === 'string' && value.match(isoDatePattern)) {
                 return new Date(value); // isostring, so cast to js date
@@ -726,6 +727,20 @@ export class DatabaseConnection {
                 q.item._version = await this.SaveDiff(q.collectionname, original, q.item);
             }
         } else {
+            var json: string = q.item as any;
+            if (typeof json !== 'string') {
+                json = JSON.stringify(json);
+            }
+            q.item = JSON.parse(json, (key, value) => {
+                if (typeof value === 'string' && value.match(isoDatePattern)) {
+                    return new Date(value); // isostring, so cast to js date
+                } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") == 0) {
+                    var m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
+                    return new RegExp(m[1], m[2] || "");
+                } else
+                    return value; // leave any other value as-is
+            });
+
             itemReplace = false;
             if (q.item["$set"] !== null && q.item["$set"] !== undefined) {
                 if (q.item["$set"].hasOwnProperty("_skiphistory")) {
@@ -735,6 +750,7 @@ export class DatabaseConnection {
             } else {
                 this.SaveUpdateDiff(q, user);
             }
+
             // var _version = await this.SaveUpdateDiff(q, user);
             // if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };
             // (q.item["$set"])._version = _version;
@@ -828,6 +844,19 @@ export class DatabaseConnection {
             (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
             delete (q.item as any).newpassword;
         }
+        var json: string = q.item as any;
+        if (typeof json !== 'string') {
+            json = JSON.stringify(json);
+        }
+        q.item = JSON.parse(json, (key, value) => {
+            if (typeof value === 'string' && value.match(isoDatePattern)) {
+                return new Date(value); // isostring, so cast to js date
+            } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") == 0) {
+                var m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
+                return new RegExp(m[1], m[2] || "");
+            } else
+                return value; // leave any other value as-is
+        });
         for (let key in q.query) {
             if (key === "_id") {
                 var id: string = q.query._id;

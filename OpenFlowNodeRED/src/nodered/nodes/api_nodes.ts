@@ -653,43 +653,49 @@ export class api_updatedocument {
     async oninput(msg: any) {
         try {
             this.node.status({});
-            // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
 
-            if (!NoderedUtil.IsNullUndefinded(msg.name)) { this.config.name = msg.name; }
-            if (!NoderedUtil.IsNullUndefinded(msg.action)) { this.config.action = msg.action; }
-            if (!NoderedUtil.IsNullUndefinded(msg.query)) { this.config.query = msg.query; }
-            if (!NoderedUtil.IsNullUndefinded(msg.updatedocument)) { this.config.updatedocument = msg.updatedocument; }
-            if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
-            if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
-            if (!NoderedUtil.IsNullEmpty(msg.journal)) { this.config.journal = msg.journal; }
-            if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
-                msg.jwt = Config.jwt;
+            var action = this.config.action;
+            var query = this.config.query;
+            var updatedocument = this.config.updatedocument;
+            var collection = this.config.collection;
+            var writeconcern = this.config.writeconcern;
+            var journal = this.config.journal;
+            var jwt = msg.jwt;
+
+            if (!NoderedUtil.IsNullEmpty(msg.action)) { action = msg.action; }
+            if (!NoderedUtil.IsNullUndefinded(msg.query)) { query = msg.query; }
+            if (!NoderedUtil.IsNullUndefinded(msg.updatedocument)) { updatedocument = msg.updatedocument; }
+            if (!NoderedUtil.IsNullEmpty(msg.collection)) { collection = msg.collection; }
+            if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { writeconcern = msg.writeconcern; }
+            if (!NoderedUtil.IsNullEmpty(msg.journal)) { journal = msg.journal; }
+            if (NoderedUtil.IsNullEmpty(jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
+                jwt = Config.jwt;
             }
 
-            if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
-            if ((this.config.journal as any) === undefined || (this.config.journal as any) === null) this.config.journal = false;
+            if ((writeconcern as any) === undefined || (writeconcern as any) === null) writeconcern = 0;
+            if ((journal as any) === undefined || (journal as any) === null) journal = false;
 
-            if (!NoderedUtil.IsNullEmpty(this.config.query) && NoderedUtil.IsString(this.config.query)) {
-                this.config.query = JSON.parse(this.config.query);
+            if (!NoderedUtil.IsNullEmpty(query) && NoderedUtil.IsString(query)) {
+                query = JSON.parse(query);
             }
-            if (!NoderedUtil.IsNullEmpty(this.config.updatedocument) && NoderedUtil.IsString(this.config.updatedocument)) {
-                this.config.updatedocument = JSON.parse(this.config.updatedocument);
+            if (!NoderedUtil.IsNullEmpty(updatedocument) && NoderedUtil.IsString(updatedocument)) {
+                updatedocument = JSON.parse(updatedocument);
             }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Running Update Document" });
-            if (this.config.action === "updateOne") {
-                var q: UpdateOneMessage = new UpdateOneMessage(); q.collectionname = this.config.collection;
-                q.item = (this.config.updatedocument as any); q.jwt = msg.jwt;
-                q.w = this.config.writeconcern; q.j = this.config.journal; q.query = (this.config.query as any);
+            if (action === "updateOne") {
+                var q: UpdateOneMessage = new UpdateOneMessage(); q.collectionname = collection;
+                q.item = (updatedocument as any); q.jwt = jwt;
+                q.w = writeconcern; q.j = journal; q.query = (query as any);
                 q = await NoderedUtil.UpdateOne(q);
                 msg.payload = q.result;
                 msg.opresult = q.opresult;
             } else {
-                // var result = await NoderedUtil.UpdateMany(this.config.collection, this.config.query, this.config.updatedocument, this.config.writeconcern, this.config.journal, msg.jwt);
+                // var result = await NoderedUtil.UpdateMany(collection, query, updatedocument, writeconcern, journal, jwt);
                 // msg.payload = result;
-                var q: UpdateOneMessage = new UpdateOneMessage(); q.collectionname = this.config.collection;
-                q.item = (this.config.updatedocument as any); q.jwt = msg.jwt;
-                q.w = this.config.writeconcern; q.j = this.config.journal; q.query = (this.config.query as any);
+                var q: UpdateOneMessage = new UpdateOneMessage(); q.collectionname = collection;
+                q.item = (updatedocument as any); q.jwt = jwt;
+                q.w = writeconcern; q.j = journal; q.query = (query as any);
                 q = await NoderedUtil.UpdateMany(q);
                 msg.payload = q.result;
                 msg.opresult = q.opresult;
@@ -845,15 +851,21 @@ export class download_file {
         try {
             this.node.status({});
 
-            // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
+            var fileid = this.config.fileid;
+            var filename = this.config.filename;
+            var jwt = msg.jwt;
+            if (!NoderedUtil.IsNullEmpty(msg.fileid)) { fileid = msg.fileid; }
+            if (!NoderedUtil.IsNullEmpty(msg.filename)) { filename = msg.filename; }
+            if (!NoderedUtil.IsNullEmpty(msg.fileid)) { fileid = msg.fileid; }
+
             if (!NoderedUtil.IsNullEmpty(msg.fileid)) { this.config.fileid = msg.fileid; }
             if (!NoderedUtil.IsNullEmpty(msg.filename)) { this.config.filename = msg.filename; }
-            if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
-                msg.jwt = Config.jwt;
+            if (NoderedUtil.IsNullEmpty(jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
+                jwt = Config.jwt;
             }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Getting file" });
-            var file = await NoderedUtil.GetFile(this.config.filename, this.config.fileid, msg.jwt);
+            var file = await NoderedUtil.GetFile(filename, fileid, jwt);
             msg.payload = file.file;
             msg.error = file.error;
             msg.filename = file.filename;
@@ -889,15 +901,18 @@ export class upload_file {
         try {
             this.node.status({});
 
-            // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
-            if (!NoderedUtil.IsNullEmpty(msg.filename)) { this.config.filename = msg.filename; }
-            if (!NoderedUtil.IsNullEmpty(msg.mimeType)) { this.config.mimeType = msg.mimeType; }
-            if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
-                msg.jwt = Config.jwt;
+            var jwt = msg.jwt;
+            var filename = this.config.filename;
+            var mimeType = this.config.mimeType;
+            if (!NoderedUtil.IsNullEmpty(msg.filename)) { filename = msg.filename; }
+            if (!NoderedUtil.IsNullEmpty(msg.mimeType)) { mimeType = msg.mimeType; }
+            if (NoderedUtil.IsNullEmpty(jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
+                jwt = Config.jwt;
             }
 
+
             this.node.status({ fill: "blue", shape: "dot", text: "Saving file" });
-            var file = await NoderedUtil.SaveFile(this.config.filename, this.config.mimeType, msg.metadata, msg.payload, msg.jwt);
+            var file = await NoderedUtil.SaveFile(filename, mimeType, msg.metadata, msg.payload, jwt);
             if (!NoderedUtil.IsNullEmpty(file.error)) { throw new Error(file.error); }
             msg.filename = file.filename;
             msg.id = file.id;
@@ -942,10 +957,10 @@ export class api_aggregate {
             var aggregates = this.config.aggregates;
 
             if (!NoderedUtil.IsNullEmpty(msg.collection)) { collection = msg.collection; }
-            if (!NoderedUtil.IsNullUndefinded(msg.aggregates)) { aggregates = msg.aggregates; }
+            if (!NoderedUtil.IsNullEmpty(msg.aggregates)) { aggregates = msg.aggregates; }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Running aggregate" });
-            var result = await NoderedUtil.Aggregate(this.config.collection, this.config.aggregates, msg.jwt);
+            var result = await NoderedUtil.Aggregate(collection, aggregates, msg.jwt);
             msg.payload = result;
             this.node.send(msg);
             this.node.status({});

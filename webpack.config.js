@@ -27,21 +27,32 @@ module.exports = {
         rules: [
             {
                 test: require.resolve('jquery'),
-                use: [{
-                    loader: 'expose-loader',
-                    options: 'jQuery'
-                }, {
-                    loader: 'expose-loader',
-                    options: '$'
-                }]
+                loader: 'expose-loader',
+                options: {
+                    exposes: ['jQuery', '$'],
+                }
+                // use: [{
+                //     loader: 'expose-loader',
+                //     options: 'jQuery'
+                // }, {
+                //     loader: 'expose-loader',
+                //     options: '$'
+                // }]
             },
             {
                 test: require.resolve('jsondiffpatch/dist/jsondiffpatch.umd'),
-                use: [{
-                    loader: 'expose-loader',
-                    options: 'jsondiffpatch'
-                }]
+                loader: 'expose-loader',
+                options: {
+                    exposes: 'jsondiffpatch',
+                }
             },
+            // {
+            //     test: require.resolve('jsondiffpatch/dist/jsondiffpatch.umd'),
+            //     use: [{
+            //         loader: 'expose-loader',
+            //         options: 'jsondiffpatch'
+            //     }]
+            // },
             // {
             //     test: require.resolve('formBuilder'),
             //     use: [{

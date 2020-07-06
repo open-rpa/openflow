@@ -924,7 +924,7 @@ export class Message {
                 }
             }
             // await KubeUtil.instance().ExtensionsV1beta1Api.createNamespacedDeployment(namespace, (_deployment as any));
-            await KubeUtil.instance().ExtensionsV1beta1Api.createNamespacedDeployment(namespace, (_deployment as any));
+            await KubeUtil.instance().AppsV1Api.createNamespacedDeployment(namespace, (_deployment as any));
         } else {
             deployment.spec.template.spec.containers[0].resources = resources;
             var f = deployment.spec.template.spec.containers[0].env.filter(x => x.name == "api_allow_anonymous");
@@ -936,7 +936,7 @@ export class Message {
             deployment.metadata.labels.userid = _id;
             deployment.spec.template.metadata.labels.userid = _id;
             try {
-                await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedDeployment(name, namespace, (deployment as any));
+                await KubeUtil.instance().AppsV1Api.replaceNamespacedDeployment(name, namespace, (deployment as any));
             } catch (error) {
                 cli._logger.error("[" + cli.user.username + "] failed updating noeredinstance");
                 cli._logger.error("[" + cli.user.username + "] " + JSON.stringify(error));
@@ -1005,7 +1005,7 @@ export class Message {
 
         var deployment = await KubeUtil.instance().GetDeployment(namespace, name);
         if (deployment != null) {
-            await KubeUtil.instance().ExtensionsV1beta1Api.deleteNamespacedDeployment(name, namespace);
+            await KubeUtil.instance().AppsV1Api.deleteNamespacedDeployment(name, namespace);
         }
         var service = await KubeUtil.instance().GetService(namespace, name);
         if (service != null) {

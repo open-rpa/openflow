@@ -1018,6 +1018,20 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         <a tagret="_blank" href="https://docs.mongodb.com/manual/tutorial/update-documents/">
         concept here</a> and update <a tagret="_blank" href="https://docs.mongodb.com/manual/reference/operator/update/">operators here</a>
     </p>
+    <p>
+        msg.action (updateOne|updateMany)<br>
+        msg.query<br>
+        msg.updatedocument<br>
+        msg.collection<br>
+        msg.writeconcern<br>
+        1 - Requests acknowledgment that the write operation has propagated<br>
+        0 - Requests no acknowledgment of the write operation<br>
+        2 would require acknowledgment from the primary and one of the secondaries<br>
+        3 would require acknowledgment from the primary and both secondaries<br>
+        msg.journal<br>
+        true, requests acknowledgment that the mongod instances have written to the on-disk journal<br>
+
+    </p>
 </script>
 <script type="text/javascript">
     RED.nodes.registerType('api updatedocument', {
@@ -1030,8 +1044,8 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             writeconcern: { value: "0", required: true },
             journal: { value: "false", required: true },
             action: { value: "updateOne", required: true },
-            query: { value: "", required: true },
-            updatedocument: { value: "{ \"$inc\": { \"count\": 1}}", required: true },
+            query: { value: "" },
+            updatedocument: { value: "{ \"$inc\": { \"count\": 1}}" },
             collection: { value: "entities", required: true }
         },
         inputs: 1,
@@ -1137,6 +1151,9 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         read more about the 
         <a tagret="_blank" href="https://docs.mongodb.com/manual/reference/command/aggregate/index.html/">
             aggregate here</a> and the <a tagret="_blank" href="https://docs.mongodb.com/manual/reference/operator/aggregation-pipeline//">aggregation-pipeline</a>
+            <br>
+            you can set the aggregate using msg.aggregates<br>
+            you can set the collection using msg.collection<br>
     </p>
 </script>
 <script type="text/javascript">
@@ -1239,7 +1256,9 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 </div>
 </script>
 <script type="text/x-red" data-help-name="api download file">
-Download a file from API/GridFS
+Download a file from API/GridFS<br>
+you can set file id using msg.fileid<br>
+you can set filename using msg.filename<br>
 </script>
 <script type="text/javascript">
     RED.nodes.registerType('api download file', {
@@ -1284,8 +1303,9 @@ Download a file from API/GridFS
     </script>
 <script type="text/x-red" data-help-name="api upload file">
     Upload a file to API/GridFS<br>
-    msg.filename<br>
-    msg.mimeType<br>
+    msg.payload should be a base64 encode string of the file.<br>
+    you can set filename using msg.filename<br>
+    you can set mimeType using msg.mimeType<br>
     to save data with the file set msg.metadata to and javascript object<br>
     </script>
 <script type="text/javascript">
