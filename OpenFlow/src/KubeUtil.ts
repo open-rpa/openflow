@@ -1,5 +1,5 @@
 import * as k8s from "@kubernetes/client-node";
-import { CoreV1Api, AppsV1Api, ExtensionsV1beta1Api } from "@kubernetes/client-node";
+import { CoreV1Api, AppsV1Api, ExtensionsV1beta1Api, ExtensionsApi } from "@kubernetes/client-node";
 import { Config } from "./Config";
 
 export class KubeUtil {
@@ -72,7 +72,7 @@ export class KubeUtil {
         return null;
     }
     async GetDeployment(namespace, name) {
-        var list = await this.ExtensionsV1beta1Api.listNamespacedDeployment(namespace);
+        var list = await this.AppsV1Api.listNamespacedDeployment(namespace);
         for (var i = 0; i < list.body.items.length; i++) {
             var item = list.body.items[i];
             if (item.metadata.name == name) return item;

@@ -61,8 +61,10 @@ export class workflow_in_node {
         }
     }
     async init() {
-        if (NoderedUtil.IsNullUndefinded(this.config.name)) {
-            this.config.name = this.config.queue;
+        var name = this.config.name;
+
+        if (NoderedUtil.IsNullEmpty(name)) {
+            name = this.config.queue;
         }
 
         var res = await NoderedUtil.Query("workflow", { "queue": this.localqueue }, null, null, 1, 0, null);
@@ -70,12 +72,12 @@ export class workflow_in_node {
             var noderedadmins = await NoderedUtil.GetRole(null, Config.noderedadmins);
             var wf: Base = new Base();
             wf._type = "workflow";
-            wf.name = this.config.name;
+            wf.name = name;
             (wf as any).queue = this.localqueue;
             if (noderedadmins != null) {
                 wf.addRight(noderedadmins._id, noderedadmins.name, [-1]);
             }
-            this.workflow = await NoderedUtil.InsertOne("workflow", { _type: "workflow", "queue": this.localqueue, "name": this.config.name }, 0, false, null);
+            this.workflow = await NoderedUtil.InsertOne("workflow", { _type: "workflow", "queue": this.localqueue, "name": name }, 0, false, null);
         } else {
             this.workflow = res[0];
             var hasnoderedadmins = this.workflow._acl.filter(x => x.name == Config.noderedadmins);
@@ -101,7 +103,7 @@ export class workflow_in_node {
         wf.addRight(role._id, role.name, [-1]);
         this.workflow = wf;
         this.workflow.queue = this.localqueue;
-        this.workflow.name = this.config.name;
+        this.workflow.name = name;
         this.workflow.rpa = this.config.rpa;
         this.workflow.web = this.config.web;
         this.workflow = await NoderedUtil._UpdateOne("workflow", null, this.workflow, 0, false, null);

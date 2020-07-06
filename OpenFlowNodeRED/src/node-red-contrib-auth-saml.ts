@@ -15,6 +15,7 @@ export class samlauthstrategyoptions {
     public signatureAlgorithm: string = "sha256";
     public callbackMethod: string = "POST";
     public verify: any;
+    public acceptedClockSkewMs: number;
 }
 // tslint:disable-next-line: class-name
 export class samlauthstrategy {
@@ -50,6 +51,8 @@ export class noderedcontribauthsaml {
         if (identityProviderUrl != null && identityProviderUrl != undefined && identityProviderUrl != "") {
             result.strategy.options.entryPoint = identityProviderUrl;
         }
+        // result.strategy.options.acceptedClockSkewMs = -1;
+        result.strategy.options.acceptedClockSkewMs = (1000 * 60) * 15; // 15 minutes, overkill ?
         result.customverify = customverify;
         return result;
     }
