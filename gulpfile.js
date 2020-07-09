@@ -93,13 +93,27 @@ gulp.task("bumpconfigmap", function () {
 gulp.task("bumpaiotfrontend", function () {
     var version = "0.0.1";
     version = fs.readFileSync("../aiot-frontend/VERSION", "utf8");
-
     console.log('cloudhack/aiot-frontend:' + version);
     return gulp.src(["config/**/controllers.yml"])
         .pipe(replace(/aiot-frontend:\d+(\.\d+)+/g, 'aiot-frontend:' + version))
         .pipe(gulp.dest("config"));
 });
+gulp.task("bumpprojectfiles", function () {
+    var data = require("./package.json");
+    console.log(data.version + " updated to " + version);
+    data.version = version;
+    var json = JSON.stringify(data, null, 2);
+    fs.writeFileSync("package.json", json);
 
-gulp.task("bump", gulp.series("bumpflow", "bumpnodered", "bumpconfigmap", "bumpaiotfrontend"));
+    data = require("./OpenFlowNodeRED/package.json");
+    console.log(data.version + " updated to " + version);
+    data.version = version;
+    json = JSON.stringify(data, null, 2);
+    fs.writeFileSync("OpenFlowNodeRED/package.json", json);
+    return gulp.src('.');
+
+});
+
+gulp.task("bump", gulp.series("bumpflow", "bumpnodered", "bumpconfigmap", "bumpaiotfrontend", "bumpprojectfiles"));
 
 gulp.task("default", gulp.series("copyfiles1", "watch"));

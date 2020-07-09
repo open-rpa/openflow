@@ -1,3 +1,4 @@
+import * as retry from "async-retry";
 import * as winston from "winston";
 import * as amqplib from "amqplib";
 import { Util } from "./Util";
@@ -437,13 +438,37 @@ export class amqpwrapper {
         return q;
     }
     async checkQueue(queuename: string): Promise<boolean> {
-        try {
+        var result: boolean = false;
+        result = await retry(async bail => {
             var queue = await this.getqueue(Config.amqp_url, '/', queuename);
-            if (queue.consumers == 0) return false;
-            return true;
-        } catch (error) {
-            return false;
+            let hasConsumers: boolean = false;
+            if (queue.consumers > 0) {
+                hasConsumers = true;
+            }
+            if (!hasConsumers) {
+                if (queue.consumer_details != null && queue.consumer_details.length > 0) {
+                    // console.log(queue.consumer_details[0]);
+                    hasConsumers = true;
+                }
+            }
+            if (hasConsumers == false) {
+                throw new Error("No consumer listening at " + queuename);
+                // return bail();
+            }
+            return hasConsumers;
+        }, {
+            retries: 5,
+            minTimeout: 500,
+            maxTimeout: 500,
+            onRetry: function (error: Error, count: number): void {
+                result = false;
+                console.log("retry " + count + " error " + error.message + " getting " + url);
+            }
+        });
+        if (result == true) {
+            return result;
         }
+        return false;
     }
     async getvhosts(amqp_url) {
         var q = this.parseurl(amqp_url);
