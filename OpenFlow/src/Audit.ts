@@ -1,6 +1,6 @@
-import { Base, Rights } from "./base";
 import { Config } from "./Config";
-import { TokenUser } from "./TokenUser";
+import { TokenUser, Base, Rights } from "openflow-api";
+import { Crypt } from "./Crypt";
 
 export class Audit {
     public static LoginSuccess(user: TokenUser, type: string, provider: string, remoteip: string, clientagent: string, clientversion: string) {
@@ -15,7 +15,7 @@ export class Audit {
         log.username = user.username;
         log.clientagent = clientagent;
         log.clientversion = clientversion;
-        Config.db.InsertOne(log, "audit", 0, false, TokenUser.rootToken())
+        Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken())
             .catch((error) => console.error("failed InsertOne in LoginSuccess: " + error));
     }
     public static ImpersonateSuccess(user: TokenUser, impostor: TokenUser, clientagent: string, clientversion: string) {
@@ -32,7 +32,7 @@ export class Audit {
         log.impostorusername = impostor.username;
         log.clientagent = clientagent;
         log.clientversion = clientversion;
-        Config.db.InsertOne(log, "audit", 0, false, TokenUser.rootToken())
+        Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken())
             .catch((error) => console.error("failed InsertOne in ImpersonateSuccess: " + error));
     }
     public static ImpersonateFailed(user: TokenUser, impostor: TokenUser, clientagent: string, clientversion: string) {
@@ -48,7 +48,7 @@ export class Audit {
         log.impostorname = impostor.name;
         log.clientagent = clientagent;
         log.clientversion = clientversion;
-        Config.db.InsertOne(log, "audit", 0, false, TokenUser.rootToken())
+        Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken())
             .catch((error) => console.error("failed InsertOne in ImpersonateFailed: " + error));
     }
     public static LoginFailed(username: string, type: string, provider: string, remoteip: string, clientagent: string, clientversion: string) {
@@ -61,7 +61,7 @@ export class Audit {
         log.username = username;
         log.clientagent = clientagent;
         log.clientversion = clientversion;
-        Config.db.InsertOne(log, "audit", 0, false, TokenUser.rootToken())
+        Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken())
             .catch((error) => console.error("failed InsertOne in LoginFailed: " + error));
     }
 }

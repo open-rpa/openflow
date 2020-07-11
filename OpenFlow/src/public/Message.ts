@@ -90,7 +90,7 @@ module openflow {
             return Object.assign(new QueryMessage(), o);
         }
     }
-    export class MapReduceMessage implements IReplyMessage {
+    export class MapReduceMessage {
         public error: string;
         public jwt: string;
 
@@ -369,7 +369,7 @@ module openflow {
         }
     }
 
-    export class EnsureStripeCustomerMessage implements IReplyMessage {
+    export class EnsureStripeCustomerMessage {
         public error: string;
         public jwt: string;
 
@@ -383,7 +383,7 @@ module openflow {
             return Object.assign(new EnsureStripeCustomerMessage(), o);
         }
     }
-    export class StripeAddPlanMessage implements IReplyMessage {
+    export class StripeAddPlanMessage {
         public error: string;
         public jwt: string;
 
@@ -407,7 +407,7 @@ module openflow {
         public livemode: boolean;
         public metadata: { [key: string]: any };
     }
-    export class StripeMessage implements IReplyMessage {
+    export class StripeMessage {
         public error: string;
         public jwt: any;
         public method: string;

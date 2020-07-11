@@ -76,10 +76,13 @@
     "@types/angular": "^1.7.2",
     "@types/angular-route": "^1.7.1",
     "@types/jquery": "^3.5.0",
+    "browserify": "^16.5.1",
     "css-loader": "^3.6.0",
     "expose-loader": "^1.0.0",
     "merge-stream": "^2.0.0",
     "style-loader": "^1.2.1",
+    "tsify": "^4.0.2",
+    "typescript": "^3.9.6",
     "webpack": "^4.43.0",
     "webpack-cli": "^3.3.12"
   }

@@ -1,15 +1,11 @@
 import * as retry from "async-retry";
 import * as winston from "winston";
 import * as amqplib from "amqplib";
-import { Util } from "./Util";
 import { Config } from "./Config";
 import { Crypt } from "./Crypt";
 import * as url from "url";
-import { logger } from "./nodeclient/cliutil";
-import { NoderedUtil } from "./nodeclient/NoderedUtil";
-//import * as got from "got";
+import { NoderedUtil } from "openflow-api";
 var got = require("got");
-// var url = require('url');
 
 type QueueOnMessage = (msg: string, options: QueueMessageOptions, ack: any, done: any) => void;
 interface IHashTable<T> {
@@ -93,7 +89,7 @@ export class amqpwrapper {
         this._logger = logger;
         this.connectionstring = connectionstring;
 
-        //if (!Util.IsNullEmpty(Config.deadLetterExchange) && exchange != Config.deadLetterExchange) {
+        //if (!NoderedUtil.IsNullEmpty(Config.deadLetterExchange) && exchange != Config.deadLetterExchange) {
         // this.AssertExchangeOptions.arguments = {};
         // this.AssertExchangeOptions.arguments['x-message-ttl'] = Config.dlxmessagettl;
         // this.AssertQueueOptions.arguments = {};
@@ -101,16 +97,16 @@ export class amqpwrapper {
         // this.AssertQueueOptions.arguments['x-message-ttl'] = Config.dlxmessagettl;
 
         // this.AssertExchangeOptions.arguments['x-dead-letter-exchange'] = Config.deadLetterExchange;
-        // if (!Util.IsNullEmpty(routingkey)) this.AssertExchangeOptions.arguments['x-dead-letter-routing-key'] = routingkey;
+        // if (!NoderedUtil.IsNullEmpty(routingkey)) this.AssertExchangeOptions.arguments['x-dead-letter-routing-key'] = routingkey;
         // this.AssertExchangeOptions.arguments['x-expires'] = Config.dlxmessageexpires;
-        // if (!Util.IsNullEmpty(routingkey)) this.AssertQueueOptions.arguments['x-dead-letter-routing-key'] = routingkey;
+        // if (!NoderedUtil.IsNullEmpty(routingkey)) this.AssertQueueOptions.arguments['x-dead-letter-routing-key'] = routingkey;
         // this.AssertQueueOptions.arguments['x-expires'] = Config.dlxmessageexpires;
 
         // Bad idear ... 
         // this.AssertExchangeOptions.arguments['alternate-exchange'] = Config.deadLetterExchange;
         //}
 
-        if (!Util.IsNullEmpty(Config.amqp_dlx)) {
+        if (!NoderedUtil.IsNullEmpty(Config.amqp_dlx)) {
             this.AssertQueueOptions.arguments = {};
             this.AssertQueueOptions.arguments['x-dead-letter-exchange'] = Config.amqp_dlx;
             //             //     arguments: {
@@ -144,11 +140,11 @@ export class amqpwrapper {
                 });
             }
             this.channel = await this.conn.createChannel();
-            if (!Util.IsNullEmpty(this.replyqueue)) {
+            if (!NoderedUtil.IsNullEmpty(this.replyqueue)) {
                 this.queues = this.queues.filter(x => x.consumerTag != this.replyqueue.consumerTag);
             }
             this.replyqueue = await this.AddQueueConsumer("", null, null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
-                if (!Util.IsNullUndefinded(this.activecalls[options.correlationId])) {
+                if (!NoderedUtil.IsNullUndefinded(this.activecalls[options.correlationId])) {
                     this.activecalls[options.correlationId].resolve(msg);
                     this.activecalls[options.correlationId] = null;
                     delete this.activecalls[options.correlationId];
@@ -204,7 +200,7 @@ export class amqpwrapper {
         if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Queue Consumer, not connected to rabbitmq");
         if (queue == null) queue = "";
         var q: amqpqueue = null;
-        if (Config.amqp_force_queue_prefix && !Util.IsNullEmpty(jwt) && !Util.IsNullEmpty(queue)) {
+        if (Config.amqp_force_queue_prefix && !NoderedUtil.IsNullEmpty(jwt) && !NoderedUtil.IsNullEmpty(queue)) {
             if (queue.length == 24) {
                 var tuser = Crypt.verityToken(jwt);
                 var name = tuser.username.split("@").join("").split(".").join("");
@@ -264,9 +260,9 @@ export class amqpwrapper {
         q.callback = callback;
         // q.QueueOptions = new Object((QueueOptions != null ? QueueOptions : this.AssertQueueOptions));
         q.QueueOptions = Object.assign({}, (QueueOptions != null ? QueueOptions : this.AssertQueueOptions));
-        if (Util.IsNullEmpty(queue)) queue = "";
+        if (NoderedUtil.IsNullEmpty(queue)) queue = "";
         if (queue.startsWith("amq.")) queue = "";
-        if (Util.IsNullEmpty(queue)) q.QueueOptions.autoDelete = true;
+        if (NoderedUtil.IsNullEmpty(queue)) q.QueueOptions.autoDelete = true;
         q.ok = await this.channel.assertQueue(queue, q.QueueOptions);
         q.queue = q.ok.queue;
         this._logger.info("[AMQP] Added queue consumer " + q.queue);
@@ -281,7 +277,7 @@ export class amqpwrapper {
     async AddExchangeConsumer(exchange: string, algorithm: string, routingkey: string, ExchangeOptions: any, jwt: string, callback: QueueOnMessage): Promise<amqpexchange> {
         if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Exchange Consumer, not connected to rabbitmq");
         var q: amqpexchange = null;
-        if (Config.amqp_force_exchange_prefix && !Util.IsNullEmpty(jwt)) {
+        if (Config.amqp_force_exchange_prefix && !NoderedUtil.IsNullEmpty(jwt)) {
             var tuser = Crypt.verityToken(jwt);
             var name = tuser.username.split("@").join("").split(".").join("");
             name = name.toLowerCase();
@@ -293,7 +289,7 @@ export class amqpwrapper {
         // } else {
         //     q = new amqpexchange();
         // }
-        if (!Util.IsNullEmpty(q.queue)) {
+        if (!NoderedUtil.IsNullEmpty(q.queue)) {
             this.RemoveQueueConsumer(q.queue);
         }
         // q.ExchangeOptions = new Object((ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));
@@ -301,7 +297,7 @@ export class amqpwrapper {
         q.exchange = exchange; q.algorithm = algorithm; q.routingkey = routingkey; q.callback = callback;
         this._ok = await this.channel.assertExchange(q.exchange, q.algorithm, q.ExchangeOptions);
         var AssertQueueOptions = null;
-        if (!Util.IsNullEmpty(Config.amqp_dlx) && exchange == Config.amqp_dlx) {
+        if (!NoderedUtil.IsNullEmpty(Config.amqp_dlx) && exchange == Config.amqp_dlx) {
             AssertQueueOptions = Object.create(this.AssertQueueOptions);
             delete AssertQueueOptions.arguments;
         }
@@ -356,7 +352,7 @@ export class amqpwrapper {
                 }
             }, (result) => {
                 // ROLLBACK
-                // if (msg != null && !Util.IsNullEmpty(replyTo)) {
+                // if (msg != null && !NoderedUtil.IsNullEmpty(replyTo)) {
                 //     try {
                 //         this.channel.sendToQueue(replyTo, Buffer.from(result), { correlationId: msg.properties.correlationId });
                 //     } catch (error) {
@@ -369,7 +365,7 @@ export class amqpwrapper {
         }
     }
     async sendWithReply(exchange: string, queue: string, data: any, expiration: number, correlationId: string): Promise<string> {
-        if (Util.IsNullEmpty(correlationId)) correlationId = this.generateUuid();
+        if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = this.generateUuid();
         this.activecalls[correlationId] = new Deferred();
         await this.sendWithReplyTo(exchange, queue, this.replyqueue.queue, data, expiration, correlationId);
         return this.activecalls[correlationId].promise;
@@ -385,11 +381,11 @@ export class amqpwrapper {
         this._logger.info("send to queue: " + queue + " exchange: " + exchange + " with reply to " + replyTo);
         var options: any = { mandatory: true };
         options.replyTo = replyTo;
-        if (Util.IsNullEmpty(correlationId)) correlationId = this.generateUuid();
-        if (!Util.IsNullEmpty(correlationId)) options.correlationId = correlationId;
+        if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = this.generateUuid();
+        if (!NoderedUtil.IsNullEmpty(correlationId)) options.correlationId = correlationId;
         if (expiration < 1) expiration = Config.amqp_default_expiration;
         options.expiration = expiration.toString();
-        if (Util.IsNullEmpty(exchange)) {
+        if (NoderedUtil.IsNullEmpty(exchange)) {
             if (!await this.checkQueue(queue)) {
                 throw new Error("No consumer listening at " + queue);
             }
@@ -405,14 +401,14 @@ export class amqpwrapper {
         if (typeof data !== 'string' && !(data instanceof String)) {
             data = JSON.stringify(data);
         }
-        if (Util.IsNullEmpty(correlationId)) correlationId = this.generateUuid();
+        if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = this.generateUuid();
 
         this._logger.info("send to queue: " + queue + " exchange: " + exchange);
         var options: any = { mandatory: true };
-        if (!Util.IsNullEmpty(correlationId)) options.correlationId = correlationId;
+        if (!NoderedUtil.IsNullEmpty(correlationId)) options.correlationId = correlationId;
         if (expiration < 1) expiration = Config.amqp_default_expiration;
         options.expiration = expiration.toString();
-        if (Util.IsNullEmpty(exchange)) {
+        if (NoderedUtil.IsNullEmpty(exchange)) {
             if (!await this.checkQueue(queue)) {
                 throw new Error("No consumer listening at " + queue);
             }

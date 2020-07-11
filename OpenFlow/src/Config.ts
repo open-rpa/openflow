@@ -3,10 +3,8 @@ import * as fs from "fs";
 import * as retry from "async-retry";
 import { json } from "body-parser";
 import { DatabaseConnection } from "./DatabaseConnection";
-import { Provider } from "./LoginProvider";
-import { TokenUser } from "./TokenUser";
 import { Logger } from "./Logger";
-import { Util } from "./Util";
+import { NoderedUtil } from "openflow-api";
 
 export class Config {
     public static reload(): void {
@@ -166,7 +164,7 @@ export class Config {
         return result;
     }
     // public static async get_login_providers():Promise<void> {
-    //     this.login_providers = await Config.db.query<Provider>({_type: "provider"}, null, 1, 0, null, "config", TokenUser.rootToken());
+    //     this.login_providers = await Config.db.query<Provider>({_type: "provider"}, null, 1, 0, null, "config", Crypt.rootToken());
     //     // if(this.login_providers.length > 0) { return; }
     //     if(fs.existsSync("config/login_providers.json")) {
     //         // this.login_providers = JSON.parse(fs.readFileSync("config/login_providers.json", "utf8"));
@@ -181,7 +179,7 @@ export class Config {
         // if anything throws, we retry
         var metadata: any = await retry(async bail => {
             var reader: any = await fetch({ url });
-            if (Util.IsNullUndefinded(reader)) { bail(new Error("Failed getting result")); return; }
+            if (NoderedUtil.IsNullUndefinded(reader)) { bail(new Error("Failed getting result")); return; }
             var config: any = toPassportConfig(reader);
             // we need this, for Office 365 :-/
             if (reader.signingCerts && reader.signingCerts.length > 1) {

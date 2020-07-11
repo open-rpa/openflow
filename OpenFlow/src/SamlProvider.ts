@@ -1,14 +1,10 @@
 import * as winston from "winston";
 import * as express from "express";
-// import * as passport from "passport";
-
 import * as samlp from "samlp";
 import { Config } from "./Config";
-import { TokenUser } from "./TokenUser";
 import { Audit } from "./Audit";
 import { LoginProvider } from "./LoginProvider";
-import * as passport from "passport";
-import { Util } from "./Util";
+import { NoderedUtil, TokenUser } from "openflow-api";
 
 export class SamlProvider {
     private static _logger: winston.Logger;
@@ -79,7 +75,7 @@ export class SamlProvider {
 
             },
             getUserFromRequest: (req: any) => {
-                var tuser: TokenUser = new TokenUser(req.user);
+                var tuser: TokenUser = TokenUser.From(req.user);
                 var remoteip = "";
                 if (req.connection) { remoteip = req.connection.remoteAddress; }
                 Audit.LoginSuccess(tuser, "tokenissued", "saml", remoteip, "getUserFromRequest", "unknown");
@@ -154,20 +150,20 @@ export class SamlProvider {
             var providerid: any = req.cookies.provider;
             req.logout();
 
-            if (!Util.IsNullEmpty(providerid)) {
+            if (!NoderedUtil.IsNullEmpty(providerid)) {
                 var p = LoginProvider.login_providers.filter(x => x.id == providerid);
                 if (p.length > 0) {
                     var provider = p[0];
-                    if (!Util.IsNullEmpty(provider.saml_signout_url)) {
+                    if (!NoderedUtil.IsNullEmpty(provider.saml_signout_url)) {
                         var html = "<html><head></head><body>";
                         html += "<h1>Logud</h1><br>";
-                        if (!Util.IsNullEmpty(referer)) {
+                        if (!NoderedUtil.IsNullEmpty(referer)) {
                             html += "<br/><p><a href='" + referer + "'>Til login</a></p>";
                         } else {
                             html += "<br/><p><a href='/'>Til login</a></p>";
                         }
                         html += "<iframe src='" + provider.saml_signout_url + "'></iframe>";
-                        if (!Util.IsNullEmpty(referer)) {
+                        if (!NoderedUtil.IsNullEmpty(referer)) {
                             html += "<br/><p><a href='" + referer + "'>Til login</a></p>";
                         } else {
                             html += "<br/><p><a href='/'>Til login</a></p>";
@@ -178,7 +174,7 @@ export class SamlProvider {
                     }
                 }
             }
-            if (!Util.IsNullEmpty(referer)) {
+            if (!NoderedUtil.IsNullEmpty(referer)) {
                 res.redirect(referer);
             } else {
                 res.redirect("/");

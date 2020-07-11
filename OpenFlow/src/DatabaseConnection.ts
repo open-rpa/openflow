@@ -2,33 +2,15 @@ import {
     ObjectID, Db, Binary, InsertOneWriteOpResult, DeleteWriteOpResultObject, ObjectId, MapReduceOptions, CollectionInsertOneOptions, UpdateWriteOpResult, WriteOpResult, GridFSBucket, ReadPreference
 } from "mongodb";
 import { MongoClient } from "mongodb";
-import { Base, Rights, WellknownIds } from "./base";
 import winston = require("winston");
 import { Crypt } from "./Crypt";
 import { Config } from "./Config";
-import { TokenUser } from "./TokenUser";
-import { Ace } from "./Ace";
-import { Role, Rolemember } from "./Role";
-import { UpdateOneMessage } from "./Messages/UpdateOneMessage";
-import { UpdateManyMessage } from "./Messages/UpdateManyMessage";
-import { InsertOrUpdateOneMessage } from "./Messages/InsertOrUpdateOneMessage";
-import { User } from "./User";
-import { Util } from "./Util";
+import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User } from "openflow-api";
+import { DBHelper } from "./DBHelper";
 // tslint:disable-next-line: typedef
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
-export declare function emit(k, v);
-export type mapFunc = () => void;
-export type reduceFunc = (key: string, values: any[]) => any;
-export type finalizeFunc = (key: string, value: any) => any;
 const isoDatePattern = new RegExp(/\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z)/);
 
-//export declare function
-// export declare function Promise.retry(k, v);
-
-// declare function f(): void;
-// declare namespace Promise {
-//     export function retry(retries: number, any): any;
-// }
 Object.defineProperty(Promise, 'retry', {
     configurable: true,
     writable: true,
@@ -102,7 +84,7 @@ export class DatabaseConnection {
     }
     async DropCollection(collectionname: string, jwt: string): Promise<void> {
         var user: TokenUser = Crypt.verityToken(jwt);
-        if (!user.hasrolename("admins")) throw new Error("Access denied, droppping collection " + collectionname);
+        if (!user.HasRoleName("admins")) throw new Error("Access denied, droppping collection " + collectionname);
         if (["workflow", "entities", "config", "audit", "jslog", "openrpa", "nodered", "openrpa_instances", "forms", "workflow_instances", "users"].indexOf(collectionname) > -1) throw new Error("Access denied, dropping reserved collection " + collectionname);
         await this.db.dropCollection(collectionname);
     }
@@ -111,6 +93,10 @@ export class DatabaseConnection {
         for (var i = item._acl.length - 1; i >= 0; i--) {
             {
                 var ace = item._acl[i];
+                if (typeof ace.rights === "string") {
+                    var b = new Binary(Buffer.from(ace.rights, "base64"), 0);
+                    (ace.rights as any) = b;
+                }
                 var arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1 }).limit(1).toArray();
                 if (arr.length == 0) {
                     item._acl.splice(i, 1);
@@ -330,7 +316,7 @@ export class DatabaseConnection {
         var _query: Object = {};
         if (collectionname === "files") { collectionname = "fs.files"; }
         if (collectionname === "fs.files") {
-            if (!Util.IsNullEmpty(queryas)) {
+            if (!NoderedUtil.IsNullEmpty(queryas)) {
                 _query = { $and: [query, this.getbasequery(jwt, "metadata._acl", [Rights.read]), await this.getbasequeryuserid(queryas, "metadata._acl", [Rights.read])] };
             } else {
                 _query = { $and: [query, this.getbasequery(jwt, "metadata._acl", [Rights.read])] };
@@ -343,7 +329,7 @@ export class DatabaseConnection {
             //     // todo: enforcer permissions when fetching _hist ?
             //     _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
             // }
-            if (!Util.IsNullEmpty(queryas)) {
+            if (!NoderedUtil.IsNullEmpty(queryas)) {
                 _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read]), await this.getbasequeryuserid(queryas, "_acl", [Rights.read])] };
             } else {
                 _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
@@ -520,12 +506,12 @@ export class DatabaseConnection {
         await this.connect();
         item = this.ensureResource(item);
         DatabaseConnection.traversejsonencode(item);
-        if (Util.IsNullEmpty(jwt)) {
+        if (NoderedUtil.IsNullEmpty(jwt)) {
             throw new Error("jwt is null");
         }
         var name = item.name;
-        if (Util.IsNullEmpty(name)) name = item._name;
-        if (Util.IsNullEmpty(name)) name = "Unknown";
+        if (NoderedUtil.IsNullEmpty(name)) name = item._name;
+        if (NoderedUtil.IsNullEmpty(name)) name = "Unknown";
         var user: TokenUser = Crypt.verityToken(jwt);
         item._createdby = user.name;
         item._createdbyid = user._id;
@@ -540,7 +526,7 @@ export class DatabaseConnection {
         if (collectionname != "audit") { this._logger.debug("[" + user.username + "][" + collectionname + "] Adding " + item._type + " " + name + " to database"); }
         if (!this.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
 
-        item = this.encryptentity<T>(item);
+        item = this.encryptentity(item) as T;
         if (!item._id) { item._id = new ObjectID().toHexString(); }
 
         if (collectionname === "users" && item._type === "user" && item.hasOwnProperty("newpassword")) {
@@ -569,13 +555,13 @@ export class DatabaseConnection {
             var u: TokenUser = (item as any);
             if (u.username == null || u.username == "") { throw new Error("Username is mandatory"); }
             if (u.name == null || u.name == "") { throw new Error("Name is mandatory"); }
-            var exists = await User.FindByUsername(u.username, TokenUser.rootToken());
+            var exists = await DBHelper.FindByUsername(u.username, Crypt.rootToken());
             if (exists != null) { throw new Error("Access denied, user  '" + u.username + "' already exists"); }
         }
         if (collectionname === "users" && item._type === "role") {
             var r: Role = (item as any);
             if (r.name == null || r.name == "") { throw new Error("Name is mandatory"); }
-            var exists2 = await Role.FindByName(r.name);
+            var exists2 = await DBHelper.FindRoleByName(r.name);
             if (exists2 != null) { throw new Error("Access denied, role '" + r.name + "' already exists"); }
         }
 
@@ -585,9 +571,9 @@ export class DatabaseConnection {
         var result: InsertOneWriteOpResult<T> = await this.db.collection(collectionname).insertOne(item, options);
         item = result.ops[0];
         if (collectionname === "users" && item._type === "user") {
-            var users: Role = await Role.FindByNameOrId("users", jwt);
+            var users: Role = await DBHelper.FindRoleByNameOrId("users", jwt);
             users.AddMember(item);
-            await users.Save(TokenUser.rootToken());
+            await DBHelper.Save(users, Crypt.rootToken());
         }
         if (collectionname === "users" && item._type === "role") {
             item.addRight(item._id, item.name, [Rights.read]);
@@ -606,7 +592,7 @@ export class DatabaseConnection {
      * @returns Promise<T>
      */
     async _UpdateOne<T extends Base>(query: any, item: T, collectionname: string, w: number, j: boolean, jwt: string): Promise<T> {
-        var q = new UpdateOneMessage<T>();
+        var q = new UpdateOneMessage();
         q.query = query; q.item = item; q.collectionname = collectionname; q.w = w; q.j; q.jwt = jwt;
         q = await this.UpdateOne(q);
         if (q.opresult.result.ok == 1) {
@@ -622,13 +608,16 @@ export class DatabaseConnection {
         }
         return q.result;
     }
-    async UpdateOne<T extends Base>(q: UpdateOneMessage<T>): Promise<UpdateOneMessage<T>> {
+    async UpdateOne<T extends Base>(q: UpdateOneMessage): Promise<UpdateOneMessage> {
         var itemReplace: boolean = true;
         if (q === null || q === undefined) { throw Error("UpdateOneMessage cannot be null"); }
         if (q.item === null || q.item === undefined) { throw Error("Cannot update null item"); }
         await this.connect();
         var user: TokenUser = Crypt.verityToken(q.jwt);
-        if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to UpdateOne"); }
+        if (!this.hasAuthorization(user, (q.item as Base), Rights.update)) {
+            var again = this.hasAuthorization(user, (q.item as Base), Rights.update);
+            throw new Error("Access denied, no authorization to UpdateOne");
+        }
         if (q.collectionname === "files") { q.collectionname = "fs.files"; }
 
         var original: T = null;
@@ -639,12 +628,12 @@ export class DatabaseConnection {
                 throw Error("Cannot update item without _id");
             }
             var name = q.item.name;
-            if (Util.IsNullEmpty(name)) name = q.item._name;
-            if (Util.IsNullEmpty(name)) name = "Unknown";
+            if (NoderedUtil.IsNullEmpty(name)) name = (q.item as any)._name;
+            if (NoderedUtil.IsNullEmpty(name)) name = "Unknown";
 
             original = await this.getbyid<T>(q.item._id, q.collectionname, q.jwt);
             if (!original) { throw Error("item not found!"); }
-            if (!this.hasAuthorization(user, original, Rights.update)) { throw new Error("Access denied, no authorization to InsertOne " + q.item._type + " " + name + " to database"); }
+            if (!this.hasAuthorization(user, original, Rights.update)) { throw new Error("Access denied, no authorization to UpdateOne " + q.item._type + " " + name + " to database"); }
             if (q.collectionname != "fs.files") {
                 q.item._modifiedby = user.name;
                 q.item._modifiedbyid = user._id;
@@ -675,7 +664,7 @@ export class DatabaseConnection {
                 }
                 q.item = this.ensureResource(q.item);
                 DatabaseConnection.traversejsonencode(q.item);
-                q.item = this.encryptentity<T>(q.item);
+                q.item = this.encryptentity(q.item);
                 var hasUser: Ace = q.item._acl.find(e => e._id === user._id);
                 if ((hasUser === null || hasUser === undefined) && q.item._acl.length == 0) {
                     q.item.addRight(user._id, user.name, [Rights.full_control]);
@@ -711,7 +700,7 @@ export class DatabaseConnection {
                 }
                 (q.item as any).metadata = this.ensureResource((q.item as any).metadata);
                 DatabaseConnection.traversejsonencode(q.item);
-                (q.item as any).metadata = this.encryptentity<T>((q.item as any).metadata);
+                (q.item as any).metadata = this.encryptentity((q.item as any).metadata);
                 var hasUser: Ace = (q.item as any).metadata._acl.find(e => e._id === user._id);
                 if ((hasUser === null || hasUser === undefined) && (q.item as any).metadata._acl.length == 0) {
                     (q.item as any).metadata.addRight(user._id, user.name, [Rights.full_control]);
@@ -812,7 +801,7 @@ export class DatabaseConnection {
                 q.opresult = await this.db.collection(q.collectionname).updateOne(_query, q.item, options);
             }
             if (q.collectionname != "fs.files") {
-                q.item = this.decryptentity<T>(q.item);
+                q.item = this.decryptentity(q.item);
             } else {
                 (q.item as any).metadata = this.decryptentity<T>((q.item as any).metadata);
             }
@@ -833,7 +822,7 @@ export class DatabaseConnection {
     * @param  {string} jwt JWT of user who is doing the update, ensuring rights
     * @returns Promise<T>
     */
-    async UpdateMany<T extends Base>(q: UpdateManyMessage<T>): Promise<UpdateManyMessage<T>> {
+    async UpdateMany<T extends Base>(q: UpdateManyMessage): Promise<UpdateManyMessage> {
         if (q === null || q === undefined) { throw Error("UpdateManyMessage cannot be null"); }
         if (q.item === null || q.item === undefined) { throw Error("Cannot update null item"); }
         await this.connect();
@@ -859,14 +848,14 @@ export class DatabaseConnection {
         });
         for (let key in q.query) {
             if (key === "_id") {
-                var id: string = q.query._id;
-                delete q.query._id;
-                q.query.$or = [{ _id: id }, { _id: safeObjectID(id) }];
+                var id: string = (q.query as any)._id;
+                delete (q.query as any)._id;
+                (q.query as any).$or = [{ _id: id }, { _id: safeObjectID(id) }];
             }
         }
         var _query: Object = {};
-        if (!Util.IsNullEmpty(Config.stripe_api_secret) && q.collectionname === "users") {
-            if (!user.hasrolename("admins")) throw new Error("Access denied, no authorization to UpdateMany");
+        if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret) && q.collectionname === "users") {
+            if (!user.HasRoleId("admins")) throw new Error("Access denied, no authorization to UpdateMany");
         }
         if (q.collectionname === "files") { q.collectionname = "fs.files"; }
         if (q.collectionname === "fs.files") {
@@ -922,7 +911,7 @@ export class DatabaseConnection {
     * @param  {string} jwt JWT of user who is doing the update, ensuring rights
     * @returns Promise<T>
     */
-    async InsertOrUpdateOne<T extends Base>(q: InsertOrUpdateOneMessage<T>): Promise<InsertOrUpdateOneMessage<T>> {
+    async InsertOrUpdateOne<T extends Base>(q: InsertOrUpdateOneMessage): Promise<InsertOrUpdateOneMessage> {
         var query: any = null;
         if (q.uniqeness !== null && q.uniqeness !== undefined && q.uniqeness !== "") {
             query = {};
@@ -953,7 +942,7 @@ export class DatabaseConnection {
         // if (q.item._id !== null && q.item._id !== undefined && q.item._id !== "") {
         if (exists.length == 1) {
             this._logger.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Updating found one in database");
-            var uq = new UpdateOneMessage<T>();
+            var uq = new UpdateOneMessage();
             // uq.query = query; 
             uq.item = q.item; uq.collectionname = q.collectionname; uq.w = q.w; uq.j; uq.jwt = q.jwt;
             uq = await this.UpdateOne(uq);
@@ -1054,7 +1043,7 @@ export class DatabaseConnection {
      * @param  {T} item Item to enumerate
      * @returns T Object with encrypted fields
      */
-    public encryptentity<T extends Base>(item: T): T {
+    public encryptentity(item: Base): Base {
         if (item == null || item._encrypt === undefined || item._encrypt === null) { return item; }
         var me: DatabaseConnection = this;
         return (Object.keys(item).reduce((newObj, key) => {
@@ -1066,7 +1055,7 @@ export class DatabaseConnection {
                 newObj[key] = value;
             }
             return newObj;
-        }, item) as T);
+        }, item) as Base);
     }
     /**
      * Enumerate object, decrypting fields that needs to be decrypted
@@ -1134,7 +1123,7 @@ export class DatabaseConnection {
         return { $or: finalor.concat() };
     }
     private async getbasequeryuserid(userid: string, field: string, bits: number[]): Promise<Object> {
-        var user = await User.FindByUsernameOrId(null, userid);
+        var user = await DBHelper.FindByUsernameOrId(null, userid);
         var jwt = Crypt.createToken(user, Config.shorttoken_expires_in);
         return this.getbasequery(jwt, field, bits);
     }
@@ -1151,7 +1140,7 @@ export class DatabaseConnection {
         if (!item._acl) { item._acl = []; }
         item._acl.forEach((a, index) => {
             if (typeof a.rights === "string") {
-                item._acl[index].rights = new Binary(Buffer.from(a.rights, "base64"), 0);
+                item._acl[index].rights = (new Binary(Buffer.from(a.rights, "base64"), 0) as any);
             }
         });
         if (item._acl.length === 0) {
@@ -1207,14 +1196,14 @@ export class DatabaseConnection {
 
             var a = item._acl.filter(x => x._id == user._id);
             if (a.length > 0) {
-                let _ace = Ace.assign(a[0]);
-                if (_ace.getBit(action)) return true;
+                a[0] = Ace.assign(a[0]);
+                if (a[0].isBitSet(action)) return true;
             }
             for (var i = 0; i < user.roles.length; i++) {
                 a = item._acl.filter(x => x._id == user.roles[i]._id);
                 if (a.length > 0) {
-                    let _ace = Ace.assign(a[0]);
-                    if (_ace.getBit(action)) return true;
+                    a[0] = Ace.assign(a[0]);
+                    if (a[0].isBitSet(action)) return true;
                 }
             }
             return false;
@@ -1308,7 +1297,7 @@ export class DatabaseConnection {
 
     }
 
-    async SaveUpdateDiff<T extends Base>(q: UpdateOneMessage<T>, user: TokenUser) {
+    async SaveUpdateDiff<T extends Base>(q: UpdateOneMessage, user: TokenUser) {
         try {
             var _skip_array: string[] = Config.skip_history_collections.split(",");
             var skip_array: string[] = [];
