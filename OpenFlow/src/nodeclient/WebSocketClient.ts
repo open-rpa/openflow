@@ -177,7 +177,11 @@ export class WebSocketClient {
             this.messageQueue[message.id] = new QueuedMessage(message, cb);
         }
         this.processqueuehandle = setTimeout(() => {
-            this.ProcessQueue();
+            try {
+                this.ProcessQueue();
+            } catch (error) {
+                if (error.message) { this._logger.error(error.message); } else { this._logger.error(error); }
+            }
         }, 500);
     }
     public chunkString(str: string, length: number): string[] {

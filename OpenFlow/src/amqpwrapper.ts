@@ -5,6 +5,8 @@ import { Util } from "./Util";
 import { Config } from "./Config";
 import { Crypt } from "./Crypt";
 import * as url from "url";
+import { logger } from "./nodeclient/cliutil";
+import { NoderedUtil } from "./nodeclient/NoderedUtil";
 //import * as got from "got";
 var got = require("got");
 // var url = require('url');
@@ -439,32 +441,37 @@ export class amqpwrapper {
     }
     async checkQueue(queuename: string): Promise<boolean> {
         var result: boolean = false;
-        result = await retry(async bail => {
-            var queue = await this.getqueue(Config.amqp_url, '/', queuename);
-            let hasConsumers: boolean = false;
-            if (queue.consumers > 0) {
-                hasConsumers = true;
-            }
-            if (!hasConsumers) {
-                if (queue.consumer_details != null && queue.consumer_details.length > 0) {
-                    // console.log(queue.consumer_details[0]);
+        try {
+            result = await retry(async bail => {
+                var queue = await this.getqueue(Config.amqp_url, '/', queuename);
+                let hasConsumers: boolean = false;
+                if (queue.consumers > 0) {
                     hasConsumers = true;
                 }
-            }
-            if (hasConsumers == false) {
-                throw new Error("No consumer listening at " + queuename);
-                // return bail();
-            }
-            return hasConsumers;
-        }, {
-            retries: 5,
-            minTimeout: 500,
-            maxTimeout: 500,
-            onRetry: function (error: Error, count: number): void {
-                result = false;
-                console.log("retry " + count + " error " + error.message + " getting " + url);
-            }
-        });
+                if (!hasConsumers) {
+                    if (queue.consumer_details != null && queue.consumer_details.length > 0) {
+                        // console.log(queue.consumer_details[0]);
+                        hasConsumers = true;
+                    }
+                }
+                if (hasConsumers == false) {
+                    throw new Error("No consumer listening at " + queuename);
+                    // return bail();
+                }
+                return hasConsumers;
+            }, {
+                retries: 5,
+                minTimeout: 500,
+                maxTimeout: 500,
+                onRetry: function (error: Error, count: number): void {
+                    result = false;
+                    console.log("retry " + count + " error " + error.message + " getting " + url);
+                }
+            });
+        } catch (error) {
+            if (!NoderedUtil.IsNullEmpty(error.message)) this._logger.debug(error.message);
+            if (NoderedUtil.IsNullEmpty(error.message)) this._logger.debug(error);
+        }
         if (result == true) {
             return result;
         }
