@@ -1,8 +1,7 @@
 import * as express from "express";
-import { SigninMessage, Message, TokenUser } from "./nodeclient/Message";
-import { WebSocketClient } from "./nodeclient/WebSocketClient";
 import { Config } from "./Config";
 import { Logger } from "./Logger";
+import { NoderedUtil, TokenUser, WebSocketClient } from "openflow-api";
 
 interface HashTable<T> {
     [key: string]: T;
@@ -47,12 +46,7 @@ export class noderedcontribmiddlewareauth {
         const [login, password] = Buffer.from(b64auth, "base64").toString().split(':')
         if (login && password) {
             try {
-                var q: SigninMessage = new SigninMessage();
-                q.username = login; q.password = password; q.validate_only = true;
-                q.clientagent = "nodered";
-                q.clientversion = Config.version;
-                var msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
-                var result: SigninMessage = await socket.Send<SigninMessage>(msg);
+                var result = await NoderedUtil.SigninWithUsername(login, password, null, false, true);
                 if (result.user != null) {
                     var user: TokenUser = TokenUser.assign(result.user);
                     var allowed = user.roles.filter(x => x.name == "nodered api users" || x.name == Config.noderedadmins);

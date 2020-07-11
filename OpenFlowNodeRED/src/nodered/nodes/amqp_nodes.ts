@@ -1,12 +1,8 @@
 import * as RED from "node-red";
 import { Red } from "node-red";
-import { NoderedUtil } from "../../nodeclient/NoderedUtil";
-import { Logger } from "../../Logger";
-//import { amqp_consumer } from "../../amqp_consumer";
-//import { amqp_publisher } from "../../amqp_publisher";
 import { Config } from "../../Config";
-import { WebSocketClient } from "../../nodeclient/WebSocketClient";
-import { QueueMessage, SigninMessage, Message } from "../../nodeclient/Message";
+import { WebSocketClient, NoderedUtil, SigninMessage, Message } from "openflow-api";
+import { QueueMessage } from "openflow-api/lib/browser/Message/QueueMessage";
 
 export interface Iamqp_connection {
     name: string;

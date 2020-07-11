@@ -1,7 +1,6 @@
 import * as RED from "node-red";
 import { Red } from "node-red";
-import { NoderedUtil } from "../../nodeclient/NoderedUtil";
-
+import { NoderedUtil } from "openflow-api";
 
 export interface Iget_pods {
     name: string;

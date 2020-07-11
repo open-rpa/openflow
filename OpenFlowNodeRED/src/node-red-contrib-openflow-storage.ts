@@ -1,12 +1,9 @@
 import * as fs from "fs";
 import * as path from "path";
-import { WebSocketClient } from "./nodeclient/WebSocketClient";
 import winston = require("winston");
 import { nodered_settings } from "./nodered_settings";
-import { QueryMessage, Message, DeleteOneMessage, InsertOneMessage } from "./nodeclient/Message";
 import { Config } from "./Config";
-import { json } from "body-parser";
-import { NoderedUtil } from "./nodeclient/NoderedUtil";
+import { WebSocketClient, NoderedUtil } from "openflow-api";
 // tslint:disable-next-line: class-name
 export class noderedcontribopenflowstorage {
 
@@ -95,7 +92,7 @@ export class noderedcontribopenflowstorage {
                 await NoderedUtil.InsertOne("nodered", item, 1, true, null);
             } else {
                 result[0].flows = JSON.stringify(flows);
-                await NoderedUtil._UpdateOne("nodered", null, result[0], 1, true, null);
+                await NoderedUtil.UpdateOne("nodered", null, result[0], 1, true, null);
             }
         } catch (error) {
             if (error.message) { this._logger.error(error.message); }
@@ -149,7 +146,7 @@ export class noderedcontribopenflowstorage {
                     var item: any = result[0];
                     item.credentials = credentials;
                     item.credentialsarray = credentialsarray;
-                    var subresult = await NoderedUtil._UpdateOne("nodered", null, item, 1, true, null);
+                    var subresult = await NoderedUtil.UpdateOne("nodered", null, item, 1, true, null);
                 }
         } catch (error) {
             if (error.message) { this._logger.error(error.message); }
@@ -217,7 +214,7 @@ export class noderedcontribopenflowstorage {
                 await NoderedUtil.InsertOne("nodered", item, 1, true, null);
             } else {
                 result[0].settings = JSON.stringify(settings);
-                await NoderedUtil._UpdateOne("nodered", null, result[0], 1, true, null);
+                await NoderedUtil.UpdateOne("nodered", null, result[0], 1, true, null);
             }
         } catch (error) {
             if (error.message) { this._logger.error(error.message); }
@@ -240,8 +237,6 @@ export class noderedcontribopenflowstorage {
     }
     public async _saveSessions(sessions: any[]): Promise<void> {
         try {
-            var q: QueryMessage = new QueryMessage();
-
             var result = await NoderedUtil.Query("nodered", { _type: "session", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
             if (result.length === 0) {
                 var item: any = {
@@ -251,7 +246,7 @@ export class noderedcontribopenflowstorage {
                 await NoderedUtil.InsertOne("nodered", item, 1, true, null);
             } else {
                 result[0].sessions = JSON.stringify(sessions);
-                await NoderedUtil._UpdateOne("nodered", null, result[0], 1, true, null);
+                await NoderedUtil.UpdateOne("nodered", null, result[0], 1, true, null);
             }
         } catch (error) {
             if (error.message) { this._logger.error(error.message); }

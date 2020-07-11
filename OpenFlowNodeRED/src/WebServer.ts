@@ -14,13 +14,12 @@ import * as cookieSession from "cookie-session";
 
 import { nodered_settings } from "./nodered_settings";
 import { Config } from "./Config";
-import { WebSocketClient } from "./nodeclient/WebSocketClient";
 import { noderedcontribopenflowstorage } from "./node-red-contrib-openflow-storage";
 import { noderedcontribmiddlewareauth } from "./node-red-contrib-middleware-auth";
 
 import * as passport from "passport";
-import { NoderedUtil } from "./nodeclient/NoderedUtil";
 import { noderedcontribauthsaml } from "./node-red-contrib-auth-saml";
+import { WebSocketClient, NoderedUtil } from "openflow-api";
 
 export class WebServer {
     private static _logger: winston.Logger;

@@ -1,11 +1,9 @@
 import * as RED from "node-red";
 import { Red } from "node-red";
-import { NoderedUtil } from "../../nodeclient/NoderedUtil";
 import { Logger } from "../../Logger";
 import { Config } from "../../Config";
-import { Base } from "../../nodeclient/Base";
-import { WebSocketClient } from "../../nodeclient/WebSocketClient";
-import { Rolemember, Role, QueueMessage } from "../../nodeclient/Message";
+import { WebSocketClient, NoderedUtil, Base, Role, Rolemember } from "openflow-api";
+import { QueueMessage } from "openflow-api/lib/browser/Message/QueueMessage";
 
 export interface Iworkflow_in_node {
     queue: string;
@@ -106,7 +104,7 @@ export class workflow_in_node {
         this.workflow.name = name;
         this.workflow.rpa = this.config.rpa;
         this.workflow.web = this.config.web;
-        this.workflow = await NoderedUtil._UpdateOne("workflow", null, this.workflow, 0, false, null);
+        this.workflow = await NoderedUtil.UpdateOne("workflow", null, this.workflow, 0, false, null);
     }
     nestedassign(target, source) {
         if (source === null || source === undefined) return null;
@@ -303,7 +301,7 @@ export class workflow_out_node {
             msg.form = this.config.form;
             if (msg._id !== null && msg._id !== undefined && msg._id !== "") {
                 // Logger.instanse.info("Updating workflow instance with id " + msg._id + " (" + msg.name + " with state " + msg.state);
-                var res2 = await NoderedUtil._UpdateOne("workflow_instances", null, msg, 1, false, msg.jwt);
+                var res2 = await NoderedUtil.UpdateOne("workflow_instances", null, msg, 1, false, msg.jwt);
             }
         } catch (error) {
             NoderedUtil.HandleError(this, error);
@@ -492,7 +490,7 @@ export class assign_workflow_node {
                     var exists = role.members.filter(x => x._id == this.config.targetid);
                     if (exists.length == 0) {
                         role.members.push(new Rolemember("target", this.config.targetid));
-                        await NoderedUtil._UpdateOne("users", null, role, 1, true, null);
+                        await NoderedUtil.UpdateOne("users", null, role, 1, true, null);
                     }
                 }
             }
@@ -543,7 +541,7 @@ export class assign_workflow_node {
                     result.payload = data.payload;
                     this.node.send([null, result]);
                     if (ack !== null && ack !== undefined) ack();
-                    await NoderedUtil._UpdateOne("workflow_instances", null, res[0], 1, false, null);
+                    await NoderedUtil.UpdateOne("workflow_instances", null, res[0], 1, false, null);
                     return;
                 }
             }

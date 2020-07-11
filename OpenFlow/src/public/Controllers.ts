@@ -1880,7 +1880,32 @@ module openflow {
 
 
                 if (this.model.form === "none" || this.model.form === "") {
-                    this.$location.path("/main");
+                    if (this.model.state != "failed") {
+                        this.$location.path("/main");
+                    } else {
+                        if (this.model.state == "failed") {
+                            $('#workflowform :input').prop("disabled", true);
+                            $('#workflowform :button').prop("disabled", true);
+                            $('#workflowform :input').addClass("disabled");
+                            $('#workflowform :button').addClass("disabled");
+
+                            $('#workflowform :button').hide();
+                            $('input[type="submit"]').hide();
+
+                            if ((this.model as any).error != null && (this.model as any).error != "") {
+                                this.errormessage = (this.model as any).error;
+                            } else if (!this.model.payload) {
+                                this.errormessage = "An unknown error occurred";
+                            } else if (this.model.payload.message != null && this.model.payload.message != "") {
+                                this.errormessage = this.model.payload.message;
+                            } else if (this.model.payload.Message != null && this.model.payload.Message != "") {
+                                this.errormessage = this.model.payload.Message;
+                            } else {
+                                this.errormessage = this.model.payload;
+                            }
+                            console.log(this.model.payload);
+                        }
+                    }
                     if (!this.$scope.$$phase) { this.$scope.$apply(); }
                     return;
                 } else if (this.model.form === "unknown") {

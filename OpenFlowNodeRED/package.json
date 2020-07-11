@@ -38,6 +38,7 @@
     "node-gyp": "^7.0.0",
     "node-red": "^1.1.0",
     "node-red-node-email": "^1.7.8",
+    "openflow-api": "file:../../openflow-api",
     "os-service": "^2.2.0",
     "passport-saml": "^1.3.3",
     "passport-saml-metadata": "^2.3.0",

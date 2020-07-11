@@ -2,7 +2,7 @@ import * as https from "https";
 import * as retry from "async-retry";
 import * as fs from "fs";
 import { fetch, toPassportConfig } from "passport-saml-metadata";
-import { NoderedUtil } from "./nodeclient/NoderedUtil";
+import { NoderedUtil } from "openflow-api";
 export class Config {
     public static reload(): void {
         Config.version = (fs.existsSync("VERSION") ? fs.readFileSync("VERSION", "utf8") : "1.0.34");

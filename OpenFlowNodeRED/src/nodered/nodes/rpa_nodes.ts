@@ -1,10 +1,8 @@
 import * as RED from "node-red";
 import { Red } from "node-red";
-import { NoderedUtil } from "../../nodeclient/NoderedUtil";
-import { Logger } from "../../Logger";
 import { Config } from "../../Config";
-import { WebSocketClient } from "../../nodeclient/WebSocketClient";
-import { QueueMessage } from "../../nodeclient/Message";
+import { WebSocketClient, NoderedUtil } from "openflow-api";
+import { QueueMessage } from "openflow-api/lib/browser/Message/QueueMessage";
 
 export interface Irpa_detector_node {
     queue: string;

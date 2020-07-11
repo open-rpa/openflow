@@ -2,7 +2,7 @@ import * as crypto from "crypto";
 import * as bcrypt from "bcryptjs";
 import * as jsonwebtoken from "jsonwebtoken";
 import { Config } from "../Config";
-import { TokenUser } from "./Message";
+import { TokenUser } from "openflow-api";
 
 export class Crypt {
     // static encryption_key:string = Config.aes_secret.substr(0,32); // must be 256 bytes (32 characters)
