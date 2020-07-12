@@ -6,7 +6,6 @@ import { Crypt } from "./Crypt";
 import * as url from "url";
 import { NoderedUtil } from "openflow-api";
 var got = require("got");
-
 type QueueOnMessage = (msg: string, options: QueueMessageOptions, ack: any, done: any) => void;
 interface IHashTable<T> {
     [key: string]: T;
@@ -41,7 +40,6 @@ export class amqpqueue {
     public ok: AssertQueue;
     public QueueOptions: any;
     public consumerTag: string;
-    // public cli: WebSocketClient;
 }
 export class amqpexchange {
     public exchange: string;
@@ -51,9 +49,7 @@ export class amqpexchange {
     public callback: QueueOnMessage;
     public ok: amqplib.Replies.AssertExchange;
     public ExchangeOptions: any;
-    // public cli: WebSocketClient;
 }
-
 // tslint:disable-next-line: class-name
 export class amqpwrapper {
     private conn: amqplib.Connection;
@@ -68,7 +64,6 @@ export class amqpwrapper {
     public queues: amqpqueue[] = [];
     private exchanges: amqpexchange[] = [];
     private replyqueue: amqpqueue;
-
     private static _instance: amqpwrapper = null;
     public static Instance(): amqpwrapper {
         return this._instance;
@@ -76,44 +71,12 @@ export class amqpwrapper {
     public static SetInstance(instance: amqpwrapper): void {
         this._instance = instance;
     }
-
-    // private callback: QueueOnMessage;
-    // private algorithm: string;
-    // private routingkey: string;
-    // public exchange: string;
-    // public queue: string;
-    // private _ok: amqplib.Replies.AssertExchange;
-    private _ok: AssertQueue;
-
     constructor(logger: winston.Logger, connectionstring: string) {
         this._logger = logger;
         this.connectionstring = connectionstring;
-
-        //if (!NoderedUtil.IsNullEmpty(Config.deadLetterExchange) && exchange != Config.deadLetterExchange) {
-        // this.AssertExchangeOptions.arguments = {};
-        // this.AssertExchangeOptions.arguments['x-message-ttl'] = Config.dlxmessagettl;
-        // this.AssertQueueOptions.arguments = {};
-        // this.AssertQueueOptions.arguments['x-dead-letter-exchange'] = Config.deadLetterExchange;
-        // this.AssertQueueOptions.arguments['x-message-ttl'] = Config.dlxmessagettl;
-
-        // this.AssertExchangeOptions.arguments['x-dead-letter-exchange'] = Config.deadLetterExchange;
-        // if (!NoderedUtil.IsNullEmpty(routingkey)) this.AssertExchangeOptions.arguments['x-dead-letter-routing-key'] = routingkey;
-        // this.AssertExchangeOptions.arguments['x-expires'] = Config.dlxmessageexpires;
-        // if (!NoderedUtil.IsNullEmpty(routingkey)) this.AssertQueueOptions.arguments['x-dead-letter-routing-key'] = routingkey;
-        // this.AssertQueueOptions.arguments['x-expires'] = Config.dlxmessageexpires;
-
-        // Bad idear ... 
-        // this.AssertExchangeOptions.arguments['alternate-exchange'] = Config.deadLetterExchange;
-        //}
-
         if (!NoderedUtil.IsNullEmpty(Config.amqp_dlx)) {
             this.AssertQueueOptions.arguments = {};
             this.AssertQueueOptions.arguments['x-dead-letter-exchange'] = Config.amqp_dlx;
-            //             //     arguments: {
-            //             //         'x-dead-letter-exchange': Config.amqp_dlx_prefix + queue,
-            //             //         'x-dead-letter-routing-key': Config.amqp_dlrk_prefix + queue,
-            //             //         'x-message-ttl': Config.amqp_message_ttl
-
         }
     }
     private timeout: NodeJS.Timeout = null;
@@ -152,11 +115,6 @@ export class amqpwrapper {
                 ack();
                 done();
             });
-
-            // this.channel.on('ack', (e) => {
-            // });
-            // this.channel.on('cancel', (e) => {
-            // });
             this.channel.on('close', (e) => {
                 try {
                     if (this.conn != null) this.conn.close();
@@ -168,23 +126,19 @@ export class amqpwrapper {
                     this.timeout = setTimeout(this.connect.bind(this), 1000);
                 }
             });
-            //this.channel.on('delivery', (e) => {
-            //});
-            // this.channel.on('nack', (e) => {
-            // });
             // ROLLBACK
-            // var keys = Object.keys(this.exchanges);
-            // for (var i = 0; i < keys.length; i++) {
-            //     var q1: amqpexchange = this.exchanges[keys[i]];
-            //     this.AddExchangeConsumer(q1.exchange, q1.algorithm, q1.routingkey, q1.ExchangeOptions, null, q1.callback);
-            // }
-            // var keys = Object.keys(this.queues);
-            // for (var i = 0; i < keys.length; i++) {
-            //     if (keys[i] != this.replyqueue) {
-            //         var q2: amqpqueue = this.queues[keys[i]];
-            //         this.AddQueueConsumer(q2.queue, q2.QueueOptions, null, q2.callback);
-            //     }
-            // }
+            var keys = Object.keys(this.exchanges);
+            for (var i = 0; i < keys.length; i++) {
+                var q1: amqpexchange = this.exchanges[keys[i]];
+                this.AddExchangeConsumer(q1.exchange, q1.algorithm, q1.routingkey, q1.ExchangeOptions, null, q1.callback);
+            }
+            var keys = Object.keys(this.queues);
+            for (var i = 0; i < keys.length; i++) {
+                if (keys[i] != this.replyqueue.queue) {
+                    var q2: amqpqueue = this.queues[keys[i]];
+                    this.AddQueueConsumer(q2.queue, q2.QueueOptions, null, q2.callback);
+                }
+            }
         } catch (error) {
             console.error(error);
             this.timeout = setTimeout(this.connect.bind(this), 1000);
@@ -295,7 +249,7 @@ export class amqpwrapper {
         // q.ExchangeOptions = new Object((ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));
         q.ExchangeOptions = Object.assign({}, (ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));
         q.exchange = exchange; q.algorithm = algorithm; q.routingkey = routingkey; q.callback = callback;
-        this._ok = await this.channel.assertExchange(q.exchange, q.algorithm, q.ExchangeOptions);
+        var _ok = await this.channel.assertExchange(q.exchange, q.algorithm, q.ExchangeOptions);
         var AssertQueueOptions = null;
         if (!NoderedUtil.IsNullEmpty(Config.amqp_dlx) && exchange == Config.amqp_dlx) {
             AssertQueueOptions = Object.create(this.AssertQueueOptions);
