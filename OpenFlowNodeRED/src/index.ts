@@ -27,6 +27,7 @@ rejectionEmitter.on("rejectionHandled", (error, promise) => {
     try {
         var c = Config;
         var socket: WebSocketClient = new WebSocketClient(logger, Config.api_ws_url);
+        logger.info("VERSION: " + Config.version);
         socket.events.on("onopen", async () => {
             try {
                 // q.clientagent = "nodered";

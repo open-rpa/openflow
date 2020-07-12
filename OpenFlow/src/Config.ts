@@ -1,14 +1,22 @@
 import { fetch, toPassportConfig } from "passport-saml-metadata";
 import * as fs from "fs";
+import * as path from "path";
 import * as retry from "async-retry";
-import { json } from "body-parser";
 import { DatabaseConnection } from "./DatabaseConnection";
 import { Logger } from "./Logger";
 import { NoderedUtil } from "openflow-api";
 
 export class Config {
+    public static getversion(): string {
+        var versionfile: string = path.join(__dirname, "VERSION");
+        if (!fs.existsSync(versionfile)) versionfile = path.join(__dirname, "..", "VERSION")
+        if (!fs.existsSync(versionfile)) versionfile = path.join(__dirname, "..", "..", "VERSION")
+        if (!fs.existsSync(versionfile)) versionfile = path.join(__dirname, "..", "..", "..", "VERSION")
+        Config.version = (fs.existsSync(versionfile) ? fs.readFileSync(versionfile, "utf8") : "0.0.1");
+        return Config.version;
+    }
     public static reload(): void {
-        Config.version = (fs.existsSync("VERSION") ? fs.readFileSync("VERSION", "utf8") : "1.0.34");
+        Config.getversion();
         Config.logpath = Config.getEnv("logpath", __dirname);
 
         Config.NODE_ENV = Config.getEnv("NODE_ENV", "development");
@@ -73,7 +81,7 @@ export class Config {
         Config.nodered_initial_liveness_delay = parseInt(Config.getEnv("nodered_initial_liveness_delay", "60"));
     }
     public static db: DatabaseConnection = null;
-    public static version: string = (fs.existsSync("VERSION") ? fs.readFileSync("VERSION", "utf8") : "1.0.34");
+    public static version: string = Config.getversion();
     public static logpath: string = Config.getEnv("logpath", __dirname);
 
     public static NODE_ENV: string = Config.getEnv("NODE_ENV", "development");

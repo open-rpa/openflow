@@ -212,10 +212,14 @@ rejectionEmitter.on("rejectionHandled", (error, promise) => {
     console.log('Rejection handled at: Promise', promise, 'reason:', error);
     console.dir(error.stack);
 });
+import * as fs from "fs";
 
 (async function (): Promise<void> {
     try {
+        // var wait = ms => new Promise((r, j) => setTimeout(r, ms));
+        // await wait(2000);
         // await Config.get_login_providers();
+        logger.info("VERSION: " + Config.version);
         const server: http.Server = await WebServer.configure(logger, Config.baseurl());
         WebSocketServer.configure(logger, server);
         logger.info("listening on " + Config.baseurl());
