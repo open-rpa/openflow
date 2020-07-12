@@ -2,8 +2,7 @@ import * as RED from "node-red";
 import { Red } from "node-red";
 import { Logger } from "../../Logger";
 import { Config } from "../../Config";
-import { WebSocketClient, NoderedUtil, Base, Role, Rolemember } from "openflow-api";
-import { QueueMessage } from "openflow-api/lib/browser/Message/QueueMessage";
+import { WebSocketClient, NoderedUtil, Base, Role, Rolemember, QueueMessage } from "openflow-api";
 
 export interface Iworkflow_in_node {
     queue: string;

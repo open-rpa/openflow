@@ -3,11 +3,7 @@ import { Red } from "node-red";
 import { Crypt } from "../../nodeclient/Crypt";
 import { Config } from "../../Config";
 import { Logger } from "../../Logger";
-import { NoderedUtil, SigninMessage, TokenUser, Message, WebSocketClient, Base } from "openflow-api";
-import { mapFunc, reduceFunc, finalizeFunc } from "openflow-api/lib/browser/Message/MapReduceMessage";
-import { UpdateOneMessage } from "openflow-api/lib/browser/Message/UpdateOneMessage";
-
-
+import { NoderedUtil, SigninMessage, TokenUser, Message, WebSocketClient, Base, mapFunc, reduceFunc, finalizeFunc, UpdateOneMessage } from "openflow-api";
 
 export interface Iapi_credentials {
 }

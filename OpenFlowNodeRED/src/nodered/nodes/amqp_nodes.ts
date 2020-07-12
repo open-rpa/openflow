@@ -1,8 +1,7 @@
 import * as RED from "node-red";
 import { Red } from "node-red";
 import { Config } from "../../Config";
-import { WebSocketClient, NoderedUtil, SigninMessage, Message } from "openflow-api";
-import { QueueMessage } from "openflow-api/lib/browser/Message/QueueMessage";
+import { WebSocketClient, NoderedUtil, SigninMessage, Message, QueueMessage } from "openflow-api";
 
 export interface Iamqp_connection {
     name: string;
