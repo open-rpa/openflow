@@ -252,6 +252,7 @@ export class LoginProvider {
             _url += "/";
             var res2 = {
                 wshost: _url,
+                wsurl: _url,
                 domain: Config.domain,
                 allow_user_registration: Config.allow_user_registration,
                 allow_personal_nodered: Config.allow_personal_nodered,

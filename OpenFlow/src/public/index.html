@@ -28,7 +28,7 @@
               class="sr-only">(current)</span></a>
         </li>
         <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Entities/')}" ng-show="menuctrl.hasrole('users')">
-          <a class="nav-link" href="#/Entities/entities"><span translate lib="web">entities</span></a>
+          <a class="nav-link" href="#/Entities"><span translate lib="web">entities</span></a>
         </li>
         <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Workflows')}">
           <a class="nav-link" href="#/Workflows"><span translate lib="web">workflows</span></a>
@@ -43,7 +43,7 @@
           <a class="nav-link" href="#/Reports"><span translate lib="web">reports</span></a>
         </li>
         <li class="nav-item"
-          ng-show="menuctrl.WebSocketClient.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')">
+          ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')">
           <a class="nav-link" href="#/Nodered"><span translate lib="web">nodered</span></a>
         </li>
         <li class="nav-item dropdown" ng-show="menuctrl.hasrole('users') || menuctrl.hasrole('admins')">
@@ -61,10 +61,11 @@
             <a class="dropdown-item" href="#/hdrobots"><span translate lib="web">hdrobots</span></a>
             <a class="dropdown-item" href="#/Auditlogs"><span translate lib="web">auditlogs</span></a>
 
-            <a class="dropdown-item" href="#/Payment" ng-show="menuctrl.WebSocketClient.stripe_api_key != ''"><span
-                translate lib="web">billing</span></a>
+            <a class="dropdown-item" href="#/Payment"
+              ng-show="menuctrl.WebSocketClientService.stripe_api_key != ''"><span translate
+                lib="web">billing</span></a>
 
-            <a class="dropdown-item" href>ver {{menuctrl.WebSocketClient.version}}</a>
+            <a class="dropdown-item" href>ver {{menuctrl.WebSocketClientService.version}}</a>
 
 
           </div>
@@ -88,27 +89,47 @@
 
   <script src="https://js.stripe.com/v3/"></script>
 
-  <script src="main.js"></script>
+
+  <link rel="stylesheet" href="//stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+    integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+  <link rel="stylesheet" href="//use.fontawesome.com/releases/v5.8.1/css/all.css"
+    integrity="sha384-50oBUHEmvpQ+1lW4y57PTFmhCaXp0ML5d60M1M7uH2+nqUivzIebhndOJK28anvf" crossorigin="anonymous">
+
+  <script src="bundle.js"></script>
+
+  <!-- <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.7.8/angular.min.js"></script> -->
+  <!-- <script src="//ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script> -->
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.7.8/angular-route.js"></script>
   <script>
     angular.lowercase = text => (text == undefined || text == null ? "" : text.toLowerCase());
   </script>
+  <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.2.1/angular-sanitize.min.js"></script>
   <script src="angular-localization.min.js"></script>
+
+  <!-- <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.11.4/jquery-ui.min.js"></script> -->
+  <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js"></script>
+  <!-- <script src="//code.jquery.com/jquery-migrate-3.0.0.min.js"></script> -->
+
+
+  <script src="//formbuilder.online/assets/js/form-builder.min.js"></script>
+  <script src="//formbuilder.online/assets/js/form-render.min.js"></script>
+
+
+  <script src="//cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+    integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+    crossorigin="anonymous"></script>
+  <script src="//stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+    integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+    crossorigin="anonymous"></script>
+
+  <script src="//cdn.jsdelivr.net/npm/chart.js@2.8.0/dist/Chart.min.js"
+    integrity="sha256-Uv9BNBucvCPipKQ2NS9wYpJmi8DTOEfTA/nH2aoJALw=" crossorigin="anonymous"></script>
+
+  <script src="//cdn.jsdelivr.net/angular.chartjs/latest/angular-chart.min.js" crossorigin="anonymous"></script>
 
   <link rel="stylesheet" href="openflow-font/styles.css">
   <link rel="stylesheet" href="site.css">
-
-  <script src='FileSaver.min.js'></script>
-
-  <link rel='stylesheet' href='formio.full.min.css'>
-  <script src='formio.full.min.js'></script>
-
-  <script src="ReconnectingWebSocket.js"></script>
-  <script src="CommonControllers.js"></script>
-  <script src="Controllers.js"></script>
-  <script src="Message.js"></script>
-  <script src="Entities.js"></script>
-  <script src="WebSocketClient.js"></script>
-  <script src="app.js"></script>
 
   <script>
     $(function () {

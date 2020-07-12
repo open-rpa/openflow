@@ -541,7 +541,7 @@ export class Message {
     }
     private async MapReduce(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: MapReduceMessage<any>
+        var msg: MapReduceMessage
         try {
             msg = MapReduceMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }

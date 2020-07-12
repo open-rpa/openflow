@@ -288,11 +288,11 @@ export class WebSocketServerClient {
         return q.result as T[];
     }
     async MapReduce(collection: string, map: mapFunc, reduce: reduceFunc, finalize: finalizeFunc, query: any, out: string | any, scope: any): Promise<any> {
-        var q: MapReduceMessage<any> = new MapReduceMessage(map, reduce, finalize, query, out);
+        var q: MapReduceMessage = new MapReduceMessage(map, reduce, finalize, query, out);
         q.collectionname = collection; q.scope = scope;
         var msg: Message = new Message(); msg.command = "mapreduce"; q.out = out;
         msg.data = JSONfn.stringify(q);
-        q = await this.Send<MapReduceMessage<any>>(msg);
+        q = await this.Send<MapReduceMessage>(msg);
         return q.result;
     }
     async Insert<T extends Base>(collection: string, model: any): Promise<any> {
