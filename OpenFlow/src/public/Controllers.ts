@@ -59,10 +59,6 @@ export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
                 console.log(this.queuename);
                 await this.loadData();
                 await this.loadUsers();
-                $scope.$on('queuemessage', (event, data: QueueMessage) => {
-                    if (event && data) { }
-                });
-
             } else {
                 console.error("Missing id");
             }
@@ -889,10 +885,6 @@ export class MenuCtrl {
         $scope.$root.$on('$routeChangeStart', (...args) => { this.routeChangeStart.apply(this, args); });
         this.path = this.$location.path();
         var cleanup = this.$scope.$on('signin', (event, data) => {
-            console.log('MenuCtrl.signin');
-            console.log('event', event);
-            console.log('data', data);
-
             if (event && data) { }
             this.user = data;
             this.signedin = true;
@@ -1331,8 +1323,8 @@ export class SocketCtrl {
     ) {
         console.debug("SocketCtrl");
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
-            await NoderedUtil.RegisterQueue(WebSocketClient.instance, "", (nack: boolean, result: any) => {
-                console.log(result);
+            await NoderedUtil.RegisterQueue(WebSocketClient.instance, "", (data: QueueMessage, ack: any) => {
+                ack();
             });
         });
     }
@@ -1746,8 +1738,21 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
 
         this.basequery = { _id: this.id };
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
-            this.queuename = await NoderedUtil.RegisterQueue(WebSocketClient.instance, "", (nack: boolean, result: any) => {
-                console.log(result);
+            this.queuename = await NoderedUtil.RegisterQueue(WebSocketClient.instance, "", (data: QueueMessage, ack: any) => {
+                ack();
+                console.debug(data);
+                if (data.queuename == this.queuename) {
+                    if (this.instanceid == null && data.data._id != null) {
+                        this.instanceid = data.data._id;
+                        // this.$location.path("/Form/" + this.id + "/" + this.instanceid);
+                        // if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                        this.loadData();
+                        return;
+                    } else {
+                        this.loadData();
+                    }
+                }
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
             });
             console.log(this.queuename);
             if (this.id !== null && this.id !== undefined && this.id !== "") {
@@ -1758,22 +1763,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 console.error(this.errormessage);
             }
-        });
-        $scope.$on('queuemessage', (event, data: QueueMessage) => {
-            if (event && data) { }
-            console.debug(data);
-            if (data.queuename == this.queuename) {
-                if (this.instanceid == null && data.data._id != null) {
-                    this.instanceid = data.data._id;
-                    // this.$location.path("/Form/" + this.id + "/" + this.instanceid);
-                    // if (!this.$scope.$$phase) { this.$scope.$apply(); }
-                    this.loadData();
-                    return;
-                } else {
-                    this.loadData();
-                }
-            }
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         });
 
     }
