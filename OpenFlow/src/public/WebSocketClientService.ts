@@ -11,7 +11,9 @@ export class WebSocketClientService {
         public $window: any
     ) {
         console.debug("WebSocketClientService::constructor");
-
+        this.load();
+    }
+    load() {
         this.getJSON("/config", async (error: any, data: any) => {
             if (NoderedUtil.IsNullUndefinded(data)) {
                 console.error("/config return null");
@@ -31,50 +33,60 @@ export class WebSocketClientService {
                 this.websocket_package_size = data.websocket_package_size;
                 this.stripe_api_key = data.stripe_api_key;
 
-                var cli: WebSocketClient;
-                cli = new WebSocketClient(this.logger, wsurl);
-                WebSocketClient.instance.version = data.version;
-
+                if (WebSocketClient.instance == null) {
+                    var cli: WebSocketClient;
+                    cli = new WebSocketClient(this.logger, wsurl);
+                    WebSocketClient.instance.version = data.version;
+                }
                 cli.events.on('connect', () => {
                     this.logger.info('connected to ' + wsurl);
-                    cli.getJSON("/jwt", async (error: any, data: any) => {
-                        if (data !== null && data !== undefined) {
-                            if (data.jwt === null || data.jwt === undefined || data.jwt.trim() === "") { data.jwt = null; }
-                            if (data.rawAssertion === null || data.rawAssertion === undefined || data.rawAssertion.trim() === "") { data.rawAssertion = null; }
-                            if (data.jwt === null && data.rawAssertion === null) {
-                                console.debug("data.jwt and data.rawAssertion is null");
-                                data = null;
-                            }
-                        }
-                        var _url = this.$location.absUrl();
-                        if (data === null || data === undefined) {
-                            if (this.$location.path() !== "/Login" && this.$location.path() !== "/Signup") {
-                                // var _url = this.$location.absUrl();
-                                // this.setCookie("weburl", _url, 365);
-                                console.log('weburl', this.$location.path());
-                                this.setCookie("weburl", this.$location.path(), 365);
-                                this.$location.path("/Login");
-                                this.$rootScope.$apply();
-                            }
-                            return;
-                        }
-                        var result = await NoderedUtil.SigninWithToken(data.jwt, data.rawAssertion, null);
-                        this.user = result.user;
-                        this.jwt = result.jwt;
-                        this.$rootScope.$broadcast("signin", result.user);
-                        var redirecturl = this.getCookie("weburl");
-                        if (!NoderedUtil.IsNullEmpty(redirecturl)) {
-                            console.log('redirecturl', redirecturl);
-                            this.deleteCookie("weburl");
-                            this.$location.path(redirecturl);
-                        }
-                    });
+                    this.loadToken();
                 });
                 cli.connect();
             } catch (error) {
                 console.error(error);
             }
         });
+    }
+    loadToken() {
+        WebSocketClient.instance.getJSON("/jwt", async (error: any, data: any) => {
+            if (data !== null && data !== undefined) {
+                if (data.jwt === null || data.jwt === undefined || data.jwt.trim() === "") { data.jwt = null; }
+                if (data.rawAssertion === null || data.rawAssertion === undefined || data.rawAssertion.trim() === "") { data.rawAssertion = null; }
+                if (data.jwt === null && data.rawAssertion === null) {
+                    console.debug("data.jwt and data.rawAssertion is null");
+                    data = null;
+                }
+            }
+            var _url = this.$location.absUrl();
+            if (data === null || data === undefined) {
+                if (this.$location.path() !== "/Login" && this.$location.path() !== "/Signup") {
+                    // var _url = this.$location.absUrl();
+                    // this.setCookie("weburl", _url, 365);
+                    console.log('weburl', this.$location.path());
+                    this.setCookie("weburl", this.$location.path(), 365);
+                    this.$location.path("/Login");
+                    this.$rootScope.$apply();
+                }
+                return;
+            }
+            var result = await NoderedUtil.SigninWithToken(data.jwt, data.rawAssertion, null);
+            this.user = result.user;
+            this.jwt = result.jwt;
+            this.$rootScope.$broadcast("signin", result.user);
+            var redirecturl = this.getCookie("weburl");
+            if (!NoderedUtil.IsNullEmpty(redirecturl)) {
+                console.log('redirecturl', redirecturl);
+                this.deleteCookie("weburl");
+                this.$location.path(redirecturl);
+            }
+        });
+    }
+    async impersonate(userid: string) {
+        var result = await NoderedUtil.SigninWithToken(this.jwt, null, userid);
+        this.user = result.user;
+        this.jwt = result.jwt;
+        this.$rootScope.$broadcast("signin", result.user);
     }
     setCookie(cname, cvalue, exdays) {
         var d = new Date();

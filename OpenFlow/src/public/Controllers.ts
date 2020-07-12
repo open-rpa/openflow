@@ -904,9 +904,7 @@ export class MenuCtrl {
         return this.WebSocketClientService.usingCordova;
     }
     stopimpersonation() {
-        throw new Error("NOT IMPLEMENTED YET!");
-        // FIX THIS
-        // NoderedUtil.gettoken();
+        this.WebSocketClientService.loadToken();
     }
     PathIs(path: string) {
         if (this.path == null && this.path == undefined) return false;
@@ -1014,8 +1012,12 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     async Impersonate(model: TokenUser): Promise<any> {
-        this.loading = true;
-        var result = await NoderedUtil.SigninWithToken(this.WebSocketClientService.jwt, null, model._id);
+        try {
+            this.loading = true;
+            await this.WebSocketClientService.impersonate(model._id);
+        } catch (error) {
+            this.errormessage = JSON.stringify(error);
+        }
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
@@ -3015,8 +3017,12 @@ export class RobotsCtrl extends entitiesCtrl<unattendedclient> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     async Impersonate(model: TokenUser): Promise<any> {
-        this.loading = true;
-        var result = await NoderedUtil.SigninWithToken(this.WebSocketClientService.jwt, null, model._id);
+        try {
+            this.loading = true;
+            await this.WebSocketClientService.impersonate(model._id);
+        } catch (error) {
+            this.errormessage = JSON.stringify(error);
+        }
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
