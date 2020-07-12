@@ -10,6 +10,7 @@ Build to run on docker, how to setup docker is not supported on GitHub/slack
 
 For now only Linux (tested on ubuntu 18LTS) and windows is supported
 Install NodeJS version 10 (google how to do that, if in doubt, hint, use nvm if you got the wrong version installed)
+Also you need to have an installation of  [mongoDB](https://www.mongodb.com/download-center/community) and [RabbitMQ](https://www.rabbitmq.com/download.html)
 
 On window, run from a command prompt with admin rights
 
@@ -48,6 +49,7 @@ then open a browser and visit [localhost.openrpa.dk](http://localhost.openrpa.dk
 
 For now only Linux (tested on ubuntu 18LTS) and windows is supported
 Install NodeJS version 10 (google how to do that, if in doubt, hint, use nvm if you got the wrong version installed)
+This require you to have openflow installed somewhere, or you can use out public openflow at [app.openiap.io](https://app.openiap.io) (noderedremote.env)
 
 On window, run from a command prompt with admin rights
 
@@ -122,15 +124,11 @@ go to the folder with openflow
 
 Install gulp and typescript globally
 
-`npm i gulp typescript -g`
+`npm i gulp typescript browserify tsify -g`
 
 install packages for openflow api/web
 
 `npm i`
-
-Create webpack
-
-`npx webpack`
 
 install packages for NodeRED by 
 

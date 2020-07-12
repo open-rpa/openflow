@@ -1,9 +1,8 @@
 import * as RED from "node-red";
 import { Red } from "node-red";
-import { NoderedUtil } from "../../nodeclient/NoderedUtil";
 import { Logger } from "../../Logger";
-import { Config } from "../../Config";
 import * as request from "request";
+import { NoderedUtil } from "openflow-api";
 
 export interface Ionesignal_credentials {
 }

@@ -1,49 +1,22 @@
 import * as crypto from "crypto";
 import { lookup } from "mimetype";
 import { SocketMessage } from "../SocketMessage";
-import { WebSocketClient, QueuedMessage } from "../WebSocketServerClient";
-import { QueryMessage } from "./QueryMessage";
-import { Base, Rights, WellknownIds } from "../base";
-import { SigninMessage } from "./SigninMessage";
-import { User, NoderedUser } from "../User";
 import { Auth } from "../Auth";
 import { Crypt } from "../Crypt";
-import { TokenUser } from "../TokenUser";
-import { AggregateMessage } from "./AggregateMessage";
-import { InsertOneMessage } from "./InsertOneMessage";
-import { UpdateOneMessage } from "./UpdateOneMessage";
-import { DeleteOneMessage } from "./DeleteOneMessage";
 import { Config } from "../Config";
 import { Audit } from "../Audit";
-import { InsertOrUpdateOneMessage } from "./InsertOrUpdateOneMessage";
 import { LoginProvider } from "../LoginProvider";
-import { MapReduceMessage } from "./MapReduceMessage";
-import { CloseQueueMessage } from "./CloseQueueMessage";
-import { RegisterQueueMessage } from "./RegisterQueueMessage";
-import { QueueMessage } from "./QueueMessage";
-import { RegisterUserMessage } from "./RegisterUserMessage";
-import { UpdateManyMessage } from "./UpdateManyMessage";
-import { EnsureNoderedInstanceMessage } from "./EnsureNoderedInstanceMessage";
 import { KubeUtil } from "../KubeUtil";
-import { Role } from "../Role";
-import { RestartNoderedInstanceMessage } from "./RestartNoderedInstanceMessage";
-import { DeleteNoderedInstanceMessage, DeleteNoderedPodMessage } from "./DeleteNoderedInstanceMessage";
-import { GetNoderedInstanceMessage } from "./GetNoderedInstanceMessage";
-import { GetNoderedInstanceLogMessage } from "./GetNoderedInstanceLogMessage";
-import { Util } from "../Util";
-import { SaveFileMessage } from "./SaveFileMessage";
 import { Readable, Stream } from "stream";
 import { GridFSBucket, ObjectID, Db, Cursor, MongoNetworkError } from "mongodb";
-import { GetFileMessage } from "./GetFileMessage";
-import { ListCollectionsMessage } from "./ListCollectionsMessage";
-import { DropCollectionMessage } from "./DropCollectionMessage";
 import * as path from "path";
-import { UpdateFileMessage } from "./UpdateFileMessage";
 import { DatabaseConnection } from "../DatabaseConnection";
-import { CreateWorkflowInstanceMessage } from "./CreateWorkflowInstanceMessage";
-import { StripeMessage, EnsureStripeCustomerMessage, Billing, stripe_customer, stripe_base, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription, stripe_subscription_item, stripe_plan, stripe_coupon } from "./StripeMessage";
+import { StripeMessage, EnsureStripeCustomerMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser } from "openflow-api";
+import { Billing, stripe_customer, stripe_base, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription, stripe_subscription_item, stripe_plan, stripe_coupon } from "openflow-api";
 import { V1ResourceRequirements } from "@kubernetes/client-node";
 import { amqpwrapper } from "../amqpwrapper";
+import { WebSocketServerClient } from "../WebSocketServerClient";
+import { DBHelper } from "../DBHelper";
 var request = require("request");
 var got = require("got");
 
@@ -69,25 +42,25 @@ export class Message {
         return result;
     }
     public Reply(command: string = null): void {
-        if (!Util.IsNullEmpty(command)) { this.command = command; }
+        if (!NoderedUtil.IsNullEmpty(command)) { this.command = command; }
         this.replyto = this.id;
         this.id = crypto.randomBytes(16).toString("hex");
     }
-    public Process(cli: WebSocketClient): void {
+    public Process(cli: WebSocketServerClient): void {
         try {
-            if (!Util.IsNullEmpty(this.command)) { this.command = this.command.toLowerCase(); }
+            if (!NoderedUtil.IsNullEmpty(this.command)) { this.command = this.command.toLowerCase(); }
             var command: string = this.command;
             if (this.command !== "ping" && this.command !== "pong") {
 
-                if (!Util.IsNullEmpty(this.replyto)) {
+                if (!NoderedUtil.IsNullEmpty(this.replyto)) {
                     var qmsg: QueuedMessage = cli.messageQueue[this.replyto];
-                    if (!Util.IsNullUndefinded(qmsg)) {
+                    if (!NoderedUtil.IsNullUndefinded(qmsg)) {
                         try {
                             qmsg.message = Object.assign(qmsg.message, JSON.parse(this.data));
                         } catch (error) {
                             // TODO: should we set message to data ?
                         }
-                        if (!Util.IsNullUndefinded(qmsg.cb)) { qmsg.cb(this); }
+                        if (!NoderedUtil.IsNullUndefinded(qmsg.cb)) { qmsg.cb(this); }
                         delete cli.messageQueue[this.id];
                     }
                     return;
@@ -210,15 +183,15 @@ export class Message {
             cli._logger.error(error);
         }
     }
-    async RegisterQueue(cli: WebSocketClient) {
+    async RegisterQueue(cli: WebSocketServerClient) {
         this.Reply();
-        var msg: RegisterQueueMessage<Base>
+        var msg: RegisterQueueMessage
         try {
             msg = RegisterQueueMessage.assign(this.data);
             msg.queuename = await cli.CreateConsumer(msg.queuename);
         } catch (error) {
             cli._logger.error(error);
-            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -230,17 +203,17 @@ export class Message {
         }
         this.Send(cli);
     }
-    async QueueMessage(cli: WebSocketClient) {
+    async QueueMessage(cli: WebSocketServerClient) {
         this.Reply();
         var msg: QueueMessage
         try {
             msg = QueueMessage.assign(this.data);
-            if (Util.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
-            if (!Util.IsNullUndefinded(msg.data)) {
+            if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+            if (!NoderedUtil.IsNullUndefinded(msg.data)) {
                 if (typeof msg.data == 'string') {
                     try {
                         var obj = JSON.parse(msg.data);
-                        // if (Util.IsNullUndefinded(obj.jwt)) {
+                        // if (NoderedUtil.IsNullUndefinded(obj.jwt)) {
                         //     obj.jwt = msg.jwt;
                         //     msg.data = JSON.stringify(obj);
                         // }
@@ -252,7 +225,28 @@ export class Message {
             }
             var expiration: number = Config.amqp_default_expiration;
             if (typeof msg.expiration == 'number') expiration = msg.expiration;
-            if (Util.IsNullEmpty(msg.replyto)) {
+            if (typeof msg.data === 'string' || msg.data instanceof String) {
+                try {
+                    msg.data = JSON.parse((msg.data as any));
+                } catch (error) {
+                }
+            }
+            try {
+                if (!NoderedUtil.IsNullEmpty(msg.data) && NoderedUtil.IsNullEmpty(msg.data.jwt)) {
+                    if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
+                        msg.data.jwt = msg.jwt;
+                    } else {
+                        msg.data.jwt = cli.jwt;
+                    }
+                }
+            } catch (error) {
+                cli._logger.error(error);
+            }
+            if (!NoderedUtil.IsNullEmpty(msg.data) && !NoderedUtil.IsNullEmpty(msg.data.jwt)) {
+                var tuser = Crypt.verityToken(msg.data.jwt);
+                msg.data.user = tuser;
+            }
+            if (NoderedUtil.IsNullEmpty(msg.replyto)) {
                 // var sendthis = { data: msg.data, jwt: cli.jwt, user: cli.user };
                 var sendthis = msg.data;
                 await amqpwrapper.Instance().send("", msg.queuename, sendthis, expiration, msg.correlationId);
@@ -272,7 +266,7 @@ export class Message {
             }
         } catch (error) {
             cli._logger.error(error);
-            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -284,15 +278,15 @@ export class Message {
         }
         this.Send(cli);
     }
-    async CloseQueue(cli: WebSocketClient) {
+    async CloseQueue(cli: WebSocketServerClient) {
         this.Reply();
-        var msg: CloseQueueMessage<Base>
+        var msg: CloseQueueMessage
         try {
             msg = CloseQueueMessage.assign(this.data);
             await cli.CloseConsumer(msg.queuename);
         } catch (error) {
             cli._logger.error(error);
-            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -304,27 +298,27 @@ export class Message {
         }
         this.Send(cli);
     }
-    public Send(cli: WebSocketClient): void {
+    public Send(cli: WebSocketServerClient): void {
         cli.Send(this);
     }
-    private UnknownCommand(cli: WebSocketClient): void {
+    private UnknownCommand(cli: WebSocketServerClient): void {
         this.Reply("error");
         this.data = "Unknown command " + this.command;
         cli._logger.error(this.data);
         this.Send(cli);
     }
-    private Ping(cli: WebSocketClient): void {
+    private Ping(cli: WebSocketServerClient): void {
         this.Reply("pong");
         this.Send(cli);
     }
     private static collectionCache: any = {};
     private static collectionCachetime: Date = new Date();
-    private async ListCollections(cli: WebSocketClient): Promise<void> {
+    private async ListCollections(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
         var msg: ListCollectionsMessage
         try {
             msg = ListCollectionsMessage.assign(this.data);
-            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             var d = new Date(Message.collectionCachetime.getTime() + 1000 * 60);
             if (d < new Date()) {
                 Message.collectionCache = {};
@@ -353,7 +347,7 @@ export class Message {
             }
         } catch (error) {
             cli._logger.error(error);
-            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -365,16 +359,16 @@ export class Message {
         }
         this.Send(cli);
     }
-    private async DropCollection(cli: WebSocketClient): Promise<void> {
+    private async DropCollection(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
         var msg: DropCollectionMessage
         try {
             msg = DropCollectionMessage.assign(this.data);
-            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             await Config.db.DropCollection(msg.collectionname, msg.jwt);
         } catch (error) {
             cli._logger.error(error);
-            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -387,16 +381,16 @@ export class Message {
         this.Send(cli);
     }
 
-    private async Query(cli: WebSocketClient): Promise<void> {
+    private async Query(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: QueryMessage<Base>
+        var msg: QueryMessage
         try {
             msg = QueryMessage.assign(this.data);
-            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             msg.result = await Config.db.query(msg.query, msg.projection, msg.top, msg.skip, msg.orderby, msg.collectionname, msg.jwt, msg.queryas);
         } catch (error) {
             cli._logger.error(error);
-            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -408,15 +402,15 @@ export class Message {
         }
         this.Send(cli);
     }
-    private async Aggregate(cli: WebSocketClient): Promise<void> {
+    private async Aggregate(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: AggregateMessage<Base>
+        var msg: AggregateMessage
         try {
             msg = AggregateMessage.assign(this.data);
-            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             msg.result = await Config.db.aggregate(msg.aggregates, msg.collectionname, msg.jwt);
         } catch (error) {
-            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -428,23 +422,23 @@ export class Message {
         }
         this.Send(cli);
     }
-    private async InsertOne(cli: WebSocketClient): Promise<void> {
+    private async InsertOne(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: InsertOneMessage<Base>
+        var msg: InsertOneMessage
         try {
             msg = InsertOneMessage.assign(this.data);
-            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-            if (Util.IsNullEmpty(msg.w as any)) { msg.w = 0; }
-            if (Util.IsNullEmpty(msg.j as any)) { msg.j = false; }
-            if (Util.IsNullEmpty(msg.jwt) && msg.collectionname === "jslog") {
-                msg.jwt = TokenUser.rootToken();
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
+            if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt) && msg.collectionname === "jslog") {
+                msg.jwt = Crypt.rootToken();
             }
-            if (Util.IsNullEmpty(msg.jwt)) {
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) {
                 throw new Error("jwt is null and client is not authenticated");
             }
             msg.result = await Config.db.InsertOne(msg.item, msg.collectionname, msg.w, msg.j, msg.jwt);
         } catch (error) {
-            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -456,17 +450,17 @@ export class Message {
         }
         this.Send(cli);
     }
-    private async UpdateOne(cli: WebSocketClient): Promise<void> {
+    private async UpdateOne(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: UpdateOneMessage<Base>
+        var msg: UpdateOneMessage
         try {
             msg = UpdateOneMessage.assign(this.data);
-            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-            if (Util.IsNullEmpty(msg.w as any)) { msg.w = 0; }
-            if (Util.IsNullEmpty(msg.j as any)) { msg.j = false; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
+            if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
             msg = await Config.db.UpdateOne(msg);
         } catch (error) {
-            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -479,17 +473,17 @@ export class Message {
         }
         this.Send(cli);
     }
-    private async UpdateMany(cli: WebSocketClient): Promise<void> {
+    private async UpdateMany(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: UpdateManyMessage<Base>;
+        var msg: UpdateManyMessage
         try {
             msg = UpdateManyMessage.assign(this.data);
-            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-            if (Util.IsNullEmpty(msg.w as any)) { msg.w = 0; }
-            if (Util.IsNullEmpty(msg.j as any)) { msg.j = false; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
+            if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
             msg = await Config.db.UpdateMany(msg);
         } catch (error) {
-            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -503,17 +497,17 @@ export class Message {
         this.Send(cli);
     }
 
-    private async InsertOrUpdateOne(cli: WebSocketClient): Promise<void> {
+    private async InsertOrUpdateOne(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: InsertOrUpdateOneMessage<Base>
+        var msg: InsertOrUpdateOneMessage
         try {
             msg = InsertOrUpdateOneMessage.assign(this.data);
-            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-            if (Util.IsNullEmpty(msg.w as any)) { msg.w = 0; }
-            if (Util.IsNullEmpty(msg.j as any)) { msg.j = false; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
+            if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
             msg = await Config.db.InsertOrUpdateOne(msg);
         } catch (error) {
-            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -525,15 +519,15 @@ export class Message {
         }
         this.Send(cli);
     }
-    private async DeleteOne(cli: WebSocketClient): Promise<void> {
+    private async DeleteOne(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
         var msg: DeleteOneMessage
         try {
             msg = DeleteOneMessage.assign(this.data);
-            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             await Config.db.DeleteOne(msg._id, msg.collectionname, msg.jwt);
         } catch (error) {
-            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -545,15 +539,15 @@ export class Message {
         }
         this.Send(cli);
     }
-    private async MapReduce(cli: WebSocketClient): Promise<void> {
+    private async MapReduce(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: MapReduceMessage<any>
+        var msg: MapReduceMessage
         try {
             msg = MapReduceMessage.assign(this.data);
-            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             msg.result = await Config.db.MapReduce(msg.map, msg.reduce, msg.finalize, msg.query, msg.out, msg.collectionname, msg.scope, msg.jwt);
         } catch (error) {
-            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -566,7 +560,7 @@ export class Message {
         this.Send(cli);
     }
 
-    private async Signin(cli: WebSocketClient): Promise<void> {
+    private async Signin(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
         var msg: SigninMessage
         var impostor: string = "";
@@ -581,15 +575,15 @@ export class Message {
                 if (tuser.impostor !== null && tuser.impostor !== undefined && tuser.impostor !== "") {
                     impostor = tuser.impostor;
                 }
-                user = await User.FindByUsername(tuser.username);
+                user = await DBHelper.FindByUsername(tuser.username);
                 if (user !== null && user !== undefined) {
                     // refresh, for roles and stuff
-                    tuser = new TokenUser(user);
+                    tuser = TokenUser.From(user);
                 } else { // Autocreate user .... safe ?? we use this for autocreating nodered service accounts
                     if (Config.auto_create_users == true) {
-                        var jwt: string = TokenUser.rootToken();
-                        user = await User.ensureUser(jwt, tuser.name, tuser.username, null, msg.password);
-                        tuser = new TokenUser(user);
+                        var jwt: string = Crypt.rootToken();
+                        user = await DBHelper.ensureUser(jwt, tuser.name, tuser.username, null, msg.password);
+                        tuser = TokenUser.From(user);
                     } else {
                         if (msg !== null && msg !== undefined) msg.error = "Unknown username or password";
                     }
@@ -599,19 +593,19 @@ export class Message {
                 }
                 // } else if (tuser.username.startsWith("nodered")) {
                 //     user = new User(); user.name = tuser.name; user.username = tuser.username;
-                //     await user.Save(TokenUser.rootToken());
-                //     tuser = new TokenUser(user);
+                //     await user.Save(Crypt.rootToken());
+                //     tuser = TokenUser.From(user);
                 // } else {
                 //     msg.error = "Unknown username or password";
                 // }
             } else if (msg.rawAssertion !== null && msg.rawAssertion !== undefined) {
                 type = "samltoken";
                 user = await LoginProvider.validateToken(msg.rawAssertion);
-                if (user !== null && user != undefined) { tuser = new TokenUser(user); }
+                if (user !== null && user != undefined) { tuser = TokenUser.From(user); }
                 msg.rawAssertion = "";
             } else {
                 user = await Auth.ValidateByPassword(msg.username, msg.password);
-                tuser = new TokenUser(user);
+                tuser = TokenUser.From(user);
             }
             cli.clientagent = msg.clientagent;
             cli.clientversion = msg.clientversion;
@@ -632,33 +626,33 @@ export class Message {
                 if (msg.impersonate !== undefined && msg.impersonate !== null && msg.impersonate !== "" && tuser._id != msg.impersonate) {
                     var items = await Config.db.query({ _id: msg.impersonate }, null, 1, 0, null, "users", msg.jwt);
                     if (items.length == 0) {
-                        var impostors = await Config.db.query<User>({ _id: msg.impersonate }, null, 1, 0, null, "users", TokenUser.rootToken());
+                        var impostors = await Config.db.query<User>({ _id: msg.impersonate }, null, 1, 0, null, "users", Crypt.rootToken());
                         var impb: User = new User(); impb.name = "unknown"; impb._id = msg.impersonate;
-                        var imp: TokenUser = new TokenUser(impb);
+                        var imp: TokenUser = TokenUser.From(impb);
                         if (impostors.length == 1) {
-                            imp = new TokenUser(impostors[0]);
+                            imp = TokenUser.From(impostors[0]);
                         }
                         Audit.ImpersonateFailed(imp, tuser, cli.clientagent, cli.clientversion);
                         throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " view and impersonating " + msg.impersonate);
                     }
                     var tuserimpostor = tuser;
                     user = User.assign(items[0] as User);
-                    await user.DecorateWithRoles();
+                    await DBHelper.DecorateWithRoles(user);
                     // Check we have update rights
                     try {
-                        await user.Save(msg.jwt);
+                        await DBHelper.Save(user, msg.jwt);
                     } catch (error) {
-                        var impostors = await Config.db.query<User>({ _id: msg.impersonate }, null, 1, 0, null, "users", TokenUser.rootToken());
+                        var impostors = await Config.db.query<User>({ _id: msg.impersonate }, null, 1, 0, null, "users", Crypt.rootToken());
                         var impb: User = new User(); impb.name = "unknown"; impb._id = msg.impersonate;
-                        var imp: TokenUser = new TokenUser(impb);
+                        var imp: TokenUser = TokenUser.From(impb);
                         if (impostors.length == 1) {
-                            imp = new TokenUser(impostors[0]);
+                            imp = TokenUser.From(impostors[0]);
                         }
 
                         Audit.ImpersonateFailed(imp, tuser, cli.clientagent, cli.clientversion);
                         throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " updating and impersonating " + msg.impersonate);
                     }
-                    tuser = new TokenUser(user);
+                    tuser = TokenUser.From(user);
                     tuser.impostor = userid;
                     if (msg.longtoken) {
                         msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
@@ -701,10 +695,10 @@ export class Message {
                 if (cli.clientagent == "nodered") {
                     user._lastnoderedclientversion = cli.clientversion;
                 }
-                await user.Save(TokenUser.rootToken());
+                await DBHelper.Save(user, Crypt.rootToken());
             }
         } catch (error) {
-            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -717,7 +711,7 @@ export class Message {
         }
         this.Send(cli);
     }
-    private async RegisterUser(cli: WebSocketClient): Promise<void> {
+    private async RegisterUser(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
         var msg: RegisterUserMessage;
         var user: User;
@@ -726,11 +720,11 @@ export class Message {
             if (msg.name == null || msg.name == undefined || msg.name == "") { throw new Error("Name cannot be null"); }
             if (msg.username == null || msg.username == undefined || msg.username == "") { throw new Error("Username cannot be null"); }
             if (msg.password == null || msg.password == undefined || msg.password == "") { throw new Error("Password cannot be null"); }
-            user = await User.FindByUsername(msg.username);
+            user = await DBHelper.FindByUsername(msg.username);
             if (user !== null && user !== undefined) { throw new Error("Illegal username"); }
-            var jwt: string = TokenUser.rootToken();
-            user = await User.ensureUser(jwt, msg.name, msg.username, null, msg.password);
-            msg.user = new TokenUser(user);
+            var jwt: string = Crypt.rootToken();
+            user = await DBHelper.ensureUser(jwt, msg.name, msg.username, null, msg.password);
+            msg.user = TokenUser.From(user);
 
             jwt = Crypt.createToken(msg.user, Config.shorttoken_expires_in);
             var name = user.username;
@@ -738,15 +732,15 @@ export class Message {
             name = name.toLowerCase();
 
             cli._logger.debug("[" + user.username + "] ensure nodered role " + name + "noderedadmins");
-            var noderedadmins = await User.ensureRole(jwt, name + "noderedadmins", null);
+            var noderedadmins = await DBHelper.EnsureRole(jwt, name + "noderedadmins", null);
             noderedadmins.addRight(user._id, user.username, [Rights.full_control]);
             noderedadmins.removeRight(user._id, [Rights.delete]);
             noderedadmins.AddMember(user);
             cli._logger.debug("[" + user.username + "] update nodered role " + name + "noderedadmins");
-            await noderedadmins.Save(jwt);
+            await DBHelper.Save(noderedadmins, jwt);
 
         } catch (error) {
-            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -774,7 +768,7 @@ export class Message {
         name = name.toLowerCase();
         return name;
     }
-    private async EnsureNoderedInstance(cli: WebSocketClient): Promise<void> {
+    private async EnsureNoderedInstance(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
         var msg: EnsureNoderedInstanceMessage;
         try {
@@ -794,7 +788,7 @@ export class Message {
         }
         this.Send(cli);
     }
-    private async _EnsureNoderedInstance(cli: WebSocketClient, _id: string, skipcreate: boolean): Promise<void> {
+    private async _EnsureNoderedInstance(cli: WebSocketServerClient, _id: string, skipcreate: boolean): Promise<void> {
         var user: NoderedUser;
         cli._logger.debug("[" + cli.user.username + "] EnsureNoderedInstance");
         if (_id === null || _id === undefined || _id === "") _id = cli.user._id;
@@ -805,13 +799,13 @@ export class Message {
             throw new Error("Unknown userid " + _id);
         }
         user = NoderedUser.assign(users[0]);
-        var rootjwt = TokenUser.rootToken();
+        var rootjwt = Crypt.rootToken();
 
         var namespace = Config.namespace;
         var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
-        var nodereduser = await User.FindById(_id, cli.jwt);
-        var tuser: TokenUser = new TokenUser(nodereduser);
+        var nodereduser = await DBHelper.FindById(_id, cli.jwt);
+        var tuser: TokenUser = TokenUser.From(nodereduser);
         var nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
 
         // if (Config.force_queue_prefix) {
@@ -819,14 +813,14 @@ export class Message {
         // }
 
         cli._logger.debug("[" + cli.user.username + "] ensure nodered role " + name + "noderedadmins");
-        var noderedadmins = await User.ensureRole(cli.jwt, name + "noderedadmins", null);
+        var noderedadmins = await DBHelper.EnsureRole(cli.jwt, name + "noderedadmins", null);
         noderedadmins.addRight(nodereduser._id, nodereduser.username, [Rights.full_control]);
         noderedadmins.removeRight(nodereduser._id, [Rights.delete]);
         noderedadmins.addRight(cli.user._id, cli.user.username, [Rights.full_control]);
         noderedadmins.removeRight(cli.user._id, [Rights.delete]);
         noderedadmins.AddMember(nodereduser);
         cli._logger.debug("[" + cli.user.username + "] update nodered role " + name + "noderedadmins");
-        await noderedadmins.Save(cli.jwt);
+        await DBHelper.Save(noderedadmins, cli.jwt);
 
         var resources = new V1ResourceRequirements();
         var hasbilling: boolean = false;
@@ -835,7 +829,7 @@ export class Message {
         resources.requests.memory = "70Mi";
         resources.limits.memory = "256Mi";
         if (user.nodered && user.nodered.resources) {
-            if (Util.IsNullEmpty(Config.stripe_api_secret)) {
+            if (NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
                 if (user.nodered.resources.limits) {
                     resources.limits.memory = user.nodered.resources.limits.memory;
                     resources.limits.cpu = user.nodered.resources.limits.cpu;
@@ -849,19 +843,19 @@ export class Message {
                 if (billings.length > 0) {
                     var billing: Billing = billings[0];
                     resources.limits.memory = billing.memory;
-                    if (!Util.IsNullEmpty(billing.openflowuserplan)) {
+                    if (!NoderedUtil.IsNullEmpty(billing.openflowuserplan)) {
                         hasbilling = true;
                     }
                 }
 
             }
         } else {
-            if (!Util.IsNullEmpty(Config.stripe_api_secret)) {
+            if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
                 var billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
                 if (billings.length > 0) {
                     var billing: Billing = billings[0];
-                    if (!Util.IsNullEmpty(billing.memory)) resources.limits.memory = billing.memory;
-                    if (!Util.IsNullEmpty(billing.openflowuserplan)) {
+                    if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.limits.memory = billing.memory;
+                    if (!NoderedUtil.IsNullEmpty(billing.openflowuserplan)) {
                         hasbilling = true;
                     }
                 }
@@ -952,7 +946,7 @@ export class Message {
             } catch (error) {
                 cli._logger.error("[" + cli.user.username + "] failed updating noeredinstance");
                 cli._logger.error("[" + cli.user.username + "] " + JSON.stringify(error));
-                if (error.response && error.response.body && !Util.IsNullEmpty(error.response.body.message)) {
+                if (error.response && error.response.body && !NoderedUtil.IsNullEmpty(error.response.body.message)) {
                     throw new Error(error.response.body.message);
                 }
                 throw new Error("failed updating noeredinstance");
@@ -1044,7 +1038,7 @@ export class Message {
             throw new Error("failed locating useringress");
         }
     }
-    private async DeleteNoderedInstance(cli: WebSocketClient): Promise<void> {
+    private async DeleteNoderedInstance(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
         var msg: DeleteNoderedInstanceMessage;
         var user: User;
@@ -1068,7 +1062,7 @@ export class Message {
         }
         this.Send(cli);
     }
-    private async DeleteNoderedPod(cli: WebSocketClient): Promise<void> {
+    private async DeleteNoderedPod(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
         var msg: DeleteNoderedPodMessage;
         var user: User;
@@ -1101,7 +1095,7 @@ export class Message {
         }
         this.Send(cli);
     }
-    private async RestartNoderedInstance(cli: WebSocketClient): Promise<void> {
+    private async RestartNoderedInstance(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
         var msg: RestartNoderedInstanceMessage;
         try {
@@ -1133,7 +1127,7 @@ export class Message {
         }
         this.Send(cli);
     }
-    private async GetNoderedInstance(cli: WebSocketClient): Promise<void> {
+    private async GetNoderedInstance(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
         var msg: GetNoderedInstanceMessage;
         try {
@@ -1148,11 +1142,11 @@ export class Message {
             var found: any = null;
             msg.result = null;
             msg.results = [];
-            var rootjwt = TokenUser.rootToken();
+            var rootjwt = Crypt.rootToken();
             if (list.body.items.length > 0) {
                 for (var i = 0; i < list.body.items.length; i++) {
                     var item = list.body.items[i];
-                    if (!Util.IsNullEmpty(Config.stripe_api_secret)) {
+                    if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
                         var itemname = item.metadata.name;
                         var create = item.metadata.creationTimestamp;
                         var billed = item.metadata.labels.billed;
@@ -1162,7 +1156,7 @@ export class Message {
                         var a: number = (date as any) - (create as any);
                         // var diffminutes = a / (1000 * 60);
                         var diffhours = a / (1000 * 60 * 60);
-                        if (image.indexOf("openflownodered") > 0 && !Util.IsNullEmpty(userid)) {
+                        if (image.indexOf("openflownodered") > 0 && !NoderedUtil.IsNullEmpty(userid)) {
                             try {
                                 if (billed != "true" && diffhours > 24) {
                                     cli._logger.debug("[" + cli.user.username + "] Remove un billed nodered instance " + itemname + " that has been running for " + diffhours + " hours");
@@ -1179,7 +1173,7 @@ export class Message {
                         }
                     }
 
-                    if (!Util.IsNullEmpty(msg.name) && item.metadata.name == msg.name && cli.user.HasRoleName("admins")) {
+                    if (!NoderedUtil.IsNullEmpty(msg.name) && item.metadata.name == msg.name && cli.user.HasRoleName("admins")) {
                         found = item;
                         msg.results.push(item);
                     } else if (item.metadata.labels.app === name) {
@@ -1209,7 +1203,7 @@ export class Message {
         }
         this.Send(cli);
     }
-    private async GetNoderedInstanceLog(cli: WebSocketClient): Promise<void> {
+    private async GetNoderedInstanceLog(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
         var msg: GetNoderedInstanceLogMessage;
         try {
@@ -1223,7 +1217,7 @@ export class Message {
             if (list.body.items.length > 0) {
                 for (var i = 0; i < list.body.items.length; i++) {
                     var item = list.body.items[i];
-                    if (!Util.IsNullEmpty(msg.name) && item.metadata.name == msg.name && cli.user.HasRoleName("admins")) {
+                    if (!NoderedUtil.IsNullEmpty(msg.name) && item.metadata.name == msg.name && cli.user.HasRoleName("admins")) {
                         cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance:" + name + " found one as " + item.metadata.name);
                         var obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
                         msg.result = obj.body;
@@ -1240,7 +1234,7 @@ export class Message {
             cli._logger.error(error);
             //msg.error = JSON.stringify(error, null, 2);
             if (msg !== null && msg !== undefined) msg.error = "Request failed!"
-            if (error.response && error.response.body && !Util.IsNullEmpty(error.response.body.message)) {
+            if (error.response && error.response.body && !NoderedUtil.IsNullEmpty(error.response.body.message)) {
                 msg.error = error.response.body.message;
             }
         }
@@ -1252,11 +1246,11 @@ export class Message {
         }
         this.Send(cli);
     }
-    private async StartNoderedInstance(cli: WebSocketClient): Promise<void> {
+    private async StartNoderedInstance(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
         this.Send(cli);
     }
-    private async StopNoderedInstance(cli: WebSocketClient): Promise<void> {
+    private async StopNoderedInstance(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
         this.Send(cli);
     }
@@ -1278,15 +1272,15 @@ export class Message {
             }
         });
     }
-    private async SaveFile(cli: WebSocketClient): Promise<void> {
+    private async SaveFile(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
         var msg: SaveFileMessage
         try {
             msg = SaveFileMessage.assign(this.data);
-            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-            if (Util.IsNullEmpty(msg.filename)) throw new Error("Filename is mandatory");
-            // if (Util.IsNullEmpty(msg.mimeType)) throw new Error("mimeTypes is mandatory");
-            if (Util.IsNullEmpty(msg.file)) throw new Error("file is mandatory");
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.filename)) throw new Error("Filename is mandatory");
+            // if (NoderedUtil.IsNullEmpty(msg.mimeType)) throw new Error("mimeTypes is mandatory");
+            if (NoderedUtil.IsNullEmpty(msg.file)) throw new Error("file is mandatory");
             if (process.platform === "win32") {
                 msg.filename = msg.filename.replace(/\//g, "\\");
             }
@@ -1294,7 +1288,7 @@ export class Message {
                 msg.filename = msg.filename.replace(/\\/g, "/");
             }
 
-            if (Util.IsNullEmpty(msg.mimeType)) {
+            if (NoderedUtil.IsNullEmpty(msg.mimeType)) {
                 msg.mimeType = lookup(msg.filename);
             }
 
@@ -1312,7 +1306,7 @@ export class Message {
             msg.file = null;
             if (msg.metadata == null) { msg.metadata = new Base(); }
             msg.metadata = Base.assign(msg.metadata);
-            if (Util.IsNullUndefinded(msg.metadata._acl)) {
+            if (NoderedUtil.IsNullUndefinded(msg.metadata._acl)) {
                 msg.metadata._acl = [];
                 msg.metadata.addRight(WellknownIds.filestore_users, "filestore users", [Rights.read]);
             }
@@ -1323,7 +1317,7 @@ export class Message {
             msg.metadata._modifiedby = user.name;
             msg.metadata._modifiedbyid = user._id;
             msg.metadata._modified = msg.metadata._created;
-            if (Util.IsNullEmpty(msg.metadata.name)) {
+            if (NoderedUtil.IsNullEmpty(msg.metadata.name)) {
                 msg.metadata.name = msg.filename;
             }
             var hasUser: any = msg.metadata._acl.find(e => e._id === user._id);
@@ -1342,7 +1336,7 @@ export class Message {
             if (!Config.db.hasAuthorization(user, msg.metadata, Rights.create)) { throw new Error("Access denied, no authorization to save file"); }
             msg.id = await this._SaveFile(readable, msg.filename, msg.mimeType, msg.metadata);
         } catch (error) {
-            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -1382,18 +1376,18 @@ export class Message {
             }
         });
     }
-    private async GetFile(cli: WebSocketClient): Promise<void> {
+    private async GetFile(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
         var msg: GetFileMessage
         try {
             msg = SaveFileMessage.assign(this.data);
-            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-            if (!Util.IsNullEmpty(msg.id)) {
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (!NoderedUtil.IsNullEmpty(msg.id)) {
                 var rows = await Config.db.query({ _id: safeObjectID(msg.id) }, null, 1, 0, null, "files", msg.jwt);
                 if (rows.length == 0) { throw new Error("Not found"); }
                 msg.metadata = (rows[0] as any).metadata
                 msg.mimeType = (rows[0] as any).contentType;
-            } else if (!Util.IsNullEmpty(msg.filename)) {
+            } else if (!NoderedUtil.IsNullEmpty(msg.filename)) {
                 var rows = await Config.db.query({ "filename": msg.filename }, null, 1, 0, { uploadDate: -1 }, "fs.files", msg.jwt);
                 if (rows.length == 0) { throw new Error("Not found"); }
                 msg.id = rows[0]._id;
@@ -1404,7 +1398,7 @@ export class Message {
             }
             msg.file = await this._GetFile(msg.id);
         } catch (error) {
-            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -1432,12 +1426,12 @@ export class Message {
             });
         });
     }
-    private async UpdateFile(cli: WebSocketClient): Promise<void> {
+    private async UpdateFile(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
         var msg: UpdateFileMessage
         try {
             msg = UpdateFileMessage.assign(this.data);
-            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
 
             var bucket = new GridFSBucket(Config.db.db);
             var q = { $or: [{ _id: msg.id }, { _id: safeObjectID(msg.id) }] };
@@ -1472,7 +1466,7 @@ export class Message {
             var res = await fsc.updateOne(q, { $set: { metadata: msg.metadata } });
 
         } catch (error) {
-            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -1485,15 +1479,15 @@ export class Message {
         this.Send(cli);
     }
 
-    async CreateWorkflowInstance(cli: WebSocketClient) {
+    async CreateWorkflowInstance(cli: WebSocketServerClient) {
         this.Reply();
-        var msg: CreateWorkflowInstanceMessage<Base>
+        var msg: CreateWorkflowInstanceMessage
         try {
             msg = CreateWorkflowInstanceMessage.assign(this.data);
-            if (Util.IsNullEmpty(msg.workflowid) && Util.IsNullEmpty(msg.queue)) throw new Error("workflowid or queue is mandatory");
-            if (Util.IsNullEmpty(msg.resultqueue)) throw new Error("replyqueuename is mandatory");
-            if (Util.IsNullEmpty(msg.targetid)) throw new Error("targetid is mandatory");
-            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.workflowid) && NoderedUtil.IsNullEmpty(msg.queue)) throw new Error("workflowid or queue is mandatory");
+            if (NoderedUtil.IsNullEmpty(msg.resultqueue)) throw new Error("replyqueuename is mandatory");
+            if (NoderedUtil.IsNullEmpty(msg.targetid)) throw new Error("targetid is mandatory");
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
 
             var tuser = Crypt.verityToken(msg.jwt);
             msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
@@ -1502,16 +1496,16 @@ export class Message {
             //     await cli.CreateConsumer("nodered." + Math.random().toString(36).substr(2, 9));
             //     // throw new Error("Client not connected to any message queues");
             // }
-            if (Util.IsNullEmpty(msg.queue)) {
+            if (NoderedUtil.IsNullEmpty(msg.queue)) {
                 var workflow: any = null;
                 var user: any = null;
                 var res = await Config.db.query({ "_id": msg.workflowid }, null, 1, 0, null, "workflow", msg.jwt);
                 if (res.length != 1) throw new Error("Unknown workflow id " + msg.workflowid);
                 workflow = res[0];
                 msg.queue = workflow.queue;
-                if (Util.IsNullEmpty(msg.name)) { msg.name = workflow.name; }
+                if (NoderedUtil.IsNullEmpty(msg.name)) { msg.name = workflow.name; }
             }
-            if (Util.IsNullEmpty(msg.name)) throw new Error("name is mandatory when workflowid not set")
+            if (NoderedUtil.IsNullEmpty(msg.name)) throw new Error("name is mandatory when workflowid not set")
 
             if (msg.queue === msg.resultqueue) {
                 throw new Error("Cannot reply to self queuename:" + msg.queue + " correlationId:" + msg.resultqueue);
@@ -1524,7 +1518,7 @@ export class Message {
             msg.form = "unknown";
             (msg as any).workflow = msg.workflowid;
 
-            if (Util.IsNullEmpty(msg.correlationId)) {
+            if (NoderedUtil.IsNullEmpty(msg.correlationId)) {
                 msg.correlationId = Math.random().toString(36).substr(2, 9);
             }
 
@@ -1543,7 +1537,7 @@ export class Message {
             }
         } catch (error) {
             cli._logger.error(error);
-            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.toString();
             cli._logger.error(error);
         }
@@ -1602,19 +1596,19 @@ export class Message {
         step(data, undefined);
         return result;
     }
-    async StripeCancelPlan(cli: WebSocketClient) {
+    async StripeCancelPlan(cli: WebSocketServerClient) {
         this.Reply();
         var msg: StripeCancelPlanMessage;
-        var rootjwt = TokenUser.rootToken();
+        var rootjwt = Crypt.rootToken();
         try {
             msg = StripeAddPlanMessage.assign(this.data);
-            if (Util.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
-            if (Util.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
+            if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+            if (NoderedUtil.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
 
             var billings = await Config.db.query<Billing>({ userid: msg.userid, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
             if (billings.length == 0) throw new Error("Need billing info and a stripe customer in order to cancel plan");
             var billing: Billing = billings[0];
-            if (Util.IsNullEmpty(billing.stripeid)) throw new Error("Need a stripe customer in order to cancel plan");
+            if (NoderedUtil.IsNullEmpty(billing.stripeid)) throw new Error("Need a stripe customer in order to cancel plan");
             var customer: stripe_customer = await this.Stripe<stripe_customer>("GET", "customers", billing.stripeid, null, null);
             if (customer == null) throw new Error("Failed locating stripe customer at stribe");
 
@@ -1655,7 +1649,7 @@ export class Message {
         } catch (error) {
             if (error == null) new Error("Unknown error");
             cli._logger.error(error);
-            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
                 msg.error = error;
                 if (error.message) msg.error = error.message;
@@ -1674,19 +1668,19 @@ export class Message {
         }
         this.Send(cli);
     }
-    async StripeAddPlan(cli: WebSocketClient) {
+    async StripeAddPlan(cli: WebSocketServerClient) {
         this.Reply();
         var msg: StripeAddPlanMessage;
-        var rootjwt = TokenUser.rootToken();
+        var rootjwt = Crypt.rootToken();
         try {
             msg = StripeAddPlanMessage.assign(this.data);
-            if (Util.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
-            if (Util.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
+            if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+            if (NoderedUtil.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
 
             var billings = await Config.db.query<Billing>({ userid: msg.userid, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
             if (billings.length == 0) throw new Error("Need billing info and a stripe customer in order to add plan");
             var billing: Billing = billings[0];
-            if (Util.IsNullEmpty(billing.stripeid)) throw new Error("Need a stripe customer in order to add plan");
+            if (NoderedUtil.IsNullEmpty(billing.stripeid)) throw new Error("Need a stripe customer in order to add plan");
             var customer: stripe_customer = await this.Stripe<stripe_customer>("GET", "customers", billing.stripeid, null, null);
             if (customer == null) throw new Error("Failed locating stripe customer at stribe");
 
@@ -1705,10 +1699,10 @@ export class Message {
                 return false;
             });
 
-            if (subscription != null && subscription.default_tax_rates.length == 0 && !Util.IsNullEmpty(billing.taxrate)) {
+            if (subscription != null && subscription.default_tax_rates.length == 0 && !NoderedUtil.IsNullEmpty(billing.taxrate)) {
                 var payload: any = { default_tax_rates: [billing.taxrate] };
                 await this.Stripe("POST", "subscriptions", subscription.id, payload, customer.id);
-            } else if (subscription != null && subscription.default_tax_rates.length != 0 && Util.IsNullEmpty(billing.taxrate)) {
+            } else if (subscription != null && subscription.default_tax_rates.length != 0 && NoderedUtil.IsNullEmpty(billing.taxrate)) {
                 var payload: any = { default_tax_rates: [] };
                 await this.Stripe("POST", "subscriptions", subscription.id, payload, customer.id);
             }
@@ -1728,7 +1722,7 @@ export class Message {
                     }
                 };
 
-                if (!Util.IsNullEmpty(billing.taxrate)) {
+                if (!NoderedUtil.IsNullEmpty(billing.taxrate)) {
                     payload.subscription_data.default_tax_rates = [billing.taxrate]
                     //payload.subscription_data.items.push({ plan: msg.planid });
                 } else {
@@ -1755,7 +1749,7 @@ export class Message {
         } catch (error) {
             if (error == null) new Error("Unknown error");
             cli._logger.error(error);
-            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
                 msg.error = error;
                 if (error.message) msg.error = error.message;
@@ -1774,14 +1768,14 @@ export class Message {
         }
         this.Send(cli);
     }
-    async EnsureStripeCustomer(cli: WebSocketClient) {
+    async EnsureStripeCustomer(cli: WebSocketServerClient) {
         this.Reply();
         var msg: EnsureStripeCustomerMessage;
-        var rootjwt = TokenUser.rootToken();
+        var rootjwt = Crypt.rootToken();
         try {
             msg = EnsureStripeCustomerMessage.assign(this.data);
-            if (Util.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
-            if (Util.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
+            if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+            if (NoderedUtil.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
             var users = await Config.db.query({ _id: msg.userid, _type: "user" }, null, 1, 0, null, "users", msg.jwt);
             if (users.length == 0) throw new Error("Unknown userid");
             var user: User = users[0] as any;
@@ -1797,8 +1791,8 @@ export class Message {
                 billing = Billing.assign(msg.billing);
                 billing.taxrate = tax_rates.data[0].id;
                 billing.tax = 1 + ((tax_rates.data[0] as any).percentage / 100);
-                if (Util.IsNullEmpty(billing.name)) throw new Error("Name is mandatory");
-                if (Util.IsNullEmpty(billing.email)) throw new Error("Email is mandatory");
+                if (NoderedUtil.IsNullEmpty(billing.name)) throw new Error("Name is mandatory");
+                if (NoderedUtil.IsNullEmpty(billing.email)) throw new Error("Email is mandatory");
                 billing.addRight(user._id, user.name, [Rights.read]);
                 billing.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
                 billing = await Config.db.InsertOne(billing, "users", 3, true, rootjwt);
@@ -1813,7 +1807,7 @@ export class Message {
                 }
             }
             var customer: stripe_customer;
-            if (!Util.IsNullEmpty(billing.stripeid)) {
+            if (!NoderedUtil.IsNullEmpty(billing.stripeid)) {
                 customer = await this.Stripe<stripe_customer>("GET", "customers", billing.stripeid, null, null);
             }
             if (customer == null) {
@@ -1822,7 +1816,7 @@ export class Message {
                 billing.stripeid = customer.id;
                 billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
             }
-            if (customer != null && !Util.IsNullEmpty(billing.vattype) && !Util.IsNullEmpty(billing.vatnumber)) {
+            if (customer != null && !NoderedUtil.IsNullEmpty(billing.vattype) && !NoderedUtil.IsNullEmpty(billing.vatnumber)) {
                 if (customer.tax_ids.total_count == 0) {
                     (payload as any) = { value: billing.vatnumber, type: billing.vattype };
                     await this.Stripe<stripe_customer>("POST", "tax_ids", null, payload, customer.id);
@@ -1864,11 +1858,11 @@ export class Message {
                 billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
             }
             if (dirty) {
-                if (!Util.IsNullEmpty(billing.stripeid)) {
+                if (!NoderedUtil.IsNullEmpty(billing.stripeid)) {
                     customer = await this.Stripe<stripe_customer>("GET", "customers", null, null, billing.stripeid);
                 }
             }
-            if (customer != null && Util.IsNullEmpty(billing.coupon) && customer.discount != null) {
+            if (customer != null && NoderedUtil.IsNullEmpty(billing.coupon) && customer.discount != null) {
                 var payload: any = { coupon: "" };
                 customer = await this.Stripe<stripe_customer>("POST", "customers", billing.stripeid, payload, null);
             }
@@ -1890,7 +1884,7 @@ export class Message {
                 billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
                 this._EnsureNoderedInstance(cli, msg.userid, true);
             }
-            if (customer != null && !Util.IsNullEmpty(billing.coupon) && customer.discount != null) {
+            if (customer != null && !NoderedUtil.IsNullEmpty(billing.coupon) && customer.discount != null) {
                 if (billing.coupon != customer.discount.coupon.name) {
                     var payload: any = { coupon: "" };
                     customer = await this.Stripe<stripe_customer>("POST", "customers", billing.stripeid, payload, null);
@@ -1904,7 +1898,7 @@ export class Message {
 
                 }
             }
-            if (customer != null && !Util.IsNullEmpty(billing.coupon) && customer.discount == null) {
+            if (customer != null && !NoderedUtil.IsNullEmpty(billing.coupon) && customer.discount == null) {
                 var coupons: stripe_list<stripe_coupon> = await this.Stripe<stripe_list<stripe_coupon>>("GET", "coupons", null, null, null);
                 var isvalid = coupons.data.filter(c => c.name == billing.coupon);
                 if (isvalid.length == 0) throw new Error("Unknown coupons '" + billing.coupon + "'");
@@ -1956,7 +1950,7 @@ export class Message {
         } catch (error) {
             if (error == null) new Error("Unknown error");
             cli._logger.error(error);
-            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
                 msg.error = error;
                 if (error.message) msg.error = error.message;
@@ -1977,20 +1971,20 @@ export class Message {
     }
     async Stripe<T>(method: string, object: string, id: string, payload: any, customerid: string): Promise<T> {
         var url = "https://api.stripe.com/v1/" + object;
-        if (!Util.IsNullEmpty(id)) url = url + "/" + id;
+        if (!NoderedUtil.IsNullEmpty(id)) url = url + "/" + id;
         if (object == "tax_ids") {
-            if (Util.IsNullEmpty(customerid)) throw new Error("Need customer to work with tax_id");
+            if (NoderedUtil.IsNullEmpty(customerid)) throw new Error("Need customer to work with tax_id");
             url = "https://api.stripe.com/v1/customers/" + customerid + "/tax_ids";
             if (method == "DELETE" || method == "PUT") {
-                if (Util.IsNullEmpty(id)) throw new Error("Need id");
+                if (NoderedUtil.IsNullEmpty(id)) throw new Error("Need id");
             }
-            if (!Util.IsNullEmpty(id)) {
+            if (!NoderedUtil.IsNullEmpty(id)) {
                 url = "https://api.stripe.com/v1/customers/" + customerid + "/tax_ids/" + id;
             }
         }
         if (object == "checkout.sessions") {
             url = "https://api.stripe.com/v1/checkout/sessions";
-            if (!Util.IsNullEmpty(id)) {
+            if (!NoderedUtil.IsNullEmpty(id)) {
                 url = "https://api.stripe.com/v1/checkout/sessions/" + id;
             }
         }
@@ -1998,15 +1992,15 @@ export class Message {
             url = "https://api.stripe.com/v1/subscription_items/" + id + "/usage_records";
         }
         if (object == "sources") {
-            if (Util.IsNullEmpty(customerid)) throw new Error("Need customer to work with sources");
+            if (NoderedUtil.IsNullEmpty(customerid)) throw new Error("Need customer to work with sources");
             url = "https://api.stripe.com/v1/customers/" + customerid + "/sources";
-            if (!Util.IsNullEmpty(id)) {
+            if (!NoderedUtil.IsNullEmpty(id)) {
                 url = "https://api.stripe.com/v1/customers/" + customerid + "/sources/" + id;
             }
 
         }
         if (object == "invoices_upcoming") {
-            if (Util.IsNullEmpty(customerid)) throw new Error("Need customer to work with invoices_upcoming");
+            if (NoderedUtil.IsNullEmpty(customerid)) throw new Error("Need customer to work with invoices_upcoming");
             url = "https://api.stripe.com/v1/invoices/upcoming?customer=" + customerid;
         }
 
@@ -2045,15 +2039,15 @@ export class Message {
         }
         return payload;
     }
-    async StripeMessage(cli: WebSocketClient) {
+    async StripeMessage(cli: WebSocketServerClient) {
         this.Reply();
         var msg: StripeMessage;
         try {
             msg = StripeMessage.assign(this.data);
-            if (Util.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
-            if (Util.IsNullEmpty(msg.object)) throw new Error("object is mandatory");
+            if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+            if (NoderedUtil.IsNullEmpty(msg.object)) throw new Error("object is mandatory");
             if (!cli.user.HasRoleName("admins")) {
-                if (!Util.IsNullEmpty(msg.url)) throw new Error("Custom url not allowed");
+                if (!NoderedUtil.IsNullEmpty(msg.url)) throw new Error("Custom url not allowed");
                 // if (msg.object != "customers" && msg.object != "tax_ids"
                 //     && msg.object != "products" && msg.object != "plans" &&
                 //     msg.object != "checkout.sessions" && msg.object != "tax_rates"
@@ -2069,7 +2063,7 @@ export class Message {
         } catch (error) {
             if (error == null) new Error("Unknown error");
             cli._logger.error(error);
-            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
                 msg.error = error;
                 if (error.message) msg.error = error.message;

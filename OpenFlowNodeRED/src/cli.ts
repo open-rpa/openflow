@@ -2,10 +2,9 @@
 // npm link --force
 // npm i npm install --global --production windows-build-tools
 import * as fs from "fs";
-import { WebSocketClient } from "./nodeclient/WebSocketClient";
-import { SigninMessage, Message } from "./nodeclient/Message";
 import { Config } from "./Config";
 import { logger, StopService, StartService, RemoveService, InstallService, RunService, loadenv, envfilename, envfilepathname, servicename, isOpenFlow } from "./nodeclient/cliutil";
+import { WebSocketClient, SigninMessage, Message, NoderedUtil } from "openflow-api";
 
 const optionDefinitions = [
     { name: 'verbose', alias: 'v', type: Boolean },
@@ -73,14 +72,12 @@ function getToken(): Promise<string> {
         var socket: WebSocketClient = new WebSocketClient(logger, Config.api_ws_url);
         socket.events.on("onopen", async () => {
             try {
-                var q: SigninMessage = new SigninMessage();
-                q.clientagent = "nodered-cli";
-                q.clientversion = Config.version;
-                q.username = readlineSync.question('username? ');
-                q.password = readlineSync.question('password? ', { hideEchoBack: true });
-                q.longtoken = true;
-                var msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
-                var result: SigninMessage = await socket.Send<SigninMessage>(msg);
+                var username: string = readlineSync.question('username? ');
+                var password: string = readlineSync.question('password? ', { hideEchoBack: true });
+
+                socket.version = Config.version;
+                socket.agent = "nodered-cli";
+                var result = await NoderedUtil.SigninWithUsername(username, password, null, true);
                 logger.info("signed in as " + result.user.name + " with id " + result.user._id);
                 WebSocketClient.instance.user = result.user;
                 WebSocketClient.instance.jwt = result.jwt;

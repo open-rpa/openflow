@@ -9,7 +9,6 @@ export var envfilename = ".env";
 export var envfilepathname = "";
 export var servicename = "openflow-nodered";
 const service = require("os-service");
-
 export function isWin() {
     return process.platform === "win32";
 }
@@ -107,7 +106,6 @@ export function hassourceenv(): boolean {
     var sourceenv = path.join(getsourcedir(), envfilename);
     return fs.existsSync(sourceenv);
 }
-
 // export function copyenv() {
 //     var source = getsourcedir();
 //     var local = getlocaldir();

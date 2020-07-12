@@ -1,16 +1,22 @@
 import { fetch, toPassportConfig } from "passport-saml-metadata";
 import * as fs from "fs";
+import * as path from "path";
 import * as retry from "async-retry";
-import { json } from "body-parser";
 import { DatabaseConnection } from "./DatabaseConnection";
-import { Provider } from "./LoginProvider";
-import { TokenUser } from "./TokenUser";
 import { Logger } from "./Logger";
-import { Util } from "./Util";
+import { NoderedUtil } from "openflow-api";
 
 export class Config {
+    public static getversion(): string {
+        var versionfile: string = path.join(__dirname, "VERSION");
+        if (!fs.existsSync(versionfile)) versionfile = path.join(__dirname, "..", "VERSION")
+        if (!fs.existsSync(versionfile)) versionfile = path.join(__dirname, "..", "..", "VERSION")
+        if (!fs.existsSync(versionfile)) versionfile = path.join(__dirname, "..", "..", "..", "VERSION")
+        Config.version = (fs.existsSync(versionfile) ? fs.readFileSync(versionfile, "utf8") : "0.0.1");
+        return Config.version;
+    }
     public static reload(): void {
-        Config.version = (fs.existsSync("VERSION") ? fs.readFileSync("VERSION", "utf8") : "1.0.34");
+        Config.getversion();
         Config.logpath = Config.getEnv("logpath", __dirname);
 
         Config.NODE_ENV = Config.getEnv("NODE_ENV", "development");
@@ -75,7 +81,7 @@ export class Config {
         Config.nodered_initial_liveness_delay = parseInt(Config.getEnv("nodered_initial_liveness_delay", "60"));
     }
     public static db: DatabaseConnection = null;
-    public static version: string = (fs.existsSync("VERSION") ? fs.readFileSync("VERSION", "utf8") : "1.0.34");
+    public static version: string = Config.getversion();
     public static logpath: string = Config.getEnv("logpath", __dirname);
 
     public static NODE_ENV: string = Config.getEnv("NODE_ENV", "development");
@@ -108,12 +114,12 @@ export class Config {
     public static domain: string = Config.getEnv("domain", "localhost"); // sent to website and used in baseurl()
 
 
-    public static amqp_reply_expiration: number = parseInt(Config.getEnv("amqp_reply_expiration", "10000")); // 10 seconds
+    public static amqp_reply_expiration: number = parseInt(Config.getEnv("amqp_reply_expiration", (60 * 1000).toString())); // 1 min
     public static amqp_force_queue_prefix: boolean = Config.parseBoolean(Config.getEnv("amqp_force_queue_prefix", "true"));
     public static amqp_force_exchange_prefix: boolean = Config.parseBoolean(Config.getEnv("amqp_force_exchange_prefix", "true"));
     public static amqp_url: string = Config.getEnv("amqp_url", "amqp://localhost"); // used to register queues and by personal nodered
     public static amqp_check_for_consumer: boolean = Config.parseBoolean(Config.getEnv("amqp_check_for_consumer", "true"));
-    public static amqp_default_expiration: number = parseInt(Config.getEnv("amqp_default_expiration", "10000")); // 10 seconds
+    public static amqp_default_expiration: number = parseInt(Config.getEnv("amqp_default_expiration", (60 * 1000).toString())); // 1 min
     public static amqp_requeue_time: number = parseInt(Config.getEnv("amqp_requeue_time", "1000")); // 1 seconds    
     public static amqp_dlx: string = Config.getEnv("amqp_dlx", "openflow-dlx");  // Dead letter exchange, used to pickup dead or timeout messages
 
@@ -166,7 +172,7 @@ export class Config {
         return result;
     }
     // public static async get_login_providers():Promise<void> {
-    //     this.login_providers = await Config.db.query<Provider>({_type: "provider"}, null, 1, 0, null, "config", TokenUser.rootToken());
+    //     this.login_providers = await Config.db.query<Provider>({_type: "provider"}, null, 1, 0, null, "config", Crypt.rootToken());
     //     // if(this.login_providers.length > 0) { return; }
     //     if(fs.existsSync("config/login_providers.json")) {
     //         // this.login_providers = JSON.parse(fs.readFileSync("config/login_providers.json", "utf8"));
@@ -181,7 +187,7 @@ export class Config {
         // if anything throws, we retry
         var metadata: any = await retry(async bail => {
             var reader: any = await fetch({ url });
-            if (Util.IsNullUndefinded(reader)) { bail(new Error("Failed getting result")); return; }
+            if (NoderedUtil.IsNullUndefinded(reader)) { bail(new Error("Failed getting result")); return; }
             var config: any = toPassportConfig(reader);
             // we need this, for Office 365 :-/
             if (reader.signingCerts && reader.signingCerts.length > 1) {

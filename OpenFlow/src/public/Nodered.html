@@ -89,7 +89,7 @@
   </div>
 </section>
 <section>
-  <div class="form-group" ng-show="menuctrl.hasrole('admins') && menuctrl.WebSocketClient.stripe_api_key == ''">
+  <div class="form-group" ng-show="menuctrl.hasrole('admins') && menuctrl.WebSocketClientService.stripe_api_key == ''">
     <label class="col-sm-3 control-label"><span translate lib="web">memory</span>: </label>
     <div class="col-sm-9">
       <select class="form-control" ng-model="ctrl.limitsmemory">
@@ -115,7 +115,7 @@
 </section>
 <br />
 <br />
-<small ng-show="menuctrl.WebSocketClient.stripe_api_key != ''"><i style="color: gray;">
+<small ng-show="menuctrl.WebSocketClientService.stripe_api_key != ''"><i style="color: gray;">
     Free nodered instances will be shutdown after 24hours.
   </i></small>
 <br />

@@ -1,14 +1,9 @@
 import * as RED from "node-red";
 import { Red } from "node-red";
-import { TokenUser, SigninMessage, Message, QueryMessage, mapFunc, reduceFunc, finalizeFunc, UpdateOneMessage } from "../../nodeclient/Message";
 import { Crypt } from "../../nodeclient/Crypt";
-import { WebSocketClient } from "../../nodeclient/WebSocketClient";
-import { NoderedUtil } from "../../nodeclient/NoderedUtil";
-import { Base } from "../../nodeclient/Base";
 import { Config } from "../../Config";
 import { Logger } from "../../Logger";
-
-
+import { NoderedUtil, SigninMessage, TokenUser, Message, WebSocketClient, Base, mapFunc, reduceFunc, finalizeFunc, UpdateOneMessage } from "openflow-api";
 
 export interface Iapi_credentials {
 }
@@ -312,7 +307,7 @@ export class api_update {
                 if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
                     element._type = this.config.entitytype;
                 }
-                Promises.push(NoderedUtil._UpdateOne(this.config.collection, null, element, this.config.writeconcern, this.config.journal, msg.jwt));
+                Promises.push(NoderedUtil.UpdateOne(this.config.collection, null, element, this.config.writeconcern, this.config.journal, msg.jwt));
             }
             data = await Promise.all(Promises.map(p => p.catch(e => e)));
 
@@ -687,7 +682,7 @@ export class api_updatedocument {
                 var q: UpdateOneMessage = new UpdateOneMessage(); q.collectionname = collection;
                 q.item = (updatedocument as any); q.jwt = jwt;
                 q.w = writeconcern; q.j = journal; q.query = (query as any);
-                q = await NoderedUtil.UpdateOne(q);
+                q = await NoderedUtil._UpdateOne(q);
                 msg.payload = q.result;
                 msg.opresult = q.opresult;
             } else {

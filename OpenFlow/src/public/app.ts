@@ -1,3 +1,8 @@
+import { WebSocketClientService } from "./WebSocketClientService";
+import angular = require("angular");
+import { timesince, translate, textarea, fileread, userdata, api } from "./CommonControllers";
+import { MenuCtrl, ProvidersCtrl, MainCtrl, LoginCtrl, ProviderCtrl, UsersCtrl, UserCtrl, RolesCtrl, RoleCtrl, RPAWorkflowsCtrl, RPAWorkflowCtrl, WorkflowsCtrl, ReportsCtrl, jslogCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, SocketCtrl, NoderedCtrl, hdrobotsCtrl, RobotsCtrl, AuditlogsCtrl, SignupCtrl, PaymentCtrl } from "./Controllers";
+
 /**
  * @type {angular.Module}
  */
@@ -15,7 +20,7 @@ module openflow {
         .directive("textarea", textarea.factory())
         .directive("fileread", fileread.factory())
         .service("userdata", userdata)
-        .service("WebSocketClient", WebSocketClient)
+        .service("WebSocketClientService", WebSocketClientService)
 
 
         .directive('autoComplete', function ($timeout) {
@@ -31,10 +36,6 @@ module openflow {
             };
         })
         .service("api", api);
-    // .directive("todoBlur", todoBlur)
-    // .directive("todoFocus", todoFocus)
-    // .directive("todoEscape", todoEscape)
-    // .service("todoStorage", TodoStorage);
     webApp.config([
         <any>'$routeProvider',
         ($routeProvider: angular.route.IRouteProvider) => {
@@ -65,6 +66,7 @@ module openflow {
                 .when('/Form/:id/:instance', { templateUrl: 'Form.html', controller: FormCtrl, controllerAs: 'ctrl' })
 
                 .when('/Files', { templateUrl: 'Files.html', controller: FilesCtrl, controllerAs: 'ctrl' })
+                .when('/Entities', { templateUrl: 'Entities.html', controller: EntitiesCtrl, controllerAs: 'ctrl' })
                 .when('/Entities/:collection', { templateUrl: 'Entities.html', controller: EntitiesCtrl, controllerAs: 'ctrl' })
                 .when('/Entity/:collection', { templateUrl: 'Entity.html', controller: EntityCtrl, controllerAs: 'ctrl' })
                 .when('/Entity/:collection/:id', { templateUrl: 'Entity.html', controller: EntityCtrl, controllerAs: 'ctrl' })

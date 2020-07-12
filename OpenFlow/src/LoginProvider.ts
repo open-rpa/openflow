@@ -9,28 +9,19 @@ import * as path from "path";
 import * as SAMLStrategy from "passport-saml";
 import * as GoogleStrategy from "passport-google-oauth20";
 import * as LocalStrategy from "passport-local";
-// import * as wsfed from "wsfed";
 
 import * as passport from "passport";
 import { Config } from "./Config";
-import { User } from "./User";
-import { Base, Rights, WellknownIds } from "./base";
 
-import { TokenUser } from "./TokenUser";
 import { Crypt } from "./Crypt";
-import { Role } from "./Role";
 import { Audit } from "./Audit";
 
 import * as saml from "saml20";
-import { SamlProvider } from "./SamlProvider";
-import { Util } from "./Util";
-// import { multer } from "multer";
-// import { GridFsStorage } from "multer-gridfs-storage";
 var multer = require('multer');
 var GridFsStorage = require('multer-gridfs-storage');
 import { GridFSBucket, ObjectID, Db, Cursor } from "mongodb";
-import { WebSocketServer } from "./WebSocketServer";
-import { amqpwrapper } from "./amqpwrapper";
+import { Base, User, NoderedUtil, TokenUser, WellknownIds, Rights, Role } from "openflow-api";
+import { DBHelper } from "./DBHelper";
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 
 var stringify = require('json-stringify-safe');
@@ -103,7 +94,7 @@ export class LoginProvider {
                         claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] ||
                         claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"];
 
-                    var user = await User.FindByUsername(username);
+                    var user = await DBHelper.FindByUsername(username);
                     if (user) {
                         resolve(user);
                     } else {
@@ -117,7 +108,7 @@ export class LoginProvider {
     }
 
     static async getProviders(): Promise<any[]> {
-        LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", TokenUser.rootToken());
+        LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", Crypt.rootToken());
         var result: any[] = [];
         LoginProvider.login_providers.forEach(provider => {
             var item: any = { name: provider.name, id: provider.id, provider: provider.provider, logo: "fa-question-circle" };
@@ -145,7 +136,7 @@ export class LoginProvider {
         });
         passport.deserializeUser(function (user: any, done: any): void {
             done(null, user);
-            // Audit.LoginSuccess(new TokenUser(user), "weblogin", "cookie", "");
+            // Audit.LoginSuccess(TokenUser.From(user), "weblogin", "cookie", "");
         });
 
         app.use(function (req, res, next) {
@@ -201,7 +192,7 @@ export class LoginProvider {
             // }
             req.logout();
             var originalUrl: any = req.cookies.originalUrl;
-            if (!Util.IsNullEmpty(originalUrl)) {
+            if (!NoderedUtil.IsNullEmpty(originalUrl)) {
                 res.cookie("originalUrl", "", { expires: new Date(0) });
                 LoginProvider.redirect(res, originalUrl);
             } else {
@@ -211,7 +202,7 @@ export class LoginProvider {
         app.get("/PassiveSignout", (req: any, res: any, next: any): void => {
             req.logout();
             var originalUrl: any = req.cookies.originalUrl;
-            if (!Util.IsNullEmpty(originalUrl)) {
+            if (!NoderedUtil.IsNullEmpty(originalUrl)) {
                 res.cookie("originalUrl", "", { expires: new Date(0) });
                 LoginProvider.redirect(res, originalUrl);
             } else {
@@ -222,7 +213,7 @@ export class LoginProvider {
         app.get("/jwt", (req: any, res: any, next: any): void => {
             res.setHeader("Content-Type", "application/json");
             if (req.user) {
-                var user: TokenUser = new TokenUser(req.user);
+                var user: TokenUser = TokenUser.From(req.user);
                 res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.shorttoken_expires_in), user: user }));
             } else {
                 res.end(JSON.stringify({ jwt: "" }));
@@ -232,7 +223,7 @@ export class LoginProvider {
         app.get("/jwtlong", (req: any, res: any, next: any): void => {
             res.setHeader("Content-Type", "application/json");
             if (req.user) {
-                var user: TokenUser = new TokenUser(req.user);
+                var user: TokenUser = TokenUser.From(req.user);
                 res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.longtoken_expires_in), user: user }));
             } else {
                 res.end(JSON.stringify({ jwt: "" }));
@@ -243,7 +234,7 @@ export class LoginProvider {
             try {
                 var rawAssertion = req.body.token;
                 var user: User = await LoginProvider.validateToken(rawAssertion);
-                var tuser: TokenUser = new TokenUser(user);
+                var tuser: TokenUser = TokenUser.From(user);
                 res.setHeader("Content-Type", "application/json");
                 res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, Config.shorttoken_expires_in) }));
             } catch (error) {
@@ -261,6 +252,7 @@ export class LoginProvider {
             _url += "/";
             var res2 = {
                 wshost: _url,
+                wsurl: _url,
                 domain: Config.domain,
                 allow_user_registration: Config.allow_user_registration,
                 allow_personal_nodered: Config.allow_personal_nodered,
@@ -318,7 +310,7 @@ export class LoginProvider {
                     jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
                 }
                 else if (req.user) {
-                    user = new TokenUser(req.user as any);
+                    user = TokenUser.From(req.user as any);
                     jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
                 }
                 if (user == null) {
@@ -344,9 +336,6 @@ export class LoginProvider {
             }
         });
         try {
-
-            var t = new Role();
-
             var storage = GridFsStorage({
                 db: Config.db,
                 file: (req, file) => {
@@ -369,7 +358,7 @@ export class LoginProvider {
                                 jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
                             }
                             else if (req.user) {
-                                user = new TokenUser(req.user);
+                                user = TokenUser.From(req.user);
                                 jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
                             }
 
@@ -405,7 +394,7 @@ export class LoginProvider {
                     jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
                 }
                 else if (req.user) {
-                    user = new TokenUser(req.user as any);
+                    user = TokenUser.From(req.user as any);
                     jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
                 }
                 if (user == null) {
@@ -428,13 +417,13 @@ export class LoginProvider {
     }
     static async RegisterProviders(app: express.Express, baseurl: string) {
         if (LoginProvider.login_providers.length === 0) {
-            LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", TokenUser.rootToken());
+            LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", Crypt.rootToken());
         }
         var hasLocal: boolean = false;
         if (LoginProvider.login_providers.length === 0) { hasLocal = true; }
         LoginProvider.login_providers.forEach(async (provider) => {
             try {
-                if (Util.IsNullUndefinded(LoginProvider._providers[provider.id])) {
+                if (NoderedUtil.IsNullUndefinded(LoginProvider._providers[provider.id])) {
                     if (provider.provider === "saml") {
                         var metadata: any = await Config.parse_federation_metadata(provider.saml_federation_metadata);
                         LoginProvider._providers[provider.id] =
@@ -452,7 +441,7 @@ export class LoginProvider {
             }
         });
         if (hasLocal === true) {
-            if (Util.IsNullUndefinded(LoginProvider._providers.local)) {
+            if (NoderedUtil.IsNullUndefinded(LoginProvider._providers.local)) {
                 LoginProvider._providers.local = LoginProvider.CreateLocalStrategy(app, baseurl);
             }
         }
@@ -474,7 +463,7 @@ export class LoginProvider {
             function (req: any, res: any): void {
                 var originalUrl: any = req.cookies.originalUrl;
                 res.cookie("provider", key, { maxAge: 900000, httpOnly: true });
-                if (!Util.IsNullEmpty(originalUrl)) {
+                if (!NoderedUtil.IsNullEmpty(originalUrl)) {
                     res.cookie("originalUrl", "", { expires: new Date(0) });
                     LoginProvider.redirect(res, originalUrl);
                 } else {
@@ -560,7 +549,7 @@ export class LoginProvider {
             function (req: any, res: any): void {
                 var originalUrl: any = req.cookies.originalUrl;
                 res.cookie("provider", key, { maxAge: 900000, httpOnly: true });
-                if (!Util.IsNullEmpty(originalUrl)) {
+                if (!NoderedUtil.IsNullEmpty(originalUrl)) {
                     res.cookie("originalUrl", "", { expires: new Date(0) });
                     LoginProvider.redirect(res, originalUrl);
                 } else {
@@ -579,40 +568,40 @@ export class LoginProvider {
                 var user: User = null;
                 var tuser: TokenUser = null;
                 if (LoginProvider.login_providers.length === 0) {
-                    user = await User.FindByUsername(username);
+                    user = await DBHelper.FindByUsername(username);
                     if (user == null) {
                         user = new User(); user.name = username; user.username = username;
-                        await user.SetPassword(password);
-                        user = await Config.db.InsertOne(user, "users", 0, false, TokenUser.rootToken());
-                        var admins: Role = await Role.FindByNameOrId("admins", TokenUser.rootToken());
+                        await Crypt.SetPassword(user, password);
+                        user = await Config.db.InsertOne(user, "users", 0, false, Crypt.rootToken());
+                        var admins: Role = await DBHelper.FindRoleByName("admins");
                         admins.AddMember(user);
-                        await admins.Save(TokenUser.rootToken())
+                        await DBHelper.Save(admins, Crypt.rootToken())
                     } else {
-                        if (!(await user.ValidatePassword(password))) {
+                        if (!(await Crypt.ValidatePassword(user, password))) {
                             Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown");
                             return done(null, false);
                         }
                     }
-                    Audit.LoginSuccess(new TokenUser(user), "weblogin", "local", "", "browser", "unknown");
+                    Audit.LoginSuccess(TokenUser.From(user), "weblogin", "local", "", "browser", "unknown");
                     var provider: Provider = new Provider(); provider.provider = "local"; provider.name = "Local";
-                    provider = await Config.db.InsertOne(provider, "config", 0, false, TokenUser.rootToken());
+                    provider = await Config.db.InsertOne(provider, "config", 0, false, Crypt.rootToken());
                     LoginProvider.login_providers.push(provider);
-                    tuser = new TokenUser(user);
+                    tuser = TokenUser.From(user);
                     return done(null, tuser);
                 }
-                user = await User.FindByUsername(username);
-                if (Util.IsNullUndefinded(user)) {
+                user = await DBHelper.FindByUsername(username);
+                if (NoderedUtil.IsNullUndefinded(user)) {
                     if (!Config.allow_user_registration) {
                         return done(null, false);
                     }
-                    user = await User.ensureUser(TokenUser.rootToken(), username, username, null, password);
+                    user = await DBHelper.ensureUser(Crypt.rootToken(), username, username, null, password);
                 } else {
-                    if (!(await user.ValidatePassword(password))) {
+                    if (!(await Crypt.ValidatePassword(user, password))) {
                         Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown");
                         return done(null, false);
                     }
                 }
-                tuser = new TokenUser(user);
+                tuser = TokenUser.From(user);
                 Audit.LoginSuccess(tuser, "weblogin", "local", "", "browser", "unknown");
                 return done(null, tuser);
             } catch (error) {
@@ -656,7 +645,7 @@ export class LoginProvider {
                             }
                             LoginProvider._logger.info("req.logIn success");
                             // if (err) { return next(err); }
-                            if (!Util.IsNullEmpty(originalUrl)) {
+                            if (!NoderedUtil.IsNullEmpty(originalUrl)) {
                                 try {
                                     res.cookie("originalUrl", "", { expires: new Date(0) });
                                     LoginProvider.redirect(res, originalUrl);
@@ -678,7 +667,7 @@ export class LoginProvider {
                         });
                         return;
                     }
-                    if (!Util.IsNullEmpty(originalUrl)) {
+                    if (!NoderedUtil.IsNullEmpty(originalUrl)) {
                         if (originalUrl.indexOf("?") == -1) {
                             originalUrl = originalUrl + "?error=1"
                         } else if (originalUrl.indexOf("error=1") == -1) {
@@ -711,59 +700,59 @@ export class LoginProvider {
         var username: string = (profile.nameID || profile.username);
         if (username !== null && username != undefined) { username = username.toLowerCase(); }
         LoginProvider._logger.debug("verify: " + username);
-        var _user: User = await User.FindByUsernameOrFederationid(username);
+        var _user: User = await DBHelper.FindByUsernameOrFederationid(username);
 
-        if (Util.IsNullUndefinded(_user)) {
+        if (NoderedUtil.IsNullUndefinded(_user)) {
             var createUser: boolean = Config.auto_create_users;
             if (Config.auto_create_domains.map(x => username.endsWith(x)).length == -1) { createUser = false; }
             if (createUser) {
                 _user = new User(); _user.name = profile.name;
-                if (!Util.IsNullEmpty(profile["http://schemas.microsoft.com/identity/claims/displayname"])) {
+                if (!NoderedUtil.IsNullEmpty(profile["http://schemas.microsoft.com/identity/claims/displayname"])) {
                     _user.name = profile["http://schemas.microsoft.com/identity/claims/displayname"];
                 }
-                if (!Util.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"])) {
+                if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"])) {
                     _user.name = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"];
                 }
                 _user.username = username;
-                if (!Util.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
+                if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
                     (_user as any).mobile = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"];
                 }
-                if (Util.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty, please add displayname to claims", null); return; }
-                // _user = await Config.db.InsertOne(_user, "users", 0, false, TokenUser.rootToken());
-                var jwt: string = TokenUser.rootToken();
-                _user = await User.ensureUser(jwt, _user.name, _user.username, null, null);
+                if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty, please add displayname to claims", null); return; }
+                // _user = await Config.db.InsertOne(_user, "users", 0, false, Crypt.rootToken());
+                var jwt: string = Crypt.rootToken();
+                _user = await DBHelper.ensureUser(jwt, _user.name, _user.username, null, null);
             }
         } else {
-            if (!Util.IsNullUndefinded(_user)) {
-                if (!Util.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
+            if (!NoderedUtil.IsNullUndefinded(_user)) {
+                if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
                     (_user as any).mobile = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"];
                 }
-                var jwt: string = TokenUser.rootToken();
-                await _user.Save(jwt);
+                var jwt: string = Crypt.rootToken();
+                await DBHelper.Save(_user, jwt);
             }
         }
 
-        if (!Util.IsNullUndefinded(_user)) {
-            if (!Util.IsNullEmpty(profile["http://schemas.xmlsoap.org/claims/Group"])) {
-                var jwt: string = TokenUser.rootToken();
+        if (!NoderedUtil.IsNullUndefinded(_user)) {
+            if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/claims/Group"])) {
+                var jwt: string = Crypt.rootToken();
                 var strroles: string[] = profile["http://schemas.xmlsoap.org/claims/Group"];
                 for (var i = 0; i < strroles.length; i++) {
-                    var role: Role = await Role.FindByNameOrId(strroles[i], jwt);
-                    if (!Util.IsNullUndefinded(role)) {
+                    var role: Role = await DBHelper.FindRoleByName(strroles[i]);
+                    if (!NoderedUtil.IsNullUndefinded(role)) {
                         role.AddMember(_user);
-                        await role.Save(jwt);
+                        await DBHelper.Save(role, jwt);
                     }
                 }
-                await _user.DecorateWithRoles();
+                await DBHelper.DecorateWithRoles(_user);
             }
         }
 
-        if (Util.IsNullUndefinded(_user)) {
+        if (NoderedUtil.IsNullUndefinded(_user)) {
             Audit.LoginFailed(username, "weblogin", "saml", "", "samlverify", "unknown");
             done("unknown user " + username, null); return;
         }
 
-        var tuser: TokenUser = new TokenUser(_user);
+        var tuser: TokenUser = TokenUser.From(_user);
         Audit.LoginSuccess(tuser, "weblogin", "saml", "", "samlverify", "unknown");
         done(null, tuser);
     }
@@ -775,26 +764,26 @@ export class LoginProvider {
         var username: string = (profile.username || profile.id);
         if (username !== null && username != undefined) { username = username.toLowerCase(); }
         LoginProvider._logger.debug("verify: " + username);
-        var _user: User = await User.FindByUsernameOrFederationid(username);
-        if (Util.IsNullUndefinded(_user)) {
+        var _user: User = await DBHelper.FindByUsernameOrFederationid(username);
+        if (NoderedUtil.IsNullUndefinded(_user)) {
             var createUser: boolean = Config.auto_create_users;
             if (Config.auto_create_domains.map(x => username.endsWith(x)).length == -1) { createUser = false; }
             if (createUser) {
-                var jwt: string = TokenUser.rootToken();
+                var jwt: string = Crypt.rootToken();
                 _user = new User(); _user.name = profile.name;
-                if (!Util.IsNullEmpty(profile.displayName)) { _user.name = profile.displayName; }
+                if (!NoderedUtil.IsNullEmpty(profile.displayName)) { _user.name = profile.displayName; }
                 _user.username = username;
                 (_user as any).mobile = profile.mobile;
-                if (Util.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty.", null); return; }
-                var jwt: string = TokenUser.rootToken();
-                _user = await User.ensureUser(jwt, _user.name, _user.username, null, null);
+                if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty.", null); return; }
+                var jwt: string = Crypt.rootToken();
+                _user = await DBHelper.ensureUser(jwt, _user.name, _user.username, null, null);
             }
         }
-        if (Util.IsNullUndefinded(_user)) {
+        if (NoderedUtil.IsNullUndefinded(_user)) {
             Audit.LoginFailed(username, "weblogin", "google", "", "googleverify", "unknown");
             done("unknown user " + username, null); return;
         }
-        var tuser: TokenUser = new TokenUser(_user);
+        var tuser: TokenUser = TokenUser.From(_user);
         Audit.LoginSuccess(tuser, "weblogin", "google", "", "googleverify", "unknown");
         done(null, tuser);
     }

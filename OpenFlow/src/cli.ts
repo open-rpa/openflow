@@ -2,11 +2,9 @@
 // npm link --force
 // npm i npm install --global --production windows-build-tools
 import * as fs from "fs";
-import { WebSocketClient } from "./nodeclient/WebSocketClient";
-import { SigninMessage, Message } from "./nodeclient/Message";
 import { Config } from "./Config";
 import { logger, StopService, StartService, RemoveService, InstallService, RunService, loadenv, envfilename, envfilepathname, servicename, isOpenFlow } from "./nodeclient/cliutil";
-
+import { WebSocketClient, NoderedUtil } from "openflow-api";
 const optionDefinitions = [
     { name: 'verbose', alias: 'v', type: Boolean },
     { name: 'authenticate', alias: 'a', type: Boolean },
@@ -21,13 +19,9 @@ const optionDefinitions = [
     { name: 'inspect', type: String }
 ]
 const commandLineArgs = require('command-line-args');
-
 const path = require('path');
 const readlineSync = require('readline-sync');
 const envfile = require('envfile')
-
-
-
 var options = null;
 try {
     options = commandLineArgs(optionDefinitions);
@@ -44,21 +38,18 @@ try {
     printusage();
     process.exit();
 }
-
 function getToken(): Promise<string> {
     return new Promise<string>(async (resolve, reject) => {
         logger.info("wsurl " + Config.api_ws_url);
         var socket: WebSocketClient = new WebSocketClient(logger, Config.api_ws_url);
         socket.events.on("onopen", async () => {
             try {
-                var q: SigninMessage = new SigninMessage();
-                q.clientagent = "nodered-cli";
-                q.clientversion = Config.version;
-                q.username = readlineSync.question('username? ');
-                q.password = readlineSync.question('password? ', { hideEchoBack: true });
-                q.longtoken = true;
-                var msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
-                var result: SigninMessage = await socket.Send<SigninMessage>(msg);
+                var username: string = readlineSync.question('username? ');
+                var password: string = readlineSync.question('password? ', { hideEchoBack: true });
+
+                socket.version = Config.version;
+                socket.agent = "nodered-cli";
+                var result = await NoderedUtil.SigninWithUsername(username, password, null, true);
                 logger.info("signed in as " + result.user.name + " with id " + result.user._id);
                 WebSocketClient.instance.user = result.user;
                 WebSocketClient.instance.jwt = result.jwt;
@@ -76,8 +67,6 @@ function getToken(): Promise<string> {
         });
     });
 }
-
-
 async function doit() {
     if (options.init) {
         var files = fs.readdirSync(path.join(__dirname, ".."))
@@ -143,8 +132,6 @@ async function doit() {
     }
 
 }
-
-
 function printusage() {
     if (!isOpenFlow()) {
         console.log("openflow-nodered-cli [--init][--install][--uninstall][--config][--start][--stop] name");
@@ -169,20 +156,16 @@ function printusage() {
     console.log("Will look for an envoriment file called name.env and copy that to the");
     console.log("source directory");
 }
-
 const unhandledRejection = require("unhandled-rejection");
 let rejectionEmitter = unhandledRejection({
     timeout: 20
 });
-
 rejectionEmitter.on("unhandledRejection", (error, promise) => {
     logger.error('Unhandled Rejection at: Promise', promise, 'reason:', error);
     logger.error(error.stack);
 });
-
 rejectionEmitter.on("rejectionHandled", (error, promise) => {
     logger.error('Rejection handled at: Promise', promise, 'reason:', error);
     logger.error(error.stack);
 })
-
 doit();

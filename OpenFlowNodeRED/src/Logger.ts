@@ -4,8 +4,7 @@ const path = require('path');
 
 export class Logger {
     static configure(): winston.Logger {
-        // var filename = path.join(Config.logpath, "nodered.log");
-        var filename = path.join("C:\\code\\openiaptest", "nodered.log");
+        var filename = path.join(Config.logpath, "nodered.log");
         var options: any = {
             file: {
                 level: "debug",

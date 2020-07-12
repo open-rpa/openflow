@@ -75,12 +75,12 @@
     <div class="form-group" ng-show="ctrl.model.provider=='saml'">
         <label for="saml_federation_metadata" class="col-sm-2 control-label" translate lib="web">metadataurl</label>
         <div class="col-sm-4">
-            <pre>https://{{ctrl.WebSocketClient.domain}}/{{ctrl.model.id}}/FederationMetadata/2007-06/FederationMetadata.xml</pre>
-            <a ng-href="https://{{ctrl.WebSocketClient.domain}}/{{ctrl.model.id}}/FederationMetadata/2007-06/FederationMetadata.xml"
+            <pre>https://{{ctrl.WebSocketClientService.domain}}/{{ctrl.model.id}}/FederationMetadata/2007-06/FederationMetadata.xml</pre>
+            <a ng-href="https://{{ctrl.WebSocketClientService.domain}}/{{ctrl.model.id}}/FederationMetadata/2007-06/FederationMetadata.xml"
                 target="_blank">test</a>
         </div>
     </div>
 
-    {{ctrl.WebSocketClient.url}}
+    {{ctrl.WebSocketClientService.url}}
 
 </form>

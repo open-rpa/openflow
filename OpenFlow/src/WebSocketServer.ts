@@ -1,20 +1,18 @@
 import * as winston from "winston";
 import * as http from "http";
 import * as WebSocket from "ws";
-import { WebSocketClient } from "./WebSocketServerClient";
+import { WebSocketServerClient } from "./WebSocketServerClient";
 import { DatabaseConnection } from "./DatabaseConnection";
 import { Crypt } from "./Crypt";
-import { SigninMessage } from "./Messages/SigninMessage";
-import { SocketMessage } from "./SocketMessage";
 import { Message } from "./Messages/Message";
-import { Util } from "./Util";
 import { Config } from "./Config";
+import { SigninMessage, NoderedUtil } from "openflow-api";
 
 export class WebSocketServer {
     private static _logger: winston.Logger;
     private static _socketserver: WebSocket.Server;
     private static _server: http.Server;
-    public static _clients: WebSocketClient[];
+    public static _clients: WebSocketServerClient[];
     private static _db: DatabaseConnection;
 
     static configure(logger: winston.Logger, server: http.Server): void {
@@ -23,7 +21,7 @@ export class WebSocketServer {
         this._server = server;
         this._socketserver = new WebSocket.Server({ server: server });
         this._socketserver.on("connection", (socketObject: WebSocket): void => {
-            this._clients.push(new WebSocketClient(logger, socketObject));
+            this._clients.push(new WebSocketServerClient(logger, socketObject));
         });
         this._socketserver.on("error", (error: Error): void => {
             this._logger.error(error);
@@ -38,9 +36,9 @@ export class WebSocketServer {
     }
     private static async pingClients(): Promise<void> {
         let count: number = WebSocketServer._clients.length;
-        WebSocketServer._clients = WebSocketServer._clients.filter(function (cli: WebSocketClient): boolean {
+        WebSocketServer._clients = WebSocketServer._clients.filter(function (cli: WebSocketServerClient): boolean {
             try {
-                if (!Util.IsNullEmpty(cli.jwt)) {
+                if (!NoderedUtil.IsNullEmpty(cli.jwt)) {
                     var tuser = Crypt.verityToken(cli.jwt);
                     var payload = Crypt.decryptToken(cli.jwt);
                     var clockTimestamp = Math.floor(Date.now() / 1000);

@@ -1,11 +1,20 @@
 import * as https from "https";
 import * as retry from "async-retry";
 import * as fs from "fs";
+import * as path from "path";
 import { fetch, toPassportConfig } from "passport-saml-metadata";
-import { NoderedUtil } from "./nodeclient/NoderedUtil";
+import { NoderedUtil } from "openflow-api";
 export class Config {
+    public static getversion(): string {
+        var versionfile: string = path.join(__dirname, "VERSION");
+        if (!fs.existsSync(versionfile)) versionfile = path.join(__dirname, "..", "VERSION")
+        if (!fs.existsSync(versionfile)) versionfile = path.join(__dirname, "..", "..", "VERSION")
+        if (!fs.existsSync(versionfile)) versionfile = path.join(__dirname, "..", "..", "..", "VERSION")
+        Config.version = (fs.existsSync(versionfile) ? fs.readFileSync(versionfile, "utf8") : "0.0.1");
+        return Config.version;
+    }
     public static reload(): void {
-        Config.version = (fs.existsSync("VERSION") ? fs.readFileSync("VERSION", "utf8") : "1.0.34");
+        Config.getversion();
         Config.logpath = Config.getEnv("logpath", __dirname);
 
         Config.nodered_id = Config.getEnv("nodered_id", "1");
@@ -47,7 +56,7 @@ export class Config {
 
         Config.amqp_message_ttl = parseInt(Config.getEnv("amqp_message_ttl", "20000"));
     }
-    public static version: string = (fs.existsSync("VERSION") ? fs.readFileSync("VERSION", "utf8") : "1.0.34");
+    public static version: string = Config.getversion();
     public static logpath: string = Config.getEnv("logpath", __dirname);
     public static nodered_id: string = Config.getEnv("nodered_id", "1");
     public static nodered_sa: string = Config.getEnv("nodered_sa", "");

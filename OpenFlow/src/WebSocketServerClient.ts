@@ -2,36 +2,25 @@ import * as winston from "winston";
 import * as WebSocket from "ws";
 import { SocketMessage } from "./SocketMessage";
 import { Message, JSONfn } from "./Messages/Message";
-import { User } from "./User";
-import { mapFunc, reduceFunc, finalizeFunc } from "./DatabaseConnection";
 import { Config } from "./Config";
-// import { amqp_consumer } from "./amqp_consumer";
-import { QueueMessage } from "./Messages/QueueMessage";
-import { QueryMessage } from "./Messages/QueryMessage";
-import { MapReduceMessage } from "./Messages/MapReduceMessage";
-import { InsertOneMessage } from "./Messages/InsertOneMessage";
-import { UpdateOneMessage } from "./Messages/UpdateOneMessage";
-import { DeleteOneMessage } from "./Messages/DeleteOneMessage";
-import { Base } from "./base";
-import { UpdateManyMessage } from "./Messages/UpdateManyMessage";
-import { Util } from "./Util";
 import { amqpwrapper, QueueMessageOptions, amqpqueue } from "./amqpwrapper";
+import { NoderedUtil, Base, InsertOneMessage, QueueMessage, MapReduceMessage, QueryMessage, UpdateOneMessage, UpdateManyMessage, DeleteOneMessage, User, mapFunc, reduceFunc, finalizeFunc, QueuedMessage, QueuedMessageCallback } from "openflow-api";
 
 interface IHashTable<T> {
     [key: string]: T;
 }
-type QueuedMessageCallback = (msg: any) => any;
-export class QueuedMessage {
-    constructor(message: any, cb: QueuedMessageCallback) {
-        this.id = message.id;
-        this.message = message;
-        this.cb = cb;
-    }
-    public cb: QueuedMessageCallback;
-    public id: string;
-    public message: any;
-}
-export class WebSocketClient {
+// type QueuedMessageCallback = (msg: any) => any;
+// export class QueuedMessage {
+//     constructor(message: any, cb: QueuedMessageCallback) {
+//         this.id = message.id;
+//         this.message = message;
+//         this.cb = cb;
+//     }
+//     public cb: QueuedMessageCallback;
+//     public id: string;
+//     public message: any;
+// }
+export class WebSocketServerClient {
     public jwt: string;
     public _logger: winston.Logger;
     private _socketObject: WebSocket;
@@ -117,7 +106,7 @@ export class WebSocketClient {
     public async CreateConsumer(queuename: string): Promise<string> {
         var autoDelete: boolean = false; // Should we keep the queue around ? for robots and roles
         var qname = queuename;
-        if (Util.IsNullEmpty(qname)) {
+        if (NoderedUtil.IsNullEmpty(qname)) {
             if (this.clientagent == "nodered") {
                 qname = "nodered." + Math.random().toString(36).substr(2, 9); autoDelete = true;
             } else if (this.clientagent == "webapp") {
@@ -186,7 +175,7 @@ export class WebSocketClient {
     }
     private ProcessQueue(): void {
         let username: string = "Unknown";
-        if (!Util.IsNullUndefinded(this.user)) { username = this.user.username; }
+        if (!NoderedUtil.IsNullUndefinded(this.user)) { username = this.user.username; }
         let ids: string[] = [];
         this._receiveQueue.forEach(msg => {
             if (ids.indexOf(msg.id) === -1) { ids.push(msg.id); }
@@ -207,7 +196,7 @@ export class WebSocketClient {
                 } else {
                     var buffer: string = "";
                     msgs.forEach(msg => {
-                        if (!Util.IsNullUndefinded(msg.data)) { buffer += msg.data; }
+                        if (!NoderedUtil.IsNullUndefinded(msg.data)) { buffer += msg.data; }
                     });
                     this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
                     var result: Message = Message.frommessage(first, buffer);
@@ -233,27 +222,27 @@ export class WebSocketClient {
     public async Send<T>(message: Message): Promise<T> {
         return new Promise<T>(async (resolve, reject) => {
             this._Send(message, ((msg) => {
-                if (!Util.IsNullUndefinded(msg.error)) { return reject(msg.error); }
+                if (!NoderedUtil.IsNullUndefinded(msg.error)) { return reject(msg.error); }
                 resolve(msg);
             }).bind(this));
         });
     }
     private _Send(message: Message, cb: QueuedMessageCallback): void {
         var messages: string[] = this.chunkString(message.data, 500);
-        if (Util.IsNullUndefinded(messages) || messages.length === 0) {
+        if (NoderedUtil.IsNullUndefinded(messages) || messages.length === 0) {
             var singlemessage: SocketMessage = SocketMessage.frommessage(message, "", 1, 0);
-            if (Util.IsNullEmpty(message.replyto)) {
+            if (NoderedUtil.IsNullEmpty(message.replyto)) {
                 this.messageQueue[singlemessage.id] = new QueuedMessage(singlemessage, cb);
             }
             this._sendQueue.push(singlemessage);
             return;
         }
-        if (Util.IsNullEmpty(message.id)) { message.id = Math.random().toString(36).substr(2, 9); }
+        if (NoderedUtil.IsNullEmpty(message.id)) { message.id = Math.random().toString(36).substr(2, 9); }
         for (let i: number = 0; i < messages.length; i++) {
             var _message: SocketMessage = SocketMessage.frommessage(message, messages[i], messages.length, i);
             this._sendQueue.push(_message);
         }
-        if (Util.IsNullEmpty(message.replyto)) {
+        if (NoderedUtil.IsNullEmpty(message.replyto)) {
             this.messageQueue[message.id] = new QueuedMessage(message, cb);
         }
         // setTimeout(() => {
@@ -262,7 +251,7 @@ export class WebSocketClient {
         this.ProcessQueue();
     }
     public chunkString(str: string, length: number): string[] {
-        if (Util.IsNullEmpty(str)) { return null; }
+        if (NoderedUtil.IsNullEmpty(str)) { return null; }
         // tslint:disable-next-line: quotemark
         return str.match(new RegExp('.{1,' + length + '}', 'g'));
     }
@@ -283,7 +272,7 @@ export class WebSocketClient {
         q.exchange = options.exchange;
 
         let m: Message = Message.fromcommand("queuemessage");
-        if (Util.IsNullEmpty(q.correlationId)) { q.correlationId = m.id; }
+        if (NoderedUtil.IsNullEmpty(q.correlationId)) { q.correlationId = m.id; }
         m.data = JSON.stringify(q);
         q = await this.Send<QueueMessage>(m);
         if ((q as any).command == "error") throw new Error(q.data);
@@ -291,41 +280,41 @@ export class WebSocketClient {
     }
 
     async Query<T extends Base>(collection: string, query: any, projection: any = null, orderby: any = { _created: -1 }, top: number = 500, skip: number = 0): Promise<any[]> {
-        var q: QueryMessage<T> = new QueryMessage<T>();
+        var q: QueryMessage = new QueryMessage();
         q.collectionname = collection; q.query = query;
         q.projection = projection; q.orderby = orderby; q.top = top; q.skip = skip;
         var msg: Message = new Message(); msg.command = "query"; msg.data = JSON.stringify(q);
-        q = await this.Send<QueryMessage<T>>(msg);
-        return q.result;
+        q = await this.Send<QueryMessage>(msg);
+        return q.result as T[];
     }
     async MapReduce(collection: string, map: mapFunc, reduce: reduceFunc, finalize: finalizeFunc, query: any, out: string | any, scope: any): Promise<any> {
-        var q: MapReduceMessage<any> = new MapReduceMessage(map, reduce, finalize, query, out);
+        var q: MapReduceMessage = new MapReduceMessage(map, reduce, finalize, query, out);
         q.collectionname = collection; q.scope = scope;
         var msg: Message = new Message(); msg.command = "mapreduce"; q.out = out;
         msg.data = JSONfn.stringify(q);
-        q = await this.Send<MapReduceMessage<any>>(msg);
+        q = await this.Send<MapReduceMessage>(msg);
         return q.result;
     }
     async Insert<T extends Base>(collection: string, model: any): Promise<any> {
-        var q: InsertOneMessage<T> = new InsertOneMessage();
+        var q: InsertOneMessage = new InsertOneMessage();
         q.collectionname = collection; q.item = model;
         var msg: Message = new Message(); msg.command = "insertone"; msg.data = JSONfn.stringify(q);
-        q = await this.Send<InsertOneMessage<T>>(msg);
-        return q.result;
+        q = await this.Send<InsertOneMessage>(msg);
+        return q.result as T[];
     }
     async Update<T extends Base>(collection: string, model: any): Promise<any> {
-        var q: UpdateOneMessage<T> = new UpdateOneMessage();
+        var q: UpdateOneMessage = new UpdateOneMessage();
         q.collectionname = collection; q.item = model;
         var msg: Message = new Message(); msg.command = "updateone"; msg.data = JSONfn.stringify(q);
-        q = await this.Send<UpdateOneMessage<T>>(msg);
-        return q.result;
+        q = await this.Send<UpdateOneMessage>(msg);
+        return q.result as T[];
     }
     async UpdateMany<T extends Base>(collection: string, query: any, document: any): Promise<any> {
-        var q: UpdateManyMessage<T> = new UpdateManyMessage();
+        var q: UpdateManyMessage = new UpdateManyMessage();
         q.collectionname = collection; q.item = document; q.query = query;
         var msg: Message = new Message(); msg.command = "updateone"; msg.data = JSONfn.stringify(q);
-        q = await this.Send<UpdateManyMessage<T>>(msg);
-        return q.result;
+        q = await this.Send<UpdateManyMessage>(msg);
+        return q.result as T[];
     }
     async Delete(collection: string, id: any): Promise<void> {
         var q: DeleteOneMessage = new DeleteOneMessage();

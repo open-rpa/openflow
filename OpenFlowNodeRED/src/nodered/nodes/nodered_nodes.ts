@@ -1,7 +1,6 @@
 import * as RED from "node-red";
 import { Red } from "node-red";
-import { NoderedUtil } from "../../nodeclient/NoderedUtil";
-
+import { NoderedUtil } from "openflow-api";
 
 export interface Iget_pods {
     name: string;
@@ -25,7 +24,7 @@ export class get_pods {
 
             this.node.status({ fill: "blue", shape: "dot", text: "Getting pods" });
 
-            var result = await NoderedUtil.GetNoderedInstance(msg.targetid, null, msg.jwt);
+            var result = await NoderedUtil.GetNoderedInstance(msg.targetid, msg.jwt);
             msg.payload = result;
             this.node.send(msg);
             this.node.status({});

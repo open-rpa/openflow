@@ -1,6 +1,6 @@
 {
   "name": "openiap",
-  "version": "1.0.40",
+  "version": "1.0.48",
   "description": "Simple wrapper around NodeRed, RabbitMQ and MongoDB to support a more scaleable NodeRed implementation.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {
@@ -25,6 +25,7 @@
     "@types/mongodb": "^3.5.25",
     "@types/passport": "^1.0.3",
     "amqplib": "^0.5.6",
+    "angular": "^1.8.0",
     "angular-chart.js": "^1.1.1",
     "angular-route": "^1.8.0",
     "angular-sanitize": "^1.8.0",
@@ -57,6 +58,7 @@
     "morgan": "^1.10.0",
     "multer": "^1.4.2",
     "multer-gridfs-storage": "^4.2.0",
+    "openflow-api": "^1.0.7",
     "os-service": "^2.2.0",
     "passport": "^0.4.1",
     "passport-google-oauth20": "^2.0.0",
@@ -75,10 +77,13 @@
     "@types/angular": "^1.7.2",
     "@types/angular-route": "^1.7.1",
     "@types/jquery": "^3.5.0",
+    "browserify": "^16.5.1",
     "css-loader": "^3.6.0",
     "expose-loader": "^1.0.0",
     "merge-stream": "^2.0.0",
     "style-loader": "^1.2.1",
+    "tsify": "^4.0.2",
+    "typescript": "^3.9.6",
     "webpack": "^4.43.0",
     "webpack-cli": "^3.3.12"
   }
