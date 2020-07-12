@@ -456,7 +456,7 @@ export class amqpwrapper {
                 }
                 return hasConsumers;
             }, {
-                retries: 5,
+                retries: 10,
                 minTimeout: 500,
                 maxTimeout: 500,
                 onRetry: function (error: Error, count: number): void {

@@ -1535,11 +1535,22 @@ export class EntitiesCtrl extends entitiesCtrl<Base> {
             this.orderby = this.userdata.data.EntitiesCtrl.orderby;
             this.searchstring = this.userdata.data.EntitiesCtrl.searchstring;
             this.basequeryas = this.userdata.data.EntitiesCtrl.basequeryas;
+        } else {
+            if (NoderedUtil.IsNullEmpty(this.collection)) {
+                this.$location.path("/Entities/entities");
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                return;
+            }
         }
+        console.log("path: " + this.$location.path());
         if (NoderedUtil.IsNullEmpty(this.collection)) {
             this.$location.path("/Entities/entities");
-        } else {
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            return;
+        } else if (this.$location.path() != "/Entities/" + this.collection) {
             this.$location.path("/Entities/" + this.collection);
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            return;
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
