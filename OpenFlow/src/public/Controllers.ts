@@ -1000,6 +1000,7 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
         try {
             this.loading = true;
             await this.WebSocketClientService.impersonate(model._id);
+            this.loadData();
         } catch (error) {
             this.errormessage = JSON.stringify(error);
         }
@@ -2969,6 +2970,7 @@ export class RobotsCtrl extends entitiesCtrl<unattendedclient> {
         try {
             this.loading = true;
             await this.WebSocketClientService.impersonate(model._id);
+            this.loadData();
         } catch (error) {
             this.errormessage = JSON.stringify(error);
         }
