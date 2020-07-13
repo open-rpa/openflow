@@ -36,7 +36,8 @@ export class WebSocketClientService {
                 if (WebSocketClient.instance == null) {
                     var cli: WebSocketClient;
                     cli = new WebSocketClient(this.logger, wsurl);
-                    WebSocketClient.instance.version = data.version;
+                    cli.agent = "webapp";
+                    cli.version = data.version;
                 }
                 cli.events.on('connect', () => {
                     this.logger.info('connected to ' + wsurl);

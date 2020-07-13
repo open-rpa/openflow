@@ -2,6 +2,7 @@ import { userdata, api, entityCtrl, entitiesCtrl } from "./CommonControllers";
 import { TokenUser, QueueMessage, SigninMessage, Ace, NoderedUser, Billing, stripe_customer, stripe_list, stripe_base, stripe_plan, stripe_subscription_item, Base, NoderedUtil, WebSocketClient, Role, NoderedConfig, Resources, ResourceValues, stripe_invoice } from "openflow-api";
 import { RPAWorkflow, Provider, Form, WorkflowInstance, Workflow, unattendedclient } from "./Entities";
 import { WebSocketClientService } from "./WebSocketClientService";
+import * as jsondiffpatch from "jsondiffpatch";
 
 function treatAsUTC(date): number {
     var result = new Date(date);
@@ -12,7 +13,6 @@ function daysBetween(startDate, endDate): number {
     var millisecondsPerDay = 24 * 60 * 60 * 1000;
     return (treatAsUTC(endDate) - treatAsUTC(startDate)) / millisecondsPerDay;
 }
-declare var jsondiffpatch: any;
 declare var Formio: any;
 declare var FileSaver: any;
 export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
@@ -3014,6 +3014,8 @@ export class AuditlogsCtrl extends entitiesCtrl<Role> {
             if (model.clientagent == 'samlverify') model.fa = 'fab fa-windows';
             if (model.clientagent == 'aiotwebapp') model.fa = 'fas fa-globe';
             if (model.clientagent == 'aiotmobileapp') model.fa = 'fas fa-mobile-alt';
+            if (model.clientagent == 'nodered-cli') model.fa = 'fab fa-node-js';
+            if (model.clientagent == 'openflow-cli') model.fa = 'fab fa-node-js';
 
             if (model.impostorname != '' && model.impostorname != null) model.fa2 = 'fas fa-user-secret';
         }
