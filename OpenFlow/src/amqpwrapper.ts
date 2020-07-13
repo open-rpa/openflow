@@ -127,18 +127,18 @@ export class amqpwrapper {
                 }
             });
             // ROLLBACK
-            var keys = Object.keys(this.exchanges);
-            for (var i = 0; i < keys.length; i++) {
-                var q1: amqpexchange = this.exchanges[keys[i]];
-                this.AddExchangeConsumer(q1.exchange, q1.algorithm, q1.routingkey, q1.ExchangeOptions, null, q1.callback);
-            }
-            var keys = Object.keys(this.queues);
-            for (var i = 0; i < keys.length; i++) {
-                if (keys[i] != this.replyqueue.queue) {
-                    var q2: amqpqueue = this.queues[keys[i]];
-                    this.AddQueueConsumer(q2.queue, q2.QueueOptions, null, q2.callback);
-                }
-            }
+            // var keys = Object.keys(this.exchanges);
+            // for (var i = 0; i < keys.length; i++) {
+            //     var q1: amqpexchange = this.exchanges[keys[i]];
+            //     this.AddExchangeConsumer(q1.exchange, q1.algorithm, q1.routingkey, q1.ExchangeOptions, null, q1.callback);
+            // }
+            // var keys = Object.keys(this.queues);
+            // for (var i = 0; i < keys.length; i++) {
+            //     if (keys[i] != this.replyqueue.queue) {
+            //         var q2: amqpqueue = this.queues[keys[i]];
+            //         this.AddQueueConsumer(q2.queue, q2.QueueOptions, null, q2.callback);
+            //     }
+            // }
         } catch (error) {
             console.error(error);
             this.timeout = setTimeout(this.connect.bind(this), 1000);
