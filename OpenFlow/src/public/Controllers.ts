@@ -618,13 +618,6 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
-    async DeleteOne(model: any): Promise<any> {
-        this.loading = true;
-        await NoderedUtil.DeleteOne(this.collection, model._id, null);
-        this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
-        this.loading = false;
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
-    }
 }
 export class MainCtrl extends entitiesCtrl<Base> {
     public showcompleted: boolean = false;
@@ -929,14 +922,6 @@ export class ProvidersCtrl extends entitiesCtrl<Provider> {
             this.loadData();
         });
     }
-    async DeleteOne(model: any): Promise<any> {
-        this.loading = true;
-        await NoderedUtil.DeleteOne(this.collection, model._id, null);
-        this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
-        this.loading = false;
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
-    }
-
 }
 export class ProviderCtrl extends entityCtrl<Provider> {
     constructor(
@@ -1167,13 +1152,6 @@ export class RolesCtrl extends entitiesCtrl<Role> {
         this.userdata.data.RolesCtrl.orderby = this.orderby;
         this.userdata.data.RolesCtrl.searchstring = this.searchstring;
         this.userdata.data.RolesCtrl.basequeryas = this.basequeryas;
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
-    }
-    async DeleteOne(model: any): Promise<any> {
-        this.loading = true;
-        await NoderedUtil.DeleteOne(this.collection, model._id, null);
-        this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
-        this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 }
@@ -1407,13 +1385,6 @@ export class FilesCtrl extends entitiesCtrl<Base> {
             this.loadData();
         });
     }
-    async DeleteOne(model: any): Promise<any> {
-        this.loading = true;
-        await NoderedUtil.DeleteOne(this.collection, model._id, null);
-        this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
-        this.loading = false;
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
-    }
     async Download(id: string) {
         var lastp: number = 0;
         // var fileinfo = await NoderedUtil.GetFile(null, id, (msg, index, count) => {
@@ -1583,13 +1554,6 @@ export class EntitiesCtrl extends entitiesCtrl<Base> {
         this.collection = "entities";
         this.loadData();
     }
-    async DeleteOne(model: any): Promise<any> {
-        this.loading = true;
-        await NoderedUtil.DeleteOne(this.collection, model._id, null);
-        this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
-        this.loading = false;
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
-    }
 }
 export class FormsCtrl extends entitiesCtrl<Base> {
     constructor(
@@ -1609,13 +1573,6 @@ export class FormsCtrl extends entitiesCtrl<Base> {
         WebSocketClientService.onSignedin((user: TokenUser) => {
             this.loadData();
         });
-    }
-    async DeleteOne(model: any): Promise<any> {
-        this.loading = true;
-        await NoderedUtil.DeleteOne(this.collection, model._id, null);
-        this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
-        this.loading = false;
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 }
 export class EditFormCtrl extends entityCtrl<Form> {
@@ -1865,7 +1822,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 console.debug("No instance id found, send empty message");
                 console.debug("SendOne: " + this.workflow._id + " / " + this.workflow.queue);
                 await this.SendOne(this.workflow.queue, {});
-                this.loadData();
             } catch (error) {
                 this.errormessage = error;
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -2903,13 +2859,6 @@ export class hdrobotsCtrl extends entitiesCtrl<unattendedclient> {
         WebSocketClientService.onSignedin((user: TokenUser) => {
             this.loadData();
         });
-    }
-    async DeleteOne(model: any): Promise<any> {
-        this.loading = true;
-        await NoderedUtil.DeleteOne(this.collection, model._id, null);
-        this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
-        this.loading = false;
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     async Enable(model: any): Promise<any> {
         this.loading = true;

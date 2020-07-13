@@ -364,8 +364,12 @@ export class entitiesCtrl<T> {
     }
     async DeleteOne(model: any): Promise<any> {
         this.loading = true;
-        await NoderedUtil.DeleteOne(this.collection, model, null);
-        this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
+        try {
+            await NoderedUtil.DeleteOne(this.collection, model._id, null);
+            this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
+        } catch (error) {
+            this.errormessage = error;
+        }
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
