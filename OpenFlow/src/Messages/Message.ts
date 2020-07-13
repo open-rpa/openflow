@@ -232,19 +232,18 @@ export class Message {
                 }
             }
             try {
-                if (!NoderedUtil.IsNullEmpty(msg.data) && NoderedUtil.IsNullEmpty(msg.data.jwt)) {
-                    if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
-                        msg.data.jwt = msg.jwt;
-                    } else {
-                        msg.data.jwt = cli.jwt;
-                    }
+                if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(msg.data.jwt)) {
+                    msg.jwt = msg.data.jwt;
+                }
+                if (NoderedUtil.IsNullEmpty(msg.jwt)) {
+                    msg.jwt = cli.jwt;
+                }
+                if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
+                    var tuser = Crypt.verityToken(msg.jwt);
+                    msg.user = tuser;
                 }
             } catch (error) {
                 cli._logger.error(error);
-            }
-            if (!NoderedUtil.IsNullEmpty(msg.data) && !NoderedUtil.IsNullEmpty(msg.data.jwt)) {
-                var tuser = Crypt.verityToken(msg.data.jwt);
-                msg.data.user = tuser;
             }
             if (NoderedUtil.IsNullEmpty(msg.replyto)) {
                 // var sendthis = { data: msg.data, jwt: cli.jwt, user: cli.user };

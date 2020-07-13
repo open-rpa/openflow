@@ -1737,6 +1737,23 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         });
 
     }
+    hideFormElements() {
+        console.log("hideFormElements");
+        $('#workflowform :input').prop("disabled", true);
+        $('#workflowform :button').prop("disabled", true);
+        $('#workflowform :input').addClass("disabled");
+        $('#workflowform :button').addClass("disabled");
+        $('#workflowform .form-group').addClass("is-disabled");
+        $('#workflowform .form-group').prop("isDisabled", true);
+
+
+        // $('.form-control').addClass("disabled");
+        // $('.dropdown').attr("checked", "checked");;
+
+        $('#workflowform :button').hide();
+        $('input[type="submit"]').hide();
+
+    }
     async loadData(): Promise<void> {
         this.loading = true;
         var res = await NoderedUtil.Query(this.collection, this.basequery, null, { _created: -1 }, 1, 0, null);
@@ -1754,6 +1771,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 console.error(this.errormessage);
                 return;
             }
+            console.log('model', this.model);
             // console.debug(this.model);
             // console.debug(this.model.form);
             // console.debug("form: " + this.model.form);
@@ -1770,13 +1788,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                     this.$location.path("/main");
                 } else {
                     if (this.model.state == "failed") {
-                        $('#workflowform :input').prop("disabled", true);
-                        $('#workflowform :button').prop("disabled", true);
-                        $('#workflowform :input').addClass("disabled");
-                        $('#workflowform :button').addClass("disabled");
-
-                        $('#workflowform :button').hide();
-                        $('input[type="submit"]').hide();
+                        this.hideFormElements();
 
                         if ((this.model as any).error != null && (this.model as any).error != "") {
                             this.errormessage = (this.model as any).error;
@@ -2161,13 +2173,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             });
         }
         if (this.model.state == "completed" || this.model.state == "failed") {
-            $('#workflowform :input').prop("disabled", true);
-            $('#workflowform :button').prop("disabled", true);
-            $('#workflowform :input').addClass("disabled");
-            $('#workflowform :button').addClass("disabled");
-
-            $('#workflowform :button').hide();
-            $('input[type="submit"]').hide();
+            this.hideFormElements();
             if (this.model.state == "failed") {
                 if ((this.model as any).error != null && (this.model as any).error != "") {
                     this.errormessage = (this.model as any).error;

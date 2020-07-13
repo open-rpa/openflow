@@ -155,13 +155,22 @@ export class amqpwrapper {
         if (queue == null) queue = "";
         var q: amqpqueue = null;
         if (Config.amqp_force_queue_prefix && !NoderedUtil.IsNullEmpty(jwt) && !NoderedUtil.IsNullEmpty(queue)) {
+            // assume queue names if 24 letters is an mongodb is, should proberly do a real test here
             if (queue.length == 24) {
                 var tuser = Crypt.verityToken(jwt);
                 var name = tuser.username.split("@").join("").split(".").join("");
                 name = name.toLowerCase();
-                var isrole = tuser.roles.filter(x => x._id == queue);
-                if (isrole.length == 0 && tuser._id != queue) {
-                    var skip: boolean = false;
+                var skip: boolean = false;
+                if (tuser._id == queue) {
+                    // Queue is for me
+                    skip = false;
+                } else if (tuser.roles != null) {
+                    // Queue ss for a group i am a member of.
+                    var isrole = tuser.roles.filter(x => x._id == queue);
+                    if (isrole.length > 0) skip = false;
+                }
+                if (skip) {
+                    // Do i have permission to listen on a queue with this id ?
                     var arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "users", jwt);
                     if (arr.length == 0) skip = true;
                     if (!skip) {
