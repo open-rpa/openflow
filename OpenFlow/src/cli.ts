@@ -42,13 +42,12 @@ function getToken(): Promise<string> {
     return new Promise<string>(async (resolve, reject) => {
         logger.info("wsurl " + Config.api_ws_url);
         var socket: WebSocketClient = new WebSocketClient(logger, Config.api_ws_url);
+        socket.agent = "openflow-cli";
+        socket.version = Config.version;
         socket.events.on("onopen", async () => {
             try {
                 var username: string = readlineSync.question('username? ');
                 var password: string = readlineSync.question('password? ', { hideEchoBack: true });
-
-                socket.version = Config.version;
-                socket.agent = "nodered-cli";
                 var result = await NoderedUtil.SigninWithUsername(username, password, null, true);
                 logger.info("signed in as " + result.user.name + " with id " + result.user._id);
                 WebSocketClient.instance.user = result.user;

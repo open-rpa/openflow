@@ -828,6 +828,10 @@ export class Message {
         resources.requests = {};
         resources.requests.memory = "70Mi";
         resources.limits.memory = "256Mi";
+
+        if (user.nodered) {
+            if (user.nodered.api_allow_anonymous == null) user.nodered.api_allow_anonymous = false;
+        }
         if (user.nodered && user.nodered.resources) {
             if (NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
                 if (user.nodered.resources.limits) {

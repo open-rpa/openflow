@@ -31,11 +31,13 @@ export class amqp_connection {
         this.host = this.config.host;
         if (!NoderedUtil.IsNullUndefinded(this.host)) {
             this.webcli = new WebSocketClient(WebSocketClient.instance._logger, this.host);
+            this.webcli.agent = "remotenodered";
+            this.webcli.version = Config.version;
             this.webcli._logger.info("amqp_condig: connecting to " + this.host);
             this.webcli.events.on("onopen", async () => {
                 try {
                     var q: SigninMessage = new SigninMessage();
-                    q.clientagent = "nodered";
+                    q.clientagent = "remotenodered";
                     q.clientversion = Config.version;
                     q.username = this.username;
                     q.password = this.password;
