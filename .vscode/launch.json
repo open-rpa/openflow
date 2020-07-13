@@ -40,7 +40,11 @@
             "runtimeExecutable": null,
             "sourceMaps": true,
             "stopOnEntry": false,
-            "type": "node"
+            "type": "node",
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/**",
+                "!**/node_modules/**"
+            ]
         },
         {
             "args": [],
@@ -63,7 +67,11 @@
             "runtimeExecutable": null,
             "sourceMaps": true,
             "stopOnEntry": false,
-            "type": "node"
+            "type": "node",
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/**",
+                "!**/node_modules/**"
+            ]
         }
     ]
 }
