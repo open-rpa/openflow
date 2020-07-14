@@ -837,6 +837,7 @@ export class Message {
             try {
                 if (user.nodered.api_allow_anonymous == null) user.nodered.api_allow_anonymous = false;
             } catch (error) {
+                user.nodered = { api_allow_anonymous: false } as any;
             }
         }
         if (user.nodered && user.nodered.resources) {
