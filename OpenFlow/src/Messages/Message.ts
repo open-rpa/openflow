@@ -231,6 +231,7 @@ export class Message {
                 } catch (error) {
                 }
             }
+            var sendthis: any = msg.data;
             try {
                 if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(msg.data.jwt)) {
                     msg.jwt = msg.data.jwt;
@@ -241,6 +242,10 @@ export class Message {
                 if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
                     var tuser = Crypt.verityToken(msg.jwt);
                     msg.user = tuser;
+                }
+                if (typeof sendthis === "object") {
+                    sendthis.__jwt = msg.jwt;
+                    sendthis.__user = msg.user;
                 }
             } catch (error) {
                 cli._logger.error(error);
@@ -1593,6 +1598,8 @@ export class Message {
 
             var _data = Base.assign<Base>(msg as any);
             _data.addRight(msg.targetid, "targetid", [-1]);
+            _data.addRight(cli.user._id, cli.user.name, [-1]);
+            _data.addRight(tuser._id, tuser.name, [-1]);
             _data._type = "instance";
             _data.name = msg.name;
 
@@ -1600,7 +1607,7 @@ export class Message {
             msg.newinstanceid = res2._id;
 
             if (msg.initialrun) {
-                var message = { _id: res2._id };
+                var message = { _id: res2._id, __jwt: msg.jwt, __user: tuser };
                 amqpwrapper.Instance().sendWithReplyTo("", msg.queue, msg.resultqueue, message, Config.amqp_default_expiration, msg.correlationId);
                 // cli.consumers[0].sendToQueueWithReply(msg.queue, msg.resultqueue, msg.correlationId, message, (60 * (60 * 1000))); // 1 hour
             }

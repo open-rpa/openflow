@@ -52,7 +52,7 @@ export class workflow_in_node {
                 this.OnMessage(msg, ack);
             });
             await this.init();
-            this.node.status({ fill: "green", shape: "dot", text: "Connected" });
+            this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
         } catch (error) {
             NoderedUtil.HandleError(this, error);
         }
@@ -142,9 +142,13 @@ export class workflow_in_node {
                 data.payload = JSON.parse(data.payload);
             } catch (error) {
             }
-            if (data.payload != null && data.payload.jwt != null && data.jwt == null) {
-                data.jwt = data.payload.jwt;
-                delete data.payload.jwt;
+            if (data.payload != null && data.payload.__jwt != null && data.__jwt == null) {
+                if (!NoderedUtil.IsNullUndefinded(data.payload.__user)) {
+                    data.user = data.payload.__user;
+                    delete data.payload.__user;
+                }
+                data.jwt = data.payload.__jwt;
+                delete data.payload.__jwt;
             }
             while (data.payload != null && data.payload.payload != null) {
                 data.payload = data.payload.payload;
@@ -181,28 +185,13 @@ export class workflow_in_node {
                         orgmsg.payload = { message: orgmsg.payload };
                         orgmsg.payload = Object.assign(orgmsg.payload, data.payload);
                     }
+                    orgmsg.jwt = data.jwt;
+                    orgmsg.user = data.user;
                     data = orgmsg;
                 }
                 data.jwt = jwt;
-                // data = Object.assign(res[0], { payload: data });
-                // Logger.instanse.info("workflow in activated id " + data._id);
-                // result.name = res[0].name;
-                // result._id = res[0]._id;
-                // result._created = res[0]._created;
-                // result._createdby = res[0]._createdby;
-                // result._createdbyid = res[0]._createdbyid;
-                // result._modified = res[0]._modified;
-                // result._modifiedby = res[0]._modifiedby;
-                // result._modifiedbyid = res[0]._modifiedbyid;
-                // if (data.payload === null || data.payload === undefined) {
-                //     result.payload = res[0].payload;
-                // } else {
-                //     result.payload = Object.assign(res[0].payload, data.payload);
-                // }
-                // result.workflow = this.workflow._id;
             } else {
                 this.node.status({ fill: "blue", shape: "dot", text: "Processing new instance " });
-                // if (this.localqueue !== null && this.localqueue !== undefined && this.localqueue !== "") { this.localqueue = Config.queue_prefix + this.localqueue; }
                 var jwt = data.jwt;
 
                 var who = WebSocketClient.instance.user;
@@ -238,18 +227,13 @@ export class workflow_in_node {
                 data = Object.assign(res2, data);
                 data.jwt = jwt;
             }
-            // var result: any = {};
-            // result.amqpacknowledgment = ack;
-            // result.payload = data.payload;
-            // result.values = data.values;
-            // result.jwt = data.jwt;
             data.amqpacknowledgment = ack;
             data._replyTo = msg.replyto;
             data._correlationId = msg.correlationId;
 
             this.node.send(data);
             // this.node.send(result);
-            this.node.status({ fill: "green", shape: "dot", text: "Connected" });
+            this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
         } catch (error) {
             NoderedUtil.HandleError(this, error);
             try {
@@ -299,8 +283,11 @@ export class workflow_out_node {
             msg.state = this.config.state;
             msg.form = this.config.form;
             if (msg._id !== null && msg._id !== undefined && msg._id !== "") {
+                let msgcopy = Object.assign({}, msg);
+                delete msgcopy.jwt;
+                delete msgcopy.user;
                 // Logger.instanse.info("Updating workflow instance with id " + msg._id + " (" + msg.name + " with state " + msg.state);
-                var res2 = await NoderedUtil.UpdateOne("workflow_instances", null, msg, 1, false, msg.jwt);
+                var res2 = await NoderedUtil.UpdateOne("workflow_instances", null, msgcopy, 1, false, msg.jwt);
             }
         } catch (error) {
             NoderedUtil.HandleError(this, error);
@@ -474,10 +461,12 @@ export class assign_workflow_node {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
             // if (this.localqueue !== null && this.localqueue !== undefined && this.localqueue !== "") { this.localqueue = Config.queue_prefix + this.localqueue; }
+
+            this.localqueue = this.config.queue;
             this.localqueue = await NoderedUtil.RegisterQueue(WebSocketClient.instance, this.localqueue, (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
             });
-            this.node.status({ fill: "green", shape: "dot", text: "Connected" });
+            this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
 
 
 
@@ -501,16 +490,15 @@ export class assign_workflow_node {
         try {
             var result: any = {};
             var data: any = msg.data;
-            try {
-                data = JSON.parse(msg.data);
-            } catch (error) {
-
-            }
-            try {
-                data.payload = JSON.parse(data.payload);
-            } catch (error) {
-            }
             if (data.state == "idle") return;
+            if (!NoderedUtil.IsNullUndefinded(data.__user)) {
+                data.user = data.__user;
+                delete data.__user;
+            }
+            if (!NoderedUtil.IsNullUndefinded(data.__jwt)) {
+                data.jwt = data.__jwt;
+                delete data.__jwt;
+            }
             // delete data.jwt;
             var _id = data._id;
             if (_id === null || _id === undefined || _id === "") {
@@ -538,6 +526,8 @@ export class assign_workflow_node {
                     res[0].state = state;
                     result = res[0].msg;
                     result.payload = data.payload;
+                    result.jwt = data.jwt;
+                    result.user = data.user;
                     this.node.send([null, result]);
                     if (ack !== null && ack !== undefined) ack();
                     await NoderedUtil.UpdateOne("workflow_instances", null, res[0], 1, false, null);
@@ -545,7 +535,8 @@ export class assign_workflow_node {
                 }
             }
             result.payload = data.payload;
-            // result.jwt = data.jwt;
+            result.jwt = data.jwt;
+            result.user = data.user;
             this.node.send([null, result]);
             if (ack !== null && ack !== undefined) ack();
         } catch (error) {
@@ -603,7 +594,7 @@ export class assign_workflow_node {
             msg.newinstanceid = await NoderedUtil.CreateWorkflowInstance(targetid, workflowid, null, this.localqueue, res3._id, msg.payload, initialrun, jwt);;
 
             this.node.send(msg);
-            this.node.status({ fill: "green", shape: "dot", text: "Connected" });
+            this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
         } catch (error) {
             NoderedUtil.HandleError(this, error);
         }
