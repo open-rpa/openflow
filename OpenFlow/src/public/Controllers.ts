@@ -1087,33 +1087,39 @@ export class UserCtrl extends entityCtrl<TokenUser> {
         this.memberof = this.memberof.filter(x => x._id != model._id);
     }
     async submit(): Promise<void> {
-        if (this.model._id) {
-            await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null);
-        } else {
-            await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null);
-        }
-        this.$location.path("/Users");
-
-        var currentmemberof = await NoderedUtil.Query("users",
-            {
-                $and: [
-                    { _type: "role" },
-                    { members: { $elemMatch: { _id: this.model._id } } }
-                ]
-            }, null, { _type: -1, name: 1 }, 5, 0, null);
-        for (var i = 0; i < currentmemberof.length; i++) {
-            var memberof = currentmemberof[i];
-            if (this.memberof == null || this.memberof == undefined) this.memberof = [];
-            var exists = this.memberof.filter(x => x._id == memberof._id);
-            if (exists.length == 0) {
-                console.debug("Updating members of " + memberof.name + " " + memberof._id);
-                console.debug("members: " + memberof.members.length);
-                memberof.members = memberof.members.filter(x => x._id != this.model._id);
-                console.debug("members: " + memberof.members.length);
-                await NoderedUtil.UpdateOne("users", null, memberof, 1, false, null);
+        try {
+            if (this.model._id) {
+                await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null);
+            } else {
+                await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null);
             }
+            var currentmemberof = await NoderedUtil.Query("users",
+                {
+                    $and: [
+                        { _type: "role" },
+                        { members: { $elemMatch: { _id: this.model._id } } }
+                    ]
+                }, null, { _type: -1, name: 1 }, 5, 0, null);
+            for (var i = 0; i < currentmemberof.length; i++) {
+                var memberof = currentmemberof[i];
+                if (this.memberof == null || this.memberof == undefined) this.memberof = [];
+                var exists = this.memberof.filter(x => x._id == memberof._id);
+                if (exists.length == 0) {
+                    console.debug("Updating members of " + memberof.name + " " + memberof._id);
+                    console.debug("members: " + memberof.members.length);
+                    memberof.members = memberof.members.filter(x => x._id != this.model._id);
+                    console.debug("members: " + memberof.members.length);
+                    try {
+                        await NoderedUtil.UpdateOne("users", null, memberof, 1, false, null);
+                    } catch (error) {
+                        console.error("Error updating " + memberof.name, error);
+                    }
+                }
+            }
+            this.$location.path("/Users");
+        } catch (error) {
+            this.errormessage = error;
         }
-
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 }
@@ -2668,13 +2674,23 @@ export class NoderedCtrl {
             if (this.userid == null || this.userid == undefined || this.userid == "") {
                 this.name = WebSocketClientService.user.username;
                 this.userid = WebSocketClientService.user._id;
+                console.log("user", WebSocketClientService.user);
                 var users: NoderedUser[] = await NoderedUtil.Query("users", { _id: this.userid }, null, null, 1, 0, null);
+                if (users.length == 0) {
+                    this.instancestatus = "Unknown id! " + this.userid;
+                    this.errormessage = "Unknown id! " + this.userid;
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    return;
+                }
+
                 this.user = NoderedUser.assign(users[0]);
                 this.name = users[0].username;
             } else {
                 var users: NoderedUser[] = await NoderedUtil.Query("users", { _id: this.userid }, null, null, 1, 0, null);
                 if (users.length == 0) {
-                    this.instancestatus = "Unknown id!";
+                    this.instancestatus = "Unknown id! " + this.userid;
+                    this.errormessage = "Unknown id! " + this.userid;
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
                     return;
                 }
                 this.user = NoderedUser.assign(users[0]);

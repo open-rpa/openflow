@@ -51,8 +51,8 @@
       <td class="btn-cell"><a href ng-click="ctrl.ShowAudit(model)" class="table-btn">{{model.name}}</a></td>
       <td>{{model.type}}</td>
       <td>{{model.impostorname}}</td>
-      <td>{{model.clientagent}}</td>
-      <td>{{model.clientversion}}</td>
+      <td>{{model.clientagent || model.imagename}}</td>
+      <td>{{model.clientversion || model.imageversion}}</td>
       <td>
         <timesince ng-model="model._created" />
       </td>

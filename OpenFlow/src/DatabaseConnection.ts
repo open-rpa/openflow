@@ -107,6 +107,7 @@ export class DatabaseConnection {
     }
     async Cleanmembers<T extends Role>(item: T, original: T): Promise<T> {
         var removed: Rolemember[] = [];
+        if (item.members == null) item.members = [];
         if (original != null && Config.update_acl_based_on_groups == true) {
             for (var i = original.members.length - 1; i >= 0; i--) {
                 var ace = original.members[i];
@@ -571,9 +572,23 @@ export class DatabaseConnection {
         var result: InsertOneWriteOpResult<T> = await this.db.collection(collectionname).insertOne(item, options);
         item = result.ops[0];
         if (collectionname === "users" && item._type === "user") {
+            item.addRight(item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
             var users: Role = await DBHelper.FindRoleByNameOrId("users", jwt);
             users.AddMember(item);
             await DBHelper.Save(users, Crypt.rootToken());
+            var user: TokenUser = item as any;
+            if (Config.auto_create_personal_nodered_group) {
+                var name = user.username;
+                name = name.split("@").join("").split(".").join("");
+                name = name.toLowerCase();
+
+                var noderedadmins = await DBHelper.EnsureRole(jwt, name + "noderedadmins", null);
+                noderedadmins.addRight(user._id, user.username, [Rights.full_control]);
+                noderedadmins.removeRight(user._id, [Rights.delete]);
+                noderedadmins.AddMember(item);
+                await DBHelper.Save(noderedadmins, Crypt.rootToken());
+            }
+
         }
         if (collectionname === "users" && item._type === "role") {
             item.addRight(item._id, item.name, [Rights.read]);
@@ -668,6 +683,9 @@ export class DatabaseConnection {
                 var hasUser: Ace = q.item._acl.find(e => e._id === user._id);
                 if ((hasUser === null || hasUser === undefined) && q.item._acl.length == 0) {
                     q.item.addRight(user._id, user.name, [Rights.full_control]);
+                }
+                if (q.collectionname === "users" && q.item._type === "user") {
+                    q.item.addRight(q.item._id, q.item.name, [Rights.read, Rights.update, Rights.invoke]);
                 }
             } else {
                 (q.item as any).metadata = Base.assign((q.item as any).metadata);

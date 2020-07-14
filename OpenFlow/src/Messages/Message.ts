@@ -13,7 +13,7 @@ import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
 import { StripeMessage, EnsureStripeCustomerMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser } from "openflow-api";
 import { Billing, stripe_customer, stripe_base, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription, stripe_subscription_item, stripe_plan, stripe_coupon } from "openflow-api";
-import { V1ResourceRequirements } from "@kubernetes/client-node";
+import { V1ResourceRequirements, V1Deployment } from "@kubernetes/client-node";
 import { amqpwrapper } from "../amqpwrapper";
 import { WebSocketServerClient } from "../WebSocketServerClient";
 import { DBHelper } from "../DBHelper";
@@ -866,12 +866,13 @@ export class Message {
         }
 
         cli._logger.debug("[" + cli.user.username + "] GetDeployments");
-        var deployment = await KubeUtil.instance().GetDeployment(namespace, name);
+        var deployment: V1Deployment = await KubeUtil.instance().GetDeployment(namespace, name);
         if (deployment == null) {
             if (skipcreate) return;
             cli._logger.debug("[" + cli.user.username + "] Deployment " + name + " not found in " + namespace + " so creating it");
             // metadata: { name: name, namespace: namespace, app: name, labels: { billed: hasbilling.toString(), userid: _id } },
             // metadata: { labels: { name: name, app: name, billed: hasbilling.toString(), userid: _id } },
+
             var _deployment = {
                 metadata: { name: name, namespace: namespace, labels: { billed: hasbilling.toString(), userid: _id, app: name } },
                 spec: {
@@ -926,12 +927,14 @@ export class Message {
             // await KubeUtil.instance().ExtensionsV1beta1Api.createNamespacedDeployment(namespace, (_deployment as any));
             try {
                 await KubeUtil.instance().AppsV1Api.createNamespacedDeployment(namespace, (_deployment as any));
+                Audit.NoderedAction(TokenUser.From(cli.user), true, name, "createdeployment", Config.nodered_image, null);
             } catch (error) {
                 if (error.response && error.response.body && error.response.body.message) {
                     cli._logger.error(error);
                     throw new Error(error.response.body.message);
                 }
                 cli._logger.error(error);
+                Audit.NoderedAction(TokenUser.From(cli.user), false, name, "createdeployment", Config.nodered_image, null);
                 throw error;
             }
         } else {
@@ -944,14 +947,22 @@ export class Message {
             deployment.spec.template.metadata.labels.billed = hasbilling.toString();
             deployment.metadata.labels.userid = _id;
             deployment.spec.template.metadata.labels.userid = _id;
+            var image: string = "unknown";
+            try {
+                image = deployment.spec.template.spec.containers[0].image;
+            } catch (error) {
+
+            }
             try {
                 await KubeUtil.instance().AppsV1Api.replaceNamespacedDeployment(name, namespace, (deployment as any));
+                Audit.NoderedAction(TokenUser.From(cli.user), true, name, "replacedeployment", image, null);
             } catch (error) {
                 cli._logger.error("[" + cli.user.username + "] failed updating noeredinstance");
                 cli._logger.error("[" + cli.user.username + "] " + JSON.stringify(error));
                 if (error.response && error.response.body && !NoderedUtil.IsNullEmpty(error.response.body.message)) {
                     throw new Error(error.response.body.message);
                 }
+                Audit.NoderedAction(TokenUser.From(cli.user), false, name, "replacedeployment", image, null);
                 throw new Error("failed updating noeredinstance");
             }
         }
@@ -1009,12 +1020,25 @@ export class Message {
     }
     private async _DeleteNoderedInstance(_id: string, myuserid: string, myusername: string, jwt: string): Promise<void> {
         var name = await this.GetInstanceName(_id, myuserid, myusername, jwt);
+        var user = Crypt.verityToken(jwt);
         var namespace = Config.namespace;
         var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
         var deployment = await KubeUtil.instance().GetDeployment(namespace, name);
         if (deployment != null) {
-            await KubeUtil.instance().AppsV1Api.deleteNamespacedDeployment(name, namespace);
+            var image: string = "unknown";
+            try {
+                image = deployment.spec.template.spec.containers[0].image;
+            } catch (error) {
+
+            }
+            try {
+                await KubeUtil.instance().AppsV1Api.deleteNamespacedDeployment(name, namespace);
+                Audit.NoderedAction(user, true, name, "deletedeployment", image, null);
+            } catch (error) {
+                Audit.NoderedAction(user, false, name, "deletedeployment", image, null);
+                throw error;
+            }
         }
         var service = await KubeUtil.instance().GetService(namespace, name);
         if (service != null) {
@@ -1078,11 +1102,30 @@ export class Message {
                 for (var i = 0; i < list.body.items.length; i++) {
                     var item = list.body.items[i];
                     if (item.metadata.name == msg.name) {
-                        await KubeUtil.instance().CoreV1Api.deleteNamespacedPod(item.metadata.name, namespace);
+                        var image: string = "unknown";
+                        try {
+                            image = item.spec.containers[0].image;
+                        } catch (error) {
+
+                        }
+                        var name: string = "unknown";
+                        try {
+                            name = item.metadata.labels.name;
+                        } catch (error) {
+
+                        }
+                        try {
+                            await KubeUtil.instance().CoreV1Api.deleteNamespacedPod(item.metadata.name, namespace);
+                            Audit.NoderedAction(TokenUser.From(cli.user), true, name, "deletepod", image, msg.name);
+                        } catch (error) {
+                            Audit.NoderedAction(TokenUser.From(cli.user), false, name, "deletepod", image, msg.name);
+                            throw error;
+                        }
                     }
                 }
             } else {
                 cli._logger.warn("[" + cli.user.username + "] GetNoderedInstance: found NO Namespaced Pods ???");
+                Audit.NoderedAction(TokenUser.From(cli.user), false, null, "deletepod", image, msg.name);
             }
         } catch (error) {
             this.data = "";
@@ -1113,7 +1156,18 @@ export class Message {
                 var item = list.body.items[i];
                 // if (item.metadata.labels.app === name || item.metadata.labels.name === name) {
                 if (item.metadata.labels.app === name) {
-                    await KubeUtil.instance().CoreV1Api.deleteNamespacedPod(item.metadata.name, namespace);
+                    var image: string = "unknown";
+                    try {
+                        image = item.spec.containers[0].image;
+                    } catch (error) {
+
+                    }
+                    try {
+                        await KubeUtil.instance().CoreV1Api.deleteNamespacedPod(item.metadata.name, namespace);
+                        Audit.NoderedAction(TokenUser.From(cli.user), true, name, "restartdeployment", image, item.metadata.name);
+                    } catch (error) {
+                        Audit.NoderedAction(TokenUser.From(cli.user), false, name, "restartdeployment", image, item.metadata.name);
+                    }
                 }
             }
         } catch (error) {
@@ -1220,18 +1274,28 @@ export class Message {
             if (list.body.items.length > 0) {
                 for (var i = 0; i < list.body.items.length; i++) {
                     var item = list.body.items[i];
+                    var image: string = "unknown";
+                    try {
+                        image = item.spec.containers[0].image;
+                    } catch (error) {
+
+                    }
                     if (!NoderedUtil.IsNullEmpty(msg.name) && item.metadata.name == msg.name && cli.user.HasRoleName("admins")) {
                         cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance:" + name + " found one as " + item.metadata.name);
                         var obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
                         msg.result = obj.body;
+                        Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name);
                     } else if (item.metadata.labels.app === name) {
                         cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance:" + name + " found one as " + item.metadata.name);
                         var obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
                         msg.result = obj.body;
+                        Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name);
                     }
                 }
             }
-
+            if (NoderedUtil.IsNullUndefinded(msg.result)) {
+                Audit.NoderedAction(TokenUser.From(cli.user), false, name, "readpodlog", image, null);
+            }
         } catch (error) {
             this.data = "";
             cli._logger.error(error);
@@ -1251,10 +1315,12 @@ export class Message {
     }
     private async StartNoderedInstance(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
+        Audit.NoderedAction(TokenUser.From(cli.user), true, null, "startdeployment", null, null);
         this.Send(cli);
     }
     private async StopNoderedInstance(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
+        Audit.NoderedAction(TokenUser.From(cli.user), true, null, "stopdeployment", null, null);
         this.Send(cli);
     }
     private async _SaveFile(stream: Stream, filename: string, contentType: string, metadata: Base): Promise<string> {
