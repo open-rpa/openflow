@@ -2227,10 +2227,18 @@ export class Message {
                 item.consumers = consumers;
                 item.name = queue.name + "(" + consumers + ")";
                 if (exists.length == 0) {
-                    await Config.db.InsertOne(item, "configclients", 1, false, jwt);
+                    try {
+                        await Config.db.InsertOne(item, "configclients", 1, false, jwt);
+                    } catch (error) {
+                        cli._logger.error(error);
+                    }
                 } else {
                     item._id = exists[i]._id;
-                    await Config.db._UpdateOne(null, item, "configclients", 1, false, jwt);
+                    try {
+                        await Config.db._UpdateOne(null, item, "configclients", 1, false, jwt);
+                    } catch (error) {
+                        cli._logger.error(error);
+                    }
                 }
             }
             for (let i = 0; i < known.length; i++) {
@@ -2238,7 +2246,11 @@ export class Message {
                 let id = queue.id;
                 let exists = queues.filter((x: any) => x.queuename == queue.name);
                 if (exists.length == 0) {
-                    await Config.db.DeleteOne(queue._id, "configclients", jwt);
+                    try {
+                        await Config.db.DeleteOne(queue._id, "configclients", jwt);
+                    } catch (error) {
+                        cli._logger.error(error);
+                    }
                 }
             }
         } catch (error) {
