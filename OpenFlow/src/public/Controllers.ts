@@ -3436,17 +3436,25 @@ export class DebugCtrl extends entitiesCtrl<Base> {
         });
     }
     async DumpClients() {
-        let m: Message = new Message();
-        m.command = "dumpclients"; m.data = "{}";
-        var q = await WebSocketClient.instance.Send<any>(m);
-        if ((q as any).command == "error") throw new Error(q.data);
+        try {
+            let m: Message = new Message();
+            m.command = "dumpclients"; m.data = "{}";
+            var q = await WebSocketClient.instance.Send<any>(m);
+            if ((q as any).command == "error") throw new Error(q.data);
+        } catch (error) {
+            console.error(error);
+        }
         this.loadData();
     }
     async DumpRabbitmq() {
-        let m: Message = new Message();
-        m.command = "dumprabbitmq"; m.data = "{}";
-        var q = await WebSocketClient.instance.Send<any>(m);
-        if ((q as any).command == "error") throw new Error(q.data);
+        try {
+            let m: Message = new Message();
+            m.command = "dumprabbitmq"; m.data = "{}";
+            var q = await WebSocketClient.instance.Send<any>(m);
+            if ((q as any).command == "error") throw new Error(q.data);
+        } catch (error) {
+            console.error(error);
+        }
         this.loadData();
     }
 }
