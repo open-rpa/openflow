@@ -112,22 +112,17 @@ export class amqp_consumer_node {
     }
     async OnMessage(msg: any, ack: any) {
         try {
-            var result: any = {};
-            result.amqpacknowledgment = ack;
-            var data: any = null;
-            try {
-                // data = JSON.parse(msg.content.toString());
-                data = msg.data;
-            } catch (error) {
-
+            var data: any = msg.data;
+            data.amqpacknowledgment = ack;
+            if (!NoderedUtil.IsNullUndefinded(data.__user)) {
+                data.user = data.__user;
+                delete data.__user;
             }
-            try {
-                data.payload = JSON.parse(data.payload);
-            } catch (error) {
+            if (!NoderedUtil.IsNullUndefinded(data.__jwt)) {
+                data.jwt = data.__jwt;
+                delete data.__jwt;
             }
-            result.payload = data.payload;
-            result.jwt = data.jwt;
-            this.node.send(result);
+            this.node.send(data);
             ack();
         } catch (error) {
             NoderedUtil.HandleError(this, error);

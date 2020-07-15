@@ -31,14 +31,15 @@ export class WebSocketServerClient {
     public clientagent: string;
     public clientversion: string;
     public lastheartbeat: Date = new Date();
-
+    public id: string = "";
 
     user: User;
     // public consumers: amqp_consumer[] = [];
-    private queues: IHashTable<amqpqueue> = {};
+    public queues: IHashTable<amqpqueue> = {};
 
     constructor(logger: winston.Logger, socketObject: WebSocket) {
         this._logger = logger;
+        this.id = Math.random().toString(36).substr(2, 9);
         this._socketObject = socketObject;
         this._receiveQueue = [];
         this._sendQueue = [];

@@ -127,18 +127,18 @@ export class amqpwrapper {
                 }
             });
             // ROLLBACK
-            var keys = Object.keys(this.exchanges);
-            for (var i = 0; i < keys.length; i++) {
-                var q1: amqpexchange = this.exchanges[keys[i]];
-                this.AddExchangeConsumer(q1.exchange, q1.algorithm, q1.routingkey, q1.ExchangeOptions, null, q1.callback);
-            }
-            var keys = Object.keys(this.queues);
-            for (var i = 0; i < keys.length; i++) {
-                if (keys[i] != this.replyqueue.queue) {
-                    var q2: amqpqueue = this.queues[keys[i]];
-                    this.AddQueueConsumer(q2.queue, q2.QueueOptions, null, q2.callback);
-                }
-            }
+            // var keys = Object.keys(this.exchanges);
+            // for (var i = 0; i < keys.length; i++) {
+            //     var q1: amqpexchange = this.exchanges[keys[i]];
+            //     this.AddExchangeConsumer(q1.exchange, q1.algorithm, q1.routingkey, q1.ExchangeOptions, null, q1.callback);
+            // }
+            // var keys = Object.keys(this.queues);
+            // for (var i = 0; i < keys.length; i++) {
+            //     if (keys[i] != this.replyqueue.queue) {
+            //         var q2: amqpqueue = this.queues[keys[i]];
+            //         this.AddQueueConsumer(q2.queue, q2.QueueOptions, null, q2.callback);
+            //     }
+            // }
         } catch (error) {
             console.error(error);
             this.timeout = setTimeout(this.connect.bind(this), 1000);
@@ -155,13 +155,22 @@ export class amqpwrapper {
         if (queue == null) queue = "";
         var q: amqpqueue = null;
         if (Config.amqp_force_queue_prefix && !NoderedUtil.IsNullEmpty(jwt) && !NoderedUtil.IsNullEmpty(queue)) {
+            // assume queue names if 24 letters is an mongodb is, should proberly do a real test here
             if (queue.length == 24) {
                 var tuser = Crypt.verityToken(jwt);
                 var name = tuser.username.split("@").join("").split(".").join("");
                 name = name.toLowerCase();
-                var isrole = tuser.roles.filter(x => x._id == queue);
-                if (isrole.length == 0 && tuser._id != queue) {
-                    var skip: boolean = false;
+                var skip: boolean = false;
+                if (tuser._id == queue) {
+                    // Queue is for me
+                    skip = false;
+                } else if (tuser.roles != null) {
+                    // Queue ss for a group i am a member of.
+                    var isrole = tuser.roles.filter(x => x._id == queue);
+                    if (isrole.length > 0) skip = false;
+                }
+                if (skip) {
+                    // Do i have permission to listen on a queue with this id ?
                     var arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "users", jwt);
                     if (arr.length == 0) skip = true;
                     if (!skip) {
@@ -376,7 +385,7 @@ export class amqpwrapper {
             Math.random().toString() +
             Math.random().toString();
     }
-    parseurl(amqp_url): url.UrlWithParsedQuery {
+    static parseurl(amqp_url): url.UrlWithParsedQuery {
         var q = url.parse(amqp_url, true);
         (q as any).username = "guest";
         (q as any).password = "guest";
@@ -393,7 +402,8 @@ export class amqpwrapper {
         var result: boolean = false;
         try {
             result = await retry(async bail => {
-                var queue = await this.getqueue(Config.amqp_url, '/', queuename);
+                // var queue = await amqpwrapper.getqueue(Config.amqp_url, '/', queuename);
+                var queue = await amqpwrapper.getqueue(queuename);
                 let hasConsumers: boolean = false;
                 if (queue.consumers > 0) {
                     hasConsumers = true;
@@ -427,7 +437,7 @@ export class amqpwrapper {
         }
         return false;
     }
-    async getvhosts(amqp_url) {
+    static async getvhosts(amqp_url) {
         var q = this.parseurl(amqp_url);
         var options = {
             headers: {
@@ -441,7 +451,7 @@ export class amqpwrapper {
         var payload = JSON.parse(response.body);
         return payload;
     }
-    async getqueues(amqp_url, vhost) {
+    static async getqueues(amqp_url: string, vhost: string = null) {
         var q = this.parseurl(amqp_url);
         var options = {
             headers: {
@@ -450,25 +460,33 @@ export class amqpwrapper {
             username: (q as any).username,
             password: (q as any).password
         };
-        var _url = 'http://' + q.host + ':' + q.port + '/api/queues/' + encodeURIComponent(vhost);
+        var _url = 'http://' + q.host + ':' + q.port + '/api/queues';
+        if (!NoderedUtil.IsNullEmpty(vhost)) _url += '/' + encodeURIComponent(vhost);
         var response = await got.get(_url, options);
         var payload = JSON.parse(response.body);
         return payload;
     }
-    async getqueue(amqp_url, vhost, queuename) {
-        var q = this.parseurl(amqp_url);
-        var options = {
-            headers: {
-                'Content-type': 'application/x-www-form-urlencoded'
-            },
-            username: (q as any).username,
-            password: (q as any).password,
-            timeout: 500, retry: 1
-        };
-        var _url = 'http://' + q.host + ':' + q.port + '/api/queues/' + encodeURIComponent(vhost) + '/' + queuename;
-        var response = await got.get(_url, options);
-        var payload = JSON.parse(response.body);
-        return payload;
+    static async getqueue(queuename) {
+        const queues = await amqpwrapper.getqueues(Config.amqp_url);
+        for (let i = 0; i < queues.length; i++) {
+            let queue = queues[i];
+            if (queue.name == queuename) {
+                return queue;
+            }
+        }
+        // var q = this.parseurl(amqp_url);
+        // var options = {
+        //     headers: {
+        //         'Content-type': 'application/x-www-form-urlencoded'
+        //     },
+        //     username: (q as any).username,
+        //     password: (q as any).password,
+        //     timeout: 500, retry: 1
+        // };
+        // var _url = 'http://' + q.host + ':' + q.port + '/api/queues/' + encodeURIComponent(vhost) + '/' + queuename;
+        // var response = await got.get(_url, options);
+        // var payload = JSON.parse(response.body);
+        // return payload;
     }
 
     // async checkQueue(queue: string): Promise<boolean> {

@@ -13,10 +13,11 @@ import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
 import { StripeMessage, EnsureStripeCustomerMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser } from "openflow-api";
 import { Billing, stripe_customer, stripe_base, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription, stripe_subscription_item, stripe_plan, stripe_coupon } from "openflow-api";
-import { V1ResourceRequirements } from "@kubernetes/client-node";
+import { V1ResourceRequirements, V1Deployment } from "@kubernetes/client-node";
 import { amqpwrapper } from "../amqpwrapper";
 import { WebSocketServerClient } from "../WebSocketServerClient";
 import { DBHelper } from "../DBHelper";
+import { WebSocketServer } from "../WebSocketServer";
 var request = require("request");
 var got = require("got");
 
@@ -175,6 +176,12 @@ export class Message {
                 case "stripemessage":
                     this.StripeMessage(cli);
                     break;
+                case "dumpclients":
+                    this.DumpClients(cli);
+                    break;
+                case "dumprabbitmq":
+                    this.DumpRabbitmq(cli);
+                    break;
                 default:
                     this.UnknownCommand(cli);
                     break;
@@ -231,20 +238,24 @@ export class Message {
                 } catch (error) {
                 }
             }
+            var sendthis: any = msg.data;
             try {
-                if (!NoderedUtil.IsNullEmpty(msg.data) && NoderedUtil.IsNullEmpty(msg.data.jwt)) {
-                    if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
-                        msg.data.jwt = msg.jwt;
-                    } else {
-                        msg.data.jwt = cli.jwt;
-                    }
+                if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(msg.data.jwt)) {
+                    msg.jwt = msg.data.jwt;
+                }
+                if (NoderedUtil.IsNullEmpty(msg.jwt)) {
+                    msg.jwt = cli.jwt;
+                }
+                if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
+                    var tuser = Crypt.verityToken(msg.jwt);
+                    msg.user = tuser;
+                }
+                if (typeof sendthis === "object") {
+                    sendthis.__jwt = msg.jwt;
+                    sendthis.__user = msg.user;
                 }
             } catch (error) {
                 cli._logger.error(error);
-            }
-            if (!NoderedUtil.IsNullEmpty(msg.data) && !NoderedUtil.IsNullEmpty(msg.data.jwt)) {
-                var tuser = Crypt.verityToken(msg.data.jwt);
-                msg.data.user = tuser;
             }
             if (NoderedUtil.IsNullEmpty(msg.replyto)) {
                 // var sendthis = { data: msg.data, jwt: cli.jwt, user: cli.user };
@@ -830,7 +841,11 @@ export class Message {
         resources.limits.memory = "256Mi";
 
         if (user.nodered) {
-            if (user.nodered.api_allow_anonymous == null) user.nodered.api_allow_anonymous = false;
+            try {
+                if (user.nodered.api_allow_anonymous == null) user.nodered.api_allow_anonymous = false;
+            } catch (error) {
+                user.nodered = { api_allow_anonymous: false } as any;
+            }
         }
         if (user.nodered && user.nodered.resources) {
             if (NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
@@ -867,12 +882,13 @@ export class Message {
         }
 
         cli._logger.debug("[" + cli.user.username + "] GetDeployments");
-        var deployment = await KubeUtil.instance().GetDeployment(namespace, name);
+        var deployment: V1Deployment = await KubeUtil.instance().GetDeployment(namespace, name);
         if (deployment == null) {
             if (skipcreate) return;
             cli._logger.debug("[" + cli.user.username + "] Deployment " + name + " not found in " + namespace + " so creating it");
             // metadata: { name: name, namespace: namespace, app: name, labels: { billed: hasbilling.toString(), userid: _id } },
             // metadata: { labels: { name: name, app: name, billed: hasbilling.toString(), userid: _id } },
+
             var _deployment = {
                 metadata: { name: name, namespace: namespace, labels: { billed: hasbilling.toString(), userid: _id, app: name } },
                 spec: {
@@ -927,12 +943,14 @@ export class Message {
             // await KubeUtil.instance().ExtensionsV1beta1Api.createNamespacedDeployment(namespace, (_deployment as any));
             try {
                 await KubeUtil.instance().AppsV1Api.createNamespacedDeployment(namespace, (_deployment as any));
+                Audit.NoderedAction(TokenUser.From(cli.user), true, name, "createdeployment", Config.nodered_image, null);
             } catch (error) {
                 if (error.response && error.response.body && error.response.body.message) {
                     cli._logger.error(error);
                     throw new Error(error.response.body.message);
                 }
                 cli._logger.error(error);
+                Audit.NoderedAction(TokenUser.From(cli.user), false, name, "createdeployment", Config.nodered_image, null);
                 throw error;
             }
         } else {
@@ -945,14 +963,22 @@ export class Message {
             deployment.spec.template.metadata.labels.billed = hasbilling.toString();
             deployment.metadata.labels.userid = _id;
             deployment.spec.template.metadata.labels.userid = _id;
+            var image: string = "unknown";
+            try {
+                image = deployment.spec.template.spec.containers[0].image;
+            } catch (error) {
+
+            }
             try {
                 await KubeUtil.instance().AppsV1Api.replaceNamespacedDeployment(name, namespace, (deployment as any));
+                Audit.NoderedAction(TokenUser.From(cli.user), true, name, "replacedeployment", image, null);
             } catch (error) {
                 cli._logger.error("[" + cli.user.username + "] failed updating noeredinstance");
                 cli._logger.error("[" + cli.user.username + "] " + JSON.stringify(error));
                 if (error.response && error.response.body && !NoderedUtil.IsNullEmpty(error.response.body.message)) {
                     throw new Error(error.response.body.message);
                 }
+                Audit.NoderedAction(TokenUser.From(cli.user), false, name, "replacedeployment", image, null);
                 throw new Error("failed updating noeredinstance");
             }
         }
@@ -1010,12 +1036,25 @@ export class Message {
     }
     private async _DeleteNoderedInstance(_id: string, myuserid: string, myusername: string, jwt: string): Promise<void> {
         var name = await this.GetInstanceName(_id, myuserid, myusername, jwt);
+        var user = Crypt.verityToken(jwt);
         var namespace = Config.namespace;
         var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
         var deployment = await KubeUtil.instance().GetDeployment(namespace, name);
         if (deployment != null) {
-            await KubeUtil.instance().AppsV1Api.deleteNamespacedDeployment(name, namespace);
+            var image: string = "unknown";
+            try {
+                image = deployment.spec.template.spec.containers[0].image;
+            } catch (error) {
+
+            }
+            try {
+                await KubeUtil.instance().AppsV1Api.deleteNamespacedDeployment(name, namespace);
+                Audit.NoderedAction(user, true, name, "deletedeployment", image, null);
+            } catch (error) {
+                Audit.NoderedAction(user, false, name, "deletedeployment", image, null);
+                throw error;
+            }
         }
         var service = await KubeUtil.instance().GetService(namespace, name);
         if (service != null) {
@@ -1079,11 +1118,30 @@ export class Message {
                 for (var i = 0; i < list.body.items.length; i++) {
                     var item = list.body.items[i];
                     if (item.metadata.name == msg.name) {
-                        await KubeUtil.instance().CoreV1Api.deleteNamespacedPod(item.metadata.name, namespace);
+                        var image: string = "unknown";
+                        try {
+                            image = item.spec.containers[0].image;
+                        } catch (error) {
+
+                        }
+                        var name: string = "unknown";
+                        try {
+                            name = item.metadata.labels.name;
+                        } catch (error) {
+
+                        }
+                        try {
+                            await KubeUtil.instance().CoreV1Api.deleteNamespacedPod(item.metadata.name, namespace);
+                            Audit.NoderedAction(TokenUser.From(cli.user), true, name, "deletepod", image, msg.name);
+                        } catch (error) {
+                            Audit.NoderedAction(TokenUser.From(cli.user), false, name, "deletepod", image, msg.name);
+                            throw error;
+                        }
                     }
                 }
             } else {
                 cli._logger.warn("[" + cli.user.username + "] GetNoderedInstance: found NO Namespaced Pods ???");
+                Audit.NoderedAction(TokenUser.From(cli.user), false, null, "deletepod", image, msg.name);
             }
         } catch (error) {
             this.data = "";
@@ -1114,7 +1172,18 @@ export class Message {
                 var item = list.body.items[i];
                 // if (item.metadata.labels.app === name || item.metadata.labels.name === name) {
                 if (item.metadata.labels.app === name) {
-                    await KubeUtil.instance().CoreV1Api.deleteNamespacedPod(item.metadata.name, namespace);
+                    var image: string = "unknown";
+                    try {
+                        image = item.spec.containers[0].image;
+                    } catch (error) {
+
+                    }
+                    try {
+                        await KubeUtil.instance().CoreV1Api.deleteNamespacedPod(item.metadata.name, namespace);
+                        Audit.NoderedAction(TokenUser.From(cli.user), true, name, "restartdeployment", image, item.metadata.name);
+                    } catch (error) {
+                        Audit.NoderedAction(TokenUser.From(cli.user), false, name, "restartdeployment", image, item.metadata.name);
+                    }
                 }
             }
         } catch (error) {
@@ -1221,18 +1290,28 @@ export class Message {
             if (list.body.items.length > 0) {
                 for (var i = 0; i < list.body.items.length; i++) {
                     var item = list.body.items[i];
+                    var image: string = "unknown";
+                    try {
+                        image = item.spec.containers[0].image;
+                    } catch (error) {
+
+                    }
                     if (!NoderedUtil.IsNullEmpty(msg.name) && item.metadata.name == msg.name && cli.user.HasRoleName("admins")) {
                         cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance:" + name + " found one as " + item.metadata.name);
                         var obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
                         msg.result = obj.body;
+                        Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name);
                     } else if (item.metadata.labels.app === name) {
                         cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance:" + name + " found one as " + item.metadata.name);
                         var obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
                         msg.result = obj.body;
+                        Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name);
                     }
                 }
             }
-
+            if (NoderedUtil.IsNullUndefinded(msg.result)) {
+                Audit.NoderedAction(TokenUser.From(cli.user), false, name, "readpodlog", image, null);
+            }
         } catch (error) {
             this.data = "";
             cli._logger.error(error);
@@ -1252,10 +1331,12 @@ export class Message {
     }
     private async StartNoderedInstance(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
+        Audit.NoderedAction(TokenUser.From(cli.user), true, null, "startdeployment", null, null);
         this.Send(cli);
     }
     private async StopNoderedInstance(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
+        Audit.NoderedAction(TokenUser.From(cli.user), true, null, "stopdeployment", null, null);
         this.Send(cli);
     }
     private async _SaveFile(stream: Stream, filename: string, contentType: string, metadata: Base): Promise<string> {
@@ -1528,6 +1609,8 @@ export class Message {
 
             var _data = Base.assign<Base>(msg as any);
             _data.addRight(msg.targetid, "targetid", [-1]);
+            _data.addRight(cli.user._id, cli.user.name, [-1]);
+            _data.addRight(tuser._id, tuser.name, [-1]);
             _data._type = "instance";
             _data.name = msg.name;
 
@@ -1535,7 +1618,7 @@ export class Message {
             msg.newinstanceid = res2._id;
 
             if (msg.initialrun) {
-                var message = { _id: res2._id };
+                var message = { _id: res2._id, __jwt: msg.jwt, __user: tuser };
                 amqpwrapper.Instance().sendWithReplyTo("", msg.queue, msg.resultqueue, message, Config.amqp_default_expiration, msg.correlationId);
                 // cli.consumers[0].sendToQueueWithReply(msg.queue, msg.resultqueue, msg.correlationId, message, (60 * (60 * 1000))); // 1 hour
             }
@@ -2086,7 +2169,102 @@ export class Message {
         }
         this.Send(cli);
     }
-
+    async DumpClients(cli: WebSocketServerClient) {
+        this.Reply();
+        try {
+            const jwt = Crypt.rootToken();
+            const known = await Config.db.query({ _type: "socketclient" }, null, 5000, 0, null, "configclients", jwt);
+            for (let i = 0; i < WebSocketServer._clients.length; i++) {
+                let client = WebSocketServer._clients[i];
+                let id = client.id;
+                let exists = known.filter((x: any) => x.id == id);
+                let item: any = {
+                    id: client.id, user: client.user, clientagent: client.clientagent, clientversion: client.clientversion
+                    , lastheartbeat: client.lastheartbeat, _type: "socketclient", name: client.id,
+                    queues: client.queues
+                };
+                if (client.user != null) {
+                    var name = client.user.username.split("@").join("").split(".").join("");
+                    name = name.toLowerCase();
+                    item.name = name + "/" + client.clientagent + "/" + client.id;
+                }
+                if (exists.length == 0) {
+                    await Config.db.InsertOne(item, "configclients", 1, false, jwt);
+                } else {
+                    item._id = exists[0]._id;
+                    await Config.db._UpdateOne(null, item, "configclients", 1, false, jwt);
+                }
+            }
+            for (let i = 0; i < known.length; i++) {
+                let client: any = known[i];
+                let id = client.id;
+                let exists = WebSocketServer._clients.filter((x: any) => x.id == id);
+                if (exists.length == 0) {
+                    await Config.db.DeleteOne(client._id, "configclients", jwt);
+                }
+            }
+        } catch (error) {
+            this.data = "";
+            cli._logger.error(error);
+        }
+        this.Send(cli);
+    }
+    async DumpRabbitmq(cli: WebSocketServerClient) {
+        this.Reply();
+        try {
+            const kickstartapi = amqpwrapper.getvhosts(Config.amqp_url);
+            const jwt = Crypt.rootToken();
+            const known = await Config.db.query({ _type: "queue" }, null, 5000, 0, null, "configclients", jwt);
+            const queues = await amqpwrapper.getqueues(Config.amqp_url);
+            for (let i = 0; i < queues.length; i++) {
+                let queue = queues[i];
+                let exists = known.filter((x: any) => x.queuename == queue.name);
+                let item: any = {
+                    name: queue.id, consumers: queue.consumers, consumer_details: queue.consumer_details, _type: "queue"
+                };
+                var consumers: number = 0;
+                if (queue.consumers > 0) { consumers = queue.consumers; }
+                if (consumers == 0) {
+                    if (queue.consumer_details != null && queue.consumer_details.length > 0) {
+                        consumers = queue.consumer_details.length;
+                    }
+                }
+                item.queuename = queue.name;
+                item.consumers = consumers;
+                item.name = queue.name + "(" + consumers + ")";
+                if (exists.length == 0) {
+                    try {
+                        await Config.db.InsertOne(item, "configclients", 1, false, jwt);
+                    } catch (error) {
+                        cli._logger.error(error);
+                    }
+                } else {
+                    item._id = exists[0]._id;
+                    try {
+                        await Config.db._UpdateOne(null, item, "configclients", 1, false, jwt);
+                    } catch (error) {
+                        cli._logger.error(error);
+                    }
+                }
+            }
+            for (let i = 0; i < known.length; i++) {
+                let queue: any = known[i];
+                let id = queue.id;
+                let exists = queues.filter((x: any) => x.name == queue.queuename);
+                if (exists.length == 0) {
+                    try {
+                        await Config.db.DeleteOne(queue._id, "configclients", jwt);
+                    } catch (error) {
+                        cli._logger.error(error);
+                    }
+                }
+            }
+        } catch (error) {
+            this.data = "";
+            cli._logger.error(error);
+        }
+        this.Send(cli);
+    }
 }
 
 export class JSONfn {

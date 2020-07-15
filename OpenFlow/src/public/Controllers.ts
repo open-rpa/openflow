@@ -1,5 +1,5 @@
 import { userdata, api, entityCtrl, entitiesCtrl } from "./CommonControllers";
-import { TokenUser, QueueMessage, SigninMessage, Ace, NoderedUser, Billing, stripe_customer, stripe_list, stripe_base, stripe_plan, stripe_subscription_item, Base, NoderedUtil, WebSocketClient, Role, NoderedConfig, Resources, ResourceValues, stripe_invoice } from "openflow-api";
+import { TokenUser, QueueMessage, SigninMessage, Ace, NoderedUser, Billing, stripe_customer, stripe_list, stripe_base, stripe_plan, stripe_subscription_item, Base, NoderedUtil, WebSocketClient, Role, NoderedConfig, Resources, ResourceValues, stripe_invoice, Message } from "openflow-api";
 import { RPAWorkflow, Provider, Form, WorkflowInstance, Workflow, unattendedclient } from "./Entities";
 import { WebSocketClientService } from "./WebSocketClientService";
 import * as jsondiffpatch from "jsondiffpatch";
@@ -1000,6 +1000,7 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
         try {
             this.loading = true;
             await this.WebSocketClientService.impersonate(model._id);
+            this.loadData();
         } catch (error) {
             this.errormessage = JSON.stringify(error);
         }
@@ -1086,33 +1087,39 @@ export class UserCtrl extends entityCtrl<TokenUser> {
         this.memberof = this.memberof.filter(x => x._id != model._id);
     }
     async submit(): Promise<void> {
-        if (this.model._id) {
-            await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null);
-        } else {
-            await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null);
-        }
-        this.$location.path("/Users");
-
-        var currentmemberof = await NoderedUtil.Query("users",
-            {
-                $and: [
-                    { _type: "role" },
-                    { members: { $elemMatch: { _id: this.model._id } } }
-                ]
-            }, null, { _type: -1, name: 1 }, 5, 0, null);
-        for (var i = 0; i < currentmemberof.length; i++) {
-            var memberof = currentmemberof[i];
-            if (this.memberof == null || this.memberof == undefined) this.memberof = [];
-            var exists = this.memberof.filter(x => x._id == memberof._id);
-            if (exists.length == 0) {
-                console.debug("Updating members of " + memberof.name + " " + memberof._id);
-                console.debug("members: " + memberof.members.length);
-                memberof.members = memberof.members.filter(x => x._id != this.model._id);
-                console.debug("members: " + memberof.members.length);
-                await NoderedUtil.UpdateOne("users", null, memberof, 1, false, null);
+        try {
+            if (this.model._id) {
+                await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null);
+            } else {
+                await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null);
             }
+            var currentmemberof = await NoderedUtil.Query("users",
+                {
+                    $and: [
+                        { _type: "role" },
+                        { members: { $elemMatch: { _id: this.model._id } } }
+                    ]
+                }, null, { _type: -1, name: 1 }, 5, 0, null);
+            for (var i = 0; i < currentmemberof.length; i++) {
+                var memberof = currentmemberof[i];
+                if (this.memberof == null || this.memberof == undefined) this.memberof = [];
+                var exists = this.memberof.filter(x => x._id == memberof._id);
+                if (exists.length == 0) {
+                    console.debug("Updating members of " + memberof.name + " " + memberof._id);
+                    console.debug("members: " + memberof.members.length);
+                    memberof.members = memberof.members.filter(x => x._id != this.model._id);
+                    console.debug("members: " + memberof.members.length);
+                    try {
+                        await NoderedUtil.UpdateOne("users", null, memberof, 1, false, null);
+                    } catch (error) {
+                        console.error("Error updating " + memberof.name, error);
+                    }
+                }
+            }
+            this.$location.path("/Users");
+        } catch (error) {
+            this.errormessage = error;
         }
-
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 }
@@ -1736,6 +1743,23 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         });
 
     }
+    hideFormElements() {
+        console.log("hideFormElements");
+        $('#workflowform :input').prop("disabled", true);
+        $('#workflowform :button').prop("disabled", true);
+        $('#workflowform :input').addClass("disabled");
+        $('#workflowform :button').addClass("disabled");
+        $('#workflowform .form-group').addClass("is-disabled");
+        $('#workflowform .form-group').prop("isDisabled", true);
+
+
+        // $('.form-control').addClass("disabled");
+        // $('.dropdown').attr("checked", "checked");;
+
+        $('#workflowform :button').hide();
+        $('input[type="submit"]').hide();
+
+    }
     async loadData(): Promise<void> {
         this.loading = true;
         var res = await NoderedUtil.Query(this.collection, this.basequery, null, { _created: -1 }, 1, 0, null);
@@ -1753,6 +1777,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 console.error(this.errormessage);
                 return;
             }
+            console.log('model', this.model);
             // console.debug(this.model);
             // console.debug(this.model.form);
             // console.debug("form: " + this.model.form);
@@ -1769,13 +1794,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                     this.$location.path("/main");
                 } else {
                     if (this.model.state == "failed") {
-                        $('#workflowform :input').prop("disabled", true);
-                        $('#workflowform :button').prop("disabled", true);
-                        $('#workflowform :input').addClass("disabled");
-                        $('#workflowform :button').addClass("disabled");
-
-                        $('#workflowform :button').hide();
-                        $('input[type="submit"]').hide();
+                        this.hideFormElements();
 
                         if ((this.model as any).error != null && (this.model as any).error != "") {
                             this.errormessage = (this.model as any).error;
@@ -2160,13 +2179,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             });
         }
         if (this.model.state == "completed" || this.model.state == "failed") {
-            $('#workflowform :input').prop("disabled", true);
-            $('#workflowform :button').prop("disabled", true);
-            $('#workflowform :input').addClass("disabled");
-            $('#workflowform :button').addClass("disabled");
-
-            $('#workflowform :button').hide();
-            $('input[type="submit"]').hide();
+            this.hideFormElements();
             if (this.model.state == "failed") {
                 if ((this.model as any).error != null && (this.model as any).error != "") {
                     this.errormessage = (this.model as any).error;
@@ -2661,13 +2674,23 @@ export class NoderedCtrl {
             if (this.userid == null || this.userid == undefined || this.userid == "") {
                 this.name = WebSocketClientService.user.username;
                 this.userid = WebSocketClientService.user._id;
+                console.log("user", WebSocketClientService.user);
                 var users: NoderedUser[] = await NoderedUtil.Query("users", { _id: this.userid }, null, null, 1, 0, null);
+                if (users.length == 0) {
+                    this.instancestatus = "Unknown id! " + this.userid;
+                    this.errormessage = "Unknown id! " + this.userid;
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    return;
+                }
+
                 this.user = NoderedUser.assign(users[0]);
                 this.name = users[0].username;
             } else {
                 var users: NoderedUser[] = await NoderedUtil.Query("users", { _id: this.userid }, null, null, 1, 0, null);
                 if (users.length == 0) {
-                    this.instancestatus = "Unknown id!";
+                    this.instancestatus = "Unknown id! " + this.userid;
+                    this.errormessage = "Unknown id! " + this.userid;
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
                     return;
                 }
                 this.user = NoderedUser.assign(users[0]);
@@ -2969,6 +2992,7 @@ export class RobotsCtrl extends entitiesCtrl<unattendedclient> {
         try {
             this.loading = true;
             await this.WebSocketClientService.impersonate(model._id);
+            this.loadData();
         } catch (error) {
             this.errormessage = JSON.stringify(error);
         }
@@ -3389,5 +3413,83 @@ export class PaymentCtrl extends entityCtrl<Billing> {
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
+    }
+}
+export class QueuesCtrl extends entitiesCtrl<Base> {
+    public message: string = "";
+    public charts: chartset[] = [];
+    constructor(
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        this.collection = "configclients";
+        this.basequery = { _type: "queue" };
+        console.debug("QueuesCtrl");
+        WebSocketClientService.onSignedin((user: TokenUser) => {
+            this.loadData();
+        });
+    }
+    async DumpRabbitmq() {
+        try {
+            this.loading = true;
+            let m: Message = new Message();
+            m.command = "dumprabbitmq"; m.data = "{}";
+            var q = await WebSocketClient.instance.Send<any>(m);
+            if ((q as any).command == "error") throw new Error(q.data);
+        } catch (error) {
+            console.error(error);
+        }
+        this.loading = false;
+        this.loadData();
+    }
+}
+export class SocketsCtrl extends entitiesCtrl<Base> {
+    public message: string = "";
+    public charts: chartset[] = [];
+    constructor(
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        this.collection = "configclients";
+        this.basequery = { _type: "socketclient" };
+        console.debug("SocketsCtrl");
+        this.postloadData = this.processdata;
+        WebSocketClientService.onSignedin((user: TokenUser) => {
+            this.loadData();
+        });
+    }
+    processdata() {
+        for (var i = 0; i < this.models.length; i++) {
+            var model: any = this.models[i];
+            model.keys = Object.keys(model.queues);
+            model.queuescount = model.keys.length;
+        }
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async DumpClients() {
+        try {
+            this.loading = true;
+            let m: Message = new Message();
+            m.command = "dumpclients"; m.data = "{}";
+            var q = await WebSocketClient.instance.Send<any>(m);
+            if ((q as any).command == "error") throw new Error(q.data);
+        } catch (error) {
+            console.error(error);
+        }
+        this.loading = false;
+        this.loadData();
     }
 }
