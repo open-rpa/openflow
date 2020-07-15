@@ -2180,7 +2180,8 @@ export class Message {
                 let exists = known.filter((x: any) => x.id == id);
                 let item: any = {
                     id: client.id, user: client.user, clientagent: client.clientagent, clientversion: client.clientversion
-                    , lastheartbeat: client.lastheartbeat, _type: "socketclient", name: client.id
+                    , lastheartbeat: client.lastheartbeat, _type: "socketclient", name: client.id,
+                    queues: client.queues
                 };
                 if (client.user != null) {
                     var name = client.user.username.split("@").join("").split(".").join("");
@@ -2211,9 +2212,10 @@ export class Message {
     async DumpRabbitmq(cli: WebSocketServerClient) {
         this.Reply();
         try {
+            const kickstartapi = amqpwrapper.getvhosts(Config.amqp_url);
             const jwt = Crypt.rootToken();
             const known = await Config.db.query({ _type: "queue" }, null, 5000, 0, null, "configclients", jwt);
-            const queues = await amqpwrapper.getqueues(Config.amqp_url, '/');
+            const queues = await amqpwrapper.getqueues(Config.amqp_url);
             for (let i = 0; i < queues.length; i++) {
                 let queue = queues[i];
                 let exists = known.filter((x: any) => x.queuename == queue.name);
@@ -2248,7 +2250,7 @@ export class Message {
             for (let i = 0; i < known.length; i++) {
                 let queue: any = known[i];
                 let id = queue.id;
-                let exists = queues.filter((x: any) => x.queuename == queue.name);
+                let exists = queues.filter((x: any) => x.name == queue.queuename);
                 if (exists.length == 0) {
                     try {
                         await Config.db.DeleteOne(queue._id, "configclients", jwt);

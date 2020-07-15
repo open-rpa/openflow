@@ -3415,7 +3415,7 @@ export class PaymentCtrl extends entityCtrl<Billing> {
 
     }
 }
-export class DebugCtrl extends entitiesCtrl<Base> {
+export class QueuesCtrl extends entitiesCtrl<Base> {
     public message: string = "";
     public charts: chartset[] = [];
     constructor(
@@ -3430,16 +3430,16 @@ export class DebugCtrl extends entitiesCtrl<Base> {
         super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         this.collection = "configclients";
         this.basequery = { _type: "queue" };
-        console.debug("DebugCtrl");
+        console.debug("QueuesCtrl");
         WebSocketClientService.onSignedin((user: TokenUser) => {
             this.loadData();
         });
     }
-    async DumpClients() {
+    async DumpRabbitmq() {
         try {
             this.loading = true;
             let m: Message = new Message();
-            m.command = "dumpclients"; m.data = "{}";
+            m.command = "dumprabbitmq"; m.data = "{}";
             var q = await WebSocketClient.instance.Send<any>(m);
             if ((q as any).command == "error") throw new Error(q.data);
         } catch (error) {
@@ -3448,11 +3448,42 @@ export class DebugCtrl extends entitiesCtrl<Base> {
         this.loading = false;
         this.loadData();
     }
-    async DumpRabbitmq() {
+}
+export class SocketsCtrl extends entitiesCtrl<Base> {
+    public message: string = "";
+    public charts: chartset[] = [];
+    constructor(
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        this.collection = "configclients";
+        this.basequery = { _type: "socketclient" };
+        console.debug("SocketsCtrl");
+        this.postloadData = this.processdata;
+        WebSocketClientService.onSignedin((user: TokenUser) => {
+            this.loadData();
+        });
+    }
+    processdata() {
+        for (var i = 0; i < this.models.length; i++) {
+            var model: any = this.models[i];
+            model.keys = Object.keys(model.queues);
+            model.queuescount = model.keys.length;
+        }
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async DumpClients() {
         try {
             this.loading = true;
             let m: Message = new Message();
-            m.command = "dumprabbitmq"; m.data = "{}";
+            m.command = "dumpclients"; m.data = "{}";
             var q = await WebSocketClient.instance.Send<any>(m);
             if ((q as any).command == "error") throw new Error(q.data);
         } catch (error) {

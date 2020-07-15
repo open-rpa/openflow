@@ -59,7 +59,10 @@
                 lib="web">jslog</span></a>
             <a class="dropdown-item" href="#/Files"><span translate lib="web">files</span></a>
             <a class="dropdown-item" href="#/hdrobots"><span translate lib="web">hdrobots</span></a>
-            <a class="dropdown-item" href="#/Auditlogs"><span translate lib="web">auditlogs</span></a>
+            <a class="dropdown-item" href="#/Queues" ng-show="menuctrl.hasrole('admins')"><span translate
+                lib="web">queues</span></a>
+            <a class="dropdown-item" href="#/Sockets" ng-show="menuctrl.hasrole('admins')"><span translate
+                lib="web">sockets</span></a>
 
             <a class="dropdown-item" href="#/Payment"
               ng-show="menuctrl.WebSocketClientService.stripe_api_key != ''"><span translate

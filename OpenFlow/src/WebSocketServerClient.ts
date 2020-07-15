@@ -35,7 +35,7 @@ export class WebSocketServerClient {
 
     user: User;
     // public consumers: amqp_consumer[] = [];
-    private queues: IHashTable<amqpqueue> = {};
+    public queues: IHashTable<amqpqueue> = {};
 
     constructor(logger: winston.Logger, socketObject: WebSocket) {
         this._logger = logger;
