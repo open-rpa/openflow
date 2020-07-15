@@ -3445,6 +3445,7 @@ export class DebugCtrl extends entitiesCtrl<Base> {
         } catch (error) {
             console.error(error);
         }
+        this.loading = false;
         this.loadData();
     }
     async DumpRabbitmq() {
@@ -3457,6 +3458,7 @@ export class DebugCtrl extends entitiesCtrl<Base> {
         } catch (error) {
             console.error(error);
         }
+        this.loading = false;
         this.loadData();
     }
 }

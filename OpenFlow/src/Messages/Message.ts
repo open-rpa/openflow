@@ -2186,7 +2186,7 @@ export class Message {
                 if (exists.length == 0) {
                     await Config.db.InsertOne(item, "configclients", 1, false, jwt);
                 } else {
-                    item._id = exists[i]._id;
+                    item._id = exists[0]._id;
                     await Config.db._UpdateOne(null, item, "configclients", 1, false, jwt);
                 }
             }
