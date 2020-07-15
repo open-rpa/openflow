@@ -2182,7 +2182,11 @@ export class Message {
                     id: client.id, user: client.user, clientagent: client.clientagent, clientversion: client.clientversion
                     , lastheartbeat: client.lastheartbeat, _type: "socketclient", name: client.id
                 };
-                if (client.user != null) { item.name = client.user.name + "/" + client.clientagent + "/" + client.id; }
+                if (client.user != null) {
+                    var name = client.user.username.split("@").join("").split(".").join("");
+                    name = name.toLowerCase();
+                    item.name = name + "/" + client.clientagent + "/" + client.id;
+                }
                 if (exists.length == 0) {
                     await Config.db.InsertOne(item, "configclients", 1, false, jwt);
                 } else {
