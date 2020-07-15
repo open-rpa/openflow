@@ -3437,6 +3437,7 @@ export class DebugCtrl extends entitiesCtrl<Base> {
     }
     async DumpClients() {
         try {
+            this.loading = true;
             let m: Message = new Message();
             m.command = "dumpclients"; m.data = "{}";
             var q = await WebSocketClient.instance.Send<any>(m);
@@ -3448,6 +3449,7 @@ export class DebugCtrl extends entitiesCtrl<Base> {
     }
     async DumpRabbitmq() {
         try {
+            this.loading = true;
             let m: Message = new Message();
             m.command = "dumprabbitmq"; m.data = "{}";
             var q = await WebSocketClient.instance.Send<any>(m);
