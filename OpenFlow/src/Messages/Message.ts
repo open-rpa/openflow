@@ -2233,7 +2233,7 @@ export class Message {
                         cli._logger.error(error);
                     }
                 } else {
-                    item._id = exists[i]._id;
+                    item._id = exists[0]._id;
                     try {
                         await Config.db._UpdateOne(null, item, "configclients", 1, false, jwt);
                     } catch (error) {
