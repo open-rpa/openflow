@@ -17,6 +17,7 @@ import { V1ResourceRequirements, V1Deployment } from "@kubernetes/client-node";
 import { amqpwrapper } from "../amqpwrapper";
 import { WebSocketServerClient } from "../WebSocketServerClient";
 import { DBHelper } from "../DBHelper";
+import { WebSocketServer } from "../WebSocketServer";
 var request = require("request");
 var got = require("got");
 
@@ -174,6 +175,12 @@ export class Message {
                     break;
                 case "stripemessage":
                     this.StripeMessage(cli);
+                    break;
+                case "dumpclients":
+                    this.DumpClients(cli);
+                    break;
+                case "dumprabbitmq":
+                    this.DumpRabbitmq(cli);
                     break;
                 default:
                     this.UnknownCommand(cli);
@@ -2162,7 +2169,84 @@ export class Message {
         }
         this.Send(cli);
     }
-
+    async DumpClients(cli: WebSocketServerClient) {
+        this.Reply();
+        try {
+            const jwt = Crypt.rootToken();
+            const known = await Config.db.query({ _type: "socketclient" }, null, 5000, 0, null, "configclients", jwt);
+            for (let i = 0; i < WebSocketServer._clients.length; i++) {
+                let client = WebSocketServer._clients[i];
+                let id = client.id;
+                let exists = known.filter((x: any) => x.id == id);
+                let item: any = {
+                    id: client.id, user: client.user, clientagent: client.clientagent, clientversion: client.clientversion
+                    , lastheartbeat: client.lastheartbeat, _type: "socketclient", name: client.id
+                };
+                if (client.user != null) { item.name = client.user.name + "/" + client.clientagent + "/" + client.id; }
+                if (exists.length == 0) {
+                    await Config.db.InsertOne(item, "configclients", 1, false, jwt);
+                } else {
+                    item._id = exists[i]._id;
+                    await Config.db._UpdateOne(null, item, "configclients", 1, false, jwt);
+                }
+            }
+            for (let i = 0; i < known.length; i++) {
+                let client: any = known[i];
+                let id = client.id;
+                let exists = WebSocketServer._clients.filter((x: any) => x.id == id);
+                if (exists.length == 0) {
+                    await Config.db.DeleteOne(client._id, "configclients", jwt);
+                }
+            }
+        } catch (error) {
+            this.data = "";
+            cli._logger.error(error);
+        }
+        this.Send(cli);
+    }
+    async DumpRabbitmq(cli: WebSocketServerClient) {
+        this.Reply();
+        try {
+            const jwt = Crypt.rootToken();
+            const known = await Config.db.query({ _type: "queue" }, null, 5000, 0, null, "configclients", jwt);
+            const queues = await amqpwrapper.getqueues(Config.amqp_url, '/');
+            for (let i = 0; i < queues.length; i++) {
+                let queue = queues[i];
+                let exists = known.filter((x: any) => x.queuename == queue.name);
+                let item: any = {
+                    name: queue.id, consumers: queue.consumers, consumer_details: queue.consumer_details, _type: "queue"
+                };
+                var consumers: number = 0;
+                if (queue.consumers > 0) { consumers = queue.consumers; }
+                if (consumers == 0) {
+                    if (queue.consumer_details != null && queue.consumer_details.length > 0) {
+                        consumers = queue.consumer_details.length;
+                    }
+                }
+                item.queuename = queue.name;
+                item.consumers = consumers;
+                item.name = queue.name + "(" + consumers + ")";
+                if (exists.length == 0) {
+                    await Config.db.InsertOne(item, "configclients", 1, false, jwt);
+                } else {
+                    item._id = exists[i]._id;
+                    await Config.db._UpdateOne(null, item, "configclients", 1, false, jwt);
+                }
+            }
+            for (let i = 0; i < known.length; i++) {
+                let queue: any = known[i];
+                let id = queue.id;
+                let exists = queues.filter((x: any) => x.queuename == queue.name);
+                if (exists.length == 0) {
+                    await Config.db.DeleteOne(queue._id, "configclients", jwt);
+                }
+            }
+        } catch (error) {
+            this.data = "";
+            cli._logger.error(error);
+        }
+        this.Send(cli);
+    }
 }
 
 export class JSONfn {

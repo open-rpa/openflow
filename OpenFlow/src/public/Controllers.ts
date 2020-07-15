@@ -1,5 +1,5 @@
 import { userdata, api, entityCtrl, entitiesCtrl } from "./CommonControllers";
-import { TokenUser, QueueMessage, SigninMessage, Ace, NoderedUser, Billing, stripe_customer, stripe_list, stripe_base, stripe_plan, stripe_subscription_item, Base, NoderedUtil, WebSocketClient, Role, NoderedConfig, Resources, ResourceValues, stripe_invoice } from "openflow-api";
+import { TokenUser, QueueMessage, SigninMessage, Ace, NoderedUser, Billing, stripe_customer, stripe_list, stripe_base, stripe_plan, stripe_subscription_item, Base, NoderedUtil, WebSocketClient, Role, NoderedConfig, Resources, ResourceValues, stripe_invoice, Message } from "openflow-api";
 import { RPAWorkflow, Provider, Form, WorkflowInstance, Workflow, unattendedclient } from "./Entities";
 import { WebSocketClientService } from "./WebSocketClientService";
 import * as jsondiffpatch from "jsondiffpatch";
@@ -3413,5 +3413,40 @@ export class PaymentCtrl extends entityCtrl<Billing> {
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
+    }
+}
+export class DebugCtrl extends entitiesCtrl<Base> {
+    public message: string = "";
+    public charts: chartset[] = [];
+    constructor(
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        this.collection = "configclients";
+        this.basequery = { _type: "queue" };
+        console.debug("DebugCtrl");
+        WebSocketClientService.onSignedin((user: TokenUser) => {
+            this.loadData();
+        });
+    }
+    async DumpClients() {
+        let m: Message = new Message();
+        m.command = "dumpclients"; m.data = "{}";
+        var q = await WebSocketClient.instance.Send<any>(m);
+        if ((q as any).command == "error") throw new Error(q.data);
+        this.loadData();
+    }
+    async DumpRabbitmq() {
+        let m: Message = new Message();
+        m.command = "dumprabbitmq"; m.data = "{}";
+        var q = await WebSocketClient.instance.Send<any>(m);
+        if ((q as any).command == "error") throw new Error(q.data);
+        this.loadData();
     }
 }

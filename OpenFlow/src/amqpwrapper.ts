@@ -385,7 +385,7 @@ export class amqpwrapper {
             Math.random().toString() +
             Math.random().toString();
     }
-    parseurl(amqp_url): url.UrlWithParsedQuery {
+    static parseurl(amqp_url): url.UrlWithParsedQuery {
         var q = url.parse(amqp_url, true);
         (q as any).username = "guest";
         (q as any).password = "guest";
@@ -402,7 +402,7 @@ export class amqpwrapper {
         var result: boolean = false;
         try {
             result = await retry(async bail => {
-                var queue = await this.getqueue(Config.amqp_url, '/', queuename);
+                var queue = await amqpwrapper.getqueue(Config.amqp_url, '/', queuename);
                 let hasConsumers: boolean = false;
                 if (queue.consumers > 0) {
                     hasConsumers = true;
@@ -436,7 +436,7 @@ export class amqpwrapper {
         }
         return false;
     }
-    async getvhosts(amqp_url) {
+    static async getvhosts(amqp_url) {
         var q = this.parseurl(amqp_url);
         var options = {
             headers: {
@@ -450,7 +450,7 @@ export class amqpwrapper {
         var payload = JSON.parse(response.body);
         return payload;
     }
-    async getqueues(amqp_url, vhost) {
+    static async getqueues(amqp_url, vhost) {
         var q = this.parseurl(amqp_url);
         var options = {
             headers: {
@@ -464,7 +464,7 @@ export class amqpwrapper {
         var payload = JSON.parse(response.body);
         return payload;
     }
-    async getqueue(amqp_url, vhost, queuename) {
+    static async getqueue(amqp_url, vhost, queuename) {
         var q = this.parseurl(amqp_url);
         var options = {
             headers: {
