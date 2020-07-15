@@ -161,9 +161,19 @@ export class WebSocketServerClient {
     public ping(): boolean {
         try {
             let msg: SocketMessage = SocketMessage.fromcommand("ping");
-            if (this._socketObject.readyState === this._socketObject.CLOSED
-                || this._socketObject.readyState === this._socketObject.CLOSING) {
-                this.CloseConsumers();
+            var keys = Object.keys(this.queues);
+            if (this._socketObject == null) {
+                if (keys.length > 0) {
+                    this.CloseConsumers();
+                    return true;
+                }
+                return false;
+            }
+            if (this._socketObject.readyState === this._socketObject.CLOSED || this._socketObject.readyState === this._socketObject.CLOSING) {
+                if (keys.length > 0) {
+                    this.CloseConsumers();
+                    return true;
+                }
                 return false;
             }
             this._socketObject.send(msg.tojson());
@@ -172,8 +182,13 @@ export class WebSocketServerClient {
             this._logger.error("WebSocketclient::WebSocket error encountered " + error);
             this._receiveQueue = [];
             this._sendQueue = [];
-            this.CloseConsumers();
-            return false;
+            try {
+                if (this._socketObject != null) {
+                    this._socketObject.close();
+                }
+            } catch (error) {
+            }
+            return true;
         }
     }
     private ProcessQueue(): void {
