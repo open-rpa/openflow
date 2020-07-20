@@ -61,6 +61,49 @@ export class WebSocketServerClient {
     private error(e: Event): void {
         this._logger.error("WebSocket error encountered " + e);
     }
+    public queuecount(): number {
+        if (this.queues == null) return 0;
+        var keys = Object.keys(this.queues);
+        return keys.length;
+    }
+    public connected(): boolean {
+        if (this._socketObject == null) return false;
+        if (this._socketObject.readyState === this._socketObject.OPEN || this._socketObject.readyState === this._socketObject.CONNECTING) {
+            return true;
+        }
+        if (this._socketObject.readyState === this._socketObject.CLOSED) {
+            delete this._socketObject;
+        }
+        return false;
+    }
+    public ping(): void {
+        try {
+            let msg: SocketMessage = SocketMessage.fromcommand("ping");
+            if (this._socketObject == null) {
+                if (this.queuecount() > 0) {
+                    this.CloseConsumers();
+                }
+                return;
+            }
+            if (this._socketObject.readyState === this._socketObject.CLOSED || this._socketObject.readyState === this._socketObject.CLOSING) {
+                if (this.queuecount() > 0) {
+                    this.CloseConsumers();
+                }
+                return;
+            }
+            this._socketObject.send(msg.tojson());
+        } catch (error) {
+            this._logger.error("WebSocketclient::WebSocket error encountered " + error);
+            this._receiveQueue = [];
+            this._sendQueue = [];
+            try {
+                if (this._socketObject != null) {
+                    this.Close();
+                }
+            } catch (error) {
+            }
+        }
+    }
     private message(message: string): void { // e: MessageEvent
         try {
             //this._logger.silly("WebSocket message received " + message);
@@ -87,6 +130,14 @@ export class WebSocketServerClient {
     public async Close(): Promise<void> {
         await this.CloseConsumers();
         if (this._socketObject != null) {
+            try {
+                this._socketObject.removeListener("open", (e: Event): void => this.open(e));
+                this._socketObject.removeListener("message", (e: string): void => this.message(e)); // e: MessageEvent
+                this._socketObject.removeListener("error", (e: Event): void => this.error(e));
+                this._socketObject.removeListener("close", (e: CloseEvent): void => this.close(e));
+            } catch (error) {
+                this._logger.error("WebSocketclient::Close::removeListener " + error);
+            }
             try {
                 this._socketObject.close();
             } catch (error) {
@@ -157,39 +208,6 @@ export class WebSocketServerClient {
         return new Promise(resolve => {
             setTimeout(resolve, ms)
         })
-    }
-    public ping(): boolean {
-        try {
-            let msg: SocketMessage = SocketMessage.fromcommand("ping");
-            var keys = Object.keys(this.queues);
-            if (this._socketObject == null) {
-                if (keys.length > 0) {
-                    this.CloseConsumers();
-                    return true;
-                }
-                return false;
-            }
-            if (this._socketObject.readyState === this._socketObject.CLOSED || this._socketObject.readyState === this._socketObject.CLOSING) {
-                if (keys.length > 0) {
-                    this.CloseConsumers();
-                    return true;
-                }
-                return false;
-            }
-            this._socketObject.send(msg.tojson());
-            return true;
-        } catch (error) {
-            this._logger.error("WebSocketclient::WebSocket error encountered " + error);
-            this._receiveQueue = [];
-            this._sendQueue = [];
-            try {
-                if (this._socketObject != null) {
-                    this._socketObject.close();
-                }
-            } catch (error) {
-            }
-            return true;
-        }
     }
     private ProcessQueue(): void {
         let username: string = "Unknown";

@@ -69,7 +69,9 @@ export class WebSocketServer {
                 cli.Close();
                 return false;
             }
-            return cli.ping();
+            cli.ping();
+            if (!cli.connected() && cli.queuecount() == 0) return false;
+            return true;
         });
         if (count !== WebSocketServer._clients.length) {
             WebSocketServer._logger.info("new client count: " + WebSocketServer._clients.length);

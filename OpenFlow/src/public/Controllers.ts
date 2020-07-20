@@ -2337,17 +2337,21 @@ export class EntityCtrl extends entityCtrl<Base> {
                 return;
             }
         }
-        if (this.model._id) {
-            await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null);
-        } else {
-            await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null);
+        try {
+            if (this.model._id) {
+                await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null);
+            } else {
+                await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null);
+            }
+            if (this.collection == "files") {
+                this.$location.path("/Files");
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                return;
+            }
+            this.$location.path("/Entities/" + this.collection);
+        } catch (error) {
+            this.errormessage = error;
         }
-        if (this.collection == "files") {
-            this.$location.path("/Files");
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            return;
-        }
-        this.$location.path("/Entities/" + this.collection);
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     removekey(key) {

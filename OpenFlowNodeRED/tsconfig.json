@@ -12,5 +12,9 @@
             "dom"
         ]
         // "lib": ["es2015.promise", "dom"]
-    }
+    },
+    "exclude": [
+        "../dist",
+        "dist"
+    ]
 }
