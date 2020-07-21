@@ -566,8 +566,7 @@ export class assign_workflow_node {
                 return;
             }
             if (NoderedUtil.IsNullEmpty(jwt)) {
-                var i: WebSocketClient = WebSocketClient.instance;
-                jwt = i.jwt;
+                jwt = WebSocketClient.instance.jwt;
             }
             var initialrun = this.config.initialrun;
             if (!NoderedUtil.IsNullEmpty(msg.initialrun)) {
