@@ -38,6 +38,7 @@ export class Config {
 
         Config.flow_refresh_interval = parseInt(Config.getEnv("flow_refresh_interval", "60000"));
         Config.flow_refresh_initial_interval = parseInt(Config.getEnv("flow_refresh_initial_interval", "60000"));
+        Config.workflow_node_auto_cleanup = Config.parseBoolean(Config.getEnv("workflow_node_auto_cleanup", "true"));
 
         Config.api_ws_url = Config.getEnv("api_ws_url", "ws://localhost:3000");
         Config.amqp_url = Config.getEnv("amqp_url", "amqp://localhost");
@@ -82,6 +83,7 @@ export class Config {
 
     public static flow_refresh_interval: number = parseInt(Config.getEnv("flow_refresh_interval", "60000"));
     public static flow_refresh_initial_interval: number = parseInt(Config.getEnv("flow_refresh_initial_interval", "60000"));
+    public static workflow_node_auto_cleanup: boolean = Config.parseBoolean(Config.getEnv("workflow_node_auto_cleanup", "true"));
 
     public static api_ws_url: string = Config.getEnv("api_ws_url", "ws://localhost:3000");
     public static amqp_url: string = Config.getEnv("amqp_url", "amqp://localhost");

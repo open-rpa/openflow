@@ -152,6 +152,9 @@ export class noderedcontribopenflowstorage {
     private _credentials: any[] = null;
     private _settings: any[] = null;
     public async CheckUpdates() {
+        console.log("***************************************");
+        console.log("* CheckUpdates:: begin                *");
+        console.log("***************************************");
         try {
             let oldsettings: any[] = null;
             if (this._settings != null) oldsettings = JSON.parse(JSON.stringify(this._settings));
@@ -217,6 +220,9 @@ export class noderedcontribopenflowstorage {
         } catch (error) {
             this._logger.error(error);
         }
+        console.log("***************************************");
+        console.log("* CheckUpdates:: end                  *");
+        console.log("***************************************");
         setTimeout(this.CheckUpdates.bind(this), Config.flow_refresh_interval);
     }
     public async init(settings: any): Promise<boolean> {
@@ -375,7 +381,7 @@ export class noderedcontribopenflowstorage {
             else { this._logger.error(error); }
         }
     }
-    // private firstrun: boolean = true;
+    private firstrun: boolean = true;
     public async _getSettings(): Promise<any> {
         var settings: any = null;
         try {
@@ -443,7 +449,10 @@ export class noderedcontribopenflowstorage {
             }
             this._settings = settings;
         }
-        setTimeout(this.CheckUpdates.bind(this), Config.flow_refresh_initial_interval);
+        if (this.firstrun) {
+            setTimeout(this.CheckUpdates.bind(this), Config.flow_refresh_initial_interval);
+            this.firstrun = false;
+        }
         return settings;
     }
     public async _saveSettings(settings: any): Promise<void> {
