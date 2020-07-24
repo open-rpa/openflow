@@ -93,7 +93,7 @@ export class amqp_consumer_node {
     onsocketclose(message) {
         if (message == null) message = "";
         this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
-        this.onclose();
+        this.onclose(false, null);
     }
     onsignedin() {
         this.connect();
@@ -135,11 +135,12 @@ export class amqp_consumer_node {
             NoderedUtil.HandleError(this, error);
         }
     }
-    onclose() {
-        if (!NoderedUtil.IsNullEmpty(this.localqueue)) {
+    async onclose(removed: boolean, done: any) {
+        if (!NoderedUtil.IsNullEmpty(this.localqueue) && removed) {
             NoderedUtil.CloseQueue(this.websocket(), this.localqueue);
             this.localqueue = "";
         }
+        if (done != null) done();
     }
 }
 
@@ -180,7 +181,7 @@ export class amqp_publisher_node {
     onsocketclose(message) {
         if (message == null) message = "";
         this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
-        this.onclose();
+        this.onclose(false, null);
     }
     websocket(): WebSocketClient {
         if (this.connection != null) {
@@ -244,11 +245,12 @@ export class amqp_publisher_node {
             NoderedUtil.HandleError(this, error);
         }
     }
-    onclose() {
-        if (!NoderedUtil.IsNullEmpty(this.localqueue)) {
+    async onclose(removed: boolean, done: any) {
+        if (!NoderedUtil.IsNullEmpty(this.localqueue) && removed) {
             NoderedUtil.CloseQueue(this.websocket(), this.localqueue);
             this.localqueue = "";
         }
+        if (done != null) done();
     }
 }
 

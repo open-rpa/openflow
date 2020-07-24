@@ -36,7 +36,6 @@ export class noderedcontribopenflowstorage {
         this.saveSessions = (this._saveSessions.bind(this));
         // this.getLibraryEntry = (this._getLibraryEntry.bind(this));
         // this.saveLibraryEntry = (this._saveLibraryEntry.bind(this));
-        setTimeout(this.CheckUpdates.bind(this), Config.flow_refresh_interval);
     }
 
     // compare contents of two objects and return a list of differences
@@ -150,27 +149,70 @@ export class noderedcontribopenflowstorage {
     }
 
     private _flows: any[] = null;
+    private _credentials: any[] = null;
+    private _settings: any[] = null;
     public async CheckUpdates() {
         try {
+            let oldsettings: any[] = null;
+            if (this._settings != null) oldsettings = JSON.parse(JSON.stringify(this._settings));
+
+            let oldflows: any[] = null;
+            if (this._flows != null) oldflows = JSON.parse(JSON.stringify(this._flows));
+
+            let oldcredentials: any[] = null;
+            if (this._credentials != null) oldcredentials = JSON.parse(JSON.stringify(this._credentials));
+
+            let update: boolean = false;
+            let donpm: boolean = false;
+
             let flows: any[] = await this._getFlows();
-            if (this._flows != null) {
-                let update: boolean = false;
+            if (oldflows != null) {
                 if (flows.length != this._flows.length) {
                     update = true;
                 } else {
-                    for (let i = 0; i < flows.length; i++) {
-                        if (this.DiffObjects(flows[i], this._flows[i])) {
-                            update = true;
-                            break;
-                        }
+                    if (this.DiffObjects(flows, oldflows)) {
+                        update = true;
                     }
-                }
-                if (update) {
-                    this._flows = flows;
-                    await this.RED.nodes.loadFlows(true);
                 }
             } else {
                 this._flows = flows;
+            }
+
+            let credentials: any[] = await this._getCredentials();
+            if (oldcredentials != null) {
+                if (credentials.length != this._credentials.length) {
+                    update = true;
+                } else {
+                    if (this.DiffObjects(credentials, oldcredentials)) {
+                        update = true;
+                    }
+                }
+            } else {
+                this._credentials = credentials;
+            }
+
+            let settings: any[] = await this.getSettings();
+            if (oldsettings != null) {
+                if (settings.length != this._settings.length) {
+                    update = true;
+                    donpm = true;
+                } else {
+                    if (this.DiffObjects(settings, oldsettings)) {
+                        update = true;
+                        donpm = true;
+                    }
+                }
+            } else {
+                this._settings = settings;
+            }
+            if (donpm) {
+                this._settings = null;
+                this._settings = await this.getSettings();
+            }
+            if (update) {
+                this._flows = flows;
+                this._settings = settings;
+                await this.RED.nodes.loadFlows(true);
             }
         } catch (error) {
             this._logger.error(error);
@@ -208,79 +250,111 @@ export class noderedcontribopenflowstorage {
         return true;
     }
     public async _getFlows(): Promise<any[]> {
+        var result: any[] = [];
         try {
             this._logger.silly("noderedcontribopenflowstorage::_getFlows");
-            var result = await NoderedUtil.Query("nodered", { _type: "flow", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
-            if (result.length === 0) { return []; }
-            try {
-                return JSON.parse(result[0].flows);
-            } catch (error) {
-                if (error.message) { this._logger.error(error.message); }
-                else { this._logger.error(error); }
-                return [];
+            if (WebSocketClient.instance.isConnected()) {
+                var array = await NoderedUtil.Query("nodered", { _type: "flow", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                if (array.length === 0) { return []; }
+                try {
+                    this._flows = JSON.parse(array[0].flows);
+                    result = this._flows;
+                } catch (error) {
+                    if (error.message) { this._logger.error(error.message); }
+                    else { this._logger.error(error); }
+                    result = [];
+                }
             }
         } catch (error) {
             if (error.message) { this._logger.error(error.message); }
             else { this._logger.error(error); }
-            return [];
+            result = [];
         }
+        if (result.length == 0) {
+            if (await fs.existsSync(path.join(Config.logpath, Config.nodered_id + "_flows.json"))) {
+                var json = await fs.readFileSync(path.join(Config.logpath, Config.nodered_id + "_flows.json"), "utf8");
+                this._flows = JSON.parse(json);
+                result = this._flows;
+            }
+        } else {
+            fs.writeFileSync(path.join(Config.logpath, Config.nodered_id + "_flows.json"), JSON.stringify(result));
+        }
+        return result;
     }
     public async _saveFlows(flows: any[]): Promise<void> {
         try {
             this._logger.silly("noderedcontribopenflowstorage::_saveFlows");
-            var result = await NoderedUtil.Query("nodered", { _type: "flow", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
-            if (result.length === 0) {
-                var item: any = {
-                    name: "flows for " + Config.nodered_id,
-                    flows: JSON.stringify(flows), _type: "flow", nodered_id: Config.nodered_id
-                };
-                await NoderedUtil.InsertOne("nodered", item, 1, true, null);
-            } else {
-                result[0].flows = JSON.stringify(flows);
-                await NoderedUtil.UpdateOne("nodered", null, result[0], 1, true, null);
+            fs.writeFileSync(path.join(Config.logpath, Config.nodered_id + "_flows.json"), JSON.stringify(flows));
+            if (WebSocketClient.instance.isConnected()) {
+                var result = await NoderedUtil.Query("nodered", { _type: "flow", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                if (result.length === 0) {
+                    var item: any = {
+                        name: "flows for " + Config.nodered_id,
+                        flows: JSON.stringify(flows), _type: "flow", nodered_id: Config.nodered_id
+                    };
+                    await NoderedUtil.InsertOne("nodered", item, 1, true, null);
+                } else {
+                    result[0].flows = JSON.stringify(flows);
+                    await NoderedUtil.UpdateOne("nodered", null, result[0], 1, true, null);
+                }
+                this._flows = flows;
             }
-            this._flows = flows;
         } catch (error) {
             if (error.message) { this._logger.error(error.message); }
             else { this._logger.error(error); }
         }
     }
     public async _getCredentials(): Promise<any> {
+        var cred: any = [];
         try {
             this._logger.silly("noderedcontribopenflowstorage::_getCredentials");
-            var result = await NoderedUtil.Query("nodered", { _type: "credential", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
-            if (result.length === 0) { return []; }
-            var cred: any = result[0].credentials;
-            var arr: any = result[0].credentialsarray;
-            if (arr !== null && arr !== undefined) {
-                cred = {};
-                for (var i = 0; i < arr.length; i++) {
-                    var key = arr[i].key;
-                    var value = arr[i].value;
-                    cred[key] = value;
+            if (WebSocketClient.instance.isConnected()) {
+                var result = await NoderedUtil.Query("nodered", { _type: "credential", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                if (result.length === 0) { return []; }
+                cred = result[0].credentials;
+                var arr: any = result[0].credentialsarray;
+                if (arr !== null && arr !== undefined) {
+                    cred = {};
+                    for (var i = 0; i < arr.length; i++) {
+                        var key = arr[i].key;
+                        var value = arr[i].value;
+                        cred[key] = value;
+                    }
                 }
+                this._credentials = cred;
             }
-            return cred;
         } catch (error) {
             if (error.message) { this._logger.error(error.message); }
             else { this._logger.error(error); }
-            return [];
+            cred = [];
         }
+        if (cred.length == 0) {
+            if (await fs.existsSync(path.join(Config.logpath, Config.nodered_id + "_credentials.json"))) {
+                var json = await fs.readFileSync(path.join(Config.logpath, Config.nodered_id + "_credentials.json"), "utf8");
+                cred = JSON.parse(json);
+                this._credentials = cred;
+            }
+        } else {
+            fs.writeFileSync(path.join(Config.logpath, Config.nodered_id + "_credentials.json"), JSON.stringify(cred));
+        }
+        return cred;
     }
     public async _saveCredentials(credentials: any): Promise<void> {
         try {
             this._logger.silly("noderedcontribopenflowstorage::_saveCredentials");
-            var result = await NoderedUtil.Query("nodered", { _type: "credential", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
-
-            var credentialsarray = [];
-            var orgkeys = Object.keys(credentials);
-            for (var i = 0; i < orgkeys.length; i++) {
-                var key = orgkeys[i];
-                var value = credentials[key];
-                var obj = { key: key, value: value };
-                credentialsarray.push(obj);
+            fs.writeFileSync(path.join(Config.logpath, Config.nodered_id + "_credentials.json"), JSON.stringify(credentials));
+            if (WebSocketClient.instance.isConnected()) {
+                var result = await NoderedUtil.Query("nodered", { _type: "credential", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                var credentialsarray = [];
+                var orgkeys = Object.keys(credentials);
+                for (var i = 0; i < orgkeys.length; i++) {
+                    var key = orgkeys[i];
+                    var value = credentials[key];
+                    var obj = { key: key, value: value };
+                    credentialsarray.push(obj);
+                }
             }
-            if (credentials)
+            if (credentials) {
                 if (result.length === 0) {
                     var item: any = {
                         name: "credentials for " + Config.nodered_id,
@@ -294,6 +368,8 @@ export class noderedcontribopenflowstorage {
                     item.credentialsarray = credentialsarray;
                     var subresult = await NoderedUtil.UpdateOne("nodered", null, item, 1, true, null);
                 }
+                this._credentials = credentials;
+            }
         } catch (error) {
             if (error.message) { this._logger.error(error.message); }
             else { this._logger.error(error); }
@@ -301,67 +377,93 @@ export class noderedcontribopenflowstorage {
     }
     // private firstrun: boolean = true;
     public async _getSettings(): Promise<any> {
+        var settings: any = null;
         try {
             this._logger.silly("noderedcontribopenflowstorage::_getSettings");
-            var result = await NoderedUtil.Query("nodered", { _type: "setting", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
-            if (result.length === 0) { return {}; }
-
-            var settings = JSON.parse(result[0].settings);
-            //if (this.firstrun) {
-            var child_process = require("child_process");
-            var keys = Object.keys(settings.nodes);
-            var modules = "";
-            for (var i = 0; i < keys.length; i++) {
-                var key = keys[i];
-                var val = settings.nodes[key];
-                if (["node-red", "node-red-node-email", "node-red-node-feedparser", "node-red-node-rbe",
-                    "node-red-node-sentiment", "node-red-node-tail", "node-red-node-twitter"].indexOf(key) === -1) {
-                    var pname: string = val.name + "@" + val.version;
-                    if (val.pending_version) {
-                        pname = val.name + "@" + val.pending_version;
-                    }
-                    // this._logger.info("Installing " + pname);
-                    // child_process.execSync("npm install " + pname, { stdio: [0, 1, 2], cwd: this.settings.userDir });
-                    modules += (" " + pname);
-                }
+            if (WebSocketClient.instance.isConnected()) {
+                var result = await NoderedUtil.Query("nodered", { _type: "setting", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                if (result.length === 0) { return {}; }
+                settings = JSON.parse(result[0].settings);
             }
-            this._logger.info("Installing " + modules);
-            var errorcounter = 0;
-            while (errorcounter < 5) {
-                try {
-                    child_process.execSync("npm install " + modules, { stdio: [0, 1, 2], cwd: this.settings.userDir });
-                    errorcounter = 10;
-                } catch (error) {
-                    errorcounter++;
-                    this._logger.error("npm install error");
-                    if (error.status) this._logger.error("npm install status: " + error.status);
-                    if (error.message) this._logger.error("npm install message: " + error.message);
-                    if (error.stderr) this._logger.error("npm install stderr: " + error.stderr);
-                    if (error.stdout) this._logger.error("npm install stdout: " + error.stdout);
-                }
-            }
-            this._logger.silly("noderedcontribopenflowstorage::_getSettings: return result");
-            return settings;
         } catch (error) {
             if (error.message) { this._logger.error(error.message); }
             else { this._logger.error(error); }
-            return {};
         }
+        if (settings == null) {
+            settings = {};
+            if (await fs.existsSync(path.join(Config.logpath, Config.nodered_id + "_settings.json"))) {
+                var json = await fs.readFileSync(path.join(Config.logpath, Config.nodered_id + "_settings.json"), "utf8");
+                settings = JSON.parse(json);
+                this._settings = settings;
+            }
+        } else {
+            fs.writeFileSync(path.join(Config.logpath, Config.nodered_id + "_settings.json"), JSON.stringify(settings));
+            if (this._settings == null) {
+                this._settings = settings;
+                try {
+                    //if (this.firstrun) {
+                    var child_process = require("child_process");
+                    var keys = Object.keys(settings.nodes);
+                    var modules = "";
+                    for (var i = 0; i < keys.length; i++) {
+                        var key = keys[i];
+                        var val = settings.nodes[key];
+                        if (["node-red", "node-red-node-email", "node-red-node-feedparser", "node-red-node-rbe",
+                            "node-red-node-sentiment", "node-red-node-tail", "node-red-node-twitter"].indexOf(key) === -1) {
+                            var pname: string = val.name + "@" + val.version;
+                            if (val.pending_version) {
+                                pname = val.name + "@" + val.pending_version;
+                            }
+                            // this._logger.info("Installing " + pname);
+                            // child_process.execSync("npm install " + pname, { stdio: [0, 1, 2], cwd: this.settings.userDir });
+                            modules += (" " + pname);
+                        }
+                    }
+                    this._logger.info("Installing " + modules);
+                    var errorcounter = 0;
+                    while (errorcounter < 5) {
+                        try {
+                            child_process.execSync("npm install " + modules, { stdio: [0, 1, 2], cwd: this.settings.userDir });
+                            errorcounter = 10;
+                        } catch (error) {
+                            errorcounter++;
+                            this._logger.error("npm install error");
+                            if (error.status) this._logger.error("npm install status: " + error.status);
+                            if (error.message) this._logger.error("npm install message: " + error.message);
+                            if (error.stderr) this._logger.error("npm install stderr: " + error.stderr);
+                            if (error.stdout) this._logger.error("npm install stdout: " + error.stdout);
+                        }
+                    }
+                    this._logger.silly("noderedcontribopenflowstorage::_getSettings: return result");
+                } catch (error) {
+                    if (error.message) { this._logger.error(error.message); }
+                    else { this._logger.error(error); }
+                    settings = {};
+                }
+            }
+            this._settings = settings;
+        }
+        setTimeout(this.CheckUpdates.bind(this), Config.flow_refresh_initial_interval);
+        return settings;
     }
     public async _saveSettings(settings: any): Promise<void> {
         try {
             this._logger.silly("noderedcontribopenflowstorage::_saveSettings");
-            var result = await NoderedUtil.Query("nodered", { _type: "setting", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
-            if (result.length === 0) {
-                var item: any = {
-                    name: "settings for " + Config.nodered_id,
-                    settings: JSON.stringify(settings), _type: "setting", nodered_id: Config.nodered_id
-                };
-                await NoderedUtil.InsertOne("nodered", item, 1, true, null);
-            } else {
-                result[0].settings = JSON.stringify(settings);
-                await NoderedUtil.UpdateOne("nodered", null, result[0], 1, true, null);
+            fs.writeFileSync(path.join(Config.logpath, Config.nodered_id + "_settings.json"), JSON.stringify(settings));
+            if (WebSocketClient.instance.isConnected()) {
+                var result = await NoderedUtil.Query("nodered", { _type: "setting", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                if (result.length === 0) {
+                    var item: any = {
+                        name: "settings for " + Config.nodered_id,
+                        settings: JSON.stringify(settings), _type: "setting", nodered_id: Config.nodered_id
+                    };
+                    await NoderedUtil.InsertOne("nodered", item, 1, true, null);
+                } else {
+                    result[0].settings = JSON.stringify(settings);
+                    await NoderedUtil.UpdateOne("nodered", null, result[0], 1, true, null);
+                }
             }
+            this._settings = settings;
         } catch (error) {
             if (error.message) { this._logger.error(error.message); }
             else { this._logger.error(error); }
@@ -369,30 +471,44 @@ export class noderedcontribopenflowstorage {
     }
 
     public async _getSessions(): Promise<any[]> {
+        var item: any[] = [];
         try {
             this._logger.silly("noderedcontribopenflowstorage::_getSessions");
-            var result = await NoderedUtil.Query("nodered", { _type: "session", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
-            if (result.length === 0) { return []; }
-            var item: any = JSON.parse(result[0].sessions);
-            return item;
+            if (WebSocketClient.instance.isConnected()) {
+                var result = await NoderedUtil.Query("nodered", { _type: "session", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                if (result.length === 0) { return []; }
+                item = JSON.parse(result[0].sessions);
+            }
         } catch (error) {
             if (error.message) { this._logger.error(error.message); }
             else { this._logger.error(error); }
-            return [];
+            item = [];
         }
+        if (item == null || item.length == 0) {
+            if (await fs.existsSync(path.join(Config.logpath, Config.nodered_id + "_sessions.json"))) {
+                var json = await fs.readFileSync(path.join(Config.logpath, Config.nodered_id + "_sessions.json"), "utf8");
+                item = JSON.parse(json);
+            }
+        } else {
+            fs.writeFileSync(path.join(Config.logpath, Config.nodered_id + "_sessions.json"), JSON.stringify(item));
+        }
+        return item;
     }
     public async _saveSessions(sessions: any[]): Promise<void> {
         try {
-            var result = await NoderedUtil.Query("nodered", { _type: "session", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
-            if (result.length === 0) {
-                var item: any = {
-                    name: "sessions for " + Config.nodered_id,
-                    sessions: JSON.stringify(sessions), _type: "session", nodered_id: Config.nodered_id
-                };
-                await NoderedUtil.InsertOne("nodered", item, 1, true, null);
-            } else {
-                result[0].sessions = JSON.stringify(sessions);
-                await NoderedUtil.UpdateOne("nodered", null, result[0], 1, true, null);
+            fs.writeFileSync(path.join(Config.logpath, Config.nodered_id + "_sessions.json"), JSON.stringify(sessions));
+            if (WebSocketClient.instance.isConnected()) {
+                var result = await NoderedUtil.Query("nodered", { _type: "session", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                if (result.length === 0) {
+                    var item: any = {
+                        name: "sessions for " + Config.nodered_id,
+                        sessions: JSON.stringify(sessions), _type: "session", nodered_id: Config.nodered_id
+                    };
+                    await NoderedUtil.InsertOne("nodered", item, 1, true, null);
+                } else {
+                    result[0].sessions = JSON.stringify(sessions);
+                    await NoderedUtil.UpdateOne("nodered", null, result[0], 1, true, null);
+                }
             }
         } catch (error) {
             if (error.message) { this._logger.error(error.message); }

@@ -36,6 +36,9 @@ export class Config {
         Config.noderedusers = Config.getEnv("noderedusers", "");
         Config.noderedadmins = Config.getEnv("noderedadmins", "");
 
+        Config.flow_refresh_interval = parseInt(Config.getEnv("flow_refresh_interval", "60000"));
+        Config.flow_refresh_initial_interval = parseInt(Config.getEnv("flow_refresh_initial_interval", "60000"));
+
         Config.api_ws_url = Config.getEnv("api_ws_url", "ws://localhost:3000");
         Config.amqp_url = Config.getEnv("amqp_url", "amqp://localhost");
         Config.amqp_reply_expiration = parseInt(Config.getEnv("amqp_reply_expiration", (60 * 1000).toString())); // 1 min
@@ -77,7 +80,8 @@ export class Config {
     public static noderedusers: string = Config.getEnv("noderedusers", "");
     public static noderedadmins: string = Config.getEnv("noderedadmins", "");
 
-    public static flow_refresh_interval: number = parseInt(Config.getEnv("port", "60000"));
+    public static flow_refresh_interval: number = parseInt(Config.getEnv("flow_refresh_interval", "60000"));
+    public static flow_refresh_initial_interval: number = parseInt(Config.getEnv("flow_refresh_initial_interval", "60000"));
 
     public static api_ws_url: string = Config.getEnv("api_ws_url", "ws://localhost:3000");
     public static amqp_url: string = Config.getEnv("amqp_url", "amqp://localhost");

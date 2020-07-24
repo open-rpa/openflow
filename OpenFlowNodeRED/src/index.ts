@@ -1,3 +1,5 @@
+import * as fs from "fs";
+import * as path from "path";
 import * as winston from "winston";
 import * as http from "http";
 import { WebSocketClient, NoderedUtil, TokenUser } from "openflow-api";
@@ -22,9 +24,18 @@ rejectionEmitter.on("rejectionHandled", (error, promise) => {
     console.log('Rejection handled at: Promise', promise, 'reason:', error);
     console.dir(error.stack);
 });
-
+let server: http.Server = null;
 (async function (): Promise<void> {
     try {
+        var filename = path.join(Config.logpath, Config.nodered_id + "_flows.json");
+        if (await fs.existsSync(filename)) {
+            server = await WebServer.configure(logger, socket);
+            var baseurl = Config.saml_baseurl;
+            if (NoderedUtil.IsNullEmpty(baseurl)) {
+                baseurl = Config.baseurl();
+            }
+            logger.info("listening on " + baseurl);
+        }
         var c = Config;
         var socket: WebSocketClient = new WebSocketClient(logger, Config.api_ws_url);
         socket.agent = "nodered";
@@ -54,12 +65,14 @@ rejectionEmitter.on("rejectionHandled", (error, promise) => {
                 WebSocketClient.instance.user = result.user;
                 WebSocketClient.instance.jwt = result.jwt;
 
-                const server: http.Server = await WebServer.configure(logger, socket);
-                var baseurl = Config.saml_baseurl;
-                if (NoderedUtil.IsNullEmpty(baseurl)) {
-                    baseurl = Config.baseurl();
+                if (server == null) {
+                    server = await WebServer.configure(logger, socket);
+                    var baseurl = Config.saml_baseurl;
+                    if (NoderedUtil.IsNullEmpty(baseurl)) {
+                        baseurl = Config.baseurl();
+                    }
+                    logger.info("listening on " + baseurl);
                 }
-                logger.info("listening on " + baseurl);
                 socket.events.emit("onsignedin", result.user);
             } catch (error) {
                 var closemsg: any = error;
