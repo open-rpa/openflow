@@ -1,6 +1,6 @@
 {
   "name": "openiap",
-  "version": "1.0.70",
+  "version": "1.0.71",
   "description": "Simple wrapper around NodeRed, RabbitMQ and MongoDB to support a more scaleable NodeRed implementation.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {

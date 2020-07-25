@@ -252,19 +252,24 @@ export class workflow_in_node {
         }
     }
     async onclose(removed: boolean, done: any) {
-        if (!NoderedUtil.IsNullEmpty(this.localqueue) && removed) {
-            NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
-            this.localqueue = "";
-        }
-        if (removed && Config.workflow_node_auto_cleanup) {
-            let res = await NoderedUtil.Query("workflow", { "queue": this.localqueue }, null, null, 1, 0, null);
-            if (res.length > 0) {
-                await NoderedUtil.DeleteOne("workflow", res[0]._id, null);
+        try {
+            if (!NoderedUtil.IsNullEmpty(this.localqueue) && removed) {
+                NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
+                this.localqueue = "";
             }
-            res = await NoderedUtil.Query("users", { "_type": "role", "$or": [{ "workflowid": this.workflow._id }, { "name": this.localqueue + "users" }] }, null, null, 1, 0, null);
-            if (res.length > 0) {
-                await NoderedUtil.DeleteOne("workflow", res[0]._id, null);
+            if (removed && Config.workflow_node_auto_cleanup) {
+                let res = await NoderedUtil.Query("workflow", { "queue": this.localqueue }, null, null, 1, 0, null);
+                if (res.length > 0) {
+                    await NoderedUtil.DeleteOne("workflow", res[0]._id, null);
+                }
+                res = await NoderedUtil.Query("users", { "_type": "role", "$or": [{ "workflowid": this.workflow._id }, { "name": this.localqueue + "users" }] }, null, null, 1, 0, null);
+                if (res.length > 0) {
+                    await NoderedUtil.DeleteOne("users", res[0]._id, null);
+                }
             }
+        } catch (error) {
+            Logger.instanse.error(error);
+            NoderedUtil.HandleError(this, error);
         }
         if (done != null) done();
     }
