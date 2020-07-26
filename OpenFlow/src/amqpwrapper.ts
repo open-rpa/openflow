@@ -402,8 +402,8 @@ export class amqpwrapper {
         var result: boolean = false;
         try {
             result = await retry(async bail => {
-                // var queue = await amqpwrapper.getqueue(Config.amqp_url, '/', queuename);
-                var queue = await amqpwrapper.getqueue(queuename);
+                var queue = await amqpwrapper.getqueue(Config.amqp_url, '/', queuename);
+                // var queue = await amqpwrapper.getqueue(queuename);
                 let hasConsumers: boolean = false;
                 if (queue.consumers > 0) {
                     hasConsumers = true;
@@ -466,28 +466,44 @@ export class amqpwrapper {
         var payload = JSON.parse(response.body);
         return payload;
     }
-    static async getqueue(queuename) {
-        const queues = await amqpwrapper.getqueues(Config.amqp_url);
-        for (let i = 0; i < queues.length; i++) {
-            let queue = queues[i];
-            if (queue.name == queuename) {
-                return queue;
-            }
-        }
-        // var q = this.parseurl(amqp_url);
-        // var options = {
-        //     headers: {
-        //         'Content-type': 'application/x-www-form-urlencoded'
-        //     },
-        //     username: (q as any).username,
-        //     password: (q as any).password,
-        //     timeout: 500, retry: 1
-        // };
-        // var _url = 'http://' + q.host + ':' + q.port + '/api/queues/' + encodeURIComponent(vhost) + '/' + queuename;
-        // var response = await got.get(_url, options);
-        // var payload = JSON.parse(response.body);
-        // return payload;
+    static async getqueue(amqp_url: string, vhost: string, queuename) {
+        // const queues = await amqpwrapper.getqueues(Config.amqp_url);
+        // for (let i = 0; i < queues.length; i++) {
+        //     let queue = queues[i];
+        //     if (queue.name == queuename) {
+        //         return queue;
+        //     }
+        // }
+        var q = this.parseurl(amqp_url);
+        var options = {
+            headers: {
+                'Content-type': 'application/x-www-form-urlencoded'
+            },
+            username: (q as any).username,
+            password: (q as any).password,
+            timeout: 500, retry: 1
+        };
+        var _url = 'http://' + q.host + ':' + q.port + '/api/queues/' + encodeURIComponent(vhost) + '/' + encodeURIComponent(queuename);
+        var response = await got.get(_url, options);
+        var payload = JSON.parse(response.body);
+        return payload;
     }
+    static async deletequeue(amqp_url: string, vhost: string, queuename) {
+        var q = this.parseurl(amqp_url);
+        var options = {
+            headers: {
+                'Content-type': 'application/x-www-form-urlencoded'
+            },
+            username: (q as any).username,
+            password: (q as any).password,
+            timeout: 500, retry: 1
+        };
+        var _url = 'http://' + q.host + ':' + q.port + '/api/queues/' + encodeURIComponent(vhost) + '/' + encodeURIComponent(queuename);
+        var response = await got.delete(_url, options);
+        var payload = JSON.parse(response.body);
+        return payload;
+    }
+
 
     // async checkQueue(queue: string): Promise<boolean> {
     //     if (Config.amqp_check_for_consumer) {
