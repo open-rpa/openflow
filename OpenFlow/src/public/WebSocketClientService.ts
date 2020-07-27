@@ -71,15 +71,24 @@ export class WebSocketClientService {
                 }
                 return;
             }
-            var result = await NoderedUtil.SigninWithToken(data.jwt, data.rawAssertion, null);
-            this.user = result.user;
-            this.jwt = result.jwt;
-            this.$rootScope.$broadcast("signin", result.user);
-            var redirecturl = this.getCookie("weburl");
-            if (!NoderedUtil.IsNullEmpty(redirecturl)) {
-                console.log('redirecturl', redirecturl);
-                this.deleteCookie("weburl");
-                this.$location.path(redirecturl);
+            try {
+                var result = await NoderedUtil.SigninWithToken(data.jwt, data.rawAssertion, null);
+                this.user = result.user;
+                this.jwt = result.jwt;
+                this.$rootScope.$broadcast("signin", result.user);
+                var redirecturl = this.getCookie("weburl");
+                if (!NoderedUtil.IsNullEmpty(redirecturl)) {
+                    console.log('redirecturl', redirecturl);
+                    this.deleteCookie("weburl");
+                    this.$location.path(redirecturl);
+                }
+            } catch (error) {
+                console.log(error);
+                try {
+                    document.write(error);
+                } catch (error) {
+
+                }
             }
         });
     }

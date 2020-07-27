@@ -630,6 +630,10 @@ export class Message {
                 if (msg !== null && msg !== undefined) msg.error = "Unknown username or password";
                 Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
                 cli._logger.debug(tuser.username + " failed logging in using " + type);
+            } else if (user.disabled) {
+                if (msg !== null && msg !== undefined) msg.error = "Disabled users cannot signin";
+                Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
+                cli._logger.debug("Disabled user " + tuser.username + " failed logging in using " + type);
             } else {
                 Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
                 var userid: string = user._id;
