@@ -46,7 +46,7 @@ export class WebSocketServerClient {
         if ((socketObject as any)._socket != undefined) {
             this.remoteip = (socketObject as any)._socket.remoteAddress;
         }
-        logger.info("new client ");;
+        logger.info("new client " + this.id);;
         socketObject.on("open", (e: Event): void => this.open(e));
         socketObject.on("message", (e: string): void => this.message(e)); // e: MessageEvent
         socketObject.on("error", (e: Event): void => this.error(e));

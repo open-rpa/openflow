@@ -350,7 +350,7 @@ export class DatabaseConnection {
         }
         for (var i: number = 0; i < arr.length; i++) { arr[i] = this.decryptentity(arr[i]); }
         DatabaseConnection.traversejsondecode(arr);
-        this._logger.debug("[" + user.username + "][" + collectionname + "] query gave " + arr.length + " results ");
+        if (Config.log_queries) this._logger.debug("[" + user.username + "][" + collectionname + "] query gave " + arr.length + " results ");
         return arr;
     }
     /**
