@@ -182,6 +182,12 @@ export class Message {
                 case "dumprabbitmq":
                     this.DumpRabbitmq(cli);
                     break;
+                case "getrabbitmqqueue":
+                    this.GetRabbitmqQueue(cli);
+                    break;
+                case "deleterabbitmqqueue":
+                    this.DeleterabbitmqQueue(cli);
+                    break;
                 default:
                     this.UnknownCommand(cli);
                     break;
@@ -624,6 +630,10 @@ export class Message {
                 if (msg !== null && msg !== undefined) msg.error = "Unknown username or password";
                 Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
                 cli._logger.debug(tuser.username + " failed logging in using " + type);
+            } else if (user.disabled) {
+                if (msg !== null && msg !== undefined) msg.error = "Disabled users cannot signin";
+                Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
+                cli._logger.debug("Disabled user " + tuser.username + " failed logging in using " + type);
             } else {
                 Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
                 var userid: string = user._id;
@@ -2229,6 +2239,13 @@ export class Message {
                         consumers = queue.consumer_details.length;
                     }
                 }
+                // if (consumers > 0 && queue.consumer_details == null) {
+                //     var tempconfig = await amqpwrapper.getqueue(Config.amqp_url, '/', queue.name);
+                //     // var tempconfig = await amqpwrapper.getqueue(queue.name);
+                //     if (tempconfig.consumer_details != null) {
+                //         item.consumer_details = tempconfig.consumer_details
+                //     }
+                // }
                 item.queuename = queue.name;
                 item.consumers = consumers;
                 item.name = queue.name + "(" + consumers + ")";
@@ -2265,6 +2282,45 @@ export class Message {
         }
         this.Send(cli);
     }
+    async GetRabbitmqQueue(cli: WebSocketServerClient) {
+        this.Reply();
+        try {
+            let msg: any = JSON.parse(this.data);
+            const kickstartapi = amqpwrapper.getvhosts(Config.amqp_url);
+            try {
+                msg.data = await amqpwrapper.getqueue(Config.amqp_url, '/', msg.name);
+                this.data = JSON.stringify(msg);
+            } catch (error) {
+                cli._logger.error(error);
+            }
+        } catch (error) {
+            this.command = "error";
+            this.data = JSON.stringify(error);
+            cli._logger.error(error);
+
+        }
+        this.Send(cli);
+    }
+    async DeleterabbitmqQueue(cli: WebSocketServerClient) {
+        this.Reply();
+        try {
+            let msg: any = JSON.parse(this.data);
+            const kickstartapi = amqpwrapper.getvhosts(Config.amqp_url);
+            try {
+                msg.data = await amqpwrapper.deletequeue(Config.amqp_url, '/', msg.name);
+                this.data = JSON.stringify(msg);
+            } catch (error) {
+                cli._logger.error(error);
+            }
+        } catch (error) {
+            this.command = "error";
+            this.data = JSON.stringify(error);
+            cli._logger.error(error);
+
+        }
+        this.Send(cli);
+    }
+
 }
 
 export class JSONfn {

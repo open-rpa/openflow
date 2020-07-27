@@ -2337,17 +2337,21 @@ export class EntityCtrl extends entityCtrl<Base> {
                 return;
             }
         }
-        if (this.model._id) {
-            await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null);
-        } else {
-            await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null);
+        try {
+            if (this.model._id) {
+                await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null);
+            } else {
+                await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null);
+            }
+            if (this.collection == "files") {
+                this.$location.path("/Files");
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                return;
+            }
+            this.$location.path("/Entities/" + this.collection);
+        } catch (error) {
+            this.errormessage = error;
         }
-        if (this.collection == "files") {
-            this.$location.path("/Files");
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            return;
-        }
-        this.$location.path("/Entities/" + this.collection);
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     removekey(key) {
@@ -3448,6 +3452,107 @@ export class QueuesCtrl extends entitiesCtrl<Base> {
         this.loading = false;
         this.loadData();
     }
+}
+export class QueueCtrl extends entityCtrl<Base> {
+    public newid: string;
+    public memberof: Role[];
+    public data: any;
+    constructor(
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api
+    ) {
+        super($scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        console.debug("QueueCtrl");
+        this.collection = "configclients";
+        this.postloadData = this.processdata;
+        this.memberof = [];
+        WebSocketClientService.onSignedin((user: TokenUser) => {
+            if (this.id !== null && this.id !== undefined) {
+                this.loadData();
+            } else {
+                this.model = new Base();
+                this.model._type = "queue";
+                this.model.name = "";
+                this.processdata();
+            }
+
+        });
+    }
+    async processdata() {
+        try {
+            if (this.model == null) {
+                this.errormessage = "Not found!";
+                this.loading = false;
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                return;
+            }
+            this.loading = true;
+            let m: Message = new Message();
+            m.command = "getrabbitmqqueue"; m.data = "{\"name\": \"" + (this.model as any).queuename + "\"}";
+            var q = await WebSocketClient.instance.Send<any>(m);
+            if ((q as any).command == "error") throw new Error(q.data);
+            this.data = q.data;
+            if (this.data == null) {
+                this.errormessage = "Queue not found!";
+                this.loading = false;
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                return;
+            }
+            if (this.data.consumer_details == null || this.data.consumer_details.length == 0) {
+                this.errormessage = "Queue has no consumers!";
+                this.loading = false;
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                return;
+            }
+            this.collection = "configclients";
+            this.basequery = { _type: "socketclient" };
+            var clients = await NoderedUtil.Query("configclients", { _type: "socketclient" }, null, null, 2000, 0, null, null);
+            for (var i = 0; i < this.data.consumer_details.length; i++) {
+                console.log("find " + this.data.consumer_details[i].consumer_tag);
+
+                for (var y = 0; y < clients.length; y++) {
+                    const _client = clients[y];
+                    if (_client.queues != null) {
+                        const keys = Object.keys(_client.queues);
+                        for (var z = 0; z < keys.length; z++) {
+                            var q = _client.queues[keys[z]];
+                            console.log(_client.name + " " + q.consumerTag);
+                            if (q.consumerTag == this.data.consumer_details[i].consumer_tag) {
+                                this.data.consumer_details[i].clientname = _client.name;
+                            }
+                        }
+                    }
+
+                }
+
+            }
+        } catch (error) {
+            console.error(error);
+        }
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async DeleteQueue(model) {
+        try {
+            this.loading = true;
+            let m: Message = new Message();
+            m.command = "deleterabbitmqqueue"; m.data = "{\"name\": \"" + (this.model as any).queuename + "\"}";
+            var q = await WebSocketClient.instance.Send<any>(m);
+            if ((q as any).command == "error") throw new Error(q.data);
+            this.data = q.data;
+            this.$location.path("/Queues");
+        } catch (error) {
+            this.errormessage = error;
+            console.error(error);
+        }
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+
 }
 export class SocketsCtrl extends entitiesCtrl<Base> {
     public message: string = "";

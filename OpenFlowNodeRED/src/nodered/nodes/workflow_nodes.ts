@@ -32,7 +32,7 @@ export class workflow_in_node {
             WebSocketClient.instance.events.on("onclose", (message) => {
                 if (message == null) message = "";
                 this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
-                this.onclose();
+                this.onclose(false, null);
             });
             this.connect();
         } catch (error) {
@@ -251,11 +251,27 @@ export class workflow_in_node {
             }
         }
     }
-    onclose() {
-        if (!NoderedUtil.IsNullEmpty(this.localqueue)) {
-            NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
-            this.localqueue = "";
+    async onclose(removed: boolean, done: any) {
+        try {
+            if (!NoderedUtil.IsNullEmpty(this.localqueue) && removed) {
+                NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
+                this.localqueue = "";
+            }
+            if (removed && Config.workflow_node_auto_cleanup) {
+                let res = await NoderedUtil.Query("workflow", { "queue": this.localqueue }, null, null, 1, 0, null);
+                if (res.length > 0) {
+                    await NoderedUtil.DeleteOne("workflow", res[0]._id, null);
+                }
+                res = await NoderedUtil.Query("users", { "_type": "role", "$or": [{ "workflowid": this.workflow._id }, { "name": this.localqueue + "users" }] }, null, null, 1, 0, null);
+                if (res.length > 0) {
+                    await NoderedUtil.DeleteOne("users", res[0]._id, null);
+                }
+            }
+        } catch (error) {
+            Logger.instanse.error(error);
+            NoderedUtil.HandleError(this, error);
         }
+        if (done != null) done();
     }
 }
 
@@ -452,7 +468,7 @@ export class assign_workflow_node {
         WebSocketClient.instance.events.on("onclose", (message) => {
             if (message == null) message = "";
             this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
-            this.onclose();
+            this.onclose(false, null);
         });
         this.connect();
     }
@@ -566,8 +582,7 @@ export class assign_workflow_node {
                 return;
             }
             if (NoderedUtil.IsNullEmpty(jwt)) {
-                var i: WebSocketClient = WebSocketClient.instance;
-                jwt = i.jwt;
+                jwt = WebSocketClient.instance.jwt;
             }
             var initialrun = this.config.initialrun;
             if (!NoderedUtil.IsNullEmpty(msg.initialrun)) {
@@ -599,10 +614,11 @@ export class assign_workflow_node {
             NoderedUtil.HandleError(this, error);
         }
     }
-    onclose() {
-        if (!NoderedUtil.IsNullEmpty(this.localqueue)) {
+    async onclose(removed: boolean, done: any) {
+        if (!NoderedUtil.IsNullEmpty(this.localqueue) && removed) {
             NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
             this.localqueue = "";
         }
+        if (done != null) done();
     }
 }

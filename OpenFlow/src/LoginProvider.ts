@@ -577,6 +577,11 @@ export class LoginProvider {
                         admins.AddMember(user);
                         await DBHelper.Save(admins, Crypt.rootToken())
                     } else {
+                        if (user.disabled) {
+                            Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown");
+                            done("Disabled user " + username, null);
+                            return;
+                        }
                         if (!(await Crypt.ValidatePassword(user, password))) {
                             Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown");
                             return done(null, false);
@@ -596,6 +601,11 @@ export class LoginProvider {
                     }
                     user = await DBHelper.ensureUser(Crypt.rootToken(), username, username, null, password);
                 } else {
+                    if (user.disabled) {
+                        Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown");
+                        done("Disabled user " + username, null);
+                        return;
+                    }
                     if (!(await Crypt.ValidatePassword(user, password))) {
                         Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown");
                         return done(null, false);
@@ -749,7 +759,13 @@ export class LoginProvider {
 
         if (NoderedUtil.IsNullUndefinded(_user)) {
             Audit.LoginFailed(username, "weblogin", "saml", "", "samlverify", "unknown");
-            done("unknown user " + username, null); return;
+            done("unknown user " + username, null);
+            return;
+        }
+        if (_user.disabled) {
+            Audit.LoginFailed(username, "weblogin", "saml", "", "samlverify", "unknown");
+            done("Disabled user " + username, null);
+            return;
         }
 
         var tuser: TokenUser = TokenUser.From(_user);
@@ -782,6 +798,11 @@ export class LoginProvider {
         if (NoderedUtil.IsNullUndefinded(_user)) {
             Audit.LoginFailed(username, "weblogin", "google", "", "googleverify", "unknown");
             done("unknown user " + username, null); return;
+        }
+        if (_user.disabled) {
+            Audit.LoginFailed(username, "weblogin", "google", "", "googleverify", "unknown");
+            done("Disabled user " + username, null);
+            return;
         }
         var tuser: TokenUser = TokenUser.From(_user);
         Audit.LoginSuccess(tuser, "weblogin", "google", "", "googleverify", "unknown");

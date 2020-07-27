@@ -1,10 +1,14 @@
+import * as fs from "fs";
+import * as path from "path";
 import * as SAMLStrategy from "passport-saml";
 import { fetch, toPassportConfig } from "passport-saml-metadata";
 import * as https from "https";
 import * as retry from "async-retry";
 import { Logger } from "./Logger";
+import { Config } from "./Config";
 export const logger = Logger.configure();
-
+const fileCache = require('file-system-cache').default;
+const backupStore = fileCache({ basePath: Config.logpath });
 // tslint:disable-next-line: class-name
 export class samlauthstrategyoptions {
     public callbackUrl: string = "auth/strategy/callback/";
@@ -71,7 +75,7 @@ export class noderedcontribauthsaml {
         // if anything throws, we retry
         var metadata: any = await retry(async bail => {
             process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-            var reader: any = await fetch({ url });
+            var reader: any = await fetch({ url, backupStore });
             process.env.NODE_TLS_REJECT_UNAUTHORIZED = "1";
             if (reader === null || reader === undefined) { bail(new Error("Failed getting result")); return; }
             var config: any = toPassportConfig(reader);

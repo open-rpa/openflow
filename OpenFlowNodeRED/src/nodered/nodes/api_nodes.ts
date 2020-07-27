@@ -867,6 +867,7 @@ export class download_file {
             msg.id = file.id;
             msg.mimeType = file.mimeType;
             msg.metadata = file.metadata;
+            msg.filename = file.metadata.filename;
 
             this.node.send(msg);
             this.node.status({});

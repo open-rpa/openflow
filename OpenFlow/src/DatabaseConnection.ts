@@ -648,7 +648,10 @@ export class DatabaseConnection {
 
             original = await this.getbyid<T>(q.item._id, q.collectionname, q.jwt);
             if (!original) { throw Error("item not found!"); }
-            if (!this.hasAuthorization(user, original, Rights.update)) { throw new Error("Access denied, no authorization to UpdateOne " + q.item._type + " " + name + " to database"); }
+            if (!this.hasAuthorization(user, original, Rights.update)) {
+                var again = this.hasAuthorization(user, original, Rights.update);
+                throw new Error("Access denied, no authorization to UpdateOne " + q.item._type + " " + name + " to database");
+            }
             if (q.collectionname != "fs.files") {
                 q.item._modifiedby = user.name;
                 q.item._modifiedbyid = user._id;

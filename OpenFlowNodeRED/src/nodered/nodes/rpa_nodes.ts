@@ -24,7 +24,7 @@ export class rpa_detector_node {
             WebSocketClient.instance.events.on("onclose", (message) => {
                 if (message == null) message = "";
                 this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
-                this.onclose(null);
+                this.onclose(false, null);
             });
             this.connect();
         } catch (error) {
@@ -66,9 +66,9 @@ export class rpa_detector_node {
             NoderedUtil.HandleError(this, error);
         }
     }
-    async onclose(done: any) {
-        if (!NoderedUtil.IsNullEmpty(this.localqueue)) {
-            await NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
+    async onclose(removed: boolean, done: any) {
+        if (!NoderedUtil.IsNullEmpty(this.localqueue) && removed) {
+            NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
             this.localqueue = "";
         }
         if (done != null) done();
@@ -101,7 +101,7 @@ export class rpa_workflow_node {
             WebSocketClient.instance.events.on("onclose", (message) => {
                 if (message == null) message = "";
                 this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
-                this.onclose();
+                this.onclose(false, null);
             });
             this.connect();
         } catch (error) {
@@ -233,11 +233,12 @@ export class rpa_workflow_node {
             }
         }
     }
-    onclose() {
-        if (!NoderedUtil.IsNullEmpty(this.localqueue)) {
+    async onclose(removed: boolean, done: any) {
+        if (!NoderedUtil.IsNullEmpty(this.localqueue) && removed) {
             NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
             this.localqueue = "";
         }
+        if (done != null) done();
     }
 }
 

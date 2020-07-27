@@ -320,7 +320,7 @@ export class entitiesCtrl<T> {
                     query = { $and: [query, { $or: finalor.concat() }] };
                 }
             }
-            this.models = await NoderedUtil.Query(this.collection, query, this.baseprojection, this.orderby, 100, 0, this.basequeryas);
+            this.models = await NoderedUtil.Query(this.collection, query, this.baseprojection, this.orderby, 100, 0, null, this.basequeryas);
             this.loading = false;
             if (this.autorefresh) {
                 if (this.models.length >= 100) {
