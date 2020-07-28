@@ -1790,12 +1790,11 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
 
 
             if (this.model.form === "none" || this.model.form === "") {
-                if (this.model.state != "failed") {
+                if (this.model.state != "failed" && this.model.state != "processing") {
                     this.$location.path("/main");
                 } else {
+                    this.hideFormElements();
                     if (this.model.state == "failed") {
-                        this.hideFormElements();
-
                         if ((this.model as any).error != null && (this.model as any).error != "") {
                             this.errormessage = (this.model as any).error;
                         } else if (!this.model.payload) {
@@ -1808,6 +1807,8 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                             this.errormessage = this.model.payload;
                         }
                         console.log(this.model.payload);
+                    } else {
+                        this.message = "Processing . . .";
                     }
                 }
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
