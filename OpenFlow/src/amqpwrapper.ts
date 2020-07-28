@@ -146,7 +146,7 @@ export class amqpwrapper {
     }
     async RemoveQueueConsumer(queue: amqpqueue): Promise<void> {
         if (queue != null) {
-            this._logger.info("[AMQP] Remove queue consumer " + queue.queue);
+            this._logger.info("[AMQP] Remove queue consumer " + queue.queue + "/" + queue.consumerTag);
             if (this.channel != null) await this.channel.cancel(queue.consumerTag);
         }
     }
@@ -228,11 +228,11 @@ export class amqpwrapper {
         if (NoderedUtil.IsNullEmpty(queue)) q.QueueOptions.autoDelete = true;
         q.ok = await this.channel.assertQueue(queue, q.QueueOptions);
         q.queue = q.ok.queue;
-        this._logger.info("[AMQP] Added queue consumer " + q.queue);
         var consumeresult = await this.channel.consume(q.ok.queue, (msg) => {
             this.OnMessage(q, msg, q.callback);
         }, { noAck: false });
         q.consumerTag = consumeresult.consumerTag;
+        this._logger.info("[AMQP] Added queue consumer " + q.queue + "/" + q.consumerTag);
         // this.queues[q.queue] = q;
         this.queues.push(q);
         return q;
