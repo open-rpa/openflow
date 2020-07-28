@@ -20,8 +20,8 @@ export class WebSocketServer {
         this._logger = logger;
         this._server = server;
         this._socketserver = new WebSocket.Server({ server: server });
-        this._socketserver.on("connection", (socketObject: WebSocket): void => {
-            this._clients.push(new WebSocketServerClient(logger, socketObject));
+        this._socketserver.on("connection", (socketObject: WebSocket, req: any): void => {
+            this._clients.push(new WebSocketServerClient(logger, socketObject, req));
         });
         this._socketserver.on("error", (error: Error): void => {
             this._logger.error(error);

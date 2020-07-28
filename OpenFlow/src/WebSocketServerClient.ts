@@ -64,14 +64,25 @@ export class WebSocketServerClient {
 
 
 
-    constructor(logger: winston.Logger, socketObject: WebSocket) {
+    constructor(logger: winston.Logger, socketObject: WebSocket, req: any) {
         this._logger = logger;
         this.id = Math.random().toString(36).substr(2, 9);
         this._socketObject = socketObject;
         this._receiveQueue = [];
         this._sendQueue = [];
-        if ((socketObject as any)._socket != undefined) {
-            this.remoteip = (socketObject as any)._socket.remoteAddress;
+        const sock: any = ((socketObject as any)._socket);
+        if (sock != undefined) {
+            this.remoteip = sock.remoteAddress;
+        }
+        //if (NoderedUtil.IsNullEmpty(this.remoteip) && !NoderedUtil.IsNullUndefinded(req) && !NoderedUtil.IsNullUndefinded(req.headers)) {
+        if (!NoderedUtil.IsNullUndefinded(req)) {
+            if (!NoderedUtil.IsNullUndefinded(req.connection) && !NoderedUtil.IsNullEmpty(req.connection.remoteAddress)) this.remoteip = req.connection.remoteAddress;
+            if (!NoderedUtil.IsNullUndefinded(req.headers)) {
+                if (req.headers["X-Forwarded-For"] != null) this.remoteip = req.headers["X-Forwarded-For"];
+                if (req.headers["X-real-IP"] != null) this.remoteip = req.headers["X-real-IP"];
+                if (req.headers["x-forwarded-for"] != null) this.remoteip = req.headers["x-forwarded-for"];
+                if (req.headers["x-real-ip"] != null) this.remoteip = req.headers["x-real-ip"];
+            }
         }
         logger.info("new client " + this.id);;
         socketObject.on("open", (e: Event): void => this.open(e));
