@@ -1790,12 +1790,11 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
 
 
             if (this.model.form === "none" || this.model.form === "") {
-                if (this.model.state != "failed") {
+                if (this.model.state != "failed" && this.model.state != "processing") {
                     this.$location.path("/main");
                 } else {
+                    this.hideFormElements();
                     if (this.model.state == "failed") {
-                        this.hideFormElements();
-
                         if ((this.model as any).error != null && (this.model as any).error != "") {
                             this.errormessage = (this.model as any).error;
                         } else if (!this.model.payload) {
@@ -1808,6 +1807,8 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                             this.errormessage = this.model.payload;
                         }
                         console.log(this.model.payload);
+                    } else {
+                        this.message = "Processing . . .";
                     }
                 }
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -3517,9 +3518,16 @@ export class QueueCtrl extends entityCtrl<Base> {
                 for (var y = 0; y < clients.length; y++) {
                     const _client = clients[y];
                     if (_client.queues != null) {
-                        const keys = Object.keys(_client.queues);
-                        for (var z = 0; z < keys.length; z++) {
-                            var q = _client.queues[keys[z]];
+                        // const keys = Object.keys(_client.queues);
+                        // for (var z = 0; z < keys.length; z++) {
+                        //     var q = _client.queues[keys[z]];
+                        //     console.log(_client.name + " " + q.consumerTag);
+                        //     if (q.consumerTag == this.data.consumer_details[i].consumer_tag) {
+                        //         this.data.consumer_details[i].clientname = _client.name;
+                        //     }
+                        // }
+                        for (var z = 0; z < _client.queues.length; z++) {
+                            var q = _client.queues[z];
                             console.log(_client.name + " " + q.consumerTag);
                             if (q.consumerTag == this.data.consumer_details[i].consumer_tag) {
                                 this.data.consumer_details[i].clientname = _client.name;

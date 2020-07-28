@@ -6,7 +6,7 @@ import { DatabaseConnection } from "./DatabaseConnection";
 import { Crypt } from "./Crypt";
 import { Message } from "./Messages/Message";
 import { Config } from "./Config";
-import { SigninMessage, NoderedUtil } from "openflow-api";
+import { SigninMessage, NoderedUtil, TokenUser } from "openflow-api";
 
 export class WebSocketServer {
     private static _logger: winston.Logger;
@@ -36,22 +36,26 @@ export class WebSocketServer {
     }
     private static async pingClients(): Promise<void> {
         let count: number = WebSocketServer._clients.length;
-        WebSocketServer._clients = WebSocketServer._clients.filter(function (cli: WebSocketServerClient): boolean {
+        for (var i = WebSocketServer._clients.length - 1; i >= 0; i--) {
+            var cli: WebSocketServerClient = WebSocketServer._clients[i];
             try {
                 if (!NoderedUtil.IsNullEmpty(cli.jwt)) {
-                    var tuser = Crypt.verityToken(cli.jwt);
                     var payload = Crypt.decryptToken(cli.jwt);
                     var clockTimestamp = Math.floor(Date.now() / 1000);
-                    // WebSocketServer._logger.silly((payload.exp - clockTimestamp))
                     if ((payload.exp - clockTimestamp) < 60) {
-                        WebSocketServer._logger.debug("Token for " + tuser.username + " expires in less than 1 minute, send new jwt to client");
-                        var l: SigninMessage = new SigninMessage();
-                        cli.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
-                        l.jwt = cli.jwt;
-                        l.user = tuser;
-                        var m: Message = new Message(); m.command = "refreshtoken";
-                        m.data = JSON.stringify(l);
-                        cli.Send(m);
+                        WebSocketServer._logger.debug("Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " expires in less than 1 minute, send new jwt to client");
+                        var tuser: TokenUser = await Message.DoSignin(cli, null);
+                        if (tuser != null) {
+                            var l: SigninMessage = new SigninMessage();
+                            cli.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
+                            l.jwt = cli.jwt;
+                            l.user = tuser;
+                            var m: Message = new Message(); m.command = "refreshtoken";
+                            m.data = JSON.stringify(l);
+                            cli.Send(m);
+                        } else {
+                            cli.Close();
+                        }
                     }
                 }
             } catch (error) {
@@ -62,17 +66,22 @@ export class WebSocketServer {
             var seconds = (now.getTime() - cli.lastheartbeat.getTime()) / 1000;
             if (seconds >= Config.client_heartbeat_timeout) {
                 if (cli.user != null) {
-                    WebSocketServer._logger.info("client " + cli.user.name + "/" + cli.clientagent + " timeout, close down");
+                    WebSocketServer._logger.info("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " timeout, close down");
                 } else {
-                    WebSocketServer._logger.info("client not signed/" + cli.clientagent + " timeout, close down");
+                    WebSocketServer._logger.info("client not signed/" + cli.id + "/" + cli.clientagent + " timeout, close down");
                 }
                 cli.Close();
-                return false;
             }
             cli.ping();
-            if (!cli.connected() && cli.queuecount() == 0) return false;
-            return true;
-        });
+            if (!cli.connected() && cli.queuecount() == 0) {
+                if (cli.user != null) {
+                    WebSocketServer._logger.info("removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent);
+                } else {
+                    WebSocketServer._logger.info("removing disconnected client " + cli.id + "/" + cli.clientagent + " timeout, close down");
+                }
+                WebSocketServer._clients.splice(i, 1);
+            }
+        }
         if (count !== WebSocketServer._clients.length) {
             WebSocketServer._logger.info("new client count: " + WebSocketServer._clients.length);
         }

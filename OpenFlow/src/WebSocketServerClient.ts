@@ -5,6 +5,7 @@ import { Message, JSONfn } from "./Messages/Message";
 import { Config } from "./Config";
 import { amqpwrapper, QueueMessageOptions, amqpqueue } from "./amqpwrapper";
 import { NoderedUtil, Base, InsertOneMessage, QueueMessage, MapReduceMessage, QueryMessage, UpdateOneMessage, UpdateManyMessage, DeleteOneMessage, User, mapFunc, reduceFunc, finalizeFunc, QueuedMessage, QueuedMessageCallback } from "openflow-api";
+// import { Mutex } from "./Mutex";
 
 interface IHashTable<T> {
     [key: string]: T;
@@ -20,6 +21,25 @@ interface IHashTable<T> {
 //     public id: string;
 //     public message: any;
 // }
+const Semaphore = (n) => ({
+    n,
+    async down() {
+        while (this.n <= 0) await this.wait();
+        this.n--;
+    },
+    up() {
+        this.n++;
+    },
+    async wait() {
+        if (this.n <= 0) return await new Promise((res, req) => {
+            setImmediate(async () => res(await this.wait()))
+        });
+        return;
+    },
+});
+const semaphore = Semaphore(1);
+
+
 export class WebSocketServerClient {
     public jwt: string;
     public _logger: winston.Logger;
@@ -35,7 +55,14 @@ export class WebSocketServerClient {
 
     user: User;
     // public consumers: amqp_consumer[] = [];
-    public queues: IHashTable<amqpqueue> = {};
+    // public queues: IHashTable<amqpqueue> = {};
+    public _queues: amqpqueue[] = [];
+    // public queuesMutex = new Mutex();
+
+
+
+
+
 
     constructor(logger: winston.Logger, socketObject: WebSocket) {
         this._logger = logger;
@@ -46,7 +73,7 @@ export class WebSocketServerClient {
         if ((socketObject as any)._socket != undefined) {
             this.remoteip = (socketObject as any)._socket.remoteAddress;
         }
-        logger.info("new client ");;
+        logger.info("new client " + this.id);;
         socketObject.on("open", (e: Event): void => this.open(e));
         socketObject.on("message", (e: string): void => this.message(e)); // e: MessageEvent
         socketObject.on("error", (e: Event): void => this.error(e));
@@ -62,9 +89,9 @@ export class WebSocketServerClient {
         this._logger.error("WebSocket error encountered " + e);
     }
     public queuecount(): number {
-        if (this.queues == null) return 0;
-        var keys = Object.keys(this.queues);
-        return keys.length;
+        if (this._queues == null) return 0;
+        // var keys = Object.keys(this.queues);
+        return this._queues.length;
     }
     public connected(): boolean {
         if (this._socketObject == null) return false;
@@ -118,14 +145,19 @@ export class WebSocketServerClient {
         }
     }
     public async CloseConsumers(): Promise<void> {
-        var keys = Object.keys(this.queues);
-        for (let i = 0; i < keys.length; i++) {
+        await semaphore.down();
+        for (let i = this._queues.length - 1; i >= 0; i--) {
             try {
-                await this.CloseConsumer(keys[i]);
+                // await this.CloseConsumer(this._queues[i]);
+                await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i]);
+                this._queues.splice(i, 1);
             } catch (error) {
                 this._logger.error("WebSocketclient::closeconsumers " + error);
             }
         }
+        semaphore.up();
+        // return await this.queuesMutex.dispatch(async () => {
+        // });
     }
     public async Close(): Promise<void> {
         await this.CloseConsumers();
@@ -146,14 +178,25 @@ export class WebSocketServerClient {
         }
     }
     public async CloseConsumer(queuename: string): Promise<void> {
-        if (this.queues[queuename] != null) {
-            try {
-                await amqpwrapper.Instance().RemoveQueueConsumer(this.queues[queuename]);
-                delete this.queues[queuename];
-            } catch (error) {
-                this._logger.error("WebSocketclient::CloseConsumer " + error);
+        for (var i = this._queues.length - 1; i >= 0; i--) {
+            var q = this._queues[i];
+            if (q.queue == queuename || q.queuename == queuename) {
+                try {
+                    await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i]);
+                    this._queues.splice(i, 1);
+                } catch (error) {
+                    this._logger.error("WebSocketclient::CloseConsumer " + error);
+                }
             }
         }
+        // if (this.queues[queuename] != null) {
+        //     try {
+        //         await amqpwrapper.Instance().RemoveQueueConsumer(this.queues[queuename]);
+        //         delete this.queues[queuename];
+        //     } catch (error) {
+        //         this._logger.error("WebSocketclient::CloseConsumer " + error);
+        //     }
+        // }
     }
     public async CreateConsumer(queuename: string): Promise<string> {
         var autoDelete: boolean = false; // Should we keep the queue around ? for robots and roles
@@ -171,37 +214,46 @@ export class WebSocketServerClient {
                 qname = "unknown." + Math.random().toString(36).substr(2, 9); autoDelete = true;
             }
         }
-        if (this.queues[qname] != null) {
-            await amqpwrapper.Instance().RemoveQueueConsumer(this.queues[qname]);
-            delete this.queues[qname];
-        }
-        // var AssertQueueOptions: any = new Object(amqpwrapper.Instance().AssertQueueOptions);
-        var AssertQueueOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertQueueOptions));
-        AssertQueueOptions.autoDelete = autoDelete;
-        var queue = await amqpwrapper.Instance().AddQueueConsumer(qname, AssertQueueOptions, this.jwt, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
-            var _data = msg;
-            try {
-                _data = await this.Queue(msg, qname, options);
-                ack();
-                done(_data);
-            } catch (error) {
-                setTimeout(() => {
-                    ack(false);
-                    // ack(); // just eat the error 
+        await semaphore.down();
+        this.CloseConsumer(qname);
+        try {
+            // if (this.queues[qname] != null) {
+            //     await amqpwrapper.Instance().RemoveQueueConsumer(this.queues[qname]);
+            //     delete this.queues[qname];
+            // }
+            // var AssertQueueOptions: any = new Object(amqpwrapper.Instance().AssertQueueOptions);
+            var AssertQueueOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertQueueOptions));
+            AssertQueueOptions.autoDelete = autoDelete;
+            var queue = await amqpwrapper.Instance().AddQueueConsumer(qname, AssertQueueOptions, this.jwt, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+                var _data = msg;
+                try {
+                    _data = await this.Queue(msg, qname, options);
+                    ack();
                     done(_data);
-                    if (error.message != null && error.message != "") {
-                        console.log(qname + " failed message queue message, nack and re queue message: ", error.message);
-                    } else {
-                        console.log(qname + " failed message queue message, nack and re queue message: ", error);
-                    }
-                }, Config.amqp_requeue_time);
-            }
-        });
-        qname = queue.queue;
-        if (this.queues[qname] != null) {
-            await amqpwrapper.Instance().RemoveQueueConsumer(this.queues[qname]);
+                } catch (error) {
+                    setTimeout(() => {
+                        ack(false);
+                        // ack(); // just eat the error 
+                        done(_data);
+                        if (error.message != null && error.message != "") {
+                            console.log(qname + " failed message queue message, nack and re queue message: ", error.message);
+                        } else {
+                            console.log(qname + " failed message queue message, nack and re queue message: ", error);
+                        }
+                    }, Config.amqp_requeue_time);
+                }
+            });
+            qname = queue.queue;
+            // if (this.queues[qname] != null) {
+            //     await amqpwrapper.Instance().RemoveQueueConsumer(this.queues[qname]);
+            // }
+            //this.queues[qname] = queue;
+            this._queues.push(queue);
+            console.log('_queues.length: ' + this._queues.length);
+        } catch (error) {
+            this._logger.error("WebSocketclient::CreateConsumer " + error);
         }
-        this.queues[qname] = queue;
+        semaphore.up();
         return queue.queue;
     }
     sleep(ms) {

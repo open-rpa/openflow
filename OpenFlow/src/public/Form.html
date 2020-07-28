@@ -1,10 +1,10 @@
-<div>{{ ctrl.message}} </div>
 <style>
     .alert-alert-success {
         display: none !important;
     }
 </style>
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
+<div ng-show="ctrl.message != ''"" class=" alert alert-primary" role="alert">{{ctrl.message}}</div>
 <form id="workflowform" ng-submit="ctrl.Save()">
     <div class="render-wrap" ng-show="ctrl.form.fbeditor==true">
     </div>

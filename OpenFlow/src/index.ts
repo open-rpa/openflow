@@ -104,7 +104,12 @@ async function initDatabase(): Promise<boolean> {
         users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
         users.removeRight(WellknownIds.admins, [Rights.delete]);
         users.AddMember(root);
-        if (Config.multi_tenant) users.removeRight(users._id, [Rights.full_control]);
+        if (Config.multi_tenant) {
+            users.removeRight(users._id, [Rights.full_control]);
+        } else {
+            users.removeRight(users._id, [Rights.full_control]);
+            users.addRight(users._id, "users", [Rights.read]);
+        }
         await DBHelper.Save(users, jwt);
 
 
@@ -112,10 +117,12 @@ async function initDatabase(): Promise<boolean> {
         personal_nodered_users.AddMember(admins);
         personal_nodered_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
         personal_nodered_users.removeRight(WellknownIds.admins, [Rights.delete]);
-        if (Config.update_acl_based_on_groups) personal_nodered_users.addRight(personal_nodered_users._id, "personal nodered users", [Rights.read]);
         if (Config.multi_tenant) {
             logger.debug("[root][users] Running in multi tenant mode, remove " + personal_nodered_users.name + " from self");
             personal_nodered_users.removeRight(personal_nodered_users._id, [Rights.full_control]);
+        } else if (Config.update_acl_based_on_groups) {
+            personal_nodered_users.removeRight(personal_nodered_users._id, [Rights.full_control]);
+            personal_nodered_users.addRight(personal_nodered_users._id, "personal nodered users", [Rights.read]);
         }
         await DBHelper.Save(personal_nodered_users, jwt);
         var nodered_admins: Role = await DBHelper.EnsureRole(jwt, "nodered admins", WellknownIds.nodered_admins);
@@ -127,20 +134,24 @@ async function initDatabase(): Promise<boolean> {
         nodered_users.AddMember(admins);
         nodered_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
         nodered_users.removeRight(WellknownIds.admins, [Rights.delete]);
-        if (Config.update_acl_based_on_groups) nodered_users.addRight(nodered_users._id, nodered_users.name, [Rights.read]);
         if (Config.multi_tenant) {
             logger.debug("[root][users] Running in multi tenant mode, remove " + nodered_users.name + " from self");
             nodered_users.removeRight(nodered_users._id, [Rights.full_control]);
+        } else if (Config.update_acl_based_on_groups) {
+            nodered_users.removeRight(nodered_users._id, [Rights.full_control]);
+            nodered_users.addRight(nodered_users._id, "nodered users", [Rights.read]);
         }
         await DBHelper.Save(nodered_users, jwt);
         var nodered_api_users: Role = await DBHelper.EnsureRole(jwt, "nodered api users", WellknownIds.nodered_api_users);
         nodered_api_users.AddMember(admins);
         nodered_api_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
         nodered_api_users.removeRight(WellknownIds.admins, [Rights.delete]);
-        if (Config.update_acl_based_on_groups) nodered_api_users.addRight(nodered_api_users._id, nodered_api_users.name, [Rights.read]);
         if (Config.multi_tenant) {
             logger.debug("[root][users] Running in multi tenant mode, remove " + nodered_api_users.name + " from self");
             nodered_api_users.removeRight(nodered_api_users._id, [Rights.full_control]);
+        } else if (Config.update_acl_based_on_groups) {
+            nodered_api_users.removeRight(nodered_api_users._id, [Rights.full_control]);
+            nodered_api_users.addRight(nodered_api_users._id, "nodered api users", [Rights.read]);
         }
         await DBHelper.Save(nodered_api_users, jwt);
 
@@ -154,10 +165,12 @@ async function initDatabase(): Promise<boolean> {
         robot_users.AddMember(users);
         robot_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
         robot_users.removeRight(WellknownIds.admins, [Rights.delete]);
-        if (Config.update_acl_based_on_groups) robot_users.addRight(robot_users._id, robot_users.name, [Rights.read]);
         if (Config.multi_tenant) {
             logger.debug("[root][users] Running in multi tenant mode, remove " + robot_users.name + " from self");
             robot_users.removeRight(robot_users._id, [Rights.full_control]);
+        } else if (Config.update_acl_based_on_groups) {
+            robot_users.removeRight(robot_users._id, [Rights.full_control]);
+            robot_users.addRight(robot_users._id, "robot users", [Rights.read]);
         }
         await DBHelper.Save(robot_users, jwt);
 
@@ -170,7 +183,6 @@ async function initDatabase(): Promise<boolean> {
         filestore_admins.AddMember(admins);
         filestore_admins.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
         filestore_admins.removeRight(WellknownIds.admins, [Rights.delete]);
-        if (Config.update_acl_based_on_groups) filestore_admins.addRight(filestore_admins._id, filestore_admins.name, [Rights.read]);
         if (Config.multi_tenant) {
             logger.debug("[root][users] Running in multi tenant mode, remove " + filestore_admins.name + " from self");
             filestore_admins.removeRight(filestore_admins._id, [Rights.full_control]);
@@ -183,10 +195,12 @@ async function initDatabase(): Promise<boolean> {
         }
         filestore_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
         filestore_users.removeRight(WellknownIds.admins, [Rights.delete]);
-        if (Config.update_acl_based_on_groups) filestore_users.addRight(filestore_users._id, filestore_users.name, [Rights.read]);
         if (Config.multi_tenant) {
             logger.debug("[root][users] Running in multi tenant mode, remove " + filestore_users.name + " from self");
             filestore_users.removeRight(filestore_users._id, [Rights.full_control]);
+        } else if (Config.update_acl_based_on_groups) {
+            filestore_users.removeRight(filestore_users._id, [Rights.full_control]);
+            filestore_users.addRight(filestore_users._id, "filestore users", [Rights.read]);
         }
         await DBHelper.Save(filestore_users, jwt);
         return true;

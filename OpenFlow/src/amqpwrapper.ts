@@ -36,6 +36,7 @@ export class Deferred<T> {
 }
 export class amqpqueue {
     public queue: string;
+    public queuename: string;
     public callback: QueueOnMessage;
     public ok: AssertQueue;
     public QueueOptions: any;
@@ -61,7 +62,7 @@ export class amqpwrapper {
     private activecalls: IHashTable<Deferred<string>> = {};
     // public queues: IHashTable<amqpqueue> = {};
     // private exchanges: IHashTable<amqpexchange> = {};
-    public queues: amqpqueue[] = [];
+    // public queues: amqpqueue[] = [];
     private exchanges: amqpexchange[] = [];
     private replyqueue: amqpqueue;
     private static _instance: amqpwrapper = null;
@@ -103,9 +104,9 @@ export class amqpwrapper {
                 });
             }
             this.channel = await this.conn.createChannel();
-            if (!NoderedUtil.IsNullEmpty(this.replyqueue)) {
-                this.queues = this.queues.filter(x => x.consumerTag != this.replyqueue.consumerTag);
-            }
+            // if (!NoderedUtil.IsNullEmpty(this.replyqueue)) {
+            //     this.queues = this.queues.filter(x => x.consumerTag != this.replyqueue.consumerTag);
+            // }
             this.replyqueue = await this.AddQueueConsumer("", null, null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
                 if (!NoderedUtil.IsNullUndefinded(this.activecalls[options.correlationId])) {
                     this.activecalls[options.correlationId].resolve(msg);
@@ -146,12 +147,13 @@ export class amqpwrapper {
     }
     async RemoveQueueConsumer(queue: amqpqueue): Promise<void> {
         if (queue != null) {
-            this._logger.info("[AMQP] Remove queue consumer " + queue.queue);
+            this._logger.info("[AMQP] Remove queue consumer " + queue.queue + "/" + queue.consumerTag);
             if (this.channel != null) await this.channel.cancel(queue.consumerTag);
         }
     }
-    async AddQueueConsumer(queue: string, QueueOptions: any, jwt: string, callback: QueueOnMessage): Promise<amqpqueue> {
+    async AddQueueConsumer(queuename: string, QueueOptions: any, jwt: string, callback: QueueOnMessage): Promise<amqpqueue> {
         if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Queue Consumer, not connected to rabbitmq");
+        var queue: string = queuename;
         if (queue == null) queue = "";
         var q: amqpqueue = null;
         if (Config.amqp_force_queue_prefix && !NoderedUtil.IsNullEmpty(jwt) && !NoderedUtil.IsNullEmpty(queue)) {
@@ -228,13 +230,14 @@ export class amqpwrapper {
         if (NoderedUtil.IsNullEmpty(queue)) q.QueueOptions.autoDelete = true;
         q.ok = await this.channel.assertQueue(queue, q.QueueOptions);
         q.queue = q.ok.queue;
-        this._logger.info("[AMQP] Added queue consumer " + q.queue);
+        q.queuename = queuename;
         var consumeresult = await this.channel.consume(q.ok.queue, (msg) => {
             this.OnMessage(q, msg, q.callback);
         }, { noAck: false });
         q.consumerTag = consumeresult.consumerTag;
+        this._logger.info("[AMQP] Added queue consumer " + q.queue + "/" + q.consumerTag);
         // this.queues[q.queue] = q;
-        this.queues.push(q);
+        // this.queues.push(q);
         return q;
     }
     async AddExchangeConsumer(exchange: string, algorithm: string, routingkey: string, ExchangeOptions: any, jwt: string, callback: QueueOnMessage): Promise<amqpexchange> {

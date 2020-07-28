@@ -83,6 +83,8 @@ export class Config {
     public static db: DatabaseConnection = null;
     public static version: string = Config.getversion();
     public static logpath: string = Config.getEnv("logpath", __dirname);
+    public static log_queries: boolean = Config.parseBoolean(Config.getEnv("log_queries", "false"));
+
 
     public static NODE_ENV: string = Config.getEnv("NODE_ENV", "development");
 
@@ -123,10 +125,6 @@ export class Config {
     public static amqp_requeue_time: number = parseInt(Config.getEnv("amqp_requeue_time", "1000")); // 1 seconds    
     public static amqp_dlx: string = Config.getEnv("amqp_dlx", "openflow-dlx");  // Dead letter exchange, used to pickup dead or timeout messages
 
-    // public static amqp_default_expiration: number = parseInt(Config.getEnv("amqp_default_expiration", (60 * 1000).toString())); // 1 min
-    // public static deadLetterExchange: string = Config.getEnv("deadletterexchange", "openflow-dlx");  // queue used to handle messages, that was not picked up.
-    // public static dlxmessagettl: number = parseInt(Config.getEnv("dlxmessagettl", "2000"));  // time to live for messages in miliseconds
-    // public static dlxmessageexpires: number = parseInt(Config.getEnv("dlxmessageexpires", "1500"));  // expire messages after this amount of miliseconds
     public static mongodb_url: string = Config.getEnv("mongodb_url", "mongodb://localhost:27017");
     public static mongodb_db: string = Config.getEnv("mongodb_db", "openflow");
 
@@ -142,22 +140,12 @@ export class Config {
     public static downloadtoken_expires_in: string = Config.getEnv("downloadtoken_expires_in", "15m");
     public static personalnoderedtoken_expires_in: string = Config.getEnv("personalnoderedtoken_expires_in", "365d");
 
-    // Used to configure personal nodered's
-    // public static force_queue_prefix: boolean = Config.parseBoolean(Config.getEnv("force_queue_prefix", "true"));
     public static nodered_image: string = Config.getEnv("nodered_image", "cloudhack/openflownodered:edge");
     public static saml_federation_metadata: string = Config.getEnv("saml_federation_metadata", "");
     public static api_ws_url: string = Config.getEnv("api_ws_url", "ws://localhost:3000");
     public static namespace: string = Config.getEnv("namespace", ""); // also sent to website 
     public static nodered_domain_schema: string = Config.getEnv("nodered_domain_schema", ""); // also sent to website
     public static nodered_initial_liveness_delay: number = parseInt(Config.getEnv("nodered_initial_liveness_delay", "60"));
-
-    // Environment variables to set a prefix for RabbitMQs Dead Letter Exchange, Dead Letter Routing Key,
-    // Dead Letter Queue, and Message Time to Live - to enable timeouts for RabbitMQ messages
-    // These values must be the same for OpenFlowNodeRED and OpenFlow, or will cause errors when asserting queues
-    // public static amqp_dlx_prefix: string = Config.getEnv("amqp_dlx_prefix", "DLX.");
-    // public static amqp_dlrk_prefix: string = Config.getEnv("amqp_dlrk_prefix", "dlx.");
-    // public static amqp_dlq_prefix: string = Config.getEnv("amqp_dlq_prefix", "dlq.");
-    // public static amqp_message_ttl: number = parseInt(Config.getEnv("amqp_message_ttl", "20000"));
 
     public static baseurl(): string {
         var result: string = "";
@@ -171,13 +159,6 @@ export class Config {
         } else { result = result + "/"; }
         return result;
     }
-    // public static async get_login_providers():Promise<void> {
-    //     this.login_providers = await Config.db.query<Provider>({_type: "provider"}, null, 1, 0, null, "config", Crypt.rootToken());
-    //     // if(this.login_providers.length > 0) { return; }
-    //     if(fs.existsSync("config/login_providers.json")) {
-    //         // this.login_providers = JSON.parse(fs.readFileSync("config/login_providers.json", "utf8"));
-    //     }
-    // }
     public static getEnv(name: string, defaultvalue: string): string {
         var value: any = process.env[name];
         if (!value || value === "") { value = defaultvalue; }

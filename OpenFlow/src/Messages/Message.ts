@@ -576,7 +576,28 @@ export class Message {
         }
         this.Send(cli);
     }
-
+    public static async DoSignin(cli: WebSocketServerClient, rawAssertion: string): Promise<TokenUser> {
+        var tuser: TokenUser;
+        var user: User;
+        var type: string = "jwtsignin";
+        if (!NoderedUtil.IsNullEmpty(rawAssertion)) {
+            type = "samltoken";
+            user = await LoginProvider.validateToken(rawAssertion);
+            tuser = TokenUser.From(user);
+        } else if (!NoderedUtil.IsNullEmpty(cli.jwt)) {
+            tuser = Crypt.verityToken(cli.jwt);
+            user = await DBHelper.FindByUsername(tuser.username);
+            tuser = TokenUser.From(user);
+        }
+        if (user.disabled) {
+            Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
+            tuser = null;
+            // cli._logger.debug("Disabled user " + tuser.username + " failed logging in using " + type);
+        } else {
+            Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
+        }
+        return tuser;
+    }
     private async Signin(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
         var msg: SigninMessage
@@ -2191,7 +2212,7 @@ export class Message {
                 let item: any = {
                     id: client.id, user: client.user, clientagent: client.clientagent, clientversion: client.clientversion
                     , lastheartbeat: client.lastheartbeat, _type: "socketclient", name: client.id,
-                    queues: client.queues
+                    queues: client._queues
                 };
                 if (client.user != null) {
                     var name = client.user.username.split("@").join("").split(".").join("");

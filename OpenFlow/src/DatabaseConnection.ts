@@ -164,8 +164,10 @@ export class DatabaseConnection {
                             } else if (arr[0]._type == "role") {
                                 var r: Role = Role.assign(arr[0]);
                                 if (r._id == WellknownIds.admins || r._id == WellknownIds.users) {
-                                }
-                                if (!r.hasRight(item._id, Rights.read)) {
+                                } else if (!r.hasRight(item._id, Rights.read)) {
+                                    if (r.name == "admins") {
+                                        var b = true;
+                                    }
                                     this._logger.debug("Assigning " + item.name + " read permission to " + r.name);
                                     r.addRight(item._id, item.name, [Rights.read], false);
                                     await this.db.collection("users").updateOne({ _id: r._id }, { $set: { _acl: r._acl } });
@@ -350,7 +352,7 @@ export class DatabaseConnection {
         }
         for (var i: number = 0; i < arr.length; i++) { arr[i] = this.decryptentity(arr[i]); }
         DatabaseConnection.traversejsondecode(arr);
-        this._logger.debug("[" + user.username + "][" + collectionname + "] query gave " + arr.length + " results ");
+        if (Config.log_queries) this._logger.debug("[" + user.username + "][" + collectionname + "] query gave " + arr.length + " results ");
         return arr;
     }
     /**
@@ -1357,6 +1359,14 @@ export class DatabaseConnection {
             this._logger.error(error);
         }
     }
+    visit(obj: any, func: any) {
+        for (const k in obj) {
+            func(obj, k);
+            if (typeof obj[k] === "object") {
+                this.visit(obj[k], func);
+            }
+        }
+    }
     async SaveDiff(collectionname: string, original: any, item: any) {
         if (item._type == 'instance' && collectionname == 'workflows') return 0;
         if (item._type == 'instance' && collectionname == 'workflows') return 0;
@@ -1406,6 +1416,11 @@ export class DatabaseConnection {
 
             // if (original != null && _version > 0 && delta_collections.indexOf(collectionname) > -1) {
             if (original != null && _version > 0) {
+                this.visit(item, (obj, k) => {
+                    if (typeof obj[k] === "function") {
+                        delete obj[k];
+                    }
+                });
                 delta = jsondiffpatch.diff(original, item);
                 if (delta == undefined || delta == null) return 0;
                 var keys = Object.keys(delta);
