@@ -1,6 +1,6 @@
 {
   "name": "openiap",
-  "version": "1.0.74",
+  "version": "1.0.75",
   "description": "Simple wrapper around NodeRed, RabbitMQ and MongoDB to support a more scaleable NodeRed implementation.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {
@@ -58,7 +58,7 @@
     "morgan": "^1.10.0",
     "multer": "^1.4.2",
     "multer-gridfs-storage": "^4.2.0",
-    "openflow-api": "^1.0.17",
+    "openflow-api": "^1.0.18",
     "os-service": "^2.2.0",
     "passport": "^0.4.1",
     "passport-google-oauth20": "^2.0.0",

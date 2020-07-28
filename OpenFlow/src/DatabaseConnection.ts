@@ -164,8 +164,10 @@ export class DatabaseConnection {
                             } else if (arr[0]._type == "role") {
                                 var r: Role = Role.assign(arr[0]);
                                 if (r._id == WellknownIds.admins || r._id == WellknownIds.users) {
-                                }
-                                if (!r.hasRight(item._id, Rights.read)) {
+                                } else if (!r.hasRight(item._id, Rights.read)) {
+                                    if (r.name == "admins") {
+                                        var b = true;
+                                    }
                                     this._logger.debug("Assigning " + item.name + " read permission to " + r.name);
                                     r.addRight(item._id, item.name, [Rights.read], false);
                                     await this.db.collection("users").updateOne({ _id: r._id }, { $set: { _acl: r._acl } });
