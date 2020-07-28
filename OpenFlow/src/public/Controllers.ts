@@ -3517,9 +3517,16 @@ export class QueueCtrl extends entityCtrl<Base> {
                 for (var y = 0; y < clients.length; y++) {
                     const _client = clients[y];
                     if (_client.queues != null) {
-                        const keys = Object.keys(_client.queues);
-                        for (var z = 0; z < keys.length; z++) {
-                            var q = _client.queues[keys[z]];
+                        // const keys = Object.keys(_client.queues);
+                        // for (var z = 0; z < keys.length; z++) {
+                        //     var q = _client.queues[keys[z]];
+                        //     console.log(_client.name + " " + q.consumerTag);
+                        //     if (q.consumerTag == this.data.consumer_details[i].consumer_tag) {
+                        //         this.data.consumer_details[i].clientname = _client.name;
+                        //     }
+                        // }
+                        for (var z = 0; z < _client.queues.length; z++) {
+                            var q = _client.queues[z];
                             console.log(_client.name + " " + q.consumerTag);
                             if (q.consumerTag == this.data.consumer_details[i].consumer_tag) {
                                 this.data.consumer_details[i].clientname = _client.name;

@@ -61,7 +61,7 @@ export class amqpwrapper {
     private activecalls: IHashTable<Deferred<string>> = {};
     // public queues: IHashTable<amqpqueue> = {};
     // private exchanges: IHashTable<amqpexchange> = {};
-    public queues: amqpqueue[] = [];
+    // public queues: amqpqueue[] = [];
     private exchanges: amqpexchange[] = [];
     private replyqueue: amqpqueue;
     private static _instance: amqpwrapper = null;
@@ -103,9 +103,9 @@ export class amqpwrapper {
                 });
             }
             this.channel = await this.conn.createChannel();
-            if (!NoderedUtil.IsNullEmpty(this.replyqueue)) {
-                this.queues = this.queues.filter(x => x.consumerTag != this.replyqueue.consumerTag);
-            }
+            // if (!NoderedUtil.IsNullEmpty(this.replyqueue)) {
+            //     this.queues = this.queues.filter(x => x.consumerTag != this.replyqueue.consumerTag);
+            // }
             this.replyqueue = await this.AddQueueConsumer("", null, null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
                 if (!NoderedUtil.IsNullUndefinded(this.activecalls[options.correlationId])) {
                     this.activecalls[options.correlationId].resolve(msg);
@@ -234,7 +234,7 @@ export class amqpwrapper {
         q.consumerTag = consumeresult.consumerTag;
         this._logger.info("[AMQP] Added queue consumer " + q.queue + "/" + q.consumerTag);
         // this.queues[q.queue] = q;
-        this.queues.push(q);
+        // this.queues.push(q);
         return q;
     }
     async AddExchangeConsumer(exchange: string, algorithm: string, routingkey: string, ExchangeOptions: any, jwt: string, callback: QueueOnMessage): Promise<amqpexchange> {

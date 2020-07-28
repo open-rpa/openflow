@@ -2212,7 +2212,7 @@ export class Message {
                 let item: any = {
                     id: client.id, user: client.user, clientagent: client.clientagent, clientversion: client.clientversion
                     , lastheartbeat: client.lastheartbeat, _type: "socketclient", name: client.id,
-                    queues: client.queues
+                    queues: client._queues
                 };
                 if (client.user != null) {
                     var name = client.user.username.split("@").join("").split(".").join("");

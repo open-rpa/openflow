@@ -35,7 +35,8 @@ export class WebSocketServerClient {
 
     user: User;
     // public consumers: amqp_consumer[] = [];
-    public queues: IHashTable<amqpqueue> = {};
+    // public queues: IHashTable<amqpqueue> = {};
+    public _queues: amqpqueue[] = [];
 
     constructor(logger: winston.Logger, socketObject: WebSocket) {
         this._logger = logger;
@@ -62,9 +63,9 @@ export class WebSocketServerClient {
         this._logger.error("WebSocket error encountered " + e);
     }
     public queuecount(): number {
-        if (this.queues == null) return 0;
-        var keys = Object.keys(this.queues);
-        return keys.length;
+        if (this._queues == null) return 0;
+        // var keys = Object.keys(this.queues);
+        return this._queues.length;
     }
     public connected(): boolean {
         if (this._socketObject == null) return false;
@@ -118,10 +119,11 @@ export class WebSocketServerClient {
         }
     }
     public async CloseConsumers(): Promise<void> {
-        var keys = Object.keys(this.queues);
-        for (let i = 0; i < keys.length; i++) {
+        // var keys = Object.keys(this.queues);
+        for (let i = 0; i < this._queues.length; i++) {
             try {
-                await this.CloseConsumer(keys[i]);
+                // await this.CloseConsumer(this._queues[i]);
+                await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i]);
             } catch (error) {
                 this._logger.error("WebSocketclient::closeconsumers " + error);
             }
@@ -146,14 +148,25 @@ export class WebSocketServerClient {
         }
     }
     public async CloseConsumer(queuename: string): Promise<void> {
-        if (this.queues[queuename] != null) {
-            try {
-                await amqpwrapper.Instance().RemoveQueueConsumer(this.queues[queuename]);
-                delete this.queues[queuename];
-            } catch (error) {
-                this._logger.error("WebSocketclient::CloseConsumer " + error);
+        for (var i = this._queues.length - 1; i >= 0; i--) {
+            if (this._queues[i].queue == queuename) {
+                try {
+                    await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i]);
+                    this._queues.splice(i, 1);
+                    delete this._queues[queuename];
+                } catch (error) {
+                    this._logger.error("WebSocketclient::CloseConsumer " + error);
+                }
             }
         }
+        // if (this.queues[queuename] != null) {
+        //     try {
+        //         await amqpwrapper.Instance().RemoveQueueConsumer(this.queues[queuename]);
+        //         delete this.queues[queuename];
+        //     } catch (error) {
+        //         this._logger.error("WebSocketclient::CloseConsumer " + error);
+        //     }
+        // }
     }
     public async CreateConsumer(queuename: string): Promise<string> {
         var autoDelete: boolean = false; // Should we keep the queue around ? for robots and roles
@@ -171,10 +184,11 @@ export class WebSocketServerClient {
                 qname = "unknown." + Math.random().toString(36).substr(2, 9); autoDelete = true;
             }
         }
-        if (this.queues[qname] != null) {
-            await amqpwrapper.Instance().RemoveQueueConsumer(this.queues[qname]);
-            delete this.queues[qname];
-        }
+        this.CloseConsumer(queuename);
+        // if (this.queues[qname] != null) {
+        //     await amqpwrapper.Instance().RemoveQueueConsumer(this.queues[qname]);
+        //     delete this.queues[qname];
+        // }
         // var AssertQueueOptions: any = new Object(amqpwrapper.Instance().AssertQueueOptions);
         var AssertQueueOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertQueueOptions));
         AssertQueueOptions.autoDelete = autoDelete;
@@ -198,10 +212,11 @@ export class WebSocketServerClient {
             }
         });
         qname = queue.queue;
-        if (this.queues[qname] != null) {
-            await amqpwrapper.Instance().RemoveQueueConsumer(this.queues[qname]);
-        }
-        this.queues[qname] = queue;
+        // if (this.queues[qname] != null) {
+        //     await amqpwrapper.Instance().RemoveQueueConsumer(this.queues[qname]);
+        // }
+        //this.queues[qname] = queue;
+        this._queues.push(queue);
         return queue.queue;
     }
     sleep(ms) {
