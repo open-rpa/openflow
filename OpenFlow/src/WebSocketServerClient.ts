@@ -5,6 +5,7 @@ import { Message, JSONfn } from "./Messages/Message";
 import { Config } from "./Config";
 import { amqpwrapper, QueueMessageOptions, amqpqueue } from "./amqpwrapper";
 import { NoderedUtil, Base, InsertOneMessage, QueueMessage, MapReduceMessage, QueryMessage, UpdateOneMessage, UpdateManyMessage, DeleteOneMessage, User, mapFunc, reduceFunc, finalizeFunc, QueuedMessage, QueuedMessageCallback } from "openflow-api";
+import { Mutex } from "./Mutex";
 
 interface IHashTable<T> {
     [key: string]: T;
@@ -37,6 +38,7 @@ export class WebSocketServerClient {
     // public consumers: amqp_consumer[] = [];
     // public queues: IHashTable<amqpqueue> = {};
     public _queues: amqpqueue[] = [];
+    public queuesMutex = new Mutex();
 
     constructor(logger: winston.Logger, socketObject: WebSocket) {
         this._logger = logger;
@@ -119,15 +121,17 @@ export class WebSocketServerClient {
         }
     }
     public async CloseConsumers(): Promise<void> {
-        // var keys = Object.keys(this.queues);
-        for (let i = 0; i < this._queues.length; i++) {
-            try {
-                // await this.CloseConsumer(this._queues[i]);
-                await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i]);
-            } catch (error) {
-                this._logger.error("WebSocketclient::closeconsumers " + error);
+        return await this.queuesMutex.dispatch(async () => {
+            for (let i = this._queues.length - 1; i >= 0; i--) {
+                try {
+                    // await this.CloseConsumer(this._queues[i]);
+                    await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i]);
+                    this._queues.splice(i, 1);
+                } catch (error) {
+                    this._logger.error("WebSocketclient::closeconsumers " + error);
+                }
             }
-        }
+        });
     }
     public async Close(): Promise<void> {
         await this.CloseConsumers();
@@ -148,17 +152,19 @@ export class WebSocketServerClient {
         }
     }
     public async CloseConsumer(queuename: string): Promise<void> {
-        for (var i = this._queues.length - 1; i >= 0; i--) {
-            if (this._queues[i].queue == queuename) {
-                try {
-                    await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i]);
-                    this._queues.splice(i, 1);
-                    delete this._queues[queuename];
-                } catch (error) {
-                    this._logger.error("WebSocketclient::CloseConsumer " + error);
+        return await this.queuesMutex.dispatch(async () => {
+            for (var i = this._queues.length - 1; i >= 0; i--) {
+                var q = this._queues[i];
+                if (q.queue == queuename || q.queuename == queuename) {
+                    try {
+                        await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i]);
+                        this._queues.splice(i, 1);
+                    } catch (error) {
+                        this._logger.error("WebSocketclient::CloseConsumer " + error);
+                    }
                 }
             }
-        }
+        });
         // if (this.queues[queuename] != null) {
         //     try {
         //         await amqpwrapper.Instance().RemoveQueueConsumer(this.queues[queuename]);
@@ -184,7 +190,7 @@ export class WebSocketServerClient {
                 qname = "unknown." + Math.random().toString(36).substr(2, 9); autoDelete = true;
             }
         }
-        this.CloseConsumer(queuename);
+        this.CloseConsumer(qname);
         // if (this.queues[qname] != null) {
         //     await amqpwrapper.Instance().RemoveQueueConsumer(this.queues[qname]);
         //     delete this.queues[qname];
@@ -216,7 +222,10 @@ export class WebSocketServerClient {
         //     await amqpwrapper.Instance().RemoveQueueConsumer(this.queues[qname]);
         // }
         //this.queues[qname] = queue;
-        this._queues.push(queue);
+        await this.queuesMutex.dispatch(() => {
+            this._queues.push(queue);
+        });
+        console.log('_queues.length: ' + this._queues.length);
         return queue.queue;
     }
     sleep(ms) {

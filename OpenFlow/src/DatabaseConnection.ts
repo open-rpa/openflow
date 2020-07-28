@@ -1359,6 +1359,14 @@ export class DatabaseConnection {
             this._logger.error(error);
         }
     }
+    visit(obj: any, func: any) {
+        for (const k in obj) {
+            func(obj, k);
+            if (typeof obj[k] === "object") {
+                this.visit(obj[k], func);
+            }
+        }
+    }
     async SaveDiff(collectionname: string, original: any, item: any) {
         if (item._type == 'instance' && collectionname == 'workflows') return 0;
         if (item._type == 'instance' && collectionname == 'workflows') return 0;
@@ -1408,6 +1416,11 @@ export class DatabaseConnection {
 
             // if (original != null && _version > 0 && delta_collections.indexOf(collectionname) > -1) {
             if (original != null && _version > 0) {
+                this.visit(item, (obj, k) => {
+                    if (typeof obj[k] === "function") {
+                        delete obj[k];
+                    }
+                });
                 delta = jsondiffpatch.diff(original, item);
                 if (delta == undefined || delta == null) return 0;
                 var keys = Object.keys(delta);

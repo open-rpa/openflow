@@ -36,6 +36,7 @@ export class Deferred<T> {
 }
 export class amqpqueue {
     public queue: string;
+    public queuename: string;
     public callback: QueueOnMessage;
     public ok: AssertQueue;
     public QueueOptions: any;
@@ -150,8 +151,9 @@ export class amqpwrapper {
             if (this.channel != null) await this.channel.cancel(queue.consumerTag);
         }
     }
-    async AddQueueConsumer(queue: string, QueueOptions: any, jwt: string, callback: QueueOnMessage): Promise<amqpqueue> {
+    async AddQueueConsumer(queuename: string, QueueOptions: any, jwt: string, callback: QueueOnMessage): Promise<amqpqueue> {
         if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Queue Consumer, not connected to rabbitmq");
+        var queue: string = queuename;
         if (queue == null) queue = "";
         var q: amqpqueue = null;
         if (Config.amqp_force_queue_prefix && !NoderedUtil.IsNullEmpty(jwt) && !NoderedUtil.IsNullEmpty(queue)) {
@@ -228,6 +230,7 @@ export class amqpwrapper {
         if (NoderedUtil.IsNullEmpty(queue)) q.QueueOptions.autoDelete = true;
         q.ok = await this.channel.assertQueue(queue, q.QueueOptions);
         q.queue = q.ok.queue;
+        q.queuename = queuename;
         var consumeresult = await this.channel.consume(q.ok.queue, (msg) => {
             this.OnMessage(q, msg, q.callback);
         }, { noAck: false });
