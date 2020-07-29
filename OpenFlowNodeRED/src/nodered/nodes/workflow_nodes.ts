@@ -253,10 +253,6 @@ export class workflow_in_node {
     }
     async onclose(removed: boolean, done: any) {
         try {
-            if (!NoderedUtil.IsNullEmpty(this.localqueue) && removed) {
-                NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
-                this.localqueue = "";
-            }
             if (removed && Config.workflow_node_auto_cleanup) {
                 let res = await NoderedUtil.Query("workflow", { "queue": this.localqueue }, null, null, 1, 0, null);
                 if (res.length > 0) {
@@ -266,6 +262,10 @@ export class workflow_in_node {
                 if (res.length > 0) {
                     await NoderedUtil.DeleteOne("users", res[0]._id, null);
                 }
+            }
+            if (!NoderedUtil.IsNullEmpty(this.localqueue) && removed) {
+                NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
+                this.localqueue = "";
             }
         } catch (error) {
             Logger.instanse.error(error);

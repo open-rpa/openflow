@@ -1762,6 +1762,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
     }
     async loadData(): Promise<void> {
         this.loading = true;
+        this.message = "";
         var res = await NoderedUtil.Query(this.collection, this.basequery, null, { _created: -1 }, 1, 0, null);
         if (res.length > 0) { this.workflow = res[0]; } else {
             this.errormessage = this.id + " workflow not found!";
@@ -1789,7 +1790,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             }
 
 
-            if (this.model.form === "none" || this.model.form === "") {
+            if (this.model.form === "none" || this.model.form === "" || this.model.state == "processing") {
                 if (this.model.state != "failed" && this.model.state != "processing") {
                     this.$location.path("/main");
                 } else {

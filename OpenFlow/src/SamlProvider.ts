@@ -77,7 +77,16 @@ export class SamlProvider {
             getUserFromRequest: (req: any) => {
                 var tuser: TokenUser = TokenUser.From(req.user);
                 var remoteip = "";
-                if (req.connection) { remoteip = req.connection.remoteAddress; }
+                if (!NoderedUtil.IsNullUndefinded(req)) {
+                    if (!NoderedUtil.IsNullUndefinded(req.connection) && !NoderedUtil.IsNullEmpty(req.connection.remoteAddress)) remoteip = req.connection.remoteAddress;
+                    if (!NoderedUtil.IsNullUndefinded(req.headers)) {
+                        if (req.headers["X-Forwarded-For"] != null) remoteip = req.headers["X-Forwarded-For"];
+                        if (req.headers["X-real-IP"] != null) remoteip = req.headers["X-real-IP"];
+                        if (req.headers["x-forwarded-for"] != null) remoteip = req.headers["x-forwarded-for"];
+                        if (req.headers["x-real-ip"] != null) remoteip = req.headers["x-real-ip"];
+                    }
+                }
+                // if (req.connection) { remoteip = req.connection.remoteAddress; }
                 Audit.LoginSuccess(tuser, "tokenissued", "saml", remoteip, "getUserFromRequest", "unknown");
                 return req.user;
             },
