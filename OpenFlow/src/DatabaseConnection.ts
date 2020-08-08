@@ -1058,8 +1058,9 @@ export class DatabaseConnection {
      */
     private _shouldEncryptValue(keys: string[], key: string, value: object = null): boolean {
         const shouldEncryptThisKey: boolean = keys.includes(key);
-        const isString: boolean = typeof value === "string";
-        return value && shouldEncryptThisKey && isString;
+        return value && shouldEncryptThisKey;
+        // const isString: boolean = typeof value === "string";
+        // return value && shouldEncryptThisKey && isString;
     }
     /**
      * Enumerate object, encrypting fields that needs to be encrypted
@@ -1072,7 +1073,16 @@ export class DatabaseConnection {
         return (Object.keys(item).reduce((newObj, key) => {
             const value: any = item[key];
             try {
-                newObj[key] = this._shouldEncryptValue(item._encrypt, key, value) ? Crypt.encrypt(value) : value;
+                if (this._shouldEncryptValue(item._encrypt, key, (value as any))) {
+                    if (typeof value === "string") {
+                        newObj[key] = Crypt.encrypt(value);
+                    } else {
+                        var tempvalue: any = JSON.stringify(value);
+                        newObj[key] = Crypt.encrypt(tempvalue);
+                    }
+                } else {
+                    newObj[key] = value;
+                }
             } catch (err) {
                 me._logger.error("encryptentity " + err.message);
                 newObj[key] = value;
@@ -1091,7 +1101,18 @@ export class DatabaseConnection {
         return (Object.keys(item).reduce((newObj, key) => {
             const value: any = item[key];
             try {
-                newObj[key] = this._shouldEncryptValue(item._encrypt, key, value) ? Crypt.decrypt(value) : value;
+                if (this._shouldEncryptValue(item._encrypt, key, value)) {
+                    let newvalue = Crypt.decrypt(value);
+                    if (newvalue.indexOf("{") === 0 || newvalue.indexOf("[") === 0) {
+                        try {
+                            newvalue = JSON.parse(newvalue);
+                        } catch (error) {
+                        }
+                    }
+                    newObj[key] = newvalue;
+                } else {
+                    newObj[key] = value;
+                }
             } catch (err) {
                 me._logger.error("decryptentity " + err.message);
                 newObj[key] = value;

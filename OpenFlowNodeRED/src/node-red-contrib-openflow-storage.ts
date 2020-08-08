@@ -359,13 +359,14 @@ export class noderedcontribopenflowstorage {
                     var item: any = {
                         name: "credentials for " + Config.nodered_id,
                         credentials: credentials, credentialsarray: credentialsarray, _type: "credential", nodered_id: Config.nodered_id,
-                        _encrypt: ["credentials"]
+                        _encrypt: ["credentials", "credentialsarray"]
                     };
                     var subresult = await NoderedUtil.InsertOne("nodered", item, 1, true, null);
                 } else {
                     var item: any = result[0];
                     item.credentials = credentials;
                     item.credentialsarray = credentialsarray;
+                    item._encrypt = ["credentials", "credentialsarray"];
                     var subresult = await NoderedUtil.UpdateOne("nodered", null, item, 1, true, null);
                 }
                 this._credentials = credentials;
