@@ -1,10 +1,13 @@
 import * as fs from "fs";
 import * as path from "path";
+import * as crypto from "crypto";
 import winston = require("winston");
 import { nodered_settings } from "./nodered_settings";
 import { Config } from "./Config";
 import { WebSocketClient, NoderedUtil } from "openflow-api";
 import * as nodered from "node-red";
+const fileCache = require('file-system-cache').default;
+const backupStore = fileCache({ basePath: path.join(Config.logpath, '.cache') });
 // tslint:disable-next-line: class-name
 export class noderedcontribopenflowstorage {
 
@@ -53,7 +56,34 @@ export class noderedcontribopenflowstorage {
     //   length: when arrays in that index are of different length; values are
     //           the lengths of the arrays
     //
-
+    private static iv_length: number = 16; // for AES, this is always 16
+    private static encryption_key: string = ("smurfkicks-to-anyone-hating-on-nodejs").substr(0, 32);
+    static encrypt(text: string): string {
+        try {
+            let iv: Buffer = crypto.randomBytes(this.iv_length);
+            let cipher: crypto.Cipher = crypto.createCipheriv("aes-256-cbc", Buffer.from(this.encryption_key), iv);
+            let encrypted: Buffer = cipher.update((text as any));
+            encrypted = Buffer.concat([encrypted, cipher.final()]);
+            return iv.toString("hex") + ":" + encrypted.toString("hex");
+        } catch (error) {
+            console.error(error);
+        }
+        return text;
+    }
+    static decrypt(text: string): string {
+        try {
+            let textParts: string[] = text.split(":");
+            let iv: Buffer = Buffer.from(textParts.shift(), "hex");
+            let encryptedText: Buffer = Buffer.from(textParts.join(":"), "hex");
+            let decipher: crypto.Decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(this.encryption_key), iv);
+            let decrypted: Buffer = decipher.update(encryptedText);
+            decrypted = Buffer.concat([decrypted, decipher.final()]);
+            return decrypted.toString();
+        } catch (error) {
+            console.error(error);
+        }
+        return text;
+    }
     DiffObjects(o1, o2) {
         // choose a map() impl.
         // you may use $.map from jQuery if you wish
@@ -270,21 +300,23 @@ export class noderedcontribopenflowstorage {
             else { this._logger.error(error); }
             result = [];
         }
+        const filename: string = Config.nodered_id + "_flows.json";
         if (result.length == 0) {
-            if (await fs.existsSync(path.join(Config.logpath, Config.nodered_id + "_flows.json"))) {
-                var json = await fs.readFileSync(path.join(Config.logpath, Config.nodered_id + "_flows.json"), "utf8");
+            const json = await backupStore.get(filename);
+            if (!NoderedUtil.IsNullEmpty(json)) {
                 this._flows = JSON.parse(json);
                 result = this._flows;
             }
         } else {
-            fs.writeFileSync(path.join(Config.logpath, Config.nodered_id + "_flows.json"), JSON.stringify(result));
+            await backupStore.set(filename, JSON.stringify(result));
         }
         return result;
     }
     public async _saveFlows(flows: any[]): Promise<void> {
         try {
             this._logger.silly("noderedcontribopenflowstorage::_saveFlows");
-            fs.writeFileSync(path.join(Config.logpath, Config.nodered_id + "_flows.json"), JSON.stringify(flows));
+            const filename: string = Config.nodered_id + "_flows.json";
+            await backupStore.set(filename, JSON.stringify(flows));
             if (WebSocketClient.instance.isConnected()) {
                 var result = await NoderedUtil.Query("nodered", { _type: "flow", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
                 if (result.length === 0) {
@@ -328,21 +360,24 @@ export class noderedcontribopenflowstorage {
             else { this._logger.error(error); }
             cred = [];
         }
+        const filename: string = Config.nodered_id + "_credentials";
         if (cred.length == 0) {
-            if (await fs.existsSync(path.join(Config.logpath, Config.nodered_id + "_credentials.json"))) {
-                var json = await fs.readFileSync(path.join(Config.logpath, Config.nodered_id + "_credentials.json"), "utf8");
-                cred = JSON.parse(json);
-                this._credentials = cred;
+            let json = await backupStore.get(filename);
+            if (!NoderedUtil.IsNullEmpty(json)) {
+                json = noderedcontribopenflowstorage.decrypt(json);
+                this._credentials = JSON.parse(json);
+                cred = this._credentials;
             }
         } else {
-            fs.writeFileSync(path.join(Config.logpath, Config.nodered_id + "_credentials.json"), JSON.stringify(cred));
+            await backupStore.set(filename, noderedcontribopenflowstorage.encrypt(JSON.stringify(cred)));
         }
         return cred;
     }
     public async _saveCredentials(credentials: any): Promise<void> {
         try {
             this._logger.silly("noderedcontribopenflowstorage::_saveCredentials");
-            fs.writeFileSync(path.join(Config.logpath, Config.nodered_id + "_credentials.json"), JSON.stringify(credentials));
+            const filename: string = Config.nodered_id + "_credentials";
+            await backupStore.set(filename, noderedcontribopenflowstorage.encrypt(JSON.stringify(credentials)));
             if (WebSocketClient.instance.isConnected()) {
                 var result = await NoderedUtil.Query("nodered", { _type: "credential", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
                 var credentialsarray = [];
@@ -390,15 +425,15 @@ export class noderedcontribopenflowstorage {
             if (error.message) { this._logger.error(error.message); }
             else { this._logger.error(error); }
         }
+        const filename: string = Config.nodered_id + "_settings";
         if (settings == null) {
             settings = {};
-            if (await fs.existsSync(path.join(Config.logpath, Config.nodered_id + "_settings.json"))) {
-                var json = await fs.readFileSync(path.join(Config.logpath, Config.nodered_id + "_settings.json"), "utf8");
-                settings = JSON.parse(json);
-                this._settings = settings;
+            const json = await backupStore.get(filename);
+            if (!NoderedUtil.IsNullEmpty(json)) {
+                this._settings = JSON.parse(json);
+                settings = this._settings;
             }
         } else {
-            fs.writeFileSync(path.join(Config.logpath, Config.nodered_id + "_settings.json"), JSON.stringify(settings));
             if (this._settings == null) {
                 this._settings = settings;
                 try {
@@ -443,6 +478,7 @@ export class noderedcontribopenflowstorage {
                 }
             }
             this._settings = settings;
+            await backupStore.set(filename, JSON.stringify(settings));
         }
         if (this.firstrun) {
             setTimeout(this.CheckUpdates.bind(this), Config.flow_refresh_initial_interval);
@@ -453,7 +489,8 @@ export class noderedcontribopenflowstorage {
     public async _saveSettings(settings: any): Promise<void> {
         try {
             this._logger.silly("noderedcontribopenflowstorage::_saveSettings");
-            fs.writeFileSync(path.join(Config.logpath, Config.nodered_id + "_settings.json"), JSON.stringify(settings));
+            const filename: string = Config.nodered_id + "_settings";
+            await backupStore.set(filename, JSON.stringify(settings));
             if (WebSocketClient.instance.isConnected()) {
                 var result = await NoderedUtil.Query("nodered", { _type: "setting", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
                 if (result.length === 0) {
@@ -488,19 +525,21 @@ export class noderedcontribopenflowstorage {
             else { this._logger.error(error); }
             item = [];
         }
+        const filename: string = Config.nodered_id + "_sessions";
         if (item == null || item.length == 0) {
-            if (await fs.existsSync(path.join(Config.logpath, Config.nodered_id + "_sessions.json"))) {
-                var json = await fs.readFileSync(path.join(Config.logpath, Config.nodered_id + "_sessions.json"), "utf8");
+            const json = await backupStore.get(filename);
+            if (!NoderedUtil.IsNullEmpty(json)) {
                 item = JSON.parse(json);
             }
         } else {
-            fs.writeFileSync(path.join(Config.logpath, Config.nodered_id + "_sessions.json"), JSON.stringify(item));
+            await backupStore.set(filename, JSON.stringify(item));
         }
         return item;
     }
     public async _saveSessions(sessions: any[]): Promise<void> {
         try {
-            fs.writeFileSync(path.join(Config.logpath, Config.nodered_id + "_sessions.json"), JSON.stringify(sessions));
+            const filename: string = Config.nodered_id + "_sessions";
+            await backupStore.set(filename, JSON.stringify(sessions));
             if (WebSocketClient.instance.isConnected()) {
                 var result = await NoderedUtil.Query("nodered", { _type: "session", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
                 if (result.length === 0) {
