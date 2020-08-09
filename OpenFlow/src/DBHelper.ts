@@ -1,5 +1,5 @@
 import { Crypt } from "./Crypt";
-import { User, Role, Rolemember, WellknownIds, Rights } from "openflow-api";
+import { User, Role, Rolemember, WellknownIds, Rights, NoderedUtil } from "openflow-api";
 import { Config } from "./Config";
 
 export class DBHelper {
@@ -106,7 +106,7 @@ export class DBHelper {
     public static async EnsureRole(jwt: string, name: string, id: string): Promise<Role> {
         var role: Role = await this.FindRoleByNameOrId(name, id);
         if (role !== null && (role._id === id || id === null)) { return role; }
-        if (role !== null && id !== null) { await Config.db.DeleteOne(role._id, "users", jwt); }
+        if (role !== null && !NoderedUtil.IsNullEmpty(role._id)) { await Config.db.DeleteOne(role._id, "users", jwt); }
         role = new Role(); role.name = name; role._id = id;
         role = await Config.db.InsertOne(role, "users", 0, false, jwt);
         role = Role.assign(role);

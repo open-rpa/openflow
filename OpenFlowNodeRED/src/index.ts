@@ -7,6 +7,8 @@ import { Logger } from "./Logger";
 import { WebServer } from "./WebServer";
 import { Config } from "./Config";
 import { Crypt } from "./nodeclient/Crypt";
+const fileCache = require('file-system-cache').default;
+const backupStore = fileCache({ basePath: path.join(Config.logpath, '.cache') });
 const logger: winston.Logger = Logger.configure();
 logger.info("starting openflow nodered");
 
@@ -27,8 +29,9 @@ rejectionEmitter.on("rejectionHandled", (error, promise) => {
 let server: http.Server = null;
 (async function (): Promise<void> {
     try {
-        var filename = path.join(Config.logpath, Config.nodered_id + "_flows.json");
-        if (await fs.existsSync(filename)) {
+        const filename: string = Config.nodered_id + "_flows.json";
+        const json = await backupStore.get(filename);
+        if (!NoderedUtil.IsNullEmpty(json)) {
             server = await WebServer.configure(logger, socket);
             var baseurl = Config.saml_baseurl;
             if (NoderedUtil.IsNullEmpty(baseurl)) {
@@ -41,6 +44,10 @@ let server: http.Server = null;
         socket.agent = "nodered";
         socket.version = Config.version;
         logger.info("VERSION: " + Config.version);
+        socket.events.on("onerror", async () => {
+        });
+        socket.events.on("onclose", async () => {
+        });
         socket.events.on("onopen", async () => {
             try {
                 // q.clientagent = "nodered";
