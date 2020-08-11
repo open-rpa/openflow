@@ -13,7 +13,6 @@
     "session": "Session",
     "flow": "Flow",
     "setting": "Setting",
-    "credential": "Credential",
     "logout": "Sign out",
     "signin": "Sign in",
     "username": "Username",
@@ -96,5 +95,10 @@
     "billing": "Billing",
     "version": "Version",
     "now": "Now",
-    "then": "Then"
+    "then": "Then",
+    "credential": "Credential",
+    "credentials": "Credentials",
+    "addcredential": "Add credentials",
+    "add": "Add",
+    "queues": "Queues"
 }

@@ -2281,6 +2281,8 @@ export class EntityCtrl extends entityCtrl<Base> {
                 for (var i: number = this.keys.length - 1; i >= 0; i--) {
                     if (this.keys[i].startsWith('_')) this.keys.splice(i, 1);
                 }
+                this.searchSelectedItem = WebSocketClientService.user;
+                this.adduser();
                 this.processdata();
                 //if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
@@ -3606,4 +3608,299 @@ export class SocketsCtrl extends entitiesCtrl<Base> {
         this.loading = false;
         this.loadData();
     }
+}
+export class CredentialsCtrl extends entitiesCtrl<Base> {
+    constructor(
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        this.autorefresh = true;
+        console.debug("CredentialsCtrl");
+        this.basequery = { _type: "credential" };
+        this.collection = "openrpa";
+        this.searchfields = ["name", "username"];
+        this.postloadData = this.processData;
+        if (this.userdata.data.CredentialsCtrl) {
+            this.basequery = this.userdata.data.CredentialsCtrl.basequery;
+            this.collection = this.userdata.data.CredentialsCtrl.collection;
+            this.baseprojection = this.userdata.data.CredentialsCtrl.baseprojection;
+            this.orderby = this.userdata.data.CredentialsCtrl.orderby;
+            this.searchstring = this.userdata.data.CredentialsCtrl.searchstring;
+            this.basequeryas = this.userdata.data.CredentialsCtrl.basequeryas;
+        }
+
+        WebSocketClientService.onSignedin((user: TokenUser) => {
+            this.loadData();
+        });
+    }
+    async processData(): Promise<void> {
+        if (!this.userdata.data.CredentialsCtrl) this.userdata.data.CredentialsCtrl = {};
+        this.userdata.data.CredentialsCtrl.basequery = this.basequery;
+        this.userdata.data.CredentialsCtrl.collection = this.collection;
+        this.userdata.data.CredentialsCtrl.baseprojection = this.baseprojection;
+        this.userdata.data.CredentialsCtrl.orderby = this.orderby;
+        this.userdata.data.CredentialsCtrl.searchstring = this.searchstring;
+        this.userdata.data.CredentialsCtrl.basequeryas = this.basequeryas;
+        var chart: chartset = null;
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async DeleteOneUser(model: TokenUser): Promise<any> {
+        this.loading = true;
+        await NoderedUtil.DeleteOne(this.collection, model._id, null);
+        this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
+        this.loading = false;
+        var name = model.username;
+        name = name.split("@").join("").split(".").join("");
+        name = name.toLowerCase();
+
+        var list = await NoderedUtil.Query("users", { _type: "role", name: name + "noderedadmins" }, null, null, 2, 0, null);
+        if (list.length == 1) {
+            console.debug("Deleting " + name + "noderedadmins")
+            await NoderedUtil.DeleteOne("users", list[0]._id, null);
+        }
+
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+}
+export class CredentialCtrl extends entityCtrl<Base> {
+    searchFilteredList: TokenUser[] = [];
+    searchSelectedItem: TokenUser = null;
+    searchtext: string = "";
+    e: any = null;
+    constructor(
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api
+    ) {
+        super($scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        console.debug("CredentialCtrl");
+        this.collection = "openrpa";
+        WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            if (this.id !== null && this.id !== undefined) {
+                await this.loadData();
+            } else {
+                this.model = new Base();
+                this.model._type = "credential";
+                this.searchSelectedItem = WebSocketClientService.user;
+                this.adduser();
+            }
+        });
+    }
+    async submit(): Promise<void> {
+        if (this.model._id) {
+            await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null);
+        } else {
+            await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null);
+        }
+        this.$location.path("/Credentials");
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+
+
+
+
+    removeuser(_id) {
+        if (this.collection == "files") {
+            for (var i = 0; i < (this.model as any).metadata._acl.length; i++) {
+                if ((this.model as any).metadata._acl[i]._id == _id) {
+                    (this.model as any).metadata._acl.splice(i, 1);
+                }
+            }
+        } else {
+            for (var i = 0; i < this.model._acl.length; i++) {
+                if (this.model._acl[i]._id == _id) {
+                    this.model._acl.splice(i, 1);
+                    //this.model._acl = this.model._acl.splice(index, 1);
+                }
+            }
+        }
+
+    }
+    adduser() {
+        var ace = new Ace();
+        ace.deny = false;
+        ace._id = this.searchSelectedItem._id;
+        ace.name = this.searchSelectedItem.name;
+        // ace.rights = "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=";
+        if (this.WebSocketClientService.user._id != ace._id) {
+            ace.rights = this.unsetBit(ace.rights, 1);
+            ace.rights = this.setBit(ace.rights, 2);
+            ace.rights = this.unsetBit(ace.rights, 3);
+            ace.rights = this.unsetBit(ace.rights, 4);
+            ace.rights = this.unsetBit(ace.rights, 5);
+        }
+
+        if (this.collection == "files") {
+            (this.model as any).metadata._acl.push(ace);
+        } else {
+            this.model._acl.push(ace);
+        }
+        this.searchSelectedItem = null;
+        this.searchtext = "";
+    }
+
+    isBitSet(base64: string, bit: number): boolean {
+        bit--;
+        var buf = this._base64ToArrayBuffer(base64);
+        var view = new Uint8Array(buf);
+        var octet = Math.floor(bit / 8);
+        var currentValue = view[octet];
+        var _bit = (bit % 8);
+        var mask = Math.pow(2, _bit);
+        return (currentValue & mask) != 0;
+    }
+    setBit(base64: string, bit: number) {
+        bit--;
+        var buf = this._base64ToArrayBuffer(base64);
+        var view = new Uint8Array(buf);
+        var octet = Math.floor(bit / 8);
+        var currentValue = view[octet];
+        var _bit = (bit % 8);
+        var mask = Math.pow(2, _bit);
+        var newValue = currentValue | mask;
+        view[octet] = newValue;
+        return this._arrayBufferToBase64(view);
+    }
+    unsetBit(base64: string, bit: number) {
+        bit--;
+        var buf = this._base64ToArrayBuffer(base64);
+        var view = new Uint8Array(buf);
+        var octet = Math.floor(bit / 8);
+        var currentValue = view[octet];
+        var _bit = (bit % 8);
+        var mask = Math.pow(2, _bit);
+        var newValue = currentValue &= ~mask;
+        view[octet] = newValue;
+        return this._arrayBufferToBase64(view);
+    }
+    toogleBit(a: any, bit: number) {
+        if (this.isBitSet(a.rights, bit)) {
+            a.rights = this.unsetBit(a.rights, bit);
+        } else {
+            a.rights = this.setBit(a.rights, bit);
+        }
+        var buf2 = this._base64ToArrayBuffer(a.rights);
+        var view2 = new Uint8Array(buf2);
+    }
+    _base64ToArrayBuffer(string_base64): ArrayBuffer {
+        var binary_string = window.atob(string_base64);
+        var len = binary_string.length;
+        var bytes = new Uint8Array(len);
+        for (var i = 0; i < len; i++) {
+            //var ascii = string_base64.charCodeAt(i);
+            var ascii = binary_string.charCodeAt(i);
+            bytes[i] = ascii;
+        }
+        return bytes.buffer;
+    }
+    _arrayBufferToBase64(array_buffer): string {
+        var binary = '';
+        var bytes = new Uint8Array(array_buffer);
+        var len = bytes.byteLength;
+        for (var i = 0; i < len; i++) {
+            binary += String.fromCharCode(bytes[i])
+        }
+        return window.btoa(binary);
+    }
+
+
+
+
+    restrictInput(e) {
+        if (e.keyCode == 13) {
+            e.preventDefault();
+            return false;
+        }
+    }
+    setkey(e) {
+        this.e = e;
+        this.handlekeys();
+    }
+    handlekeys() {
+        if (this.searchFilteredList.length > 0) {
+            var idx: number = -1;
+            for (var i = 0; i < this.searchFilteredList.length; i++) {
+                if (this.searchSelectedItem != null) {
+                    if (this.searchFilteredList[i]._id == this.searchSelectedItem._id) {
+                        idx = i;
+                    }
+                }
+            }
+            if (this.e.keyCode == 38) { // up
+                if (idx <= 0) {
+                    idx = 0;
+                } else { idx--; }
+                console.debug("idx: " + idx);
+                // this.searchtext = this.searchFilteredList[idx].name;
+                this.searchSelectedItem = this.searchFilteredList[idx];
+                return;
+            }
+            else if (this.e.keyCode == 40) { // down
+                if (idx >= this.searchFilteredList.length) {
+                    idx = this.searchFilteredList.length - 1;
+                } else { idx++; }
+                console.debug("idx: " + idx);
+                // this.searchtext = this.searchFilteredList[idx].name;
+                this.searchSelectedItem = this.searchFilteredList[idx];
+                return;
+            }
+            else if (this.e.keyCode == 13) { // enter
+                if (idx >= 0) {
+                    this.searchtext = this.searchFilteredList[idx].name;
+                    this.searchSelectedItem = this.searchFilteredList[idx];
+                    this.searchFilteredList = [];
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                }
+                return;
+            }
+            else {
+                // console.debug(this.e.keyCode);
+            }
+        } else {
+            if (this.e.keyCode == 13 && this.searchSelectedItem != null) {
+                this.adduser();
+            }
+        }
+    }
+    async handlefilter(e) {
+        this.e = e;
+        // console.debug(e.keyCode);
+        var ids: string[];
+        if (this.collection == "files") {
+            ids = (this.model as any).metadata._acl.map(item => item._id);
+        } else {
+            ids = this.model._acl.map(item => item._id);
+        }
+        this.searchFilteredList = await NoderedUtil.Query("users",
+            {
+                $and: [
+                    { $or: [{ _type: "user" }, { _type: "role" }] },
+                    { name: new RegExp([this.searchtext].join(""), "i") },
+                    { _id: { $nin: ids } }
+                ]
+            }
+            , null, { _type: -1, name: 1 }, 5, 0, null);
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    fillTextbox(searchtext) {
+        this.searchFilteredList.forEach((item: any) => {
+            if (item.name.toLowerCase() == searchtext.toLowerCase()) {
+                this.searchtext = item.name;
+                this.searchSelectedItem = item;
+                this.searchFilteredList = [];
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            }
+        });
+    }
+
 }
