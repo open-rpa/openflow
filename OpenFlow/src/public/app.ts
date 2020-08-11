@@ -1,7 +1,7 @@
 import { WebSocketClientService } from "./WebSocketClientService";
 import angular = require("angular");
 import { timesince, translate, textarea, fileread, userdata, api } from "./CommonControllers";
-import { MenuCtrl, ProvidersCtrl, MainCtrl, LoginCtrl, ProviderCtrl, UsersCtrl, UserCtrl, RolesCtrl, RoleCtrl, RPAWorkflowsCtrl, RPAWorkflowCtrl, WorkflowsCtrl, ReportsCtrl, jslogCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, SocketCtrl, NoderedCtrl, hdrobotsCtrl, RobotsCtrl, AuditlogsCtrl, SignupCtrl, PaymentCtrl, QueuesCtrl, SocketsCtrl, QueueCtrl } from "./Controllers";
+import { MenuCtrl, ProvidersCtrl, MainCtrl, LoginCtrl, ProviderCtrl, UsersCtrl, UserCtrl, RolesCtrl, RoleCtrl, RPAWorkflowsCtrl, RPAWorkflowCtrl, WorkflowsCtrl, ReportsCtrl, jslogCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, SocketCtrl, NoderedCtrl, hdrobotsCtrl, RobotsCtrl, AuditlogsCtrl, SignupCtrl, PaymentCtrl, QueuesCtrl, SocketsCtrl, QueueCtrl, CredentialsCtrl, CredentialCtrl } from "./Controllers";
 
 /**
  * @type {angular.Module}
@@ -90,6 +90,10 @@ module openflow {
                 .when('/Queue/:id', { templateUrl: 'Queue.html', controller: QueueCtrl, controllerAs: 'ctrl' })
                 .when('/Queues', { templateUrl: 'Queues.html', controller: QueuesCtrl, controllerAs: 'ctrl' })
                 .when('/Sockets', { templateUrl: 'Sockets.html', controller: SocketsCtrl, controllerAs: 'ctrl' })
+
+                .when('/Credentials', { templateUrl: 'Credentials.html', controller: CredentialsCtrl, controllerAs: 'ctrl' })
+                .when('/Credential', { templateUrl: 'Credential.html', controller: CredentialCtrl, controllerAs: 'ctrl' })
+                .when('/Credential/:id', { templateUrl: 'Credential.html', controller: CredentialCtrl, controllerAs: 'ctrl' })
 
                 .otherwise({ redirectTo: '/main' });
         }

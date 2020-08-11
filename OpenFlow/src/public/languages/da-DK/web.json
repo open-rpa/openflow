@@ -13,7 +13,6 @@
     "session": "Session",
     "flow": "Flow",
     "setting": "Indstilling",
-    "credential": "Legitimation",
     "logout": "Logud",
     "signin": "Login",
     "username": "Brugernavn",
@@ -96,5 +95,10 @@
     "billing": "Fakturering",
     "version": "Version",
     "now": "Nu",
-    "then": "Dengang"
+    "then": "Dengang",
+    "credential": "Legitimation",
+    "credentials": "Legitimation",
+    "addcredential": "Tilføj legitimationsoplysninger",
+    "add": "Add",
+    "queues": "Queues"
 }
