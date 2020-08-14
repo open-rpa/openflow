@@ -49,7 +49,7 @@ then open a browser and visit [localhost.openrpa.dk](http://localhost.openrpa.dk
 
 For now only Linux (tested on ubuntu 18LTS) and windows is supported
 Install NodeJS version 10 (google how to do that, if in doubt, hint, use nvm if you got the wrong version installed)
-This require you to have openflow installed somewhere, or you can use out public openflow at [app.openiap.io](https://app.openiap.io) (noderedremote.env)
+This require you to have openflow installed somewhere, or you can use our public openflow at [app.openiap.io](https://app.openiap.io) (noderedremote.env)
 
 On window, run from a command prompt with admin rights
 
