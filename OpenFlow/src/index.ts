@@ -96,6 +96,18 @@ async function initDatabase(): Promise<boolean> {
         root.removeRight(WellknownIds.root, [Rights.delete]);
         await DBHelper.Save(root, jwt);
 
+        var robot_agent_users: Role = await DBHelper.EnsureRole(jwt, "robot agent users", WellknownIds.robot_agent_users);
+        robot_agent_users.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
+        robot_agent_users.removeRight(WellknownIds.admins, [Rights.delete]);
+        robot_agent_users.addRight(WellknownIds.root, "root", [Rights.full_control]);
+        if (Config.multi_tenant) {
+            logger.debug("[root][users] Running in multi tenant mode, remove " + robot_agent_users.name + " from self");
+            robot_agent_users.removeRight(robot_agent_users._id, [Rights.full_control]);
+        } else if (Config.update_acl_based_on_groups) {
+            robot_agent_users.removeRight(robot_agent_users._id, [Rights.full_control]);
+            robot_agent_users.addRight(robot_agent_users._id, "robot agent users", [Rights.read]);
+        }
+        await DBHelper.Save(robot_agent_users, jwt);
 
         admins.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
         admins.removeRight(WellknownIds.admins, [Rights.delete]);

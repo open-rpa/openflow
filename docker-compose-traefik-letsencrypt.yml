@@ -85,7 +85,7 @@ services:
       - api_bypass_perm_check=false
       - websocket_package_size=4096
       - websocket_max_package_count=1048576
-      - protocol=http
+      - protocol=https
       - port=80
       - domain=localhost.openrpa.dk
 
@@ -116,8 +116,8 @@ services:
 
       - saml_federation_metadata=http://web/issue/FederationMetadata/2007-06/FederationMetadata.xml
       - saml_issuer=uri:localhost.openrpa.dk
-      - saml_entrypoint=http://localhost.openrpa.dk/issue
-      - saml_baseurl=http://nodered1.localhost.openrpa.dk/
+      - saml_entrypoint=https://localhost.openrpa.dk/issue
+      - saml_baseurl=https://nodered1.localhost.openrpa.dk/
       #      - saml_crt=
 
       - port=1880
