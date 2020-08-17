@@ -198,22 +198,27 @@ export class amqpwrapper {
                 queue = name + queue;
             }
         } else if (queue.length == 24) {
-            var isrole = tuser.roles.filter(x => x._id == queue);
-            if (isrole.length == 0 && tuser._id != queue) {
-                var skip: boolean = false;
-                var arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "users", jwt);
-                if (arr.length == 0) skip = true;
-                if (!skip) {
-                    var arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "openrpa", jwt);
+            if (NoderedUtil.IsNullEmpty(jwt)) {
+                var tuser = Crypt.verityToken(jwt);
+
+                var isrole = tuser.roles.filter(x => x._id == queue);
+                if (isrole.length == 0 && tuser._id != queue) {
+                    var skip: boolean = false;
+                    var arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "users", jwt);
                     if (arr.length == 0) skip = true;
+                    if (!skip) {
+                        var arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "openrpa", jwt);
+                        if (arr.length == 0) skip = true;
+                    }
+                    if (!skip) {
+                        var arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "workflow", jwt);
+                        if (arr.length == 0) skip = true;
+                    }
+                    if (!skip) {
+                        throw new Error("Access denied creating consumer for " + queue);
+                    }
                 }
-                if (!skip) {
-                    var arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "workflow", jwt);
-                    if (arr.length == 0) skip = true;
-                }
-                if (!skip) {
-                    throw new Error("Access denied creating consumer for " + queue);
-                }
+
             }
         }
         // if (!await amqpwrapper.TestInstance().checkQueue(queue)) {
