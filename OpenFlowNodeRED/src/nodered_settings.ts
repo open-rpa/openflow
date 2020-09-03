@@ -41,6 +41,11 @@ export class nodered_settings {
             audit: false
         }
     };
+    public editorTheme = {
+        palette: {
+            catalogues: []
+        }
+    };
 
     // adminAuth: import("c:/code/OpenFlow/OpenFlowNodeRED/src/node-red-contrib-auth-google").noderedcontribauthgoogle;
     // constructor() {
