@@ -82,7 +82,6 @@ async function initamqp() {
 // }
 
 
-initamqp();
 async function initDatabase(): Promise<boolean> {
     try {
         var jwt: string = Crypt.rootToken();
@@ -239,14 +238,25 @@ rejectionEmitter.on("rejectionHandled", (error, promise) => {
     console.dir(error.stack);
 });
 import * as fs from "fs";
+// import { GrafanaProxy } from "./grafana-proxy";
+var GrafanaProxy: any = null;
+try {
+    GrafanaProxy = require("./grafana-proxy");
+} catch (error) {
+
+}
 
 (async function (): Promise<void> {
     try {
+        await initamqp();
         // var wait = ms => new Promise((r, j) => setTimeout(r, ms));
         // await wait(2000);
         // await Config.get_login_providers();
         logger.info("VERSION: " + Config.version);
         const server: http.Server = await WebServer.configure(logger, Config.baseurl());
+        if (GrafanaProxy != null) {
+            const grafana = await GrafanaProxy.GrafanaProxy.configure(logger, WebServer.app);
+        }
         WebSocketServer.configure(logger, server);
         logger.info("listening on " + Config.baseurl());
         logger.info("namespace: " + Config.namespace);
@@ -255,6 +265,7 @@ import * as fs from "fs";
         }
     } catch (error) {
         // logger.error(error.message);
+        console.error(error);
         var json = JSON.stringify(error, null, 3);
         console.error(json);
 

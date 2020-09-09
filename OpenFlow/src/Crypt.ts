@@ -66,7 +66,7 @@ export class Crypt {
         });
     }
     static createToken(item: User | TokenUser, expiresIn: string): string {
-        var user: TokenUser = new TokenUser();
+        const user: TokenUser = new TokenUser();
         user._type = (item as User)._type;
         user._id = item._id;
         user.impostor = (item as TokenUser).impostor;
@@ -74,7 +74,8 @@ export class Crypt {
         user.username = item.username;
         user.roles = item.roles;
 
-        var token: string = jsonwebtoken.sign({ data: user }, Crypt.encryption_key,
+        const key = Crypt.encryption_key;
+        const token: string = jsonwebtoken.sign({ data: user }, key,
             { expiresIn: expiresIn }); // 60 (seconds), "2 days", "10h", "7d"
         return token;
     }

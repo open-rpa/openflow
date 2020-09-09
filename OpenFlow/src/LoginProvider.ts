@@ -418,7 +418,8 @@ export class LoginProvider {
     }
     static async RegisterProviders(app: express.Express, baseurl: string) {
         if (LoginProvider.login_providers.length === 0) {
-            LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", Crypt.rootToken());
+            const _jwt = Crypt.rootToken();
+            LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", _jwt);
         }
         var hasLocal: boolean = false;
         if (LoginProvider.login_providers.length === 0) { hasLocal = true; }
