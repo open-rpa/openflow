@@ -238,6 +238,7 @@ rejectionEmitter.on("rejectionHandled", (error, promise) => {
     console.dir(error.stack);
 });
 import * as fs from "fs";
+import { OAuthProvider } from "./OAuthProvider";
 // import { GrafanaProxy } from "./grafana-proxy";
 var GrafanaProxy: any = null;
 try {
@@ -257,6 +258,7 @@ try {
         if (GrafanaProxy != null) {
             const grafana = await GrafanaProxy.GrafanaProxy.configure(logger, WebServer.app);
         }
+        // OAuthProvider.configure(logger, WebServer.app);
         WebSocketServer.configure(logger, server);
         logger.info("listening on " + Config.baseurl());
         logger.info("namespace: " + Config.namespace);
