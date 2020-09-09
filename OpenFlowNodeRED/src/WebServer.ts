@@ -149,7 +149,11 @@ export class WebServer {
 
                 this.settings.storageModule = new noderedcontribopenflowstorage(logger, socket);
                 var n: noderednpmrc = await this.settings.storageModule._getnpmrc();
-                if (!NoderedUtil.IsNullUndefinded(n) && !NoderedUtil.IsNullUndefinded(n.catalogues)) this.settings.editorTheme.palette.catalogues = n.catalogues;
+                if (!NoderedUtil.IsNullUndefinded(n) && !NoderedUtil.IsNullUndefinded(n.catalogues)) {
+                    this.settings.editorTheme.palette.catalogues = n.catalogues;
+                } else {
+                    this.settings.editorTheme.palette.catalogues = ['https://catalogue.nodered.org/catalogue.json'];
+                }
 
                 this.settings.ui.path = "ui";
                 // this.settings.ui.middleware = new dashboardAuth();
