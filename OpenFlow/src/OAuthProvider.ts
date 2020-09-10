@@ -40,7 +40,6 @@ export class OAuthProvider {
             (app as any).oauth = instance.oauthServer;
             app.all('/oauth/token', instance.obtainToken.bind(instance));
             app.get('/oauth/login', (req, res) => {
-                let GRAFANA_URI = "http://localhost.openrpa.dk:3000";
                 let state = req.params.state;
                 if (state == null) state = encodeURIComponent(req.query.state as any);
                 const access_type = req.query.access_type;
@@ -61,7 +60,7 @@ export class OAuthProvider {
                     res.redirect(`${redirect_uri}?state=${state}&code=cc536d98d27750394a87ab9d057016e636a8ac31`);
                 } else {
                     instance._logger.info("[OAuth][anon] /oauth/login " + state);
-                    res.redirect(`https://localhost.openrpa.dk`);
+                    res.redirect(req.baseUrl);
                 }
             });
             // app.get('/oauth/authorize', instance.authorize.bind(instance));
