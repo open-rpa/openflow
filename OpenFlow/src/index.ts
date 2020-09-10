@@ -258,7 +258,7 @@ try {
         if (GrafanaProxy != null) {
             const grafana = await GrafanaProxy.GrafanaProxy.configure(logger, WebServer.app);
         }
-        // OAuthProvider.configure(logger, WebServer.app);
+        OAuthProvider.configure(logger, WebServer.app);
         WebSocketServer.configure(logger, server);
         logger.info("listening on " + Config.baseurl());
         logger.info("namespace: " + Config.namespace);
