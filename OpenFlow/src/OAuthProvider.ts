@@ -60,7 +60,8 @@ export class OAuthProvider {
                     res.redirect(`${redirect_uri}?state=${state}&code=cc536d98d27750394a87ab9d057016e636a8ac31`);
                 } else {
                     instance._logger.info("[OAuth][anon] /oauth/login " + state);
-                    res.redirect(req.baseUrl);
+                    res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
+                    res.redirect("/login");
                 }
             });
             // app.get('/oauth/authorize', instance.authorize.bind(instance));

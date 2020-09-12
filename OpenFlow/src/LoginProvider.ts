@@ -268,7 +268,8 @@ export class LoginProvider {
         });
         app.get("/login", async (req: any, res: any, next: any): Promise<void> => {
             try {
-                res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
+                var originalUrl: any = req.cookies.originalUrl;
+                if (NoderedUtil.IsNullEmpty(originalUrl)) res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
                 var file = path.join(__dirname, 'public', 'PassiveLogin.html');
                 res.sendFile(file);
                 // var result: any[] = await this.getProviders();
