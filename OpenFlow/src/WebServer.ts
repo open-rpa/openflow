@@ -19,7 +19,7 @@ import { Config } from "./Config";
 
 export class WebServer {
     private static _logger: winston.Logger;
-    private static app: express.Express;
+    public static app: express.Express;
 
     static async configure(logger: winston.Logger, baseurl: string): Promise<http.Server> {
         this._logger = logger;

@@ -8,6 +8,14 @@ import { WebSocketClient, NoderedUtil } from "openflow-api";
 import * as nodered from "node-red";
 const fileCache = require('file-system-cache').default;
 const backupStore = fileCache({ basePath: path.join(Config.logpath, '.cache') });
+export class noderednpmrc {
+    public _id: string;
+    public _type: string = "npmrc";
+    public name: string;
+    public nodered_id: string;
+    public content: string;
+    public catalogues: string[] = [];
+}
 // tslint:disable-next-line: class-name
 export class noderedcontribopenflowstorage {
 
@@ -279,6 +287,68 @@ export class noderedcontribopenflowstorage {
         // spawn gettings, so it starts installing
         return true;
     }
+    public npmrc: noderednpmrc = null;
+    public async _getnpmrc(): Promise<noderednpmrc> {
+        // var result: noderednpmrc = null;
+        try {
+            this._logger.silly("noderedcontribopenflowstorage::_getnpmrc");
+            if (WebSocketClient.instance != null && WebSocketClient.instance.isConnected()) {
+                var array = await NoderedUtil.Query("nodered", { _type: "npmrc", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                if (array.length === 0) { return null; }
+                try {
+                    this.npmrc = array[0];
+                } catch (error) {
+                    if (error.message) { this._logger.error(error.message); }
+                    else { this._logger.error(error); }
+                    this.npmrc = null;
+                }
+            }
+        } catch (error) {
+            if (error.message) { this._logger.error(error.message); }
+            else { this._logger.error(error); }
+            this.npmrc = null;
+        }
+        try {
+            const filename: string = Config.nodered_id + "_npmrc.txt";
+            if (this.npmrc == null) {
+                const json = await backupStore.get(filename);
+                if (!NoderedUtil.IsNullEmpty(json)) {
+                    this.npmrc = JSON.parse(json);
+                }
+            } else {
+                await backupStore.set(filename, JSON.stringify(this.npmrc));
+            }
+            return this.npmrc;
+        } catch (error) {
+            if (error.message) { this._logger.error(error.message); }
+            else { this._logger.error(error); }
+            this.npmrc = null;
+        }
+        return null;
+    }
+    public async _setnpmrc(npmrc: noderednpmrc): Promise<void> {
+        try {
+            this.npmrc = npmrc;
+            this._logger.silly("noderedcontribopenflowstorage::_setnpmrc");
+            const filename: string = Config.nodered_id + "_npmrc.txt";
+            await backupStore.set(filename, JSON.stringify(npmrc));
+            if (WebSocketClient.instance.isConnected()) {
+                var result = await NoderedUtil.Query("nodered", { _type: "npmrc", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                if (result.length === 0) {
+                    npmrc.name = "npmrc for " + Config.nodered_id;
+                    npmrc.nodered_id = Config.nodered_id;
+                    npmrc._type = "npmrc";
+                    await NoderedUtil.InsertOne("nodered", npmrc, 1, true, null);
+                } else {
+                    npmrc._id = result[0]._id;
+                    await NoderedUtil.UpdateOne("nodered", null, npmrc, 1, true, null);
+                }
+            }
+        } catch (error) {
+            if (error.message) { this._logger.error(error.message); }
+            else { this._logger.error(error); }
+        }
+    }
     public async _getFlows(): Promise<any[]> {
         var result: any[] = [];
         try {
@@ -426,6 +496,22 @@ export class noderedcontribopenflowstorage {
             else { this._logger.error(error); }
         }
         const filename: string = Config.nodered_id + "_settings";
+        try {
+            //if (this.firstrun) {
+            var npmrc = await this._getnpmrc();
+            var npmrcFile: string = path.join(this.settings.userDir, ".npmrc");
+            if (!NoderedUtil.IsNullUndefinded(npmrc) && !NoderedUtil.IsNullUndefinded(npmrc.content)) {
+                fs.writeFileSync(npmrcFile, npmrc.content);
+            } else if (fs.existsSync(npmrcFile)) {
+                npmrc = new noderednpmrc();
+                npmrc.content = fs.readFileSync(npmrcFile, "utf8");
+                await this._setnpmrc(npmrc);
+            }
+            //}
+        } catch (error) {
+            if (error.message) { this._logger.error(error.message); }
+            else { this._logger.error(error); }
+        }
         if (settings == null) {
             settings = {};
             const json = await backupStore.get(filename);
@@ -437,6 +523,7 @@ export class noderedcontribopenflowstorage {
             if (this._settings == null) {
                 this._settings = settings;
                 try {
+
                     //if (this.firstrun) {
                     var child_process = require("child_process");
                     var keys = Object.keys(settings.nodes);

@@ -261,13 +261,15 @@ export class LoginProvider {
                 nodered_domain_schema: Config.nodered_domain_schema,
                 websocket_package_size: Config.websocket_package_size,
                 version: Config.version,
-                stripe_api_key: Config.stripe_api_key
+                stripe_api_key: Config.stripe_api_key,
+                getting_started_url: Config.getting_started_url,
             }
             res.end(JSON.stringify(res2));
         });
         app.get("/login", async (req: any, res: any, next: any): Promise<void> => {
             try {
-                res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
+                var originalUrl: any = req.cookies.originalUrl;
+                if (NoderedUtil.IsNullEmpty(originalUrl)) res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
                 var file = path.join(__dirname, 'public', 'PassiveLogin.html');
                 res.sendFile(file);
                 // var result: any[] = await this.getProviders();
@@ -417,7 +419,8 @@ export class LoginProvider {
     }
     static async RegisterProviders(app: express.Express, baseurl: string) {
         if (LoginProvider.login_providers.length === 0) {
-            LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", Crypt.rootToken());
+            const _jwt = Crypt.rootToken();
+            LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", _jwt);
         }
         var hasLocal: boolean = false;
         if (LoginProvider.login_providers.length === 0) { hasLocal = true; }
