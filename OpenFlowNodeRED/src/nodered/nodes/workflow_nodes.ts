@@ -231,6 +231,10 @@ export class workflow_in_node {
             data._replyTo = msg.replyto;
             data._correlationId = msg.correlationId;
 
+            if (data != null && data.jwt != null && data.payload != null && data.jwt == data.payload.jwt) {
+                delete data.payload.jwt;
+            }
+
             this.node.send(data);
             // this.node.send(result);
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
