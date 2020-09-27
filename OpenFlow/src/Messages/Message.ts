@@ -737,6 +737,9 @@ export class Message {
                 if (cli.clientagent == "nodered") {
                     user._lastnoderedclientversion = cli.clientversion;
                 }
+                if (cli.clientagent == "powershell") {
+                    user._lastpowershellclientversion = cli.clientversion;
+                }
                 await DBHelper.Save(user, Crypt.rootToken());
             }
         } catch (error) {

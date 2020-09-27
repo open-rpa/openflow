@@ -108,6 +108,12 @@ export class WebSocketServer {
                                 console.error(err);
                             });
                     }
+                    if (cli.clientagent == "powershell") {
+                        Config.db.db.collection("users").updateOne({ _id: cli.user._id },
+                            { $set: { _powershellheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
+                                console.error(err);
+                            });
+                    }
                     if (cli.clientagent == "mobileapp" || cli.clientagent == "aiotmobileapp") {
                         Config.db.db.collection("users").updateOne({ _id: cli.user._id },
                             { $set: { _webheartbeat: new Date(new Date().toISOString()), _mobilheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {

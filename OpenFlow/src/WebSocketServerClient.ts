@@ -221,6 +221,8 @@ export class WebSocketServerClient {
                 qname = "web." + Math.random().toString(36).substr(2, 9); autoDelete = true;
             } else if (this.clientagent == "openrpa") {
                 qname = "openrpa." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+            } else if (this.clientagent == "powershell") {
+                qname = "powershell." + Math.random().toString(36).substr(2, 9); autoDelete = true;
             } else {
                 qname = "unknown." + Math.random().toString(36).substr(2, 9); autoDelete = true;
             }
