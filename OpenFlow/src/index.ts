@@ -239,7 +239,6 @@ rejectionEmitter.on("rejectionHandled", (error, promise) => {
 });
 import * as fs from "fs";
 import { OAuthProvider } from "./OAuthProvider";
-// import { GrafanaProxy } from "./grafana-proxy";
 var GrafanaProxy: any = null;
 try {
     GrafanaProxy = require("./grafana-proxy");

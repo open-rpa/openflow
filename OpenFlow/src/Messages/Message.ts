@@ -11,7 +11,7 @@ import { Readable, Stream } from "stream";
 import { GridFSBucket, ObjectID, Db, Cursor, MongoNetworkError } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
-import { StripeMessage, EnsureStripeCustomerMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser } from "openflow-api";
+import { StripeMessage, EnsureStripeCustomerMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage } from "openflow-api";
 import { Billing, stripe_customer, stripe_base, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription, stripe_subscription_item, stripe_plan, stripe_coupon } from "openflow-api";
 import { V1ResourceRequirements, V1Deployment } from "@kubernetes/client-node";
 import { amqpwrapper } from "../amqpwrapper";
@@ -89,6 +89,12 @@ export class Message {
                     break;
                 case "aggregate":
                     this.Aggregate(cli);
+                    break;
+                case "watch":
+                    this.Watch(cli);
+                    break;
+                case "unwatch":
+                    this.UnWatch(cli);
                     break;
                 case "insertone":
                     this.InsertOne(cli);
@@ -404,7 +410,11 @@ export class Message {
         try {
             msg = QueryMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-            msg.result = await Config.db.query(msg.query, msg.projection, msg.top, msg.skip, msg.orderby, msg.collectionname, msg.jwt, msg.queryas);
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) {
+                msg.error = "Access denied, not signed in";
+            } else {
+                msg.result = await Config.db.query(msg.query, msg.projection, msg.top, msg.skip, msg.orderby, msg.collectionname, msg.jwt, msg.queryas);
+            }
         } catch (error) {
             cli._logger.error(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -426,6 +436,48 @@ export class Message {
             msg = AggregateMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             msg.result = await Config.db.aggregate(msg.aggregates, msg.collectionname, msg.jwt);
+        } catch (error) {
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) msg.error = error.toString();
+            cli._logger.error(error);
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            cli._logger.error(error);
+        }
+        this.Send(cli);
+    }
+    private async UnWatch(cli: WebSocketServerClient): Promise<void> {
+        this.Reply();
+        var msg: WatchMessage
+        try {
+            msg = WatchMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            await cli.UnWatch(msg.id, msg.jwt);
+            msg.result = null;
+        } catch (error) {
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) msg.error = error.toString();
+            cli._logger.error(error);
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            cli._logger.error(error);
+        }
+        this.Send(cli);
+    }
+    private async Watch(cli: WebSocketServerClient): Promise<void> {
+        this.Reply();
+        var msg: WatchMessage
+        try {
+            msg = WatchMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            msg.id = await cli.Watch(msg.aggregates, msg.collectionname, msg.jwt);
+            msg.result = null;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.toString();
@@ -720,7 +772,7 @@ export class Message {
                     user.device = msg.device;
                 }
                 if (msg.validate_only !== true) {
-                    cli._logger.debug(tuser.username + " signed in using " + type);
+                    cli._logger.debug(tuser.username + " signed in using " + type + " " + cli.id + "/" + cli.clientagent);
                     cli.jwt = msg.jwt;
                     cli.user = user;
                 } else {

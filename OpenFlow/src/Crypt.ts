@@ -80,6 +80,9 @@ export class Crypt {
         return token;
     }
     static verityToken(token: string): TokenUser {
+        if (NoderedUtil.IsNullEmpty(token)) {
+            throw new Error('jwt must be provided');
+        }
         var o: any = jsonwebtoken.verify(token, Crypt.encryption_key);
         o.data = TokenUser.assign(o.data);
         return o.data;

@@ -4,7 +4,8 @@ import { SocketMessage } from "./SocketMessage";
 import { Message, JSONfn } from "./Messages/Message";
 import { Config } from "./Config";
 import { amqpwrapper, QueueMessageOptions, amqpqueue } from "./amqpwrapper";
-import { NoderedUtil, Base, InsertOneMessage, QueueMessage, MapReduceMessage, QueryMessage, UpdateOneMessage, UpdateManyMessage, DeleteOneMessage, User, mapFunc, reduceFunc, finalizeFunc, QueuedMessage, QueuedMessageCallback } from "openflow-api";
+import { NoderedUtil, Base, InsertOneMessage, QueueMessage, MapReduceMessage, QueryMessage, UpdateOneMessage, UpdateManyMessage, DeleteOneMessage, User, mapFunc, reduceFunc, finalizeFunc, QueuedMessage, QueuedMessageCallback, WatchEventMessage } from "openflow-api";
+import { ChangeStream } from "mongodb";
 // import { Mutex } from "./Mutex";
 
 interface IHashTable<T> {
@@ -39,6 +40,11 @@ const Semaphore = (n) => ({
 });
 const semaphore = Semaphore(1);
 
+export class clsstream {
+    public stream: ChangeStream;
+    public id: string;
+    public callback: any;
+}
 
 export class WebSocketServerClient {
     public jwt: string;
@@ -91,13 +97,14 @@ export class WebSocketServerClient {
         socketObject.on("close", (e: CloseEvent): void => this.close(e));
     }
     private open(e: Event): void {
-        this._logger.info("WebSocket connection opened " + e);
+        this._logger.info("WebSocket connection opened " + e + " " + this.id);
     }
     private close(e: CloseEvent): void {
-        this._logger.info("WebSocket connection closed " + e);
+        this._logger.info("WebSocket connection closed " + e + " " + this.id + "/" + this.clientagent);
+        this.Close();
     }
     private error(e: Event): void {
-        this._logger.error("WebSocket error encountered " + e);
+        this._logger.error("WebSocket error encountered " + e + " " + this.id + "/" + this.clientagent);
     }
     public queuecount(): number {
         if (this._queues == null) return 0;
@@ -119,6 +126,9 @@ export class WebSocketServerClient {
             let msg: SocketMessage = SocketMessage.fromcommand("ping");
             if (this._socketObject == null) {
                 if (this.queuecount() > 0) {
+                    this.CloseConsumers();
+                }
+                if (this.streamcount() > 0) {
                     this.CloseConsumers();
                 }
                 return;
@@ -172,6 +182,7 @@ export class WebSocketServerClient {
     }
     public async Close(): Promise<void> {
         await this.CloseConsumers();
+        await this.CloseStreams();
         if (this._socketObject != null) {
             try {
                 this._socketObject.removeListener("open", (e: Event): void => this.open(e));
@@ -423,6 +434,70 @@ export class WebSocketServerClient {
         var msg: Message = new Message(); msg.command = "deleteone"; msg.data = JSON.stringify(q);
         q = await this.Send<DeleteOneMessage>(msg);
     }
+    streams: clsstream[] = [];
+    public streamcount(): number {
+        if (this.streams == null) return 0;
+        return this.streams.length;
+    }
+    async CloseStreams(): Promise<void> {
+        if (this.streams != null && this.streams.length > 0) {
+            for (var i = this.streams.length - 1; i >= 0; i--) {
+                try {
+                    if (this.streams[i] != null && this.streams[i].stream != null && !this.streams[i].stream.isClosed()) {
+                        await this.streams[i].stream.close();
+                    }
+                    this.streams.splice(i, 1);
+                } catch (error) {
+                    this._logger.error("WebSocketclient::CloseStreams " + error + " " + this.id + "/" + this.clientagent);
+                }
+            }
+        }
+    }
+    async CloseStream(id: string): Promise<void> {
+        if (this.streams != null && this.streams.length > 0) {
+            for (var i = this.streams.length - 1; i >= 0; i--) {
+                try {
+                    if (this.streams[i] != null && this.streams[i].id == id) {
+                        if (!this.streams[i].stream.isClosed()) await this.streams[i].stream.close();
+                        this.streams.splice(i, 1);
+                    }
+                } catch (error) {
+                    this._logger.error("WebSocketclient::CloseStream " + error + " " + this.id + "/" + this.clientagent);
+                }
+            }
+        }
+    }
+    async UnWatch(id: string, jwt: string): Promise<void> {
+        this.CloseStream(id);
+    }
+    async Watch(aggregates: object[], collectionname: string, jwt: string): Promise<string> {
+        var stream: clsstream = new clsstream();
+        stream.id = Math.random().toString(36).substr(2, 9);
+        stream.stream = await Config.db.watch(aggregates, collectionname, jwt);
+        this.streams.push(stream);
 
+        const options = { fullDocument: "updateLookup" };
+        const me = this;
+        try {
+            (stream.stream as any).on("change", next => {
+                try {
+                    // me._logger.info(JSON.stringify(next, null, 4));
+                    me._logger.info("Watch: " + JSON.stringify(next.documentKey));
+                    const msg: SocketMessage = SocketMessage.fromcommand("watchevent");
+                    var q = new WatchEventMessage();
+                    q.id = stream.id;
+                    q.result = next;
+                    msg.data = JSON.stringify(q);
+                    me._socketObject.send(msg.tojson());
+                } catch (error) {
+                    this._logger.error("WebSocketclient::Watch::changeListener " + error + " " + this.id + "/" + this.clientagent);
+                }
+            }, options);
+            return stream.id;
+        } catch (error) {
+            this._logger.error("WebSocketclient::Watch " + error + " " + this.id + "/" + this.clientagent);
+            throw error;
+        }
+    }
 
 }

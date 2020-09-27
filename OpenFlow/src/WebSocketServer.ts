@@ -73,7 +73,7 @@ export class WebSocketServer {
                 cli.Close();
             }
             cli.ping();
-            if (!cli.connected() && cli.queuecount() == 0) {
+            if (!cli.connected() && cli.queuecount() == 0 && cli.streamcount() == 0) {
                 if (cli.user != null) {
                     WebSocketServer._logger.info("removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent);
                 } else {

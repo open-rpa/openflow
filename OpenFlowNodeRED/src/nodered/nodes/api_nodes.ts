@@ -967,3 +967,73 @@ export class api_aggregate {
     onclose() {
     }
 }
+
+
+export interface Iapi_watch {
+    collection: string;
+    aggregates: object[];
+}
+export class api_watch {
+    public node: Red = null;
+    public watchid: string = "";
+    constructor(public config: Iapi_watch) {
+        RED.nodes.createNode(this, config);
+        this.node = this;
+        this.node.status({});
+        this.node.on("input", this.oninput);
+        this.node.on("close", this.onclose);
+
+        WebSocketClient.instance.events.on("onsignedin", () => {
+            this.init();
+        });
+        WebSocketClient.instance.events.on("onclose", (message) => {
+            if (message == null) message = "";
+            this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
+            this.onclose(false, null);
+        });
+        this.init();
+    }
+    async init() {
+        this.node.status({ fill: "blue", shape: "dot", text: "Setting up watch" });
+        this.watchid = await NoderedUtil.Watch(this.config.collection, this.config.aggregates, null, this.onevent.bind(this))
+        this.node.status({ fill: "green", shape: "dot", text: "watchid " + this.watchid });
+    }
+    onevent(event: any) {
+        event.payload = event.fullDocument;
+        delete event.fullDocument;
+        this.node.send(event);
+    }
+    async oninput(msg: any) {
+        try {
+            this.node.status({});
+            // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
+
+            var collection = this.config.collection;
+            var aggregates = this.config.aggregates;
+
+            if (!NoderedUtil.IsNullEmpty(msg.collection)) { collection = msg.collection; }
+            if (!NoderedUtil.IsNullEmpty(msg.aggregates)) { aggregates = msg.aggregates; }
+
+            this.node.status({ fill: "blue", shape: "dot", text: "Running aggregate" });
+            var result = await NoderedUtil.Aggregate(collection, aggregates, msg.jwt);
+            msg.payload = result;
+            this.node.send(msg);
+            this.node.status({});
+        } catch (error) {
+            NoderedUtil.HandleError(this, error);
+        }
+    }
+    async onclose(removed: boolean, done: any) {
+        try {
+            this.node.status({ text: "Closing . . ." });
+            if (!NoderedUtil.IsNullEmpty(this.watchid)) {
+                await NoderedUtil.UnWatch(this.watchid, null);
+            }
+        } catch (error) {
+            NoderedUtil.HandleError(this, error);
+        }
+        this.watchid = null;
+        this.node.status({ text: "Not watching" });
+        if (done != null) done();
+    }
+}

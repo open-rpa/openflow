@@ -84,6 +84,7 @@ export class Config {
         Config.nodered_initial_liveness_delay = parseInt(Config.getEnv("nodered_initial_liveness_delay", "60"));
     }
     public static db: DatabaseConnection = null;
+    public static license_key: string = Config.getEnv("license_key", "");
     public static version: string = Config.getversion();
     public static logpath: string = Config.getEnv("logpath", __dirname);
     public static log_queries: boolean = Config.parseBoolean(Config.getEnv("log_queries", "false"));
