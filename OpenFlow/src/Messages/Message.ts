@@ -2041,16 +2041,17 @@ export class Message {
             }
             var newmemory: string = "";
             if (customer != null && billing != null && customer.subscriptions != null && customer.subscriptions.total_count > 0) {
-                for (var i = 0; i < customer.subscriptions.data.length; i++) {
-                    var sub = customer.subscriptions.data[i];
-                    for (var y = 0; y < sub.items.data.length; y++) {
-                        var subitem = sub.items.data[y];
-                        if (subitem.plan != null && subitem.plan.metadata != null && subitem.plan.metadata.memory != null) {
-                            newmemory = subitem.plan.metadata.memory;
-                        }
+                if (customer.subscriptions != null && customer.subscriptions.data != null)
+                    for (var i = 0; i < customer.subscriptions.data.length; i++) {
+                        var sub = customer.subscriptions.data[i];
+                        for (var y = 0; y < sub.items.data.length; y++) {
+                            var subitem = sub.items.data[y];
+                            if (subitem.plan != null && subitem.plan.metadata != null && subitem.plan.metadata.memory != null) {
+                                newmemory = subitem.plan.metadata.memory;
+                            }
 
+                        }
                     }
-                }
             }
             if (billing.memory != newmemory) {
                 billing.memory = newmemory;
@@ -2090,21 +2091,21 @@ export class Message {
                 var openflowuserplan: string = "";
                 var supportplan: string = "";
                 var supporthourplan: string = "";
-
-                customer.subscriptions.data.filter(s => {
-                    s.items.data.filter(y => {
-                        if (y.plan.metadata.supporthourplan == "true") {
-                            supporthourplan = y.id;
-                        }
-                        if (y.plan.metadata.supportplan == "true") {
-                            supportplan = y.id;
-                        }
-                        if (y.plan.metadata.openflowuser == "true") {
-                            openflowuserplan = y.id;
-                        }
+                if (customer.subscriptions != null && customer.subscriptions.data != null)
+                    customer.subscriptions.data.filter(s => {
+                        s.items.data.filter(y => {
+                            if (y.plan.metadata.supporthourplan == "true") {
+                                supporthourplan = y.id;
+                            }
+                            if (y.plan.metadata.supportplan == "true") {
+                                supportplan = y.id;
+                            }
+                            if (y.plan.metadata.openflowuser == "true") {
+                                openflowuserplan = y.id;
+                            }
+                        });
+                        return false;
                     });
-                    return false;
-                });
                 if (billing.openflowuserplan != openflowuserplan || billing.supportplan != supportplan || billing.supporthourplan != supporthourplan) {
                     billing.openflowuserplan = openflowuserplan;
                     billing.supportplan = supportplan;

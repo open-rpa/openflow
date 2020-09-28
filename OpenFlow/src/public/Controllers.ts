@@ -3221,6 +3221,10 @@ export class PaymentCtrl extends entityCtrl<Billing> {
                         this.allowopenflowsignup = true;
                         this.allowsupportsignup = true;
                     }
+                    if (this.stripe_customer.tax_ids.data[0].verification.status == "unavailable") {
+                        this.allowopenflowsignup = true;
+                        this.allowsupportsignup = true;
+                    }
                 } else {
                     this.allowopenflowsignup = true;
                     this.allowsupportsignup = true;
