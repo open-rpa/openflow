@@ -193,6 +193,8 @@ export class OAuthProvider {
         var role = "Viewer";
         user = TokenUser.From(user);
         if (user.HasRoleName("admins")) role = "Admin";
+        if (user.HasRoleName("grafana editors")) role = "Editor";
+        if (user.HasRoleName("grafana admins")) role = "Admin";
         var result = {
             code: code,
             client: this.clients[0],

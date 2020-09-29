@@ -434,15 +434,17 @@ export class DatabaseConnection {
             });
         }
 
-        aggregates = JSON.parse(json, (key, value) => {
-            if (typeof value === 'string' && value.match(isoDatePattern)) {
-                return new Date(value); // isostring, so cast to js date
-            } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") == 0) {
-                var m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
-                return new RegExp(m[1], m[2] || "");
-            } else
-                return value; // leave any other value as-is
-        });
+        if (!NoderedUtil.IsNullEmpty(json)) {
+            aggregates = JSON.parse(json, (key, value) => {
+                if (typeof value === 'string' && value.match(isoDatePattern)) {
+                    return new Date(value); // isostring, so cast to js date
+                } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") == 0) {
+                    var m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
+                    return new RegExp(m[1], m[2] || "");
+                } else
+                    return value; // leave any other value as-is
+            });
+        } else { aggregates = null; }
 
         // TODO: Should we filter on rights other than read ? should a person with reade be allowed to know when it was updated ?
         // a person with read, would beablt to know anyway, so guess read should be enough for now ... 
