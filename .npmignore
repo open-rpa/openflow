@@ -1,5 +1,7 @@
 .github
 .vscode
+.npmrc
+.cache
 config
 docs
 node_modules

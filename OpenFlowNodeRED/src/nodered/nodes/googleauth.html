@@ -178,6 +178,14 @@
         </select>
     </div>
     <div class="form-row">
+        <label><i class="fa fa-tag"></i> Ignore TLS error</label>
+        <input type="checkbox" id="node-input-ignoretls" style="width: auto;">
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-tag"></i> Send as json</label>
+        <input type="checkbox" id="node-input-asjson" style="width: auto;">
+    </div>
+    <div class="form-row">
         <label for="node-input-url"><i class="fa fa-tag"></i> URL</label>
         <input type="text" id="node-input-url" placeholder="https://www.googleapis.com/youtube/v3/videos">
     </div>
@@ -223,7 +231,9 @@
         paletteLabel: 'request',
         icon: "font-awesome/fa-globe",
         defaults: {
-            config: { value: "", type: "googleauth credentials", required: true },
+            config: { value: "", type: "googleauth credentials", required: false },
+            ignoretls: { value: "false" },
+            asjson: { value: "true" },
             method: { value: "" },
             url: { value: "" },
             name: { value: "" }

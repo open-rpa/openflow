@@ -73,7 +73,7 @@ export class WebSocketServer {
                 cli.Close();
             }
             cli.ping();
-            if (!cli.connected() && cli.queuecount() == 0) {
+            if (!cli.connected() && cli.queuecount() == 0 && cli.streamcount() == 0) {
                 if (cli.user != null) {
                     WebSocketServer._logger.info("removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent);
                 } else {
@@ -105,6 +105,12 @@ export class WebSocketServer {
                     if (cli.clientagent == "webapp" || cli.clientagent == "aiotwebapp") {
                         Config.db.db.collection("users").updateOne({ _id: cli.user._id },
                             { $set: { _webheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
+                                console.error(err);
+                            });
+                    }
+                    if (cli.clientagent == "powershell") {
+                        Config.db.db.collection("users").updateOne({ _id: cli.user._id },
+                            { $set: { _powershellheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
                                 console.error(err);
                             });
                     }

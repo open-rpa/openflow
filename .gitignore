@@ -4,3 +4,5 @@ logs
 dist
 config
 temp
+.cache
+.npmrc

@@ -1,6 +1,7 @@
 import * as RED from "node-red";
 import { Red } from "node-red";
 import { NoderedUtil } from "openflow-api";
+import { Config } from "../../Config";
 const { GoogleAuth, OAuth2Client } = require('google-auth-library');
 var fs = require("fs");
 // const request = require('request');
@@ -188,6 +189,8 @@ export interface Igoogleauth_request {
     method: string;
     url: string;
     name: string;
+    ignoretls: boolean;
+    asjson: boolean;
 }
 export class googleauth_request {
     public node: Red = null;
@@ -197,6 +200,8 @@ export class googleauth_request {
     public url: string = "";
     public auth: any = null;
     public Client: any = null;
+    public ignoretls: boolean;
+    public asjson: boolean;
     constructor(public config: Igoogleauth_request) {
         try {
             RED.nodes.createNode(this, config);
@@ -205,6 +210,18 @@ export class googleauth_request {
             this._config = RED.nodes.getNode(this.config.config);
             this.method = this.config.method;
             this.url = this.config.url;
+            if (this.config.ignoretls != null) {
+                this.ignoretls = Config.parseBoolean(this.config.ignoretls);
+            } else {
+                this.ignoretls = false;
+            }
+            if (this.config.asjson != null) {
+                this.asjson = Config.parseBoolean(this.config.asjson);
+            } else {
+                this.asjson = true;
+            }
+
+
             var cli = GetGoogleAuthClient(this._config);
             this.Client = cli.Client;
             this.auth = cli.auth;
@@ -229,7 +246,7 @@ export class googleauth_request {
             if (NoderedUtil.IsNullEmpty(this.url)) this.url = msg.url;
             if (NoderedUtil.IsNullEmpty(this.url)) throw new Error("url is mandaotry");
             var url = this.url;
-            if (this._config.authtype == "apikey" && !NoderedUtil.IsNullEmpty(this._config.apikey)) {
+            if (!NoderedUtil.IsNullUndefinded(this._config) && this._config.authtype == "apikey" && !NoderedUtil.IsNullEmpty(this._config.apikey)) {
                 if (url.indexOf("?") > -1) {
                     url = url + "&key=" + this._config.apikey;
                 } else {
@@ -239,7 +256,8 @@ export class googleauth_request {
             var options: any = {
                 method: this.method,
                 url,
-                data: msg.payload
+                data: msg.payload,
+                rejectUnauthorized: (!this.ignoretls)
                 // data: {
                 //     payload: msg.payload
                 // }
@@ -257,15 +275,17 @@ export class googleauth_request {
                 send(msg);
                 done();
             } else {
-                if (this._config.authtype == "username") {
+                if (!NoderedUtil.IsNullUndefinded(this._config) && this._config.authtype == "username") {
                     if (!NoderedUtil.IsNullEmpty(this._config.username)) {
                         options.headers = {};
                         options.headers["Authorization"] = "Basic " + new Buffer(this._config.username + ":" + this._config.password).toString("base64");
                     }
                 }
-                options.body = options.data;
-                options.json = true;
-                delete options.data;
+                if (this.asjson) {
+                    options.body = options.data;
+                    options.json = true;
+                    delete options.data;
+                }
                 request(options, (error, response, body) => {
                     if (error) {
                         NoderedUtil.HandleError(this, error);

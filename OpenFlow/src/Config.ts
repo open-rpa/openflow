@@ -37,6 +37,7 @@ export class Config {
         Config.tls_ca = Config.getEnv("tls_ca", "");
         Config.tls_passphrase = Config.getEnv("tls_passphrase", "");
 
+        Config.api_credential_cache_seconds = parseInt(Config.getEnv("api_credential_cache_seconds", "60000"));
 
         Config.client_heartbeat_timeout = parseInt(Config.getEnv("client_heartbeat_timeout", "60"));
 
@@ -83,6 +84,7 @@ export class Config {
         Config.nodered_initial_liveness_delay = parseInt(Config.getEnv("nodered_initial_liveness_delay", "60"));
     }
     public static db: DatabaseConnection = null;
+    public static license_key: string = Config.getEnv("license_key", "");
     public static version: string = Config.getversion();
     public static logpath: string = Config.getEnv("logpath", __dirname);
     public static log_queries: boolean = Config.parseBoolean(Config.getEnv("log_queries", "false"));
@@ -104,6 +106,7 @@ export class Config {
     public static tls_ca: string = Config.getEnv("tls_ca", "");
     public static tls_passphrase: string = Config.getEnv("tls_passphrase", "");
 
+    public static api_credential_cache_seconds: number = parseInt(Config.getEnv("api_credential_cache_seconds", "60000"));
 
     public static client_heartbeat_timeout: number = parseInt(Config.getEnv("client_heartbeat_timeout", "60"));
 

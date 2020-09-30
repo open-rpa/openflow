@@ -1330,3 +1330,116 @@ you can set filename using msg.filename<br>
 
     });
 </script>
+
+
+
+
+
+
+<script type="text/x-red" data-template-name="api watch">
+    <div class="form-row" style="margin-bottom: 0px;">
+        <label for="node-input-aggregates"><i class="fa fa-wrench"></i> Aggregates</label>
+        <input type="hidden" id="node-input-aggregates" autofocus="autofocus">
+        <input type="hidden" id="node-input-noerr-aggregates">
+    </div>
+    <div class="form-row node-text-editor-row" style="position:relative">
+        <div style="position: absolute; right:0; bottom:calc(100% + 3px);"><button id="node-function-expand-js-aggregates" class="editor-button editor-button-small"><i class="fa fa-expand"></i></button></div>
+        <div style="height: 100px; min-height:100px;" class="node-text-editor" id="node-input-aggregates-editor" ></div>
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-tag"></i> Collection</label>
+        <input type="text" id="node-input-collection" placeholder="Collection">
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>
+<script type="text/x-red" data-help-name="api watch">
+    <p>Watch a collection for inserts andupdates, can be filtered by aggregation pipeline (this must be prefix with fullDocument.
+        read more about the 
+        <a tagret="_blank" href="http://mongodb.github.io/node-mongodb-native/3.5/api//Collection.html#watch">
+            watch collection here</a> and the <a tagret="_blank" href="https://docs.mongodb.com/manual/reference/operator/aggregation-pipeline//">aggregation-pipeline</a>
+    </p>
+</script>
+<script type="text/javascript">
+    RED.nodes.registerType('api watch', {
+        category: 'api',
+        color: "#3FADB5",
+        paletteLabel: 'watch',
+        icon: "font-awesome/fa-bar-chart",
+        defaults: {
+            name: { value: "" },
+            aggregates: { value: '[{ "$match": { "fullDocument._type": "test" } }]' },
+            collection: { value: "entities" }
+        },
+        inputs: 0,
+        outputs: 1,
+        label: function () {
+            return this.name || "api watch";
+        },
+        labelStyle: function () {
+            return this.name ? "node_label_italic" : "";
+        },
+        oneditprepare: function () {
+            this.aggregateseditor = RED.editor.createEditor({
+                id: 'node-input-aggregates-editor',
+                mode: 'ace/mode/json',
+                value: $("#node-input-aggregates").val(),
+                globals: {
+                    msg: false,
+                    context: false,
+                    RED: false,
+                    util: false,
+                    flow: false,
+                    global: false,
+                    console: false,
+                    Buffer: false,
+                    setTimeout: false,
+                    clearTimeout: false,
+                    setInterval: false,
+                    clearInterval: false
+                }
+            });
+            var that = this;
+            $("#node-function-expand-js-aggregates").click(function (e) {
+                e.preventDefault();
+                var value = that.aggregateseditor.getValue();
+                RED.editor.editJavaScript({
+                    value: value,
+                    width: "Infinity",
+                    cursor: that.aggregateseditor.getCursorPosition(),
+                    mode: "ace/mode/json",
+                    complete: function (v, cursor) {
+                        that.aggregateseditor.setValue(v, -1);
+                        that.aggregateseditor.gotoLine(cursor.row + 1, cursor.column, false);
+                        setTimeout(function () {
+                            that.aggregateseditor.focus();
+                        }, 300);
+                    }
+                })
+            });
+
+        },
+        oneditcancel: function () {
+            this.aggregateseditor.destroy();
+            delete this.aggregateseditor;
+        },
+        oneditsave: function () {
+            annot = this.aggregateseditor.getSession().getAnnotations();
+            $("#node-input-noerr-aggregates").val(0);
+            for (var k = 0; k < annot.length; k++) {
+                if (annot[k].type === "error") {
+                    $("#node-input-noerr-aggregates").val(annot.length);
+                    this.noerr = annot.length;
+                }
+            }
+
+            $("#node-input-aggregates").val(this.aggregateseditor.getValue());
+            this.aggregateseditor.destroy();
+            delete this.aggregateseditor;
+        }
+
+    });
+
+</script>

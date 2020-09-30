@@ -1,5 +1,5 @@
 import {
-    ObjectID, Db, Binary, InsertOneWriteOpResult, DeleteWriteOpResultObject, ObjectId, MapReduceOptions, CollectionInsertOneOptions, UpdateWriteOpResult, WriteOpResult, GridFSBucket, ReadPreference
+    ObjectID, Db, Binary, InsertOneWriteOpResult, DeleteWriteOpResultObject, ObjectId, MapReduceOptions, CollectionInsertOneOptions, UpdateWriteOpResult, WriteOpResult, GridFSBucket, ReadPreference, ChangeStream
 } from "mongodb";
 import { MongoClient } from "mongodb";
 import winston = require("winston");
@@ -413,6 +413,52 @@ export class DatabaseConnection {
         var items: T[] = await this.db.collection(collectionname).aggregate(aggregates).toArray();
         DatabaseConnection.traversejsondecode(items);
         return items;
+    }
+    /**
+     * Do MongoDB watch
+     * @param  {any} aggregates
+     * @param  {string} collectionname
+     * @param  {string} jwt
+     * @returns Promise
+     */
+    async watch<T extends Base>(aggregates: object[], collectionname: string, jwt: string): Promise<ChangeStream> {
+        await this.connect();
+
+        var json: any = aggregates;
+        if (typeof json !== 'string' && !(json instanceof String)) {
+            json = JSON.stringify(json, (key, value) => {
+                if (value instanceof RegExp)
+                    return ("__REGEXP " + value.toString());
+                else
+                    return value;
+            });
+        }
+
+        if (!NoderedUtil.IsNullEmpty(json)) {
+            aggregates = JSON.parse(json, (key, value) => {
+                if (typeof value === 'string' && value.match(isoDatePattern)) {
+                    return new Date(value); // isostring, so cast to js date
+                } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") == 0) {
+                    var m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
+                    return new RegExp(m[1], m[2] || "");
+                } else
+                    return value; // leave any other value as-is
+            });
+        } else { aggregates = null; }
+
+        // TODO: Should we filter on rights other than read ? should a person with reade be allowed to know when it was updated ?
+        // a person with read, would beablt to know anyway, so guess read should be enough for now ... 
+        var base = this.getbasequery(jwt, "fullDocument._acl", [Rights.read]);
+        if (Array.isArray(aggregates)) {
+            aggregates.unshift({ $match: base });
+        } else {
+            if (NoderedUtil.IsNullUndefinded(aggregates)) {
+                aggregates = [{ $match: base }];
+            } else {
+                aggregates = [{ $match: base }, aggregates];
+            }
+        }
+        return await this.db.collection(collectionname).watch(aggregates);
     }
     /**
      * Do MongoDB map reduce
