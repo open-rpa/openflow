@@ -502,10 +502,10 @@ export class noderedcontribopenflowstorage {
             var npmrcFile: string = path.join(this.settings.userDir, ".npmrc");
             if (!NoderedUtil.IsNullUndefinded(npmrc) && !NoderedUtil.IsNullUndefinded(npmrc.content)) {
                 fs.writeFileSync(npmrcFile, npmrc.content);
-            } else if (fs.existsSync(npmrcFile)) {
-                npmrc = new noderednpmrc();
-                npmrc.content = fs.readFileSync(npmrcFile, "utf8");
-                await this._setnpmrc(npmrc);
+                // } else if (fs.existsSync(npmrcFile)) {
+                //     npmrc = new noderednpmrc();
+                //     npmrc.content = fs.readFileSync(npmrcFile, "utf8");
+                //     await this._setnpmrc(npmrc);
             }
             //}
         } catch (error) {
