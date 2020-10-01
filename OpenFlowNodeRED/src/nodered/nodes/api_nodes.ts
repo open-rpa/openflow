@@ -752,9 +752,15 @@ export class grant_permission {
             if (data.length === 0) { this.node.warn("input array is empty"); return; }
 
             for (var i = 0; i < data.length; i++) {
-                var entity: Base = Base.assign(data[i]);
-                entity.addRight(this.config.targetid, found.name, this.config.bits);
-                data[i] = entity;
+                if (NoderedUtil.IsNullEmpty(data[i]._type) && !NoderedUtil.IsNullUndefinded(data[i].metadata)) {
+                    var metadata: Base = Base.assign(data[i].metadata);
+                    metadata.addRight(this.config.targetid, found.name, this.config.bits);
+                    data[i].metadata = metadata;
+                } else {
+                    var entity: Base = Base.assign(data[i]);
+                    entity.addRight(this.config.targetid, found.name, this.config.bits);
+                    data[i] = entity;
+                }
             }
             NoderedUtil.saveToObject(msg, this.config.entities, data);
             this.node.send(msg);
@@ -807,13 +813,24 @@ export class revoke_permission {
             if (data.length === 0) { this.node.warn("input array is empty"); return; }
 
             for (var i = 0; i < data.length; i++) {
-                var entity: Base = Base.assign(data[i]);
-                if (this.config.bits.indexOf(-1) > -1) {
-                    entity._acl = entity._acl.filter((m: any) => { return m._id !== this.config.targetid; });
+
+                if (NoderedUtil.IsNullEmpty(data[i]._type) && !NoderedUtil.IsNullUndefinded(data[i].metadata)) {
+                    var metadata: Base = Base.assign(data[i].metadata);
+                    if (this.config.bits.indexOf(-1) > -1) {
+                        metadata._acl = metadata._acl.filter((m: any) => { return m._id !== this.config.targetid; });
+                    } else {
+                        metadata.removeRight(this.config.targetid, this.config.bits);
+                    }
+                    data[i].metadata = metadata;
                 } else {
-                    entity.removeRight(this.config.targetid, this.config.bits);
+                    var entity: Base = Base.assign(data[i]);
+                    if (this.config.bits.indexOf(-1) > -1) {
+                        entity._acl = entity._acl.filter((m: any) => { return m._id !== this.config.targetid; });
+                    } else {
+                        entity.removeRight(this.config.targetid, this.config.bits);
+                    }
+                    data[i] = entity;
                 }
-                data[i] = entity;
             }
             NoderedUtil.saveToObject(msg, this.config.entities, data);
             this.node.send(msg);
