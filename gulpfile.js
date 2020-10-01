@@ -45,6 +45,9 @@ gulp.task("browserify", function () {
 });
 
 gulp.task("compose", shell.task([
+    'echo "delete npmrc and cache"',
+    "del OpenFlowNodeRED\\dist\\nodered\\.npmrc",
+    'rmdir OpenFlowNodeRED\\dist\\.cache /s /q ',
     'gulp browserify',
     'gulp copyfiles1',
     'echo "compile OpenFlowNodeRED"',

@@ -17,13 +17,15 @@ const optionDefinitions = [
     { name: 'run', type: Boolean },
     { name: 'name', type: String, defaultOption: true },
     { name: 'config', type: String },
-    { name: 'inspect', type: String }
+    { name: 'inspect', type: String },
+    { name: 'networks', type: Boolean }
 ]
 const commandLineArgs = require('command-line-args');
 
 const path = require('path');
 const readlineSync = require('readline-sync');
 const envfile = require('envfile')
+const { networkInterfaces } = require('os');
 
 
 
@@ -31,6 +33,19 @@ var options = null;
 try {
     options = commandLineArgs(optionDefinitions);
     if (!options.init) {
+        if (options.networks) {
+            const nets = networkInterfaces();
+            for (const name of Object.keys(nets)) {
+                for (const net of nets[name]) {
+                    // skip over non-ipv4 and internal (i.e. 127.0.0.1) addresses
+                    if (net.family === 'IPv4' && !net.internal) {
+                        //console.log(name, net);
+                        console.log(name, net.address);
+                    }
+                }
+            }
+            process.exit();
+        }
         if (options.name == null || options.name == "") throw new Error("Name is mandatory");
         if (options.name.endsWith(".env")) options.name = options.name.substring(0, options.name.length - 4);
         (servicename as any) = options.name;

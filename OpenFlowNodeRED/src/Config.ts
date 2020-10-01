@@ -4,6 +4,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { fetch, toPassportConfig } from "passport-saml-metadata";
 import { NoderedUtil } from "openflow-api";
+const { networkInterfaces } = require('os');
 export class Config {
     public static getversion(): string {
         var versionfile: string = path.join(__dirname, "VERSION");
@@ -76,6 +77,7 @@ export class Config {
     public static port: number = parseInt(Config.getEnv("port", "1880"));
     public static nodered_port: number = parseInt(Config.getEnv("nodered_port", "0"));
     public static domain: string = Config.getEnv("domain", "localhost");
+    public static domain_use_ip_from_network: string = Config.getEnv("domain_use_ip_from_network", ""); // grab ip address from this adaptor and use for domain
     public static protocol: string = Config.getEnv("protocol", "http");
     public static nodered_domain_schema: string = Config.getEnv("nodered_domain_schema", "");
     public static noderedusers: string = Config.getEnv("noderedusers", "");
@@ -113,6 +115,20 @@ export class Config {
 
 
     public static baseurl(): string {
+        if (!NoderedUtil.IsNullEmpty(Config.domain_use_ip_from_network)) {
+            Config.domain_use_ip_from_network = Config.domain_use_ip_from_network.toLowerCase();
+            const nets = networkInterfaces();
+            for (const name of Object.keys(nets)) {
+                for (const net of nets[name]) {
+                    // skip over non-ipv4 and internal (i.e. 127.0.0.1) addresses
+                    if (net.family === 'IPv4' && !net.internal) {
+                        if (name.toLowerCase() == Config.domain_use_ip_from_network) {
+                            Config.domain = net.address;
+                        }
+                    }
+                }
+            }
+        }
         if (NoderedUtil.IsNullEmpty(Config.domain)) {
             if (Config.nodered_sa === null || Config.nodered_sa === undefined || Config.nodered_sa === "") {
                 var matches = Config.nodered_id.match(/\d+/);
