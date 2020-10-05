@@ -32,6 +32,7 @@ export class Config {
         Config.port = parseInt(Config.getEnv("port", "1880"));
         Config.nodered_port = parseInt(Config.getEnv("nodered_port", "0"));
         Config.domain = Config.getEnv("domain", "localhost");
+        Config.domain_use_ip_from_network = Config.getEnv("domain_use_ip_from_network", ""); // grab ip address from this adaptor and use for domain
         Config.protocol = Config.getEnv("protocol", "http");
         Config.nodered_domain_schema = Config.getEnv("nodered_domain_schema", "");
         Config.noderedusers = Config.getEnv("noderedusers", "");

@@ -3236,11 +3236,13 @@ export class PaymentCtrl extends entityCtrl<Billing> {
                 this.stripe_plans = (await NoderedUtil.Stripe("GET", "plans", null, null, null, null) as any);
                 for (var x = 0; x < this.stripe_plans.data.length; x++) {
                     var stripeplan = this.stripe_plans.data[x];
-                    if (stripeplan.metadata.openflowuser == "true") {
-                        this.openflowplans.push(stripeplan);
-                    }
-                    if (stripeplan.metadata.supportplan == "true") {
-                        this.supportplans.push(stripeplan);
+                    if ((stripeplan as any).active == true) {
+                        if (stripeplan.metadata.openflowuser == "true") {
+                            this.openflowplans.push(stripeplan);
+                        }
+                        if (stripeplan.metadata.supportplan == "true") {
+                            this.supportplans.push(stripeplan);
+                        }
                     }
                 }
                 for (var y = 0; y < this.supportplans.length; y++) {

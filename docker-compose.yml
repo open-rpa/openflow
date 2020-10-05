@@ -76,7 +76,7 @@ services:
       #      - noderedadmins=nodered1admins
 
       - api_ws_url=ws://web
-      - amqp_url=amqp://admin:demo2018@rabbitmq
+      # - amqp_url=amqp://admin:demo2018@rabbitmq
 
       - api_credential_cache_seconds=300
       - api_allow_anonymous=false
