@@ -1272,11 +1272,29 @@ export class RoleCtrl extends entityCtrl<Role> {
             {
                 $and: [
                     { $or: [{ _type: "user" }, { _type: "role" }] },
+                    { name: this.searchtext }
+                ]
+            }
+            , null, { _type: -1, name: 1 }, 1, 0, null);
+
+        this.searchFilteredList = this.searchFilteredList.concat(await NoderedUtil.Query("users",
+            {
+                $and: [
+                    { $or: [{ _type: "user" }, { _type: "role" }] },
                     { name: new RegExp([this.searchtext].join(""), "i") },
                     { _id: { $nin: ids } }
                 ]
             }
-            , null, { _type: -1, name: 1 }, 8, 0, null);
+            , null, { _type: -1, name: 1 }, 5, 0, null));
+        // this.searchFilteredList = await NoderedUtil.Query("users",
+        //     {
+        //         $and: [
+        //             { $or: [{ _type: "user" }, { _type: "role" }] },
+        //             { name: new RegExp([this.searchtext].join(""), "i") },
+        //             { _id: { $nin: ids } }
+        //         ]
+        //     }
+        //     , null, { _type: -1, name: 1 }, 8, 0, null);
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     fillTextbox(searchtext) {
@@ -2276,7 +2294,6 @@ export class EntityCtrl extends entityCtrl<Base> {
                 this.model._type = "test";
                 this.model.name = "new item";
                 this.model._encrypt = [];
-                this.model._acl = [];
                 this.keys = Object.keys(this.model);
                 for (var i: number = this.keys.length - 1; i >= 0; i--) {
                     if (this.keys[i].startsWith('_')) this.keys.splice(i, 1);
@@ -2542,11 +2559,20 @@ export class EntityCtrl extends entityCtrl<Base> {
             {
                 $and: [
                     { $or: [{ _type: "user" }, { _type: "role" }] },
+                    { name: this.searchtext }
+                ]
+            }
+            , null, { _type: -1, name: 1 }, 1, 0, null);
+
+        this.searchFilteredList = this.searchFilteredList.concat(await NoderedUtil.Query("users",
+            {
+                $and: [
+                    { $or: [{ _type: "user" }, { _type: "role" }] },
                     { name: new RegExp([this.searchtext].join(""), "i") },
                     { _id: { $nin: ids } }
                 ]
             }
-            , null, { _type: -1, name: 1 }, 5, 0, null);
+            , null, { _type: -1, name: 1 }, 5, 0, null));
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     fillTextbox(searchtext) {
@@ -3891,11 +3917,29 @@ export class CredentialCtrl extends entityCtrl<Base> {
             {
                 $and: [
                     { $or: [{ _type: "user" }, { _type: "role" }] },
+                    { name: this.searchtext }
+                ]
+            }
+            , null, { _type: -1, name: 1 }, 1, 0, null);
+
+        this.searchFilteredList = this.searchFilteredList.concat(await NoderedUtil.Query("users",
+            {
+                $and: [
+                    { $or: [{ _type: "user" }, { _type: "role" }] },
                     { name: new RegExp([this.searchtext].join(""), "i") },
                     { _id: { $nin: ids } }
                 ]
             }
-            , null, { _type: -1, name: 1 }, 5, 0, null);
+            , null, { _type: -1, name: 1 }, 5, 0, null));
+        // this.searchFilteredList = await NoderedUtil.Query("users",
+        //     {
+        //         $and: [
+        //             { $or: [{ _type: "user" }, { _type: "role" }] },
+        //             { name: new RegExp([this.searchtext].join(""), "i") },
+        //             { _id: { $nin: ids } }
+        //         ]
+        //     }
+        //     , null, { _type: -1, name: 1 }, 5, 0, null);
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     fillTextbox(searchtext) {
