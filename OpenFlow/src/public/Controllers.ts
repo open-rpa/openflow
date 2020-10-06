@@ -1275,7 +1275,7 @@ export class RoleCtrl extends entityCtrl<Role> {
                     { name: this.searchtext }
                 ]
             }
-            , null, { _type: -1, name: 1 }, 1, 0, null);
+            , null, { _type: -1, name: 1 }, 2, 0, null);
 
         this.searchFilteredList = this.searchFilteredList.concat(await NoderedUtil.Query("users",
             {
@@ -1480,30 +1480,35 @@ export class FilesCtrl extends entitiesCtrl<Base> {
         xhr.send(fd);
     }
     async Upload_usingapi() {
-        var filename = (this.$scope as any).filename;
-        var type = (this.$scope as any).type;
-        console.debug("filename: " + filename + " type: " + type);
-        this.loading = true;
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
-        var lastp: number = 0;
-        await NoderedUtil.SaveFile(filename, type, null, this.file, null);
-        // await NoderedUtil.SaveFile(filename, type, null, this.file, (msg, index, count) => {
-        //     var p: number = ((index + 1) / count * 100) | 0;
-        //     if (p > lastp || (index + 1) == count) {
-        //         console.debug(index + "/" + count + " " + p + "%");
-        //         lastp = p;
-        //     }
-        //     var elem = document.getElementById("myBar");
-        //     elem.style.width = p + '%';
-        //     elem.innerText = p + '%';
-        //     if (p == 100) {
-        //         elem.innerText = 'Processing ...';
-        //     }
-        // });
-        var elem = document.getElementById("myBar");
-        elem.style.width = '0%';
-        elem.innerText = '';
-        this.loading = false;
+        try {
+            var filename = (this.$scope as any).filename;
+            var type = (this.$scope as any).type;
+            console.debug("filename: " + filename + " type: " + type);
+            this.loading = true;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            var lastp: number = 0;
+            await NoderedUtil.SaveFile(filename, type, null, this.file, null);
+            // await NoderedUtil.SaveFile(filename, type, null, this.file, (msg, index, count) => {
+            //     var p: number = ((index + 1) / count * 100) | 0;
+            //     if (p > lastp || (index + 1) == count) {
+            //         console.debug(index + "/" + count + " " + p + "%");
+            //         lastp = p;
+            //     }
+            //     var elem = document.getElementById("myBar");
+            //     elem.style.width = p + '%';
+            //     elem.innerText = p + '%';
+            //     if (p == 100) {
+            //         elem.innerText = 'Processing ...';
+            //     }
+            // });
+            var elem = document.getElementById("myBar");
+            elem.style.width = '0%';
+            elem.innerText = '';
+            this.loading = false;
+
+        } catch (error) {
+            console.error(error);
+        }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         this.loadData();
     }
@@ -2562,7 +2567,7 @@ export class EntityCtrl extends entityCtrl<Base> {
                     { name: this.searchtext }
                 ]
             }
-            , null, { _type: -1, name: 1 }, 1, 0, null);
+            , null, { _type: -1, name: 1 }, 2, 0, null);
 
         this.searchFilteredList = this.searchFilteredList.concat(await NoderedUtil.Query("users",
             {
@@ -3920,7 +3925,7 @@ export class CredentialCtrl extends entityCtrl<Base> {
                     { name: this.searchtext }
                 ]
             }
-            , null, { _type: -1, name: 1 }, 1, 0, null);
+            , null, { _type: -1, name: 1 }, 2, 0, null);
 
         this.searchFilteredList = this.searchFilteredList.concat(await NoderedUtil.Query("users",
             {
