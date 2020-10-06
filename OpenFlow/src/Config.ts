@@ -26,6 +26,8 @@ export class Config {
         Config.stripe_api_key = Config.getEnv("stripe_api_key", "");
         Config.stripe_api_secret = Config.getEnv("stripe_api_secret", "");
 
+        Config.supports_watch = Config.parseBoolean(Config.getEnv("supports_watch", "false"));
+
         Config.auto_create_users = Config.parseBoolean(Config.getEnv("auto_create_users", "false"));
         Config.auto_create_domains = Config.parseArray(Config.getEnv("auto_create_domains", ""));
         Config.allow_user_registration = Config.parseBoolean(Config.getEnv("allow_user_registration", "false"));
@@ -94,6 +96,8 @@ export class Config {
 
     public static stripe_api_key: string = Config.getEnv("stripe_api_key", "");
     public static stripe_api_secret: string = Config.getEnv("stripe_api_secret", "");
+
+    public static supports_watch: boolean = Config.parseBoolean(Config.getEnv("supports_watch", "false"));
 
     public static auto_create_users: boolean = Config.parseBoolean(Config.getEnv("auto_create_users", "false"));
     public static auto_create_domains: string[] = Config.parseArray(Config.getEnv("auto_create_domains", ""));
