@@ -1272,11 +1272,29 @@ export class RoleCtrl extends entityCtrl<Role> {
             {
                 $and: [
                     { $or: [{ _type: "user" }, { _type: "role" }] },
+                    { name: this.searchtext }
+                ]
+            }
+            , null, { _type: -1, name: 1 }, 2, 0, null);
+
+        this.searchFilteredList = this.searchFilteredList.concat(await NoderedUtil.Query("users",
+            {
+                $and: [
+                    { $or: [{ _type: "user" }, { _type: "role" }] },
                     { name: new RegExp([this.searchtext].join(""), "i") },
                     { _id: { $nin: ids } }
                 ]
             }
-            , null, { _type: -1, name: 1 }, 8, 0, null);
+            , null, { _type: -1, name: 1 }, 5, 0, null));
+        // this.searchFilteredList = await NoderedUtil.Query("users",
+        //     {
+        //         $and: [
+        //             { $or: [{ _type: "user" }, { _type: "role" }] },
+        //             { name: new RegExp([this.searchtext].join(""), "i") },
+        //             { _id: { $nin: ids } }
+        //         ]
+        //     }
+        //     , null, { _type: -1, name: 1 }, 8, 0, null);
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     fillTextbox(searchtext) {
@@ -1462,30 +1480,35 @@ export class FilesCtrl extends entitiesCtrl<Base> {
         xhr.send(fd);
     }
     async Upload_usingapi() {
-        var filename = (this.$scope as any).filename;
-        var type = (this.$scope as any).type;
-        console.debug("filename: " + filename + " type: " + type);
-        this.loading = true;
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
-        var lastp: number = 0;
-        await NoderedUtil.SaveFile(filename, type, null, this.file, null);
-        // await NoderedUtil.SaveFile(filename, type, null, this.file, (msg, index, count) => {
-        //     var p: number = ((index + 1) / count * 100) | 0;
-        //     if (p > lastp || (index + 1) == count) {
-        //         console.debug(index + "/" + count + " " + p + "%");
-        //         lastp = p;
-        //     }
-        //     var elem = document.getElementById("myBar");
-        //     elem.style.width = p + '%';
-        //     elem.innerText = p + '%';
-        //     if (p == 100) {
-        //         elem.innerText = 'Processing ...';
-        //     }
-        // });
-        var elem = document.getElementById("myBar");
-        elem.style.width = '0%';
-        elem.innerText = '';
-        this.loading = false;
+        try {
+            var filename = (this.$scope as any).filename;
+            var type = (this.$scope as any).type;
+            console.debug("filename: " + filename + " type: " + type);
+            this.loading = true;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            var lastp: number = 0;
+            await NoderedUtil.SaveFile(filename, type, null, this.file, null);
+            // await NoderedUtil.SaveFile(filename, type, null, this.file, (msg, index, count) => {
+            //     var p: number = ((index + 1) / count * 100) | 0;
+            //     if (p > lastp || (index + 1) == count) {
+            //         console.debug(index + "/" + count + " " + p + "%");
+            //         lastp = p;
+            //     }
+            //     var elem = document.getElementById("myBar");
+            //     elem.style.width = p + '%';
+            //     elem.innerText = p + '%';
+            //     if (p == 100) {
+            //         elem.innerText = 'Processing ...';
+            //     }
+            // });
+            var elem = document.getElementById("myBar");
+            elem.style.width = '0%';
+            elem.innerText = '';
+            this.loading = false;
+
+        } catch (error) {
+            console.error(error);
+        }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         this.loadData();
     }
@@ -2276,7 +2299,6 @@ export class EntityCtrl extends entityCtrl<Base> {
                 this.model._type = "test";
                 this.model.name = "new item";
                 this.model._encrypt = [];
-                this.model._acl = [];
                 this.keys = Object.keys(this.model);
                 for (var i: number = this.keys.length - 1; i >= 0; i--) {
                     if (this.keys[i].startsWith('_')) this.keys.splice(i, 1);
@@ -2542,11 +2564,20 @@ export class EntityCtrl extends entityCtrl<Base> {
             {
                 $and: [
                     { $or: [{ _type: "user" }, { _type: "role" }] },
+                    { name: this.searchtext }
+                ]
+            }
+            , null, { _type: -1, name: 1 }, 2, 0, null);
+
+        this.searchFilteredList = this.searchFilteredList.concat(await NoderedUtil.Query("users",
+            {
+                $and: [
+                    { $or: [{ _type: "user" }, { _type: "role" }] },
                     { name: new RegExp([this.searchtext].join(""), "i") },
                     { _id: { $nin: ids } }
                 ]
             }
-            , null, { _type: -1, name: 1 }, 5, 0, null);
+            , null, { _type: -1, name: 1 }, 5, 0, null));
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     fillTextbox(searchtext) {
@@ -3236,11 +3267,13 @@ export class PaymentCtrl extends entityCtrl<Billing> {
                 this.stripe_plans = (await NoderedUtil.Stripe("GET", "plans", null, null, null, null) as any);
                 for (var x = 0; x < this.stripe_plans.data.length; x++) {
                     var stripeplan = this.stripe_plans.data[x];
-                    if (stripeplan.metadata.openflowuser == "true") {
-                        this.openflowplans.push(stripeplan);
-                    }
-                    if (stripeplan.metadata.supportplan == "true") {
-                        this.supportplans.push(stripeplan);
+                    if ((stripeplan as any).active == true) {
+                        if (stripeplan.metadata.openflowuser == "true") {
+                            this.openflowplans.push(stripeplan);
+                        }
+                        if (stripeplan.metadata.supportplan == "true") {
+                            this.supportplans.push(stripeplan);
+                        }
                     }
                 }
                 for (var y = 0; y < this.supportplans.length; y++) {
@@ -3889,11 +3922,29 @@ export class CredentialCtrl extends entityCtrl<Base> {
             {
                 $and: [
                     { $or: [{ _type: "user" }, { _type: "role" }] },
+                    { name: this.searchtext }
+                ]
+            }
+            , null, { _type: -1, name: 1 }, 2, 0, null);
+
+        this.searchFilteredList = this.searchFilteredList.concat(await NoderedUtil.Query("users",
+            {
+                $and: [
+                    { $or: [{ _type: "user" }, { _type: "role" }] },
                     { name: new RegExp([this.searchtext].join(""), "i") },
                     { _id: { $nin: ids } }
                 ]
             }
-            , null, { _type: -1, name: 1 }, 5, 0, null);
+            , null, { _type: -1, name: 1 }, 5, 0, null));
+        // this.searchFilteredList = await NoderedUtil.Query("users",
+        //     {
+        //         $and: [
+        //             { $or: [{ _type: "user" }, { _type: "role" }] },
+        //             { name: new RegExp([this.searchtext].join(""), "i") },
+        //             { _id: { $nin: ids } }
+        //         ]
+        //     }
+        //     , null, { _type: -1, name: 1 }, 5, 0, null);
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     fillTextbox(searchtext) {

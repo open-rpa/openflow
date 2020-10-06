@@ -19,7 +19,7 @@ import { Audit } from "./Audit";
 import * as saml from "saml20";
 var multer = require('multer');
 var GridFsStorage = require('multer-gridfs-storage');
-import { GridFSBucket, ObjectID, Db, Cursor } from "mongodb";
+import { GridFSBucket, ObjectID, Db, Cursor, Binary } from "mongodb";
 import { Base, User, NoderedUtil, TokenUser, WellknownIds, Rights, Role } from "openflow-api";
 import { DBHelper } from "./DBHelper";
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
@@ -377,6 +377,13 @@ export class LoginProvider {
                             fileInfo.metadata.addRight(user._id, user.name, [Rights.full_control]);
                             fileInfo.metadata.addRight(WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
                             fileInfo.metadata.addRight(WellknownIds.filestore_users, "filestore users", [Rights.read]);
+                            // Fix acl
+                            fileInfo.metadata._acl.forEach((a, index) => {
+                                if (typeof a.rights === "string") {
+                                    fileInfo.metadata._acl[index].rights = (new Binary(Buffer.from(a.rights, "base64"), 0) as any);
+                                }
+                            });
+
 
                             resolve(fileInfo);
                         });

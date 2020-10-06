@@ -455,7 +455,12 @@ export class Message {
         try {
             msg = WatchMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-            await cli.UnWatch(msg.id, msg.jwt);
+            if (Config.supports_watch) {
+                await cli.UnWatch(msg.id, msg.jwt);
+            } else {
+                msg.error = "Watch is not supported by this openflow";
+            }
+
             msg.result = null;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -476,7 +481,11 @@ export class Message {
         try {
             msg = WatchMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-            msg.id = await cli.Watch(msg.aggregates, msg.collectionname, msg.jwt);
+            if (Config.supports_watch) {
+                msg.id = await cli.Watch(msg.aggregates, msg.collectionname, msg.jwt);
+            } else {
+                msg.error = "Watch is not supported by this openflow";
+            }
             msg.result = null;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -781,6 +790,7 @@ export class Message {
                 if (msg.impersonate === undefined || msg.impersonate === null || msg.impersonate === "") {
                     user.lastseen = new Date(new Date().toISOString());
                 }
+                msg.supports_watch = Config.supports_watch;
                 user._lastclientagent = cli.clientagent;
                 user._lastclientversion = cli.clientversion;
                 if (cli.clientagent == "openrpa") {

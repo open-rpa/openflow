@@ -44,10 +44,16 @@ gulp.task("browserify", function () {
     return bfi;
 });
 
+gulp.task("clean", shell.task([
+    'echo "delete npmrc and cache"',
+    'if exist "OpenFlowNodeRED\\dist\\nodered\\.npmrc" del OpenFlowNodeRED\\dist\\nodered\\.npmrc',
+    'if exist "OpenFlowNodeRED\\dist\\.cache" rmdir OpenFlowNodeRED\\dist\\.cache /s /q '
+]));
+
 gulp.task("compose", shell.task([
     'echo "delete npmrc and cache"',
-    "del OpenFlowNodeRED\\dist\\nodered\\.npmrc",
-    'rmdir OpenFlowNodeRED\\dist\\.cache /s /q ',
+    'if exist "OpenFlowNodeRED\\dist\\nodered\\.npmrc" del OpenFlowNodeRED\\dist\\nodered\\.npmrc',
+    'if exist "OpenFlowNodeRED\\dist\\.cache" rmdir OpenFlowNodeRED\\dist\\.cache /s /q ',
     'gulp browserify',
     'gulp copyfiles1',
     'echo "compile OpenFlowNodeRED"',
