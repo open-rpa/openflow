@@ -455,7 +455,12 @@ export class Message {
         try {
             msg = WatchMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-            await cli.UnWatch(msg.id, msg.jwt);
+            if (Config.supports_watch) {
+                await cli.UnWatch(msg.id, msg.jwt);
+            } else {
+                msg.error = "Watch is not supported by this openflow";
+            }
+
             msg.result = null;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
