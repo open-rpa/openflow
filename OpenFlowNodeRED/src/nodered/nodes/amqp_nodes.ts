@@ -215,7 +215,12 @@ export class amqp_publisher_node {
             var data = msg.data;
             result.payload = data.payload;
             result.jwt = data.jwt;
-            this.node.send(result);
+            if (data.command == "timeout") {
+                result.error = "Message timed out, message was not picked up in a timely fashion";
+                this.node.send([null, result]);
+            } else {
+                this.node.send(result);
+            }
             ack();
         } catch (error) {
             NoderedUtil.HandleError(this, error);

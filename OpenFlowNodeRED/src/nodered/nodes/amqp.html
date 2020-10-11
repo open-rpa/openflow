@@ -61,6 +61,7 @@ Remember that your queue maybe get prefixed with your usename, if amqp_force_que
         },
         inputs: 0,
         outputs: 1,
+        outputLabels: ["completed", "error"],
         icon: "bridge.png",
         label: function () {
             return this.name || "amqp consumer";
@@ -111,7 +112,8 @@ Remember that your <b>consumer queue</b> maybe get prefixed with your usename, i
             config: { value: "", type: "amqp-connection", required: false }
         },
         inputs: 1,
-        outputs: 1,
+        outputs: 2,
+        outputLabels: ["completed", "error"],
         icon: "bridge.png",
         label: function () {
             return this.name || "amqp publisher";
