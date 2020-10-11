@@ -243,7 +243,12 @@ export class amqp_publisher_node {
             var expiration: number = Config.amqp_workflow_out_expiration;
             if (!NoderedUtil.IsNullEmpty(msg.expiration)) expiration = msg.expiration;
             this.node.status({ fill: "blue", shape: "dot", text: "Sending message ..." });
-            await NoderedUtil.QueueMessage(this.websocket(), queue, this.localqueue, data, null, expiration);
+            try {
+                await NoderedUtil.QueueMessage(this.websocket(), queue, this.localqueue, data, null, expiration);
+            } catch (error) {
+                data.error = error;
+                this.node.send([null, data]);
+            }
             // this.con.SendMessage(JSON.stringify(data), this.config.queue, null, true);
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
         } catch (error) {
