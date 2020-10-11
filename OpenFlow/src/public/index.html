@@ -46,6 +46,10 @@
           ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')">
           <a class="nav-link" href="#/Nodered"><span translate lib="web">nodered</span></a>
         </li>
+        <li class="nav-item" ng-show="menuctrl.WebSocketClientService.stripe_api_key != ''">
+          <a class="nav-link" href="#/Payment"><span translate lib="web">billing</span></a>
+        </li>
+
         <li class="nav-item dropdown" ng-show="menuctrl.hasrole('users') || menuctrl.hasrole('admins')">
           <a class="nav-link dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
             translate lib="web">admin</a>
@@ -66,9 +70,9 @@
             <a class="dropdown-item" href="#/Sockets" ng-show="menuctrl.hasrole('admins')"><span translate
                 lib="web">sockets</span></a>
 
-            <a class="dropdown-item" href="#/Payment"
+            <!-- <a class="dropdown-item" href="#/Payment"
               ng-show="menuctrl.WebSocketClientService.stripe_api_key != ''"><span translate
-                lib="web">billing</span></a>
+                lib="web">billing</span></a> -->
 
             <a class="dropdown-item" href>ver {{menuctrl.WebSocketClientService.version}}</a>
 
