@@ -54,11 +54,12 @@ export class amqpexchange {
 // tslint:disable-next-line: class-name
 export class amqpwrapper {
     private conn: amqplib.Connection;
-    private channel: amqplib.Channel; // channel: amqplib.ConfirmChannel;
+    private channel: amqplib.ConfirmChannel; // amqplib.Channel  channel: amqplib.ConfirmChannel;
+    // private confirmchannel: amqplib.ConfirmChannel; // channel: amqplib.ConfirmChannel;
     private _logger: winston.Logger;
     private connectionstring: string;
     public AssertExchangeOptions: any = { durable: false, confirm: true };
-    public AssertQueueOptions: any = {};
+    public AssertQueueOptions: amqplib.any = { durable: true };
     private activecalls: IHashTable<Deferred<string>> = {};
     // public queues: IHashTable<amqpqueue> = {};
     // private exchanges: IHashTable<amqpexchange> = {};
@@ -103,7 +104,11 @@ export class amqpwrapper {
                     }
                 });
             }
-            this.channel = await this.conn.createChannel();
+
+            this.channel = await this.conn.createConfirmChannel();
+
+            // this.channel = await this.conn.createChannel();
+            // this.confirmchannel = await this.conn.createConfirmChannel();
             // if (!NoderedUtil.IsNullEmpty(this.replyqueue)) {
             //     this.queues = this.queues.filter(x => x.consumerTag != this.replyqueue.consumerTag);
             // }
@@ -127,6 +132,13 @@ export class amqpwrapper {
                     this.timeout = setTimeout(this.connect.bind(this), 1000);
                 }
             });
+            this.channel.on('error', (error) => {
+                if (error.code != 404) {
+                    this._logger.error(JSON.stringify(error));
+                    console.log(error);
+                }
+            });
+
             // ROLLBACK
             // var keys = Object.keys(this.exchanges);
             // for (var i = 0; i < keys.length; i++) {
@@ -221,11 +233,6 @@ export class amqpwrapper {
 
             }
         }
-        // if (!await amqpwrapper.TestInstance().checkQueue(queue)) {
-        //     if (amqpwrapper.TestInstance().conn == null || amqpwrapper.TestInstance().channel == null) {
-        //         throw new Error("checkQueue failed for " + queue);
-        //     }
-        // }
         q = new amqpqueue();
         q.callback = callback;
         // q.QueueOptions = new Object((QueueOptions != null ? QueueOptions : this.AssertQueueOptions));
@@ -234,6 +241,7 @@ export class amqpwrapper {
         if (queue.startsWith("amq.")) queue = "";
         if (NoderedUtil.IsNullEmpty(queue)) q.QueueOptions.autoDelete = true;
         q.ok = await this.channel.assertQueue(queue, q.QueueOptions);
+
         q.queue = q.ok.queue;
         q.queuename = queuename;
         var consumeresult = await this.channel.consume(q.ok.queue, (msg) => {
@@ -294,6 +302,9 @@ export class amqpwrapper {
             //     }
             //     return;
             // }
+            if (msg == null) {
+                return;
+            }
 
             var correlationId: string = msg.properties.correlationId;
             var replyTo: string = msg.properties.replyTo;
@@ -360,7 +371,14 @@ export class amqpwrapper {
             if (!await this.checkQueue(queue)) {
                 throw new Error("No consumer listening at " + queue);
             }
-            this.channel.sendToQueue(queue, Buffer.from(data), options);
+            if (!this.channel.sendToQueue(queue, Buffer.from(data), options, (err, ok) => {
+                // console.log(err ? 'nacked' : 'acked');
+                // console.log(err);
+                // console.log(ok);
+
+            })) {
+                throw new Error("No consumer listening at " + queue);
+            }
         } else {
             this.channel.publish(exchange, "", Buffer.from(data), options);
         }
@@ -383,7 +401,14 @@ export class amqpwrapper {
             if (!await this.checkQueue(queue)) {
                 throw new Error("No consumer listening at " + queue);
             }
-            this.channel.sendToQueue(queue, Buffer.from(data), options);
+            if (!this.channel.sendToQueue(queue, Buffer.from(data), options, (err, ok) => {
+                // console.log(err ? 'nacked' : 'acked');
+                // console.log(err);
+                // console.log(ok);
+
+            })) {
+                throw new Error("No consumer listening at " + queue);
+            }
         } else {
             this.channel.publish(exchange, "", Buffer.from(data), options);
         }
@@ -406,7 +431,33 @@ export class amqpwrapper {
         q.protocol = 'http://';
         return q;
     }
+
+    // This will crash the channel, that does not seem scalable
     async checkQueue(queuename: string): Promise<boolean> {
+        if (Config.amqp_check_for_consumer) {
+            var test: AssertQueue = null;
+            try {
+                if (Config.amqp_check_for_consumer_count) {
+                    return this.checkQueueConsumerCount(queuename);
+                }
+                test = await amqpwrapper.getqueue(Config.amqp_url, '/', queuename);
+                if (test == null) {
+                    return false;
+                }
+
+                // var test: AssertQueue = await this.channel.assertQueue(this.queue, this.AssertQueueOptions);
+                // var test: AssertQueue = await this.channel.assertQueue(queuename, { passive: true });
+                // test = await this.channel.checkQueue(queuename);
+            } catch (error) {
+                test = null;
+            }
+            if (test == null || test.consumerCount == 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+    async checkQueueConsumerCount(queuename: string): Promise<boolean> {
         var result: boolean = false;
         try {
             result = await retry(async bail => {
@@ -420,9 +471,12 @@ export class amqpwrapper {
                     if (queue.consumer_details != null && queue.consumer_details.length > 0) {
                         // console.log(queue.consumer_details[0]);
                         hasConsumers = true;
+                    } else {
+                        hasConsumers = false;
                     }
                 }
                 if (hasConsumers == false) {
+                    hasConsumers = false;
                     throw new Error("No consumer listening at " + queuename);
                     // return bail();
                 }
@@ -513,6 +567,7 @@ export class amqpwrapper {
     }
 
 
+    // This will crash the channel, that does not seem scalable
     // async checkQueue(queue: string): Promise<boolean> {
     //     if (Config.amqp_check_for_consumer) {
     //         var q: amqpqueue = this.queues[queue];
