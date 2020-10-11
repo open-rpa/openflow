@@ -1,4 +1,3 @@
-import * as k8s from "@kubernetes/client-node";
 import { CoreV1Api, AppsV1Api, ExtensionsV1beta1Api, ExtensionsApi } from "@kubernetes/client-node";
 import { Config } from "./Config";
 
@@ -15,6 +14,8 @@ export class KubeUtil {
         return this._instance;
     }
     constructor() {
+        const k8s = require("@kubernetes/client-node");
+
         const kc = new k8s.KubeConfig();
         var success: boolean = false;
         try {
