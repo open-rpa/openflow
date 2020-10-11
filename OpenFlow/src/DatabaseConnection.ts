@@ -346,9 +346,9 @@ export class DatabaseConnection {
         //     _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
         // }
         if (projection != null) {
-            arr = await this.db.collection(collectionname).find(_query).project(projection).sort(mysort).limit(top).skip(skip).toArray();
+            arr = await this.db.collection(collectionname).find(_query).project(projection).sort(mysort as any).limit(top).skip(skip).toArray();
         } else {
-            arr = await this.db.collection(collectionname).find(_query).sort(mysort).limit(top).skip(skip).toArray();
+            arr = await this.db.collection(collectionname).find(_query).sort(mysort as any).limit(top).skip(skip).toArray();
         }
         for (var i: number = 0; i < arr.length; i++) { arr[i] = this.decryptentity(arr[i]); }
         DatabaseConnection.traversejsondecode(arr);

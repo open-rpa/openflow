@@ -230,7 +230,15 @@ export class chartset {
         '#949FB1', // grey
         '#4D5360'  // dark grey
     ];
-    colors: string[] = this.baseColors;
+    colors: string[] = [
+        '#97BBCD', // blue
+        '#DCDCDC', // light grey
+        '#F7464A', // red
+        '#46BFBD', // green
+        '#FDB45C', // yellow
+        '#949FB1', // grey
+        '#4D5360'  // dark grey
+    ];
     type: string = 'bar';
     heading: string = "";
     labels: string[] = [];
