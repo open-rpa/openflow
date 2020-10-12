@@ -307,6 +307,7 @@ export class workflow_out_node {
                 delete msgcopy.jwt;
                 delete msgcopy.user;
                 // Logger.instanse.info("Updating workflow instance with id " + msg._id + " (" + msg.name + " with state " + msg.state);
+                this.node.status({ fill: "blue", shape: "dot", text: "Updating workflow instance" });
                 var res2 = await NoderedUtil.UpdateOne("workflow_instances", null, msgcopy, 1, false, msg.jwt);
             }
         } catch (error) {
@@ -329,6 +330,7 @@ export class workflow_out_node {
                 // data.jwt = msg.jwt;
                 // ROLLBACK
                 // msg.amqpacknowledgment(true, JSON.stringify(data));
+                this.node.status({ fill: "blue", shape: "dot", text: "amqpacknowledgment" });
                 msg.amqpacknowledgment(true);
             }
         } catch (error) {
@@ -354,6 +356,7 @@ export class workflow_out_node {
                     expiration = msg.expiration;
                 }
                 var expiration = Config.amqp_workflow_out_expiration;
+                this.node.status({ fill: "blue", shape: "dot", text: "QueueMessage.1" });
                 var res = await NoderedUtil.QueueMessage(WebSocketClient.instance, msg.resultqueue, null, data, msg.correlationId, expiration);
                 // this.con.SendMessage(JSON.stringify(data), msg.resultqueue, msg.correlationId, false);
             }
@@ -382,6 +385,7 @@ export class workflow_out_node {
                 }
                 // ROLLBACK
                 // Don't wait for ack(), we don't care if the receiver is there, right ?
+                this.node.status({ fill: "blue", shape: "dot", text: "Queue message for " + msg._replyTo });
                 var result = await NoderedUtil.QueueMessage(WebSocketClient.instance, msg._replyTo, null, data, msg.correlationId, Config.amqp_workflow_out_expiration);
                 // console.log("Send reply data to " + msg._replyTo, data);
                 //this.con.SendMessage(JSON.stringify(data), msg._replyTo, msg._correlationId, false);

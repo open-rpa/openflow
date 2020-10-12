@@ -168,8 +168,26 @@ export class api_get {
             if (NoderedUtil.IsNullEmpty(this.config.projection)) { this.config.projection = null; }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Getting query" });
-            var result: any[] = await NoderedUtil.Query(this.config.collection, this.config.query,
-                this.config.projection, this.config.orderby, parseInt(this.config.top as any), parseInt(this.config.skip as any), msg.jwt)
+            var result: any[] = [], subresult: any[] = [];
+            var top: number = parseInt(this.config.top as any), take: number = top;
+            var skip: number = parseInt(this.config.skip as any);
+            var pageby: number = 250;
+            if (top > pageby) take = pageby;
+            do {
+                this.node.status({ fill: "blue", shape: "dot", text: "Getting " + skip + " " + (skip + pageby) });
+                if ((result.length + take) > top) {
+                    take = top - result.length;
+                }
+                subresult = await NoderedUtil.Query(this.config.collection, this.config.query, this.config.projection, this.config.orderby, take, skip, msg.jwt);
+                skip += take;
+                result = result.concat(subresult);
+                if (result.length > top) {
+                    result = result.splice(0, top);
+                }
+            } while (subresult.length == pageby && result.length < top);
+
+            // var result: any[] = await NoderedUtil.Query(this.config.collection, this.config.query,
+            //     this.config.projection, this.config.orderby, parseInt(this.config.top as any), parseInt(this.config.skip as any), msg.jwt)
             NoderedUtil.saveToObject(msg, this.config.resultfield, result);
             this.node.send(msg);
             this.node.status({});
@@ -377,16 +395,32 @@ export class api_addorupdate {
 
             if (data.length === 0) { this.node.warn("input array is empty"); return; }
 
-            this.node.status({ fill: "blue", shape: "dot", text: "Inserting/updating items" });
+            // this.node.status({ fill: "blue", shape: "dot", text: "Inserting/updating items" });
+            // var Promises: Promise<any>[] = [];
+            // for (var i: number = 0; i < data.length; i++) {
+            //     var element: any = data[i];
+            //     if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
+            //         element._type = this.config.entitytype;
+            //     }
+            //     Promises.push(NoderedUtil.InsertOrUpdateOne(this.config.collection, element, this.config.uniqeness, this.config.writeconcern, this.config.journal, msg.jwt));
+            // }
+            // data = await Promise.all(Promises.map(p => p.catch(e => e)));
+            this.node.status({ fill: "blue", shape: "dot", text: "processing ..." });
             var Promises: Promise<any>[] = [];
-            for (var i: number = 0; i < data.length; i++) {
-                var element: any = data[i];
-                if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
-                    element._type = this.config.entitytype;
+            var results: any[] = [];
+            for (var y: number = 0; y < data.length; y += 50) {
+                for (var i: number = y; i < (y + 50) && i < data.length; i++) {
+                    var element: any = data[i];
+                    if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
+                        element._type = this.config.entitytype;
+                    }
+                    Promises.push(NoderedUtil.InsertOrUpdateOne(this.config.collection, element, this.config.uniqeness, this.config.writeconcern, this.config.journal, msg.jwt));
                 }
-                Promises.push(NoderedUtil.InsertOrUpdateOne(this.config.collection, element, this.config.uniqeness, this.config.writeconcern, this.config.journal, msg.jwt));
+                this.node.status({ fill: "blue", shape: "dot", text: "processing " + y + " to " + (y + 49) });
+                var tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
+                results = results.concat(tempresults);
             }
-            data = await Promise.all(Promises.map(p => p.catch(e => e)));
+            data = results;
 
             var errors = data.filter(result => NoderedUtil.IsString(result) || (result instanceof Error));
             if (errors.length > 0) {

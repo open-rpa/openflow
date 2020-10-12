@@ -112,12 +112,29 @@ export class RPAWorkflowsCtrl extends entitiesCtrl<Base> {
         this.basequery = { _type: "workflow" };
         this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1, projectandname: 1 };
         this.postloadData = this.processdata;
+        if (this.userdata.data.RPAWorkflowsCtrl) {
+            this.basequery = this.userdata.data.RPAWorkflowsCtrl.basequery;
+            this.collection = this.userdata.data.RPAWorkflowsCtrl.collection;
+            this.baseprojection = this.userdata.data.RPAWorkflowsCtrl.baseprojection;
+            this.orderby = this.userdata.data.RPAWorkflowsCtrl.orderby;
+            this.searchstring = this.userdata.data.RPAWorkflowsCtrl.searchstring;
+            this.basequeryas = this.userdata.data.RPAWorkflowsCtrl.basequeryas;
+        }
         WebSocketClientService.onSignedin((user: TokenUser) => {
             this.loadData();
         });
     }
     processdata() {
         this.loading = true;
+        this.loading = false;
+        if (!this.userdata.data.RPAWorkflowsCtrl) this.userdata.data.RPAWorkflowsCtrl = {};
+        this.userdata.data.RPAWorkflowsCtrl.basequery = this.basequery;
+        this.userdata.data.RPAWorkflowsCtrl.collection = this.collection;
+        this.userdata.data.RPAWorkflowsCtrl.baseprojection = this.baseprojection;
+        this.userdata.data.RPAWorkflowsCtrl.orderby = this.orderby;
+        this.userdata.data.RPAWorkflowsCtrl.searchstring = this.searchstring;
+        this.userdata.data.RPAWorkflowsCtrl.basequeryas = this.basequeryas;
+        var chart: chartset = null;
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         this.dographs();
@@ -210,9 +227,29 @@ export class WorkflowsCtrl extends entitiesCtrl<Base> {
         this.collection = "workflow";
         this.basequery = { _type: "workflow", web: true };
         console.debug("WorkflowsCtrl");
+        this.postloadData = this.processData;
+        if (this.userdata.data.WorkflowsCtrl) {
+            this.basequery = this.userdata.data.WorkflowsCtrl.basequery;
+            this.collection = this.userdata.data.WorkflowsCtrl.collection;
+            this.baseprojection = this.userdata.data.WorkflowsCtrl.baseprojection;
+            this.orderby = this.userdata.data.WorkflowsCtrl.orderby;
+            this.searchstring = this.userdata.data.WorkflowsCtrl.searchstring;
+            this.basequeryas = this.userdata.data.WorkflowsCtrl.basequeryas;
+        }
         WebSocketClientService.onSignedin((user: TokenUser) => {
             this.loadData();
         });
+    }
+    async processData(): Promise<void> {
+        if (!this.userdata.data.WorkflowsCtrl) this.userdata.data.WorkflowsCtrl = {};
+        this.userdata.data.WorkflowsCtrl.basequery = this.basequery;
+        this.userdata.data.WorkflowsCtrl.collection = this.collection;
+        this.userdata.data.WorkflowsCtrl.baseprojection = this.baseprojection;
+        this.userdata.data.WorkflowsCtrl.orderby = this.orderby;
+        this.userdata.data.WorkflowsCtrl.searchstring = this.searchstring;
+        this.userdata.data.WorkflowsCtrl.basequeryas = this.basequeryas;
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 }
 export class chartset {
@@ -230,7 +267,15 @@ export class chartset {
         '#949FB1', // grey
         '#4D5360'  // dark grey
     ];
-    colors: string[] = this.baseColors;
+    colors: string[] = [
+        '#97BBCD', // blue
+        '#DCDCDC', // light grey
+        '#F7464A', // red
+        '#46BFBD', // green
+        '#FDB45C', // yellow
+        '#949FB1', // grey
+        '#4D5360'  // dark grey
+    ];
     type: string = 'bar';
     heading: string = "";
     labels: string[] = [];
@@ -992,7 +1037,6 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
         this.userdata.data.UsersCtrl.orderby = this.orderby;
         this.userdata.data.UsersCtrl.searchstring = this.searchstring;
         this.userdata.data.UsersCtrl.basequeryas = this.basequeryas;
-        var chart: chartset = null;
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
@@ -2632,11 +2676,16 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
         modal.modal()
         // var delta = jsondiffpatch.diff(this.model, model.item);
         if (model.item == null) {
-            var items = await NoderedUtil.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby, 100, 0, null);
-            if (items.length > 0) {
-                model.item = items[0].item;
-                model.delta = items[0].delta;
-            }
+            // var items = await NoderedUtil.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby, 100, 0, null);
+            // if (items.length > 0) {
+            //     model.item = items[0].item;
+            //     model.delta = items[0].delta;
+            // }
+            var item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null);
+            if (item != null) model.item = item;
+        }
+        if (model.item == null) {
+            document.getElementById('visual').innerHTML = "Failed loading item version " + model._version;
         }
         var keys = Object.keys(model.item);
         keys.forEach(key => {
@@ -2658,7 +2707,8 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
         }
         var modal: any = $("#exampleModal");
         modal.modal();
-        document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(model.delta, model.item);
+        // document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(model.delta, model.item);
+        document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(model.delta, {});
     }
     async RevertTo(model) {
         if (model.item == null) {
@@ -3684,7 +3734,6 @@ export class CredentialsCtrl extends entitiesCtrl<Base> {
         this.userdata.data.CredentialsCtrl.orderby = this.orderby;
         this.userdata.data.CredentialsCtrl.searchstring = this.searchstring;
         this.userdata.data.CredentialsCtrl.basequeryas = this.basequeryas;
-        var chart: chartset = null;
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
@@ -3936,6 +3985,7 @@ export class CredentialCtrl extends entityCtrl<Base> {
                 ]
             }
             , null, { _type: -1, name: 1 }, 5, 0, null));
+
         // this.searchFilteredList = await NoderedUtil.Query("users",
         //     {
         //         $and: [

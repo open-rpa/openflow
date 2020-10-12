@@ -10,6 +10,13 @@ import { DBHelper } from "./DBHelper";
 // tslint:disable-next-line: typedef
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 const isoDatePattern = new RegExp(/\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z)/);
+var jsondiffpatch = require('jsondiffpatch').create({
+    objectHash: function (obj, index) {
+        // try to find an id property, otherwise just use the index in the array
+        return obj.name || obj.id || obj._id || '$$index:' + index;
+    }
+});
+
 
 Object.defineProperty(Promise, 'retry', {
     configurable: true,
@@ -346,15 +353,43 @@ export class DatabaseConnection {
         //     _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
         // }
         if (projection != null) {
-            arr = await this.db.collection(collectionname).find(_query).project(projection).sort(mysort).limit(top).skip(skip).toArray();
+            arr = await this.db.collection(collectionname).find(_query).project(projection).sort(mysort as any).limit(top).skip(skip).toArray();
         } else {
-            arr = await this.db.collection(collectionname).find(_query).sort(mysort).limit(top).skip(skip).toArray();
+            arr = await this.db.collection(collectionname).find(_query).sort(mysort as any).limit(top).skip(skip).toArray();
         }
         for (var i: number = 0; i < arr.length; i++) { arr[i] = this.decryptentity(arr[i]); }
         DatabaseConnection.traversejsondecode(arr);
         if (Config.log_queries) this._logger.debug("[" + user.username + "][" + collectionname + "] query gave " + arr.length + " results ");
         return arr;
     }
+    async GetDocumentVersion<T extends Base>(collectionname: string, id: string, version: number, jwt: string): Promise<T> {
+        var roundDown = function (num, precision): number {
+            num = parseFloat(num);
+            if (!precision) return num;
+            return (Math.floor(num / precision) * precision);
+        };
+
+        var result: T = await this.getbyid<T>(id, collectionname, jwt);
+        if (result == null) return result;
+        if (result._version > version) {
+            var rootjwt = Crypt.rootToken()
+            // var baseversion = roundDown(version, Config.history_delta_count);
+            var basehist = await this.query<any>({ id: id, item: { $exists: true, $ne: null }, "_version": { $lte: version } }, null, 1, 0, { _version: -1 }, collectionname + "_hist", rootjwt);
+            result = basehist[0].item;
+            var baseversion = basehist[0]._version;
+
+            var history = await this.query<T>({ id: id, "_version": { $gt: baseversion, $lte: version } }, null, Config.history_delta_count, 0, { _version: 1 }, collectionname + "_hist", rootjwt);
+
+            for (var i = 0; i < history.length; i++) {
+                var delta = (history[i] as any).delta;
+                if (delta != null) {
+                    result = jsondiffpatch.patch(result, delta);
+                }
+            }
+        }
+        return result;
+    }
+
     /**
      * Get a single item based on id
      * @param  {string} id Id to search for
@@ -1435,6 +1470,11 @@ export class DatabaseConnection {
         }
     }
     async SaveDiff(collectionname: string, original: any, item: any) {
+        var roundDown = function (num, precision): number {
+            num = parseFloat(num);
+            if (!precision) return num;
+            return (Math.floor(num / precision) * precision);
+        };
         if (item._type == 'instance' && collectionname == 'workflows') return 0;
         if (item._type == 'instance' && collectionname == 'workflows') return 0;
         delete item._skiphistory;
@@ -1461,12 +1501,6 @@ export class DatabaseConnection {
                     _version = original._version + 1;
                 }
             }
-            var jsondiffpatch = require('jsondiffpatch').create({
-                objectHash: function (obj, index) {
-                    // try to find an id property, otherwise just use the index in the array
-                    return obj.name || obj.id || obj._id || '$$index:' + index;
-                }
-            });
             var delta: any = null;
             // for backward comp, we cannot assume all objects have an history
             // we create diff from version 0
@@ -1503,10 +1537,14 @@ export class DatabaseConnection {
                         _createdbyid: _modifiedbyid,
                         name: item.name,
                         id: item._id,
-                        item: original,
+                        item: undefined,
                         delta: delta,
                         _version: _version,
                         reason: reason
+                    }
+                    var baseversion = roundDown(_version, Config.history_delta_count);
+                    if (baseversion == _version) {
+                        deltahist.item = original;
                     }
                     await this.db.collection(collectionname + '_hist').insertOne(deltahist);
                 }
