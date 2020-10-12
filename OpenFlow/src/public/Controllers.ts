@@ -2676,11 +2676,16 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
         modal.modal()
         // var delta = jsondiffpatch.diff(this.model, model.item);
         if (model.item == null) {
-            var items = await NoderedUtil.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby, 100, 0, null);
-            if (items.length > 0) {
-                model.item = items[0].item;
-                model.delta = items[0].delta;
-            }
+            // var items = await NoderedUtil.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby, 100, 0, null);
+            // if (items.length > 0) {
+            //     model.item = items[0].item;
+            //     model.delta = items[0].delta;
+            // }
+            var item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null);
+            if (item != null) model.item = item;
+        }
+        if (model.item == null) {
+            document.getElementById('visual').innerHTML = "Failed loading item version " + model._version;
         }
         var keys = Object.keys(model.item);
         keys.forEach(key => {
@@ -2702,7 +2707,8 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
         }
         var modal: any = $("#exampleModal");
         modal.modal();
-        document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(model.delta, model.item);
+        // document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(model.delta, model.item);
+        document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(model.delta, {});
     }
     async RevertTo(model) {
         if (model.item == null) {
@@ -3979,6 +3985,7 @@ export class CredentialCtrl extends entityCtrl<Base> {
                 ]
             }
             , null, { _type: -1, name: 1 }, 5, 0, null));
+
         // this.searchFilteredList = await NoderedUtil.Query("users",
         //     {
         //         $and: [

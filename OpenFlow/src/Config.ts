@@ -68,6 +68,7 @@ export class Config {
         Config.mongodb_db = Config.getEnv("mongodb_db", "openflow");
 
         Config.skip_history_collections = Config.getEnv("skip_history_collections", "");
+        Config.history_delta_count = parseInt(Config.getEnv("history_delta_count", "1000"));
         Config.allow_skiphistory = Config.parseBoolean(Config.getEnv("allow_skiphistory", "true"));
 
         Config.saml_issuer = Config.getEnv("saml_issuer", "the-issuer"); // define uri of STS, also sent to personal nodereds
@@ -140,6 +141,7 @@ export class Config {
     public static mongodb_db: string = Config.getEnv("mongodb_db", "openflow");
 
     public static skip_history_collections: string = Config.getEnv("skip_history_collections", "");
+    public static history_delta_count = parseInt(Config.getEnv("history_delta_count", "1000"));
     public static allow_skiphistory: boolean = Config.parseBoolean(Config.getEnv("allow_skiphistory", "true"));
 
     public static saml_issuer: string = Config.getEnv("saml_issuer", "the-issuer"); // define uri of STS, also sent to personal nodereds
