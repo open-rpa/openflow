@@ -4,7 +4,7 @@ import * as crypto from "crypto";
 import winston = require("winston");
 import { nodered_settings } from "./nodered_settings";
 import { Config } from "./Config";
-import { WebSocketClient, NoderedUtil } from "openflow-api";
+import { WebSocketClient, NoderedUtil, Base } from "openflow-api";
 import * as nodered from "node-red";
 const fileCache = require('file-system-cache').default;
 const backupStore = fileCache({ basePath: path.join(Config.logpath, '.cache') });
@@ -188,7 +188,7 @@ export class noderedcontribopenflowstorage {
 
     private _flows: any[] = null;
     private _credentials: any[] = null;
-    private _settings: any[] = null;
+    private _settings: any = null;
     public async CheckUpdates() {
         try {
             let oldsettings: any[] = null;
@@ -231,14 +231,9 @@ export class noderedcontribopenflowstorage {
 
             let settings: any[] = await this.getSettings();
             if (oldsettings != null) {
-                if (settings.length != this._settings.length) {
+                if (this.DiffObjects(settings, oldsettings)) {
                     update = true;
                     donpm = true;
-                } else {
-                    if (this.DiffObjects(settings, oldsettings)) {
-                        update = true;
-                        donpm = true;
-                    }
                 }
             } else {
                 this._settings = settings;
@@ -255,7 +250,11 @@ export class noderedcontribopenflowstorage {
         } catch (error) {
             this._logger.error(error);
         }
-        setTimeout(this.CheckUpdates.bind(this), Config.flow_refresh_interval);
+        if (!WebSocketClient.instance.supports_watch) {
+            setTimeout(this.CheckUpdates.bind(this), Config.flow_refresh_interval);
+        }
+
+
     }
     public async init(settings: any): Promise<boolean> {
         this._logger.silly("noderedcontribopenflowstorage::init");
@@ -567,11 +566,176 @@ export class noderedcontribopenflowstorage {
             this._settings = settings;
             await backupStore.set(filename, JSON.stringify(settings));
         }
-        if (this.firstrun) {
-            setTimeout(this.CheckUpdates.bind(this), Config.flow_refresh_initial_interval);
-            this.firstrun = false;
+        try {
+            if (this.firstrun) {
+                if (WebSocketClient.instance.user != null) {
+                    if (WebSocketClient.instance.supports_watch) {
+                        await NoderedUtil.Watch("nodered", [{ "$match": { "fullDocument.nodered_id": Config.nodered_id } }], WebSocketClient.instance.jwt, this.onupdate.bind(this));
+                    } else {
+                        setTimeout(this.CheckUpdates.bind(this), Config.flow_refresh_initial_interval);
+                    }
+                    this.firstrun = false;
+                }
+                WebSocketClient.instance.events.on("onsignedin", async () => {
+                    try {
+                        this.firstrun = false;
+                        if (WebSocketClient.instance.supports_watch) {
+                            try {
+                                await this.CheckUpdates();
+                            } catch (error) {
+                                console.error(error);
+                            }
+                            await NoderedUtil.Watch("nodered", [{ "$match": { "fullDocument.nodered_id": Config.nodered_id } }], WebSocketClient.instance.jwt, this.onupdate.bind(this));
+                        } else {
+                            setTimeout(this.CheckUpdates.bind(this), Config.flow_refresh_initial_interval);
+                        }
+                    } catch (error) {
+                        console.error(error);
+                    }
+                });
+            }
+        } catch (error) {
+            console.error(error);
         }
         return settings;
+    }
+    public last_reload: Date = new Date();
+    public async onupdate(msg: any) {
+        let update: boolean = false;
+        let entity: Base = msg.fullDocument;
+
+        var begin: number = this.last_reload.getTime();
+        var end: number = new Date().getTime();
+        var seconds = Math.round((end - begin) / 1000);
+        if (seconds < 2) {
+            console.log("**************************************************");
+            console.log("* " + entity._type);
+            console.log("* Skip, less than 2 seconds since last update " + seconds);
+            console.log("**************************************************");
+            return;
+        }
+        if (entity._type == "flow") {
+            let oldflows: any[] = null;
+            if (this._flows != null) {
+                oldflows = JSON.parse(JSON.stringify(this._flows));
+                if (this.DiffObjects(entity, oldflows)) {
+                    update = true;
+                    this._flows = (entity as any).flows;
+                }
+            } else {
+                update = true;
+                this._flows = (entity as any).flows;
+            }
+        } else if (entity._type == "credential") {
+            let oldcredentials: any[] = null;
+            if (this._credentials != null) {
+                oldcredentials = JSON.parse(JSON.stringify(this._credentials));
+                if (this.DiffObjects(entity, oldcredentials)) {
+                    update = true;
+                }
+            } else {
+                update = true;
+            }
+        } else if (entity._type == "setting") {
+            try {
+                await this.RED.nodes.loadFlows(true);
+            } catch (error) {
+            }
+            let oldsettings: any = null;
+            if (this._settings != null) {
+                oldsettings = JSON.parse(JSON.stringify(this._settings));
+                let newsettings = (entity as any).settings;
+                newsettings = JSON.parse(newsettings);
+
+                var keys = Object.keys(oldsettings.nodes);
+                var modules = {};
+                for (var i = 0; i < keys.length; i++) {
+                    var key = keys[i];
+                    if (key != "node-red") {
+                        var val = oldsettings.nodes[key];
+                        try {
+                            if (newsettings.nodes[key] == null) {
+                                console.log("Remove module " + key + "@" + val.version);
+                                await this.RED.runtime.nodes.removeModule({ user: "admin", module: key, version: val.version });
+                            } else if (newsettings.nodes[key].version != oldsettings.nodes[key].version) {
+                                console.log("Install module " + key + "@" + newsettings.nodes[key].version + " up from " + oldsettings.nodes[key].version);
+                                await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: newsettings.nodes[key].version });
+                            }
+                        } catch (error) {
+                            console.error((error.message ? error.message : error));
+                        }
+                    }
+                }
+                var keys = Object.keys(newsettings.nodes);
+                for (var i = 0; i < keys.length; i++) {
+                    var key = keys[i];
+                    if (key != "node-red") {
+                        var val = newsettings.nodes[key];
+                        try {
+                            if (oldsettings.nodes[key] == null) {
+                                console.log("Install new module " + key + "@" + val.version);
+                                await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: val.version });
+                            } else if (newsettings.nodes[key].version != oldsettings.nodes[key].version) {
+                                console.log("Install module " + key + "@" + newsettings.nodes[key].version + " up from " + oldsettings.nodes[key].version);
+                                await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: val.version });
+                            }
+                        } catch (error) {
+                            console.error((error.message ? error.message : error));
+                        }
+                    }
+                }
+
+                if (this.DiffObjects(newsettings, oldsettings)) {
+                    update = true;
+                }
+            } else {
+                update = true;
+            }
+        } else {
+            console.log("**************************************************");
+            console.log("* Unknown type " + entity._type + " last updated " + seconds + " seconds ago");
+            console.log("**************************************************");
+
+        }
+        // if (donpm) {
+        //     this._settings = null;
+        //     this._settings = await this.getSettings();
+        // }
+        if (update) {
+            // this.RED.nodes.startFlows();
+            // this.RED.nodes.stopFlows();
+            // this.RED.runtime.addModule("")
+
+            // try {
+            //     await this.RED.nodes.addModule("test-module");
+            // } catch (error) {
+            //     console.error(error);
+            // }
+            // try {
+            //     var opts = {
+            //         user: "admin",
+            //         module: "node-red-contrib-rate",
+            //         version: "1.4.0"
+            //     }
+            //     await this.RED.runtime.nodes.addModule(opts);
+            // } catch (error) {
+            //     console.error(error);
+            // }
+            // try {
+            //     await this.RED.nodes.load();
+            // } catch (error) {
+            //     console.error(error);
+            // }
+
+
+
+            this.last_reload = new Date();
+            console.log("**************************************************");
+            console.log("* " + entity._type);
+            console.log("* loadFlows last updated " + seconds + " seconds ago");
+            console.log("**************************************************");
+            await this.RED.nodes.loadFlows(true);
+        }
     }
     public async _saveSettings(settings: any): Promise<void> {
         try {

@@ -479,6 +479,9 @@ export class WebSocketServerClient {
         const options = { fullDocument: "updateLookup" };
         const me = this;
         try {
+            (stream.stream as any).on("error", err => {
+                console.log(err);
+            });
             (stream.stream as any).on("change", next => {
                 try {
                     // me._logger.info(JSON.stringify(next, null, 4));
