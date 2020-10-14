@@ -76,6 +76,8 @@ export class amqp_consumer_node {
     public host: string = null;
     public localqueue: string = "";
     private connection: amqp_connection;
+    private _onsignedin: any = null;
+    private _onsocketclose: any = null;
     constructor(public config: Iamqp_consumer_node) {
         RED.nodes.createNode(this, config);
         try {
@@ -83,9 +85,13 @@ export class amqp_consumer_node {
             this.node.status({});
             this.node.on("close", this.onclose);
             this.connection = RED.nodes.getNode(this.config.config);
-            this.websocket().events.on("onsignedin", this.onsignedin.bind(this));
-            this.websocket().events.on("onclose", this.onsocketclose.bind(this));
-            this.connect();
+            this._onsignedin = this.onsignedin.bind(this);
+            this._onsocketclose = this.onsocketclose.bind(this);
+            this.websocket().events.on("onsignedin", this._onsignedin);
+            this.websocket().events.on("onclose", this._onsocketclose);
+            if (this.websocket().isConnected && this.websocket().user != null) {
+                this.connect();
+            }
         } catch (error) {
             NoderedUtil.HandleError(this, error);
         }
@@ -93,7 +99,7 @@ export class amqp_consumer_node {
     onsocketclose(message) {
         if (message == null) message = "";
         this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
-        this.onclose(false, null);
+        // this.onclose(false, null);
     }
     onsignedin() {
         this.connect();
@@ -140,6 +146,8 @@ export class amqp_consumer_node {
             NoderedUtil.CloseQueue(this.websocket(), this.localqueue);
             this.localqueue = "";
         }
+        this.websocket().events.removeListener("onsignedin", this._onsignedin);
+        this.websocket().events.removeListener("onclose", this._onsocketclose);
         if (done != null) done();
     }
 }
@@ -159,6 +167,8 @@ export class amqp_publisher_node {
     public host: string = null;
     public localqueue: string = "";
     private connection: amqp_connection;
+    private _onsignedin: any = null;
+    private _onsocketclose: any = null;
     constructor(public config: Iamqp_publisher_node) {
         RED.nodes.createNode(this, config);
         try {
@@ -168,9 +178,14 @@ export class amqp_publisher_node {
             this.node.on("close", this.onclose);
 
             this.connection = RED.nodes.getNode(this.config.config);
-            this.websocket().events.on("onsignedin", this.onsignedin.bind(this));
-            this.websocket().events.on("onclose", this.onsocketclose.bind(this));
-            this.connect();
+            this._onsignedin = this.onsignedin.bind(this);
+            this._onsocketclose = this.onsocketclose.bind(this);
+            this.websocket().events.on("onsignedin", this._onsignedin);
+            this.websocket().events.on("onclose", this._onsocketclose);
+
+            if (this.websocket().isConnected && this.websocket().user != null) {
+                this.connect();
+            }
         } catch (error) {
             NoderedUtil.HandleError(this, error);
         }
@@ -181,7 +196,7 @@ export class amqp_publisher_node {
     onsocketclose(message) {
         if (message == null) message = "";
         this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
-        this.onclose(false, null);
+        // this.onclose(false, null);
     }
     websocket(): WebSocketClient {
         if (this.connection != null) {
@@ -260,6 +275,9 @@ export class amqp_publisher_node {
             NoderedUtil.CloseQueue(this.websocket(), this.localqueue);
             this.localqueue = "";
         }
+        this.websocket().events.removeListener("onsignedin", this._onsignedin);
+        this.websocket().events.removeListener("onclose", this._onsocketclose);
+
         if (done != null) done();
     }
 }

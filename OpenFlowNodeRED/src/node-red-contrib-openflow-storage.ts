@@ -387,7 +387,9 @@ export class noderedcontribopenflowstorage {
             const filename: string = Config.nodered_id + "_flows.json";
             await backupStore.set(filename, JSON.stringify(flows));
             if (WebSocketClient.instance.isConnected()) {
+                this.last_reload = new Date();
                 var result = await NoderedUtil.Query("nodered", { _type: "flow", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                this.last_reload = new Date();
                 if (result.length === 0) {
                     var item: any = {
                         name: "flows for " + Config.nodered_id,
@@ -448,7 +450,9 @@ export class noderedcontribopenflowstorage {
             const filename: string = Config.nodered_id + "_credentials";
             await backupStore.set(filename, noderedcontribopenflowstorage.encrypt(JSON.stringify(credentials)));
             if (WebSocketClient.instance.isConnected()) {
+                this.last_reload = new Date();
                 var result = await NoderedUtil.Query("nodered", { _type: "credential", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                this.last_reload = new Date();
                 var credentialsarray = [];
                 var orgkeys = Object.keys(credentials);
                 for (var i = 0; i < orgkeys.length; i++) {
@@ -556,6 +560,7 @@ export class noderedcontribopenflowstorage {
                             if (error.stdout) this._logger.error("npm install stdout: " + error.stdout);
                         }
                     }
+                    this.last_reload = new Date();
                     this._logger.silly("noderedcontribopenflowstorage::_getSettings: return result");
                 } catch (error) {
                     if (error.message) { this._logger.error(error.message); }
@@ -583,23 +588,24 @@ export class noderedcontribopenflowstorage {
                             try {
                                 await this.CheckUpdates();
                             } catch (error) {
-                                console.error(error);
+                                this._logger.error(error);
                             }
                             await NoderedUtil.Watch("nodered", [{ "$match": { "fullDocument.nodered_id": Config.nodered_id } }], WebSocketClient.instance.jwt, this.onupdate.bind(this));
                         } else {
                             setTimeout(this.CheckUpdates.bind(this), Config.flow_refresh_initial_interval);
                         }
                     } catch (error) {
-                        console.error(error);
+                        this._logger.error(error);
                     }
                 });
             }
         } catch (error) {
-            console.error(error);
+            this._logger.error(error);
         }
         return settings;
     }
     public last_reload: Date = new Date();
+    public bussy: boolean = false;
     public async onupdate(msg: any) {
         let update: boolean = false;
         let entity: Base = msg.fullDocument;
@@ -607,11 +613,11 @@ export class noderedcontribopenflowstorage {
         var begin: number = this.last_reload.getTime();
         var end: number = new Date().getTime();
         var seconds = Math.round((end - begin) / 1000);
-        if (seconds < 2) {
-            console.log("**************************************************");
-            console.log("* " + entity._type);
-            console.log("* Skip, less than 2 seconds since last update " + seconds);
-            console.log("**************************************************");
+        if (seconds < 2 || this.bussy) {
+            this._logger.info("**************************************************");
+            this._logger.info("* " + entity._type);
+            this._logger.info("* Skip, less than 2 seconds since last update " + seconds + " or is bussy");
+            this._logger.info("**************************************************");
             return;
         }
         if (entity._type == "flow") {
@@ -643,97 +649,72 @@ export class noderedcontribopenflowstorage {
             }
             let oldsettings: any = null;
             if (this._settings != null) {
-                oldsettings = JSON.parse(JSON.stringify(this._settings));
-                let newsettings = (entity as any).settings;
-                newsettings = JSON.parse(newsettings);
+                this.bussy = true;
+                try {
+                    oldsettings = JSON.parse(JSON.stringify(this._settings));
+                    let newsettings = (entity as any).settings;
+                    newsettings = JSON.parse(newsettings);
 
-                var keys = Object.keys(oldsettings.nodes);
-                var modules = {};
-                for (var i = 0; i < keys.length; i++) {
-                    var key = keys[i];
-                    if (key != "node-red") {
-                        var val = oldsettings.nodes[key];
-                        try {
-                            if (newsettings.nodes[key] == null) {
-                                console.log("Remove module " + key + "@" + val.version);
-                                await this.RED.runtime.nodes.removeModule({ user: "admin", module: key, version: val.version });
-                            } else if (newsettings.nodes[key].version != oldsettings.nodes[key].version) {
-                                console.log("Install module " + key + "@" + newsettings.nodes[key].version + " up from " + oldsettings.nodes[key].version);
-                                await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: newsettings.nodes[key].version });
+                    var keys = Object.keys(oldsettings.nodes);
+                    var modules = {};
+                    for (var i = 0; i < keys.length; i++) {
+                        var key = keys[i];
+                        if (key != "node-red") {
+                            var val = oldsettings.nodes[key];
+                            try {
+                                if (newsettings.nodes[key] == null) {
+                                    this._logger.info("Remove module " + key + "@" + val.version);
+                                    await this.RED.runtime.nodes.removeModule({ user: "admin", module: key, version: val.version });
+                                } else if (newsettings.nodes[key].version != oldsettings.nodes[key].version) {
+                                    this._logger.info("Install module " + key + "@" + newsettings.nodes[key].version + " up from " + oldsettings.nodes[key].version);
+                                    await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: newsettings.nodes[key].version });
+                                }
+                            } catch (error) {
+                                this._logger.error((error.message ? error.message : error));
                             }
-                        } catch (error) {
-                            console.error((error.message ? error.message : error));
                         }
                     }
-                }
-                var keys = Object.keys(newsettings.nodes);
-                for (var i = 0; i < keys.length; i++) {
-                    var key = keys[i];
-                    if (key != "node-red") {
-                        var val = newsettings.nodes[key];
-                        try {
-                            if (oldsettings.nodes[key] == null) {
-                                console.log("Install new module " + key + "@" + val.version);
-                                await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: val.version });
-                            } else if (newsettings.nodes[key].version != oldsettings.nodes[key].version) {
-                                console.log("Install module " + key + "@" + newsettings.nodes[key].version + " up from " + oldsettings.nodes[key].version);
-                                await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: val.version });
+                    var keys = Object.keys(newsettings.nodes);
+                    for (var i = 0; i < keys.length; i++) {
+                        var key = keys[i];
+                        if (key != "node-red") {
+                            var val = newsettings.nodes[key];
+                            try {
+                                if (oldsettings.nodes[key] == null) {
+                                    this._logger.info("Install new module " + key + "@" + val.version);
+                                    await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: val.version });
+                                } else if (newsettings.nodes[key].version != oldsettings.nodes[key].version) {
+                                    this._logger.info("Install module " + key + "@" + newsettings.nodes[key].version + " up from " + oldsettings.nodes[key].version);
+                                    await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: val.version });
+                                }
+                            } catch (error) {
+                                this._logger.error((error.message ? error.message : error));
                             }
-                        } catch (error) {
-                            console.error((error.message ? error.message : error));
                         }
                     }
-                }
 
-                if (this.DiffObjects(newsettings, oldsettings)) {
+                    if (this.DiffObjects(newsettings, oldsettings)) {
+                        update = true;
+                    }
+                } catch (error) {
+                    this._logger.error(error);
                     update = true;
                 }
+                this.bussy = false;
             } else {
                 update = true;
             }
         } else {
-            console.log("**************************************************");
-            console.log("* Unknown type " + entity._type + " last updated " + seconds + " seconds ago");
-            console.log("**************************************************");
-
+            this._logger.info("**************************************************");
+            this._logger.info("* Unknown type " + entity._type + " last updated " + seconds + " seconds ago");
+            this._logger.info("**************************************************");
         }
-        // if (donpm) {
-        //     this._settings = null;
-        //     this._settings = await this.getSettings();
-        // }
         if (update) {
-            // this.RED.nodes.startFlows();
-            // this.RED.nodes.stopFlows();
-            // this.RED.runtime.addModule("")
-
-            // try {
-            //     await this.RED.nodes.addModule("test-module");
-            // } catch (error) {
-            //     console.error(error);
-            // }
-            // try {
-            //     var opts = {
-            //         user: "admin",
-            //         module: "node-red-contrib-rate",
-            //         version: "1.4.0"
-            //     }
-            //     await this.RED.runtime.nodes.addModule(opts);
-            // } catch (error) {
-            //     console.error(error);
-            // }
-            // try {
-            //     await this.RED.nodes.load();
-            // } catch (error) {
-            //     console.error(error);
-            // }
-
-
-
             this.last_reload = new Date();
-            console.log("**************************************************");
-            console.log("* " + entity._type);
-            console.log("* loadFlows last updated " + seconds + " seconds ago");
-            console.log("**************************************************");
+            this._logger.info("**************************************************");
+            this._logger.info("* " + entity._type);
+            this._logger.info("* loadFlows last updated " + seconds + " seconds ago");
+            this._logger.info("**************************************************");
             await this.RED.nodes.loadFlows(true);
         }
     }
@@ -743,7 +724,9 @@ export class noderedcontribopenflowstorage {
             const filename: string = Config.nodered_id + "_settings";
             await backupStore.set(filename, JSON.stringify(settings));
             if (WebSocketClient.instance.isConnected()) {
+                this.last_reload = new Date();
                 var result = await NoderedUtil.Query("nodered", { _type: "setting", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                this.last_reload = new Date();
                 if (result.length === 0) {
                     var item: any = {
                         name: "settings for " + Config.nodered_id,
@@ -792,7 +775,9 @@ export class noderedcontribopenflowstorage {
             const filename: string = Config.nodered_id + "_sessions";
             await backupStore.set(filename, JSON.stringify(sessions));
             if (WebSocketClient.instance.isConnected()) {
+                this.last_reload = new Date();
                 var result = await NoderedUtil.Query("nodered", { _type: "session", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                this.last_reload = new Date();
                 if (result.length === 0) {
                     var item: any = {
                         name: "sessions for " + Config.nodered_id,

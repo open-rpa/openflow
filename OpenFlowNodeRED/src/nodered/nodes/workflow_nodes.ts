@@ -16,28 +16,32 @@ export class workflow_in_node {
     public host: string = null;
     public workflow: any;
     public localqueue: string = "";
+    private _onsignedin: any = null;
+    private _onsocketclose: any = null;
     constructor(public config: Iworkflow_in_node) {
         RED.nodes.createNode(this, config);
         try {
             this.node = this;
             this.node.on("close", this.onclose);
             this.host = Config.amqp_url;
-
-            // WebSocketClient.instance.events.on("onopen", () => {
-            //     this.connect();
-            // });
-            WebSocketClient.instance.events.on("onsignedin", () => {
+            this._onsignedin = this.onsignedin.bind(this);
+            this._onsocketclose = this.onsocketclose.bind(this);
+            WebSocketClient.instance.events.on("onsignedin", this._onsignedin);
+            WebSocketClient.instance.events.on("onclose", this._onsocketclose);
+            if (WebSocketClient.instance.isConnected && WebSocketClient.instance.user != null) {
                 this.connect();
-            });
-            WebSocketClient.instance.events.on("onclose", (message) => {
-                if (message == null) message = "";
-                this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
-                this.onclose(false, null);
-            });
-            this.connect();
+            }
         } catch (error) {
             NoderedUtil.HandleError(this, error);
         }
+    }
+    onsignedin() {
+        this.connect();
+    }
+    onsocketclose(message) {
+        if (message == null) message = "";
+        this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
+        // this.onclose(false, null);
     }
     async connect() {
         try {
@@ -262,7 +266,9 @@ export class workflow_in_node {
                 if (res.length > 0) {
                     await NoderedUtil.DeleteOne("workflow", res[0]._id, null);
                 }
-                res = await NoderedUtil.Query("users", { "_type": "role", "$or": [{ "workflowid": this.workflow._id }, { "name": this.localqueue + "users" }] }, null, null, 1, 0, null);
+                if (this.workflow != null) {
+                    res = await NoderedUtil.Query("users", { "_type": "role", "$or": [{ "workflowid": this.workflow._id }, { "name": this.localqueue + "users" }] }, null, null, 1, 0, null);
+                }
                 if (res.length > 0) {
                     await NoderedUtil.DeleteOne("users", res[0]._id, null);
                 }
@@ -275,6 +281,8 @@ export class workflow_in_node {
             Logger.instanse.error(error);
             NoderedUtil.HandleError(this, error);
         }
+        WebSocketClient.instance.events.removeListener("onsignedin", this._onsignedin);
+        WebSocketClient.instance.events.removeListener("onclose", this._onsocketclose);
         if (done != null) done();
     }
 }
@@ -467,18 +475,21 @@ export class assign_workflow_node {
         this.host = Config.amqp_url;
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
-        // WebSocketClient.instance.events.on("onopen", () => {
-        //     this.connect();
-        // });
-        WebSocketClient.instance.events.on("onsignedin", () => {
+        WebSocketClient.instance.events.on("onsignedin", this.onsocketsignedin);
+        WebSocketClient.instance.events.on("onclose", this.onsocketclose);
+        if (WebSocketClient.instance.isConnected && WebSocketClient.instance.user != null) {
             this.connect();
-        });
-        WebSocketClient.instance.events.on("onclose", (message) => {
-            if (message == null) message = "";
-            this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
-            this.onclose(false, null);
-        });
+        }
+    }
+    onsocketsignedin() {
         this.connect();
+
+    }
+    onsocketclose(message) {
+        if (message == null) message = "";
+        this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
+        this.onclose(false, null);
+
     }
 
     async connect() {
@@ -627,6 +638,8 @@ export class assign_workflow_node {
             NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
             this.localqueue = "";
         }
+        WebSocketClient.instance.events.removeListener("onsignedin", this.onsocketsignedin);
+        WebSocketClient.instance.events.removeListener("onclose", this.onsocketclose);
         if (done != null) done();
     }
 }

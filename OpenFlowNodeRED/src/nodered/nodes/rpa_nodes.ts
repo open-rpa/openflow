@@ -11,6 +11,8 @@ export class rpa_detector_node {
     public name: string = "";
     public host: string = null;
     public localqueue: string = "";
+    private _onsignedin: any = null;
+    private _onsocketclose: any = null;
     constructor(public config: Irpa_detector_node) {
         RED.nodes.createNode(this, config);
         try {
@@ -18,18 +20,22 @@ export class rpa_detector_node {
             this.node.status({});
             this.node.on("close", this.onclose);
             this.host = Config.amqp_url;
-            WebSocketClient.instance.events.on("onsignedin", () => {
-                this.connect();
-            });
-            WebSocketClient.instance.events.on("onclose", (message) => {
-                if (message == null) message = "";
-                this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
-                this.onclose(false, null);
-            });
+            this._onsignedin = this.onsignedin.bind(this);
+            this._onsocketclose = this.onsocketclose.bind(this);
+            WebSocketClient.instance.events.on("onsignedin", this._onsignedin);
+            WebSocketClient.instance.events.on("onclose", this._onsocketclose);
             this.connect();
         } catch (error) {
             NoderedUtil.HandleError(this, error);
         }
+    }
+    onsignedin() {
+        this.connect();
+    }
+    onsocketclose(message) {
+        if (message == null) message = "";
+        this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
+        // this.onclose(false, null);
     }
     async connect() {
         try {
@@ -71,6 +77,8 @@ export class rpa_detector_node {
             NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
             this.localqueue = "";
         }
+        WebSocketClient.instance.events.removeListener("onsignedin", this._onsignedin);
+        WebSocketClient.instance.events.removeListener("onclose", this._onsocketclose);
         if (done != null) done();
     }
 }
@@ -87,6 +95,8 @@ export class rpa_workflow_node {
     public name: string = "";
     public host: string = null;
     private localqueue: string = "";
+    private _onsignedin: any = null;
+    private _onsocketclose: any = null;
     constructor(public config: Irpa_workflow_node) {
         RED.nodes.createNode(this, config);
         try {
@@ -95,18 +105,22 @@ export class rpa_workflow_node {
             this.node.on("input", this.oninput);
             this.node.on("close", this.onclose);
             this.host = Config.amqp_url;
-            WebSocketClient.instance.events.on("onsignedin", () => {
-                this.connect();
-            });
-            WebSocketClient.instance.events.on("onclose", (message) => {
-                if (message == null) message = "";
-                this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
-                this.onclose(false, null);
-            });
-            this.connect();
+            this._onsignedin = this.onsignedin.bind(this);
+            this._onsocketclose = this.onsocketclose.bind(this);
+
+            WebSocketClient.instance.events.on("onsignedin", this._onsignedin);
+            WebSocketClient.instance.events.on("onclose", this._onsocketclose);
         } catch (error) {
             NoderedUtil.HandleError(this, error);
         }
+    }
+    onsignedin() {
+        this.connect();
+    }
+    onsocketclose(message) {
+        if (message == null) message = "";
+        this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
+        // this.onclose(false, null);
     }
     async connect() {
         try {
@@ -238,6 +252,8 @@ export class rpa_workflow_node {
             NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
             this.localqueue = "";
         }
+        WebSocketClient.instance.events.removeListener("onsignedin", this._onsignedin);
+        WebSocketClient.instance.events.removeListener("onclose", this._onsocketclose);
         if (done != null) done();
     }
 }
