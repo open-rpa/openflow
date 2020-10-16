@@ -24,7 +24,9 @@ export class rpa_detector_node {
             this._onsocketclose = this.onsocketclose.bind(this);
             WebSocketClient.instance.events.on("onsignedin", this._onsignedin);
             WebSocketClient.instance.events.on("onclose", this._onsocketclose);
-            this.connect();
+            if (WebSocketClient.instance.isConnected && WebSocketClient.instance.user != null) {
+                this.connect();
+            }
         } catch (error) {
             NoderedUtil.HandleError(this, error);
         }
