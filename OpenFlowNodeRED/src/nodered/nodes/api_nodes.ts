@@ -134,9 +134,9 @@ export class api_get {
             if (!NoderedUtil.IsNullUndefinded(msg.orderby)) { this.config.orderby = msg.orderby; }
             if (!NoderedUtil.IsNullEmpty(msg.top)) { this.config.top = parseInt(msg.top); }
             if (!NoderedUtil.IsNullEmpty(msg.skip)) { this.config.skip = parseInt(msg.skip); }
-            if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
-                msg.jwt = Config.jwt;
-            }
+            // if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
+            //     msg.jwt = Config.jwt;
+            // }
 
             if (NoderedUtil.IsNullEmpty(this.config.top)) { this.config.top = 500; }
             if (NoderedUtil.IsNullEmpty(this.config.skip)) { this.config.skip = 0; }
@@ -237,9 +237,9 @@ export class api_add {
             if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { this.config.resultfield = msg.resultfield; }
             if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
             if (!NoderedUtil.IsNullEmpty(msg.journal)) { this.config.journal = msg.journal; }
-            if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
-                msg.jwt = Config.jwt;
-            }
+            // if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
+            //     msg.jwt = Config.jwt;
+            // }
 
 
             if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
@@ -313,9 +313,9 @@ export class api_update {
             if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { this.config.resultfield = msg.resultfield; }
             if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
             if (!NoderedUtil.IsNullEmpty(msg.journal)) { this.config.journal = msg.journal; }
-            if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
-                msg.jwt = Config.jwt;
-            }
+            // if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
+            //     msg.jwt = Config.jwt;
+            // }
 
             if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
             if ((this.config.journal as any) === undefined || (this.config.journal as any) === null) this.config.journal = false;
@@ -389,9 +389,9 @@ export class api_addorupdate {
             if (!NoderedUtil.IsNullEmpty(msg.uniqeness)) { this.config.uniqeness = msg.uniqeness; }
             if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
             if (!NoderedUtil.IsNullEmpty(msg.journal)) { this.config.journal = msg.journal; }
-            if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
-                msg.jwt = Config.jwt;
-            }
+            // if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
+            //     msg.jwt = Config.jwt;
+            // }
 
             if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
             if ((this.config.journal as any) === undefined || (this.config.journal as any) === null) this.config.journal = false;
@@ -474,9 +474,9 @@ export class api_delete {
 
             if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
             if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { this.config.inputfield = msg.inputfield; }
-            if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
-                msg.jwt = Config.jwt;
-            }
+            // if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
+            //     msg.jwt = Config.jwt;
+            // }
 
             var data: any[] = [];
             var _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
@@ -546,9 +546,9 @@ export class api_map_reduce {
             if (!NoderedUtil.IsNullUndefinded(msg.finalize)) { this.config.finalize = msg.finalize; }
             if (!NoderedUtil.IsNullUndefinded(msg.scope)) { this.config.finalize = msg.scope; }
             if (!NoderedUtil.IsNullUndefinded(msg.query)) { this.config.query = msg.query; }
-            if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
-                msg.jwt = Config.jwt;
-            }
+            // if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
+            //     msg.jwt = Config.jwt;
+            // }
 
             var scope = NoderedUtil.FetchFromObject(msg, this.config.scope);
             var _output: any = {};
@@ -706,9 +706,9 @@ export class api_updatedocument {
             if (!NoderedUtil.IsNullEmpty(msg.collection)) { collection = msg.collection; }
             if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { writeconcern = msg.writeconcern; }
             if (!NoderedUtil.IsNullEmpty(msg.journal)) { journal = msg.journal; }
-            if (NoderedUtil.IsNullEmpty(jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
-                jwt = Config.jwt;
-            }
+            // if (NoderedUtil.IsNullEmpty(jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
+            //     jwt = Config.jwt;
+            // }
 
             if ((writeconcern as any) === undefined || (writeconcern as any) === null) writeconcern = 0;
             if ((journal as any) === undefined || (journal as any) === null) journal = false;
@@ -915,9 +915,9 @@ export class download_file {
 
             if (!NoderedUtil.IsNullEmpty(msg.fileid)) { this.config.fileid = msg.fileid; }
             if (!NoderedUtil.IsNullEmpty(msg.filename)) { this.config.filename = msg.filename; }
-            if (NoderedUtil.IsNullEmpty(jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
-                jwt = Config.jwt;
-            }
+            // if (NoderedUtil.IsNullEmpty(jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
+            //     jwt = Config.jwt;
+            // }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Getting file" });
             var file = await NoderedUtil.GetFile(filename, fileid, jwt);
@@ -962,9 +962,9 @@ export class upload_file {
             var mimeType = this.config.mimeType;
             if (!NoderedUtil.IsNullEmpty(msg.filename)) { filename = msg.filename; }
             if (!NoderedUtil.IsNullEmpty(msg.mimeType)) { mimeType = msg.mimeType; }
-            if (NoderedUtil.IsNullEmpty(jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
-                jwt = Config.jwt;
-            }
+            // if (NoderedUtil.IsNullEmpty(jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
+            //     jwt = Config.jwt;
+            // }
 
 
             this.node.status({ fill: "blue", shape: "dot", text: "Saving file" });
