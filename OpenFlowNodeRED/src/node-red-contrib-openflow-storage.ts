@@ -4,10 +4,10 @@ import * as crypto from "crypto";
 import winston = require("winston");
 import { nodered_settings } from "./nodered_settings";
 import { Config } from "./Config";
-import { WebSocketClient, NoderedUtil } from "openflow-api";
+import { WebSocketClient, NoderedUtil, Base } from "openflow-api";
 import * as nodered from "node-red";
-const fileCache = require('file-system-cache').default;
-const backupStore = fileCache({ basePath: path.join(Config.logpath, '.cache') });
+import { FileSystemCache } from "openflow-api";
+const backupStore = new FileSystemCache(path.join(Config.logpath, '.cache'));
 export class noderednpmrc {
     public _id: string;
     public _type: string = "npmrc";
@@ -188,7 +188,7 @@ export class noderedcontribopenflowstorage {
 
     private _flows: any[] = null;
     private _credentials: any[] = null;
-    private _settings: any[] = null;
+    private _settings: any = null;
     public async CheckUpdates() {
         try {
             let oldsettings: any[] = null;
@@ -231,14 +231,9 @@ export class noderedcontribopenflowstorage {
 
             let settings: any[] = await this.getSettings();
             if (oldsettings != null) {
-                if (settings.length != this._settings.length) {
+                if (this.DiffObjects(settings, oldsettings)) {
                     update = true;
                     donpm = true;
-                } else {
-                    if (this.DiffObjects(settings, oldsettings)) {
-                        update = true;
-                        donpm = true;
-                    }
                 }
             } else {
                 this._settings = settings;
@@ -255,7 +250,11 @@ export class noderedcontribopenflowstorage {
         } catch (error) {
             this._logger.error(error);
         }
-        setTimeout(this.CheckUpdates.bind(this), Config.flow_refresh_interval);
+        if (!WebSocketClient.instance.supports_watch) {
+            setTimeout(this.CheckUpdates.bind(this), Config.flow_refresh_interval);
+        }
+
+
     }
     public async init(settings: any): Promise<boolean> {
         this._logger.silly("noderedcontribopenflowstorage::init");
@@ -311,7 +310,7 @@ export class noderedcontribopenflowstorage {
         try {
             const filename: string = Config.nodered_id + "_npmrc.txt";
             if (this.npmrc == null) {
-                const json = await backupStore.get(filename);
+                const json = await backupStore.get<string>(filename, null);
                 if (!NoderedUtil.IsNullEmpty(json)) {
                     this.npmrc = JSON.parse(json);
                 }
@@ -372,7 +371,7 @@ export class noderedcontribopenflowstorage {
         }
         const filename: string = Config.nodered_id + "_flows.json";
         if (result.length == 0) {
-            const json = await backupStore.get(filename);
+            const json = await backupStore.get<string>(filename, null);
             if (!NoderedUtil.IsNullEmpty(json)) {
                 this._flows = JSON.parse(json);
                 result = this._flows;
@@ -388,7 +387,9 @@ export class noderedcontribopenflowstorage {
             const filename: string = Config.nodered_id + "_flows.json";
             await backupStore.set(filename, JSON.stringify(flows));
             if (WebSocketClient.instance.isConnected()) {
+                this.last_reload = new Date();
                 var result = await NoderedUtil.Query("nodered", { _type: "flow", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                this.last_reload = new Date();
                 if (result.length === 0) {
                     var item: any = {
                         name: "flows for " + Config.nodered_id,
@@ -432,7 +433,7 @@ export class noderedcontribopenflowstorage {
         }
         const filename: string = Config.nodered_id + "_credentials";
         if (cred.length == 0) {
-            let json = await backupStore.get(filename);
+            let json = await backupStore.get<string>(filename, null);
             if (!NoderedUtil.IsNullEmpty(json)) {
                 json = noderedcontribopenflowstorage.decrypt(json);
                 this._credentials = JSON.parse(json);
@@ -449,7 +450,9 @@ export class noderedcontribopenflowstorage {
             const filename: string = Config.nodered_id + "_credentials";
             await backupStore.set(filename, noderedcontribopenflowstorage.encrypt(JSON.stringify(credentials)));
             if (WebSocketClient.instance.isConnected()) {
+                this.last_reload = new Date();
                 var result = await NoderedUtil.Query("nodered", { _type: "credential", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                this.last_reload = new Date();
                 var credentialsarray = [];
                 var orgkeys = Object.keys(credentials);
                 for (var i = 0; i < orgkeys.length; i++) {
@@ -514,7 +517,7 @@ export class noderedcontribopenflowstorage {
         }
         if (settings == null) {
             settings = {};
-            const json = await backupStore.get(filename);
+            const json = await backupStore.get<string>(filename, null);
             if (!NoderedUtil.IsNullEmpty(json)) {
                 this._settings = JSON.parse(json);
                 settings = this._settings;
@@ -557,6 +560,7 @@ export class noderedcontribopenflowstorage {
                             if (error.stdout) this._logger.error("npm install stdout: " + error.stdout);
                         }
                     }
+                    this.last_reload = new Date();
                     this._logger.silly("noderedcontribopenflowstorage::_getSettings: return result");
                 } catch (error) {
                     if (error.message) { this._logger.error(error.message); }
@@ -567,11 +571,152 @@ export class noderedcontribopenflowstorage {
             this._settings = settings;
             await backupStore.set(filename, JSON.stringify(settings));
         }
-        if (this.firstrun) {
-            setTimeout(this.CheckUpdates.bind(this), Config.flow_refresh_initial_interval);
-            this.firstrun = false;
+        try {
+            if (this.firstrun) {
+                if (WebSocketClient.instance.user != null) {
+                    if (WebSocketClient.instance.supports_watch) {
+                        await NoderedUtil.Watch("nodered", [{ "$match": { "fullDocument.nodered_id": Config.nodered_id } }], WebSocketClient.instance.jwt, this.onupdate.bind(this));
+                    } else {
+                        setTimeout(this.CheckUpdates.bind(this), Config.flow_refresh_initial_interval);
+                    }
+                    this.firstrun = false;
+                }
+                WebSocketClient.instance.events.on("onsignedin", async () => {
+                    try {
+                        this.firstrun = false;
+                        if (WebSocketClient.instance.supports_watch) {
+                            try {
+                                await this.CheckUpdates();
+                            } catch (error) {
+                                this._logger.error(error);
+                            }
+                            await NoderedUtil.Watch("nodered", [{ "$match": { "fullDocument.nodered_id": Config.nodered_id } }], WebSocketClient.instance.jwt, this.onupdate.bind(this));
+                        } else {
+                            setTimeout(this.CheckUpdates.bind(this), Config.flow_refresh_initial_interval);
+                        }
+                    } catch (error) {
+                        this._logger.error(error);
+                    }
+                });
+            }
+        } catch (error) {
+            this._logger.error(error);
         }
         return settings;
+    }
+    public last_reload: Date = new Date();
+    public bussy: boolean = false;
+    public async onupdate(msg: any) {
+        let update: boolean = false;
+        let entity: Base = msg.fullDocument;
+
+        var begin: number = this.last_reload.getTime();
+        var end: number = new Date().getTime();
+        var seconds = Math.round((end - begin) / 1000);
+        if (seconds < 2 || this.bussy) {
+            this._logger.info("**************************************************");
+            this._logger.info("* " + entity._type);
+            this._logger.info("* Skip, less than 2 seconds since last update " + seconds + " or is bussy");
+            this._logger.info("**************************************************");
+            return;
+        }
+        if (entity._type == "flow") {
+            let oldflows: any[] = null;
+            if (this._flows != null) {
+                oldflows = JSON.parse(JSON.stringify(this._flows));
+                if (this.DiffObjects(entity, oldflows)) {
+                    update = true;
+                    this._flows = (entity as any).flows;
+                }
+            } else {
+                update = true;
+                this._flows = (entity as any).flows;
+            }
+        } else if (entity._type == "credential") {
+            let oldcredentials: any[] = null;
+            if (this._credentials != null) {
+                oldcredentials = JSON.parse(JSON.stringify(this._credentials));
+                if (this.DiffObjects(entity, oldcredentials)) {
+                    update = true;
+                }
+            } else {
+                update = true;
+            }
+        } else if (entity._type == "setting") {
+            try {
+                await this.RED.nodes.loadFlows(true);
+            } catch (error) {
+            }
+            let oldsettings: any = null;
+            if (this._settings != null) {
+                this.bussy = true;
+                try {
+                    oldsettings = JSON.parse(JSON.stringify(this._settings));
+                    let newsettings = (entity as any).settings;
+                    newsettings = JSON.parse(newsettings);
+
+                    var keys = Object.keys(oldsettings.nodes);
+                    var modules = {};
+                    for (var i = 0; i < keys.length; i++) {
+                        var key = keys[i];
+                        if (key != "node-red") {
+                            var val = oldsettings.nodes[key];
+                            try {
+                                if (newsettings.nodes[key] == null) {
+                                    this._logger.info("Remove module " + key + "@" + val.version);
+                                    await this.RED.runtime.nodes.removeModule({ user: "admin", module: key, version: val.version });
+                                } else if (newsettings.nodes[key].version != oldsettings.nodes[key].version) {
+                                    this._logger.info("Install module " + key + "@" + newsettings.nodes[key].version + " up from " + oldsettings.nodes[key].version);
+                                    await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: newsettings.nodes[key].version });
+                                }
+                            } catch (error) {
+                                this._logger.error((error.message ? error.message : error));
+                            }
+                        }
+                    }
+                    var keys = Object.keys(newsettings.nodes);
+                    for (var i = 0; i < keys.length; i++) {
+                        var key = keys[i];
+                        if (key != "node-red") {
+                            var val = newsettings.nodes[key];
+                            try {
+                                if (oldsettings.nodes[key] == null) {
+                                    this._logger.info("Install new module " + key + "@" + val.version);
+                                    await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: val.version });
+                                } else if (newsettings.nodes[key].version != oldsettings.nodes[key].version) {
+                                    this._logger.info("Install module " + key + "@" + newsettings.nodes[key].version + " up from " + oldsettings.nodes[key].version);
+                                    await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: val.version });
+                                }
+                            } catch (error) {
+                                this._logger.error((error.message ? error.message : error));
+                            }
+                        }
+                    }
+
+                    if (this.DiffObjects(newsettings, oldsettings)) {
+                        update = true;
+                    }
+                } catch (error) {
+                    this._logger.error(error);
+                    update = true;
+                }
+                this.bussy = false;
+            } else {
+                update = true;
+            }
+        } else {
+            this._logger.info("**************************************************");
+            this._logger.info("* Unknown type " + entity._type + " last updated " + seconds + " seconds ago");
+            this._logger.info("**************************************************");
+        }
+        if (update) {
+            this.last_reload = new Date();
+            this._logger.info("**************************************************");
+            this._logger.info("* " + entity._type);
+            this._logger.info("* loadFlows last updated " + seconds + " seconds ago");
+            this._logger.info("**************************************************");
+            await this.RED.nodes.loadFlows(true);
+        }
     }
     public async _saveSettings(settings: any): Promise<void> {
         try {
@@ -579,7 +724,9 @@ export class noderedcontribopenflowstorage {
             const filename: string = Config.nodered_id + "_settings";
             await backupStore.set(filename, JSON.stringify(settings));
             if (WebSocketClient.instance.isConnected()) {
+                this.last_reload = new Date();
                 var result = await NoderedUtil.Query("nodered", { _type: "setting", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                this.last_reload = new Date();
                 if (result.length === 0) {
                     var item: any = {
                         name: "settings for " + Config.nodered_id,
@@ -614,7 +761,7 @@ export class noderedcontribopenflowstorage {
         }
         const filename: string = Config.nodered_id + "_sessions";
         if (item == null || item.length == 0) {
-            const json = await backupStore.get(filename);
+            const json = await backupStore.get<string>(filename, null);
             if (!NoderedUtil.IsNullEmpty(json)) {
                 item = JSON.parse(json);
             }
@@ -628,7 +775,9 @@ export class noderedcontribopenflowstorage {
             const filename: string = Config.nodered_id + "_sessions";
             await backupStore.set(filename, JSON.stringify(sessions));
             if (WebSocketClient.instance.isConnected()) {
+                this.last_reload = new Date();
                 var result = await NoderedUtil.Query("nodered", { _type: "session", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                this.last_reload = new Date();
                 if (result.length === 0) {
                     var item: any = {
                         name: "sessions for " + Config.nodered_id,

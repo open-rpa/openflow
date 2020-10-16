@@ -12,6 +12,7 @@
       <th scope="col"><b translate lib="web">active</b></th>
       <th scope="col"><b translate lib="web">consumer_tag</b></th>
       <th scope="col"><b translate lib="web">clientname</b></th>
+      <th scope="col"><b translate lib="web">remoteip</b></th>
       <th scope="col"><b translate lib="web"></b></th>
     </tr>
   </thead>
@@ -21,6 +22,7 @@
       <td>{{model.active}}</td>
       <td>{{model.consumer_tag}}</td>
       <td>{{model.clientname}}</td>
+      <td>{{model.remoteip}}</td>
       <td class="btn-cell">
         <a href ng-click="ctrl.DeleteQueue(model)" ng-disabled="ctrl.loading==true"><i class="az-trash"></i></a>
       </td>

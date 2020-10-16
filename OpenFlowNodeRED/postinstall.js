@@ -15,7 +15,7 @@ Thank you for using OpenFlow!
 > commercial support  ( https://openrpa.dk/ ) enterprise version also avaible
 `;
 
-const secs = 4;
+const secs = 1;
 
 const formatCentered = (row, columns) => {
     if (columns <= row.length) {

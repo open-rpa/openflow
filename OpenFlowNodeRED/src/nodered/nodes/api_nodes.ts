@@ -4,6 +4,9 @@ import { Crypt } from "../../nodeclient/Crypt";
 import { Config } from "../../Config";
 import { Logger } from "../../Logger";
 import { NoderedUtil, SigninMessage, TokenUser, Message, WebSocketClient, Base, mapFunc, reduceFunc, finalizeFunc, UpdateOneMessage } from "openflow-api";
+import * as path from "path";
+import { FileSystemCache } from "openflow-api";
+const backupStore = new FileSystemCache(path.join(Config.logpath, '.cache'));
 
 export interface Iapi_credentials {
 }
@@ -118,6 +121,12 @@ export class api_get {
     }
     async oninput(msg: any) {
         try {
+            if (!WebSocketClient.instance.isConnected) {
+                await new Promise(r => setTimeout(r, 2000));
+            }
+            if (!WebSocketClient.instance.isConnected) {
+                throw new Error("Not connected");
+            }
             this.node.status({});
             // if (NoderedUtil.IsNullEmpty(msg.jwt)) return NoderedUtil.HandleError(this, "Missing jwt token");
             if (!NoderedUtil.IsNullUndefinded(msg.query)) { this.config.query = msg.query; }
@@ -1027,6 +1036,8 @@ export interface Iapi_watch {
 export class api_watch {
     public node: Red = null;
     public watchid: string = "";
+    private _onsignedin: any = null;
+    private _onsocketclose: any = null;
     constructor(public config: Iapi_watch) {
         RED.nodes.createNode(this, config);
         this.node = this;
@@ -1034,17 +1045,22 @@ export class api_watch {
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
 
-        WebSocketClient.instance.events.on("onsignedin", () => {
-            this.init();
-        });
-        WebSocketClient.instance.events.on("onclose", (message) => {
-            if (message == null) message = "";
-            this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
-            this.onclose(false, null);
-        });
-        this.init();
+        this._onsignedin = this.onsignedin.bind(this);
+        this._onsocketclose = this.onsocketclose.bind(this);
+        WebSocketClient.instance.events.on("onsignedin", this._onsignedin);
+        WebSocketClient.instance.events.on("onclose", this._onsocketclose);
+        if (WebSocketClient.instance.isConnected && WebSocketClient.instance.user != null) {
+        }
     }
-    async init() {
+    onsignedin() {
+        this.connect();
+    }
+    onsocketclose(message) {
+        if (message == null) message = "";
+        this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
+        // this.onclose(false, null);
+    }
+    async connect() {
         this.node.status({ fill: "blue", shape: "dot", text: "Setting up watch" });
         this.watchid = await NoderedUtil.Watch(this.config.collection, this.config.aggregates, null, this.onevent.bind(this))
         this.node.status({ fill: "green", shape: "dot", text: "watchid " + this.watchid });
@@ -1085,6 +1101,8 @@ export class api_watch {
         }
         this.watchid = null;
         this.node.status({ text: "Not watching" });
+        WebSocketClient.instance.events.removeListener("onsignedin", this._onsignedin);
+        WebSocketClient.instance.events.removeListener("onclose", this._onsocketclose);
         if (done != null) done();
     }
 }

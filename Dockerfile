@@ -1,5 +1,5 @@
-# FROM node:latest
-FROM node:10.16.0-jessie
+FROM node:latest
+# FROM node:10.16.0-jessie
 EXPOSE 80
 EXPOSE 5858
 WORKDIR /data
