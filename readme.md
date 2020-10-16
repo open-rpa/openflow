@@ -9,7 +9,7 @@ Build to run on docker, how to setup docker is not supported on GitHub/slack
 #### Quick start running openflow using npm
 
 For now only Linux (tested on ubuntu 18LTS) and windows is supported
-Install NodeJS version 10 (google how to do that, if in doubt, hint, use nvm if you got the wrong version installed)
+Install NodeJS version 12 (google how to do that, if in doubt, hint, use nvm if you got the wrong version installed)
 Also you need to have an installation of  [mongoDB](https://www.mongodb.com/download-center/community) and [RabbitMQ](https://www.rabbitmq.com/download.html)
 
 On window, run from a command prompt with admin rights
@@ -48,7 +48,7 @@ then open a browser and visit [localhost.openrpa.dk](http://localhost.openrpa.dk
 #### Quick start running openflow nodered using npm
 
 For now only Linux (tested on ubuntu 18LTS) and windows is supported
-Install NodeJS version 10 (google how to do that, if in doubt, hint, use nvm if you got the wrong version installed)
+Install NodeJS version 12 (google how to do that, if in doubt, hint, use nvm if you got the wrong version installed)
 This require you to have openflow installed somewhere, or you can use our public openflow at [app.openiap.io](https://app.openiap.io) (noderedremote.env)
 
 On window, run from a command prompt with admin rights
@@ -112,7 +112,8 @@ For help with running on [kubernetes](https://kubernetes.io/) or self hosting co
 
 #### Developer setup
 
-Install [VSCode](https://code.visualstudio.com/download), [NodeJS 10](https://nodejs.org/dist/latest-v10.x/),  [mongoDB](https://www.mongodb.com/download-center/community) and [RabbitMQ](https://www.rabbitmq.com/download.html) 
+Install [VSCode](https://code.visualstudio.com/download), [NodeJS 12](https://nodejs.org/en/download/),  [mongoDB](https://www.mongodb.com/download-center/community) and [RabbitMQ](https://www.rabbitmq.com/download.html) 
+You need to [enable management console](https://www.rabbitmq.com/management.html) in RabbitMQ 
 
 Clone this repo into a folder, in a shell type
 
