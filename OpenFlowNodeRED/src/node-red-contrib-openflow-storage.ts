@@ -6,8 +6,8 @@ import { nodered_settings } from "./nodered_settings";
 import { Config } from "./Config";
 import { WebSocketClient, NoderedUtil, Base } from "openflow-api";
 import * as nodered from "node-red";
-const fileCache = require('file-system-cache').default;
-const backupStore = fileCache({ basePath: path.join(Config.logpath, '.cache') });
+import { FileSystemCache } from "openflow-api";
+const backupStore = new FileSystemCache(path.join(Config.logpath, '.cache'));
 export class noderednpmrc {
     public _id: string;
     public _type: string = "npmrc";
@@ -310,7 +310,7 @@ export class noderedcontribopenflowstorage {
         try {
             const filename: string = Config.nodered_id + "_npmrc.txt";
             if (this.npmrc == null) {
-                const json = await backupStore.get(filename);
+                const json = await backupStore.get<string>(filename, null);
                 if (!NoderedUtil.IsNullEmpty(json)) {
                     this.npmrc = JSON.parse(json);
                 }
@@ -371,7 +371,7 @@ export class noderedcontribopenflowstorage {
         }
         const filename: string = Config.nodered_id + "_flows.json";
         if (result.length == 0) {
-            const json = await backupStore.get(filename);
+            const json = await backupStore.get<string>(filename, null);
             if (!NoderedUtil.IsNullEmpty(json)) {
                 this._flows = JSON.parse(json);
                 result = this._flows;
@@ -433,7 +433,7 @@ export class noderedcontribopenflowstorage {
         }
         const filename: string = Config.nodered_id + "_credentials";
         if (cred.length == 0) {
-            let json = await backupStore.get(filename);
+            let json = await backupStore.get<string>(filename, null);
             if (!NoderedUtil.IsNullEmpty(json)) {
                 json = noderedcontribopenflowstorage.decrypt(json);
                 this._credentials = JSON.parse(json);
@@ -517,7 +517,7 @@ export class noderedcontribopenflowstorage {
         }
         if (settings == null) {
             settings = {};
-            const json = await backupStore.get(filename);
+            const json = await backupStore.get<string>(filename, null);
             if (!NoderedUtil.IsNullEmpty(json)) {
                 this._settings = JSON.parse(json);
                 settings = this._settings;
@@ -761,7 +761,7 @@ export class noderedcontribopenflowstorage {
         }
         const filename: string = Config.nodered_id + "_sessions";
         if (item == null || item.length == 0) {
-            const json = await backupStore.get(filename);
+            const json = await backupStore.get<string>(filename, null);
             if (!NoderedUtil.IsNullEmpty(json)) {
                 item = JSON.parse(json);
             }

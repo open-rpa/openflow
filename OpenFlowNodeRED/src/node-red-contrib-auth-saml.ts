@@ -7,8 +7,8 @@ import * as retry from "async-retry";
 import { Logger } from "./Logger";
 import { Config } from "./Config";
 export const logger = Logger.configure();
-const fileCache = require('file-system-cache').default;
-const backupStore = fileCache({ basePath: path.join(Config.logpath, '.cache') });
+import { FileSystemCache } from "openflow-api";
+const backupStore = new FileSystemCache(path.join(Config.logpath, '.cache'));
 // tslint:disable-next-line: class-name
 export class samlauthstrategyoptions {
     public callbackUrl: string = "auth/strategy/callback/";

@@ -5,8 +5,8 @@ import { Config } from "../../Config";
 import { Logger } from "../../Logger";
 import { NoderedUtil, SigninMessage, TokenUser, Message, WebSocketClient, Base, mapFunc, reduceFunc, finalizeFunc, UpdateOneMessage } from "openflow-api";
 import * as path from "path";
-const fileCache = require('file-system-cache').default;
-const backupStore = fileCache({ basePath: path.join(Config.logpath, '.cache') });
+import { FileSystemCache } from "openflow-api";
+const backupStore = new FileSystemCache(path.join(Config.logpath, '.cache'));
 
 export interface Iapi_credentials {
 }

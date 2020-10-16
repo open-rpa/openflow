@@ -7,8 +7,9 @@ import { Logger } from "./Logger";
 import { WebServer } from "./WebServer";
 import { Config } from "./Config";
 import { Crypt } from "./nodeclient/Crypt";
-const fileCache = require('file-system-cache').default;
-const backupStore = fileCache({ basePath: path.join(Config.logpath, '.cache') });
+import { FileSystemCache } from "openflow-api";
+
+const backupStore = new FileSystemCache(path.join(Config.logpath, '.cache'));
 const logger: winston.Logger = Logger.configure();
 logger.info("starting openflow nodered");
 
@@ -30,7 +31,7 @@ let server: http.Server = null;
 (async function (): Promise<void> {
     try {
         const filename: string = Config.nodered_id + "_flows.json";
-        const json = await backupStore.get(filename);
+        const json = await backupStore.get(filename, null);
         if (!NoderedUtil.IsNullEmpty(json)) {
             server = await WebServer.configure(logger, socket);
             var baseurl = Config.saml_baseurl;
