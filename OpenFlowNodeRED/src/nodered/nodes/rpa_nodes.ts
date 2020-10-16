@@ -97,6 +97,7 @@ export class rpa_workflow_node {
     private localqueue: string = "";
     private _onsignedin: any = null;
     private _onsocketclose: any = null;
+    private originallocalqueue: string = "";
     constructor(public config: Irpa_workflow_node) {
         RED.nodes.createNode(this, config);
         try {
@@ -110,6 +111,9 @@ export class rpa_workflow_node {
 
             WebSocketClient.instance.events.on("onsignedin", this._onsignedin);
             WebSocketClient.instance.events.on("onclose", this._onsocketclose);
+            if (!NoderedUtil.IsNullEmpty(this.originallocalqueue) || this.originallocalqueue != this.config.localqueue) {
+                this.connect();
+            }
         } catch (error) {
             NoderedUtil.HandleError(this, error);
         }
@@ -248,7 +252,7 @@ export class rpa_workflow_node {
         }
     }
     async onclose(removed: boolean, done: any) {
-        if (!NoderedUtil.IsNullEmpty(this.localqueue) && removed) {
+        if ((!NoderedUtil.IsNullEmpty(this.localqueue) && removed) || this.originallocalqueue != this.config.localqueue) {
             NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
             this.localqueue = "";
         }

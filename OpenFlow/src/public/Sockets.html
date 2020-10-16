@@ -10,6 +10,7 @@
       <th scope="col" ng-click="ctrl.ToggleOrder('name')"><b translate lib="web">name</b></th>
       <th scope="col" ng-click="ctrl.ToggleOrder('clientagent')"><b translate lib="web">clientagent</b></th>
       <th scope="col" ng-click="ctrl.ToggleOrder('queues')"><b translate lib="web">queues</b></th>
+      <th scope="col" ng-click="ctrl.ToggleOrder('remoteip')"><b translate lib="web">remoteip</b></th>
       <th scope="col" ng-click="ctrl.ToggleOrder('lastheartbeat')"><b translate lib="web">lastheartbeat</b></th>
       <th scope="col" ng-click="ctrl.ToggleOrder('_modified')"><b translate lib="web">updated</b></th>
     </tr>
@@ -19,6 +20,7 @@
       <td>{{model.name}}</td>
       <td>{{model.clientagent}}</td>
       <td>{{model.queuescount}} </td>
+      <td>{{model.remoteip}} </td>
       <td>
         <timesince ng-model="model.lastheartbeat" />
       </td>

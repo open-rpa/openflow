@@ -2,6 +2,7 @@
 .vscode
 .npmrc
 .cache
+.openflowapicache
 config
 docs
 node_modules

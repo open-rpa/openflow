@@ -90,7 +90,7 @@ export class WebSocketServerClient {
                 if (req.headers["x-real-ip"] != null) this.remoteip = req.headers["x-real-ip"];
             }
         }
-        logger.info("new client " + this.id);;
+        logger.info("new client " + this.id + " from " + this.remoteip);
         socketObject.on("open", (e: Event): void => this.open(e));
         socketObject.on("message", (e: string): void => this.message(e)); // e: MessageEvent
         socketObject.on("error", (e: Event): void => this.error(e));

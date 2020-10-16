@@ -2305,7 +2305,7 @@ export class Message {
                 let exists = known.filter((x: any) => x.id == id);
                 let item: any = {
                     id: client.id, user: client.user, clientagent: client.clientagent, clientversion: client.clientversion
-                    , lastheartbeat: client.lastheartbeat, _type: "socketclient", name: client.id,
+                    , lastheartbeat: client.lastheartbeat, _type: "socketclient", name: client.id, remoteip: client.remoteip,
                     queues: client._queues
                 };
                 if (client.user != null) {
