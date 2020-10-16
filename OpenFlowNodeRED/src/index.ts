@@ -41,6 +41,7 @@ let server: http.Server = null;
         }
         var c = Config;
         var socket: WebSocketClient = new WebSocketClient(logger, Config.api_ws_url);
+        socket.setCacheFolder(Config.logpath);
         socket.agent = "nodered";
         socket.version = Config.version;
         logger.info("VERSION: " + Config.version);
