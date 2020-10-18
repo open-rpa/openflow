@@ -3,6 +3,9 @@
 		{
 			"name": "OpenFlow",
 			"path": "."
+		},
+		{
+			"path": "..\\openflow-api"
 		}
 	]
 }

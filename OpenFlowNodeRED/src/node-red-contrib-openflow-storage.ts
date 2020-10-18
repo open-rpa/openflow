@@ -308,15 +308,15 @@ export class noderedcontribopenflowstorage {
             this.npmrc = null;
         }
         try {
-            const filename: string = Config.nodered_id + "_npmrc.txt";
-            if (this.npmrc == null) {
-                const json = await backupStore.get<string>(filename, null);
-                if (!NoderedUtil.IsNullEmpty(json)) {
-                    this.npmrc = JSON.parse(json);
-                }
-            } else {
-                await backupStore.set(filename, JSON.stringify(this.npmrc));
-            }
+            // const filename: string = Config.nodered_id + "_npmrc.txt";
+            // if (this.npmrc == null) {
+            //     const json = await backupStore.get<string>(filename, null);
+            //     if (!NoderedUtil.IsNullEmpty(json)) {
+            //         this.npmrc = JSON.parse(json);
+            //     }
+            // } else {
+            //     await backupStore.set(filename, JSON.stringify(this.npmrc));
+            // }
             return this.npmrc;
         } catch (error) {
             if (error.message) { this._logger.error(error.message); }
@@ -329,8 +329,8 @@ export class noderedcontribopenflowstorage {
         try {
             this.npmrc = npmrc;
             this._logger.silly("noderedcontribopenflowstorage::_setnpmrc");
-            const filename: string = Config.nodered_id + "_npmrc.txt";
-            await backupStore.set(filename, JSON.stringify(npmrc));
+            // const filename: string = Config.nodered_id + "_npmrc.txt";
+            // await backupStore.set(filename, JSON.stringify(npmrc));
             if (WebSocketClient.instance.isConnected()) {
                 var result = await NoderedUtil.Query("nodered", { _type: "npmrc", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
                 if (result.length === 0) {

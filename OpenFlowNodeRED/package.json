@@ -1,12 +1,12 @@
 {
   "name": "openflow-nodered",
-  "version": "1.1.18",
+  "version": "1.1.19",
   "description": "Simple wrapper around NodeRed, RabbitMQ and MongoDB to support a more scaleable NodeRed implementation.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "postinstall_old": "node -e \"try{require('./postinstall')}catch(e){console.log(e)}\"",
-    "prepublish": "gulp clean"
+    "prepare": "gulp clean"
   },
   "repository": {
     "type": "git",
@@ -38,7 +38,7 @@
     "morgan": "^1.10.0",
     "node-red": "^1.2.1",
     "node-red-node-email": "^1.7.8",
-    "openflow-api": "^1.0.40",
+    "openflow-api": "^1.0.41",
     "os-service": "^2.2.0",
     "passport-saml": "^1.3.4",
     "passport-saml-metadata": "^2.3.0",
