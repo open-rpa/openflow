@@ -1,0 +1,30 @@
+{
+    "oauth2": {
+        "oauth2": "oauth2",
+        "label": {
+            "grant_type": "Grant Type",
+            "name": "Name",
+            "container": "Container",
+            "access_token_url": "Access Token URL",
+            "username": "Username",
+            "password": "Password",
+            "client_id": "Client ID",
+            "client_secret": "Client Secret",
+            "scope": "Scope"
+        },
+        "placeholder": {
+            "name": "oauth2",
+            "access_token_url": "http://exemplo.com/oauth/token",
+            "username": "admin",
+            "password": "admin",
+            "client_id": "012493af6282be51660dbc8e21a8462e",
+            "client_secret": "5621bd4b5a8b09ed31817efb8d54fda2c72bfc1c6968cd4563d83f7cc26f68f6",
+            "scope": "scope"
+        },
+        "opts": {
+            "client_credentials": "Client Credentials",
+            "password_credentials": "Password",
+            "set_by_credentials": "- Set by msg.oauth2Request -"
+        }
+    }
+}

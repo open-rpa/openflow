@@ -110,10 +110,13 @@ export class rpa_workflow_node {
             this.host = Config.amqp_url;
             this._onsignedin = this.onsignedin.bind(this);
             this._onsocketclose = this.onsocketclose.bind(this);
+            if (NoderedUtil.IsNullEmpty(this.config.localqueue)) this.config.localqueue = Math.random().toString(36).substr(2, 9);
 
             WebSocketClient.instance.events.on("onsignedin", this._onsignedin);
             WebSocketClient.instance.events.on("onclose", this._onsocketclose);
             if (!NoderedUtil.IsNullEmpty(this.originallocalqueue) || this.originallocalqueue != this.config.localqueue) {
+                this.connect();
+            } else if (WebSocketClient.instance.isConnected && WebSocketClient.instance.user != null) {
                 this.connect();
             }
         } catch (error) {

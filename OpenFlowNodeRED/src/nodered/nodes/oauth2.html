@@ -1,0 +1,101 @@
+<script type="text/javascript">
+  RED.nodes.registerType("oauth2", {
+    category: 'security',
+    color: "#a6bbcf",
+    defaults: {
+      name: {
+        value: ""
+      },
+      container: { value: "payload" },
+      access_token_url: { value: "" },
+      grant_type: { value: "set_by_credentials" },
+      username: { value: "" },
+      password: { value: "" },
+      client_id: { value: "" },
+      client_secret: { value: "" },
+      scope: { value: "" }
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: "oauth2.png",
+    align: "right",
+    label: function () {
+      return this.name || this._("oauth2");
+    },
+    labelStyle: function () {
+      return this.name ? "node_label_italic" : "";
+    },
+    oneditprepare: function () {
+      if (this.container === undefined) {
+        $("#node-input-container").val("payload");
+      }
+      $("#node-input-container").typedInput({ default: 'msg', types: ['msg'] });
+      $("#node-input-grant_type").on("change", function () {
+        if ($("#node-input-grant_type").val() === "set_by_credentials") {
+          $("#node-password_credentials").hide();
+          $("#node-access_token_url").hide();
+          $("#node-client_id").hide();
+          $("#node-client_secret").hide();
+          $("#node-scope").hide();
+        } else if ($("#node-input-grant_type").val() === "client_credentials") {
+          $("#node-password_credentials").hide();
+          $("#node-access_token_url").show();
+          $("#node-client_id").show();
+          $("#node-client_secret").show();
+          $("#node-scope").show();
+        } else if ($("#node-input-grant_type").val() === "password") {
+          $("#node-password_credentials").show();
+          $("#node-access_token_url").show();
+          $("#node-client_id").show();
+          $("#node-client_secret").show();
+          $("#node-scope").show();
+        }
+      });
+    }
+  });
+</script>
+<script type="text/html" data-template-name="oauth2">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name<span data-i18n="oauth2.label.name"></span></label>
+        <input type="text" id="node-input-name" data-i18n="[placeholder]oauth2.placeholder.name" placeholder="oauth2">
+    </div>
+    <div class="form-row">
+        <label for="node-input-container"><i class="fa fa-ellipsis-h"></i> <span data-i18n="oauth2.label.container">Container</span></label>
+        <input type="text" id="node-input-container" data-i18n="[placeholder]oauth2.placeholder.container" placeholder="Container" />
+    </div>
+    <div class="form-row">
+        <label for="node-input-grant_type"><i class="fa fa-wrench"></i> <span data-i18n="oauth2.label.grant_type">Grant Type</span></label>
+        <select type="text" id="node-input-grant_type">
+            <option value="client_credentials" data-i18n="oauth2.opts.client_credentials">Client Credentials</option>
+            <option value="password" data-i18n="oauth2.opts.password_credentials">Password</option>
+            <option value="set_by_credentials" data-i18n="oauth2.opts.set_by_credentials">- Set by msg.oauth2Request -</option>
+        </select>
+    </div>
+    <div class="form-row" id="node-access_token_url">
+        <label for="node-input-access_token_url"><i class="fa fa-link"></i> <span data-i18n="oauth2.label.access_token_url">Access Token URL</span></label>
+        <input type="text" id="node-input-access_token_url" data-i18n="[placeholder]oauth2.placeholder.access_token_url" placeholder="http://exemplo.com/oauth/token">
+    </div>
+    <div class="form-row" id="node-password_credentials">
+        <div class="form-row">
+            <label for="node-input-username"><i class="fa fa-user"></i><span data-i18n="oauth2.label.username">Username</span></label>
+            <input type="text" id="node-input-username" data-i18n="[placeholder]oauth2.placeholder.username" placeholder="admin">
+        </div>
+        <div class="form-row">
+            <label for="node-input-password"><i class="fa fa-lock"> </i><span data-i18n="oauth2.label.password">Password</span></label>
+            <input type="password" id="node-input-password" data-i18n="[placeholder]oauth2.placeholder.password" placeholder="admin">
+        </div>
+    </div>
+    <div class="form-row" id="node-client_id">
+        <label for="node-input-client_id"><i class="fa fa-user"></i> <span data-i18n="oauth2.label.client_id">Client ID</span></label>
+        <input type="text" id="node-input-client_id" data-i18n="[placeholder]oauth2.placeholder.client_id" placeholder="012493af6282be51660dbc8e21a8462e">
+    </div>
+    <div class="form-row" id="node-client_secret">
+        <label for="node-input-client_secret"><i class="fa fa-lock"></i> <span data-i18n="oauth2.label.client_secret">Client Secret</span></label>
+        <input type="password" id="node-input-client_secret" data-i18n="[placeholder]oauth2.placeholder.client_secret" placeholder="5621bd4b5a8b09ed31817efb8d54fda2c72bfc1c6968cd4563d83f7cc26f68f6">
+    </div>
+    <div class="form-row" id="node-scope">
+        <label for="node-input-scope"><i class="fa fa-code"></i> <span data-i18n="oauth2.label.scope">Scope</span></label>
+        <input type="text" id="node-input-scope" data-i18n="[placeholder]oauth2.placeholder.scope" placeholder="scope">
+    </div>
+</script>
+<script type="text/html" data-help-name="oauth2"><p></p></script>

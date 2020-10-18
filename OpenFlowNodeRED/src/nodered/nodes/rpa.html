@@ -97,7 +97,7 @@ Expiration controls how long to wait for a robot to pickup the message, it does 
         defaults: {
             queue: { value: "" },
             workflow: { value: "" },
-            localqueue: { value: "" },
+            localqueue: { value: Math.random().toString(36).substr(2, 9) },
             name: { value: "" }
         },
         inputs: 1,
