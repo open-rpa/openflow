@@ -112,6 +112,8 @@ For help with running on [kubernetes](https://kubernetes.io/) or self hosting co
 
 #### Developer setup
 
+
+
 Install [VSCode](https://code.visualstudio.com/download), [NodeJS 12](https://nodejs.org/en/download/),  [mongoDB](https://www.mongodb.com/download-center/community) and [RabbitMQ](https://www.rabbitmq.com/download.html) 
 You need to [enable management console](https://www.rabbitmq.com/management.html) in RabbitMQ 
 
