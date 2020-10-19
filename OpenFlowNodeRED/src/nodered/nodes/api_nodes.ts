@@ -1050,6 +1050,7 @@ export class api_watch {
         WebSocketClient.instance.events.on("onsignedin", this._onsignedin);
         WebSocketClient.instance.events.on("onclose", this._onsocketclose);
         if (WebSocketClient.instance.isConnected && WebSocketClient.instance.user != null) {
+            this.connect();
         }
     }
     onsignedin() {

@@ -3777,6 +3777,7 @@ export class CredentialCtrl extends entityCtrl<Base> {
             } else {
                 this.model = new Base();
                 this.model._type = "credential";
+                this.model._encrypt = ["password"];
                 this.searchSelectedItem = WebSocketClientService.user;
                 this.adduser();
             }
