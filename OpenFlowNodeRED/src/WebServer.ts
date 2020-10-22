@@ -185,6 +185,11 @@ export class WebServer {
                 // serve the http nodes UI from /api
                 this.app.use(this.settings.httpNodeRoot, RED.httpNode);
 
+                this.app.get("/livenessprobe", (req: any, res: any, next: any): void => {
+                    res.end(JSON.stringify({ "success": "true" }));
+                    res.end();
+                });
+
                 if (Config.nodered_port > 0) {
                     server.listen(Config.nodered_port);
                 }
