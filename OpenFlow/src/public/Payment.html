@@ -423,7 +423,7 @@
     <h3 ng-show="ctrl.openflowplans.length > 0">OpenFlow User w/NodeRed with a SLA</h3>
     <div class="row" ng-hide="ctrl.loading==true">
         <div ng-repeat="model in ctrl.openflowplans">
-            <div class="card" style="width: 18rem;height: 332px;">
+            <div class="card" style="width: 17rem;height: 332px;">
                 <div class="card-body">
                     <h5 class="card-title">{{model.metadata.webname}}</h5>
                     <h6 class="card-subtitle mb-2 text-muted">{{model.metadata.subtitle}}</h6>
@@ -441,7 +441,7 @@
     <h3 ng-show="ctrl.supportplans.length > 0">Support agreements</h3>
     <div class="row" ng-hide="ctrl.loading==true">
         <div ng-repeat="model in ctrl.supportplans">
-            <div class="card" style="width: 18rem;height: 362px;">
+            <div class="card" style="width: 17rem;height: 362px;">
                 <div class="card-body">
                     <h5 class="card-title">{{model.metadata.webname}}</h5>
                     <h6 class="card-subtitle mb-2 text-muted">{{(model.subplan.amount / 100)*ctrl.model.tax}} DKK/hour

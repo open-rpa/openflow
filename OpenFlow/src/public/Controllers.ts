@@ -3422,6 +3422,9 @@ export class PaymentCtrl extends entityCtrl<Billing> {
                     console.error(error);
                 }
             }
+            // Sort by price
+            this.openflowplans = this.openflowplans.sort((a, b) => a.amount - b.amount);
+            this.supportplans = this.supportplans.sort((a, b) => a.amount - b.amount);
 
         } catch (error) {
             console.error(error);
