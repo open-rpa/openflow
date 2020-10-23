@@ -32,7 +32,7 @@ let server: http.Server = null;
     try {
         const filename: string = Config.nodered_id + "_flows.json";
         const json = await backupStore.get(filename, null);
-        if (!NoderedUtil.IsNullEmpty(json)) {
+        if (!NoderedUtil.IsNullEmpty(json) && Config.allow_start_from_cache) {
             server = await WebServer.configure(logger, socket);
             var baseurl = Config.saml_baseurl;
             if (NoderedUtil.IsNullEmpty(baseurl)) {
