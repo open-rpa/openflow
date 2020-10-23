@@ -4,7 +4,7 @@ const path = require('path');
 
 export class Logger {
     static configure(): winston.Logger {
-        var filename = path.join(Config.logpath, "nodered.log");
+        var filename = path.join(Config.logpath, "nodered" + Config.nodered_id + ".log");
         var options: any = {
             file: {
                 level: "debug",
