@@ -8,6 +8,11 @@ docs
 node_modules
 logs
 package-lock.json
+tsconfig.json
 OpenFlow
 OpenFlowNodeRED
 temp
+webpack.config.js
+gulpfile.js
+OpenFlow.code-workspace
+CONTRIBUTING
