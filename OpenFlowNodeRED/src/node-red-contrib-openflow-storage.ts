@@ -7,7 +7,6 @@ import { Config } from "./Config";
 import { WebSocketClient, NoderedUtil, Base } from "openflow-api";
 import * as nodered from "node-red";
 import { FileSystemCache } from "openflow-api";
-const backupStore = new FileSystemCache(path.join(Config.logpath, '.cache'));
 export class noderednpmrc {
     public _id: string;
     public _type: string = "npmrc";
@@ -19,6 +18,7 @@ export class noderednpmrc {
 // tslint:disable-next-line: class-name
 export class noderedcontribopenflowstorage {
 
+    private backupStore: FileSystemCache = null;
     private socket: WebSocketClient = null;
     private _logger: winston.Logger;
     private settings: nodered_settings = null;
@@ -37,6 +37,7 @@ export class noderedcontribopenflowstorage {
         this.RED = nodered;
         this._logger = logger;
         this.socket = socket;
+        this.backupStore = new FileSystemCache(path.join(Config.logpath, '.cache-' + Config.nodered_id));
         this.getFlows = (this._getFlows.bind(this));
         this.saveFlows = (this._saveFlows.bind(this));
         this.getCredentials = (this._getCredentials.bind(this));
@@ -371,13 +372,13 @@ export class noderedcontribopenflowstorage {
         }
         const filename: string = Config.nodered_id + "_flows.json";
         if (result.length == 0) {
-            const json = await backupStore.get<string>(filename, null);
+            const json = await this.backupStore.get<string>(filename, null);
             if (!NoderedUtil.IsNullEmpty(json)) {
                 this._flows = JSON.parse(json);
                 result = this._flows;
             }
         } else {
-            await backupStore.set(filename, JSON.stringify(result));
+            await this.backupStore.set(filename, JSON.stringify(result));
         }
         return result;
     }
@@ -385,7 +386,7 @@ export class noderedcontribopenflowstorage {
         try {
             this._logger.silly("noderedcontribopenflowstorage::_saveFlows");
             const filename: string = Config.nodered_id + "_flows.json";
-            await backupStore.set(filename, JSON.stringify(flows));
+            await this.backupStore.set(filename, JSON.stringify(flows));
             if (WebSocketClient.instance.isConnected()) {
                 this.last_reload = new Date();
                 var result = await NoderedUtil.Query("nodered", { _type: "flow", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
@@ -433,14 +434,14 @@ export class noderedcontribopenflowstorage {
         }
         const filename: string = Config.nodered_id + "_credentials";
         if (cred.length == 0) {
-            let json = await backupStore.get<string>(filename, null);
+            let json = await this.backupStore.get<string>(filename, null);
             if (!NoderedUtil.IsNullEmpty(json)) {
                 json = noderedcontribopenflowstorage.decrypt(json);
                 this._credentials = JSON.parse(json);
                 cred = this._credentials;
             }
         } else {
-            await backupStore.set(filename, noderedcontribopenflowstorage.encrypt(JSON.stringify(cred)));
+            await this.backupStore.set(filename, noderedcontribopenflowstorage.encrypt(JSON.stringify(cred)));
         }
         return cred;
     }
@@ -448,7 +449,7 @@ export class noderedcontribopenflowstorage {
         try {
             this._logger.silly("noderedcontribopenflowstorage::_saveCredentials");
             const filename: string = Config.nodered_id + "_credentials";
-            await backupStore.set(filename, noderedcontribopenflowstorage.encrypt(JSON.stringify(credentials)));
+            await this.backupStore.set(filename, noderedcontribopenflowstorage.encrypt(JSON.stringify(credentials)));
             if (WebSocketClient.instance.isConnected()) {
                 this.last_reload = new Date();
                 var result = await NoderedUtil.Query("nodered", { _type: "credential", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
@@ -517,7 +518,7 @@ export class noderedcontribopenflowstorage {
         }
         if (settings == null) {
             settings = {};
-            const json = await backupStore.get<string>(filename, null);
+            const json = await this.backupStore.get<string>(filename, null);
             if (!NoderedUtil.IsNullEmpty(json)) {
                 this._settings = JSON.parse(json);
                 settings = this._settings;
@@ -569,7 +570,7 @@ export class noderedcontribopenflowstorage {
                 }
             }
             this._settings = settings;
-            await backupStore.set(filename, JSON.stringify(settings));
+            await this.backupStore.set(filename, JSON.stringify(settings));
         }
         try {
             if (this.firstrun) {
@@ -722,7 +723,7 @@ export class noderedcontribopenflowstorage {
         try {
             this._logger.silly("noderedcontribopenflowstorage::_saveSettings");
             const filename: string = Config.nodered_id + "_settings";
-            await backupStore.set(filename, JSON.stringify(settings));
+            await this.backupStore.set(filename, JSON.stringify(settings));
             if (WebSocketClient.instance.isConnected()) {
                 this.last_reload = new Date();
                 var result = await NoderedUtil.Query("nodered", { _type: "setting", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
@@ -761,19 +762,19 @@ export class noderedcontribopenflowstorage {
         }
         const filename: string = Config.nodered_id + "_sessions";
         if (item == null || item.length == 0) {
-            const json = await backupStore.get<string>(filename, null);
+            const json = await this.backupStore.get<string>(filename, null);
             if (!NoderedUtil.IsNullEmpty(json)) {
                 item = JSON.parse(json);
             }
         } else {
-            await backupStore.set(filename, JSON.stringify(item));
+            await this.backupStore.set(filename, JSON.stringify(item));
         }
         return item;
     }
     public async _saveSessions(sessions: any[]): Promise<void> {
         try {
             const filename: string = Config.nodered_id + "_sessions";
-            await backupStore.set(filename, JSON.stringify(sessions));
+            await this.backupStore.set(filename, JSON.stringify(sessions));
             if (WebSocketClient.instance.isConnected()) {
                 this.last_reload = new Date();
                 var result = await NoderedUtil.Query("nodered", { _type: "session", nodered_id: Config.nodered_id }, null, null, 1, 0, null);

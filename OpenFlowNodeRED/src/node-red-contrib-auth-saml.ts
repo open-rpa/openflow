@@ -8,7 +8,7 @@ import { Logger } from "./Logger";
 import { Config } from "./Config";
 export const logger = Logger.configure();
 import { FileSystemCache } from "openflow-api";
-const backupStore = new FileSystemCache(path.join(Config.logpath, '.cache'));
+
 // tslint:disable-next-line: class-name
 export class samlauthstrategyoptions {
     public callbackUrl: string = "auth/strategy/callback/";
@@ -75,6 +75,7 @@ export class noderedcontribauthsaml {
         // if anything throws, we retry
         var metadata: any = await retry(async bail => {
             process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+            const backupStore = new FileSystemCache(path.join(Config.logpath, '.cache-' + Config.nodered_id));
             var reader: any = await fetch({ url, backupStore });
             process.env.NODE_TLS_REJECT_UNAUTHORIZED = "1";
             if (reader === null || reader === undefined) { bail(new Error("Failed getting result")); return; }
