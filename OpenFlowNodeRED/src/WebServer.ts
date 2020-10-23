@@ -113,7 +113,8 @@ export class WebServer {
 
 
 
-                this.settings.userDir = path.join(__dirname, "./nodered");
+                // this.settings.userDir = path.join(__dirname, "./nodered");
+                this.settings.userDir = path.join(Config.logpath, '.nodered-' + Config.nodered_id)
                 this.settings.nodesDir = path.join(__dirname, "./nodered");
 
                 // this.settings.adminAuth = new googleauth.noderedcontribauthgoogle(Config.baseurl(), Config.consumer_key, Config.consumer_secret, 
@@ -184,6 +185,11 @@ export class WebServer {
 
                 // serve the http nodes UI from /api
                 this.app.use(this.settings.httpNodeRoot, RED.httpNode);
+
+                this.app.get("/livenessprobe", (req: any, res: any, next: any): void => {
+                    res.end(JSON.stringify({ "success": "true" }));
+                    res.end();
+                });
 
                 if (Config.nodered_port > 0) {
                     server.listen(Config.nodered_port);

@@ -1004,6 +1004,20 @@ export class Message {
                 }
             }
         }
+        let livenessProbe: any = {
+            httpGet: {
+                path: "/livenessprobe",
+                port: 80,
+                scheme: "HTTP"
+            },
+            initialDelaySeconds: Config.nodered_initial_liveness_delay,
+            periodSeconds: 5,
+            failureThreshold: 5,
+            timeoutSeconds: 5
+        }
+        if (user.nodered && (user.nodered as any).livenessProbe) {
+            livenessProbe = (user.nodered as any).livenessProbe;
+        }
 
         cli._logger.debug("[" + cli.user.username + "] GetDeployments");
         var deployment: V1Deployment = await KubeUtil.instance().GetDeployment(namespace, name);
@@ -1047,17 +1061,7 @@ export class Message {
                                         { name: "api_allow_anonymous", value: user.nodered.api_allow_anonymous.toString() },
                                         { name: "NODE_ENV", value: Config.NODE_ENV },
                                     ],
-                                    livenessProbe: {
-                                        httpGet: {
-                                            path: "/",
-                                            port: 80,
-                                            scheme: "HTTP"
-                                        },
-                                        initialDelaySeconds: Config.nodered_initial_liveness_delay,
-                                        periodSeconds: 5,
-                                        failureThreshold: 5,
-                                        timeoutSeconds: 5
-                                    },
+                                    livenessProbe: livenessProbe,
                                 }
                             ]
                         }
@@ -2216,7 +2220,7 @@ export class Message {
             url = "https://api.stripe.com/v1/invoices/upcoming?customer=" + customerid;
         }
 
-        var auth = "Basic " + new Buffer(Config.stripe_api_secret + ":").toString("base64");
+        var auth = "Basic " + Buffer.from(Config.stripe_api_secret + ":").toString("base64");
 
         var options = {
             headers: {

@@ -9,7 +9,6 @@ import { Config } from "./Config";
 import { Crypt } from "./nodeclient/Crypt";
 import { FileSystemCache } from "openflow-api";
 
-const backupStore = new FileSystemCache(path.join(Config.logpath, '.cache'));
 const logger: winston.Logger = Logger.configure();
 logger.info("starting openflow nodered");
 
@@ -30,9 +29,10 @@ rejectionEmitter.on("rejectionHandled", (error, promise) => {
 let server: http.Server = null;
 (async function (): Promise<void> {
     try {
+        const backupStore = new FileSystemCache(path.join(Config.logpath, '.cache-' + Config.nodered_id));
         const filename: string = Config.nodered_id + "_flows.json";
         const json = await backupStore.get(filename, null);
-        if (!NoderedUtil.IsNullEmpty(json)) {
+        if (!NoderedUtil.IsNullEmpty(json) && Config.allow_start_from_cache) {
             server = await WebServer.configure(logger, socket);
             var baseurl = Config.saml_baseurl;
             if (NoderedUtil.IsNullEmpty(baseurl)) {

@@ -3422,6 +3422,9 @@ export class PaymentCtrl extends entityCtrl<Billing> {
                     console.error(error);
                 }
             }
+            // Sort by price
+            this.openflowplans = this.openflowplans.sort((a, b) => a.amount - b.amount);
+            this.supportplans = this.supportplans.sort((a, b) => a.amount - b.amount);
 
         } catch (error) {
             console.error(error);
@@ -3777,6 +3780,7 @@ export class CredentialCtrl extends entityCtrl<Base> {
             } else {
                 this.model = new Base();
                 this.model._type = "credential";
+                this.model._encrypt = ["password"];
                 this.searchSelectedItem = WebSocketClientService.user;
                 this.adduser();
             }
@@ -4008,4 +4012,168 @@ export class CredentialCtrl extends entityCtrl<Base> {
         });
     }
 
+}
+
+
+
+
+
+export class DuplicatesCtrl extends entitiesCtrl<Base> {
+    public collections: any;
+    public model: Base;
+    public uniqeness: string;
+    constructor(
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        console.debug("DuplicatesCtrl");
+        this.autorefresh = true;
+        this.basequery = { _id: 'notthere' };
+        this.collection = $routeParams.collection;
+        this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
+        this.postloadData = this.processdata;
+        if (this.userdata.data.DuplicatesCtrl) {
+            this.basequery = this.userdata.data.DuplicatesCtrl.basequery;
+            this.uniqeness = this.userdata.data.DuplicatesCtrl.uniqeness;
+            this.baseprojection = this.userdata.data.DuplicatesCtrl.baseprojection;
+            this.orderby = this.userdata.data.DuplicatesCtrl.orderby;
+            this.searchstring = this.userdata.data.DuplicatesCtrl.searchstring;
+            this.basequeryas = this.userdata.data.DuplicatesCtrl.basequeryas;
+        } else {
+            if (NoderedUtil.IsNullEmpty(this.collection)) {
+                console.log("1 redir to /Duplicates/entities");
+                this.$location.path("/Duplicates/entities");
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                return;
+            }
+        }
+        if (NoderedUtil.IsNullEmpty(this.collection)) {
+            console.log("2 redir to /Duplicates/entities");
+            this.$location.path("/Duplicates/entities");
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            return;
+        } else if (this.$location.path() != "/Duplicates/" + this.collection) {
+            console.log("3 redir from / to");
+            console.log(this.$location.path());
+            console.log("/Duplicates/" + this.collection);
+            this.$location.path("/Duplicates/" + this.collection);
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            return;
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            this.loadData();
+        });
+    }
+    async processdata() {
+        if (!NoderedUtil.IsNullEmpty(this.uniqeness)) {
+            var pipe: any[] = [];
+            var arr = this.uniqeness.split(",");
+            var group: any = { _id: {}, count: { "$sum": 1 } };
+            //if ("111".toLowerCase() == "22") {
+            group.items = {
+                $push: '$$ROOT._id'
+            }
+            //}
+            arr.forEach(field => {
+                if (field.trim() !== "") {
+                    group._id[field] = "$" + field;
+                }
+            });
+            pipe.push({ "$group": group });
+            pipe.push({ "$match": { "count": { "$gte": 2 } } });
+            pipe.push({ "$limit": 100 });
+            pipe.push({ "$sort": this.orderby })
+            try {
+                this.models = await NoderedUtil.Aggregate(this.collection, pipe, null);
+                console.log(this.models);
+            } catch (error) {
+                console.log(pipe);
+                this.errormessage = JSON.stringify(error);
+            }
+        }
+
+        if (!this.userdata.data.DuplicatesCtrl) this.userdata.data.DuplicatesCtrl = {};
+        this.userdata.data.DuplicatesCtrl.basequery = this.basequery;
+        this.userdata.data.DuplicatesCtrl.uniqeness = this.uniqeness;
+        this.userdata.data.DuplicatesCtrl.baseprojection = this.baseprojection;
+        this.userdata.data.DuplicatesCtrl.orderby = this.orderby;
+        this.userdata.data.DuplicatesCtrl.searchstring = this.searchstring;
+        this.userdata.data.DuplicatesCtrl.basequeryas = this.basequeryas;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async ShowData(model) {
+        var modal: any = $("#exampleModal");
+        modal.modal();
+        this.model = model;
+    }
+    OpenEntity(id) {
+        var modal: any = $("#exampleModal");
+        modal.modal('hide');
+        this.$location.path("/Entity/" + this.collection + "/" + id);
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        return;
+
+    }
+    async MassDeleteOnlyOne() {
+        this.loading = true;
+        for (var x = 0; x < this.models.length; x++) {
+            var item = (this.models[x] as any);
+            console.log("deleting " + item.items[0]);
+            await NoderedUtil.DeleteOne(this.collection, item.items[0], null);
+        }
+        this.loading = false;
+        this.loadData();
+    }
+    async MassDeleteAllButOne() {
+        this.loading = true;
+        for (var x = 0; x < this.models.length; x++) {
+            var item = (this.models[x] as any);
+            for (var y = 1; y < item.items.length; y++) {
+                console.log("deleting " + item.items[y]);
+                await NoderedUtil.DeleteOne(this.collection, item.items[y], null);
+            }
+        }
+        this.loading = false;
+        this.loadData();
+    }
+    async MassDeleteAll() {
+        this.loading = true;
+        for (var x = 0; x < this.models.length; x++) {
+            var item = (this.models[x] as any);
+            for (var y = 0; y < item.items.length; y++) {
+                console.log("deleting " + item.items[y]);
+                await NoderedUtil.DeleteOne(this.collection, item.items[y], null);
+            }
+        }
+        this.loading = false;
+        this.loadData();
+    }
+    async DeleteOnlyOne(model) {
+        if (NoderedUtil.IsNullUndefinded(model)) return;
+        if (NoderedUtil.IsNullUndefinded(model.items)) return;
+        if (model.items.length < 2) return;
+        this.loading = true;
+        console.log("deleting " + model.items[0]);
+        await NoderedUtil.DeleteOne(this.collection, model.items[0], null);
+        this.loading = false;
+        this.loadData();
+    }
+    async DeleteAll(model) {
+        if (NoderedUtil.IsNullUndefinded(model)) return;
+        if (NoderedUtil.IsNullUndefinded(model.items)) return;
+        this.loading = true;
+        for (var i = 0; i < model.items.length; i++) {
+            console.log("deleting " + model.items[i]);
+            await NoderedUtil.DeleteOne(this.collection, model.items[i], null);
+        }
+        this.loading = false;
+        this.loadData();
+    }
 }

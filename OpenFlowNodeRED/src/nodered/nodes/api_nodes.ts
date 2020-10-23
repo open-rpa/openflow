@@ -6,7 +6,6 @@ import { Logger } from "../../Logger";
 import { NoderedUtil, SigninMessage, TokenUser, Message, WebSocketClient, Base, mapFunc, reduceFunc, finalizeFunc, UpdateOneMessage } from "openflow-api";
 import * as path from "path";
 import { FileSystemCache } from "openflow-api";
-const backupStore = new FileSystemCache(path.join(Config.logpath, '.cache'));
 
 export interface Iapi_credentials {
 }
@@ -1050,6 +1049,7 @@ export class api_watch {
         WebSocketClient.instance.events.on("onsignedin", this._onsignedin);
         WebSocketClient.instance.events.on("onclose", this._onsocketclose);
         if (WebSocketClient.instance.isConnected && WebSocketClient.instance.user != null) {
+            this.connect();
         }
     }
     onsignedin() {

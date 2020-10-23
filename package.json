@@ -1,6 +1,6 @@
 {
   "name": "openiap",
-  "version": "1.1.19",
+  "version": "1.1.23",
   "description": "Simple wrapper around NodeRed, RabbitMQ and MongoDB to support a more scaleable NodeRed implementation.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {
@@ -19,6 +19,7 @@
     "url": "https://github.com/open-rpa/openflow/issues"
   },
   "homepage": "https://github.com/open-rpa/openflow",
+  "funding": "https://github.com/sponsors/skadefro",
   "bin": {
     "openflow-cli": "./dist/cli.js"
   },

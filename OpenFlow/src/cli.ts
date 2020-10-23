@@ -12,6 +12,7 @@ const optionDefinitions = [
     { name: 'install', alias: 'i', type: Boolean },
     { name: 'uninstall', alias: 'u', type: Boolean },
     { name: 'start', type: Boolean },
+    { name: 'restart', type: Boolean },
     { name: 'stop', type: Boolean },
     { name: 'run', type: Boolean },
     { name: 'name', type: String, defaultOption: true },
@@ -116,6 +117,10 @@ async function doit() {
         StartService(servicename);
     } else if (options.stop == true) {
         StopService(servicename);
+    } else if (options.restart == true) {
+        StopService(servicename);
+        loadenv();
+        StartService(servicename);
     } else if (options.run == true) {
         loadenv();
         logger.info("Starting as service " + servicename);

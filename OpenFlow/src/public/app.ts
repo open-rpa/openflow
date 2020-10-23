@@ -1,7 +1,7 @@
 import { WebSocketClientService } from "./WebSocketClientService";
 import angular = require("angular");
 import { timesince, translate, textarea, fileread, userdata, api } from "./CommonControllers";
-import { MenuCtrl, ProvidersCtrl, MainCtrl, LoginCtrl, ProviderCtrl, UsersCtrl, UserCtrl, RolesCtrl, RoleCtrl, RPAWorkflowsCtrl, RPAWorkflowCtrl, WorkflowsCtrl, ReportsCtrl, jslogCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, SocketCtrl, NoderedCtrl, hdrobotsCtrl, RobotsCtrl, AuditlogsCtrl, SignupCtrl, PaymentCtrl, QueuesCtrl, SocketsCtrl, QueueCtrl, CredentialsCtrl, CredentialCtrl } from "./Controllers";
+import { MenuCtrl, ProvidersCtrl, MainCtrl, LoginCtrl, ProviderCtrl, UsersCtrl, UserCtrl, RolesCtrl, RoleCtrl, RPAWorkflowsCtrl, RPAWorkflowCtrl, WorkflowsCtrl, ReportsCtrl, jslogCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, SocketCtrl, NoderedCtrl, hdrobotsCtrl, RobotsCtrl, AuditlogsCtrl, SignupCtrl, PaymentCtrl, QueuesCtrl, SocketsCtrl, QueueCtrl, CredentialsCtrl, CredentialCtrl, DuplicatesCtrl } from "./Controllers";
 
 /**
  * @type {angular.Module}
@@ -70,6 +70,8 @@ module openflow {
                 .when('/Entities/:collection', { templateUrl: 'Entities.html', controller: EntitiesCtrl, controllerAs: 'ctrl' })
                 .when('/Entity/:collection', { templateUrl: 'Entity.html', controller: EntityCtrl, controllerAs: 'ctrl' })
                 .when('/Entity/:collection/:id', { templateUrl: 'Entity.html', controller: EntityCtrl, controllerAs: 'ctrl' })
+
+                .when('/Duplicates/:collection', { templateUrl: 'Duplicates.html', controller: DuplicatesCtrl, controllerAs: 'ctrl' })
 
                 .when('/History/:collection/:id', { templateUrl: 'History.html', controller: HistoryCtrl, controllerAs: 'ctrl' })
 
