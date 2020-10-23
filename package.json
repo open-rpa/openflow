@@ -19,6 +19,7 @@
     "url": "https://github.com/open-rpa/openflow/issues"
   },
   "homepage": "https://github.com/open-rpa/openflow",
+  "funding": "https://github.com/sponsors/skadefro",
   "bin": {
     "openflow-cli": "./dist/cli.js"
   },
