@@ -326,16 +326,34 @@ export class api_update {
 
             if (data.length === 0) { this.node.warn("input array is empty"); return; }
 
-            this.node.status({ fill: "blue", shape: "dot", text: "Inserting items" });
+            // this.node.status({ fill: "blue", shape: "dot", text: "Inserting items" });
+            // var Promises: Promise<any>[] = [];
+            // for (var i: number = 0; i < data.length; i++) {
+            //     var element: any = data[i];
+            //     if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
+            //         element._type = this.config.entitytype;
+            //     }
+            //     Promises.push(NoderedUtil.UpdateOne(this.config.collection, null, element, this.config.writeconcern, this.config.journal, msg.jwt));
+            // }
+            // data = await Promise.all(Promises.map(p => p.catch(e => e)));
+            this.node.status({ fill: "blue", shape: "dot", text: "processing ..." });
             var Promises: Promise<any>[] = [];
-            for (var i: number = 0; i < data.length; i++) {
-                var element: any = data[i];
-                if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
-                    element._type = this.config.entitytype;
+            var results: any[] = [];
+            for (var y: number = 0; y < data.length; y += 50) {
+                for (var i: number = y; i < (y + 50) && i < data.length; i++) {
+                    var element: any = data[i];
+                    if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
+                        element._type = this.config.entitytype;
+                    }
+                    Promises.push(NoderedUtil.UpdateOne(this.config.collection, null, element, this.config.writeconcern, this.config.journal, msg.jwt));
                 }
-                Promises.push(NoderedUtil.UpdateOne(this.config.collection, null, element, this.config.writeconcern, this.config.journal, msg.jwt));
+                this.node.status({ fill: "blue", shape: "dot", text: "processing " + y + " to " + (y + 49) });
+                var tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
+                results = results.concat(tempresults);
+                Promises = [];
             }
-            data = await Promise.all(Promises.map(p => p.catch(e => e)));
+            data = results;
+
 
             var errors = data.filter(result => NoderedUtil.IsString(result) || (result instanceof Error));
             if (errors.length > 0) {
@@ -379,8 +397,6 @@ export class api_addorupdate {
     async oninput(msg: any) {
         try {
             this.node.status({});
-            // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
-
             if (!NoderedUtil.IsNullEmpty(msg.entitytype)) { this.config.entitytype = msg.entitytype; }
             if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
             if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { this.config.inputfield = msg.inputfield; }
@@ -388,9 +404,6 @@ export class api_addorupdate {
             if (!NoderedUtil.IsNullEmpty(msg.uniqeness)) { this.config.uniqeness = msg.uniqeness; }
             if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
             if (!NoderedUtil.IsNullEmpty(msg.journal)) { this.config.journal = msg.journal; }
-            // if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
-            //     msg.jwt = Config.jwt;
-            // }
 
             if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
             if ((this.config.journal as any) === undefined || (this.config.journal as any) === null) this.config.journal = false;
@@ -403,16 +416,6 @@ export class api_addorupdate {
 
             if (data.length === 0) { this.node.warn("input array is empty"); return; }
 
-            // this.node.status({ fill: "blue", shape: "dot", text: "Inserting/updating items" });
-            // var Promises: Promise<any>[] = [];
-            // for (var i: number = 0; i < data.length; i++) {
-            //     var element: any = data[i];
-            //     if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
-            //         element._type = this.config.entitytype;
-            //     }
-            //     Promises.push(NoderedUtil.InsertOrUpdateOne(this.config.collection, element, this.config.uniqeness, this.config.writeconcern, this.config.journal, msg.jwt));
-            // }
-            // data = await Promise.all(Promises.map(p => p.catch(e => e)));
             this.node.status({ fill: "blue", shape: "dot", text: "processing ..." });
             var Promises: Promise<any>[] = [];
             var results: any[] = [];
@@ -427,6 +430,7 @@ export class api_addorupdate {
                 this.node.status({ fill: "blue", shape: "dot", text: "processing " + y + " to " + (y + 49) });
                 var tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
                 results = results.concat(tempresults);
+                Promises = [];
             }
             data = results;
 
@@ -484,15 +488,31 @@ export class api_delete {
 
             if (data.length === 0) { this.node.warn("input array is empty"); return; }
 
-            this.node.status({ fill: "blue", shape: "dot", text: "Deleting items" });
+            // this.node.status({ fill: "blue", shape: "dot", text: "Deleting items" });
+            // var Promises: Promise<any>[] = [];
+            // for (var i: number = 0; i < data.length; i++) {
+            //     var element: any = data[i];
+            //     var id: string = element;
+            //     if (NoderedUtil.isObject(element)) { id = element._id; }
+            //     Promises.push(NoderedUtil.DeleteOne(this.config.collection, id, msg.jwt));
+            // }
+            // data = await Promise.all(Promises.map(p => p.catch(e => e)));
+            this.node.status({ fill: "blue", shape: "dot", text: "processing ..." });
             var Promises: Promise<any>[] = [];
-            for (var i: number = 0; i < data.length; i++) {
-                var element: any = data[i];
-                var id: string = element;
-                if (NoderedUtil.isObject(element)) { id = element._id; }
-                Promises.push(NoderedUtil.DeleteOne(this.config.collection, id, msg.jwt));
+            var results: any[] = [];
+            for (var y: number = 0; y < data.length; y += 50) {
+                for (var i: number = y; i < (y + 50) && i < data.length; i++) {
+                    var element: any = data[i];
+                    var id: string = element;
+                    if (NoderedUtil.isObject(element)) { id = element._id; }
+                    Promises.push(NoderedUtil.DeleteOne(this.config.collection, id, msg.jwt));
+                }
+                this.node.status({ fill: "blue", shape: "dot", text: "processing " + y + " to " + (y + 49) });
+                var tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
+                results = results.concat(tempresults);
+                Promises = [];
             }
-            data = await Promise.all(Promises.map(p => p.catch(e => e)));
+            data = results;
 
             var errors = data.filter(result => NoderedUtil.IsString(result) || (result instanceof Error));
             if (errors.length > 0) {

@@ -1,6 +1,6 @@
 {
   "name": "openflow-nodered",
-  "version": "1.1.26",
+  "version": "1.1.27",
   "description": "Simple wrapper around NodeRed, RabbitMQ and MongoDB to support a more scaleable NodeRed implementation.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {
