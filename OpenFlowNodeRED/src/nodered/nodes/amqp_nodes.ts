@@ -33,7 +33,7 @@ export class amqp_connection {
             this.webcli = new WebSocketClient(WebSocketClient.instance._logger, this.host);
             this.webcli.agent = "remotenodered";
             this.webcli.version = Config.version;
-            this.webcli._logger.info("amqp_condig: connecting to " + this.host);
+            this.webcli._logger.info("amqp_config: connecting to " + this.host);
             this.webcli.events.on("onopen", async () => {
                 try {
                     var q: SigninMessage = new SigninMessage();
@@ -42,7 +42,7 @@ export class amqp_connection {
                     q.username = this.username;
                     q.password = this.password;
                     var msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
-                    this.webcli._logger.info("amqp_condig: signing into " + this.host + " as " + this.username);
+                    this.webcli._logger.info("amqp_config: signing into " + this.host + " as " + this.username);
                     var result: SigninMessage = await this.webcli.Send<SigninMessage>(msg);
                     this.webcli._logger.info("signed in to " + this.host + " as " + result.user.name + " with id " + result.user._id);
                     this.webcli.user = result.user;

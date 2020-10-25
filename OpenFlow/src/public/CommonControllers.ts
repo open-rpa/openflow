@@ -250,6 +250,7 @@ export class entitiesCtrl<T> {
     public orderby: any = { _id: -1 };
     public autorefresh: boolean = false;
     public autorefreshinterval: number = 30 * 1000;
+    public pagesize: number = 100;
     public autorefreshpromise: any = null;
     public preloadData: any = null;
     public postloadData: any = null;
@@ -320,11 +321,11 @@ export class entitiesCtrl<T> {
                     query = { $and: [query, { $or: finalor.concat() }] };
                 }
             }
-            this.models = await NoderedUtil.Query(this.collection, query, this.baseprojection, this.orderby, 100, 0, null, this.basequeryas);
+            this.models = await NoderedUtil.Query(this.collection, query, this.baseprojection, this.orderby, this.pagesize, 0, null, this.basequeryas);
             this.loading = false;
             if (this.autorefresh) {
-                if (this.models.length >= 100) {
-                    // console.warn("Disabling auto refresh, result has more than 100 entries");
+                if (this.models.length >= this.pagesize) {
+                    // console.warn("Disabling auto refresh, result has more than pagesize entries");
                 } else {
                     if (this.autorefreshpromise == null && this.searchstring === "") {
                         //if (this.autorefreshpromise == null) {

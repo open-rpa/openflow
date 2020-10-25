@@ -668,7 +668,8 @@ export class noderedcontribopenflowstorage {
                                     await this.RED.runtime.nodes.removeModule({ user: "admin", module: key, version: val.version });
                                 } else if (newsettings.nodes[key].version != oldsettings.nodes[key].version) {
                                     this._logger.info("Install module " + key + "@" + newsettings.nodes[key].version + " up from " + oldsettings.nodes[key].version);
-                                    await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: newsettings.nodes[key].version });
+                                    let result = await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: newsettings.nodes[key].version });
+                                    this._logger.debug(result);
                                 }
                             } catch (error) {
                                 this._logger.error((error.message ? error.message : error));
@@ -683,7 +684,8 @@ export class noderedcontribopenflowstorage {
                             try {
                                 if (oldsettings.nodes[key] == null) {
                                     this._logger.info("Install new module " + key + "@" + val.version);
-                                    await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: val.version });
+                                    let result = await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: val.version });
+                                    this._logger.debug(result);
                                 } else if (newsettings.nodes[key].version != oldsettings.nodes[key].version) {
                                     this._logger.info("Install module " + key + "@" + newsettings.nodes[key].version + " up from " + oldsettings.nodes[key].version);
                                     await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: val.version });
@@ -693,7 +695,6 @@ export class noderedcontribopenflowstorage {
                             }
                         }
                     }
-
                     if (this.DiffObjects(newsettings, oldsettings)) {
                         update = true;
                     }

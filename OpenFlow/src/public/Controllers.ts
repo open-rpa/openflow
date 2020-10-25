@@ -1235,7 +1235,9 @@ export class RoleCtrl extends entityCtrl<Role> {
         if (this.model._id) {
             await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null);
         } else {
-            await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null);
+            this.model = await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null);
+            // this.model = await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null);
+            // this.model = await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null);
         }
         this.$location.path("/Roles");
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -4034,10 +4036,18 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         console.debug("DuplicatesCtrl");
         this.autorefresh = true;
-        this.basequery = { _id: 'notthere' };
+        this.basequery = {};
         this.collection = $routeParams.collection;
-        this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
+        // this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
+        this.pagesize = 1;
         this.postloadData = this.processdata;
+        var checkList = document.getElementById('list1');
+        (checkList.getElementsByClassName('anchor')[0] as any).onclick = function (evt) {
+            if (checkList.classList.contains('visible'))
+                checkList.classList.remove('visible');
+            else
+                checkList.classList.add('visible');
+        }
         if (this.userdata.data.DuplicatesCtrl) {
             this.basequery = this.userdata.data.DuplicatesCtrl.basequery;
             this.uniqeness = this.userdata.data.DuplicatesCtrl.uniqeness;
@@ -4071,14 +4081,23 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
             this.loadData();
         });
     }
+    public keys: string[] = [];
     async processdata() {
+        if (this.models.length > 0) {
+            this.keys = Object.keys(this.models[0]);
+            for (var i: number = this.keys.length - 1; i >= 0; i--) {
+                if (this.keys[i].startsWith('_') && this.keys[i] != "_type") this.keys.splice(i, 1);
+            }
+            this.keys.sort();
+            this.keys.reverse();
+        } else { this.keys = []; }
         if (!NoderedUtil.IsNullEmpty(this.uniqeness)) {
             var pipe: any[] = [];
             var arr = this.uniqeness.split(",");
             var group: any = { _id: {}, count: { "$sum": 1 } };
             //if ("111".toLowerCase() == "22") {
             group.items = {
-                $push: '$$ROOT._id'
+                $push: { "_id": '$$ROOT._id', "name": '$$ROOT.name' }
             }
             //}
             arr.forEach(field => {
@@ -4108,15 +4127,33 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         this.userdata.data.DuplicatesCtrl.basequeryas = this.basequeryas;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
+    ToggleUniqeness(model) {
+        var arr = [];
+        if (this.uniqeness != null && this.uniqeness != "") arr = this.uniqeness.split(',');
+        var index = arr.indexOf(model);
+        if (index > -1) {
+            arr.splice(index, 1);
+            this.uniqeness = arr.join(',');
+        } else {
+            arr.push(model);
+            this.uniqeness = arr.join(',');
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        this.loadData();
+    }
     async ShowData(model) {
         var modal: any = $("#exampleModal");
         modal.modal();
         this.model = model;
     }
-    OpenEntity(id) {
+    async CloseModal() {
         var modal: any = $("#exampleModal");
         modal.modal('hide');
-        this.$location.path("/Entity/" + this.collection + "/" + id);
+    }
+    OpenEntity(model) {
+        var modal: any = $("#exampleModal");
+        modal.modal('hide');
+        this.$location.path("/Entity/" + this.collection + "/" + model._id);
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         return;
 
@@ -4125,8 +4162,8 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         this.loading = true;
         for (var x = 0; x < this.models.length; x++) {
             var item = (this.models[x] as any);
-            console.log("deleting " + item.items[0]);
-            await NoderedUtil.DeleteOne(this.collection, item.items[0], null);
+            console.log("deleting ", item.items[0]);
+            await NoderedUtil.DeleteOne(this.collection, item.items[0]._id, null);
         }
         this.loading = false;
         this.loadData();
@@ -4136,8 +4173,8 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         for (var x = 0; x < this.models.length; x++) {
             var item = (this.models[x] as any);
             for (var y = 1; y < item.items.length; y++) {
-                console.log("deleting " + item.items[y]);
-                await NoderedUtil.DeleteOne(this.collection, item.items[y], null);
+                console.log("deleting ", item.items[y]);
+                await NoderedUtil.DeleteOne(this.collection, item.items[y]._id, null);
             }
         }
         this.loading = false;
@@ -4148,8 +4185,8 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         for (var x = 0; x < this.models.length; x++) {
             var item = (this.models[x] as any);
             for (var y = 0; y < item.items.length; y++) {
-                console.log("deleting " + item.items[y]);
-                await NoderedUtil.DeleteOne(this.collection, item.items[y], null);
+                console.log("deleting ", item.items[y]);
+                await NoderedUtil.DeleteOne(this.collection, item.items[y]._id, null);
             }
         }
         this.loading = false;
@@ -4160,8 +4197,19 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         if (NoderedUtil.IsNullUndefinded(model.items)) return;
         if (model.items.length < 2) return;
         this.loading = true;
-        console.log("deleting " + model.items[0]);
-        await NoderedUtil.DeleteOne(this.collection, model.items[0], null);
+        console.log("deleting ", model.items[0]);
+        await NoderedUtil.DeleteOne(this.collection, model.items[0]._id, null);
+        this.loading = false;
+        this.loadData();
+    }
+    async DeleteAllButOne(model) {
+        if (NoderedUtil.IsNullUndefinded(model)) return;
+        if (NoderedUtil.IsNullUndefinded(model.items)) return;
+        this.loading = true;
+        for (var i = 1; i < model.items.length; i++) {
+            console.log("deleting ", model.items[i]);
+            await NoderedUtil.DeleteOne(this.collection, model.items[i]._id, null);
+        }
         this.loading = false;
         this.loadData();
     }
@@ -4170,10 +4218,20 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         if (NoderedUtil.IsNullUndefinded(model.items)) return;
         this.loading = true;
         for (var i = 0; i < model.items.length; i++) {
-            console.log("deleting " + model.items[i]);
-            await NoderedUtil.DeleteOne(this.collection, model.items[i], null);
+            console.log("deleting ", model.items[i]);
+            await NoderedUtil.DeleteOne(this.collection, model.items[i]._id, null);
         }
         this.loading = false;
+        this.loadData();
+    }
+    async ModalDeleteOne(model) {
+        this.loading = true;
+        await NoderedUtil.DeleteOne(this.collection, model._id, null);
+        var arr: any[] = (this.model as any).items;
+        arr = arr.filter(x => x._id != model._id);
+        (this.model as any).items = arr;
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
         this.loadData();
     }
 }

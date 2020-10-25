@@ -629,7 +629,6 @@ export class DatabaseConnection {
             item._version = await this.SaveDiff(collectionname, null, item);
         }
 
-
         item = await this.CleanACL(item);
         if (item._type === "role" && collectionname === "users") {
             item = await this.Cleanmembers(item as any, null);
@@ -658,6 +657,7 @@ export class DatabaseConnection {
             item.addRight(item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
             var users: Role = await DBHelper.FindRoleByNameOrId("users", jwt);
             users.AddMember(item);
+            item = await this.CleanACL(item);
             await DBHelper.Save(users, Crypt.rootToken());
             var user: TokenUser = item as any;
             if (Config.auto_create_personal_nodered_group) {
@@ -675,6 +675,7 @@ export class DatabaseConnection {
         }
         if (collectionname === "users" && item._type === "role") {
             item.addRight(item._id, item.name, [Rights.read]);
+            item = await this.CleanACL(item);
             await this.db.collection(collectionname).replaceOne({ _id: item._id }, item);
         }
         DatabaseConnection.traversejsondecode(item);
