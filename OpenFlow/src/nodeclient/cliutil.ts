@@ -5,9 +5,9 @@ export const logger = Logger.configure();
 const cp = require('child_process');
 const path = require('path');
 const envfile = require('envfile')
-export var envfilename = ".env";
-export var envfilepathname = "";
-export var servicename = "openflow-nodered";
+export const envfilename = ".env";
+export const envfilepathname = "";
+export const servicename = "openflow-nodered";
 const service = require("os-service");
 export function isWin() {
     return process.platform === "win32";
@@ -16,8 +16,8 @@ export function isMac() {
     return process.platform === "darwin";
 }
 export function isOpenFlow() {
-    var check1 = path.join(__dirname, "..", "DatabaseConnection.ts");
-    var check2 = path.join(__dirname, "..", "DatabaseConnection.js");
+    const check1 = path.join(__dirname, "..", "DatabaseConnection.ts");
+    const check2 = path.join(__dirname, "..", "DatabaseConnection.js");
     if (fs.existsSync(check1) || fs.existsSync(check2)) return true;
     return false;
 }
@@ -74,7 +74,7 @@ export function RunService(callback: any) {
 }
 // use and copy current env file, unless we have a /config folder in root
 export function getlocaldir(): string {
-    var local = __dirname;
+    let local = __dirname;
     if (fs.existsSync(path.join(local, "..", "config"))) {
         local = path.join(local, "..", "config");
     } else if (fs.existsSync(path.join(local, "..", "..", "config"))) {
@@ -87,12 +87,12 @@ export function getlocaldir(): string {
     return local;
 }
 export function haslocalenv(): boolean {
-    var localenv = path.join(getlocaldir(), envfilename);
+    const localenv = path.join(getlocaldir(), envfilename);
     return fs.existsSync(localenv);
 }
 // set source to location of source files, unless we have a /config folder in root
 export function getsourcedir(): string {
-    var source = __dirname;
+    let source = __dirname;
     if (fs.existsSync(path.join(source, "..", "config"))) {
         source = path.join(source, "..", "config");
     } else if (fs.existsSync(path.join(source, "..", "..", "config"))) {
@@ -103,24 +103,9 @@ export function getsourcedir(): string {
     return source;
 }
 export function hassourceenv(): boolean {
-    var sourceenv = path.join(getsourcedir(), envfilename);
+    const sourceenv = path.join(getsourcedir(), envfilename);
     return fs.existsSync(sourceenv);
 }
-// export function copyenv() {
-//     var source = getsourcedir();
-//     var local = getlocaldir();
-
-
-//     var localenv = path.join(local, envfilename);
-//     var sourceenv = path.join(source, envfilename);
-//     if (localenv != sourceenv && fs.existsSync(localenv)) {
-//         logger.info("localenv : " + localenv);
-//         logger.info("sourceenv: " + sourceenv);
-//         logger.info("copy local " + envfilename + " file to " + source);
-//         fs.copyFileSync(localenv, sourceenv);
-//     }
-//     loadenv();
-// }
 export function loadenv() {
     logger.info("NodeJS version " + process.version + " Config " + envfilepathname);
     let parsedFile = envfile.parse(fs.readFileSync(envfilepathname));

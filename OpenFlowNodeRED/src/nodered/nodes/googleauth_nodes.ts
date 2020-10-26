@@ -3,12 +3,12 @@ import { Red } from "node-red";
 import { NoderedUtil } from "openflow-api";
 import { Config } from "../../Config";
 const { GoogleAuth, OAuth2Client } = require('google-auth-library');
-var fs = require("fs");
+const fs = require("fs");
 // const request = require('request');
-var request = require("request");
+const request = require("request");
 
 function GetGoogleAuthClient(config: Igoogleauth_credentials): any {
-    var result = {
+    const result = {
         auth: null,
         Client: null
     }
@@ -104,8 +104,8 @@ export class googleauth_credentials {
     }
     async init() {
         if (NoderedUtil.IsNullEmpty(this.clientid) || NoderedUtil.IsNullEmpty(this.clientsecret) || NoderedUtil.IsNullEmpty(this.redirecturi)) return;
-        var me = this;
-        var oAuth2Client = new OAuth2Client(
+        const me = this;
+        let oAuth2Client = new OAuth2Client(
             this.clientid,
             this.clientsecret,
             this.redirecturi
@@ -115,11 +115,11 @@ export class googleauth_credentials {
             oAuth2Client.setCredentials(JSON.parse(this.tokens));
             return;
         }
-        var authorizeUrl = oAuth2Client.generateAuthUrl({
+        let authorizeUrl = oAuth2Client.generateAuthUrl({
             access_type: 'offline',
             scope: this.scopes.split(",").join(" ")
         });
-        var googleauthGetURL = function googleauthGetURL(req, res) {
+        const googleauthGetURL = function googleauthGetURL(req, res) {
             try {
                 me.clientid = req.query.clientid;
                 me.redirecturi = req.query.redirecturi;
@@ -141,14 +141,14 @@ export class googleauth_credentials {
                 res.status(500).send(error);
             }
         };
-        var googleauthCode = function googleauthCode(req, res) {
-            var code = req.query.code;
+        const googleauthCode = function googleauthCode(req, res) {
+            const code = req.query.code;
             res.json({ code: code });
         };
-        var googleauthSetCode = async function googleauthSetCode(req, res) {
+        const googleauthSetCode = async function googleauthSetCode(req, res) {
             try {
                 // Now that we have the code, use that to acquire tokens.
-                var code = req.query.code;
+                const code = req.query.code;
                 const r = await oAuth2Client.getToken(code);
                 // Make sure to set the credentials on the OAuth2 client.
                 oAuth2Client.setCredentials(r.tokens);
@@ -160,7 +160,7 @@ export class googleauth_credentials {
 
         // We can find mappings by function name, so we start by cleaning up,
         // and add mappings as needed
-        var removeRoute = function (route, i, routes) {
+        const removeRoute = function (route, i, routes) {
             if (route.handle.name == "googleauthGetURL" || route.handle.name == "googleauthCode" || route.handle.name == "googleauthSetCode") {
                 routes.splice(i, 1);
             }
@@ -173,10 +173,10 @@ export class googleauth_credentials {
 }
 export async function get_rpa_workflows(req, res) {
     try {
-        var rawAssertion = req.user.getAssertionXml();
-        var token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
-        var q: any = { _type: "workflow" };
-        var result: any[] = await NoderedUtil.Query('openrpa', q,
+        const rawAssertion = req.user.getAssertionXml();
+        const token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
+        const q: any = { _type: "workflow" };
+        const result: any[] = await NoderedUtil.Query('openrpa', q,
             { name: 1, projectandname: 1 }, { projectid: -1, name: -1 }, 1000, 0, token.jwt, req.query.queue)
         res.json(result);
     } catch (error) {
@@ -222,7 +222,7 @@ export class googleauth_request {
             }
 
 
-            var cli = GetGoogleAuthClient(this._config);
+            const cli = GetGoogleAuthClient(this._config);
             this.Client = cli.Client;
             this.auth = cli.auth;
             this.node.on('input', this.oninput);
@@ -245,7 +245,7 @@ export class googleauth_request {
             if (NoderedUtil.IsNullEmpty(this.method)) this.method = "GET";
             if (NoderedUtil.IsNullEmpty(this.url)) this.url = msg.url;
             if (NoderedUtil.IsNullEmpty(this.url)) throw new Error("url is mandaotry");
-            var url = this.url;
+            let url = this.url;
             if (!NoderedUtil.IsNullUndefinded(this._config) && this._config.authtype == "apikey" && !NoderedUtil.IsNullEmpty(this._config.apikey)) {
                 if (url.indexOf("?") > -1) {
                     url = url + "&key=" + this._config.apikey;
@@ -253,7 +253,7 @@ export class googleauth_request {
                     url = url + "?key=" + this._config.apikey;
                 }
             }
-            var options: any = {
+            const options: any = {
                 method: this.method,
                 url,
                 data: msg.payload,
@@ -265,9 +265,8 @@ export class googleauth_request {
             if (this.method == "GET") delete options.data;
 
             this.node.status({ fill: "blue", shape: "dot", text: "Requesting" });
-            var res: any;
             if (this.Client != null) {
-                res = await this.Client.request(options);
+                const res: any = await this.Client.request(options);
                 msg.status = res.status;
                 msg.statusText = res.statusText;
                 msg.payload = res.data;

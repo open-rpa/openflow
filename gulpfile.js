@@ -1,39 +1,39 @@
-var fs = require("fs");
-var gulp = require("gulp");
-var shell = require("gulp-shell");
-var replace = require('gulp-replace');
-var merge = require('merge-stream');
-var browserify = require('browserify');
+const fs = require("fs");
+const gulp = require("gulp");
+const shell = require("gulp-shell");
+const replace = require('gulp-replace');
+const merge = require('merge-stream');
+const browserify = require('browserify');
 const tsify = require('tsify');
 
-var OpenFlowFiles = [
+const OpenFlowFiles = [
     "./OpenFlow/src/public/**/*.html", "./OpenFlow/src/public/**/*.css", "./OpenFlow/src/public/**/*.js", "./OpenFlow/src/public/**/*.json",
     "./OpenFlow/src/public/**/*.ico", "./OpenFlow/src/public/**/*.eot", "./OpenFlow/src/public/**/*.svg", "./OpenFlow/src/public/**/*.ttf",
     "./OpenFlow/src/public/**/*.woff", "./OpenFlow/src/public/**/*.woff2", "./OpenFlow/src/public/**/*.png"];
-var NodeREDHTMLFiles = ["./OpenFlowNodeRED/src/nodered/nodes/**/*.html", "./OpenFlowNodeRED/src/nodered/nodes/**/*.png", "./OpenFlowNodeRED/src/nodered/nodes/**/*.json"]
+const NodeREDHTMLFiles = ["./OpenFlowNodeRED/src/nodered/nodes/**/*.html", "./OpenFlowNodeRED/src/nodered/nodes/**/*.png", "./OpenFlowNodeRED/src/nodered/nodes/**/*.json"]
 
 
-var destination = "./dist/public";
-var version = "0.0.1";
+const destination = "./dist/public";
+let version = "0.0.1";
 if (fs.existsSync("../VERSION")) {
     version = fs.readFileSync("../VERSION", "utf8");
 } else if (fs.existsSync("VERSION")) {
     version = fs.readFileSync("VERSION", "utf8");
 }
 gulp.task("copyfiles1", function () {
-    var openflow = gulp.src(OpenFlowFiles).pipe(gulp.dest(destination));
-    var nodered = gulp.src(NodeREDHTMLFiles).pipe(gulp.dest("OpenFlowNodeRED/dist/nodered/nodes"));
-    var version1 = gulp.src('./VERSION').pipe(gulp.dest("./dist"));
-    var version2 = gulp.src('./VERSION').pipe(gulp.dest("OpenFlowNodeRED/dist"));
+    const openflow = gulp.src(OpenFlowFiles).pipe(gulp.dest(destination));
+    const nodered = gulp.src(NodeREDHTMLFiles).pipe(gulp.dest("OpenFlowNodeRED/dist/nodered/nodes"));
+    const version1 = gulp.src('./VERSION').pipe(gulp.dest("./dist"));
+    const version2 = gulp.src('./VERSION').pipe(gulp.dest("OpenFlowNodeRED/dist"));
 
-    var copyspurce = gulp.src('./OpenFlow/src/public/**/*.ts').pipe(gulp.dest(destination + '/OpenFlow/src/public'));
+    const copyspurce = gulp.src('./OpenFlow/src/public/**/*.ts').pipe(gulp.dest(destination + '/OpenFlow/src/public'));
     return merge(openflow, nodered, version1, version2, copyspurce);
 });
 gulp.task("watch", function () {
     return gulp.watch(NodeREDHTMLFiles.concat(OpenFlowFiles).concat('./VERSION').concat('./OpenFlow/src/public/**/*.ts'), gulp.series("copyfiles1", "browserify"));
 });
 gulp.task("browserify", function () {
-    var bfi = browserify({
+    const bfi = browserify({
         entries: ['./OpenFlow/src/public/app.ts'],
         debug: true,
         basedir: '.'
@@ -112,7 +112,7 @@ gulp.task("bumpconfigmap", function () {
 });
 
 gulp.task("bumpaiotfrontend", function () {
-    var version = "0.0.1";
+    let version = "0.0.1";
     version = fs.readFileSync("../aiot-frontend/VERSION", "utf8");
     console.log('cloudhack/aiot-frontend:' + version);
     return gulp.src(["config/**/controllers.yml"])
@@ -120,10 +120,10 @@ gulp.task("bumpaiotfrontend", function () {
         .pipe(gulp.dest("config"));
 });
 gulp.task("bumpprojectfiles", function () {
-    var data = require("./package.json");
+    let data = require("./package.json");
     console.log(data.version + " updated to " + version);
     data.version = version;
-    var json = JSON.stringify(data, null, 2);
+    let json = JSON.stringify(data, null, 2);
     fs.writeFileSync("package.json", json);
 
     data = require("./OpenFlowNodeRED/package.json");

@@ -8,7 +8,7 @@ export class Crypt {
     static iv_length: number = 16; // for AES, this is always 16
     static bcrypt_salt_rounds: number = 12;
     static rootUser(): User {
-        var result: User = new User();
+        const result: User = new User();
         result._type = "user"; result.name = "root"; result.username = "root"; result._id = WellknownIds.root;
         result.roles = []; result.roles.push(new Rolemember("admins", WellknownIds.admins));
         return result;
@@ -83,12 +83,12 @@ export class Crypt {
         if (NoderedUtil.IsNullEmpty(token)) {
             throw new Error('jwt must be provided');
         }
-        var o: any = jsonwebtoken.verify(token, Crypt.encryption_key);
+        const o: any = jsonwebtoken.verify(token, Crypt.encryption_key);
         o.data = TokenUser.assign(o.data);
         return o.data;
     }
     static decryptToken(token: string): any {
-        var o: any = jsonwebtoken.verify(token, Crypt.encryption_key);
+        const o: any = jsonwebtoken.verify(token, Crypt.encryption_key);
         return o;
     }
 }

@@ -12,7 +12,7 @@ module openflow {
     //     ChartJsProvider.setOptions({ responsive: true });
     //     ChartJsProvider.setOptions('Line', { responsive: true });
     // })
-    var webApp: any = angular.module("webApp", ['ngRoute', 'chart.js', 'ngLocalize', 'ngLocalize.Config'])
+    const webApp: any = angular.module("webApp", ['ngRoute', 'chart.js', 'ngLocalize', 'ngLocalize.Config'])
         .controller("MenuCtrl", MenuCtrl)
         .controller("Providers", ProvidersCtrl)
         .directive("timesince", timesince.factory())

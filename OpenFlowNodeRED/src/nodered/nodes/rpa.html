@@ -132,7 +132,7 @@ Expiration controls how long to wait for a robot to pickup the message, it does 
                 console.error("incoming Text " + jqXHR.responseText);
                 alert("error:" + jqXHR.responseText);
             });
-            var reloadWorkflows = function (firstrun) {
+            const reloadWorkflows = function (firstrun) {
                 $('#node-input-workflow-select').append($('<option>', {
                     value: null,
                     text: "Loading..."

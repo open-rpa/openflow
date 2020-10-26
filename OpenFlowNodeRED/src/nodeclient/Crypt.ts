@@ -10,8 +10,7 @@ export class Crypt {
     static bcrypt_salt_rounds: number = 12;
 
     static encryption_key(): string {
-        var c = Config;
-        return c.aes_secret.substr(0, 32);
+        return Config.aes_secret.substr(0, 32);
     }
 
     static encrypt(text: string): string {
@@ -59,13 +58,13 @@ export class Crypt {
     }
 
     static createToken(user: TokenUser): string {
-        var token: string = jsonwebtoken.sign({ data: user }, Crypt.encryption_key(),
+        const token: string = jsonwebtoken.sign({ data: user }, Crypt.encryption_key(),
             { expiresIn: "1h" }); // 60 (seconds), "2 days", "10h", "7d"
         return token;
     }
 
     static verityToken(token: string): TokenUser {
-        var o: any = jsonwebtoken.verify(token, Crypt.encryption_key());
+        const o: any = jsonwebtoken.verify(token, Crypt.encryption_key());
         o.data = TokenUser.assign(o.data);
         return o.data;
     }

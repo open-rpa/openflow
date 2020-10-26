@@ -35,8 +35,8 @@ Double click the node and assign a unique name without any special characters in
 Now add a function node and increment Outputs to 2, and past in the following JavaScript
 
 ```javascript
-var number1 = parseInt(msg.payload.number1);
-var number2 = parseInt(msg.payload.number2);
+const number1 = parseInt(msg.payload.number1);
+const number2 = parseInt(msg.payload.number2);
 msg.payload.result = "";
 if(msg.payload.number1 === undefined || 
     msg.payload.number2 === undefined) {

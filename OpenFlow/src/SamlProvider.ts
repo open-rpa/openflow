@@ -14,8 +14,8 @@ export class SamlProvider {
         return {
             pu: pu,
             getClaims: function (): any {
-                var claims: any = {};
-                var k: string[] = Object.keys(this.pu);
+                const claims: any = {};
+                const k: string[] = Object.keys(this.pu);
                 k.forEach(key => {
                     if (key.indexOf("http://") === 0) {
                         claims[key] = this.pu[key];
@@ -35,7 +35,7 @@ export class SamlProvider {
                                 claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"] = this.pu[key][0];
                                 claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] = this.pu[key][0]; break;
                             case "roles":
-                                var roles: string[] = [];
+                                const roles: string[] = [];
                                 this.pu[key].forEach(role => {
                                     roles.push(role.name);
                                 });
@@ -46,7 +46,7 @@ export class SamlProvider {
                 return claims;
             },
             getNameIdentifier: function (): any {
-                var claims: any = this.getClaims();
+                const claims: any = this.getClaims();
                 return {
                     nameIdentifier: claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] ||
                         claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] ||
@@ -58,10 +58,10 @@ export class SamlProvider {
 
     static configure(logger: winston.Logger, app: express.Express, baseurl: string): void {
         this._logger = logger;
-        var cert: string = Buffer.from(Config.signing_crt, "base64").toString("ascii");
-        var key: string = Buffer.from(Config.singing_key, "base64").toString("ascii");
+        const cert: string = Buffer.from(Config.signing_crt, "base64").toString("ascii");
+        const key: string = Buffer.from(Config.singing_key, "base64").toString("ascii");
 
-        var samlpoptions: any = {
+        const samlpoptions: any = {
             issuer: Config.saml_issuer,
             cert: cert,
             key: key,
@@ -75,8 +75,8 @@ export class SamlProvider {
 
             },
             getUserFromRequest: (req: any) => {
-                var tuser: TokenUser = TokenUser.From(req.user);
-                var remoteip = "";
+                const tuser: TokenUser = TokenUser.From(req.user);
+                let remoteip = "";
                 if (!NoderedUtil.IsNullUndefinded(req)) {
                     if (!NoderedUtil.IsNullUndefinded(req.connection) && !NoderedUtil.IsNullEmpty(req.connection.remoteAddress)) remoteip = req.connection.remoteAddress;
                     if (!NoderedUtil.IsNullUndefinded(req.headers)) {
@@ -124,7 +124,7 @@ export class SamlProvider {
             issuer: Config.saml_issuer,
             cert: cert,
         }));
-        // var SessionParticipants = require('samlp/lib/sessionParticipants');
+        // const SessionParticipants = require('samlp/lib/sessionParticipants');
 
         // https://github.com/mcguinness/saml-idp/blob/master/app.js
         // https://www.diycode.cc/projects/auth0/node-samlp
@@ -140,7 +140,7 @@ export class SamlProvider {
         // TODO: FIX !!!!
         app.get('/wssignout', async (req: any, res: any, next: any) => {
             req.logout();
-            var html = "<html><head></head><body>";
+            let html = "<html><head></head><body>";
             html += "<h1>Du er nu logget ud</h1><br>";
             // html += "<br/><p><a href='/'>Til login</ifarame></p>";
             html += "</body></html>";
@@ -148,23 +148,23 @@ export class SamlProvider {
         });
         app.post('/wssignout', async (req: any, res: any, next: any) => {
             req.logout();
-            var html = "<html><head></head><body>";
+            let html = "<html><head></head><body>";
             html += "<h1>Du er nu logget ud</h1><br>";
             // html += "<br/><p><a href='/'>Til login</ifarame></p>";
             html += "</body></html>";
             res.send(html);
         });
         app.get('/logout', async (req: any, res: any, next: any) => {
-            var referer: string = req.headers.referer;
-            var providerid: any = req.cookies.provider;
+            const referer: string = req.headers.referer;
+            const providerid: any = req.cookies.provider;
             req.logout();
 
             if (!NoderedUtil.IsNullEmpty(providerid)) {
-                var p = LoginProvider.login_providers.filter(x => x.id == providerid);
+                const p = LoginProvider.login_providers.filter(x => x.id == providerid);
                 if (p.length > 0) {
-                    var provider = p[0];
+                    const provider = p[0];
                     if (!NoderedUtil.IsNullEmpty(provider.saml_signout_url)) {
-                        var html = "<html><head></head><body>";
+                        let html = "<html><head></head><body>";
                         html += "<h1>Logud</h1><br>";
                         if (!NoderedUtil.IsNullEmpty(referer)) {
                             html += "<br/><p><a href='" + referer + "'>Til login</a></p>";

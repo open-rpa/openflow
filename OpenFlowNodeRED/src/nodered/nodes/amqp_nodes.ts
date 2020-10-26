@@ -2,6 +2,7 @@ import * as RED from "node-red";
 import { Red } from "node-red";
 import { Config } from "../../Config";
 import { WebSocketClient, NoderedUtil, SigninMessage, Message, QueueMessage } from "openflow-api";
+import { Logger } from "../../Logger";
 
 export interface Iamqp_connection {
     name: string;
@@ -36,14 +37,14 @@ export class amqp_connection {
             this.webcli._logger.info("amqp_config: connecting to " + this.host);
             this.webcli.events.on("onopen", async () => {
                 try {
-                    var q: SigninMessage = new SigninMessage();
+                    const q: SigninMessage = new SigninMessage();
                     q.clientagent = "remotenodered";
                     q.clientversion = Config.version;
                     q.username = this.username;
                     q.password = this.password;
-                    var msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
+                    const msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
                     this.webcli._logger.info("amqp_config: signing into " + this.host + " as " + this.username);
-                    var result: SigninMessage = await this.webcli.Send<SigninMessage>(msg);
+                    const result: SigninMessage = await this.webcli.Send<SigninMessage>(msg);
                     this.webcli._logger.info("signed in to " + this.host + " as " + result.user.name + " with id " + result.user._id);
                     this.webcli.user = result.user;
                     this.webcli.jwt = result.jwt;
@@ -113,6 +114,7 @@ export class amqp_consumer_node {
     async connect() {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
+            Logger.instanse.info("track::amqp consumer node in::connect");
 
             this.localqueue = await NoderedUtil.RegisterQueue(this.websocket(), this.config.queue, (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
@@ -125,7 +127,7 @@ export class amqp_consumer_node {
     }
     async OnMessage(msg: any, ack: any) {
         try {
-            var data: any = msg.data;
+            const data: any = msg.data;
             data.amqpacknowledgment = ack;
             if (!NoderedUtil.IsNullUndefinded(data.__user)) {
                 data.user = data.__user;
@@ -207,6 +209,7 @@ export class amqp_publisher_node {
     async connect() {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
+            Logger.instanse.info("track::amqp publiser node::connect");
             this.localqueue = this.config.localqueue;
             console.log(this.localqueue);
             // if (this.localqueue !== null && this.localqueue !== undefined && this.localqueue !== "") { this.localqueue = Config.queue_prefix + this.localqueue; }
@@ -223,11 +226,11 @@ export class amqp_publisher_node {
     }
     async OnMessage(msg: any, ack: any) {
         try {
-            var result: any = {};
+            const result: any = {};
             result.amqpacknowledgment = ack;
-            // var json: string = msg.content.toString();
-            // var data = JSON.parse(json);
-            var data = msg.data;
+            // const json: string = msg.content.toString();
+            // const data = JSON.parse(json);
+            const data = msg.data;
             result.payload = data.payload;
             result.jwt = data.jwt;
             if (data.command == "timeout") {
@@ -244,19 +247,14 @@ export class amqp_publisher_node {
     async oninput(msg: any) {
         try {
             this.node.status({});
-            var data: any = {};
+            const data: any = {};
             data.payload = msg.payload;
             data.jwt = msg.jwt;
             data._id = msg._id;
-            var expiration: number = Config.amqp_message_ttl; // 1 min
-            if (typeof msg.expiration == 'number') {
-                expiration = msg.expiration;
-            }
-            var queue = this.config.queue;
+            const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_message_ttl);
+            const queue = this.config.queue;
             //this.localqueue = this.config.queue;
             // if (this.localqueue !== null && this.localqueue !== undefined && this.localqueue !== "") { this.localqueue = Config.queue_prefix + this.localqueue; }
-            var expiration: number = Config.amqp_workflow_out_expiration;
-            if (!NoderedUtil.IsNullEmpty(msg.expiration)) expiration = msg.expiration;
             this.node.status({ fill: "blue", shape: "dot", text: "Sending message ..." });
             try {
                 await NoderedUtil.QueueMessage(this.websocket(), queue, this.localqueue, data, null, expiration);
@@ -299,7 +297,7 @@ export class amqp_acknowledgment_node {
         try {
             this.node.status({});
             if (msg.amqpacknowledgment) {
-                var data: any = {};
+                const data: any = {};
                 data.payload = msg.payload;
                 data.jwt = msg.jwt;
                 msg.amqpacknowledgment(true, data);

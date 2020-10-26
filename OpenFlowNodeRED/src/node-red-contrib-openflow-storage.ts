@@ -96,17 +96,17 @@ export class noderedcontribopenflowstorage {
     DiffObjects(o1, o2) {
         // choose a map() impl.
         // you may use $.map from jQuery if you wish
-        var map = Array.prototype.map ?
+        const map = Array.prototype.map ?
             function (a) { return Array.prototype.map.apply(a, Array.prototype.slice.call(arguments, 1)); } :
             function (a, f) {
-                var ret = new Array(a.length), value;
-                for (var i = 0, length = a.length; i < length; i++)
+                const ret = new Array(a.length);
+                for (let i = 0, length = a.length; i < length; i++)
                     ret[i] = f(a[i], i);
                 return ret.concat();
             };
 
         // shorthand for push impl.
-        var push = Array.prototype.push;
+        const push = Array.prototype.push;
 
         // check for null/undefined values
         if ((o1 == null) || (o2 == null)) {
@@ -127,10 +127,10 @@ export class noderedcontribopenflowstorage {
             if (o1.length != o2.length) {
                 return [["", "length", o1.length, o2.length]]; // different length
             }
-            var diff = [];
-            for (var i = 0; i < o1.length; i++) {
+            const diff = [];
+            for (let i = 0; i < o1.length; i++) {
                 // per element nested diff
-                var innerDiff = this.DiffObjects(o1[i], o2[i]);
+                const innerDiff = this.DiffObjects(o1[i], o2[i]);
                 if (innerDiff) { // o1[i] != o2[i]
                     // merge diff array into parent's while including parent object name ([i])
                     push.apply(diff, map(innerDiff, function (o, j) { o[0] = "[" + i + "]" + o[0]; return o; }));
@@ -145,9 +145,9 @@ export class noderedcontribopenflowstorage {
 
         // compare object trees
         if (Object.prototype.toString.call(o1) == "[object Object]") {
-            var diff = [];
+            const diff = [];
             // check all props in o1
-            for (var prop in o1) {
+            for (let prop in o1) {
                 // the double check in o1 is because in V8 objects remember keys set to undefined 
                 if ((typeof o2[prop] == "undefined") && (typeof o1[prop] != "undefined")) {
                     // prop exists in o1 but not in o2
@@ -156,7 +156,7 @@ export class noderedcontribopenflowstorage {
                 }
                 else {
                     // per element nested diff
-                    var innerDiff = this.DiffObjects(o1[prop], o2[prop]);
+                    const innerDiff = this.DiffObjects(o1[prop], o2[prop]);
                     if (innerDiff) { // o1[prop] != o2[prop]
                         // merge diff array into parent's while including parent object name ([prop])
                         push.apply(diff, map(innerDiff, function (o, j) { o[0] = "[" + prop + "]" + o[0]; return o; }));
@@ -164,7 +164,7 @@ export class noderedcontribopenflowstorage {
 
                 }
             }
-            for (var prop in o2) {
+            for (let prop in o2) {
                 // the double check in o2 is because in V8 objects remember keys set to undefined 
                 if ((typeof o1[prop] == "undefined") && (typeof o2[prop] != "undefined")) {
                     // prop exists in o2 but not in o1
@@ -260,7 +260,7 @@ export class noderedcontribopenflowstorage {
     public async init(settings: any): Promise<boolean> {
         this._logger.silly("noderedcontribopenflowstorage::init");
         this.settings = settings;
-        var packageFile: string = path.join(this.settings.userDir, "package.json");
+        const packageFile: string = path.join(this.settings.userDir, "package.json");
         try {
             if (!fs.existsSync(this.settings.userDir)) {
                 fs.mkdirSync(this.settings.userDir);
@@ -270,7 +270,7 @@ export class noderedcontribopenflowstorage {
         } catch (err) {
         }
         // Lets overwrite each time!
-        var defaultPackage: any = {
+        const defaultPackage: any = {
             "name": "openflow-project",
             "license": "MPL-2.0",
             "description": "A OpenFlow Node-RED Project",
@@ -283,17 +283,17 @@ export class noderedcontribopenflowstorage {
         this._logger.debug("creating new packageFile " + packageFile);
         fs.writeFileSync(packageFile, JSON.stringify(defaultPackage, null, 4));
 
-        // var dbsettings = await this._getSettings();
+        // const dbsettings = await this._getSettings();
         // spawn gettings, so it starts installing
         return true;
     }
     public npmrc: noderednpmrc = null;
     public async _getnpmrc(): Promise<noderednpmrc> {
-        // var result: noderednpmrc = null;
+        // const result: noderednpmrc = null;
         try {
             this._logger.silly("noderedcontribopenflowstorage::_getnpmrc");
             if (WebSocketClient.instance != null && WebSocketClient.instance.isConnected()) {
-                var array = await NoderedUtil.Query("nodered", { _type: "npmrc", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                const array = await NoderedUtil.Query("nodered", { _type: "npmrc", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
                 if (array.length === 0) { return null; }
                 try {
                     this.npmrc = array[0];
@@ -333,7 +333,7 @@ export class noderedcontribopenflowstorage {
             // const filename: string = Config.nodered_id + "_npmrc.txt";
             // await backupStore.set(filename, JSON.stringify(npmrc));
             if (WebSocketClient.instance.isConnected()) {
-                var result = await NoderedUtil.Query("nodered", { _type: "npmrc", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                const result = await NoderedUtil.Query("nodered", { _type: "npmrc", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
                 if (result.length === 0) {
                     npmrc.name = "npmrc for " + Config.nodered_id;
                     npmrc.nodered_id = Config.nodered_id;
@@ -350,11 +350,11 @@ export class noderedcontribopenflowstorage {
         }
     }
     public async _getFlows(): Promise<any[]> {
-        var result: any[] = [];
+        let result: any[] = [];
         try {
             this._logger.silly("noderedcontribopenflowstorage::_getFlows");
             if (WebSocketClient.instance.isConnected()) {
-                var array = await NoderedUtil.Query("nodered", { _type: "flow", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                const array = await NoderedUtil.Query("nodered", { _type: "flow", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
                 if (array.length === 0) { return []; }
                 try {
                     this._flows = JSON.parse(array[0].flows);
@@ -389,10 +389,10 @@ export class noderedcontribopenflowstorage {
             await this.backupStore.set(filename, JSON.stringify(flows));
             if (WebSocketClient.instance.isConnected()) {
                 this.last_reload = new Date();
-                var result = await NoderedUtil.Query("nodered", { _type: "flow", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                const result = await NoderedUtil.Query("nodered", { _type: "flow", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
                 this.last_reload = new Date();
                 if (result.length === 0) {
-                    var item: any = {
+                    const item: any = {
                         name: "flows for " + Config.nodered_id,
                         flows: JSON.stringify(flows), _type: "flow", nodered_id: Config.nodered_id
                     };
@@ -409,19 +409,19 @@ export class noderedcontribopenflowstorage {
         }
     }
     public async _getCredentials(): Promise<any> {
-        var cred: any = [];
+        let cred: any = [];
         try {
             this._logger.silly("noderedcontribopenflowstorage::_getCredentials");
             if (WebSocketClient.instance.isConnected()) {
-                var result = await NoderedUtil.Query("nodered", { _type: "credential", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                const result = await NoderedUtil.Query("nodered", { _type: "credential", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
                 if (result.length === 0) { return []; }
                 cred = result[0].credentials;
-                var arr: any = result[0].credentialsarray;
+                const arr: any = result[0].credentialsarray;
                 if (arr !== null && arr !== undefined) {
                     cred = {};
-                    for (var i = 0; i < arr.length; i++) {
-                        var key = arr[i].key;
-                        var value = arr[i].value;
+                    for (let i = 0; i < arr.length; i++) {
+                        const key = arr[i].key;
+                        const value = arr[i].value;
                         cred[key] = value;
                     }
                 }
@@ -449,34 +449,35 @@ export class noderedcontribopenflowstorage {
         try {
             this._logger.silly("noderedcontribopenflowstorage::_saveCredentials");
             const filename: string = Config.nodered_id + "_credentials";
+            const credentialsarray = [];
             await this.backupStore.set(filename, noderedcontribopenflowstorage.encrypt(JSON.stringify(credentials)));
+            let result: any[] = [];
             if (WebSocketClient.instance.isConnected()) {
                 this.last_reload = new Date();
-                var result = await NoderedUtil.Query("nodered", { _type: "credential", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                result = await NoderedUtil.Query("nodered", { _type: "credential", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
                 this.last_reload = new Date();
-                var credentialsarray = [];
-                var orgkeys = Object.keys(credentials);
-                for (var i = 0; i < orgkeys.length; i++) {
-                    var key = orgkeys[i];
-                    var value = credentials[key];
-                    var obj = { key: key, value: value };
+                const orgkeys = Object.keys(credentials);
+                for (let i = 0; i < orgkeys.length; i++) {
+                    const key = orgkeys[i];
+                    const value = credentials[key];
+                    const obj = { key: key, value: value };
                     credentialsarray.push(obj);
                 }
             }
             if (credentials) {
                 if (result.length === 0) {
-                    var item: any = {
+                    const item: any = {
                         name: "credentials for " + Config.nodered_id,
                         credentials: credentials, credentialsarray: credentialsarray, _type: "credential", nodered_id: Config.nodered_id,
                         _encrypt: ["credentials", "credentialsarray"]
                     };
-                    var subresult = await NoderedUtil.InsertOne("nodered", item, 1, true, null);
+                    const subresult = await NoderedUtil.InsertOne("nodered", item, 1, true, null);
                 } else {
-                    var item: any = result[0];
+                    const item: any = result[0];
                     item.credentials = credentials;
                     item.credentialsarray = credentialsarray;
                     item._encrypt = ["credentials", "credentialsarray"];
-                    var subresult = await NoderedUtil.UpdateOne("nodered", null, item, 1, true, null);
+                    const subresult = await NoderedUtil.UpdateOne("nodered", null, item, 1, true, null);
                 }
                 this._credentials = credentials;
             }
@@ -487,11 +488,11 @@ export class noderedcontribopenflowstorage {
     }
     private firstrun: boolean = true;
     public async _getSettings(): Promise<any> {
-        var settings: any = null;
+        let settings: any = null;
         try {
             this._logger.silly("noderedcontribopenflowstorage::_getSettings");
             if (WebSocketClient.instance.isConnected()) {
-                var result = await NoderedUtil.Query("nodered", { _type: "setting", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                const result = await NoderedUtil.Query("nodered", { _type: "setting", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
                 if (result.length === 0) { return {}; }
                 settings = JSON.parse(result[0].settings);
             }
@@ -502,8 +503,8 @@ export class noderedcontribopenflowstorage {
         const filename: string = Config.nodered_id + "_settings";
         try {
             //if (this.firstrun) {
-            var npmrc = await this._getnpmrc();
-            var npmrcFile: string = path.join(this.settings.userDir, ".npmrc");
+            const npmrc = await this._getnpmrc();
+            const npmrcFile: string = path.join(this.settings.userDir, ".npmrc");
             if (!NoderedUtil.IsNullUndefinded(npmrc) && !NoderedUtil.IsNullUndefinded(npmrc.content)) {
                 fs.writeFileSync(npmrcFile, npmrc.content);
                 // } else if (fs.existsSync(npmrcFile)) {
@@ -529,15 +530,15 @@ export class noderedcontribopenflowstorage {
                 try {
 
                     //if (this.firstrun) {
-                    var child_process = require("child_process");
-                    var keys = Object.keys(settings.nodes);
-                    var modules = "";
-                    for (var i = 0; i < keys.length; i++) {
-                        var key = keys[i];
-                        var val = settings.nodes[key];
+                    const child_process = require("child_process");
+                    const keys = Object.keys(settings.nodes);
+                    let modules = "";
+                    for (let i = 0; i < keys.length; i++) {
+                        const key = keys[i];
+                        const val = settings.nodes[key];
                         if (["node-red", "node-red-node-email", "node-red-node-feedparser", "node-red-node-rbe",
                             "node-red-node-sentiment", "node-red-node-tail", "node-red-node-twitter"].indexOf(key) === -1) {
-                            var pname: string = val.name + "@" + val.version;
+                            let pname: string = val.name + "@" + val.version;
                             if (val.pending_version) {
                                 pname = val.name + "@" + val.pending_version;
                             }
@@ -547,7 +548,7 @@ export class noderedcontribopenflowstorage {
                         }
                     }
                     this._logger.info("Installing " + modules);
-                    var errorcounter = 0;
+                    let errorcounter = 0;
                     while (errorcounter < 5) {
                         try {
                             child_process.execSync("npm install " + modules, { stdio: [0, 1, 2], cwd: this.settings.userDir });
@@ -611,9 +612,9 @@ export class noderedcontribopenflowstorage {
         let update: boolean = false;
         let entity: Base = msg.fullDocument;
 
-        var begin: number = this.last_reload.getTime();
-        var end: number = new Date().getTime();
-        var seconds = Math.round((end - begin) / 1000);
+        const begin: number = this.last_reload.getTime();
+        const end: number = new Date().getTime();
+        const seconds = Math.round((end - begin) / 1000);
         if (seconds < 2 || this.bussy) {
             this._logger.info("**************************************************");
             this._logger.info("* " + entity._type);
@@ -656,12 +657,12 @@ export class noderedcontribopenflowstorage {
                     let newsettings = (entity as any).settings;
                     newsettings = JSON.parse(newsettings);
 
-                    var keys = Object.keys(oldsettings.nodes);
-                    var modules = {};
-                    for (var i = 0; i < keys.length; i++) {
-                        var key = keys[i];
+                    let keys = Object.keys(oldsettings.nodes);
+                    const modules = {};
+                    for (let i = 0; i < keys.length; i++) {
+                        const key = keys[i];
                         if (key != "node-red") {
-                            var val = oldsettings.nodes[key];
+                            const val = oldsettings.nodes[key];
                             try {
                                 if (newsettings.nodes[key] == null) {
                                     this._logger.info("Remove module " + key + "@" + val.version);
@@ -676,11 +677,11 @@ export class noderedcontribopenflowstorage {
                             }
                         }
                     }
-                    var keys = Object.keys(newsettings.nodes);
-                    for (var i = 0; i < keys.length; i++) {
-                        var key = keys[i];
+                    keys = Object.keys(newsettings.nodes);
+                    for (let i = 0; i < keys.length; i++) {
+                        const key = keys[i];
                         if (key != "node-red") {
-                            var val = newsettings.nodes[key];
+                            const val = newsettings.nodes[key];
                             try {
                                 if (oldsettings.nodes[key] == null) {
                                     this._logger.info("Install new module " + key + "@" + val.version);
@@ -727,10 +728,10 @@ export class noderedcontribopenflowstorage {
             await this.backupStore.set(filename, JSON.stringify(settings));
             if (WebSocketClient.instance.isConnected()) {
                 this.last_reload = new Date();
-                var result = await NoderedUtil.Query("nodered", { _type: "setting", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                const result = await NoderedUtil.Query("nodered", { _type: "setting", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
                 this.last_reload = new Date();
                 if (result.length === 0) {
-                    var item: any = {
+                    const item: any = {
                         name: "settings for " + Config.nodered_id,
                         settings: JSON.stringify(settings), _type: "setting", nodered_id: Config.nodered_id
                     };
@@ -748,11 +749,11 @@ export class noderedcontribopenflowstorage {
     }
 
     public async _getSessions(): Promise<any[]> {
-        var item: any[] = [];
+        let item: any[] = [];
         try {
             this._logger.silly("noderedcontribopenflowstorage::_getSessions");
             if (WebSocketClient.instance.isConnected()) {
-                var result = await NoderedUtil.Query("nodered", { _type: "session", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                const result = await NoderedUtil.Query("nodered", { _type: "session", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
                 if (result.length === 0) { return []; }
                 item = JSON.parse(result[0].sessions);
             }
@@ -778,10 +779,10 @@ export class noderedcontribopenflowstorage {
             await this.backupStore.set(filename, JSON.stringify(sessions));
             if (WebSocketClient.instance.isConnected()) {
                 this.last_reload = new Date();
-                var result = await NoderedUtil.Query("nodered", { _type: "session", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                const result = await NoderedUtil.Query("nodered", { _type: "session", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
                 this.last_reload = new Date();
                 if (result.length === 0) {
-                    var item: any = {
+                    const item: any = {
                         name: "sessions for " + Config.nodered_id,
                         sessions: JSON.stringify(sessions), _type: "session", nodered_id: Config.nodered_id
                     };
@@ -798,18 +799,18 @@ export class noderedcontribopenflowstorage {
     }
 
     // public async _getLibraryEntry(type:string, path:string) {
-    //     var query = {
+    //     const query = {
     //         $and: [
     //             { _type: "library" },
     //             { type: type },
     //             { path: new RegExp("^" + path)}
     //         ]
     //     }
-    //             var items = await this.collection.find(query).toArray();
-    //             var LibraryEntry = [];
+    //             const items = await this.collection.find(query).toArray();
+    //             const LibraryEntry = [];
     //             items.forEach((item) => {
     //                 if(path==item.path) {
-    //                     var body = item.body;
+    //                     const body = item.body;
     //                     if(item.type=="flows") {
     //                         body = JSON.parse(body);
     //                         body.fn = item.path;
@@ -817,7 +818,7 @@ export class noderedcontribopenflowstorage {
     //                     resolve(body);
     //                     return;
     //                 } else {
-    //                     var meta = item.meta;
+    //                     const meta = item.meta;
     //                     meta.type = item.type;
     //                     meta.fn = item.path;
     //                     LibraryEntry.push(meta);
@@ -825,14 +826,14 @@ export class noderedcontribopenflowstorage {
     // }
     // public async _saveLibraryEntry(type:string, path:string, meta:any, body:any) {
     //     if(path.indexOf("/")!=0) { path = "/" + path; }
-    //     var query = {
+    //     const query = {
     //         $and: [
     //             { _type: "library" },
     //             { type: type },
     //             { path: path }
     //         ]
     //     }
-    //     var LibraryEntry = { _type: "library", type: type, path: path, meta: meta, body: body }
+    //     const LibraryEntry = { _type: "library", type: type, path: path, meta: meta, body: body }
     //     await this.collection.updateOne(query, LibraryEntry, { upsert: true });
     // }
 

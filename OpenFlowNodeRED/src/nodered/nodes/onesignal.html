@@ -115,10 +115,10 @@ Create notification <a href="https://documentation.onesignal.com/reference#creat
                 }
             });
             this.contentseditor.focus();
-            var that = this;
+            const that = this;
             $("#node-function-expand-js-contents").click(function (e) {
                 e.preventDefault();
-                var value = that.contentseditor.getValue();
+                const value = that.contentseditor.getValue();
                 RED.editor.editJavaScript({
                     value: value,
                     width: "Infinity",
@@ -137,9 +137,9 @@ Create notification <a href="https://documentation.onesignal.com/reference#creat
         oneditsave: function () {
             this.noerr = 0;
 
-            var annot = this.contentseditor.getSession().getAnnotations();
+            const annot = this.contentseditor.getSession().getAnnotations();
             $("#node-input-noerr-contents").val(0);
-            for (var k = 0; k < annot.length; k++) {
+            for (let k = 0; k < annot.length; k++) {
                 if (annot[k].type === "error") {
                     $("#node-input-noerr-contents").val(annot.length);
                     this.noerr = annot.length;

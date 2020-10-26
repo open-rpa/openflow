@@ -19,12 +19,10 @@ export class get_pods {
     async oninput(msg: any) {
         try {
             this.node.status({});
-            var targetid = this.config.targetid;
-            if (!NoderedUtil.IsNullUndefinded(msg.targetid)) { targetid = msg.targetid; }
-
+            const targetid = (!NoderedUtil.IsNullUndefinded(msg.targetid) ? msg.targetid : this.config.targetid);
             this.node.status({ fill: "blue", shape: "dot", text: "Getting pods" });
 
-            var result = await NoderedUtil.GetNoderedInstance(msg.targetid, msg.jwt);
+            const result = await NoderedUtil.GetNoderedInstance(targetid, msg.jwt);
             msg.payload = result;
             this.node.send(msg);
             this.node.status({});

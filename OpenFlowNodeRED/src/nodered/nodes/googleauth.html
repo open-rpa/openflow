@@ -89,7 +89,7 @@
             return this.name || "googleauth credentials";
         },
         oneditprepare: function () {
-            var me = this;
+            const me = this;
             function updateui(type) {
                 if (type != "oauth2") { $('#clientid').hide(); } else { $('#clientid').show(); }
                 if (type != "oauth2") { $('#clientsecret').hide(); } else { $('#clientsecret').show(); }
@@ -102,7 +102,7 @@
                 //if (type != "oauth2") { $('#code').hide(); } else { $('#code').show(); }
                 $('#code').hide();
                 if (type != "oauth2") { $('#tokens').hide(); } else {
-                    var tokens = $('#node-config-input-tokens').val();
+                    const tokens = $('#node-config-input-tokens').val();
                     if (tokens == null || tokens == "") {
                         $('#tokens').hide();
                         $('#code').show();
@@ -133,7 +133,7 @@
                     }
                     , function (data) {
                         $('#code').show();
-                        var win = window.open(data.url, '_blank');
+                        const win = window.open(data.url, '_blank');
                         win.focus();
                     }).error(function (jqXHR, textStatus, errorThrown) {
                         console.error("error " + textStatus);

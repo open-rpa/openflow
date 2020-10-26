@@ -32,16 +32,12 @@ let server: http.Server = null;
         const backupStore = new FileSystemCache(path.join(Config.logpath, '.cache-' + Config.nodered_id));
         const filename: string = Config.nodered_id + "_flows.json";
         const json = await backupStore.get(filename, null);
+        const socket: WebSocketClient = new WebSocketClient(logger, Config.api_ws_url);
         if (!NoderedUtil.IsNullEmpty(json) && Config.allow_start_from_cache) {
             server = await WebServer.configure(logger, socket);
-            var baseurl = Config.saml_baseurl;
-            if (NoderedUtil.IsNullEmpty(baseurl)) {
-                baseurl = Config.baseurl();
-            }
+            const baseurl = (!NoderedUtil.IsNullEmpty(Config.saml_baseurl) ? Config.saml_baseurl : Config.baseurl());
             logger.info("listening on " + baseurl);
         }
-        var c = Config;
-        var socket: WebSocketClient = new WebSocketClient(logger, Config.api_ws_url);
         socket.setCacheFolder(Config.logpath);
         socket.agent = "nodered";
         socket.version = Config.version;
@@ -54,11 +50,11 @@ let server: http.Server = null;
             try {
                 // q.clientagent = "nodered";
                 // q.clientversion = Config.version;
-                var jwt: string = "";
+                let jwt: string = "";
                 if (Config.jwt !== "") {
                     jwt = Config.jwt;
                 } else if (Crypt.encryption_key() !== "") {
-                    var user = new TokenUser();
+                    const user = new TokenUser();
                     if (NoderedUtil.IsNullEmpty(Config.nodered_sa)) {
                         user.name = "nodered" + Config.nodered_id;
                     } else {
@@ -69,22 +65,19 @@ let server: http.Server = null;
                 } else {
                     throw new Error("missing encryption_key and jwt, signin not possible!");
                 }
-                var result = await NoderedUtil.SigninWithToken(jwt, null, null);
+                const result = await NoderedUtil.SigninWithToken(jwt, null, null);
                 logger.info("signed in as " + result.user.name + " with id " + result.user._id);
                 WebSocketClient.instance.user = result.user;
                 WebSocketClient.instance.jwt = result.jwt;
 
                 if (server == null) {
                     server = await WebServer.configure(logger, socket);
-                    var baseurl = Config.saml_baseurl;
-                    if (NoderedUtil.IsNullEmpty(baseurl)) {
-                        baseurl = Config.baseurl();
-                    }
+                    const baseurl = (!NoderedUtil.IsNullEmpty(Config.saml_baseurl) ? Config.saml_baseurl : Config.baseurl());
                     logger.info("listening on " + baseurl);
                 }
                 socket.events.emit("onsignedin", result.user);
             } catch (error) {
-                var closemsg: any = error;
+                let closemsg: any = error;
                 if (error.message) { logger.error(error.message); closemsg = error.message; }
                 else { logger.error(error); }
                 socket.close(1000, closemsg);

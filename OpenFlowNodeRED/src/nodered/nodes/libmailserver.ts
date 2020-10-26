@@ -3,7 +3,7 @@ import { SMTPServerSession, SMTPServer } from "smtp-server";
 import { EventEmitter } from "events";
 import { Logger } from "../../Logger";
 
-var test = require('@nodemailer/mailparser2');
+const test = require('@nodemailer/mailparser2');
 const simpleParser = test.SimpleParser;
 
 export class libmailserver extends EventEmitter {
@@ -20,21 +20,14 @@ export class libmailserver extends EventEmitter {
         callback();
     }
     onRcptTo(address, session, callback) {
-        //config.log(4, address.address);
-        // if (address.address !== 'allan@zenamic.dk') {
-        //     return callback(new Error('Non-existent email address'));
-        // }
         return callback(); // Accept the address
     }
     async onData(stream: Readable, session: SMTPServerSession, callback: (err?: Error) => void) {
-        //var mail:ParsedMail = await simpleParser(stream);
-        var mail = await simpleParser(stream);
+        const mail = await simpleParser(stream);
         libmailserver.current.emit('email', mail);
-        //config.log(4, mail);
         callback();
     }
     onAuth(auth, session, callback) {
-        // config.log(4, auth);
         callback(null, { user: 123 }); // where 123 is the user id or similar property
     }
     static current: libmailserver;

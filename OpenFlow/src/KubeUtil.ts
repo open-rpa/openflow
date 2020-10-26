@@ -17,7 +17,7 @@ export class KubeUtil {
         const k8s = require("@kubernetes/client-node");
 
         const kc = new k8s.KubeConfig();
-        var success: boolean = false;
+        let success: boolean = false;
         try {
             kc.loadFromDefault();
             success = true;
@@ -38,52 +38,52 @@ export class KubeUtil {
     }
 
     async GetStatefulSet(namespace, name) {
-        var list = await this.AppsV1Api.listNamespacedStatefulSet(namespace);
-        for (var i = 0; i < list.body.items.length; i++) {
-            var item = list.body.items[i];
+        const list = await this.AppsV1Api.listNamespacedStatefulSet(namespace);
+        for (let i = 0; i < list.body.items.length; i++) {
+            const item = list.body.items[i];
             if (item.metadata.name == name) return item;
         }
         return null;
     }
     async GetService(namespace, name) {
-        var list = await this.CoreV1Api.listNamespacedService(namespace);
-        for (var i = 0; i < list.body.items.length; i++) {
-            var item = list.body.items[i];
+        const list = await this.CoreV1Api.listNamespacedService(namespace);
+        for (let i = 0; i < list.body.items.length; i++) {
+            const item = list.body.items[i];
             if (item.metadata.name == name) return item;
         }
         return null;
     }
     async GetPod(namespace, name) {
-        var list = await this.CoreV1Api.listNamespacedPod(namespace);
-        for (var i = 0; i < list.body.items.length; i++) {
-            var item = list.body.items[i];
+        const list = await this.CoreV1Api.listNamespacedPod(namespace);
+        for (let i = 0; i < list.body.items.length; i++) {
+            const item = list.body.items[i];
             if (item.metadata.name == name) return item;
         }
         return null;
     }
     async GetReplicaset(namespace, labelskey, labelsvalue) {
-        var list = await this.AppsV1Api.listNamespacedReplicaSet(namespace);
-        for (var i = 0; i < list.body.items.length; i++) {
-            var item = list.body.items[i];
+        const list = await this.AppsV1Api.listNamespacedReplicaSet(namespace);
+        for (let i = 0; i < list.body.items.length; i++) {
+            const item = list.body.items[i];
             if (item.metadata && item.metadata.labels) {
-                var value = item.metadata.labels[labelskey];
+                const value = item.metadata.labels[labelskey];
                 if (value == labelsvalue) return item;
             }
         }
         return null;
     }
     async GetDeployment(namespace, name) {
-        var list = await this.AppsV1Api.listNamespacedDeployment(namespace);
-        for (var i = 0; i < list.body.items.length; i++) {
-            var item = list.body.items[i];
+        const list = await this.AppsV1Api.listNamespacedDeployment(namespace);
+        for (let i = 0; i < list.body.items.length; i++) {
+            const item = list.body.items[i];
             if (item.metadata.name == name) return item;
         }
         return null;
     }
     async GetIngress(namespace, name) {
-        var list = await this.ExtensionsV1beta1Api.listNamespacedIngress(namespace);
-        for (var i = 0; i < list.body.items.length; i++) {
-            var item = list.body.items[i];
+        const list = await this.ExtensionsV1beta1Api.listNamespacedIngress(namespace);
+        for (let i = 0; i < list.body.items.length; i++) {
+            const item = list.body.items[i];
             if (item.metadata.name == name) return item;
         }
         return null;

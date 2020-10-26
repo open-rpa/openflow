@@ -5,16 +5,16 @@ import { WebSocketClientService } from "./WebSocketClientService";
 import * as jsondiffpatch from "jsondiffpatch";
 
 function treatAsUTC(date): number {
-    var result = new Date(date);
+    const result = new Date(date);
     result.setMinutes(result.getMinutes() - result.getTimezoneOffset());
     return result as any;
 }
 function daysBetween(startDate, endDate): number {
-    var millisecondsPerDay = 24 * 60 * 60 * 1000;
+    const millisecondsPerDay = 24 * 60 * 60 * 1000;
     return (treatAsUTC(endDate) - treatAsUTC(startDate)) / millisecondsPerDay;
 }
-declare var Formio: any;
-declare var FileSaver: any;
+declare const Formio: any;
+declare const FileSaver: any;
 export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
     public arguments: any;
     public users: TokenUser[];
@@ -77,13 +77,13 @@ export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
 
         try {
             this.errormessage = "";
-            var rpacommand = {
+            const rpacommand = {
                 command: "invoke",
                 workflowid: this.model._id,
                 data: this.arguments
             }
             if (this.arguments === null || this.arguments === undefined) { this.arguments = {}; }
-            var result: any = await NoderedUtil.QueueMessage(WebSocketClient.instance, this.user._id, this.queuename, rpacommand, null, parseInt(this.timeout));
+            const result: any = await NoderedUtil.QueueMessage(WebSocketClient.instance, this.user._id, this.queuename, rpacommand, null, parseInt(this.timeout));
             try {
                 // result = JSON.parse(result);
             } catch (error) {
@@ -134,19 +134,15 @@ export class RPAWorkflowsCtrl extends entitiesCtrl<Base> {
         this.userdata.data.RPAWorkflowsCtrl.orderby = this.orderby;
         this.userdata.data.RPAWorkflowsCtrl.searchstring = this.searchstring;
         this.userdata.data.RPAWorkflowsCtrl.basequeryas = this.basequeryas;
-        var chart: chartset = null;
+        const chart: chartset = null;
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         this.dographs();
     }
     async dographs() {
-        var chart: chartset = null;
-        var agg: any = {};
-        var data: any = {};
-
-        var datatimeframe = new Date(new Date().toISOString());
+        const datatimeframe = new Date(new Date().toISOString());
         datatimeframe.setDate(datatimeframe.getDate() - 5);
-        agg = [
+        const agg: any = [
             { $match: { _created: { "$gte": datatimeframe } } },
             {
                 $group:
@@ -163,15 +159,15 @@ export class RPAWorkflowsCtrl extends entitiesCtrl<Base> {
             { $sort: { "_id.day": 1 } }
             // ,{ "$limit": 20 }
         ];
-        var workflowruns = await NoderedUtil.Aggregate("openrpa_instances", agg, null);
+        const workflowruns = await NoderedUtil.Aggregate("openrpa_instances", agg, null);
 
 
-        for (var i = 0; i < this.models.length; i++) {
-            var workflow = this.models[i] as any;
+        for (let i = 0; i < this.models.length; i++) {
+            const workflow = this.models[i] as any;
 
-            chart = new chartset();
+            const chart: chartset = new chartset();
             chart.data = [];
-            for (var x = 0; x < workflowruns.length; x++) {
+            for (let x = 0; x < workflowruns.length; x++) {
                 if (workflowruns[x]._id.WorkflowId == workflow._id) {
                     chart.data.push(workflowruns[x].count);
                     chart.labels.push(workflowruns[x]._id.day);
@@ -186,11 +182,11 @@ export class RPAWorkflowsCtrl extends entitiesCtrl<Base> {
 
     }
     download(data, filename, type) {
-        var file = new Blob([data], { type: type });
+        const file = new Blob([data], { type: type });
         if (window.navigator.msSaveOrOpenBlob) // IE10+
             window.navigator.msSaveOrOpenBlob(file, filename);
         else { // Others
-            var a = document.createElement("a"),
+            const a = document.createElement("a"),
                 url = URL.createObjectURL(file);
             a.href = url;
             a.download = filename;
@@ -203,7 +199,7 @@ export class RPAWorkflowsCtrl extends entitiesCtrl<Base> {
         }
     }
     async Download(model: any) {
-        var workflows = await NoderedUtil.Query("openrpa", { _type: "workflow", _id: model._id }, null, null, 0, 0, null);
+        const workflows = await NoderedUtil.Query("openrpa", { _type: "workflow", _id: model._id }, null, null, 0, 0, null);
         if (workflows.length > 0) {
             model = workflows[0];
             this.download(model.Xaml, model.name + ".xaml", "application/xaml+xml");
@@ -330,7 +326,7 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
         // //dt.setDate(dt.getDate() - 1);
         // dt = new Date(new Date().toISOString());
         // dt.setMonth(dt.getMonth() - 1);
-        // var dt2 = new Date(new Date().toISOString());
+        // const dt2 = new Date(new Date().toISOString());
         // dt2.setMinutes(dt.getMinutes() - 1);
 
         if (!this.userdata.data.ReportsCtrl) this.userdata.data.ReportsCtrl = { run: this.processData.bind(this) };
@@ -344,32 +340,23 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
         this.userdata.data.ReportsCtrl.points = null;
         this.loading = true;
         this.charts = [];
-        var chart: chartset = null;
-        var agg: any = {};
-        var data: any = {};
-
-        // fuck it, lets just focus on robots who have been online the last month
-        // agg = [
-        //     { $match: { _rpaheartbeat: { "$exists": true } } },
-        //     { "$count": "_rpaheartbeat" }
-        // ];
-        agg = [
+        const agg: any = [
             { $match: { _rpaheartbeat: { "$gte": this.datatimeframe } } },
             { "$count": "_rpaheartbeat" }
         ];
-        data = await NoderedUtil.Aggregate("users", agg, null);
-        var totalrobots = 0;
+        const data: any[] = await NoderedUtil.Aggregate("users", agg, null);
+        let totalrobots = 0;
         if (data.length > 0) totalrobots = data[0]._rpaheartbeat;
 
-        agg = [
+        const agg2 = [
             { $match: { _rpaheartbeat: { "$gte": this.onlinetimeframe } } },
             { "$count": "_rpaheartbeat" }
         ];
-        data = await NoderedUtil.Aggregate("users", agg, null);
-        var onlinerobots = 0;
-        if (data.length > 0) onlinerobots = data[0]._rpaheartbeat;
+        const data2 = await NoderedUtil.Aggregate("users", agg2, null);
+        let onlinerobots = 0;
+        if (data.length > 0) onlinerobots = data2[0]._rpaheartbeat;
 
-        chart = new chartset();
+        const chart: chartset = new chartset();
         chart.heading = onlinerobots + " Online and " + (totalrobots - onlinerobots) + " offline robots, seen the last " + this.timeframedesc;
         chart.labels = ['online', 'offline'];
         chart.data = [onlinerobots, (totalrobots - onlinerobots)];
@@ -389,36 +376,34 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
 
-        // var agg = [{ "$group": { "_id": "$_type", "count": { "$sum": 1 } } }];
+        // const agg = [{ "$group": { "_id": "$_type", "count": { "$sum": 1 } } }];
 
-        agg = [
+        const agg3 = [
             { $match: { _created: { "$gte": this.datatimeframe }, _type: "workflowinstance" } },
             { "$group": { "_id": { "WorkflowId": "$WorkflowId", "name": "$name" }, "count": { "$sum": 1 } } },
             { $sort: { "count": -1 } },
             { "$limit": 20 }
         ];
-        var workflowruns = await NoderedUtil.Aggregate("openrpa_instances", agg, null);
+        const workflowruns = await NoderedUtil.Aggregate("openrpa_instances", agg3, null);
 
 
-        chart = new chartset();
-        chart.heading = "Workflow runs (top 20)";
-        // chart.series = ['name', 'count'];
-        // chart.labels = ['name', 'count'];
-        chart.data = [];
-        chart.ids = [];
-        for (var x = 0; x < workflowruns.length; x++) {
-            // chart.data[0].push(workflowruns[x]._id.name);
-            // chart.data[1].push(workflowruns[x].count);
-            chart.data.push(workflowruns[x].count);
-            chart.ids.push(workflowruns[x]._id.WorkflowId);
-            chart.labels.push(workflowruns[x]._id.name);
-            //     if (workflow == undefined) { chart.labels.push("unknown"); } else { chart.labels.push(workflow.name); }
+        const chart2: chartset = new chartset();
+        chart2.heading = "Workflow runs (top 20)";
+        // chart2.series = ['name', 'count'];
+        // chart2.labels = ['name', 'count'];
+        chart2.data = [];
+        chart2.ids = [];
+        for (let x = 0; x < workflowruns.length; x++) {
+            // chart2.data[0].push(workflowruns[x]._id.name);
+            // chart2.data[1].push(workflowruns[x].count);
+            chart2.data.push(workflowruns[x].count);
+            chart2.ids.push(workflowruns[x]._id.WorkflowId);
+            chart2.labels.push(workflowruns[x]._id.name);
+            //     if (workflow == undefined) { chart2.labels.push("unknown"); } else { chachart2rt.labels.push(workflow.name); }
             // }
         }
-        chart.click = this.workflowclick.bind(this);
-        this.charts.push(chart);
-
-
+        chart2.click = this.workflowclick.bind(this);
+        this.charts.push(chart2);
 
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -429,12 +414,9 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
         this.userdata.data.ReportsCtrl.points = points;
         if (points.length > 0) {
         } else { return; }
-        var chart: chartset = null;
-        var agg: any = {};
-        var data: any = {};
-        // 
-        // { "$limit": 20 }
-        var rpaheartbeat: any = [];
+        let chart: chartset = null;
+        let agg: any = {};
+        let rpaheartbeat: any = [];
         if (points[0]._index == 0) // Online robots
         {
             // rpaheartbeat = { $match: { "user._rpaheartbeat": { "$gte": this.onlinetimeframe } } };
@@ -470,7 +452,7 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
             // , { "$limit": 20 }
         ];
 
-        var data = await NoderedUtil.Aggregate("users", agg, null);
+        const data = await NoderedUtil.Aggregate("users", agg, null);
 
         chart = new chartset();
         if (points[0]._index == 0) // Online robots
@@ -481,7 +463,7 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
         }
         chart.data = [];
         chart.ids = [];
-        for (var x = 0; x < data.length; x++) {
+        for (let x = 0; x < data.length; x++) {
             chart.data.push(data[x].count);
             chart.ids.push(data[x]._id);
             chart.labels.push(data[x].name);
@@ -531,7 +513,7 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
             { $sort: { "count": -1 } },
             { "$limit": 20 }
         ];
-        var workflowruns = await NoderedUtil.Aggregate("openrpa_instances", agg, null);
+        const workflowruns = await NoderedUtil.Aggregate("openrpa_instances", agg, null);
 
         chart = new chartset();
         if (points[0]._index == 0) // Online robots
@@ -542,7 +524,7 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
         }
         chart.data = [];
         chart.ids = [];
-        for (var x = 0; x < workflowruns.length; x++) {
+        for (let x = 0; x < workflowruns.length; x++) {
             chart.data.push(workflowruns[x].count);
             chart.ids.push(workflowruns[x]._id.WorkflowId);
             chart.labels.push(workflowruns[x]._id.name);
@@ -558,19 +540,16 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
         console.debug('robotclick');
         if (points.length > 0) {
         } else { return; }
-        var userid = this.charts[0].ids[points[0]._index];
-        var chart: chartset = null;
-        var agg: any = {};
-        var data: any = {};
-
-
+        const userid = this.charts[0].ids[points[0]._index];
+        let chart: chartset = null;
+        let agg: any = {};
         agg = [
             { $match: { _created: { "$gte": this.datatimeframe }, _type: "workflowinstance", ownerid: userid } },
             { "$group": { "_id": { "WorkflowId": "$WorkflowId", "name": "$name", "owner": "$owner" }, "count": { "$sum": 1 } } },
             { $sort: { "count": -1 } },
             { "$limit": 20 }
         ];
-        var workflowruns = await NoderedUtil.Aggregate("openrpa_instances", agg, null);
+        const workflowruns = await NoderedUtil.Aggregate("openrpa_instances", agg, null);
 
         chart = new chartset();
         if (workflowruns.length > 0) // Online robots
@@ -581,7 +560,7 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
         }
         chart.data = [];
         chart.ids = [];
-        for (var x = 0; x < workflowruns.length; x++) {
+        for (let x = 0; x < workflowruns.length; x++) {
             chart.data.push(workflowruns[x].count);
             chart.ids.push(workflowruns[x]._id.WorkflowId);
             chart.labels.push(workflowruns[x]._id.name);
@@ -599,12 +578,10 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
         if (points.length > 0) {
         } else { return; }
 
-        var WorkflowId = this.charts[1].ids[points[0]._index];
+        const WorkflowId = this.charts[1].ids[points[0]._index];
 
-        var chart: chartset = null;
-        var agg: any = {};
-        var data: any = {};
-
+        let chart: chartset = null;
+        let agg: any = {};
         agg = [
             { $match: { _created: { "$gte": this.datatimeframe }, WorkflowId: WorkflowId } },
             {
@@ -624,7 +601,7 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
             { $sort: { "_id.day": 1 } },
             { "$limit": 20 }
         ];
-        var workflowruns = await NoderedUtil.Aggregate("openrpa_instances", agg, null);
+        const workflowruns = await NoderedUtil.Aggregate("openrpa_instances", agg, null);
 
         chart = new chartset();
         if (workflowruns.length > 0) {
@@ -633,7 +610,7 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
             chart.heading = "No data ";
         }
         chart.data = [];
-        for (var x = 0; x < workflowruns.length; x++) {
+        for (let x = 0; x < workflowruns.length; x++) {
             chart.data.push(workflowruns[x].count);
             chart.labels.push(workflowruns[x]._id.day);
         }
@@ -647,17 +624,17 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
     }
     async InsertNew(): Promise<void> {
         // this.loading = true;
-        var model = { name: "Find me " + Math.random().toString(36).substr(2, 9), "temp": "hi mom" };
-        var result = await NoderedUtil.InsertOne(this.collection, model, 1, false, null);
+        const model = { name: "Find me " + Math.random().toString(36).substr(2, 9), "temp": "hi mom" };
+        const result = await NoderedUtil.InsertOne(this.collection, model, 1, false, null);
         this.models.push(result);
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     async UpdateOne(model: any): Promise<any> {
-        var index = this.models.indexOf(model);
+        const index = this.models.indexOf(model);
         this.loading = true;
         model.name = "Find me " + Math.random().toString(36).substr(2, 9);
-        var newmodel = await NoderedUtil.UpdateOne(this.collection, null, model, 1, false, null);
+        const newmodel = await NoderedUtil.UpdateOne(this.collection, null, model, 1, false, null);
         this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
         this.models.splice(index, 0, newmodel);
         this.loading = false;
@@ -681,8 +658,8 @@ export class MainCtrl extends entitiesCtrl<Base> {
         // this.basequery = { state: { $ne: "completed" }, $and: [{ form: { $exists: true } }, { form: { "$ne": "none" } }] };
         // this.basequery = { state: { $ne: "completed" }, form: { $exists: true } };
         this.preloadData = () => {
-            var user = this.WebSocketClientService.user;
-            var ors: any[] = [];
+            const user = this.WebSocketClientService.user;
+            const ors: any[] = [];
             ors.push({ targetid: user._id });
             this.WebSocketClientService.user.roles.forEach(role => {
                 ors.push({ targetid: role._id });
@@ -703,7 +680,7 @@ export class MainCtrl extends entitiesCtrl<Base> {
 
     }
 }
-declare var QRScanner: any;
+declare const QRScanner: any;
 export class LoginCtrl {
     public localenabled: boolean = false;
     public scanning: boolean = false;
@@ -733,7 +710,7 @@ export class LoginCtrl {
         WebSocketClientService.getJSON("/loginproviders", async (error: any, data: any) => {
             this.providers = data;
             this.allow_user_registration = WebSocketClientService.allow_user_registration;
-            for (var i: number = this.providers.length - 1; i >= 0; i--) {
+            for (let i: number = this.providers.length - 1; i >= 0; i--) {
                 if (this.providers[i].provider == "local") {
                     this.providers.splice(i, 1);
                     this.localenabled = true;
@@ -745,16 +722,16 @@ export class LoginCtrl {
     }
     readfile(filename: string) {
         return new Promise<string>(async (resolve, reject) => {
-            var win: any = window;
-            //var type = win.TEMPORARY;
-            var type = win.PERSISTENT;
-            var size = 5 * 1024 * 1024;
+            const win: any = window;
+            //const type = win.TEMPORARY;
+            const type = win.PERSISTENT;
+            const size = 5 * 1024 * 1024;
             win.requestFileSystem(type, size, successCallback, errorCallback)
             function successCallback(fs) {
                 fs.root.getFile(filename, {}, function (fileEntry) {
 
                     fileEntry.file(function (file) {
-                        var reader = new FileReader();
+                        const reader = new FileReader();
                         reader.onloadend = function (e) {
                             resolve(this.result as string);
                         };
@@ -770,10 +747,10 @@ export class LoginCtrl {
     }
     writefile(filename: string, content: string) {
         return new Promise<string>(async (resolve, reject) => {
-            var win: any = window;
-            //var type = win.TEMPORARY;
-            var type = win.PERSISTENT;
-            var size = 5 * 1024 * 1024;
+            const win: any = window;
+            //const type = win.TEMPORARY;
+            const type = win.PERSISTENT;
+            const size = 5 * 1024 * 1024;
             win.requestFileSystem(type, size, successCallback, errorCallback)
             function successCallback(fs) {
                 fs.root.getFile(filename, { create: true }, function (fileEntry) {
@@ -786,7 +763,7 @@ export class LoginCtrl {
                             console.error('Write failed: ' + e.toString());
                             resolve();
                         };
-                        var blob = new Blob([content], { type: 'text/plain' });
+                        const blob = new Blob([content], { type: 'text/plain' });
                         fileWriter.write(blob);
                     }, errorCallback);
                 }, errorCallback);
@@ -848,7 +825,7 @@ export class LoginCtrl {
                 console.debug("QRCode had null value"); return;
             }
             console.debug("QRCode value: " + value);
-            var config = JSON.parse(value);
+            const config = JSON.parse(value);
             if (config.url !== null || config.url !== undefined || config.url !== "" || config.loginurl !== null || config.loginurl !== undefined || config.loginurl !== "") {
                 console.debug("set mobiledomain to " + value);
                 await this.writefile("mobiledomain.txt", value);
@@ -864,7 +841,7 @@ export class LoginCtrl {
         this.message = "";
         try {
             console.debug("signing in with username/password");
-            var result: SigninMessage = await NoderedUtil.SigninWithUsername(this.username, this.password, null);
+            const result: SigninMessage = await NoderedUtil.SigninWithUsername(this.username, this.password, null);
             if (result.user == null) { return; }
             this.setCookie("jwt", result.jwt, 365);
             this.$location.path("/");
@@ -879,17 +856,17 @@ export class LoginCtrl {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     setCookie(cname, cvalue, exdays) {
-        var d = new Date();
+        const d = new Date();
         d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
-        var expires = "expires=" + d.toUTCString();
+        const expires = "expires=" + d.toUTCString();
         document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
     }
     getCookie(cname) {
-        var name = cname + "=";
-        var decodedCookie = decodeURIComponent(document.cookie);
-        var ca = decodedCookie.split(';');
-        for (var i = 0; i < ca.length; i++) {
-            var c = ca[i];
+        const name = cname + "=";
+        const decodedCookie = decodeURIComponent(document.cookie);
+        const ca = decodedCookie.split(';');
+        for (let i = 0; i < ca.length; i++) {
+            let c = ca[i];
             while (c.charAt(0) == ' ') {
                 c = c.substring(1);
             }
@@ -922,7 +899,7 @@ export class MenuCtrl {
         console.debug("MenuCtrl::constructor");
         $scope.$root.$on('$routeChangeStart', (...args) => { this.routeChangeStart.apply(this, args); });
         this.path = this.$location.path();
-        var cleanup = this.$scope.$on('signin', (event, data) => {
+        const cleanup = this.$scope.$on('signin', (event, data) => {
             if (event && data) { }
             this.user = data;
             this.signedin = true;
@@ -935,7 +912,7 @@ export class MenuCtrl {
     }
     hasrole(role: string) {
         if (this.WebSocketClientService.user === null || this.WebSocketClientService.user === undefined) return false;
-        var hits = this.WebSocketClientService.user.roles.filter(member => member.name == role);
+        const hits = this.WebSocketClientService.user.roles.filter(member => member.name == role);
         return (hits.length == 1)
     }
     hascordova() {
@@ -1056,11 +1033,11 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
         await NoderedUtil.DeleteOne(this.collection, model._id, null);
         this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
         this.loading = false;
-        var name = model.username;
+        let name = model.username;
         name = name.split("@").join("").split(".").join("");
         name = name.toLowerCase();
 
-        var list = await NoderedUtil.Query("users", { _type: "role", name: name + "noderedadmins" }, null, null, 2, 0, null);
+        const list = await NoderedUtil.Query("users", { _type: "role", name: name + "noderedadmins" }, null, null, 2, 0, null);
         if (list.length == 1) {
             console.debug("Deleting " + name + "noderedadmins")
             await NoderedUtil.DeleteOne("users", list[0]._id, null);
@@ -1137,17 +1114,17 @@ export class UserCtrl extends entityCtrl<TokenUser> {
             } else {
                 await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null);
             }
-            var currentmemberof = await NoderedUtil.Query("users",
+            const currentmemberof = await NoderedUtil.Query("users",
                 {
                     $and: [
                         { _type: "role" },
                         { members: { $elemMatch: { _id: this.model._id } } }
                     ]
                 }, null, { _type: -1, name: 1 }, 5, 0, null);
-            for (var i = 0; i < currentmemberof.length; i++) {
-                var memberof = currentmemberof[i];
+            for (let i = 0; i < currentmemberof.length; i++) {
+                const memberof = currentmemberof[i];
                 if (this.memberof == null || this.memberof == undefined) this.memberof = [];
-                var exists = this.memberof.filter(x => x._id == memberof._id);
+                const exists = this.memberof.filter(x => x._id == memberof._id);
                 if (exists.length == 0) {
                     console.debug("Updating members of " + memberof.name + " " + memberof._id);
                     console.debug("members: " + memberof.members.length);
@@ -1244,7 +1221,7 @@ export class RoleCtrl extends entityCtrl<Role> {
     }
     RemoveMember(model: any) {
         if (this.model.members === undefined) { this.model.members = []; }
-        for (var i: number = 0; i < this.model.members.length; i++) {
+        for (let i: number = 0; i < this.model.members.length; i++) {
             if (this.model.members[i]._id === model._id) {
                 this.model.members.splice(i, 1);
             }
@@ -1252,8 +1229,7 @@ export class RoleCtrl extends entityCtrl<Role> {
     }
     AddMember(model: any) {
         if (this.model.members === undefined) { this.model.members = []; }
-        var user: any = null;
-        user = this.searchSelectedItem;
+        const user: any = this.searchSelectedItem;;
         this.model.members.push({ name: user.name, _id: user._id });
         this.searchSelectedItem = null;
         this.searchtext = "";
@@ -1272,8 +1248,8 @@ export class RoleCtrl extends entityCtrl<Role> {
     }
     handlekeys() {
         if (this.searchFilteredList.length > 0) {
-            var idx: number = -1;
-            for (var i = 0; i < this.searchFilteredList.length; i++) {
+            let idx: number = -1;
+            for (let i = 0; i < this.searchFilteredList.length; i++) {
                 if (this.searchSelectedItem != null) {
                     if (this.searchFilteredList[i]._id == this.searchSelectedItem._id) {
                         idx = i;
@@ -1313,7 +1289,7 @@ export class RoleCtrl extends entityCtrl<Role> {
     }
     async handlefilter(e) {
         this.e = e;
-        var ids: string[] = this.model.members.map(item => item._id);
+        const ids: string[] = this.model.members.map(item => item._id);
         this.searchFilteredList = await NoderedUtil.Query("users",
             {
                 $and: [
@@ -1450,36 +1426,36 @@ export class FilesCtrl extends entitiesCtrl<Base> {
         this.searchfields = ["metadata.name", "metadata.path"];
         this.collection = "files";
         this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
-        var elem = document.getElementById("myBar");
+        const elem = document.getElementById("myBar");
         elem.style.width = '0%';
         WebSocketClientService.onSignedin((user: TokenUser) => {
             this.loadData();
         });
     }
     async Download(id: string) {
-        var lastp: number = 0;
-        // var fileinfo = await NoderedUtil.GetFile(null, id, (msg, index, count) => {
-        //     var p: number = ((index + 1) / count * 100) | 0;
+        const lastp: number = 0;
+        // const fileinfo = await NoderedUtil.GetFile(null, id, (msg, index, count) => {
+        //     const p: number = ((index + 1) / count * 100) | 0;
         //     if (p > lastp || (index + 1) == count) {
         //         console.debug(index + "/" + count + " " + p + "%");
         //         lastp = p;
         //     }
-        //     var elem = document.getElementById("myBar");
+        //     const elem = document.getElementById("myBar");
         //     elem.style.width = p + '%';
         //     elem.innerText = p + '%';
         //     if (p == 100) {
         //         elem.innerText = 'Processing ...';
         //     }
         // });
-        var fileinfo = await NoderedUtil.GetFile(null, id, null);
+        const fileinfo = await NoderedUtil.GetFile(null, id, null);
 
-        var elem = document.getElementById("myBar");
+        const elem = document.getElementById("myBar");
         elem.style.width = '0%';
         elem.innerText = '';
         const blob = this.b64toBlob(fileinfo.file, fileinfo.mimeType);
         // const blobUrl = URL.createObjectURL(blob);
         // (window.location as any) = blobUrl;
-        var anchor = document.createElement('a');
+        const anchor = document.createElement('a');
         anchor.download = fileinfo.metadata.name;
         anchor.href = ((window as any).webkitURL || window.URL).createObjectURL(blob);
         anchor.dataset.downloadurl = [fileinfo.mimeType, anchor.download, anchor.href].join(':');
@@ -1488,26 +1464,26 @@ export class FilesCtrl extends entitiesCtrl<Base> {
     b64toBlob(b64Data: string, contentType: string, sliceSize: number = 512) {
         contentType = contentType || '';
         sliceSize = sliceSize || 512;
-        var byteCharacters = atob(b64Data);
-        var byteArrays = [];
-        for (var offset = 0; offset < byteCharacters.length; offset += sliceSize) {
-            var slice = byteCharacters.slice(offset, offset + sliceSize);
-            var byteNumbers = new Array(slice.length);
-            for (var i = 0; i < slice.length; i++) {
+        const byteCharacters = atob(b64Data);
+        const byteArrays = [];
+        for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+            const slice = byteCharacters.slice(offset, offset + sliceSize);
+            const byteNumbers = new Array(slice.length);
+            for (let i = 0; i < slice.length; i++) {
                 byteNumbers[i] = slice.charCodeAt(i);
             }
-            var byteArray = new Uint8Array(byteNumbers);
+            const byteArray = new Uint8Array(byteNumbers);
             byteArrays.push(byteArray);
         }
-        var blob = new Blob(byteArrays, { type: contentType });
+        const blob = new Blob(byteArrays, { type: contentType });
         return blob;
     }
     async Upload() {
         // const e: any = document.querySelector('input[type="file"]');
-        var e: any = document.getElementById('fileupload')
+        const e: any = document.getElementById('fileupload')
         const fd = new FormData();
-        for (var i = 0; i < e.files.length; i++) {
-            var file = e.files[i];
+        for (let i = 0; i < e.files.length; i++) {
+            const file = e.files[i];
             fd.append(e.name, file, file.name);
         };
         const xhr = new XMLHttpRequest();
@@ -1527,27 +1503,27 @@ export class FilesCtrl extends entitiesCtrl<Base> {
     }
     async Upload_usingapi() {
         try {
-            var filename = (this.$scope as any).filename;
-            var type = (this.$scope as any).type;
+            const filename = (this.$scope as any).filename;
+            const type = (this.$scope as any).type;
             console.debug("filename: " + filename + " type: " + type);
             this.loading = true;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            var lastp: number = 0;
+            const lastp: number = 0;
             await NoderedUtil.SaveFile(filename, type, null, this.file, null);
             // await NoderedUtil.SaveFile(filename, type, null, this.file, (msg, index, count) => {
-            //     var p: number = ((index + 1) / count * 100) | 0;
+            //     const p: number = ((index + 1) / count * 100) | 0;
             //     if (p > lastp || (index + 1) == count) {
             //         console.debug(index + "/" + count + " " + p + "%");
             //         lastp = p;
             //     }
-            //     var elem = document.getElementById("myBar");
+            //     const elem = document.getElementById("myBar");
             //     elem.style.width = p + '%';
             //     elem.innerText = p + '%';
             //     if (p == 100) {
             //         elem.innerText = 'Processing ...';
             //     }
             // });
-            var elem = document.getElementById("myBar");
+            const elem = document.getElementById("myBar");
             elem.style.width = '0%';
             elem.innerText = '';
             this.loading = false;
@@ -1603,8 +1579,9 @@ export class EntitiesCtrl extends entitiesCtrl<Base> {
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
-            this.collections = await NoderedUtil.ListCollections(null);
             this.loadData();
+            this.collections = await NoderedUtil.ListCollections(null);
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         });
     }
     processdata() {
@@ -1706,20 +1683,19 @@ export class EditFormCtrl extends entityCtrl<Form> {
             // https://www.npmjs.com/package/angular2-json-schema-form
             // http://www.alpacajs.org/demos/form-builder/form-builder.html
             // https://github.com/kevinchappell/formBuilder - https://formbuilder.online/ - https://kevinchappell.github.io/formBuilder/
-            var ele: any;
-            var roles: any = {};
+            const roles: any = {};
             this.WebSocketClientService.user.roles.forEach(role => {
                 roles[role._id] = role.name;
             });
 
-            var fbOptions = {
+            const fbOptions = {
                 formData: this.model.formData,
                 dataType: this.model.dataType,
                 roles: roles,
                 disabledActionButtons: ['data', 'clear'],
                 onSave: this.Save.bind(this),
             };
-            ele = $(document.getElementById('fb-editor'));
+            const ele: any = $(document.getElementById('fb-editor'));
             if (this.formBuilder == null || this.formBuilder == undefined) {
                 this.formBuilder = await ele.formBuilder(fbOptions).promise;
             }
@@ -1832,7 +1808,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
     async loadData(): Promise<void> {
         this.loading = true;
         this.message = "";
-        var res = await NoderedUtil.Query(this.collection, this.basequery, null, { _created: -1 }, 1, 0, null);
+        const res = await NoderedUtil.Query(this.collection, this.basequery, null, { _created: -1 }, 1, 0, null);
         if (res.length > 0) { this.workflow = res[0]; } else {
             this.errormessage = this.id + " workflow not found!";
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -1840,7 +1816,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             return;
         }
         if (this.instanceid !== null && this.instanceid !== undefined && this.instanceid !== "") {
-            var res = await NoderedUtil.Query("workflow_instances", { _id: this.instanceid }, null, { _created: -1 }, 1, 0, null);
+            const res = await NoderedUtil.Query("workflow_instances", { _id: this.instanceid }, null, { _created: -1 }, 1, 0, null);
             if (res.length > 0) { this.model = res[0]; } else {
                 this.errormessage = this.id + " workflow instances not found!";
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -1888,7 +1864,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 this.Save();
                 return;
             } else if (this.model.form !== "") {
-                var res = await NoderedUtil.Query("forms", { _id: this.model.form }, null, { _created: -1 }, 1, 0, null);
+                const res = await NoderedUtil.Query("forms", { _id: this.model.form }, null, { _created: -1 }, 1, 0, null);
                 if (res.length > 0) { this.form = res[0]; } else {
                     if (this.model.state == "completed") {
                         this.$location.path("/main");
@@ -1921,8 +1897,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         }
     }
     async SendOne(queuename: string, message: any): Promise<void> {
-        // console.debug("SendOne: queuename " + queuename + " / " + this.myid);
-        var result: any = await NoderedUtil.QueueMessage(WebSocketClient.instance, queuename, this.queuename, message, null, this.queue_message_timeout);
+        let result: any = await NoderedUtil.QueueMessage(WebSocketClient.instance, queuename, this.queuename, message, null, this.queue_message_timeout);
         try {
             if (typeof result === "string" || result instanceof String) {
                 result = JSON.parse((result as any));
@@ -1933,20 +1908,14 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             console.error(this.errormessage);
         }
-        // console.debug(result);
-        // if ((this.instanceid === undefined || this.instanceid === null) && (result !== null && result !== unescape)) {
-        //     this.instanceid = result._id;
-        //     this.$location.path("/Form/" + this.id + "/" + this.instanceid);
-        //     if (!this.$scope.$$phase) { this.$scope.$apply(); }
-        // }
     }
     async Save() {
         if (this.form !== null && this.form !== undefined && this.form.fbeditor === true) {
-            var userData: any[] = this.formRender.userData;
+            const userData: any[] = this.formRender.userData;
             if (this.model.payload === null || this.model.payload === undefined) { this.model.payload = {}; }
-            for (var i = 0; i < userData.length; i++) {
+            for (let i = 0; i < userData.length; i++) {
                 this.model.payload[userData[i].name] = "";
-                var val = userData[i].userData;
+                const val = userData[i].userData;
                 if (val !== undefined && val !== null) {
                     if (userData[i].type == "checkbox-group") {
                         this.model.payload[userData[i].name] = val;
@@ -1958,7 +1927,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 }
             }
             this.model.payload.submitbutton = this.submitbutton;
-            var ele = $('.render-wrap');
+            const ele = $('.render-wrap');
             ele.hide();
         } else {
 
@@ -1975,8 +1944,8 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         this.loadData();
     }
     traversecomponentsPostProcess(components: any[], data: any) {
-        for (var i = 0; i < components.length; i++) {
-            var item = components[i];
+        for (let i = 0; i < components.length; i++) {
+            const item = components[i];
             if (item.type == "button" && item.action == "submit") {
                 if (data[item.key] == true) {
                     this.submitbutton = item.key;
@@ -1985,12 +1954,12 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             }
         }
 
-        for (var i = 0; i < components.length; i++) {
-            var item = components[i];
+        for (let i = 0; i < components.length; i++) {
+            const item = components[i];
             if (item.type == "table") {
-                for (var x = 0; x < item.rows.length; x++) {
-                    for (var y = 0; y < item.rows[x].length; y++) {
-                        var subcomponents = item.rows[x][y].components;
+                for (let x = 0; x < item.rows.length; x++) {
+                    for (let y = 0; y < item.rows[x].length; y++) {
+                        const subcomponents = item.rows[x][y].components;
                         this.traversecomponentsPostProcess(subcomponents, data);
                     }
 
@@ -2000,12 +1969,12 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
 
     }
     traversecomponentsMakeDefaults(components: any[]) {
-        for (var y = 0; y < components.length; y++) {
-            var item = components[y];
+        for (let y = 0; y < components.length; y++) {
+            const item = components[y];
             if (item.type == "datagrid") {
                 if (this.model.payload[item.key] === null || this.model.payload[item.key] === undefined) {
-                    var obj: any = {};
-                    for (var x = 0; x < item.components.length; x++) {
+                    const obj: any = {};
+                    for (let x = 0; x < item.components.length; x++) {
                         obj[item.components[x].key] = "";
                     }
                     console.debug("add default array for " + item.key, obj);
@@ -2016,9 +1985,9 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                     if (Array.isArray(this.model.payload[item.key])) {
                     } else {
                         console.debug("convert payload for " + item.key + " from object to array");
-                        var keys = Object.keys(this.model.payload[item.key]);
-                        var arr: any[] = [];
-                        for (var x = 0; x < keys.length; x++) {
+                        const keys = Object.keys(this.model.payload[item.key]);
+                        const arr: any[] = [];
+                        for (let x = 0; x < keys.length; x++) {
                             arr.push(this.model.payload[item.key][keys[x]]);
                         }
                         this.model.payload[item.key] = arr;
@@ -2031,21 +2000,21 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         }
         if (this.model.payload != null && this.model.payload != undefined) {
             if (this.model.payload.values != null && this.model.payload.values != undefined) {
-                var keys = Object.keys(this.model.payload.values);
+                const keys = Object.keys(this.model.payload.values);
             }
         }
         if (this.model.payload != null && this.model.payload != undefined) {
             if (this.model.payload.values != null && this.model.payload.values != undefined) {
-                var keys = Object.keys(this.model.payload.values);
-                for (var i = 0; i < keys.length; i++) {
-                    var values = this.model.payload.values[keys[i]];
-                    for (var y = 0; y < components.length; y++) {
-                        var item = components[y];
+                const keys = Object.keys(this.model.payload.values);
+                for (let i = 0; i < keys.length; i++) {
+                    const values = this.model.payload.values[keys[i]];
+                    for (let y = 0; y < components.length; y++) {
+                        const item = components[y];
                         if (item.key == keys[i]) {
                             if (Array.isArray(values)) {
                                 console.debug("handle " + item.key + " as array");
-                                var obj2: any = {};
-                                for (var x = 0; x < values.length; x++) {
+                                const obj2: any = {};
+                                for (let x = 0; x < values.length; x++) {
                                     obj2[x] = values[x];
                                 }
                                 if (item.data != null && item.data != undefined) {
@@ -2077,12 +2046,12 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             }
         }
 
-        for (var i = 0; i < components.length; i++) {
-            var item = components[i];
+        for (let i = 0; i < components.length; i++) {
+            const item = components[i];
             if (item.type == "table") {
-                for (var x = 0; x < item.rows.length; x++) {
-                    for (var y = 0; y < item.rows[x].length; y++) {
-                        var subcomponents = item.rows[x][y].components;
+                for (let x = 0; x < item.rows.length; x++) {
+                    for (let y = 0; y < item.rows[x].length; y++) {
+                        const subcomponents = item.rows[x][y].components;
                         this.traversecomponentsMakeDefaults(subcomponents);
                     }
 
@@ -2105,16 +2074,15 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         if (this.form.fbeditor === true) {
             console.debug("renderform");
-            var ele: any;
-            var roles: any = {};
+            const roles: any = {};
             this.WebSocketClientService.user.roles.forEach(role => {
                 roles[role._id] = role.name;
             });
             if (typeof this.form.formData === 'string' || this.form.formData instanceof String) {
                 this.form.formData = JSON.parse((this.form.formData as any));
             }
-            for (var i = 0; i < this.form.formData.length; i++) {
-                var value = this.model.payload[this.form.formData[i].name];
+            for (let i = 0; i < this.form.formData.length; i++) {
+                let value = this.model.payload[this.form.formData[i].name];
                 if (value == undefined || value == null) { value = ""; }
                 if (value != "" || this.form.formData[i].type != "button") {
                     // console.debug("0:" + this.form.formData[i].label + " -> " + value);
@@ -2146,7 +2114,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                     }
                 }
             }
-            var formRenderOpts = {
+            const formRenderOpts = {
                 formData: this.form.formData,
                 dataType: this.form.dataType,
                 roles: roles,
@@ -2156,24 +2124,24 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             if (this.model.userData !== null && this.model.userData !== undefined && this.model.userData !== "") {
                 formRenderOpts.formData = this.model.userData;
             }
-            var concatHashToString = function (hash) {
-                var emptyStr = '';
+            const concatHashToString = function (hash) {
+                let emptyStr = '';
                 $.each(hash, function (index) {
                     emptyStr += ' ' + hash[index].name + '="' + hash[index].value + '"';
                 });
                 return emptyStr;
             }
-            var replaceElem = function (targetId, replaceWith) {
+            const replaceElem = function (targetId, replaceWith) {
                 $(targetId).each(function () {
-                    var attributes = concatHashToString(this.attributes);
-                    var replacingStartTag = '<' + replaceWith + attributes + '>';
-                    var replacingEndTag = '</' + replaceWith + '>';
+                    const attributes = concatHashToString(this.attributes);
+                    const replacingStartTag = '<' + replaceWith + attributes + '>';
+                    const replacingEndTag = '</' + replaceWith + '>';
                     $(this).replaceWith(replacingStartTag + $(this).html() + replacingEndTag);
                 });
             }
-            var replaceElementTag = function (targetSelector, newTagString) {
+            const replaceElementTag = function (targetSelector, newTagString) {
                 $(targetSelector).each(function () {
-                    var newElem = $(newTagString, { html: $(this).html() });
+                    const newElem = $(newTagString, { html: $(this).html() });
                     $.each(this.attributes, function () {
                         newElem.attr(this.name, this.value);
                     });
@@ -2184,17 +2152,17 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             setTimeout(() => {
                 console.debug("Attach buttons! 2");
                 $('button[type="button"]').each(function () {
-                    var cur: any = $(this)[0];
+                    const cur: any = $(this)[0];
                     console.debug("set submit");
                     cur.type = "submit";
                 });
-                var click = function (evt) {
+                const click = function (evt) {
                     this.submitbutton = evt.target.id;
                 }
                 $('button[type="submit"]').click(click.bind(this));
 
             }, 500);
-            ele = $('.render-wrap');
+            const ele: any = $('.render-wrap');
             ele.show();
             this.formRender = ele.formRender(formRenderOpts);
         } else {
@@ -2296,13 +2264,13 @@ export class jslogCtrl extends entitiesCtrl<Base> {
     }
     async DeleteMany(): Promise<void> {
         this.loading = true;
-        var Promises: Promise<void>[] = [];
+        const Promises: Promise<void>[] = [];
         this.models.forEach(model => {
             Promises.push(NoderedUtil.DeleteOne(this.collection, model._id, null));
         });
         const results: any = await Promise.all(Promises.map(p => p.catch(e => e)));
         // const values: void[] = results.filter(result => !(result instanceof Error));
-        // var ids: string[] = [];
+        // const ids: string[] = [];
         // values.forEach((x: void) => ids.push(x._id));
         // this.models = this.models.filter(function (m: any): boolean { return ids.indexOf(m._id) === -1; });
         // this.loading = false;
@@ -2346,7 +2314,7 @@ export class EntityCtrl extends entityCtrl<Base> {
                 this.model.name = "new item";
                 this.model._encrypt = [];
                 this.keys = Object.keys(this.model);
-                for (var i: number = this.keys.length - 1; i >= 0; i--) {
+                for (let i: number = this.keys.length - 1; i >= 0; i--) {
                     if (this.keys[i].startsWith('_')) this.keys.splice(i, 1);
                 }
                 this.searchSelectedItem = WebSocketClientService.user;
@@ -2357,13 +2325,13 @@ export class EntityCtrl extends entityCtrl<Base> {
         });
     }
     processdata() {
-        var ids: string[] = [];
+        const ids: string[] = [];
         if (this.collection == "files") {
-            for (var i: number = 0; i < (this.model as any).metadata._acl.length; i++) {
+            for (let i: number = 0; i < (this.model as any).metadata._acl.length; i++) {
                 ids.push((this.model as any).metadata._acl[i]._id);
             }
         } else {
-            for (var i: number = 0; i < this.model._acl.length; i++) {
+            for (let i: number = 0; i < this.model._acl.length; i++) {
                 ids.push(this.model._acl[i]._id);
             }
         }
@@ -2372,8 +2340,8 @@ export class EntityCtrl extends entityCtrl<Base> {
     }
     fixtextarea() {
         setTimeout(() => {
-            var tx = document.getElementsByTagName('textarea');
-            for (var i = 0; i < tx.length; i++) {
+            const tx = document.getElementsByTagName('textarea');
+            for (let i = 0; i < tx.length; i++) {
                 tx[i].setAttribute('style', 'height:' + (tx[i].scrollHeight) + 'px;overflow-y:hidden;');
                 tx[i].addEventListener("input", OnInput, false);
             }
@@ -2392,7 +2360,7 @@ export class EntityCtrl extends entityCtrl<Base> {
         } else {
             this.model = JSON.parse(this.jsonmodel);
             this.keys = Object.keys(this.model);
-            for (var i: number = this.keys.length - 1; i >= 0; i--) {
+            for (let i: number = this.keys.length - 1; i >= 0; i--) {
                 if (this.keys[i].startsWith('_')) this.keys.splice(i, 1);
             }
         }
@@ -2443,13 +2411,13 @@ export class EntityCtrl extends entityCtrl<Base> {
     }
     removeuser(_id) {
         if (this.collection == "files") {
-            for (var i = 0; i < (this.model as any).metadata._acl.length; i++) {
+            for (let i = 0; i < (this.model as any).metadata._acl.length; i++) {
                 if ((this.model as any).metadata._acl[i]._id == _id) {
                     (this.model as any).metadata._acl.splice(i, 1);
                 }
             }
         } else {
-            for (var i = 0; i < this.model._acl.length; i++) {
+            for (let i = 0; i < this.model._acl.length; i++) {
                 if (this.model._acl[i]._id == _id) {
                     this.model._acl.splice(i, 1);
                     //this.model._acl = this.model._acl.splice(index, 1);
@@ -2459,7 +2427,7 @@ export class EntityCtrl extends entityCtrl<Base> {
 
     }
     adduser() {
-        var ace = new Ace();
+        const ace = new Ace();
         ace.deny = false;
         ace._id = this.searchSelectedItem._id;
         ace.name = this.searchSelectedItem.name;
@@ -2476,35 +2444,35 @@ export class EntityCtrl extends entityCtrl<Base> {
 
     isBitSet(base64: string, bit: number): boolean {
         bit--;
-        var buf = this._base64ToArrayBuffer(base64);
-        var view = new Uint8Array(buf);
-        var octet = Math.floor(bit / 8);
-        var currentValue = view[octet];
-        var _bit = (bit % 8);
-        var mask = Math.pow(2, _bit);
+        const buf = this._base64ToArrayBuffer(base64);
+        const view = new Uint8Array(buf);
+        const octet = Math.floor(bit / 8);
+        const currentValue = view[octet];
+        const _bit = (bit % 8);
+        const mask = Math.pow(2, _bit);
         return (currentValue & mask) != 0;
     }
     setBit(base64: string, bit: number) {
         bit--;
-        var buf = this._base64ToArrayBuffer(base64);
-        var view = new Uint8Array(buf);
-        var octet = Math.floor(bit / 8);
-        var currentValue = view[octet];
-        var _bit = (bit % 8);
-        var mask = Math.pow(2, _bit);
-        var newValue = currentValue | mask;
+        const buf = this._base64ToArrayBuffer(base64);
+        const view = new Uint8Array(buf);
+        const octet = Math.floor(bit / 8);
+        const currentValue = view[octet];
+        const _bit = (bit % 8);
+        const mask = Math.pow(2, _bit);
+        const newValue = currentValue | mask;
         view[octet] = newValue;
         return this._arrayBufferToBase64(view);
     }
     unsetBit(base64: string, bit: number) {
         bit--;
-        var buf = this._base64ToArrayBuffer(base64);
-        var view = new Uint8Array(buf);
-        var octet = Math.floor(bit / 8);
-        var currentValue = view[octet];
-        var _bit = (bit % 8);
-        var mask = Math.pow(2, _bit);
-        var newValue = currentValue &= ~mask;
+        const buf = this._base64ToArrayBuffer(base64);
+        const view = new Uint8Array(buf);
+        const octet = Math.floor(bit / 8);
+        let currentValue = view[octet];
+        const _bit = (bit % 8);
+        const mask = Math.pow(2, _bit);
+        const newValue = currentValue &= ~mask;
         view[octet] = newValue;
         return this._arrayBufferToBase64(view);
     }
@@ -2514,25 +2482,25 @@ export class EntityCtrl extends entityCtrl<Base> {
         } else {
             a.rights = this.setBit(a.rights, bit);
         }
-        var buf2 = this._base64ToArrayBuffer(a.rights);
-        var view2 = new Uint8Array(buf2);
+        const buf2 = this._base64ToArrayBuffer(a.rights);
+        const view2 = new Uint8Array(buf2);
     }
     _base64ToArrayBuffer(string_base64): ArrayBuffer {
-        var binary_string = window.atob(string_base64);
-        var len = binary_string.length;
-        var bytes = new Uint8Array(len);
-        for (var i = 0; i < len; i++) {
-            //var ascii = string_base64.charCodeAt(i);
-            var ascii = binary_string.charCodeAt(i);
+        const binary_string = window.atob(string_base64);
+        const len = binary_string.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+            //const ascii = string_base64.charCodeAt(i);
+            const ascii = binary_string.charCodeAt(i);
             bytes[i] = ascii;
         }
         return bytes.buffer;
     }
     _arrayBufferToBase64(array_buffer): string {
-        var binary = '';
-        var bytes = new Uint8Array(array_buffer);
-        var len = bytes.byteLength;
-        for (var i = 0; i < len; i++) {
+        let binary = '';
+        const bytes = new Uint8Array(array_buffer);
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
             binary += String.fromCharCode(bytes[i])
         }
         return window.btoa(binary);
@@ -2553,8 +2521,8 @@ export class EntityCtrl extends entityCtrl<Base> {
     }
     handlekeys() {
         if (this.searchFilteredList.length > 0) {
-            var idx: number = -1;
-            for (var i = 0; i < this.searchFilteredList.length; i++) {
+            let idx: number = -1;
+            for (let i = 0; i < this.searchFilteredList.length; i++) {
                 if (this.searchSelectedItem != null) {
                     if (this.searchFilteredList[i]._id == this.searchSelectedItem._id) {
                         idx = i;
@@ -2600,7 +2568,7 @@ export class EntityCtrl extends entityCtrl<Base> {
     async handlefilter(e) {
         this.e = e;
         // console.debug(e.keyCode);
-        var ids: string[];
+        let ids: string[];
         if (this.collection == "files") {
             ids = (this.model as any).metadata._acl.map(item => item._id);
         } else {
@@ -2664,7 +2632,7 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
     }
     async ProcessData() {
         this.model = this.models[0];
-        var keys = Object.keys(this.model);
+        const keys = Object.keys(this.model);
         keys.forEach(key => {
             if (key.startsWith("_")) {
                 delete this.model[key];
@@ -2674,47 +2642,47 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     async CompareNow(model) {
-        var modal: any = $("#exampleModal");
+        const modal: any = $("#exampleModal");
         modal.modal()
-        // var delta = jsondiffpatch.diff(this.model, model.item);
+        // const delta = jsondiffpatch.diff(this.model, model.item);
         if (model.item == null) {
-            // var items = await NoderedUtil.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby, 100, 0, null);
+            // const items = await NoderedUtil.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby, 100, 0, null);
             // if (items.length > 0) {
             //     model.item = items[0].item;
             //     model.delta = items[0].delta;
             // }
-            var item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null);
+            const item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null);
             if (item != null) model.item = item;
         }
         if (model.item == null) {
             document.getElementById('visual').innerHTML = "Failed loading item version " + model._version;
         }
-        var keys = Object.keys(model.item);
+        const keys = Object.keys(model.item);
         keys.forEach(key => {
             if (key.startsWith("_")) {
                 delete model.item[key];
             }
         });
 
-        var delta = jsondiffpatch.diff(model.item, this.model);
+        const delta = jsondiffpatch.diff(model.item, this.model);
         document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(delta, this.model);
     }
     async CompareThen(model) {
         if (model.item == null || model.delta == null) {
-            var items = await NoderedUtil.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby, 100, 0, null);
+            const items = await NoderedUtil.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby, 100, 0, null);
             if (items.length > 0) {
                 model.item = items[0].item;
                 model.delta = items[0].delta;
             }
         }
-        var modal: any = $("#exampleModal");
+        const modal: any = $("#exampleModal");
         modal.modal();
         // document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(model.delta, model.item);
         document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(model.delta, {});
     }
     async RevertTo(model) {
         if (model.item == null) {
-            var items = await NoderedUtil.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby, 100, 0, null);
+            const items = await NoderedUtil.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby, 100, 0, null);
             if (items.length > 0) {
                 model.item = items[0].item;
                 model.delta = items[0].delta;
@@ -2766,7 +2734,7 @@ export class NoderedCtrl {
                 this.name = WebSocketClientService.user.username;
                 this.userid = WebSocketClientService.user._id;
                 console.log("user", WebSocketClientService.user);
-                var users: NoderedUser[] = await NoderedUtil.Query("users", { _id: this.userid }, null, null, 1, 0, null);
+                const users: NoderedUser[] = await NoderedUtil.Query("users", { _id: this.userid }, null, null, 1, 0, null);
                 if (users.length == 0) {
                     this.instancestatus = "Unknown id! " + this.userid;
                     this.errormessage = "Unknown id! " + this.userid;
@@ -2777,7 +2745,7 @@ export class NoderedCtrl {
                 this.user = NoderedUser.assign(users[0]);
                 this.name = users[0].username;
             } else {
-                var users: NoderedUser[] = await NoderedUtil.Query("users", { _id: this.userid }, null, null, 1, 0, null);
+                const users: NoderedUser[] = await NoderedUtil.Query("users", { _id: this.userid }, null, null, 1, 0, null);
                 if (users.length == 0) {
                     this.instancestatus = "Unknown id! " + this.userid;
                     this.errormessage = "Unknown id! " + this.userid;
@@ -3008,7 +2976,7 @@ export class RobotsCtrl extends entitiesCtrl<unattendedclient> {
         this.collection = "users";
         this.postloadData = this.processdata;
         this.preloadData = () => {
-            var dt = new Date(new Date().toISOString());
+            const dt = new Date(new Date().toISOString());
             if (this.showinactive) {
                 if (this.showall) {
                     this.basequery = { _heartbeat: { "$exists": true } };
@@ -3048,12 +3016,12 @@ export class RobotsCtrl extends entitiesCtrl<unattendedclient> {
         this.userdata.data.RobotsCtrl.showinactive = this.showinactive;
         this.userdata.data.RobotsCtrl.showall = this.showall;
 
-        for (var i = 0; i < this.models.length; i++) {
-            var model: any = this.models[i];
+        for (let i = 0; i < this.models.length; i++) {
+            const model: any = this.models[i];
             (model as any).hasnodered = false;
             if (model._noderedheartbeat != undefined && model._noderedheartbeat != null) {
-                var dt = new Date(model._noderedheartbeat)
-                var now: Date = new Date(),
+                const dt = new Date(model._noderedheartbeat)
+                const now: Date = new Date(),
                     secondsPast: number = (now.getTime() - dt.getTime()) / 1000;
                 if (secondsPast < 60) (model as any).hasnodered = true;
             }
@@ -3068,11 +3036,10 @@ export class RobotsCtrl extends entitiesCtrl<unattendedclient> {
 
     }
     OpenNodered(model: any) {
-        // var name = WebSocketClientService.user.username;
-        var name = model.username;
+        let name = model.username;
         name = name.split("@").join("").split(".").join("");
         name = name.toLowerCase();
-        var noderedurl = "https://" + this.WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", name);
+        const noderedurl = "https://" + this.WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", name);
         window.open(noderedurl);
     }
     ManageNodered(model: any) {
@@ -3115,8 +3082,8 @@ export class AuditlogsCtrl extends entitiesCtrl<Role> {
         });
     }
     processdata() {
-        for (var i = 0; i < this.models.length; i++) {
-            var model: any = this.models[i];
+        for (let i = 0; i < this.models.length; i++) {
+            const model: any = this.models[i];
             model.fa = "far fa-question-circle";
             model.fa2 = "";
             if (model.clientagent == 'openrpa') model.fa = 'fas fa-robot';
@@ -3140,10 +3107,10 @@ export class AuditlogsCtrl extends entitiesCtrl<Role> {
 
     async ShowAudit(model: any): Promise<any> {
         this.model = null;
-        var modal: any = $("#exampleModal");
+        const modal: any = $("#exampleModal");
         modal.modal();
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
-        var arr = await NoderedUtil.Query(this.collection, { _id: model._id }, null, null, 1, 0, null);
+        const arr = await NoderedUtil.Query(this.collection, { _id: model._id }, null, null, 1, 0, null);
         if (arr.length == 1) {
             this.model = arr[0];
         }
@@ -3184,7 +3151,7 @@ export class SignupCtrl extends entityCtrl<Base> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 }
-declare var Stripe: any;
+declare const Stripe: any;
 export class PaymentCtrl extends entityCtrl<Billing> {
     public messages: string = "";
     public cardmessage: string = "";
@@ -3281,7 +3248,7 @@ export class PaymentCtrl extends entityCtrl<Billing> {
                 this.hastaxtext = "excl vat";
             } else {
                 if (this.model != null && this.model.stripeid != null && this.model.stripeid != "") {
-                    var payload: stripe_customer = new stripe_customer;
+                    const payload: stripe_customer = new stripe_customer;
                     this.stripe_customer = await NoderedUtil.EnsureStripeCustomer(this.model, this.userid, null);
                     this.hascustomer = (this.stripe_customer != null);
                     if (this.model.tax != 1) {
@@ -3317,8 +3284,8 @@ export class PaymentCtrl extends entityCtrl<Billing> {
             this.model.taxrate = "";
             if (this.openflowplans.length == 0 && this.supportplans.length == 0) {
                 this.stripe_plans = (await NoderedUtil.Stripe("GET", "plans", null, null, null, null) as any);
-                for (var x = 0; x < this.stripe_plans.data.length; x++) {
-                    var stripeplan = this.stripe_plans.data[x];
+                for (let x = 0; x < this.stripe_plans.data.length; x++) {
+                    const stripeplan = this.stripe_plans.data[x];
                     if ((stripeplan as any).active == true) {
                         if (stripeplan.metadata.openflowuser == "true") {
                             this.openflowplans.push(stripeplan);
@@ -3328,10 +3295,10 @@ export class PaymentCtrl extends entityCtrl<Billing> {
                         }
                     }
                 }
-                for (var y = 0; y < this.supportplans.length; y++) {
-                    var supportplan = this.supportplans[y];
-                    for (var x = 0; x < this.stripe_plans.data.length; x++) {
-                        var stripeplan = this.stripe_plans.data[x];
+                for (let y = 0; y < this.supportplans.length; y++) {
+                    const supportplan = this.supportplans[y];
+                    for (let x = 0; x < this.stripe_plans.data.length; x++) {
+                        const stripeplan = this.stripe_plans.data[x];
                         if (stripeplan.id == supportplan.metadata.subplan) {
                             this.supporthoursplans.push(stripeplan);
                             (supportplan as any).subplan = stripeplan;
@@ -3342,9 +3309,9 @@ export class PaymentCtrl extends entityCtrl<Billing> {
             }
             //}
             if (this.hascustomer) {
-                var hasOpenflow = this.openflowplans.filter(plan => {
-                    var hasit = this.stripe_customer.subscriptions.data.filter(s => {
-                        var arr = s.items.data.filter(y => y.plan.id == plan.id);
+                const hasOpenflow = this.openflowplans.filter(plan => {
+                    const hasit = this.stripe_customer.subscriptions.data.filter(s => {
+                        const arr = s.items.data.filter(y => y.plan.id == plan.id);
                         if (arr.length == 1) {
                             if (arr[0].quantity > 0) {
                                 // this.openflowplan = arr[0];
@@ -3355,7 +3322,7 @@ export class PaymentCtrl extends entityCtrl<Billing> {
                     });
                     if (hasit.length > 0) return true;
                     return false;
-                    // var hasit = this.stripe_customer.subscriptions.data.filter(s => s.items.data.filter(y => y.plan.id == plan.id).length > 0);
+                    // const hasit = this.stripe_customer.subscriptions.data.filter(s => s.items.data.filter(y => y.plan.id == plan.id).length > 0);
                     // if (hasit.length > 0) return true;
                     // return false;
                 });
@@ -3363,9 +3330,9 @@ export class PaymentCtrl extends entityCtrl<Billing> {
                     this.allowopenflowsignup = false;
                     this.openflowplan = hasOpenflow[0];
                 }
-                var hasSupport = this.supportplans.filter(plan => {
-                    var hasit = this.stripe_customer.subscriptions.data.filter(s => {
-                        var arr = s.items.data.filter(y => y.plan.id == plan.id);
+                const hasSupport = this.supportplans.filter(plan => {
+                    const hasit = this.stripe_customer.subscriptions.data.filter(s => {
+                        const arr = s.items.data.filter(y => y.plan.id == plan.id);
                         if (arr.length == 1) {
                             if (arr[0].quantity > 0) {
                                 this.supportsubscription = arr[0];
@@ -3381,9 +3348,9 @@ export class PaymentCtrl extends entityCtrl<Billing> {
                     this.allowsupportsignup = false;
                     this.supportplan = hasSupport[0];
                 }
-                var hasSupportHours = this.supporthoursplans.filter(plan => {
-                    var hasit = this.stripe_customer.subscriptions.data.filter(s => {
-                        var arr = s.items.data.filter(y => y.plan.id == plan.id);
+                const hasSupportHours = this.supporthoursplans.filter(plan => {
+                    const hasit = this.stripe_customer.subscriptions.data.filter(s => {
+                        const arr = s.items.data.filter(y => y.plan.id == plan.id);
                         if (arr.length == 1) {
                             //if (arr[0].quantity > 0) {
                             this.supporthourssubscription = arr[0];
@@ -3400,16 +3367,15 @@ export class PaymentCtrl extends entityCtrl<Billing> {
                     this.supporthoursplan = hasSupportHours[0];
                 } else if (this.supportplan != null) {
                     this.supporthoursplan = (this.supportplan as any).subplan;
-                    var subscriptions = this.stripe_customer.subscriptions.data.filter(s => {
-                        var arr = s.items.data.filter(y => y.plan.id == this.supportplan.id);
+                    const subscriptions = this.stripe_customer.subscriptions.data.filter(s => {
+                        const arr = s.items.data.filter(y => y.plan.id == this.supportplan.id);
                         return arr.length > 0;
                     });
-                    var subscription = subscriptions[0];
+                    const subscription = subscriptions[0];
                     // (payload as any) = { subscription: subscription.id, plan: this.supporthoursplan.id, quantity: 1 };
-                    (payload as any) = { subscription: subscription.id, plan: this.supporthoursplan.id };
-
+                    // const payload:any = { subscription: subscription.id, plan: this.supporthoursplan.id };
                     // await NoderedUtil.Stripe("POST", "subscription_items", null, null, payload);
-                    var result = await NoderedUtil.StripeAddPlan(this.userid, this.supporthoursplan.id, null, null);
+                    const result = await NoderedUtil.StripeAddPlan(this.userid, this.supporthoursplan.id, null, null);
                     // this.loadData();
                 }
             }
@@ -3436,7 +3402,7 @@ export class PaymentCtrl extends entityCtrl<Billing> {
     }
     async Save() {
         try {
-            var customer: stripe_customer = null;
+            let customer: stripe_customer = null;
 
             if (customer == null && this.model.name != null) {
                 customer = await NoderedUtil.EnsureStripeCustomer(this.model, this.userid, null);
@@ -3451,7 +3417,7 @@ export class PaymentCtrl extends entityCtrl<Billing> {
     }
     async CancelPlan(planid: string) {
         try {
-            var result = await NoderedUtil.StripeCancelPlan(this.userid, planid, null);
+            const result = await NoderedUtil.StripeCancelPlan(this.userid, planid, null);
             this.loadData();
         } catch (error) {
             console.error(error);
@@ -3463,11 +3429,11 @@ export class PaymentCtrl extends entityCtrl<Billing> {
     async AddHours(plan: string) {
         try {
             if (this.supporthourssubscription == null) return;
-            var hours: number = parseInt(window.prompt("Number of hours", "1"));
+            const hours: number = parseInt(window.prompt("Number of hours", "1"));
             if (hours > 0) {
-                var dt = parseInt((new Date().getTime() / 1000).toFixed(0))
-                var payload: any = { "quantity": hours, "timestamp": dt };
-                var res = await NoderedUtil.Stripe("POST", "usage_records", null, this.supporthourssubscription.id, payload, null);
+                const dt = parseInt((new Date().getTime() / 1000).toFixed(0))
+                const payload: any = { "quantity": hours, "timestamp": dt };
+                const res = await NoderedUtil.Stripe("POST", "usage_records", null, this.supporthourssubscription.id, payload, null);
             }
             this.loadData();
         } catch (error) {
@@ -3478,9 +3444,9 @@ export class PaymentCtrl extends entityCtrl<Billing> {
     }
     async CheckOut(planid: string, subplanid: string) {
         try {
-            var result = await NoderedUtil.StripeAddPlan(this.userid, planid, subplanid, null);
+            const result = await NoderedUtil.StripeAddPlan(this.userid, planid, subplanid, null);
             if (result.checkout) {
-                var stripe = Stripe(this.WebSocketClientService.stripe_api_key);
+                const stripe = Stripe(this.WebSocketClientService.stripe_api_key);
                 stripe
                     .redirectToCheckout({
                         sessionId: result.checkout.id,
@@ -3540,7 +3506,7 @@ export class QueuesCtrl extends entitiesCtrl<Base> {
             this.loading = true;
             let m: Message = new Message();
             m.command = "dumprabbitmq"; m.data = "{}";
-            var q = await WebSocketClient.instance.Send<any>(m);
+            const q = await WebSocketClient.instance.Send<any>(m);
             if ((q as any).command == "error") throw new Error(q.data);
         } catch (error) {
             console.error(error);
@@ -3589,7 +3555,7 @@ export class QueueCtrl extends entityCtrl<Base> {
             this.loading = true;
             let m: Message = new Message();
             m.command = "getrabbitmqqueue"; m.data = "{\"name\": \"" + (this.model as any).queuename + "\"}";
-            var q = await WebSocketClient.instance.Send<any>(m);
+            const q = await WebSocketClient.instance.Send<any>(m);
             if ((q as any).command == "error") throw new Error(q.data);
             this.data = q.data;
             if (this.data == null) {
@@ -3606,23 +3572,23 @@ export class QueueCtrl extends entityCtrl<Base> {
             }
             this.collection = "configclients";
             this.basequery = { _type: "socketclient" };
-            var clients = await NoderedUtil.Query("configclients", { _type: "socketclient" }, null, null, 2000, 0, null, null);
-            for (var i = 0; i < this.data.consumer_details.length; i++) {
+            const clients = await NoderedUtil.Query("configclients", { _type: "socketclient" }, null, null, 2000, 0, null, null);
+            for (let i = 0; i < this.data.consumer_details.length; i++) {
                 console.log("find " + this.data.consumer_details[i].consumer_tag);
 
-                for (var y = 0; y < clients.length; y++) {
+                for (let y = 0; y < clients.length; y++) {
                     const _client = clients[y];
                     if (_client.queues != null) {
                         // const keys = Object.keys(_client.queues);
-                        // for (var z = 0; z < keys.length; z++) {
-                        //     var q = _client.queues[keys[z]];
+                        // for (let z = 0; z < keys.length; z++) {
+                        //     const q = _client.queues[keys[z]];
                         //     console.log(_client.name + " " + q.consumerTag);
                         //     if (q.consumerTag == this.data.consumer_details[i].consumer_tag) {
                         //         this.data.consumer_details[i].clientname = _client.name;
                         //     }
                         // }
-                        for (var z = 0; z < _client.queues.length; z++) {
-                            var q = _client.queues[z];
+                        for (let z = 0; z < _client.queues.length; z++) {
+                            const q = _client.queues[z];
                             console.log(_client.name + " " + q.consumerTag);
                             if (q.consumerTag == this.data.consumer_details[i].consumer_tag) {
                                 this.data.consumer_details[i].clientname = _client.name;
@@ -3644,7 +3610,7 @@ export class QueueCtrl extends entityCtrl<Base> {
             this.loading = true;
             let m: Message = new Message();
             m.command = "deleterabbitmqqueue"; m.data = "{\"name\": \"" + (this.model as any).queuename + "\"}";
-            var q = await WebSocketClient.instance.Send<any>(m);
+            const q = await WebSocketClient.instance.Send<any>(m);
             if ((q as any).command == "error") throw new Error(q.data);
             this.data = q.data;
             this.$location.path("/Queues");
@@ -3679,8 +3645,8 @@ export class SocketsCtrl extends entitiesCtrl<Base> {
         });
     }
     processdata() {
-        for (var i = 0; i < this.models.length; i++) {
-            var model: any = this.models[i];
+        for (let i = 0; i < this.models.length; i++) {
+            const model: any = this.models[i];
             model.keys = Object.keys(model.queues);
             model.queuescount = model.keys.length;
         }
@@ -3692,7 +3658,7 @@ export class SocketsCtrl extends entitiesCtrl<Base> {
             this.loading = true;
             let m: Message = new Message();
             m.command = "dumpclients"; m.data = "{}";
-            var q = await WebSocketClient.instance.Send<any>(m);
+            const q = await WebSocketClient.instance.Send<any>(m);
             if ((q as any).command == "error") throw new Error(q.data);
         } catch (error) {
             console.error(error);
@@ -3747,11 +3713,11 @@ export class CredentialsCtrl extends entitiesCtrl<Base> {
         await NoderedUtil.DeleteOne(this.collection, model._id, null);
         this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
         this.loading = false;
-        var name = model.username;
+        let name = model.username;
         name = name.split("@").join("").split(".").join("");
         name = name.toLowerCase();
 
-        var list = await NoderedUtil.Query("users", { _type: "role", name: name + "noderedadmins" }, null, null, 2, 0, null);
+        const list = await NoderedUtil.Query("users", { _type: "role", name: name + "noderedadmins" }, null, null, 2, 0, null);
         if (list.length == 1) {
             console.debug("Deleting " + name + "noderedadmins")
             await NoderedUtil.DeleteOne("users", list[0]._id, null);
@@ -3803,13 +3769,13 @@ export class CredentialCtrl extends entityCtrl<Base> {
 
     removeuser(_id) {
         if (this.collection == "files") {
-            for (var i = 0; i < (this.model as any).metadata._acl.length; i++) {
+            for (let i = 0; i < (this.model as any).metadata._acl.length; i++) {
                 if ((this.model as any).metadata._acl[i]._id == _id) {
                     (this.model as any).metadata._acl.splice(i, 1);
                 }
             }
         } else {
-            for (var i = 0; i < this.model._acl.length; i++) {
+            for (let i = 0; i < this.model._acl.length; i++) {
                 if (this.model._acl[i]._id == _id) {
                     this.model._acl.splice(i, 1);
                     //this.model._acl = this.model._acl.splice(index, 1);
@@ -3819,7 +3785,7 @@ export class CredentialCtrl extends entityCtrl<Base> {
 
     }
     adduser() {
-        var ace = new Ace();
+        const ace = new Ace();
         ace.deny = false;
         ace._id = this.searchSelectedItem._id;
         ace.name = this.searchSelectedItem.name;
@@ -3843,35 +3809,35 @@ export class CredentialCtrl extends entityCtrl<Base> {
 
     isBitSet(base64: string, bit: number): boolean {
         bit--;
-        var buf = this._base64ToArrayBuffer(base64);
-        var view = new Uint8Array(buf);
-        var octet = Math.floor(bit / 8);
-        var currentValue = view[octet];
-        var _bit = (bit % 8);
-        var mask = Math.pow(2, _bit);
+        const buf = this._base64ToArrayBuffer(base64);
+        const view = new Uint8Array(buf);
+        const octet = Math.floor(bit / 8);
+        const currentValue = view[octet];
+        const _bit = (bit % 8);
+        const mask = Math.pow(2, _bit);
         return (currentValue & mask) != 0;
     }
     setBit(base64: string, bit: number) {
         bit--;
-        var buf = this._base64ToArrayBuffer(base64);
-        var view = new Uint8Array(buf);
-        var octet = Math.floor(bit / 8);
-        var currentValue = view[octet];
-        var _bit = (bit % 8);
-        var mask = Math.pow(2, _bit);
-        var newValue = currentValue | mask;
+        const buf = this._base64ToArrayBuffer(base64);
+        const view = new Uint8Array(buf);
+        const octet = Math.floor(bit / 8);
+        const currentValue = view[octet];
+        const _bit = (bit % 8);
+        const mask = Math.pow(2, _bit);
+        const newValue = currentValue | mask;
         view[octet] = newValue;
         return this._arrayBufferToBase64(view);
     }
     unsetBit(base64: string, bit: number) {
         bit--;
-        var buf = this._base64ToArrayBuffer(base64);
-        var view = new Uint8Array(buf);
-        var octet = Math.floor(bit / 8);
-        var currentValue = view[octet];
-        var _bit = (bit % 8);
-        var mask = Math.pow(2, _bit);
-        var newValue = currentValue &= ~mask;
+        const buf = this._base64ToArrayBuffer(base64);
+        const view = new Uint8Array(buf);
+        const octet = Math.floor(bit / 8);
+        let currentValue = view[octet];
+        const _bit = (bit % 8);
+        const mask = Math.pow(2, _bit);
+        const newValue = currentValue &= ~mask;
         view[octet] = newValue;
         return this._arrayBufferToBase64(view);
     }
@@ -3881,25 +3847,25 @@ export class CredentialCtrl extends entityCtrl<Base> {
         } else {
             a.rights = this.setBit(a.rights, bit);
         }
-        var buf2 = this._base64ToArrayBuffer(a.rights);
-        var view2 = new Uint8Array(buf2);
+        const buf2 = this._base64ToArrayBuffer(a.rights);
+        const view2 = new Uint8Array(buf2);
     }
     _base64ToArrayBuffer(string_base64): ArrayBuffer {
-        var binary_string = window.atob(string_base64);
-        var len = binary_string.length;
-        var bytes = new Uint8Array(len);
-        for (var i = 0; i < len; i++) {
-            //var ascii = string_base64.charCodeAt(i);
-            var ascii = binary_string.charCodeAt(i);
+        const binary_string = window.atob(string_base64);
+        const len = binary_string.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+            //const ascii = string_base64.charCodeAt(i);
+            const ascii = binary_string.charCodeAt(i);
             bytes[i] = ascii;
         }
         return bytes.buffer;
     }
     _arrayBufferToBase64(array_buffer): string {
-        var binary = '';
-        var bytes = new Uint8Array(array_buffer);
-        var len = bytes.byteLength;
-        for (var i = 0; i < len; i++) {
+        let binary = '';
+        const bytes = new Uint8Array(array_buffer);
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
             binary += String.fromCharCode(bytes[i])
         }
         return window.btoa(binary);
@@ -3920,8 +3886,8 @@ export class CredentialCtrl extends entityCtrl<Base> {
     }
     handlekeys() {
         if (this.searchFilteredList.length > 0) {
-            var idx: number = -1;
-            for (var i = 0; i < this.searchFilteredList.length; i++) {
+            let idx: number = -1;
+            for (let i = 0; i < this.searchFilteredList.length; i++) {
                 if (this.searchSelectedItem != null) {
                     if (this.searchFilteredList[i]._id == this.searchSelectedItem._id) {
                         idx = i;
@@ -3967,7 +3933,7 @@ export class CredentialCtrl extends entityCtrl<Base> {
     async handlefilter(e) {
         this.e = e;
         // console.debug(e.keyCode);
-        var ids: string[];
+        let ids: string[];
         if (this.collection == "files") {
             ids = (this.model as any).metadata._acl.map(item => item._id);
         } else {
@@ -4041,7 +4007,7 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         // this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
         this.pagesize = 1;
         this.postloadData = this.processdata;
-        var checkList = document.getElementById('list1');
+        const checkList = document.getElementById('list1');
         (checkList.getElementsByClassName('anchor')[0] as any).onclick = function (evt) {
             if (checkList.classList.contains('visible'))
                 checkList.classList.remove('visible');
@@ -4085,16 +4051,16 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
     async processdata() {
         if (this.models.length > 0) {
             this.keys = Object.keys(this.models[0]);
-            for (var i: number = this.keys.length - 1; i >= 0; i--) {
+            for (let i: number = this.keys.length - 1; i >= 0; i--) {
                 if (this.keys[i].startsWith('_') && this.keys[i] != "_type") this.keys.splice(i, 1);
             }
             this.keys.sort();
             this.keys.reverse();
         } else { this.keys = []; }
         if (!NoderedUtil.IsNullEmpty(this.uniqeness)) {
-            var pipe: any[] = [];
-            var arr = this.uniqeness.split(",");
-            var group: any = { _id: {}, count: { "$sum": 1 } };
+            const pipe: any[] = [];
+            const arr = this.uniqeness.split(",");
+            const group: any = { _id: {}, count: { "$sum": 1 } };
             //if ("111".toLowerCase() == "22") {
             group.items = {
                 $push: { "_id": '$$ROOT._id', "name": '$$ROOT.name' }
@@ -4128,9 +4094,9 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     ToggleUniqeness(model) {
-        var arr = [];
+        let arr = [];
         if (this.uniqeness != null && this.uniqeness != "") arr = this.uniqeness.split(',');
-        var index = arr.indexOf(model);
+        const index = arr.indexOf(model);
         if (index > -1) {
             arr.splice(index, 1);
             this.uniqeness = arr.join(',');
@@ -4142,16 +4108,16 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         this.loadData();
     }
     async ShowData(model) {
-        var modal: any = $("#exampleModal");
+        const modal: any = $("#exampleModal");
         modal.modal();
         this.model = model;
     }
     async CloseModal() {
-        var modal: any = $("#exampleModal");
+        const modal: any = $("#exampleModal");
         modal.modal('hide');
     }
     OpenEntity(model) {
-        var modal: any = $("#exampleModal");
+        const modal: any = $("#exampleModal");
         modal.modal('hide');
         this.$location.path("/Entity/" + this.collection + "/" + model._id);
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -4160,8 +4126,8 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
     }
     async MassDeleteOnlyOne() {
         this.loading = true;
-        for (var x = 0; x < this.models.length; x++) {
-            var item = (this.models[x] as any);
+        for (let x = 0; x < this.models.length; x++) {
+            const item = (this.models[x] as any);
             console.log("deleting ", item.items[0]);
             await NoderedUtil.DeleteOne(this.collection, item.items[0]._id, null);
         }
@@ -4170,9 +4136,9 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
     }
     async MassDeleteAllButOne() {
         this.loading = true;
-        for (var x = 0; x < this.models.length; x++) {
-            var item = (this.models[x] as any);
-            for (var y = 1; y < item.items.length; y++) {
+        for (let x = 0; x < this.models.length; x++) {
+            const item = (this.models[x] as any);
+            for (let y = 1; y < item.items.length; y++) {
                 console.log("deleting ", item.items[y]);
                 await NoderedUtil.DeleteOne(this.collection, item.items[y]._id, null);
             }
@@ -4182,9 +4148,9 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
     }
     async MassDeleteAll() {
         this.loading = true;
-        for (var x = 0; x < this.models.length; x++) {
-            var item = (this.models[x] as any);
-            for (var y = 0; y < item.items.length; y++) {
+        for (let x = 0; x < this.models.length; x++) {
+            const item = (this.models[x] as any);
+            for (let y = 0; y < item.items.length; y++) {
                 console.log("deleting ", item.items[y]);
                 await NoderedUtil.DeleteOne(this.collection, item.items[y]._id, null);
             }
@@ -4206,7 +4172,7 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         if (NoderedUtil.IsNullUndefinded(model)) return;
         if (NoderedUtil.IsNullUndefinded(model.items)) return;
         this.loading = true;
-        for (var i = 1; i < model.items.length; i++) {
+        for (let i = 1; i < model.items.length; i++) {
             console.log("deleting ", model.items[i]);
             await NoderedUtil.DeleteOne(this.collection, model.items[i]._id, null);
         }
@@ -4217,7 +4183,7 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         if (NoderedUtil.IsNullUndefinded(model)) return;
         if (NoderedUtil.IsNullUndefinded(model.items)) return;
         this.loading = true;
-        for (var i = 0; i < model.items.length; i++) {
+        for (let i = 0; i < model.items.length; i++) {
             console.log("deleting ", model.items[i]);
             await NoderedUtil.DeleteOne(this.collection, model.items[i]._id, null);
         }
@@ -4227,7 +4193,7 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
     async ModalDeleteOne(model) {
         this.loading = true;
         await NoderedUtil.DeleteOne(this.collection, model._id, null);
-        var arr: any[] = (this.model as any).items;
+        let arr: any[] = (this.model as any).items;
         arr = arr.filter(x => x._id != model._id);
         (this.model as any).items = arr;
         this.loading = false;

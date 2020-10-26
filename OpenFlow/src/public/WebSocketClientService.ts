@@ -20,7 +20,7 @@ export class WebSocketClientService {
                 return;
             }
             try {
-                var wsurl: string = data.wsurl;
+                const wsurl: string = data.wsurl;
                 this.version = data.version;
                 this.domain = data.domain;
                 this.version = data.version;
@@ -34,16 +34,15 @@ export class WebSocketClientService {
                 this.stripe_api_key = data.stripe_api_key;
 
                 if (WebSocketClient.instance == null) {
-                    var cli: WebSocketClient;
-                    cli = new WebSocketClient(this.logger, wsurl);
+                    const cli: WebSocketClient = new WebSocketClient(this.logger, wsurl);
                     cli.agent = "webapp";
                     cli.version = data.version;
+                    cli.events.on('connect', () => {
+                        this.logger.info('connected to ' + wsurl);
+                        this.loadToken();
+                    });
+                    cli.connect();
                 }
-                cli.events.on('connect', () => {
-                    this.logger.info('connected to ' + wsurl);
-                    this.loadToken();
-                });
-                cli.connect();
             } catch (error) {
                 console.error(error);
             }
@@ -59,10 +58,10 @@ export class WebSocketClientService {
                     data = null;
                 }
             }
-            var _url = this.$location.absUrl();
+            const _url = this.$location.absUrl();
             if (data === null || data === undefined) {
                 if (this.$location.path() !== "/Login" && this.$location.path() !== "/Signup") {
-                    // var _url = this.$location.absUrl();
+                    // const _url = this.$location.absUrl();
                     // this.setCookie("weburl", _url, 365);
                     console.log('weburl', this.$location.path());
                     this.setCookie("weburl", this.$location.path(), 365);
@@ -72,11 +71,11 @@ export class WebSocketClientService {
                 return;
             }
             try {
-                var result = await NoderedUtil.SigninWithToken(data.jwt, data.rawAssertion, null);
+                const result = await NoderedUtil.SigninWithToken(data.jwt, data.rawAssertion, null);
                 this.user = result.user;
                 this.jwt = result.jwt;
                 this.$rootScope.$broadcast("signin", result.user);
-                var redirecturl = this.getCookie("weburl");
+                const redirecturl = this.getCookie("weburl");
                 if (!NoderedUtil.IsNullEmpty(redirecturl)) {
                     console.log('redirecturl', redirecturl);
                     this.deleteCookie("weburl");
@@ -94,23 +93,23 @@ export class WebSocketClientService {
         });
     }
     async impersonate(userid: string) {
-        var result = await NoderedUtil.SigninWithToken(this.jwt, null, userid);
+        const result = await NoderedUtil.SigninWithToken(this.jwt, null, userid);
         this.user = result.user;
         this.jwt = result.jwt;
         this.$rootScope.$broadcast("signin", result.user);
     }
     setCookie(cname, cvalue, exdays) {
-        var d = new Date();
+        const d = new Date();
         d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
-        var expires = "expires=" + d.toUTCString();
+        const expires = "expires=" + d.toUTCString();
         document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
     }
     getCookie(cname) {
-        var name = cname + "=";
-        var decodedCookie = decodeURIComponent(document.cookie);
-        var ca = decodedCookie.split(';');
-        for (var i = 0; i < ca.length; i++) {
-            var c = ca[i];
+        const name = cname + "=";
+        const decodedCookie = decodeURIComponent(document.cookie);
+        const ca = decodedCookie.split(';');
+        for (let i = 0; i < ca.length; i++) {
+            let c = ca[i];
             while (c.charAt(0) == ' ') {
                 c = c.substring(1);
             }
@@ -146,11 +145,11 @@ export class WebSocketClientService {
     public stripe_api_key: string = "";
 
     getJSON(url: string, callback: any): void {
-        var xhr: XMLHttpRequest = new XMLHttpRequest();
+        const xhr: XMLHttpRequest = new XMLHttpRequest();
         xhr.open("GET", url, true);
         xhr.responseType = "json";
         xhr.onload = function (): void {
-            var status: number = xhr.status;
+            const status: number = xhr.status;
             if (status === 200) {
                 callback(null, xhr.response);
             } else {
@@ -165,7 +164,7 @@ export class WebSocketClientService {
             callback(this.user);
             return;
         }
-        var cleanup = this.$rootScope.$on('signin', (event, data) => {
+        const cleanup = this.$rootScope.$on('signin', (event, data) => {
             if (event && data) { }
             cleanup();
             callback(this.user);
@@ -176,7 +175,7 @@ export class WebSocketClientService {
             callback();
             return;
         }
-        var cleanup = this.$rootScope.$on('socketopen', (event, data) => {
+        const cleanup = this.$rootScope.$on('socketopen', (event, data) => {
             if (event && data) { }
             cleanup();
             callback();

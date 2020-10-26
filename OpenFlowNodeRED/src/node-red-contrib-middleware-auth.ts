@@ -20,11 +20,11 @@ export class noderedcontribmiddlewareauth {
     public static authorizationCache: HashTable<CachedUser> = {};
 
     private static getUser(authorization: string): CachedUser {
-        var res: CachedUser = this.authorizationCache[authorization];
+        const res: CachedUser = this.authorizationCache[authorization];
         if (res === null || res === undefined) return null;
-        var begin: number = res.firstsignin.getTime();
-        var end: number = new Date().getTime();
-        var seconds = Math.round((end - begin) / 1000);
+        const begin: number = res.firstsignin.getTime();
+        const end: number = new Date().getTime();
+        const seconds = Math.round((end - begin) / 1000);
         if (seconds < Config.api_credential_cache_seconds) { return res; }
         delete this.authorizationCache[authorization];
         return null;
@@ -34,7 +34,7 @@ export class noderedcontribmiddlewareauth {
         if (Config.api_allow_anonymous) {
             return next();
         }
-        var cacheduser: CachedUser = this.getUser(req.headers.authorization);
+        let cacheduser: CachedUser = this.getUser(req.headers.authorization);
         if (cacheduser != null) {
             req.user = cacheduser.user;
             (req.user as any).jwt = cacheduser.jwt;
@@ -46,10 +46,10 @@ export class noderedcontribmiddlewareauth {
         const [login, password] = Buffer.from(b64auth, "base64").toString().split(':')
         if (login && password) {
             try {
-                var result = await NoderedUtil.SigninWithUsername(login, password, null, false, true);
+                const result = await NoderedUtil.SigninWithUsername(login, password, null, false, true);
                 if (result.user != null) {
-                    var user: TokenUser = TokenUser.assign(result.user);
-                    var allowed = user.roles.filter(x => x.name == "nodered api users" || x.name == Config.noderedadmins);
+                    const user: TokenUser = TokenUser.assign(result.user);
+                    const allowed = user.roles.filter(x => x.name == "nodered api users" || x.name == Config.noderedadmins);
                     if (allowed.length === 1) {
                         cacheduser = new CachedUser(result.user, result.jwt);
                         this.authorizationCache[req.headers.authorization] = cacheduser;
