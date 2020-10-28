@@ -53,7 +53,8 @@ export function StopService(servicename: string) {
 export function RestartService(servicename: string) {
     try {
         if (isWin()) {
-            cp.execSync(`net stop "${servicename}" & net start "${servicename}"`);
+            // cp.execSync(`start "restart" "cmd.exe" "/c net stop ${servicename} & net start ${servicename}"`);
+            cp.exec(`start "restart" "cmd.exe" "/c net stop ${servicename} & net start ${servicename}"`);
         } else if (isMac()) {
             // https://medium.com/craftsmenltd/building-a-cross-platform-background-service-in-node-js-791cfcd3be60
             // cp.execSync(`sudo launchctl unload ${LAUNCHD_PLIST_PATH}`);

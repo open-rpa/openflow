@@ -674,9 +674,12 @@ export class noderedcontribopenflowstorage {
                                 if (val != null && val.pending_version) {
                                     version = val.pending_version;
                                 }
-                                let oldversion = oldsettings.nodes[key].version;
-                                if (oldsettings.nodes[key] != null && oldsettings.nodes[key].pending_version) {
-                                    oldversion = oldsettings.nodes[key].pending_version;
+                                let oldversion = null;
+                                if (oldsettings != null && oldsettings.nodes[key] != null) {
+                                    oldversion = oldsettings.nodes[key].version;
+                                    if (oldsettings.nodes[key].pending_version) {
+                                        oldversion = oldsettings.nodes[key].pending_version;
+                                    }
                                 }
                                 if (newsettings.nodes[key] == null) {
                                     this._logger.info("Remove module " + key + "@" + version);
@@ -699,13 +702,20 @@ export class noderedcontribopenflowstorage {
                         const key = keys[i];
                         if (key != "node-red") {
                             const val = newsettings.nodes[key];
+                            if (val == null) {
+                                this._logger.info("val == null at " + key + " ???");
+                                continue;
+                            }
                             let version = val.version;
                             if (val.pending_version) {
                                 version = val.pending_version;
                             }
-                            let oldversion = oldsettings.nodes[key].version;
-                            if (oldsettings.nodes[key].pending_version) {
-                                oldversion = oldsettings.nodes[key].pending_version;
+                            let oldversion = null;
+                            if (oldsettings != null && oldsettings.nodes[key] != null) {
+                                oldversion = oldsettings.nodes[key].version;
+                                if (oldsettings.nodes[key].pending_version) {
+                                    oldversion = oldsettings.nodes[key].pending_version;
+                                }
                             }
                             try {
                                 if (oldsettings.nodes[key] == null) {
@@ -795,7 +805,7 @@ export class noderedcontribopenflowstorage {
             }
             this._settings = settings;
             let exitprocess: boolean = false;
-            let keys = Object.keys(settings);
+            let keys = Object.keys(settings.nodes);
             for (let i = 0; i < keys.length; i++) {
                 const key = keys[i];
                 if (key != "node-red") {
@@ -818,7 +828,7 @@ export class noderedcontribopenflowstorage {
                         var _servicename = path.basename(servicename)
                         this._logger.info("Restarting service " + _servicename);
                         RestartService(_servicename);
-                        process.exit(1);
+                        // process.exit(1);
                     } else {
                         this._logger.info("Not running in docker, nor started as a service, please restart Node-Red manually");
                     }
