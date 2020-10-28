@@ -711,8 +711,9 @@ export class LoginProvider {
         return strategy;
     }
     static async samlverify(profile: any, done: IVerifyFunction): Promise<void> {
-        let username: string = (profile.nameID || profile.username);
-        if (username !== null && username != undefined) { username = username.toLowerCase(); }
+        let username: string = profile.username;
+        if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
+        if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
         LoginProvider._logger.debug("verify: " + username);
         let _user: User = await DBHelper.FindByUsernameOrFederationid(username);
 
@@ -781,8 +782,9 @@ export class LoginProvider {
             const email: any = profile.emails[0];
             profile.username = email.value;
         }
-        let username: string = (profile.username || profile.id);
-        if (username !== null && username != undefined) { username = username.toLowerCase(); }
+        let username: string = profile.username;
+        if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
+        if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
         LoginProvider._logger.debug("verify: " + username);
         let _user: User = await DBHelper.FindByUsernameOrFederationid(username);
         if (NoderedUtil.IsNullUndefinded(_user)) {

@@ -193,19 +193,6 @@ export class DatabaseConnection {
         if (Config.update_acl_based_on_groups) {
             for (let i = removed.length - 1; i >= 0; i--) {
                 const ace = removed[i];
-
-                if (ace._id != WellknownIds.admins && ace._id != WellknownIds.root) {
-                    // if (item.hasRight(ace._id, Rights.read)) {
-                    //     item.removeRight(ace._id, [Rights.read]);
-                    //     const right = item.getRight(ace._id, false);
-                    //     // read was not the only right ? then re add
-                    //     if (right != null) {
-                    //         item.addRight(ace._id, ace.name, [Rights.read]);
-                    //     }
-                    // }
-
-                }
-
                 const arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1, _acl: 1, _type: 1 }).limit(1).toArray();
                 if (arr.length == 1 && item._id != WellknownIds.admins && item._id != WellknownIds.root) {
                     if (Config.multi_tenant && multi_tenant_skip.indexOf(item._id) > -1) {
@@ -808,7 +795,7 @@ export class DatabaseConnection {
                 (q.item as any).metadata = this.encryptentity((q.item as any).metadata);
                 const hasUser: Ace = (q.item as any).metadata._acl.find(e => e._id === user._id);
                 if ((hasUser === null || hasUser === undefined) && (q.item as any).metadata._acl.length == 0) {
-                    (q.item as any).metadata.addRight(user._id, user.name, [Rights.full_control]);
+                    Base.addRight((q.item as any).metadata, user._id, user.name, [Rights.full_control]);
                 }
             }
 

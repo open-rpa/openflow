@@ -1518,7 +1518,7 @@ export class Message {
             msg.metadata = Base.assign(msg.metadata);
             if (NoderedUtil.IsNullUndefinded(msg.metadata._acl)) {
                 msg.metadata._acl = [];
-                msg.metadata.addRight(WellknownIds.filestore_users, "filestore users", [Rights.read]);
+                Base.addRight(msg.metadata, WellknownIds.filestore_users, "filestore users", [Rights.read]);
             }
             const user: TokenUser = Crypt.verityToken(msg.jwt);
             msg.metadata._createdby = user.name;
@@ -1532,16 +1532,12 @@ export class Message {
             }
             let hasUser: any = msg.metadata._acl.find(e => e._id === user._id);
             if ((hasUser === null || hasUser === undefined)) {
-                msg.metadata.addRight(user._id, user.name, [Rights.full_control]);
+                Base.addRight(msg.metadata, user._id, user.name, [Rights.full_control]);
             }
             hasUser = msg.metadata._acl.find(e => e._id === WellknownIds.filestore_admins);
             if ((hasUser === null || hasUser === undefined)) {
-                msg.metadata.addRight(WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
+                Base.addRight(msg.metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
             }
-            // hasUser = msg.metadata._acl.find(e => e._id === WellknownIds.filestore_users);
-            // if ((hasUser === null || hasUser === undefined)) {
-            //     msg.metadata.addRight(WellknownIds.filestore_users, "filestore users", [Rights.read]);
-            // }
             msg.metadata = Config.db.ensureResource(msg.metadata);
             if (!Config.db.hasAuthorization(user, msg.metadata, Rights.create)) { throw new Error("Access denied, no authorization to save file"); }
             msg.id = await this._SaveFile(readable, msg.filename, msg.mimeType, msg.metadata);
@@ -1665,9 +1661,9 @@ export class Message {
 
             const hasUser: any = msg.metadata._acl.find(e => e._id === user._id);
             if ((hasUser === null || hasUser === undefined)) {
-                msg.metadata.addRight(user._id, user.name, [Rights.full_control]);
+                Base.addRight(msg.metadata, user._id, user.name, [Rights.full_control]);
             }
-            msg.metadata.addRight(WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
+            Base.addRight(msg.metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
             if (!Config.db.hasAuthorization(user, msg.metadata, Rights.update)) { throw new Error("Access denied, no authorization to update file"); }
 
             msg.metadata = Config.db.ensureResource(msg.metadata);
