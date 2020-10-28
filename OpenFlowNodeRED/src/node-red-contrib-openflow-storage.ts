@@ -568,6 +568,7 @@ export class noderedcontribopenflowstorage {
                     }
                     this.last_reload = new Date();
                     this._logger.silly("noderedcontribopenflowstorage::_getSettings: return result");
+                    this._logger.info("Installation of NPM packages complete");
                 } catch (error) {
                     if (error.message) { this._logger.error(error.message); }
                     else { this._logger.error(error); }
@@ -747,7 +748,7 @@ export class noderedcontribopenflowstorage {
                             }
                         }
                     } else if (exitprocess) {
-                        this._logger.info("Restart us needed, auto_restart_when_needed is false");
+                        this._logger.info("Restart is needed, auto_restart_when_needed is false");
                     } else if (!exitprocess) {
                         this._logger.info("Restart not needed");
                     }
@@ -794,6 +795,37 @@ export class noderedcontribopenflowstorage {
                 }
             }
             this._settings = settings;
+            let exitprocess: boolean = false;
+            let keys = Object.keys(settings);
+            for (let i = 0; i < keys.length; i++) {
+                const key = keys[i];
+                if (key != "node-red") {
+                    const val = settings.nodes[key];
+                    if (val.pending_version) {
+                        exitprocess = true;
+                    }
+                }
+            }
+            if (exitprocess && Config.auto_restart_when_needed) {
+                if (NoderedUtil.isDocker()) {
+                    this._logger.info("Running as docker, just quit process, kubernetes will start a new version");
+                    process.exit(1);
+                } else {
+                    if (servicename != "service-name-not-set") {
+                        var _servicename = path.basename(servicename)
+                        this._logger.info("Restarting service " + _servicename);
+                        StopService(_servicename);
+                        StartService(_servicename);
+                        process.exit(1);
+                    } else {
+                        this._logger.info("Not running in docker, nor started as a service, please restart Node-Red manually");
+                    }
+                }
+            } else if (exitprocess) {
+                this._logger.info("Restart is needed, auto_restart_when_needed is false");
+            } else if (!exitprocess) {
+                this._logger.info("Restart not needed");
+            }
         } catch (error) {
             if (error.message) { this._logger.error(error.message); }
             else { this._logger.error(error); }
