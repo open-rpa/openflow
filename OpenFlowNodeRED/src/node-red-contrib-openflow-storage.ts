@@ -281,9 +281,11 @@ export class noderedcontribopenflowstorage {
                 "url": "git+https://github.com/open-rpa/openflow.git"
             },
         };
-        this._logger.debug("creating new packageFile " + packageFile);
-        fs.writeFileSync(packageFile, JSON.stringify(defaultPackage, null, 4));
-
+        // Let's not !
+        if (fs.existsSync(packageFile)) {
+            this._logger.debug("creating new packageFile " + packageFile);
+            fs.writeFileSync(packageFile, JSON.stringify(defaultPackage, null, 4));
+        }
         // const dbsettings = await this._getSettings();
         // spawn gettings, so it starts installing
         return true;
@@ -667,12 +669,20 @@ export class noderedcontribopenflowstorage {
                         if (key != "node-red") {
                             const val = oldsettings.nodes[key];
                             try {
+                                let version = val.version;
+                                if (val.pending_version) {
+                                    version = val.pending_version;
+                                }
+                                let oldversion = oldsettings.nodes[key].version;
+                                if (oldsettings.nodes[key].pending_version) {
+                                    oldversion = oldsettings.nodes[key].pending_version;
+                                }
                                 if (newsettings.nodes[key] == null) {
-                                    this._logger.info("Remove module " + key + "@" + val.version);
-                                    await this.RED.runtime.nodes.removeModule({ user: "admin", module: key, version: val.version });
-                                } else if (newsettings.nodes[key].version != oldsettings.nodes[key].version) {
-                                    this._logger.info("Install module " + key + "@" + newsettings.nodes[key].version + " up from " + oldsettings.nodes[key].version);
-                                    let result = await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: newsettings.nodes[key].version });
+                                    this._logger.info("Remove module " + key + "@" + version);
+                                    await this.RED.runtime.nodes.removeModule({ user: "admin", module: key, version: version });
+                                } else if (version != oldversion) {
+                                    this._logger.info("Install module " + key + "@" + version + " up from " + oldversion);
+                                    let result = await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: version });
                                     this._logger.debug(result);
                                     if (result.pending_version != result.version) {
                                         exitprocess = true;
@@ -688,17 +698,25 @@ export class noderedcontribopenflowstorage {
                         const key = keys[i];
                         if (key != "node-red") {
                             const val = newsettings.nodes[key];
+                            let version = val.version;
+                            if (val.pending_version) {
+                                version = val.pending_version;
+                            }
+                            let oldversion = oldsettings.nodes[key].version;
+                            if (oldsettings.nodes[key].pending_version) {
+                                oldversion = oldsettings.nodes[key].pending_version;
+                            }
                             try {
                                 if (oldsettings.nodes[key] == null) {
-                                    this._logger.info("Install new module " + key + "@" + val.version);
-                                    let result = await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: val.version });
+                                    this._logger.info("Install new module " + key + "@" + version);
+                                    let result = await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: version });
                                     this._logger.debug(result);
                                     if (result.pending_version != result.version) {
                                         exitprocess = true;
                                     }
-                                } else if (newsettings.nodes[key].version != oldsettings.nodes[key].version) {
-                                    this._logger.info("Install module " + key + "@" + newsettings.nodes[key].version + " up from " + oldsettings.nodes[key].version);
-                                    let result = await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: val.version });
+                                } else if (version != oldversion) {
+                                    this._logger.info("Install module " + key + "@" + version + " up from " + oldversion);
+                                    let result = await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: version });
                                     this._logger.debug(result);
                                     if (result.pending_version != result.version) {
                                         exitprocess = true;
