@@ -671,11 +671,11 @@ export class noderedcontribopenflowstorage {
                             const val = oldsettings.nodes[key];
                             try {
                                 let version = val.version;
-                                if (val.pending_version) {
+                                if (val != null && val.pending_version) {
                                     version = val.pending_version;
                                 }
                                 let oldversion = oldsettings.nodes[key].version;
-                                if (oldsettings.nodes[key].pending_version) {
+                                if (oldsettings.nodes[key] != null && oldsettings.nodes[key].pending_version) {
                                     oldversion = oldsettings.nodes[key].pending_version;
                                 }
                                 if (newsettings.nodes[key] == null) {
@@ -685,7 +685,7 @@ export class noderedcontribopenflowstorage {
                                     this._logger.info("Install module " + key + "@" + version + " up from " + oldversion);
                                     let result = await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: version });
                                     this._logger.debug(result);
-                                    if (result.pending_version != result.version) {
+                                    if (result != null && result.pending_version != result.version) {
                                         exitprocess = true;
                                     }
                                 }
@@ -712,14 +712,14 @@ export class noderedcontribopenflowstorage {
                                     this._logger.info("Install new module " + key + "@" + version);
                                     let result = await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: version });
                                     this._logger.debug(result);
-                                    if (result.pending_version != result.version) {
+                                    if (result != null && result.pending_version != result.version) {
                                         exitprocess = true;
                                     }
                                 } else if (version != oldversion) {
                                     this._logger.info("Install module " + key + "@" + version + " up from " + oldversion);
                                     let result = await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: version });
                                     this._logger.debug(result);
-                                    if (result.pending_version != result.version) {
+                                    if (result != null && result.pending_version != result.version) {
                                         exitprocess = true;
                                     }
                                 }
@@ -802,6 +802,7 @@ export class noderedcontribopenflowstorage {
                     const val = settings.nodes[key];
                     if (val == null) {
                         this._logger.info("noderedcontribopenflowstorage::_saveSettings:: key " + key + " is null?");
+                        continue;
                     } else if (val.pending_version) {
                         this._logger.info("noderedcontribopenflowstorage::_saveSettings:: key " + key + " has a pending_version " + val.pending_version);
                         exitprocess = true;
