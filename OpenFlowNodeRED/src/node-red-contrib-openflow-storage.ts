@@ -7,7 +7,7 @@ import { Config } from "./Config";
 import { WebSocketClient, NoderedUtil, Base } from "openflow-api";
 import * as nodered from "node-red";
 import { FileSystemCache } from "openflow-api";
-import { StopService, StartService, servicename } from "./nodeclient/cliutil";
+import { RestartService, servicename } from "./nodeclient/cliutil";
 export class noderednpmrc {
     public _id: string;
     public _type: string = "npmrc";
@@ -740,8 +740,7 @@ export class noderedcontribopenflowstorage {
                             if (servicename != "service-name-not-set") {
                                 var _servicename = path.basename(servicename)
                                 this._logger.info("Restarting service " + _servicename);
-                                StopService(_servicename);
-                                StartService(_servicename);
+                                RestartService(_servicename);
                                 process.exit(1);
                             } else {
                                 this._logger.info("Not running in docker, nor started as a service, please restart Node-Red manually");
@@ -801,7 +800,10 @@ export class noderedcontribopenflowstorage {
                 const key = keys[i];
                 if (key != "node-red") {
                     const val = settings.nodes[key];
-                    if (val.pending_version) {
+                    if (val == null) {
+                        this._logger.info("noderedcontribopenflowstorage::_saveSettings:: key " + key + " is null?");
+                    } else if (val.pending_version) {
+                        this._logger.info("noderedcontribopenflowstorage::_saveSettings:: key " + key + " has a pending_version " + val.pending_version);
                         exitprocess = true;
                     }
                 }
@@ -814,8 +816,7 @@ export class noderedcontribopenflowstorage {
                     if (servicename != "service-name-not-set") {
                         var _servicename = path.basename(servicename)
                         this._logger.info("Restarting service " + _servicename);
-                        StopService(_servicename);
-                        StartService(_servicename);
+                        RestartService(_servicename);
                         process.exit(1);
                     } else {
                         this._logger.info("Not running in docker, nor started as a service, please restart Node-Red manually");

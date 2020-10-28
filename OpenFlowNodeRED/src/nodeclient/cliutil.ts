@@ -50,6 +50,20 @@ export function StopService(servicename: string) {
         logger.info(error.message);
     }
 }
+export function RestartService(servicename: string) {
+    try {
+        if (isWin()) {
+            cp.execSync(`net stop "${servicename}" & net start "${servicename}"`);
+        } else if (isMac()) {
+            // https://medium.com/craftsmenltd/building-a-cross-platform-background-service-in-node-js-791cfcd3be60
+            // cp.execSync(`sudo launchctl unload ${LAUNCHD_PLIST_PATH}`);
+        } else {
+            cp.execSync(`service ${servicename} restart`);
+        }
+    } catch (error) {
+        logger.info(error.message);
+    }
+}
 export function RemoveService(servicename: string) {
     StopService(servicename);
     logger.info("Uninstalling service" + servicename);
