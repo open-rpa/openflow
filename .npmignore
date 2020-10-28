@@ -16,3 +16,4 @@ webpack.config.js
 gulpfile.js
 OpenFlow.code-workspace
 CONTRIBUTING
+.yml

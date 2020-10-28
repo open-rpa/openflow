@@ -214,17 +214,12 @@ If you have buttons on the form, you can get the name of the button clicked in m
         },
 
         oneditprepare: function () {
-            var queue = $('#node-input-queue').val();
+            let queue = $('#node-input-queue').val();
             if (queue === null || queue === undefined || queue === "") {
                 queue = generateUuid();
                 $('#node-input-queue').val(queue);
             }
-            // var name = $('#node-input-name').val();
-            // if (name === null || name === undefined || name === "") {
-            //     name = queue;
-            //     $('#node-input-name').val(name);
-            // }
-            var reloadUsers = function (firstrun) {
+            const reloadUsers = function (firstrun) {
                 $('#node-input-targetid-select').empty();
                 $('#node-input-targetid-select').append($('<option>', {
                     value: -1,
@@ -261,7 +256,7 @@ If you have buttons on the form, you can get the name of the button clicked in m
 
 
 
-            var reloadWorkflows = function (firstrun) {
+            const reloadWorkflows = function (firstrun) {
                 $('#node-input-workflowid-select').empty();
                 $('#node-input-workflowid-select').append($('<option>', {
                     value: -1,

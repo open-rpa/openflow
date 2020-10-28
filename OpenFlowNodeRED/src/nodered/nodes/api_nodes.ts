@@ -48,7 +48,7 @@ export class api_get_jwt {
 
             let username: string = null;
             let password: string = null;
-            var config: api_credentials = RED.nodes.getNode(this.config.config);
+            const config: api_credentials = RED.nodes.getNode(this.config.config);
             if (!NoderedUtil.IsNullUndefinded(config) && !NoderedUtil.IsNullEmpty(config.username)) {
                 username = config.username;
             }
@@ -58,7 +58,7 @@ export class api_get_jwt {
             if (!NoderedUtil.IsNullEmpty(msg.username)) { username = msg.username; }
             if (!NoderedUtil.IsNullEmpty(msg.password)) { username = msg.password; }
 
-            var q: SigninMessage = new SigninMessage(); q.validate_only = true;
+            const q: SigninMessage = new SigninMessage(); q.validate_only = true;
             q.clientagent = "nodered";
             q.clientversion = Config.version;
             if (!NoderedUtil.IsNullEmpty(username) && !NoderedUtil.IsNullEmpty(password)) {
@@ -67,7 +67,7 @@ export class api_get_jwt {
                 if (Config.jwt !== "") {
                     q.jwt = Config.jwt;
                 } else if (Crypt.encryption_key() !== "") {
-                    var user = new TokenUser();
+                    const user = new TokenUser();
                     if (NoderedUtil.IsNullEmpty(Config.nodered_sa)) {
                         user.name = "nodered" + Config.nodered_id;
                     } else {
@@ -80,9 +80,9 @@ export class api_get_jwt {
                 }
             }
             this.node.status({ fill: "blue", shape: "dot", text: "Requesting token" });
-            var _msg: Message = new Message();
+            const _msg: Message = new Message();
             _msg.command = "signin"; _msg.data = JSON.stringify(q);
-            var result: SigninMessage = await WebSocketClient.instance.Send<SigninMessage>(_msg);
+            const result: SigninMessage = await WebSocketClient.instance.Send<SigninMessage>(_msg);
             msg.jwt = result.jwt;
             msg.user = result.user;
             if (result !== null && result !== undefined && result.user !== null && result.user !== undefined) {
@@ -152,7 +152,7 @@ export class api_get {
                 }
             }
             if (!NoderedUtil.IsNullEmpty(this.config.orderby) && NoderedUtil.IsString(this.config.orderby)) {
-                var field: string = this.config.orderby;
+                const field: string = this.config.orderby;
                 this.config.orderby = {};
                 this.config.orderby[field] = -1;
             }
@@ -176,13 +176,17 @@ export class api_get {
             if (NoderedUtil.IsNullEmpty(this.config.projection)) { this.config.projection = null; }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Getting query" });
-            var result: any[] = [], subresult: any[] = [];
-            var top: number = parseInt(this.config.top as any), take: number = top;
-            var skip: number = parseInt(this.config.skip as any);
-            var pageby: number = 250;
-            if (top > pageby) take = pageby;
+            let result: any[] = [];
+            const top: number = parseInt(this.config.top as any);
+            let skip: number = parseInt(this.config.skip as any);
+            const pageby: number = 250;
+            let subresult: any[] = [];
+            let take: number = (top > pageby ? pageby : top);
             do {
-                this.node.status({ fill: "blue", shape: "dot", text: "Getting " + skip + " " + (skip + pageby) });
+                if (subresult.length == pageby && result.length < top) {
+                    this.node.status({ fill: "blue", shape: "dot", text: "Getting " + skip + " " + (skip + pageby) });
+                    await NoderedUtil.Delay(50);
+                }
                 if ((result.length + take) > top) {
                     take = top - result.length;
                 }
@@ -194,7 +198,7 @@ export class api_get {
                 }
             } while (subresult.length == pageby && result.length < top);
 
-            // var result: any[] = await NoderedUtil.Query(this.config.collection, this.config.query,
+            // const result: any[] = await NoderedUtil.Query(this.config.collection, this.config.query,
             //     this.config.projection, this.config.orderby, parseInt(this.config.top as any), parseInt(this.config.skip as any), msg.jwt)
             NoderedUtil.saveToObject(msg, this.config.resultfield, result);
             this.node.send(msg);
@@ -244,17 +248,17 @@ export class api_add {
             if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
             if ((this.config.journal as any) === undefined || (this.config.journal as any) === null) this.config.journal = false;
 
-            var data: any[] = [];
-            var _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
+            let data: any[] = [];
+            const _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
             if (NoderedUtil.IsNullUndefinded(_data)) { return NoderedUtil.HandleError(this, "Input data is null"); }
             if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
 
             if (data.length === 0) { this.node.warn("input array is empty"); return; }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Inserting items" });
-            var Promises: Promise<any>[] = [];
-            for (var i: number = 0; i < data.length; i++) {
-                var element: any = data[i];
+            const Promises: Promise<any>[] = [];
+            for (let i: number = 0; i < data.length; i++) {
+                const element: any = data[i];
                 if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
                     element._type = this.config.entitytype;
                 }
@@ -262,9 +266,9 @@ export class api_add {
             }
             data = await Promise.all(Promises.map(p => p.catch(e => e)));
 
-            var errors = data.filter(result => NoderedUtil.IsString(result) || (result instanceof Error));
+            const errors = data.filter(result => NoderedUtil.IsString(result) || (result instanceof Error));
             if (errors.length > 0) {
-                for (var i: number = 0; i < errors.length; i++) {
+                for (let i: number = 0; i < errors.length; i++) {
                     NoderedUtil.HandleError(this, errors[i]);
                 }
             }
@@ -319,27 +323,45 @@ export class api_update {
             if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
             if ((this.config.journal as any) === undefined || (this.config.journal as any) === null) this.config.journal = false;
 
-            var data: any[] = [];
-            var _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
+            let data: any[] = [];
+            const _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
             if (NoderedUtil.IsNullUndefinded(_data)) { return NoderedUtil.HandleError(this, "Input data is null"); }
             if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
 
             if (data.length === 0) { this.node.warn("input array is empty"); return; }
 
-            this.node.status({ fill: "blue", shape: "dot", text: "Inserting items" });
-            var Promises: Promise<any>[] = [];
-            for (var i: number = 0; i < data.length; i++) {
-                var element: any = data[i];
-                if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
-                    element._type = this.config.entitytype;
+            // this.node.status({ fill: "blue", shape: "dot", text: "Inserting items" });
+            // const Promises: Promise<any>[] = [];
+            // for (let i: number = 0; i < data.length; i++) {
+            //     const element: any = data[i];
+            //     if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
+            //         element._type = this.config.entitytype;
+            //     }
+            //     Promises.push(NoderedUtil.UpdateOne(this.config.collection, null, element, this.config.writeconcern, this.config.journal, msg.jwt));
+            // }
+            // data = await Promise.all(Promises.map(p => p.catch(e => e)));
+            this.node.status({ fill: "blue", shape: "dot", text: "processing ..." });
+            let Promises: Promise<any>[] = [];
+            let results: any[] = [];
+            for (let y: number = 0; y < data.length; y += 50) {
+                for (let i: number = y; i < (y + 50) && i < data.length; i++) {
+                    const element: any = data[i];
+                    if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
+                        element._type = this.config.entitytype;
+                    }
+                    Promises.push(NoderedUtil.UpdateOne(this.config.collection, null, element, this.config.writeconcern, this.config.journal, msg.jwt));
                 }
-                Promises.push(NoderedUtil.UpdateOne(this.config.collection, null, element, this.config.writeconcern, this.config.journal, msg.jwt));
+                this.node.status({ fill: "blue", shape: "dot", text: "processing " + y + " to " + (y + 49) });
+                const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
+                results = results.concat(tempresults);
+                Promises = [];
             }
-            data = await Promise.all(Promises.map(p => p.catch(e => e)));
+            data = results;
 
-            var errors = data.filter(result => NoderedUtil.IsString(result) || (result instanceof Error));
+
+            const errors = data.filter(result => NoderedUtil.IsString(result) || (result instanceof Error));
             if (errors.length > 0) {
-                for (var i: number = 0; i < errors.length; i++) {
+                for (let i: number = 0; i < errors.length; i++) {
                     NoderedUtil.HandleError(this, errors[i]);
                 }
             }
@@ -379,8 +401,6 @@ export class api_addorupdate {
     async oninput(msg: any) {
         try {
             this.node.status({});
-            // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
-
             if (!NoderedUtil.IsNullEmpty(msg.entitytype)) { this.config.entitytype = msg.entitytype; }
             if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
             if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { this.config.inputfield = msg.inputfield; }
@@ -388,51 +408,39 @@ export class api_addorupdate {
             if (!NoderedUtil.IsNullEmpty(msg.uniqeness)) { this.config.uniqeness = msg.uniqeness; }
             if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
             if (!NoderedUtil.IsNullEmpty(msg.journal)) { this.config.journal = msg.journal; }
-            // if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
-            //     msg.jwt = Config.jwt;
-            // }
 
             if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
             if ((this.config.journal as any) === undefined || (this.config.journal as any) === null) this.config.journal = false;
 
 
-            var data: any[] = [];
-            var _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
+            let data: any[] = [];
+            const _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
             if (NoderedUtil.IsNullUndefinded(_data)) { return NoderedUtil.HandleError(this, "Input data is null"); }
             if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
 
             if (data.length === 0) { this.node.warn("input array is empty"); return; }
 
-            // this.node.status({ fill: "blue", shape: "dot", text: "Inserting/updating items" });
-            // var Promises: Promise<any>[] = [];
-            // for (var i: number = 0; i < data.length; i++) {
-            //     var element: any = data[i];
-            //     if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
-            //         element._type = this.config.entitytype;
-            //     }
-            //     Promises.push(NoderedUtil.InsertOrUpdateOne(this.config.collection, element, this.config.uniqeness, this.config.writeconcern, this.config.journal, msg.jwt));
-            // }
-            // data = await Promise.all(Promises.map(p => p.catch(e => e)));
             this.node.status({ fill: "blue", shape: "dot", text: "processing ..." });
-            var Promises: Promise<any>[] = [];
-            var results: any[] = [];
-            for (var y: number = 0; y < data.length; y += 50) {
-                for (var i: number = y; i < (y + 50) && i < data.length; i++) {
-                    var element: any = data[i];
+            let Promises: Promise<any>[] = [];
+            let results: any[] = [];
+            for (let y: number = 0; y < data.length; y += 50) {
+                for (let i: number = y; i < (y + 50) && i < data.length; i++) {
+                    const element: any = data[i];
                     if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
                         element._type = this.config.entitytype;
                     }
                     Promises.push(NoderedUtil.InsertOrUpdateOne(this.config.collection, element, this.config.uniqeness, this.config.writeconcern, this.config.journal, msg.jwt));
                 }
                 this.node.status({ fill: "blue", shape: "dot", text: "processing " + y + " to " + (y + 49) });
-                var tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
+                const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
                 results = results.concat(tempresults);
+                Promises = [];
             }
             data = results;
 
-            var errors = data.filter(result => NoderedUtil.IsString(result) || (result instanceof Error));
+            const errors = data.filter(result => NoderedUtil.IsString(result) || (result instanceof Error));
             if (errors.length > 0) {
-                for (var i: number = 0; i < errors.length; i++) {
+                for (let i: number = 0; i < errors.length; i++) {
                     NoderedUtil.HandleError(this, errors[i]);
                 }
             }
@@ -469,34 +477,36 @@ export class api_delete {
     async oninput(msg: any) {
         try {
             this.node.status({});
-            // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
-
             if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
             if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { this.config.inputfield = msg.inputfield; }
-            // if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
-            //     msg.jwt = Config.jwt;
-            // }
 
-            var data: any[] = [];
-            var _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
+            let data: any[] = [];
+            const _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
             if (NoderedUtil.IsNullUndefinded(_data)) { return NoderedUtil.HandleError(this, "Input data is null"); }
             if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
 
             if (data.length === 0) { this.node.warn("input array is empty"); return; }
 
-            this.node.status({ fill: "blue", shape: "dot", text: "Deleting items" });
-            var Promises: Promise<any>[] = [];
-            for (var i: number = 0; i < data.length; i++) {
-                var element: any = data[i];
-                var id: string = element;
-                if (NoderedUtil.isObject(element)) { id = element._id; }
-                Promises.push(NoderedUtil.DeleteOne(this.config.collection, id, msg.jwt));
+            this.node.status({ fill: "blue", shape: "dot", text: "processing ..." });
+            let Promises: Promise<any>[] = [];
+            let results: any[] = [];
+            for (let y: number = 0; y < data.length; y += 50) {
+                for (let i: number = y; i < (y + 50) && i < data.length; i++) {
+                    const element: any = data[i];
+                    let id: string = element;
+                    if (NoderedUtil.isObject(element)) { id = element._id; }
+                    Promises.push(NoderedUtil.DeleteOne(this.config.collection, id, msg.jwt));
+                }
+                this.node.status({ fill: "blue", shape: "dot", text: "processing " + y + " to " + (y + 49) });
+                const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
+                results = results.concat(tempresults);
+                Promises = [];
             }
-            data = await Promise.all(Promises.map(p => p.catch(e => e)));
+            data = results;
 
-            var errors = data.filter(result => NoderedUtil.IsString(result) || (result instanceof Error));
+            const errors = data.filter(result => NoderedUtil.IsString(result) || (result instanceof Error));
             if (errors.length > 0) {
-                for (var i: number = 0; i < errors.length; i++) {
+                for (let i: number = 0; i < errors.length; i++) {
                     NoderedUtil.HandleError(this, errors[i]);
                 }
             }
@@ -549,8 +559,8 @@ export class api_map_reduce {
             //     msg.jwt = Config.jwt;
             // }
 
-            var scope = NoderedUtil.FetchFromObject(msg, this.config.scope);
-            var _output: any = {};
+            const scope = NoderedUtil.FetchFromObject(msg, this.config.scope);
+            const _output: any = {};
             _output[this.config.output] = this.config.outcol;
 
             if (!NoderedUtil.IsNullEmpty(this.config.query) && NoderedUtil.IsString(this.config.query)) {
@@ -558,7 +568,7 @@ export class api_map_reduce {
             }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Running mapreduce" });
-            var result = await NoderedUtil.MapReduce(this.config.collection, this.config.map, this.config.reduce, this.config.finalize, this.config.query, _output, scope, msg.jwt);
+            const result = await NoderedUtil.MapReduce(this.config.collection, this.config.map, this.config.reduce, this.config.finalize, this.config.query, _output, scope, msg.jwt);
             msg.payload = result;
             this.node.send(msg);
             this.node.status({});
@@ -572,13 +582,13 @@ export class api_map_reduce {
 
 export async function get_api_roles(req, res) {
     try {
-        var rawAssertion = req.user.getAssertionXml();
-        var token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
-        var q: any = { _type: "role" };
+        const rawAssertion = req.user.getAssertionXml();
+        const token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
+        let q: any = { _type: "role" };
         if (!NoderedUtil.IsNullEmpty(req.query.name)) {
             q = { _type: "role", name: { $regex: ".*" + req.query.name + ".*" } };
         }
-        var result: any[] = await NoderedUtil.Query('users', q, { name: 1 }, { name: -1 }, 1000, 0, token.jwt);
+        const result: any[] = await NoderedUtil.Query('users', q, { name: 1 }, { name: -1 }, 1000, 0, token.jwt);
 
         res.json(result);
     } catch (error) {
@@ -589,10 +599,10 @@ export async function get_api_roles(req, res) {
 
 export async function get_api_userroles(req, res) {
     try {
-        var rawAssertion = req.user.getAssertionXml();
-        var token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
-        var q: any = { $or: [{ _type: "role" }, { _type: "user" }] };
-        var ors = [];
+        const rawAssertion = req.user.getAssertionXml();
+        const token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
+        let q: any = { $or: [{ _type: "role" }, { _type: "user" }] };
+        const ors = [];
         if (!NoderedUtil.IsNullEmpty(req.query.name)) {
             ors.push({ name: { $regex: ".*" + req.query.name + ".*" } });
         } else { ors.push({}); }
@@ -608,11 +618,11 @@ export async function get_api_userroles(req, res) {
             };
         }
 
-        var result: any[] = await NoderedUtil.Query('users', q, { name: 1 }, { name: -1 }, 100, 0, token.jwt);
+        const result: any[] = await NoderedUtil.Query('users', q, { name: 1 }, { name: -1 }, 100, 0, token.jwt);
         if (!NoderedUtil.IsNullEmpty(req.query.id)) {
-            var exists = result.filter(x => x._id == req.query.id);
+            const exists = result.filter(x => x._id == req.query.id);
             if (exists.length == 0) {
-                var result2: any[] = await NoderedUtil.Query('users', { _id: req.query.id }, { name: 1 }, { name: -1 }, 1, 0, token.jwt);
+                const result2: any[] = await NoderedUtil.Query('users', { _id: req.query.id }, { name: 1 }, { name: -1 }, 1, 0, token.jwt);
                 if (result2.length == 1) {
                     result.push(result2[0]);
                 }
@@ -627,10 +637,10 @@ export async function get_api_userroles(req, res) {
 
 export async function get_api_users(req, res) {
     try {
-        var rawAssertion = req.user.getAssertionXml();
-        var token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
-        var q: any = { _type: "user" };
-        var ors = [];
+        const rawAssertion = req.user.getAssertionXml();
+        const token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
+        let q: any = { _type: "user" };
+        const ors = [];
         if (!NoderedUtil.IsNullEmpty(req.query.name)) {
             ors.push({ name: { $regex: ".*" + req.query.name + ".*" } });
         } else { ors.push({}); }
@@ -646,11 +656,11 @@ export async function get_api_users(req, res) {
             };
         }
 
-        var result: any[] = await NoderedUtil.Query('users', q, { name: 1 }, { name: -1 }, 100, 0, token.jwt);
+        const result: any[] = await NoderedUtil.Query('users', q, { name: 1 }, { name: -1 }, 100, 0, token.jwt);
         if (!NoderedUtil.IsNullEmpty(req.query.id)) {
-            var exists = result.filter(x => x._id == req.query.id);
+            const exists = result.filter(x => x._id == req.query.id);
             if (exists.length == 0) {
-                var result2: any[] = await NoderedUtil.Query('users', { _id: req.query.id }, { name: 1 }, { name: -1 }, 1, 0, token.jwt);
+                const result2: any[] = await NoderedUtil.Query('users', { _id: req.query.id }, { name: 1 }, { name: -1 }, 1, 0, token.jwt);
                 if (result2.length == 1) {
                     result.push(result2[0]);
                 }
@@ -691,13 +701,13 @@ export class api_updatedocument {
         try {
             this.node.status({});
 
-            var action = this.config.action;
-            var query = this.config.query;
-            var updatedocument = this.config.updatedocument;
-            var collection = this.config.collection;
-            var writeconcern = this.config.writeconcern;
-            var journal = this.config.journal;
-            var jwt = msg.jwt;
+            let action = this.config.action;
+            let query = this.config.query;
+            let updatedocument = this.config.updatedocument;
+            let collection = this.config.collection;
+            let writeconcern = this.config.writeconcern;
+            let journal = this.config.journal;
+            const jwt = msg.jwt;
 
             if (!NoderedUtil.IsNullEmpty(msg.action)) { action = msg.action; }
             if (!NoderedUtil.IsNullUndefinded(msg.query)) { query = msg.query; }
@@ -721,21 +731,21 @@ export class api_updatedocument {
 
             this.node.status({ fill: "blue", shape: "dot", text: "Running Update Document" });
             if (action === "updateOne") {
-                var q: UpdateOneMessage = new UpdateOneMessage(); q.collectionname = collection;
+                const q: UpdateOneMessage = new UpdateOneMessage(); q.collectionname = collection;
                 q.item = (updatedocument as any); q.jwt = jwt;
                 q.w = writeconcern; q.j = journal; q.query = (query as any);
-                q = await NoderedUtil._UpdateOne(q);
-                msg.payload = q.result;
-                msg.opresult = q.opresult;
+                const q2 = await NoderedUtil._UpdateOne(q);
+                msg.payload = q2.result;
+                msg.opresult = q2.opresult;
             } else {
-                // var result = await NoderedUtil.UpdateMany(collection, query, updatedocument, writeconcern, journal, jwt);
+                // const result = await NoderedUtil.UpdateMany(collection, query, updatedocument, writeconcern, journal, jwt);
                 // msg.payload = result;
-                var q: UpdateOneMessage = new UpdateOneMessage(); q.collectionname = collection;
+                const q: UpdateOneMessage = new UpdateOneMessage(); q.collectionname = collection;
                 q.item = (updatedocument as any); q.jwt = jwt;
                 q.w = writeconcern; q.j = journal; q.query = (query as any);
-                q = await NoderedUtil.UpdateMany(q);
-                msg.payload = q.result;
-                msg.opresult = q.opresult;
+                const q2 = await NoderedUtil.UpdateMany(q);
+                msg.payload = q2.result;
+                msg.opresult = q2.opresult;
             }
             this.node.send(msg);
             this.node.status({});
@@ -760,7 +770,6 @@ export interface Igrant_permission {
 }
 export class grant_permission {
     public node: Red = null;
-
     constructor(public config: Igrant_permission) {
         RED.nodes.createNode(this, config);
         this.node = this;
@@ -779,29 +788,34 @@ export class grant_permission {
             if (!Array.isArray(this.config.bits)) {
                 this.config.bits = this.config.bits.split(',');
             }
-            for (var i = 0; i < this.config.bits.length; i++) {
+            for (let i = 0; i < this.config.bits.length; i++) {
                 this.config.bits[i] = parseInt(this.config.bits[i]);
             }
 
-            var result: any[] = await NoderedUtil.Query('users', { _id: this.config.targetid }, { name: 1 }, { name: -1 }, 1, 0, msg.jwt)
+            const result: any[] = await NoderedUtil.Query('users', { _id: this.config.targetid }, { name: 1 }, { name: -1 }, 1, 0, msg.jwt)
             if (result.length === 0) { return NoderedUtil.HandleError(this, "Target " + this.config.targetid + " not found "); }
-            var found = result[0];
+            const found = result[0];
 
-            var data: any[] = [];
-            var _data = NoderedUtil.FetchFromObject(msg, this.config.entities);
+            let data: any[] = [];
+            const _data = NoderedUtil.FetchFromObject(msg, this.config.entities);
             if (NoderedUtil.IsNullUndefinded(_data)) { return NoderedUtil.HandleError(this, "Input data is null"); }
             if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
             if (data.length === 0) { this.node.warn("input array is empty"); return; }
 
-            for (var i = 0; i < data.length; i++) {
+            this.node.status({ fill: "blue", shape: "dot", text: "processing ..." });
+            for (let i = 0; i < data.length; i++) {
                 if (NoderedUtil.IsNullEmpty(data[i]._type) && !NoderedUtil.IsNullUndefinded(data[i].metadata)) {
-                    var metadata: Base = Base.assign(data[i].metadata);
-                    metadata.addRight(this.config.targetid, found.name, this.config.bits);
+                    const metadata: Base = (data[i].metadata as any).metadata;
+                    Base.addRight(metadata, this.config.targetid, found.name, this.config.bits);
                     data[i].metadata = metadata;
                 } else {
-                    var entity: Base = Base.assign(data[i]);
-                    entity.addRight(this.config.targetid, found.name, this.config.bits);
+                    const entity: Base = data[i];
+                    Base.addRight(entity, this.config.targetid, found.name, this.config.bits);
                     data[i] = entity;
+                }
+                if ((i % 50) == 0 && i > 0) {
+                    this.node.status({ fill: "blue", shape: "dot", text: "processed " + i + " of " + data.length });
+                    await NoderedUtil.Delay(50);
                 }
             }
             NoderedUtil.saveToObject(msg, this.config.entities, data);
@@ -844,32 +858,32 @@ export class revoke_permission {
             if (!Array.isArray(this.config.bits)) {
                 this.config.bits = this.config.bits.split(',');
             }
-            for (var i = 0; i < this.config.bits.length; i++) {
+            for (let i = 0; i < this.config.bits.length; i++) {
                 this.config.bits[i] = parseInt(this.config.bits[i]);
             }
 
-            var data: any[] = [];
-            var _data = NoderedUtil.FetchFromObject(msg, this.config.entities);
+            let data: any[] = [];
+            const _data = NoderedUtil.FetchFromObject(msg, this.config.entities);
             if (NoderedUtil.IsNullUndefinded(_data)) { return NoderedUtil.HandleError(this, "Input data is null"); }
             if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
             if (data.length === 0) { this.node.warn("input array is empty"); return; }
 
-            for (var i = 0; i < data.length; i++) {
+            for (let i = 0; i < data.length; i++) {
 
                 if (NoderedUtil.IsNullEmpty(data[i]._type) && !NoderedUtil.IsNullUndefinded(data[i].metadata)) {
-                    var metadata: Base = Base.assign(data[i].metadata);
+                    const metadata: Base = data[i].metadata;
                     if (this.config.bits.indexOf(-1) > -1) {
                         metadata._acl = metadata._acl.filter((m: any) => { return m._id !== this.config.targetid; });
                     } else {
-                        metadata.removeRight(this.config.targetid, this.config.bits);
+                        Base.removeRight(metadata, this.config.targetid, this.config.bits);
                     }
                     data[i].metadata = metadata;
                 } else {
-                    var entity: Base = Base.assign(data[i]);
+                    const entity: Base = data[i];
                     if (this.config.bits.indexOf(-1) > -1) {
                         entity._acl = entity._acl.filter((m: any) => { return m._id !== this.config.targetid; });
                     } else {
-                        entity.removeRight(this.config.targetid, this.config.bits);
+                        Base.removeRight(entity, this.config.targetid, this.config.bits);
                     }
                     data[i] = entity;
                 }
@@ -905,9 +919,9 @@ export class download_file {
         try {
             this.node.status({});
 
-            var fileid = this.config.fileid;
-            var filename = this.config.filename;
-            var jwt = msg.jwt;
+            let fileid = this.config.fileid;
+            let filename = this.config.filename;
+            const jwt = msg.jwt;
             if (!NoderedUtil.IsNullEmpty(msg.fileid)) { fileid = msg.fileid; }
             if (!NoderedUtil.IsNullEmpty(msg.filename)) { filename = msg.filename; }
             if (!NoderedUtil.IsNullEmpty(msg.fileid)) { fileid = msg.fileid; }
@@ -919,7 +933,7 @@ export class download_file {
             // }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Getting file" });
-            var file = await NoderedUtil.GetFile(filename, fileid, jwt);
+            const file = await NoderedUtil.GetFile(filename, fileid, jwt);
             msg.payload = file.file;
             msg.error = file.error;
             msg.filename = file.filename;
@@ -956,9 +970,9 @@ export class upload_file {
         try {
             this.node.status({});
 
-            var jwt = msg.jwt;
-            var filename = this.config.filename;
-            var mimeType = this.config.mimeType;
+            const jwt = msg.jwt;
+            let filename = this.config.filename;
+            let mimeType = this.config.mimeType;
             if (!NoderedUtil.IsNullEmpty(msg.filename)) { filename = msg.filename; }
             if (!NoderedUtil.IsNullEmpty(msg.mimeType)) { mimeType = msg.mimeType; }
             // if (NoderedUtil.IsNullEmpty(jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
@@ -967,7 +981,7 @@ export class upload_file {
 
 
             this.node.status({ fill: "blue", shape: "dot", text: "Saving file" });
-            var file = await NoderedUtil.SaveFile(filename, mimeType, msg.metadata, msg.payload, jwt);
+            const file = await NoderedUtil.SaveFile(filename, mimeType, msg.metadata, msg.payload, jwt);
             if (!NoderedUtil.IsNullEmpty(file.error)) { throw new Error(file.error); }
             msg.filename = file.filename;
             msg.id = file.id;
@@ -1008,14 +1022,14 @@ export class api_aggregate {
             this.node.status({});
             // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
 
-            var collection = this.config.collection;
-            var aggregates = this.config.aggregates;
+            let collection = this.config.collection;
+            let aggregates = this.config.aggregates;
 
             if (!NoderedUtil.IsNullEmpty(msg.collection)) { collection = msg.collection; }
             if (!NoderedUtil.IsNullEmpty(msg.aggregates)) { aggregates = msg.aggregates; }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Running aggregate" });
-            var result = await NoderedUtil.Aggregate(collection, aggregates, msg.jwt);
+            const result = await NoderedUtil.Aggregate(collection, aggregates, msg.jwt);
             msg.payload = result;
             this.node.send(msg);
             this.node.status({});
@@ -1075,14 +1089,14 @@ export class api_watch {
             this.node.status({});
             // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
 
-            var collection = this.config.collection;
-            var aggregates = this.config.aggregates;
+            let collection = this.config.collection;
+            let aggregates = this.config.aggregates;
 
             if (!NoderedUtil.IsNullEmpty(msg.collection)) { collection = msg.collection; }
             if (!NoderedUtil.IsNullEmpty(msg.aggregates)) { aggregates = msg.aggregates; }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Running aggregate" });
-            var result = await NoderedUtil.Aggregate(collection, aggregates, msg.jwt);
+            const result = await NoderedUtil.Aggregate(collection, aggregates, msg.jwt);
             msg.payload = result;
             this.node.send(msg);
             this.node.status({});

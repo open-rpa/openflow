@@ -12,7 +12,7 @@ export class api {
 
 
 function _timeSince(timeStamp) {
-    var now: Date = new Date(),
+    const now: Date = new Date(),
         secondsPast: number = (now.getTime() - timeStamp.getTime()) / 1000;
     if (secondsPast < 60) {
         return parseInt(secondsPast.toString()) + 's';
@@ -43,7 +43,7 @@ export class timesince implements ng.IDirective {
     link: ng.IDirectiveLinkFn = (scope: ng.IScope, element: ng.IAugmentedJQuery, attr: ng.IAttributes, ngModelCtrl: any) => {
         scope.$watch(() => {
             if (ngModelCtrl.$viewValue === null || ngModelCtrl.$viewValue === undefined) { return; }
-            var timeStamp = ngModelCtrl.$viewValue;
+            const timeStamp = ngModelCtrl.$viewValue;
             element.text(_timeSince(new Date(timeStamp)));
         });
     }
@@ -70,7 +70,7 @@ export class textarea implements ng.IDirective {
         }
 
         // get possible minimum height style
-        var minHeight = parseInt(window.getComputedStyle(element[0]).getPropertyValue("min-height")) || 0;
+        const minHeight = parseInt(window.getComputedStyle(element[0]).getPropertyValue("min-height")) || 0;
 
         // prevent newlines in textbox
         // element.on("keydown", function (evt) {
@@ -80,8 +80,8 @@ export class textarea implements ng.IDirective {
         // });
 
         element.on("input", function (evt) {
-            var contentHeight2 = (this as any).scrollHeight;
-            var firstrun = element.attr("firstrun");
+            const contentHeight2 = (this as any).scrollHeight;
+            const firstrun = element.attr("firstrun");
             if (contentHeight2 > 1000) {
                 if (firstrun === null || firstrun === undefined) {
                     element.attr("firstrun", "false");
@@ -89,23 +89,19 @@ export class textarea implements ng.IDirective {
                     return;
                 }
             }
-            var currentContentHeight = (this as any).scrollHeight;
-            var currentBorderHeight = (this as any).offsetHeight;
             {
                 element.css({
                     paddingTop: 0,
                     height: 0,
                     minHeight: 0
                 });
-                var contentHeight = (this as any).scrollHeight;
-                var borderHeight = (this as any).offsetHeight;
+                const contentHeight = (this as any).scrollHeight;
+                const borderHeight = (this as any).offsetHeight;
                 element.css({
                     paddingTop: ~~Math.max(0, minHeight - contentHeight) / 2 + "px",
                     minHeight: null, // remove property
                     height: contentHeight + borderHeight + "px" // because we're using border-box
                 });
-                contentHeight = (this as any).scrollHeight;
-                borderHeight = (this as any).offsetHeight;
             }
         });
 
@@ -131,7 +127,7 @@ async function getString(locale: any, lib: string, key: string): Promise<any> {
         try {
             if (locale === null || locale === undefined) { return resolve(); }
             locale.ready(lib).then(function () {
-                var value = locale.getString(lib + "." + key);
+                const value = locale.getString(lib + "." + key);
                 if (value !== null && value !== undefined && value !== "") {
                     resolve(value);
                 } else {
@@ -142,7 +138,7 @@ async function getString(locale: any, lib: string, key: string): Promise<any> {
         }
     });
 }
-var global_translate_notfound: string[] = [];
+const global_translate_notfound: string[] = [];
 export class translate implements ng.IDirective {
     require = '?ngModel';
     replace = true;
@@ -150,15 +146,15 @@ export class translate implements ng.IDirective {
     constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService, public locale) {
     }
     link: ng.IDirectiveLinkFn = (scope: ng.IScope, element: ng.IAugmentedJQuery, attr: ng.IAttributes, ngModelCtrl: any) => {
-        var calculateValue = (value: string): string => {
+        const calculateValue = (value: string): string => {
             try {
                 if (value === null || value === undefined || value === "") return value;
-                var lib = (attr.lib ? attr.lib : "common");
+                const lib = (attr.lib ? attr.lib : "common");
                 if ((value.toString()).startsWith(lib + ".")) { return; }
-                var key: string = (lib + "." + value).toLowerCase();
-                var result = this.locale.getString(key);
+                const key: string = (lib + "." + value).toLowerCase();
+                let result = this.locale.getString(key);
                 if (result.startsWith(lib + ".")) { result = result.slice((lib + ".").length); }
-                // var result = await getString(this.locale, lib, value);
+                // const result = await getString(this.locale, lib, value);
                 if (result == "%%KEY_NOT_FOUND%%" || result == "") {
                     if (global_translate_notfound.indexOf(lib + "." + value) === -1) {
                         global_translate_notfound.push(lib + "." + value);
@@ -172,15 +168,15 @@ export class translate implements ng.IDirective {
                 return "error";
             }
         };
-        var lib = (attr.lib ? attr.lib : "common");
+        const lib = (attr.lib ? attr.lib : "common");
         this.locale.ready(lib).then(() => {
-            var value: string = null;
+            let value: string = null;
             if (ngModelCtrl !== null) {
                 ngModelCtrl.$formatters.push(function (value) {
                     return calculateValue(value);
                 });
             } else {
-                var hashCode = (s: string) => {
+                const hashCode = (s: string) => {
                     return s.split("").reduce(function (a, b) { a = ((a << 5) - a) + b.charCodeAt(0); return a & a }, 0);
                 }
                 if (attr.value !== null && attr.value !== undefined && element[0].tagName !== "OPTION") {
@@ -189,7 +185,7 @@ export class translate implements ng.IDirective {
                 } else {
                     value = element.text();
                     if (value !== null || value !== undefined) {
-                        var result = calculateValue(value);
+                        const result = calculateValue(value);
                         element.text(result);
                     }
                 }
@@ -219,10 +215,10 @@ export class fileread implements ng.IDirective {
         ngModelCtrl.$render = function () { };
 
         element.bind('change', function (changeEvent) {
-            var reader = new FileReader();
+            const reader = new FileReader();
             reader.onload = function (loadEvent) {
                 scope.$apply(function () {
-                    var base64result = ((loadEvent.target as any).result as string).split(',')[1];
+                    const base64result = ((loadEvent.target as any).result as string).split(',')[1];
                     ngModelCtrl.$setViewValue(base64result);
                     (scope as any).filename = (changeEvent.target as any).files[0].name;
                     (scope as any).type = (changeEvent.target as any).files[0].type;
@@ -300,11 +296,11 @@ export class entitiesCtrl<T> {
             if (this.preloadData != null) {
                 this.preloadData();
             }
-            var query = this.basequery;
+            let query = this.basequery;
             if (this.searchstring !== "") {
-                var finalor = [];
-                for (var i = 0; i < this.searchfields.length; i++) {
-                    var newq: any = {};
+                const finalor = [];
+                for (let i = 0; i < this.searchfields.length; i++) {
+                    const newq: any = {};
                     // exact match case sensitive
                     // newq[this.searchfields[i]] = this.searchstring;
                     // exact match case insensitive
@@ -381,9 +377,9 @@ export class entitiesCtrl<T> {
 
 export function nestedassign(target, source) {
     if (source === null || source === undefined) return null;
-    var keys = Object.keys(source);
-    for (var i = 0; i < keys.length; i++) {
-        var sourcekey = keys[i];
+    const keys = Object.keys(source);
+    for (let i = 0; i < keys.length; i++) {
+        const sourcekey = keys[i];
         if (Object.keys(source).find(targetkey => targetkey === sourcekey) !== undefined &&
             Object.keys(source).find(targetkey => targetkey === sourcekey) !== null
             && typeof source === "object" && typeof source[sourcekey] === "object") {
@@ -432,13 +428,13 @@ export class entityCtrl<T> {
         try {
             if (this.loading == true) { console.log("allready loading data, exit"); return; }
             this.errormessage = "";
-            var updated: boolean = false;
+            let updated: boolean = false;
             this.loading = true;
             if (this.preloadData != null) {
                 this.preloadData();
             }
 
-            var result = await NoderedUtil.Query(this.collection, this.basequery, this.baseprojection, null, 1, 0, null);
+            const result = await NoderedUtil.Query(this.collection, this.basequery, this.baseprojection, null, 1, 0, null);
             if (result.length > 0) {
                 if (this.model == null) {
                     this.model = result[0];
@@ -453,7 +449,7 @@ export class entityCtrl<T> {
             }
             if (updated) {
                 this.keys = Object.keys(this.model);
-                for (var i: number = this.keys.length - 1; i >= 0; i--) {
+                for (let i: number = this.keys.length - 1; i >= 0; i--) {
                     if (this.keys[i].startsWith('_')) this.keys.splice(i, 1);
                 }
             }

@@ -9,12 +9,12 @@ module.exports = function (RED) {
         this.name = n.name;
         this.email = n.email;
         this.port = n.port;
-        var node = this;
-        var mailserver: libmailserver;
+        const node = this;
+        let mailserver: libmailserver;
 
         const onEmail = (email) => {
             try {
-                var sendit: boolean = false;
+                let sendit: boolean = false;
                 if (node.email == null || node.email == '' || node.email == '*') {
                     sendit = true;
                 }
@@ -29,17 +29,17 @@ module.exports = function (RED) {
                     }
                 }
                 if (sendit) {
-                    var msg = { payload: email, instanceid: null };
-                    var instanceid = email.headers.get('instanceid');
+                    const msg = { payload: email, instanceid: null };
+                    let instanceid = email.headers.get('instanceid');
                     if (!instanceid) {
                         instanceid = email.headers.get('XREF');
                     }
                     if (!instanceid) {
-                        var startindex = email.text.indexOf('instanceid');
-                        //var endindex = email.text.indexOf('instanceid', startindex+10) + 10;
-                        //var text = email.text.substring(startindex, endindex - startindex);
-                        var text = email.text.substring(startindex);
-                        var arr = text.split(':');
+                        const startindex = email.text.indexOf('instanceid');
+                        //const endindex = email.text.indexOf('instanceid', startindex+10) + 10;
+                        //const text = email.text.substring(startindex, endindex - startindex);
+                        const text = email.text.substring(startindex);
+                        const arr = text.split(':');
                         instanceid = arr[1];
                     }
 
@@ -63,14 +63,14 @@ module.exports = function (RED) {
             }
         }
 
-        var port = node.port;
+        // const port = node.port;
         // if(port && port !='') {
         //     port = parseInt(node.port);
         // } else {
         //     port = config.mailserver_port;
         // }
         // port = config.mailserver_port;
-        port = 25;
+        const port = 25;
         init(port);
 
         this.on("close", function () {

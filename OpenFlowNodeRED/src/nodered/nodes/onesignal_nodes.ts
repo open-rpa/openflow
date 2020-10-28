@@ -43,7 +43,7 @@ export class create_notification {
         try {
             this.node = this;
             this.node.status({});
-            var _config: onesignal_credentials = RED.nodes.getNode(this.config.config);
+            const _config: onesignal_credentials = RED.nodes.getNode(this.config.config);
             if (!NoderedUtil.IsNullUndefinded(_config) && !NoderedUtil.IsNullEmpty(_config.restKey)) {
                 this.restKey = _config.restKey;
             }
@@ -71,7 +71,7 @@ export class create_notification {
             if (this.config.included_segments.indexOf(",") > -1) { this.config.included_segments = (this.config.included_segments as string).split(","); }
             if (this.config.excluded_segments.indexOf(",") > -1) { this.config.excluded_segments = (this.config.excluded_segments as string).split(","); }
             if (this.config.include_player_ids.indexOf(",") > -1) { this.config.include_player_ids = (this.config.include_player_ids as string).split(","); }
-            var body = {
+            const body = {
                 'app_id': this.appID,
                 'contents': this.config.contents,
                 'included_segments': Array.isArray(this.config.included_segments) ? this.config.included_segments : [this.config.included_segments],

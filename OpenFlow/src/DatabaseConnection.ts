@@ -10,7 +10,7 @@ import { DBHelper } from "./DBHelper";
 // tslint:disable-next-line: typedef
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 const isoDatePattern = new RegExp(/\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z)/);
-var jsondiffpatch = require('jsondiffpatch').create({
+const jsondiffpatch = require('jsondiffpatch').create({
     objectHash: function (obj, index) {
         // try to find an id property, otherwise just use the index in the array
         return obj.name || obj.id || obj._id || '$$index:' + index;
@@ -85,26 +85,26 @@ export class DatabaseConnection {
         this.isConnected = true;
     }
     async ListCollections(jwt: string): Promise<any[]> {
-        var result = await DatabaseConnection.toArray(this.db.listCollections());
+        const result = await DatabaseConnection.toArray(this.db.listCollections());
         Crypt.verityToken(jwt);
         return result;
     }
     async DropCollection(collectionname: string, jwt: string): Promise<void> {
-        var user: TokenUser = Crypt.verityToken(jwt);
+        const user: TokenUser = Crypt.verityToken(jwt);
         if (!user.HasRoleName("admins")) throw new Error("Access denied, droppping collection " + collectionname);
         if (["workflow", "entities", "config", "audit", "jslog", "openrpa", "nodered", "openrpa_instances", "forms", "workflow_instances", "users"].indexOf(collectionname) > -1) throw new Error("Access denied, dropping reserved collection " + collectionname);
         await this.db.dropCollection(collectionname);
     }
 
     async CleanACL<T extends Base>(item: T): Promise<T> {
-        for (var i = item._acl.length - 1; i >= 0; i--) {
+        for (let i = item._acl.length - 1; i >= 0; i--) {
             {
-                var ace = item._acl[i];
+                const ace = item._acl[i];
                 if (typeof ace.rights === "string") {
-                    var b = new Binary(Buffer.from(ace.rights, "base64"), 0);
+                    const b = new Binary(Buffer.from(ace.rights, "base64"), 0);
                     (ace.rights as any) = b;
                 }
-                var arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1 }).limit(1).toArray();
+                const arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1 }).limit(1).toArray();
                 if (arr.length == 0) {
                     item._acl.splice(i, 1);
                 } else { ace.name = arr[0].name; }
@@ -113,28 +113,28 @@ export class DatabaseConnection {
         return item;
     }
     async Cleanmembers<T extends Role>(item: T, original: T): Promise<T> {
-        var removed: Rolemember[] = [];
+        const removed: Rolemember[] = [];
         if (item.members == null) item.members = [];
         if (original != null && Config.update_acl_based_on_groups == true) {
-            for (var i = original.members.length - 1; i >= 0; i--) {
-                var ace = original.members[i];
-                var exists = item.members.filter(x => x._id == ace._id);
+            for (let i = original.members.length - 1; i >= 0; i--) {
+                const ace = original.members[i];
+                const exists = item.members.filter(x => x._id == ace._id);
                 if (exists.length == 0) {
                     removed.push(ace);
                 }
             }
         }
-        var doadd: boolean = true;
-        var multi_tenant_skip: string[] = [WellknownIds.users, WellknownIds.filestore_users,
+        let doadd: boolean = true;
+        const multi_tenant_skip: string[] = [WellknownIds.users, WellknownIds.filestore_users,
         WellknownIds.nodered_api_users, WellknownIds.nodered_users, WellknownIds.personal_nodered_users,
         WellknownIds.robot_users, , WellknownIds.robots];
         if (item._id == WellknownIds.users && Config.multi_tenant) {
             doadd = false;
         }
         if (doadd) {
-            for (var i = item.members.length - 1; i >= 0; i--) {
+            for (let i = item.members.length - 1; i >= 0; i--) {
                 {
-                    var ace = item.members[i];
+                    const ace = item.members[i];
                     if (Config.update_acl_based_on_groups == true) {
                         if (multi_tenant_skip.indexOf(item._id) > -1) {
                             if (ace._id != WellknownIds.admins && ace._id != WellknownIds.root) {
@@ -144,11 +144,11 @@ export class DatabaseConnection {
                             // item.addRight(ace._id, ace.name, [Rights.read]);
                         }
                     }
-                    var exists = item.members.filter(x => x._id == ace._id);
+                    const exists = item.members.filter(x => x._id == ace._id);
                     if (exists.length > 1) {
                         item.members.splice(i, 1);
                     } else {
-                        var arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1, _acl: 1, _type: 1 }).limit(1).toArray();
+                        const arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1, _acl: 1, _type: 1 }).limit(1).toArray();
                         if (arr.length == 0) {
                             item.members.splice(i, 1);
                         }
@@ -158,10 +158,10 @@ export class DatabaseConnection {
                                 // when multi tenant don't allow members of common user groups to see each other
                                 this._logger.info("Running in multi tenant mode, skip adding permissions for " + item.name);
                             } else if (arr[0]._type == "user") {
-                                var u: User = User.assign(arr[0]);
-                                if (!u.hasRight(item._id, Rights.read)) {
+                                const u: User = User.assign(arr[0]);
+                                if (!Base.hasRight(u, item._id, Rights.read)) {
                                     this._logger.debug("Assigning " + item.name + " read permission to " + u.name);
-                                    u.addRight(item._id, item.name, [Rights.read], false);
+                                    Base.addRight(u, item._id, item.name, [Rights.read], false);
 
                                     await this.db.collection("users").updateOne({ _id: u._id }, { $set: { _acl: u._acl } });
                                     // await this.db.collection("users").save(u);
@@ -169,14 +169,14 @@ export class DatabaseConnection {
                                     this._logger.debug(item.name + " allready exists on " + u.name);
                                 }
                             } else if (arr[0]._type == "role") {
-                                var r: Role = Role.assign(arr[0]);
+                                const r: Role = Role.assign(arr[0]);
                                 if (r._id == WellknownIds.admins || r._id == WellknownIds.users) {
-                                } else if (!r.hasRight(item._id, Rights.read)) {
+                                } else if (!Base.hasRight(r, item._id, Rights.read)) {
                                     if (r.name == "admins") {
-                                        var b = true;
+                                        const b = true;
                                     }
                                     this._logger.debug("Assigning " + item.name + " read permission to " + r.name);
-                                    r.addRight(item._id, item.name, [Rights.read], false);
+                                    Base.addRight(r, item._id, item.name, [Rights.read], false);
                                     await this.db.collection("users").updateOne({ _id: r._id }, { $set: { _acl: r._acl } });
                                     // await this.db.collection("users").save(r);
                                 } else if (r._id != item._id) {
@@ -191,33 +191,20 @@ export class DatabaseConnection {
         }
 
         if (Config.update_acl_based_on_groups) {
-            for (var i = removed.length - 1; i >= 0; i--) {
-                var ace = removed[i];
-
-                if (ace._id != WellknownIds.admins && ace._id != WellknownIds.root) {
-                    // if (item.hasRight(ace._id, Rights.read)) {
-                    //     item.removeRight(ace._id, [Rights.read]);
-                    //     var right = item.getRight(ace._id, false);
-                    //     // read was not the only right ? then re add
-                    //     if (right != null) {
-                    //         item.addRight(ace._id, ace.name, [Rights.read]);
-                    //     }
-                    // }
-
-                }
-
-                var arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1, _acl: 1, _type: 1 }).limit(1).toArray();
+            for (let i = removed.length - 1; i >= 0; i--) {
+                const ace = removed[i];
+                const arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1, _acl: 1, _type: 1 }).limit(1).toArray();
                 if (arr.length == 1 && item._id != WellknownIds.admins && item._id != WellknownIds.root) {
                     if (Config.multi_tenant && multi_tenant_skip.indexOf(item._id) > -1) {
                         // when multi tenant don't allow members of common user groups to see each other
                         this._logger.info("Running in multi tenant mode, skip removing permissions for " + item.name);
                     } else if (arr[0]._type == "user") {
-                        var u: User = User.assign(arr[0]);
-                        if (u.hasRight(item._id, Rights.read)) {
-                            u.removeRight(item._id, [Rights.read]);
+                        const u: User = User.assign(arr[0]);
+                        if (Base.hasRight(u, item._id, Rights.read)) {
+                            Base.removeRight(u, item._id, [Rights.read]);
 
                             // was read the only right ? then remove it
-                            var right = u.getRight(item._id, false);
+                            const right = Base.getRight(u, item._id, false);
                             if (right == null) {
                                 this._logger.debug("Removing " + item.name + " read permissions from " + u.name);
                                 // await this.db.collection("users").save(u);
@@ -229,12 +216,12 @@ export class DatabaseConnection {
                             this._logger.debug("No need to remove " + item.name + " read permissions from " + u.name);
                         }
                     } else if (arr[0]._type == "role") {
-                        var r: Role = Role.assign(arr[0]);
-                        if (r.hasRight(item._id, Rights.read)) {
-                            r.removeRight(item._id, [Rights.read]);
+                        const r: Role = Role.assign(arr[0]);
+                        if (Base.hasRight(r, item._id, Rights.read)) {
+                            Base.removeRight(r, item._id, [Rights.read]);
 
                             // was read the only right ? then remove it
-                            var right = r.getRight(item._id, false);
+                            const right = Base.getRight(r, item._id, false);
                             if (right == null) {
                                 this._logger.debug("Removing " + item.name + " read permissions from " + r.name);
                                 // await this.db.collection("users").save(r);
@@ -242,7 +229,7 @@ export class DatabaseConnection {
                             }
 
                         } else {
-                            this._logger.debug("No need to remove " + item.name + " read permissions from " + u.name);
+                            this._logger.debug("No need to remove " + item.name + " read permissions from " + r.name);
                         }
                     }
 
@@ -265,12 +252,11 @@ export class DatabaseConnection {
      */
     // tslint:disable-next-line: max-line-length
     async query<T extends Base>(query: any, projection: Object, top: number, skip: number, orderby: Object | string, collectionname: string, jwt: string, queryas: string = null): Promise<T[]> {
-        var arr: T[] = [];
         await this.connect();
-        var mysort: Object = {};
+        let mysort: Object = {};
         if (orderby) {
             if (typeof orderby === "string" || orderby instanceof String) {
-                var neworderby = null;
+                let neworderby = null;
                 try {
                     if (orderby.indexOf("{") > -1) {
                         neworderby = JSON.parse((orderby as string));
@@ -291,7 +277,7 @@ export class DatabaseConnection {
         }
         // for (let key in query) {
         if (query !== null && query !== undefined) {
-            var json: any = query;
+            let json: any = query;
             if (typeof json !== 'string' && !(json instanceof String)) {
                 json = JSON.stringify(json, (key, value) => {
                     if (value instanceof RegExp)
@@ -304,26 +290,26 @@ export class DatabaseConnection {
                 if (typeof value === 'string' && value.match(isoDatePattern)) {
                     return new Date(value); // isostring, so cast to js date
                 } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") == 0) {
-                    var m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
+                    const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
                     return new RegExp(m[1], m[2] || "");
                 } else
                     return value; // leave any other value as-is
             });
         }
-        var keys: string[] = Object.keys(query);
+        const keys: string[] = Object.keys(query);
         for (let i: number = 0; i < keys.length; i++) {
             let key: string = keys[i];
             if (key === "_id") {
-                var id: string = query._id;
-                var safeid = safeObjectID(id);
+                const id: string = query._id;
+                const safeid = safeObjectID(id);
                 if (safeid !== null && safeid !== undefined) {
                     delete query._id;
                     query.$or = [{ _id: id }, { _id: safeObjectID(id) }];
                 }
             }
         }
-        var user: TokenUser = Crypt.verityToken(jwt);
-        var _query: Object = {};
+        const user: TokenUser = Crypt.verityToken(jwt);
+        let _query: Object = {};
         if (collectionname === "files") { collectionname = "fs.files"; }
         if (collectionname === "fs.files") {
             if (!NoderedUtil.IsNullEmpty(queryas)) {
@@ -348,40 +334,41 @@ export class DatabaseConnection {
         if (!top) { top = 500; }
         if (!skip) { skip = 0; }
         // if (collectionname == "openrpa") {
-        //     var user: TokenUser = Crypt.verityToken(jwt);
+        //     const user: TokenUser = Crypt.verityToken(jwt);
         //     arr = await this.db.collection(collectionname).find(query).limit(top).skip(skip).toArray();
         //     _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
         // }
+        let arr: T[] = [];
         if (projection != null) {
             arr = await this.db.collection(collectionname).find(_query).project(projection).sort(mysort as any).limit(top).skip(skip).toArray();
         } else {
             arr = await this.db.collection(collectionname).find(_query).sort(mysort as any).limit(top).skip(skip).toArray();
         }
-        for (var i: number = 0; i < arr.length; i++) { arr[i] = this.decryptentity(arr[i]); }
+        for (let i: number = 0; i < arr.length; i++) { arr[i] = this.decryptentity(arr[i]); }
         DatabaseConnection.traversejsondecode(arr);
         if (Config.log_queries) this._logger.debug("[" + user.username + "][" + collectionname + "] query gave " + arr.length + " results ");
         return arr;
     }
     async GetDocumentVersion<T extends Base>(collectionname: string, id: string, version: number, jwt: string): Promise<T> {
-        var roundDown = function (num, precision): number {
+        const roundDown = function (num, precision): number {
             num = parseFloat(num);
             if (!precision) return num;
             return (Math.floor(num / precision) * precision);
         };
 
-        var result: T = await this.getbyid<T>(id, collectionname, jwt);
+        let result: T = await this.getbyid<T>(id, collectionname, jwt);
         if (result == null) return result;
         if (result._version > version) {
-            var rootjwt = Crypt.rootToken()
-            // var baseversion = roundDown(version, Config.history_delta_count);
-            var basehist = await this.query<any>({ id: id, item: { $exists: true, $ne: null }, "_version": { $lte: version } }, null, 1, 0, { _version: -1 }, collectionname + "_hist", rootjwt);
+            const rootjwt = Crypt.rootToken()
+            // const baseversion = roundDown(version, Config.history_delta_count);
+            const basehist = await this.query<any>({ id: id, item: { $exists: true, $ne: null }, "_version": { $lte: version } }, null, 1, 0, { _version: -1 }, collectionname + "_hist", rootjwt);
             result = basehist[0].item;
-            var baseversion = basehist[0]._version;
+            const baseversion = basehist[0]._version;
 
-            var history = await this.query<T>({ id: id, "_version": { $gt: baseversion, $lte: version } }, null, Config.history_delta_count, 0, { _version: 1 }, collectionname + "_hist", rootjwt);
+            const history = await this.query<T>({ id: id, "_version": { $gt: baseversion, $lte: version } }, null, Config.history_delta_count, 0, { _version: 1 }, collectionname + "_hist", rootjwt);
 
-            for (var i = 0; i < history.length; i++) {
-                var delta = (history[i] as any).delta;
+            for (let i = 0; i < history.length; i++) {
+                const delta = (history[i] as any).delta;
                 if (delta != null) {
                     result = jsondiffpatch.patch(result, delta);
                 }
@@ -399,7 +386,7 @@ export class DatabaseConnection {
      */
     async getbyid<T extends Base>(id: string, collectionname: string, jwt: string): Promise<T> {
         if (id === null || id === undefined) { throw Error("Id cannot be null"); }
-        var arr: T[] = await this.query<T>({ _id: id }, null, 1, 0, null, collectionname, jwt);
+        const arr: T[] = await this.query<T>({ _id: id }, null, 1, 0, null, collectionname, jwt);
         if (arr === null || arr.length === 0) { return null; }
         return arr[0];
     }
@@ -413,7 +400,7 @@ export class DatabaseConnection {
     async aggregate<T extends Base>(aggregates: object[], collectionname: string, jwt: string): Promise<T[]> {
         await this.connect();
 
-        var json: any = aggregates;
+        let json: any = aggregates;
         if (typeof json !== 'string' && !(json instanceof String)) {
             json = JSON.stringify(json, (key, value) => {
                 if (value instanceof RegExp)
@@ -427,7 +414,7 @@ export class DatabaseConnection {
             if (typeof value === 'string' && value.match(isoDatePattern)) {
                 return new Date(value); // isostring, so cast to js date
             } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") == 0) {
-                var m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
+                const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
                 return new RegExp(m[1], m[2] || "");
             } else
                 return value; // leave any other value as-is
@@ -437,7 +424,7 @@ export class DatabaseConnection {
         // if (typeof aggregates === "string" || aggregates instanceof String) {
         //     aggregates = JSON.parse((aggregates as any));
         // }
-        var base = this.getbasequery(jwt, "_acl", [Rights.read]);
+        const base = this.getbasequery(jwt, "_acl", [Rights.read]);
         if (Array.isArray(aggregates)) {
             aggregates.unshift({ $match: base });
         } else {
@@ -445,7 +432,7 @@ export class DatabaseConnection {
         }
         // todo: add permissions check on aggregates
         // aggregates.unshift(this.getbasequery(jwt, [Rights.read]));
-        var items: T[] = await this.db.collection(collectionname).aggregate(aggregates).toArray();
+        const items: T[] = await this.db.collection(collectionname).aggregate(aggregates).toArray();
         DatabaseConnection.traversejsondecode(items);
         return items;
     }
@@ -459,7 +446,7 @@ export class DatabaseConnection {
     async watch<T extends Base>(aggregates: object[], collectionname: string, jwt: string): Promise<ChangeStream> {
         await this.connect();
 
-        var json: any = aggregates;
+        let json: any = aggregates;
         if (typeof json !== 'string' && !(json instanceof String)) {
             json = JSON.stringify(json, (key, value) => {
                 if (value instanceof RegExp)
@@ -474,7 +461,7 @@ export class DatabaseConnection {
                 if (typeof value === 'string' && value.match(isoDatePattern)) {
                     return new Date(value); // isostring, so cast to js date
                 } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") == 0) {
-                    var m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
+                    const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
                     return new RegExp(m[1], m[2] || "");
                 } else
                     return value; // leave any other value as-is
@@ -483,7 +470,7 @@ export class DatabaseConnection {
 
         // TODO: Should we filter on rights other than read ? should a person with reade be allowed to know when it was updated ?
         // a person with read, would beablt to know anyway, so guess read should be enough for now ... 
-        var base = this.getbasequery(jwt, "fullDocument._acl", [Rights.read]);
+        const base = this.getbasequery(jwt, "fullDocument._acl", [Rights.read]);
         if (Array.isArray(aggregates)) {
             aggregates.unshift({ $match: base });
         } else {
@@ -506,7 +493,7 @@ export class DatabaseConnection {
         await this.connect();
 
         if (query !== null && query !== undefined) {
-            var json: any = query;
+            let json: any = query;
             if (typeof json !== 'string' && !(json instanceof String)) {
                 json = JSON.stringify(json, (key, value) => {
                     if (value instanceof RegExp)
@@ -519,13 +506,13 @@ export class DatabaseConnection {
                 if (typeof value === 'string' && value.match(isoDatePattern)) {
                     return new Date(value); // isostring, so cast to js date
                 } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") == 0) {
-                    var m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
+                    const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
                     return new RegExp(m[1], m[2] || "");
                 } else
                     return value; // leave any other value as-is
             });
         }
-        var q: any = query;
+        let q: any = query;
         if (query !== null && query !== undefined) {
             q = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
         } else {
@@ -538,12 +525,12 @@ export class DatabaseConnection {
             } catch (error) {
             }
         }
-        var inline: boolean = false;
-        var opt: MapReduceOptions = { query: q, out: { replace: "map_temp_res" }, finalize: finalize };
+        let inline: boolean = false;
+        const opt: MapReduceOptions = { query: q, out: { replace: "map_temp_res" }, finalize: finalize };
 
         // (opt as any).w = 0;
 
-        var outcol: string = "map_temp_res";
+        let outcol: string = "map_temp_res";
         if (out === null || out === undefined || out === "") {
             opt.out = { replace: outcol };
         } else if (typeof out === 'string' || out instanceof String) {
@@ -559,11 +546,11 @@ export class DatabaseConnection {
         opt.scope = scope;
         // opt.readPreference = ReadPreference.PRIMARY_PREFERRED;
 
-        // var result:T[] = await this.db.collection(collectionname).mapReduce(map, reduce, {query: q, out : {inline : 1}});
+        // const result:T[] = await this.db.collection(collectionname).mapReduce(map, reduce, {query: q, out : {inline : 1}});
         try {
             if (inline) {
                 opt.out = { inline: 1 };
-                var result: T[] = await this.db.collection(collectionname).mapReduce(map, reduce, opt);
+                const result: T[] = await this.db.collection(collectionname).mapReduce(map, reduce, opt);
                 return result;
             } else {
                 await this.db.collection(collectionname).mapReduce(map, reduce, opt);
@@ -572,7 +559,7 @@ export class DatabaseConnection {
         } catch (error) {
             throw error;
         }
-        // var result:T[] = await this.db.collection(outcol).find({}).toArray(); // .limit(top)
+        // const result:T[] = await this.db.collection(outcol).find({}).toArray(); // .limit(top)
         // // this.db.collection("map_temp_res").deleteMany({});
         // return result;
     }
@@ -593,19 +580,19 @@ export class DatabaseConnection {
         if (NoderedUtil.IsNullEmpty(jwt)) {
             throw new Error("jwt is null");
         }
-        var name = item.name;
+        let name = item.name;
         if (NoderedUtil.IsNullEmpty(name)) name = item._name;
         if (NoderedUtil.IsNullEmpty(name)) name = "Unknown";
-        var user: TokenUser = Crypt.verityToken(jwt);
+        const user: TokenUser = Crypt.verityToken(jwt);
         item._createdby = user.name;
         item._createdbyid = user._id;
         item._created = new Date(new Date().toISOString());
         item._modifiedby = user.name;
         item._modifiedbyid = user._id;
         item._modified = item._created;
-        var hasUser: Ace = item._acl.find(e => e._id === user._id);
+        const hasUser: Ace = item._acl.find(e => e._id === user._id);
         if ((hasUser === null || hasUser === undefined)) {
-            item.addRight(user._id, user.name, [Rights.full_control]);
+            Base.addRight(item, user._id, user.name, [Rights.full_control]);
         }
         if (collectionname != "audit") { this._logger.debug("[" + user.username + "][" + collectionname + "] Adding " + item._type + " " + name + " to database"); }
         if (!this.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
@@ -635,46 +622,46 @@ export class DatabaseConnection {
         }
 
         if (collectionname === "users" && item._type === "user") {
-            var u: TokenUser = (item as any);
+            const u: TokenUser = (item as any);
             if (u.username == null || u.username == "") { throw new Error("Username is mandatory"); }
             if (u.name == null || u.name == "") { throw new Error("Name is mandatory"); }
-            var exists = await DBHelper.FindByUsername(u.username, Crypt.rootToken());
+            const exists = await DBHelper.FindByUsername(u.username, Crypt.rootToken());
             if (exists != null) { throw new Error("Access denied, user  '" + u.username + "' already exists"); }
         }
         if (collectionname === "users" && item._type === "role") {
-            var r: Role = (item as any);
+            const r: Role = (item as any);
             if (r.name == null || r.name == "") { throw new Error("Name is mandatory"); }
-            var exists2 = await DBHelper.FindRoleByName(r.name);
+            const exists2 = await DBHelper.FindRoleByName(r.name);
             if (exists2 != null) { throw new Error("Access denied, role '" + r.name + "' already exists"); }
         }
 
-        // var options:CollectionInsertOneOptions = { writeConcern: { w: parseInt((w as any)), j: j } };
-        var options: CollectionInsertOneOptions = { w: w, j: j };
-        //var options: CollectionInsertOneOptions = { w: "majority" };
-        var result: InsertOneWriteOpResult<T> = await this.db.collection(collectionname).insertOne(item, options);
+        // const options:CollectionInsertOneOptions = { writeConcern: { w: parseInt((w as any)), j: j } };
+        const options: CollectionInsertOneOptions = { w: w, j: j };
+        //const options: CollectionInsertOneOptions = { w: "majority" };
+        const result: InsertOneWriteOpResult<T> = await this.db.collection(collectionname).insertOne(item, options);
         item = result.ops[0];
         if (collectionname === "users" && item._type === "user") {
-            item.addRight(item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
-            var users: Role = await DBHelper.FindRoleByNameOrId("users", jwt);
+            Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
+            const users: Role = await DBHelper.FindRoleByNameOrId("users", jwt);
             users.AddMember(item);
             item = await this.CleanACL(item);
             await DBHelper.Save(users, Crypt.rootToken());
-            var user: TokenUser = item as any;
+            const user: TokenUser = item as any;
             if (Config.auto_create_personal_nodered_group) {
-                var name = user.username;
+                let name = user.username;
                 name = name.split("@").join("").split(".").join("");
                 name = name.toLowerCase();
 
-                var noderedadmins = await DBHelper.EnsureRole(jwt, name + "noderedadmins", null);
-                noderedadmins.addRight(user._id, user.username, [Rights.full_control]);
-                noderedadmins.removeRight(user._id, [Rights.delete]);
+                const noderedadmins = await DBHelper.EnsureRole(jwt, name + "noderedadmins", null);
+                Base.addRight(noderedadmins, user._id, user.username, [Rights.full_control]);
+                Base.removeRight(noderedadmins, user._id, [Rights.delete]);
                 noderedadmins.AddMember(item);
                 await DBHelper.Save(noderedadmins, Crypt.rootToken());
             }
 
         }
         if (collectionname === "users" && item._type === "role") {
-            item.addRight(item._id, item.name, [Rights.read]);
+            Base.addRight(item, item._id, item.name, [Rights.read]);
             item = await this.CleanACL(item);
             await this.db.collection(collectionname).replaceOne({ _id: item._id }, item);
         }
@@ -691,7 +678,7 @@ export class DatabaseConnection {
      * @returns Promise<T>
      */
     async _UpdateOne<T extends Base>(query: any, item: T, collectionname: string, w: number, j: boolean, jwt: string): Promise<T> {
-        var q = new UpdateOneMessage();
+        let q = new UpdateOneMessage();
         q.query = query; q.item = item; q.collectionname = collectionname; q.w = w; q.j; q.jwt = jwt;
         q = await this.UpdateOne(q);
         if (q.opresult.result.ok == 1) {
@@ -708,32 +695,32 @@ export class DatabaseConnection {
         return q.result;
     }
     async UpdateOne<T extends Base>(q: UpdateOneMessage): Promise<UpdateOneMessage> {
-        var itemReplace: boolean = true;
+        let itemReplace: boolean = true;
         if (q === null || q === undefined) { throw Error("UpdateOneMessage cannot be null"); }
         if (q.item === null || q.item === undefined) { throw Error("Cannot update null item"); }
         await this.connect();
-        var user: TokenUser = Crypt.verityToken(q.jwt);
+        const user: TokenUser = Crypt.verityToken(q.jwt);
         if (!this.hasAuthorization(user, (q.item as Base), Rights.update)) {
-            var again = this.hasAuthorization(user, (q.item as Base), Rights.update);
+            const again = this.hasAuthorization(user, (q.item as Base), Rights.update);
             throw new Error("Access denied, no authorization to UpdateOne");
         }
         if (q.collectionname === "files") { q.collectionname = "fs.files"; }
 
-        var original: T = null;
+        let original: T = null;
         // assume empty query, means full document, else update document
         if (q.query === null || q.query === undefined) {
             // this will add an _acl so needs to be after we checked old item
             if (!q.item.hasOwnProperty("_id")) {
                 throw Error("Cannot update item without _id");
             }
-            var name = q.item.name;
+            let name = q.item.name;
             if (NoderedUtil.IsNullEmpty(name)) name = (q.item as any)._name;
             if (NoderedUtil.IsNullEmpty(name)) name = "Unknown";
 
             original = await this.getbyid<T>(q.item._id, q.collectionname, q.jwt);
             if (!original) { throw Error("item not found!"); }
             if (!this.hasAuthorization(user, original, Rights.update)) {
-                var again = this.hasAuthorization(user, original, Rights.update);
+                const again = this.hasAuthorization(user, original, Rights.update);
                 throw new Error("Access denied, no authorization to UpdateOne " + q.item._type + " " + name + " to database");
             }
             if (q.collectionname != "fs.files") {
@@ -741,7 +728,7 @@ export class DatabaseConnection {
                 q.item._modifiedbyid = user._id;
                 q.item._modified = new Date(new Date().toISOString());
                 // now add all _ fields to the new object
-                var keys: string[] = Object.keys(original);
+                const keys: string[] = Object.keys(original);
                 for (let i: number = 0; i < keys.length; i++) {
                     let key: string = keys[i];
                     if (key === "_created") {
@@ -767,12 +754,12 @@ export class DatabaseConnection {
                 q.item = this.ensureResource(q.item);
                 DatabaseConnection.traversejsonencode(q.item);
                 q.item = this.encryptentity(q.item);
-                var hasUser: Ace = q.item._acl.find(e => e._id === user._id);
+                const hasUser: Ace = q.item._acl.find(e => e._id === user._id);
                 if ((hasUser === null || hasUser === undefined) && q.item._acl.length == 0) {
-                    q.item.addRight(user._id, user.name, [Rights.full_control]);
+                    Base.addRight(q.item, user._id, user.name, [Rights.full_control]);
                 }
                 if (q.collectionname === "users" && q.item._type === "user") {
-                    q.item.addRight(q.item._id, q.item.name, [Rights.read, Rights.update, Rights.invoke]);
+                    Base.addRight(q.item, q.item._id, q.item.name, [Rights.read, Rights.update, Rights.invoke]);
                 }
             } else {
                 (q.item as any).metadata = Base.assign((q.item as any).metadata);
@@ -780,7 +767,7 @@ export class DatabaseConnection {
                 (q.item as any).metadata._modifiedbyid = user._id;
                 (q.item as any).metadata._modified = new Date(new Date().toISOString());
                 // now add all _ fields to the new object
-                var keys: string[] = Object.keys((original as any).metadata);
+                const keys: string[] = Object.keys((original as any).metadata);
                 for (let i: number = 0; i < keys.length; i++) {
                     let key: string = keys[i];
                     if (key === "_created") {
@@ -806,9 +793,9 @@ export class DatabaseConnection {
                 (q.item as any).metadata = this.ensureResource((q.item as any).metadata);
                 DatabaseConnection.traversejsonencode(q.item);
                 (q.item as any).metadata = this.encryptentity((q.item as any).metadata);
-                var hasUser: Ace = (q.item as any).metadata._acl.find(e => e._id === user._id);
+                const hasUser: Ace = (q.item as any).metadata._acl.find(e => e._id === user._id);
                 if ((hasUser === null || hasUser === undefined) && (q.item as any).metadata._acl.length == 0) {
-                    (q.item as any).metadata.addRight(user._id, user.name, [Rights.full_control]);
+                    Base.addRight((q.item as any).metadata, user._id, user.name, [Rights.full_control]);
                 }
             }
 
@@ -821,7 +808,7 @@ export class DatabaseConnection {
                 q.item._version = await this.SaveDiff(q.collectionname, original, q.item);
             }
         } else {
-            var json: string = q.item as any;
+            let json: string = q.item as any;
             if (typeof json !== 'string') {
                 json = JSON.stringify(json);
             }
@@ -829,7 +816,7 @@ export class DatabaseConnection {
                 if (typeof value === 'string' && value.match(isoDatePattern)) {
                     return new Date(value); // isostring, so cast to js date
                 } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") == 0) {
-                    var m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
+                    const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
                     return new RegExp(m[1], m[2] || "");
                 } else
                     return value; // leave any other value as-is
@@ -845,7 +832,7 @@ export class DatabaseConnection {
                 this.SaveUpdateDiff(q, user);
             }
 
-            // var _version = await this.SaveUpdateDiff(q, user);
+            // const _version = await this.SaveUpdateDiff(q, user);
             // if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };
             // (q.item["$set"])._version = _version;
         }
@@ -854,15 +841,15 @@ export class DatabaseConnection {
             (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
             delete (q.item as any).newpassword;
         }
-        this._logger.debug("[" + user.username + "][" + q.collectionname + "] Updating " + (q.item.name || q.item._name) + " in database");
+        this._logger.silly("[" + user.username + "][" + q.collectionname + "] Updating " + (q.item.name || q.item._name) + " in database");
         // await this.db.collection(collectionname).replaceOne({ _id: item._id }, item, options);
 
         if (q.query === null || q.query === undefined) {
-            var id: string = q.item._id;
-            var safeid = safeObjectID(id);
+            const id: string = q.item._id;
+            const safeid = safeObjectID(id);
             q.query = { $or: [{ _id: id }, { _id: safeObjectID(id) }] };
         }
-        var _query: Object = {};
+        let _query: Object = {};
         if (q.collectionname === "fs.files") {
             _query = { $and: [q.query, this.getbasequery(q.jwt, "metadata._acl", [Rights.update])] };
         } else {
@@ -877,7 +864,7 @@ export class DatabaseConnection {
         q.j = ((q.j as any) === 'true' || q.j === true);
         if ((q.w as any) !== "majority") q.w = parseInt((q.w as any));
 
-        var options: CollectionInsertOneOptions = { w: q.w, j: q.j };
+        const options: CollectionInsertOneOptions = { w: q.w, j: q.j };
         q.opresult = null;
         try {
             if (itemReplace) {
@@ -893,7 +880,7 @@ export class DatabaseConnection {
                 if (q.collectionname != "fs.files") {
                     q.opresult = await this.db.collection(q.collectionname).replaceOne(_query, q.item, options);
                 } else {
-                    var fsc = Config.db.db.collection("fs.files");
+                    const fsc = Config.db.db.collection("fs.files");
                     q.opresult = await fsc.updateOne(_query, { $set: { metadata: (q.item as any).metadata } });
                 }
             } else {
@@ -931,14 +918,14 @@ export class DatabaseConnection {
         if (q === null || q === undefined) { throw Error("UpdateManyMessage cannot be null"); }
         if (q.item === null || q.item === undefined) { throw Error("Cannot update null item"); }
         await this.connect();
-        var user: TokenUser = Crypt.verityToken(q.jwt);
+        const user: TokenUser = Crypt.verityToken(q.jwt);
         if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to UpdateMany"); }
 
         if (q.collectionname === "users" && q.item._type === "user" && q.item.hasOwnProperty("newpassword")) {
             (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
             delete (q.item as any).newpassword;
         }
-        var json: string = q.item as any;
+        let json: string = q.item as any;
         if (typeof json !== 'string') {
             json = JSON.stringify(json);
         }
@@ -946,19 +933,19 @@ export class DatabaseConnection {
             if (typeof value === 'string' && value.match(isoDatePattern)) {
                 return new Date(value); // isostring, so cast to js date
             } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") == 0) {
-                var m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
+                const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
                 return new RegExp(m[1], m[2] || "");
             } else
                 return value; // leave any other value as-is
         });
         for (let key in q.query) {
             if (key === "_id") {
-                var id: string = (q.query as any)._id;
+                const id: string = (q.query as any)._id;
                 delete (q.query as any)._id;
                 (q.query as any).$or = [{ _id: id }, { _id: safeObjectID(id) }];
             }
         }
-        var _query: Object = {};
+        let _query: Object = {};
         if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret) && q.collectionname === "users") {
             if (!user.HasRoleId("admins")) throw new Error("Access denied, no authorization to UpdateMany");
         }
@@ -984,7 +971,7 @@ export class DatabaseConnection {
 
         q.j = ((q.j as any) === 'true' || q.j === true);
         if ((q.w as any) !== "majority") q.w = parseInt((q.w as any));
-        var options: CollectionInsertOneOptions = { w: q.w, j: q.j };
+        const options: CollectionInsertOneOptions = { w: q.w, j: q.j };
         try {
             q.opresult = await this.db.collection(q.collectionname).updateMany(_query, q.item, options);
             // if (res.modifiedCount == 0) {
@@ -1017,10 +1004,10 @@ export class DatabaseConnection {
     * @returns Promise<T>
     */
     async InsertOrUpdateOne<T extends Base>(q: InsertOrUpdateOneMessage): Promise<InsertOrUpdateOneMessage> {
-        var query: any = null;
+        let query: any = null;
         if (q.uniqeness !== null && q.uniqeness !== undefined && q.uniqeness !== "") {
             query = {};
-            var arr = q.uniqeness.split(",");
+            const arr = q.uniqeness.split(",");
             arr.forEach(field => {
                 if (field.trim() !== "") {
                     query[field] = q.item[field];
@@ -1032,8 +1019,8 @@ export class DatabaseConnection {
                 query = { _id: q.item._id };
             }
         }
-        var user: TokenUser = Crypt.verityToken(q.jwt);
-        var exists: Base[] = [];
+        const user: TokenUser = Crypt.verityToken(q.jwt);
+        let exists: Base[] = [];
         if (query != null) {
             exists = await this.query(query, { name: 1 }, 2, 0, null, q.collectionname, q.jwt);
         }
@@ -1047,12 +1034,12 @@ export class DatabaseConnection {
         // if (q.item._id !== null && q.item._id !== undefined && q.item._id !== "") {
         if (exists.length == 1) {
             this._logger.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Updating found one in database");
-            var uq = new UpdateOneMessage();
+            const uq = new UpdateOneMessage();
             // uq.query = query; 
             uq.item = q.item; uq.collectionname = q.collectionname; uq.w = q.w; uq.j; uq.jwt = q.jwt;
-            uq = await this.UpdateOne(uq);
-            q.opresult = uq.opresult;
-            q.result = uq.result;
+            const uqres = await this.UpdateOne(uq);
+            q.opresult = uqres.opresult;
+            q.result = uqres.result;
         } else {
             this._logger.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Inserting as new in database");
             q.result = await this.InsertOne(q.item, q.collectionname, q.w, q.j, q.jwt);
@@ -1062,8 +1049,8 @@ export class DatabaseConnection {
     private async _DeleteFile(id: string): Promise<string> {
         return new Promise<string>(async (resolve, reject) => {
             try {
-                var _id = new ObjectID(id);
-                var bucket = new GridFSBucket(this.db);
+                const _id = new ObjectID(id);
+                const bucket = new GridFSBucket(this.db);
                 bucket.delete(_id, (error) => {
                     if (error) return reject(error);
                     resolve();
@@ -1083,11 +1070,11 @@ export class DatabaseConnection {
     async DeleteOne(id: string | any, collectionname: string, jwt: string): Promise<void> {
         if (id === null || id === undefined || id === "") { throw Error("id cannot be null"); }
         await this.connect();
-        var user: TokenUser = Crypt.verityToken(jwt);
-        // var original:Base = await this.getbyid(id, collectionname, jwt);
+        const user: TokenUser = Crypt.verityToken(jwt);
+        // const original:Base = await this.getbyid(id, collectionname, jwt);
         // if(!original) { throw Error("item not found!"); }
         // if(!this.hasAuthorization(user, original, "delete")) { throw new Error("Access denied, no authorization to DeleteOne"); }
-        var _query: any = {};
+        let _query: any = {};
         if (typeof id === 'string' || id instanceof String) {
             _query = { $and: [{ _id: id }, this.getbasequery(jwt, "_acl", [Rights.delete])] };
             //_query = { $and: [{ _id: { $ne: user._id } }, _query] };
@@ -1099,7 +1086,7 @@ export class DatabaseConnection {
         if (collectionname === "files") { collectionname = "fs.files"; }
         if (collectionname === "fs.files") {
             _query = { $and: [{ _id: safeObjectID(id) }, this.getbasequery(jwt, "metadata._acl", [Rights.delete])] };
-            var arr = await this.db.collection(collectionname).find(_query).toArray();
+            const arr = await this.db.collection(collectionname).find(_query).toArray();
             if (arr.length == 1) {
                 await this._DeleteFile(id);
                 return;
@@ -1109,16 +1096,16 @@ export class DatabaseConnection {
         }
 
 
-        // var arr = await this.db.collection(collectionname).find(_query).toArray();
+        // const arr = await this.db.collection(collectionname).find(_query).toArray();
 
         this._logger.debug("[" + user.username + "][" + collectionname + "] Deleting " + id + " in database");
-        var res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne(_query);
+        const res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne(_query);
 
-        // var res:DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne({_id:id});
-        // var res:DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne(id);
+        // const res:DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne({_id:id});
+        // const res:DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne(id);
         if (res.deletedCount === 0) { throw Error("item not found!"); } else {
             // try {
-            //     var item: any = { _id: id, };
+            //     const item: any = { _id: id, };
             //     item._modifiedby = user.name;
             //     item._modifiedbyid = user._id;
             //     item._modified = new Date(new Date().toISOString());
@@ -1151,7 +1138,7 @@ export class DatabaseConnection {
      */
     public encryptentity(item: Base): Base {
         if (item == null || item._encrypt === undefined || item._encrypt === null) { return item; }
-        var me: DatabaseConnection = this;
+        const me: DatabaseConnection = this;
         return (Object.keys(item).reduce((newObj, key) => {
             const value: any = item[key];
             try {
@@ -1159,7 +1146,7 @@ export class DatabaseConnection {
                     if (typeof value === "string") {
                         newObj[key] = Crypt.encrypt(value);
                     } else {
-                        var tempvalue: any = JSON.stringify(value);
+                        const tempvalue: any = JSON.stringify(value);
                         newObj[key] = Crypt.encrypt(tempvalue);
                     }
                 } else {
@@ -1179,7 +1166,7 @@ export class DatabaseConnection {
      */
     public decryptentity<T extends Base>(item: T): T {
         if (item == null || item._encrypt === undefined || item._encrypt === null) { return item; }
-        var me: DatabaseConnection = this;
+        const me: DatabaseConnection = this;
         return (Object.keys(item).reduce((newObj, key) => {
             const value: any = item[key];
             try {
@@ -1212,20 +1199,20 @@ export class DatabaseConnection {
         if (Config.api_bypass_perm_check) {
             return { _id: { $ne: "bum" } };
         }
-        var user: TokenUser = Crypt.verityToken(jwt);
+        const user: TokenUser = Crypt.verityToken(jwt);
         if (user._id === WellknownIds.root) {
             return { _id: { $ne: "bum" } };
         }
-        var isme: any[] = [];
+        const isme: any[] = [];
         isme.push({ _id: user._id });
-        for (var i: number = 0; i < bits.length; i++) {
+        for (let i: number = 0; i < bits.length; i++) {
             bits[i]--; // bitwize matching is from offset 0, when used on bindata
         }
         user.roles.forEach(role => {
             isme.push({ _id: role._id });
         });
-        var finalor: any[] = [];
-        var q = {};
+        const finalor: any[] = [];
+        const q = {};
         // todo: add check for deny's
         q[field] = {
             $elemMatch: {
@@ -1236,7 +1223,7 @@ export class DatabaseConnection {
         };
         finalor.push(q);
         if (field === "_acl") {
-            var q2 = {};
+            const q2 = {};
             q2["value._acl"] = {
                 $elemMatch: {
                     rights: { $bitsAllSet: bits },
@@ -1249,8 +1236,8 @@ export class DatabaseConnection {
         return { $or: finalor.concat() };
     }
     private async getbasequeryuserid(userid: string, field: string, bits: number[]): Promise<Object> {
-        var user = await DBHelper.FindByUsernameOrId(null, userid);
-        var jwt = Crypt.createToken(user, Config.shorttoken_expires_in);
+        const user = await DBHelper.FindByUsernameOrId(null, userid);
+        const jwt = Crypt.createToken(user, Config.shorttoken_expires_in);
         return this.getbasequery(jwt, field, bits);
     }
     /**
@@ -1270,10 +1257,8 @@ export class DatabaseConnection {
             }
         });
         if (item._acl.length === 0) {
-            item = Base.assign<T>(item);
-            item.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
-        } else {
-            item = Base.assign<T>(item);
+            item = item;
+            Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control]);
         }
         return item;
     }
@@ -1320,16 +1305,14 @@ export class DatabaseConnection {
                 item._acl = JSON.parse((item._acl as any));
             }
 
-            var a = item._acl.filter(x => x._id == user._id);
+            const a = item._acl.filter(x => x._id == user._id);
             if (a.length > 0) {
-                a[0] = Ace.assign(a[0]);
-                if (a[0].isBitSet(action)) return true;
+                if (Ace.isBitSet(a[0], action)) return true;
             }
-            for (var i = 0; i < user.roles.length; i++) {
-                a = item._acl.filter(x => x._id == user.roles[i]._id);
-                if (a.length > 0) {
-                    a[0] = Ace.assign(a[0]);
-                    if (a[0].isBitSet(action)) return true;
+            for (let i = 0; i < user.roles.length; i++) {
+                const b = item._acl.filter(x => x._id == user.roles[i]._id);
+                if (b.length > 0) {
+                    if (Ace.isBitSet(b[0], action)) return true;
                 }
             }
             return false;
@@ -1337,7 +1320,7 @@ export class DatabaseConnection {
         return true;
     }
     public static replaceAll(target, search, replacement) {
-        //var target = this;
+        //const target = this;
         // return target.replace(new RegExp(search, 'g'), replacement);
         return target.split(search).join(replacement);
     };
@@ -1347,29 +1330,29 @@ export class DatabaseConnection {
      * @returns void Clean object
      */
     public static traversejsonencode(o) {
-        var reISO = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(?:\.\d*))(?:Z|(\+|-)([\d|:]*))?$/;
-        var reMsAjax = /^\/Date\((d|-|.*)\)[\/|\\]$/;
+        const reISO = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(?:\.\d*))(?:Z|(\+|-)([\d|:]*))?$/;
+        const reMsAjax = /^\/Date\((d|-|.*)\)[\/|\\]$/;
 
-        var keys = Object.keys(o);
+        const keys = Object.keys(o);
         for (let i = 0; i < keys.length; i++) {
             let key = keys[i];
             let value = o[key];
             if (typeof value === 'string') {
-                var a = reISO.exec(value);
+                const a = reISO.exec(value);
                 if (a) {
                     o[key] = new Date(value);
                 } else {
-                    a = reMsAjax.exec(value);
-                    if (a) {
-                        var b = a[1].split(/[-+,.]/);
+                    const c = reMsAjax.exec(value);
+                    if (c) {
+                        const b = c[1].split(/[-+,.]/);
                         o[key] = new Date(b[0] ? +b[0] : 0 - +b[1]);
                     }
                 }
             }
             if (key.indexOf('.') > -1) {
                 try {
-                    // var newkey = key.replace(new RegExp('.', 'g'), '____');
-                    var newkey = this.replaceAll(key, ".", "____");
+                    // const newkey = key.replace(new RegExp('.', 'g'), '____');
+                    const newkey = this.replaceAll(key, ".", "____");
                     o[newkey] = o[key];
                     delete o[key];
                     key = newkey;
@@ -1393,13 +1376,13 @@ export class DatabaseConnection {
 
     }
     public static traversejsondecode(o) {
-        var keys = Object.keys(o);
+        const keys = Object.keys(o);
         for (let i = 0; i < keys.length; i++) {
             let key = keys[i];
             if (key.indexOf('____') > -1) {
                 try {
-                    // var newkey = key.replace(new RegExp('____', 'g'), '.');
-                    var newkey = this.replaceAll(key, "____", ".");
+                    // const newkey = key.replace(new RegExp('____', 'g'), '.');
+                    const newkey = this.replaceAll(key, "____", ".");
                     o[newkey] = o[key];
                     delete o[key];
                     key = newkey;
@@ -1425,16 +1408,16 @@ export class DatabaseConnection {
 
     async SaveUpdateDiff<T extends Base>(q: UpdateOneMessage, user: TokenUser) {
         try {
-            var _skip_array: string[] = Config.skip_history_collections.split(",");
-            var skip_array: string[] = [];
+            const _skip_array: string[] = Config.skip_history_collections.split(",");
+            const skip_array: string[] = [];
             _skip_array.forEach(x => skip_array.push(x.trim()));
             if (skip_array.indexOf(q.collectionname) > -1) { return 0; }
-            var res = await this.query<T>(q.query, null, 1, 0, null, q.collectionname, q.jwt);
-            var name: string = "unknown";
-            var _id: string = "";
+            const res = await this.query<T>(q.query, null, 1, 0, null, q.collectionname, q.jwt);
+            let name: string = "unknown";
+            let _id: string = "";
+            let _version = 1;
             if (res.length > 0) {
-                var _version = 1;
-                var original = res[0];
+                const original = res[0];
                 name = original.name;
                 _id = original._id;
                 delete original._modifiedby;
@@ -1444,7 +1427,7 @@ export class DatabaseConnection {
                     _version = original._version + 1;
                 }
             }
-            var updatehist = {
+            const updatehist = {
                 _modified: new Date(new Date().toISOString()),
                 _modifiedby: user.name,
                 _modifiedbyid: user._id,
@@ -1471,7 +1454,7 @@ export class DatabaseConnection {
         }
     }
     async SaveDiff(collectionname: string, original: any, item: any) {
-        var roundDown = function (num, precision): number {
+        const roundDown = function (num, precision): number {
             num = parseFloat(num);
             if (!precision) return num;
             return (Math.floor(num / precision) * precision);
@@ -1479,17 +1462,17 @@ export class DatabaseConnection {
         if (item._type == 'instance' && collectionname == 'workflows') return 0;
         if (item._type == 'instance' && collectionname == 'workflows') return 0;
         delete item._skiphistory;
-        var _modified = item._modified;
-        var _modifiedby = item._modifiedby;
-        var _modifiedbyid = item._modifiedbyid;
-        var _version = 0;
-        var _acl = item._acl;
-        var _type = item._type;
-        var reason = item._updatereason;
-        var lastseen = item.lastseen;
+        const _modified = item._modified;
+        const _modifiedby = item._modifiedby;
+        const _modifiedbyid = item._modifiedbyid;
+        let _version = 0;
+        const _acl = item._acl;
+        const _type = item._type;
+        const reason = item._updatereason;
+        const lastseen = item.lastseen;
         try {
-            var _skip_array: string[] = Config.skip_history_collections.split(",");
-            var skip_array: string[] = [];
+            const _skip_array: string[] = Config.skip_history_collections.split(",");
+            const skip_array: string[] = [];
             _skip_array.forEach(x => skip_array.push(x.trim()));
             if (skip_array.indexOf(collectionname) > -1) { return 0; }
 
@@ -1502,11 +1485,11 @@ export class DatabaseConnection {
                     _version = original._version + 1;
                 }
             }
-            var delta: any = null;
+            let delta: any = null;
             // for backward comp, we cannot assume all objects have an history
             // we create diff from version 0
-            // var delta_collections = Config.history_delta_collections.split(',');
-            // var full_collections = Config.history_full_collections.split(',');
+            // const delta_collections = Config.history_delta_collections.split(',');
+            // const full_collections = Config.history_full_collections.split(',');
             // if (delta_collections.indexOf(collectionname) == -1 && full_collections.indexOf(collectionname) == -1) return 0;
 
             item._version = _version;
@@ -1525,9 +1508,9 @@ export class DatabaseConnection {
                 });
                 delta = jsondiffpatch.diff(original, item);
                 if (delta == undefined || delta == null) return 0;
-                var keys = Object.keys(delta);
+                const keys = Object.keys(delta);
                 if (keys.length > 1) {
-                    var deltahist = {
+                    const deltahist = {
                         _acl: _acl,
                         _type: _type,
                         _modified: _modified,
@@ -1543,14 +1526,14 @@ export class DatabaseConnection {
                         _version: _version,
                         reason: reason
                     }
-                    var baseversion = roundDown(_version, Config.history_delta_count);
+                    const baseversion = roundDown(_version, Config.history_delta_count);
                     if (baseversion == _version) {
                         deltahist.item = original;
                     }
                     await this.db.collection(collectionname + '_hist').insertOne(deltahist);
                 }
             } else {
-                var fullhist = {
+                const fullhist = {
                     _acl: _acl,
                     _type: _type,
                     _modified: _modified,

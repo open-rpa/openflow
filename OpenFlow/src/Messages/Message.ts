@@ -18,8 +18,8 @@ import { amqpwrapper } from "../amqpwrapper";
 import { WebSocketServerClient } from "../WebSocketServerClient";
 import { DBHelper } from "../DBHelper";
 import { WebSocketServer } from "../WebSocketServer";
-var request = require("request");
-var got = require("got");
+const request = require("request");
+const got = require("got");
 
 
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
@@ -29,13 +29,13 @@ export class Message {
     public command: string;
     public data: string;
     public static fromcommand(command: string): Message {
-        var result: Message = new Message();
+        const result: Message = new Message();
         result.command = command;
         result.id = crypto.randomBytes(16).toString("hex");
         return result;
     }
     public static frommessage(msg: SocketMessage, data: string): Message {
-        var result: Message = new Message();
+        const result: Message = new Message();
         result.id = msg.id;
         result.replyto = msg.replyto;
         result.command = msg.command;
@@ -50,11 +50,11 @@ export class Message {
     public Process(cli: WebSocketServerClient): void {
         try {
             if (!NoderedUtil.IsNullEmpty(this.command)) { this.command = this.command.toLowerCase(); }
-            var command: string = this.command;
+            let command: string = this.command;
             if (this.command !== "ping" && this.command !== "pong") {
 
                 if (!NoderedUtil.IsNullEmpty(this.replyto)) {
-                    var qmsg: QueuedMessage = cli.messageQueue[this.replyto];
+                    const qmsg: QueuedMessage = cli.messageQueue[this.replyto];
                     if (!NoderedUtil.IsNullUndefinded(qmsg)) {
                         try {
                             qmsg.message = Object.assign(qmsg.message, JSON.parse(this.data));
@@ -207,7 +207,7 @@ export class Message {
     }
     async RegisterQueue(cli: WebSocketServerClient) {
         this.Reply();
-        var msg: RegisterQueueMessage
+        let msg: RegisterQueueMessage;
         try {
             msg = RegisterQueueMessage.assign(this.data);
             msg.queuename = await cli.CreateConsumer(msg.queuename);
@@ -227,14 +227,14 @@ export class Message {
     }
     async QueueMessage(cli: WebSocketServerClient) {
         this.Reply();
-        var msg: QueueMessage
+        let msg: QueueMessage
         try {
             msg = QueueMessage.assign(this.data);
             if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
             if (!NoderedUtil.IsNullUndefinded(msg.data)) {
                 if (typeof msg.data == 'string') {
                     try {
-                        var obj = JSON.parse(msg.data);
+                        const obj = JSON.parse(msg.data);
                         // if (NoderedUtil.IsNullUndefinded(obj.jwt)) {
                         //     obj.jwt = msg.jwt;
                         //     msg.data = JSON.stringify(obj);
@@ -245,15 +245,14 @@ export class Message {
                     msg.data.jwt = msg.jwt;
                 }
             }
-            var expiration: number = Config.amqp_default_expiration;
-            if (typeof msg.expiration == 'number') expiration = msg.expiration;
+            const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_default_expiration);
             if (typeof msg.data === 'string' || msg.data instanceof String) {
                 try {
                     msg.data = JSON.parse((msg.data as any));
                 } catch (error) {
                 }
             }
-            var sendthis: any = msg.data;
+            const sendthis: any = msg.data;
             try {
                 if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(msg.data.jwt)) {
                     msg.jwt = msg.data.jwt;
@@ -262,7 +261,7 @@ export class Message {
                     msg.jwt = cli.jwt;
                 }
                 if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
-                    var tuser = Crypt.verityToken(msg.jwt);
+                    const tuser = Crypt.verityToken(msg.jwt);
                     msg.user = tuser;
                 }
                 if (typeof sendthis === "object") {
@@ -273,8 +272,8 @@ export class Message {
                 cli._logger.error(error);
             }
             if (NoderedUtil.IsNullEmpty(msg.replyto)) {
-                // var sendthis = { data: msg.data, jwt: cli.jwt, user: cli.user };
-                var sendthis = msg.data;
+                // const sendthis = { data: msg.data, jwt: cli.jwt, user: cli.user };
+                const sendthis = msg.data;
                 await amqpwrapper.Instance().send("", msg.queuename, sendthis, expiration, msg.correlationId);
             } else {
                 if (msg.queuename === msg.replyto) {
@@ -282,10 +281,10 @@ export class Message {
                     // cli._logger.warn("Ignore reply to self queuename:" + msg.queuename + " correlationId:" + msg.correlationId);
                     // return
                 }
-                //var sendthis = { data: msg.data, jwt: cli.jwt, user: cli.user };
-                var sendthis = msg.data;
-                var result = await amqpwrapper.Instance().sendWithReplyTo("", msg.queuename, msg.replyto, sendthis, expiration, msg.correlationId);
-                // var result = await amqpwrapper.Instance().sendWithReply("", msg.queuename, sendthis, expiration, msg.correlationId);
+                //const sendthis = { data: msg.data, jwt: cli.jwt, user: cli.user };
+                const sendthis = msg.data;
+                const result = await amqpwrapper.Instance().sendWithReplyTo("", msg.queuename, msg.replyto, sendthis, expiration, msg.correlationId);
+                // const result = await amqpwrapper.Instance().sendWithReply("", msg.queuename, sendthis, expiration, msg.correlationId);
 
                 // this.replyto = msg.correlationId;
                 // await cli.sendQueueReply(msg, expiration);
@@ -306,7 +305,7 @@ export class Message {
     }
     async CloseQueue(cli: WebSocketServerClient) {
         this.Reply();
-        var msg: CloseQueueMessage
+        let msg: CloseQueueMessage
         try {
             msg = CloseQueueMessage.assign(this.data);
             await cli.CloseConsumer(msg.queuename);
@@ -341,11 +340,11 @@ export class Message {
     private static collectionCachetime: Date = new Date();
     private async ListCollections(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: ListCollectionsMessage
+        let msg: ListCollectionsMessage
         try {
             msg = ListCollectionsMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-            var d = new Date(Message.collectionCachetime.getTime() + 1000 * 60);
+            const d = new Date(Message.collectionCachetime.getTime() + 1000 * 60);
             if (d < new Date()) {
                 Message.collectionCache = {};
                 Message.collectionCachetime = new Date();
@@ -359,10 +358,10 @@ export class Message {
                 }
                 msg.result = msg.result.filter(x => x.name != "fs.chunks");
                 msg.result = msg.result.filter(x => x.name != "fs.files");
-                var result = [];
+                const result = [];
                 // filter out collections that are empty, or we don't have access too
-                for (var i = 0; i < msg.result.length; i++) {
-                    var q = await Config.db.query({}, null, 1, 0, null, msg.result[i].name, msg.jwt);
+                for (let i = 0; i < msg.result.length; i++) {
+                    const q = await Config.db.query({}, null, 1, 0, null, msg.result[i].name, msg.jwt);
                     if (q.length > 0) result.push(msg.result[i]);
                 }
                 if (result.filter(x => x.name == "entities").length == 0) {
@@ -387,7 +386,7 @@ export class Message {
     }
     private async DropCollection(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: DropCollectionMessage
+        let msg: DropCollectionMessage
         try {
             msg = DropCollectionMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
@@ -408,7 +407,7 @@ export class Message {
     }
     private async Query(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: QueryMessage
+        let msg: QueryMessage
         try {
             msg = QueryMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
@@ -433,7 +432,7 @@ export class Message {
     }
     private async GetDocumentVersion(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: GetDocumentVersionMessage
+        let msg: GetDocumentVersionMessage
         try {
             msg = GetDocumentVersionMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
@@ -459,7 +458,7 @@ export class Message {
 
     private async Aggregate(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: AggregateMessage
+        let msg: AggregateMessage
         try {
             msg = AggregateMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
@@ -479,7 +478,7 @@ export class Message {
     }
     private async UnWatch(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: WatchMessage
+        let msg: WatchMessage
         try {
             msg = WatchMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
@@ -505,7 +504,7 @@ export class Message {
     }
     private async Watch(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: WatchMessage
+        let msg: WatchMessage
         try {
             msg = WatchMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
@@ -530,7 +529,7 @@ export class Message {
     }
     private async InsertOne(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: InsertOneMessage
+        let msg: InsertOneMessage
         try {
             msg = InsertOneMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
@@ -558,7 +557,7 @@ export class Message {
     }
     private async UpdateOne(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: UpdateOneMessage
+        let msg: UpdateOneMessage
         try {
             msg = UpdateOneMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
@@ -581,7 +580,7 @@ export class Message {
     }
     private async UpdateMany(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: UpdateManyMessage
+        let msg: UpdateManyMessage
         try {
             msg = UpdateManyMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
@@ -605,7 +604,7 @@ export class Message {
 
     private async InsertOrUpdateOne(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: InsertOrUpdateOneMessage
+        let msg: InsertOrUpdateOneMessage
         try {
             msg = InsertOrUpdateOneMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
@@ -627,7 +626,7 @@ export class Message {
     }
     private async DeleteOne(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: DeleteOneMessage
+        let msg: DeleteOneMessage
         try {
             msg = DeleteOneMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
@@ -647,7 +646,7 @@ export class Message {
     }
     private async MapReduce(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: MapReduceMessage
+        let msg: MapReduceMessage
         try {
             msg = MapReduceMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
@@ -666,9 +665,9 @@ export class Message {
         this.Send(cli);
     }
     public static async DoSignin(cli: WebSocketServerClient, rawAssertion: string): Promise<TokenUser> {
-        var tuser: TokenUser;
-        var user: User;
-        var type: string = "jwtsignin";
+        let tuser: TokenUser;
+        let user: User;
+        let type: string = "jwtsignin";
         if (!NoderedUtil.IsNullEmpty(rawAssertion)) {
             type = "samltoken";
             user = await LoginProvider.validateToken(rawAssertion);
@@ -689,13 +688,13 @@ export class Message {
     }
     private async Signin(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: SigninMessage
-        var impostor: string = "";
+        let msg: SigninMessage
+        let impostor: string = "";
         try {
             msg = SigninMessage.assign(this.data);
-            var tuser: TokenUser = null;
-            var user: User = null;
-            var type: string = "local";
+            let tuser: TokenUser = null;
+            let user: User = null;
+            let type: string = "local";
             if (msg.jwt !== null && msg.jwt !== undefined) {
                 type = "jwtsignin";
                 tuser = Crypt.verityToken(msg.jwt);
@@ -708,7 +707,7 @@ export class Message {
                     tuser = TokenUser.From(user);
                 } else { // Autocreate user .... safe ?? we use this for autocreating nodered service accounts
                     if (Config.auto_create_users == true) {
-                        var jwt: string = Crypt.rootToken();
+                        const jwt: string = Crypt.rootToken();
                         user = await DBHelper.ensureUser(jwt, tuser.name, tuser.username, null, msg.password);
                         tuser = TokenUser.From(user);
                     } else {
@@ -746,7 +745,7 @@ export class Message {
                 cli._logger.debug("Disabled user " + tuser.username + " failed logging in using " + type);
             } else {
                 Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
-                var userid: string = user._id;
+                const userid: string = user._id;
                 if (msg.longtoken) {
                     msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
                 } else {
@@ -755,27 +754,27 @@ export class Message {
 
                 msg.user = tuser;
                 if (msg.impersonate !== undefined && msg.impersonate !== null && msg.impersonate !== "" && tuser._id != msg.impersonate) {
-                    var items = await Config.db.query({ _id: msg.impersonate }, null, 1, 0, null, "users", msg.jwt);
+                    const items = await Config.db.query({ _id: msg.impersonate }, null, 1, 0, null, "users", msg.jwt);
                     if (items.length == 0) {
-                        var impostors = await Config.db.query<User>({ _id: msg.impersonate }, null, 1, 0, null, "users", Crypt.rootToken());
-                        var impb: User = new User(); impb.name = "unknown"; impb._id = msg.impersonate;
-                        var imp: TokenUser = TokenUser.From(impb);
+                        const impostors = await Config.db.query<User>({ _id: msg.impersonate }, null, 1, 0, null, "users", Crypt.rootToken());
+                        const impb: User = new User(); impb.name = "unknown"; impb._id = msg.impersonate;
+                        let imp: TokenUser = TokenUser.From(impb);
                         if (impostors.length == 1) {
                             imp = TokenUser.From(impostors[0]);
                         }
                         Audit.ImpersonateFailed(imp, tuser, cli.clientagent, cli.clientversion);
                         throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " view and impersonating " + msg.impersonate);
                     }
-                    var tuserimpostor = tuser;
+                    const tuserimpostor = tuser;
                     user = User.assign(items[0] as User);
                     await DBHelper.DecorateWithRoles(user);
                     // Check we have update rights
                     try {
                         await DBHelper.Save(user, msg.jwt);
                     } catch (error) {
-                        var impostors = await Config.db.query<User>({ _id: msg.impersonate }, null, 1, 0, null, "users", Crypt.rootToken());
-                        var impb: User = new User(); impb.name = "unknown"; impb._id = msg.impersonate;
-                        var imp: TokenUser = TokenUser.From(impb);
+                        const impostors = await Config.db.query<User>({ _id: msg.impersonate }, null, 1, 0, null, "users", Crypt.rootToken());
+                        const impb: User = new User(); impb.name = "unknown"; impb._id = msg.impersonate;
+                        let imp: TokenUser = TokenUser.From(impb);
                         if (impostors.length == 1) {
                             imp = TokenUser.From(impostors[0]);
                         }
@@ -848,8 +847,8 @@ export class Message {
     }
     private async RegisterUser(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: RegisterUserMessage;
-        var user: User;
+        let msg: RegisterUserMessage;
+        let user: User;
         try {
             msg = RegisterUserMessage.assign(this.data);
             if (msg.name == null || msg.name == undefined || msg.name == "") { throw new Error("Name cannot be null"); }
@@ -857,19 +856,18 @@ export class Message {
             if (msg.password == null || msg.password == undefined || msg.password == "") { throw new Error("Password cannot be null"); }
             user = await DBHelper.FindByUsername(msg.username);
             if (user !== null && user !== undefined) { throw new Error("Illegal username"); }
-            var jwt: string = Crypt.rootToken();
-            user = await DBHelper.ensureUser(jwt, msg.name, msg.username, null, msg.password);
+            user = await DBHelper.ensureUser(Crypt.rootToken(), msg.name, msg.username, null, msg.password);
             msg.user = TokenUser.From(user);
 
-            jwt = Crypt.createToken(msg.user, Config.shorttoken_expires_in);
-            var name = user.username;
+            const jwt: string = Crypt.createToken(msg.user, Config.shorttoken_expires_in);
+            let name = user.username;
             name = name.split("@").join("").split(".").join("");
             name = name.toLowerCase();
 
             cli._logger.debug("[" + user.username + "] ensure nodered role " + name + "noderedadmins");
-            var noderedadmins = await DBHelper.EnsureRole(jwt, name + "noderedadmins", null);
-            noderedadmins.addRight(user._id, user.username, [Rights.full_control]);
-            noderedadmins.removeRight(user._id, [Rights.delete]);
+            const noderedadmins = await DBHelper.EnsureRole(jwt, name + "noderedadmins", null);
+            Base.addRight(noderedadmins, user._id, user.username, [Rights.full_control]);
+            Base.removeRight(noderedadmins, user._id, [Rights.delete]);
             noderedadmins.AddMember(user);
             cli._logger.debug("[" + user.username + "] update nodered role " + name + "noderedadmins");
             await DBHelper.Save(noderedadmins, jwt);
@@ -889,9 +887,9 @@ export class Message {
     }
 
     private async GetInstanceName(_id: string, myid: string, myusername: string, jwt: string): Promise<string> {
-        var name: string = "";
+        let name: string = "";
         if (_id !== null && _id !== undefined && _id !== "" && _id != myid) {
-            var res = await Config.db.query<User>({ _id: _id }, null, 1, 0, null, "users", jwt);
+            const res = await Config.db.query<User>({ _id: _id }, null, 1, 0, null, "users", jwt);
             if (res.length == 0) {
                 throw new Error("Unknown userid " + _id);
             }
@@ -905,7 +903,7 @@ export class Message {
     }
     private async EnsureNoderedInstance(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: EnsureNoderedInstanceMessage;
+        let msg: EnsureNoderedInstanceMessage;
         try {
             msg = EnsureNoderedInstanceMessage.assign(this.data);
             await this._EnsureNoderedInstance(cli, msg._id, false);
@@ -924,41 +922,41 @@ export class Message {
         this.Send(cli);
     }
     private async _EnsureNoderedInstance(cli: WebSocketServerClient, _id: string, skipcreate: boolean): Promise<void> {
-        var user: NoderedUser;
+        let user: NoderedUser;
         cli._logger.debug("[" + cli.user.username + "] EnsureNoderedInstance");
         if (_id === null || _id === undefined || _id === "") _id = cli.user._id;
-        var name = await this.GetInstanceName(_id, cli.user._id, cli.user.username, cli.jwt);
+        const name = await this.GetInstanceName(_id, cli.user._id, cli.user.username, cli.jwt);
 
-        var users = await Config.db.query<NoderedUser>({ _id: _id }, null, 1, 0, null, "users", cli.jwt);
+        const users = await Config.db.query<NoderedUser>({ _id: _id }, null, 1, 0, null, "users", cli.jwt);
         if (users.length == 0) {
             throw new Error("Unknown userid " + _id);
         }
         user = NoderedUser.assign(users[0]);
-        var rootjwt = Crypt.rootToken();
+        const rootjwt = Crypt.rootToken();
 
-        var namespace = Config.namespace;
-        var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
+        const namespace = Config.namespace;
+        const hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
-        var nodereduser = await DBHelper.FindById(_id, cli.jwt);
-        var tuser: TokenUser = TokenUser.From(nodereduser);
-        var nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
+        const nodereduser = await DBHelper.FindById(_id, cli.jwt);
+        const tuser: TokenUser = TokenUser.From(nodereduser);
+        const nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
 
         // if (Config.force_queue_prefix) {
         //     user.nodered.queue_prefix = nodereduser.username;
         // }
 
         cli._logger.debug("[" + cli.user.username + "] ensure nodered role " + name + "noderedadmins");
-        var noderedadmins = await DBHelper.EnsureRole(cli.jwt, name + "noderedadmins", null);
-        noderedadmins.addRight(nodereduser._id, nodereduser.username, [Rights.full_control]);
-        noderedadmins.removeRight(nodereduser._id, [Rights.delete]);
-        noderedadmins.addRight(cli.user._id, cli.user.username, [Rights.full_control]);
-        noderedadmins.removeRight(cli.user._id, [Rights.delete]);
+        const noderedadmins = await DBHelper.EnsureRole(cli.jwt, name + "noderedadmins", null);
+        Base.addRight(noderedadmins, nodereduser._id, nodereduser.username, [Rights.full_control]);
+        Base.removeRight(noderedadmins, nodereduser._id, [Rights.delete]);
+        Base.addRight(noderedadmins, cli.user._id, cli.user.username, [Rights.full_control]);
+        Base.removeRight(noderedadmins, cli.user._id, [Rights.delete]);
         noderedadmins.AddMember(nodereduser);
         cli._logger.debug("[" + cli.user.username + "] update nodered role " + name + "noderedadmins");
         await DBHelper.Save(noderedadmins, cli.jwt);
 
-        var resources = new V1ResourceRequirements();
-        var hasbilling: boolean = false;
+        const resources = new V1ResourceRequirements();
+        let hasbilling: boolean = false;
         resources.limits = {};
         resources.requests = {};
         resources.requests.memory = "70Mi";
@@ -982,9 +980,9 @@ export class Message {
                     resources.requests.cpu = user.nodered.resources.requests.cpu;
                 }
             } else {
-                var billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
+                const billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
                 if (billings.length > 0) {
-                    var billing: Billing = billings[0];
+                    const billing: Billing = billings[0];
                     resources.limits.memory = billing.memory;
                     if (!NoderedUtil.IsNullEmpty(billing.openflowuserplan)) {
                         hasbilling = true;
@@ -994,9 +992,9 @@ export class Message {
             }
         } else {
             if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
-                var billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
+                const billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
                 if (billings.length > 0) {
-                    var billing: Billing = billings[0];
+                    const billing: Billing = billings[0];
                     if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.limits.memory = billing.memory;
                     if (!NoderedUtil.IsNullEmpty(billing.openflowuserplan)) {
                         hasbilling = true;
@@ -1020,14 +1018,14 @@ export class Message {
         }
 
         cli._logger.debug("[" + cli.user.username + "] GetDeployments");
-        var deployment: V1Deployment = await KubeUtil.instance().GetDeployment(namespace, name);
+        const deployment: V1Deployment = await KubeUtil.instance().GetDeployment(namespace, name);
         if (deployment == null) {
             if (skipcreate) return;
             cli._logger.debug("[" + cli.user.username + "] Deployment " + name + " not found in " + namespace + " so creating it");
             // metadata: { name: name, namespace: namespace, app: name, labels: { billed: hasbilling.toString(), userid: _id } },
             // metadata: { labels: { name: name, app: name, billed: hasbilling.toString(), userid: _id } },
 
-            var _deployment = {
+            const _deployment = {
                 metadata: { name: name, namespace: namespace, labels: { billed: hasbilling.toString(), userid: _id, app: name } },
                 spec: {
                     replicas: 1,
@@ -1083,7 +1081,7 @@ export class Message {
             }
         } else {
             deployment.spec.template.spec.containers[0].resources = resources;
-            var f = deployment.spec.template.spec.containers[0].env.filter(x => x.name == "api_allow_anonymous");
+            const f = deployment.spec.template.spec.containers[0].env.filter(x => x.name == "api_allow_anonymous");
             if (f.length > 0) {
                 f[0].value = user.nodered.api_allow_anonymous.toString();
             }
@@ -1091,7 +1089,7 @@ export class Message {
             deployment.spec.template.metadata.labels.billed = hasbilling.toString();
             deployment.metadata.labels.userid = _id;
             deployment.spec.template.metadata.labels.userid = _id;
-            var image: string = "unknown";
+            let image: string = "unknown";
             try {
                 image = deployment.spec.template.spec.containers[0].image;
             } catch (error) {
@@ -1112,10 +1110,10 @@ export class Message {
         }
 
         cli._logger.debug("[" + cli.user.username + "] GetService");
-        var service = await KubeUtil.instance().GetService(namespace, name);
+        const service = await KubeUtil.instance().GetService(namespace, name);
         if (service == null) {
             cli._logger.debug("[" + cli.user.username + "] Service " + name + " not found in " + namespace + " creating it");
-            var _service = {
+            const _service = {
                 metadata: { name: name, namespace: namespace },
                 spec: {
                     type: "NodePort",
@@ -1129,10 +1127,10 @@ export class Message {
             await KubeUtil.instance().CoreV1Api.createNamespacedService(namespace, _service);
         }
         cli._logger.debug("[" + cli.user.username + "] GetIngress useringress");
-        var ingress = await KubeUtil.instance().GetIngress(namespace, "useringress");
+        const ingress = await KubeUtil.instance().GetIngress(namespace, "useringress");
         if (ingress !== null) {
-            var rule = null;
-            for (var i = 0; i < ingress.spec.rules.length; i++) {
+            let rule = null;
+            for (let i = 0; i < ingress.spec.rules.length; i++) {
                 if (ingress.spec.rules[i].host == hostname) {
                     rule = ingress.spec.rules[i];
                 }
@@ -1163,14 +1161,14 @@ export class Message {
         }
     }
     private async _DeleteNoderedInstance(_id: string, myuserid: string, myusername: string, jwt: string): Promise<void> {
-        var name = await this.GetInstanceName(_id, myuserid, myusername, jwt);
-        var user = Crypt.verityToken(jwt);
-        var namespace = Config.namespace;
-        var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
+        const name = await this.GetInstanceName(_id, myuserid, myusername, jwt);
+        const user = Crypt.verityToken(jwt);
+        const namespace = Config.namespace;
+        const hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
-        var deployment = await KubeUtil.instance().GetDeployment(namespace, name);
+        const deployment = await KubeUtil.instance().GetDeployment(namespace, name);
         if (deployment != null) {
-            var image: string = "unknown";
+            let image: string = "unknown";
             try {
                 image = deployment.spec.template.spec.containers[0].image;
             } catch (error) {
@@ -1184,18 +1182,18 @@ export class Message {
                 throw error;
             }
         }
-        var service = await KubeUtil.instance().GetService(namespace, name);
+        const service = await KubeUtil.instance().GetService(namespace, name);
         if (service != null) {
             await KubeUtil.instance().CoreV1Api.deleteNamespacedService(name, namespace);
         }
-        var replicaset = await KubeUtil.instance().GetReplicaset(namespace, "app", name);
+        const replicaset = await KubeUtil.instance().GetReplicaset(namespace, "app", name);
         if (replicaset !== null) {
             KubeUtil.instance().AppsV1Api.deleteNamespacedReplicaSet(replicaset.metadata.name, namespace);
         }
-        var ingress = await KubeUtil.instance().GetIngress(namespace, "useringress");
+        const ingress = await KubeUtil.instance().GetIngress(namespace, "useringress");
         if (ingress !== null) {
-            var updated = false;
-            for (var i = ingress.spec.rules.length - 1; i >= 0; i--) {
+            let updated = false;
+            for (let i = ingress.spec.rules.length - 1; i >= 0; i--) {
                 if (ingress.spec.rules[i].host == hostname) {
                     ingress.spec.rules.splice(i, 1);
                     updated = true;
@@ -1211,8 +1209,8 @@ export class Message {
     }
     private async DeleteNoderedInstance(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: DeleteNoderedInstanceMessage;
-        var user: User;
+        let msg: DeleteNoderedInstanceMessage;
+        let user: User;
         try {
             msg = DeleteNoderedInstanceMessage.assign(this.data);
             cli._logger.debug("[" + cli.user.username + "] DeleteNoderedInstance");
@@ -1235,24 +1233,24 @@ export class Message {
     }
     private async DeleteNoderedPod(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: DeleteNoderedPodMessage;
-        var user: User;
+        let msg: DeleteNoderedPodMessage;
+        let user: User;
         try {
             cli._logger.debug("[" + cli.user.username + "] DeleteNoderedInstance");
             msg = DeleteNoderedPodMessage.assign(this.data);
-            var namespace = Config.namespace;
-            var list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
+            const namespace = Config.namespace;
+            const list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
+            let image: string = "unknown";
             if (list.body.items.length > 0) {
-                for (var i = 0; i < list.body.items.length; i++) {
-                    var item = list.body.items[i];
+                for (let i = 0; i < list.body.items.length; i++) {
+                    const item = list.body.items[i];
                     if (item.metadata.name == msg.name) {
-                        var image: string = "unknown";
                         try {
                             image = item.spec.containers[0].image;
                         } catch (error) {
 
                         }
-                        var name: string = "unknown";
+                        let name: string = "unknown";
                         try {
                             name = item.metadata.labels.name;
                         } catch (error) {
@@ -1287,20 +1285,20 @@ export class Message {
     }
     private async RestartNoderedInstance(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: RestartNoderedInstanceMessage;
+        let msg: RestartNoderedInstanceMessage;
         try {
             cli._logger.debug("[" + cli.user.username + "] RestartNoderedInstance");
             msg = RestartNoderedInstanceMessage.assign(this.data);
-            var name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt);
-            var namespace = Config.namespace;
-            // var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
+            const name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt);
+            const namespace = Config.namespace;
+            // const hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
-            var list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
-            for (var i = 0; i < list.body.items.length; i++) {
-                var item = list.body.items[i];
+            const list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
+            for (let i = 0; i < list.body.items.length; i++) {
+                const item = list.body.items[i];
                 // if (item.metadata.labels.app === name || item.metadata.labels.name === name) {
                 if (item.metadata.labels.app === name) {
-                    var image: string = "unknown";
+                    let image: string = "unknown";
                     try {
                         image = item.spec.containers[0].image;
                     } catch (error) {
@@ -1330,33 +1328,33 @@ export class Message {
     }
     private async GetNoderedInstance(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: GetNoderedInstanceMessage;
+        let msg: GetNoderedInstanceMessage;
         try {
             cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance");
             msg = GetNoderedInstanceMessage.assign(this.data);
-            var name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt);
-            var namespace = Config.namespace;
-            // var hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
+            const name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt);
+            const namespace = Config.namespace;
+            // const hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
-            var list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
+            const list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
 
-            var found: any = null;
             msg.result = null;
             msg.results = [];
-            var rootjwt = Crypt.rootToken();
+            const rootjwt = Crypt.rootToken();
             if (list.body.items.length > 0) {
-                for (var i = 0; i < list.body.items.length; i++) {
-                    var item = list.body.items[i];
+                let found: any = null;
+                for (let i = 0; i < list.body.items.length; i++) {
+                    const item = list.body.items[i];
                     if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
-                        var itemname = item.metadata.name;
-                        var create = item.metadata.creationTimestamp;
-                        var billed = item.metadata.labels.billed;
-                        var image = item.spec.containers[0].image
-                        var userid = item.metadata.labels.userid;
-                        var date = new Date();
-                        var a: number = (date as any) - (create as any);
-                        // var diffminutes = a / (1000 * 60);
-                        var diffhours = a / (1000 * 60 * 60);
+                        const itemname = item.metadata.name;
+                        const create = item.metadata.creationTimestamp;
+                        const billed = item.metadata.labels.billed;
+                        const image = item.spec.containers[0].image
+                        const userid = item.metadata.labels.userid;
+                        const date = new Date();
+                        const a: number = (date as any) - (create as any);
+                        // const diffminutes = a / (1000 * 60);
+                        const diffhours = a / (1000 * 60 * 60);
                         if (image.indexOf("openflownodered") > 0 && !NoderedUtil.IsNullEmpty(userid)) {
                             try {
                                 if (billed != "true" && diffhours > 24) {
@@ -1373,7 +1371,6 @@ export class Message {
                             }
                         }
                     }
-
                     if (!NoderedUtil.IsNullEmpty(msg.name) && item.metadata.name == msg.name && cli.user.HasRoleName("admins")) {
                         found = item;
                         msg.results.push(item);
@@ -1406,19 +1403,19 @@ export class Message {
     }
     private async GetNoderedInstanceLog(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: GetNoderedInstanceLogMessage;
+        let msg: GetNoderedInstanceLogMessage;
         try {
             cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance");
             msg = GetNoderedInstanceLogMessage.assign(this.data);
-            var name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt);
-            var namespace = Config.namespace;
+            const name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt);
+            const namespace = Config.namespace;
 
-            var list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
+            const list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
 
+            let image: string = "unknown";
             if (list.body.items.length > 0) {
-                for (var i = 0; i < list.body.items.length; i++) {
-                    var item = list.body.items[i];
-                    var image: string = "unknown";
+                for (let i = 0; i < list.body.items.length; i++) {
+                    const item = list.body.items[i];
                     try {
                         image = item.spec.containers[0].image;
                     } catch (error) {
@@ -1426,12 +1423,12 @@ export class Message {
                     }
                     if (!NoderedUtil.IsNullEmpty(msg.name) && item.metadata.name == msg.name && cli.user.HasRoleName("admins")) {
                         cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance:" + name + " found one as " + item.metadata.name);
-                        var obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
+                        const obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
                         msg.result = obj.body;
                         Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name);
                     } else if (item.metadata.labels.app === name) {
                         cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance:" + name + " found one as " + item.metadata.name);
-                        var obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
+                        const obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
                         msg.result = obj.body;
                         Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name);
                     }
@@ -1470,7 +1467,7 @@ export class Message {
     private async _SaveFile(stream: Stream, filename: string, contentType: string, metadata: Base): Promise<string> {
         return new Promise<string>(async (resolve, reject) => {
             try {
-                var bucket = new GridFSBucket(Config.db.db);
+                const bucket = new GridFSBucket(Config.db.db);
                 let uploadStream = bucket.openUploadStream(filename, { contentType: contentType, metadata: metadata });
                 let id = uploadStream.id;
                 stream.pipe(uploadStream);
@@ -1487,7 +1484,7 @@ export class Message {
     }
     private async SaveFile(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: SaveFileMessage
+        let msg: SaveFileMessage
         try {
             msg = SaveFileMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
@@ -1511,8 +1508,8 @@ export class Message {
             (msg.metadata as any).path = path.dirname(msg.filename);
             if ((msg.metadata as any).path == ".") (msg.metadata as any).path = "";
 
-            var buf = Buffer.from(msg.file, 'base64');
-            var readable = new Readable();
+            const buf = Buffer.from(msg.file, 'base64');
+            const readable = new Readable();
             readable._read = () => { }; // _read is required but you can noop it
             readable.push(buf);
             readable.push(null);
@@ -1521,9 +1518,9 @@ export class Message {
             msg.metadata = Base.assign(msg.metadata);
             if (NoderedUtil.IsNullUndefinded(msg.metadata._acl)) {
                 msg.metadata._acl = [];
-                msg.metadata.addRight(WellknownIds.filestore_users, "filestore users", [Rights.read]);
+                Base.addRight(msg.metadata, WellknownIds.filestore_users, "filestore users", [Rights.read]);
             }
-            var user: TokenUser = Crypt.verityToken(msg.jwt);
+            const user: TokenUser = Crypt.verityToken(msg.jwt);
             msg.metadata._createdby = user.name;
             msg.metadata._createdbyid = user._id;
             msg.metadata._created = new Date(new Date().toISOString());
@@ -1533,18 +1530,14 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.metadata.name)) {
                 msg.metadata.name = msg.filename;
             }
-            var hasUser: any = msg.metadata._acl.find(e => e._id === user._id);
+            let hasUser: any = msg.metadata._acl.find(e => e._id === user._id);
             if ((hasUser === null || hasUser === undefined)) {
-                msg.metadata.addRight(user._id, user.name, [Rights.full_control]);
+                Base.addRight(msg.metadata, user._id, user.name, [Rights.full_control]);
             }
             hasUser = msg.metadata._acl.find(e => e._id === WellknownIds.filestore_admins);
             if ((hasUser === null || hasUser === undefined)) {
-                msg.metadata.addRight(WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
+                Base.addRight(msg.metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
             }
-            // hasUser = msg.metadata._acl.find(e => e._id === WellknownIds.filestore_users);
-            // if ((hasUser === null || hasUser === undefined)) {
-            //     msg.metadata.addRight(WellknownIds.filestore_users, "filestore users", [Rights.read]);
-            // }
             msg.metadata = Config.db.ensureResource(msg.metadata);
             if (!Config.db.hasAuthorization(user, msg.metadata, Rights.create)) { throw new Error("Access denied, no authorization to save file"); }
             msg.id = await this._SaveFile(readable, msg.filename, msg.mimeType, msg.metadata);
@@ -1564,9 +1557,9 @@ export class Message {
     private async _GetFile(id: string): Promise<string> {
         return new Promise<string>(async (resolve, reject) => {
             try {
-                var bucket = new GridFSBucket(Config.db.db);
+                const bucket = new GridFSBucket(Config.db.db);
                 let downloadStream = bucket.openDownloadStream(safeObjectID(id));
-                var bufs = [];
+                const bufs = [];
                 downloadStream.on('data', (chunk) => {
                     bufs.push(chunk);
                 });
@@ -1575,13 +1568,13 @@ export class Message {
                 });
                 downloadStream.on('end', () => {
 
-                    // var contentLength = bufs.reduce(function(sum, buf){
+                    // const contentLength = bufs.reduce(function(sum, buf){
                     //     return sum + buf.length;
                     //   }, 0);
-                    var buffer = Buffer.concat(bufs);
+                    const buffer = Buffer.concat(bufs);
                     //writeFileSync('/home/allan/Documents/data.png', result.body);
                     //result.body = Buffer.from(result.body).toString('base64');
-                    var result = buffer.toString('base64');
+                    const result = buffer.toString('base64');
                     resolve(result);
                 });
             } catch (err) {
@@ -1591,17 +1584,17 @@ export class Message {
     }
     private async GetFile(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: GetFileMessage
+        let msg: GetFileMessage
         try {
             msg = SaveFileMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (!NoderedUtil.IsNullEmpty(msg.id)) {
-                var rows = await Config.db.query({ _id: safeObjectID(msg.id) }, null, 1, 0, null, "files", msg.jwt);
+                const rows = await Config.db.query({ _id: safeObjectID(msg.id) }, null, 1, 0, null, "files", msg.jwt);
                 if (rows.length == 0) { throw new Error("Not found"); }
                 msg.metadata = (rows[0] as any).metadata
                 msg.mimeType = (rows[0] as any).contentType;
             } else if (!NoderedUtil.IsNullEmpty(msg.filename)) {
-                var rows = await Config.db.query({ "filename": msg.filename }, null, 1, 0, { uploadDate: -1 }, "fs.files", msg.jwt);
+                const rows = await Config.db.query({ "filename": msg.filename }, null, 1, 0, { uploadDate: -1 }, "fs.files", msg.jwt);
                 if (rows.length == 0) { throw new Error("Not found"); }
                 msg.id = rows[0]._id;
                 msg.metadata = (rows[0] as any).metadata
@@ -1641,17 +1634,17 @@ export class Message {
     }
     private async UpdateFile(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        var msg: UpdateFileMessage
+        let msg: UpdateFileMessage
         try {
             msg = UpdateFileMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
 
-            var bucket = new GridFSBucket(Config.db.db);
-            var q = { $or: [{ _id: msg.id }, { _id: safeObjectID(msg.id) }] };
-            var files = bucket.find(q);
-            var count = await this.filescount(files);
+            const bucket = new GridFSBucket(Config.db.db);
+            const q = { $or: [{ _id: msg.id }, { _id: safeObjectID(msg.id) }] };
+            const files = bucket.find(q);
+            const count = await this.filescount(files);
             if (count == 0) { throw new Error("Not found"); }
-            var file = await this.filesnext(files);
+            const file = await this.filesnext(files);
             msg.metadata._createdby = file.metadata._createdby;
             msg.metadata._createdbyid = file.metadata._createdbyid;
             msg.metadata._created = file.metadata._created;
@@ -1659,24 +1652,24 @@ export class Message {
             (msg.metadata as any).filename = file.metadata.filename;
             (msg.metadata as any).path = file.metadata.path;
 
-            var user: TokenUser = Crypt.verityToken(msg.jwt);
+            const user: TokenUser = Crypt.verityToken(msg.jwt);
             msg.metadata._modifiedby = user.name;
             msg.metadata._modifiedbyid = user._id;
             msg.metadata._modified = new Date(new Date().toISOString());;
 
             msg.metadata = Base.assign(msg.metadata);
 
-            var hasUser: any = msg.metadata._acl.find(e => e._id === user._id);
+            const hasUser: any = msg.metadata._acl.find(e => e._id === user._id);
             if ((hasUser === null || hasUser === undefined)) {
-                msg.metadata.addRight(user._id, user.name, [Rights.full_control]);
+                Base.addRight(msg.metadata, user._id, user.name, [Rights.full_control]);
             }
-            msg.metadata.addRight(WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
+            Base.addRight(msg.metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
             if (!Config.db.hasAuthorization(user, msg.metadata, Rights.update)) { throw new Error("Access denied, no authorization to update file"); }
 
             msg.metadata = Config.db.ensureResource(msg.metadata);
-            var fsc = Config.db.db.collection("fs.files");
+            const fsc = Config.db.db.collection("fs.files");
             DatabaseConnection.traversejsonencode(msg.metadata);
-            var res = await fsc.updateOne(q, { $set: { metadata: msg.metadata } });
+            const res = await fsc.updateOne(q, { $set: { metadata: msg.metadata } });
 
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -1694,7 +1687,7 @@ export class Message {
 
     async CreateWorkflowInstance(cli: WebSocketServerClient) {
         this.Reply();
-        var msg: CreateWorkflowInstanceMessage
+        let msg: CreateWorkflowInstanceMessage
         try {
             msg = CreateWorkflowInstanceMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.workflowid) && NoderedUtil.IsNullEmpty(msg.queue)) throw new Error("workflowid or queue is mandatory");
@@ -1702,17 +1695,17 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.targetid)) throw new Error("targetid is mandatory");
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
 
-            var tuser = Crypt.verityToken(msg.jwt);
+            const tuser = Crypt.verityToken(msg.jwt);
             msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
 
             // if (cli.consumers.length == 0) {
             //     await cli.CreateConsumer("nodered." + Math.random().toString(36).substr(2, 9));
             //     // throw new Error("Client not connected to any message queues");
             // }
+            let workflow: any = null;
             if (NoderedUtil.IsNullEmpty(msg.queue)) {
-                var workflow: any = null;
-                var user: any = null;
-                var res = await Config.db.query({ "_id": msg.workflowid }, null, 1, 0, null, "workflow", msg.jwt);
+                const user: any = null;
+                const res = await Config.db.query({ "_id": msg.workflowid }, null, 1, 0, null, "workflow", msg.jwt);
                 if (res.length != 1) throw new Error("Unknown workflow id " + msg.workflowid);
                 workflow = res[0];
                 msg.queue = workflow.queue;
@@ -1724,7 +1717,7 @@ export class Message {
                 throw new Error("Cannot reply to self queuename:" + msg.queue + " correlationId:" + msg.resultqueue);
             }
 
-            res = await Config.db.query({ "_id": msg.targetid }, null, 1, 0, null, "users", msg.jwt);
+            const res = await Config.db.query({ "_id": msg.targetid }, null, 1, 0, null, "users", msg.jwt);
             if (res.length != 1) throw new Error("Unknown target id " + msg.targetid);
             workflow = res[0];
             msg.state = "new";
@@ -1735,18 +1728,18 @@ export class Message {
                 msg.correlationId = Math.random().toString(36).substr(2, 9);
             }
 
-            var _data = Base.assign<Base>(msg as any);
-            _data.addRight(msg.targetid, "targetid", [-1]);
-            _data.addRight(cli.user._id, cli.user.name, [-1]);
-            _data.addRight(tuser._id, tuser.name, [-1]);
+            const _data = Base.assign<Base>(msg as any);
+            Base.addRight(_data, msg.targetid, "targetid", [-1]);
+            Base.addRight(_data, cli.user._id, cli.user.name, [-1]);
+            Base.addRight(_data, tuser._id, tuser.name, [-1]);
             _data._type = "instance";
             _data.name = msg.name;
 
-            var res2 = await Config.db.InsertOne(_data, "workflow_instances", 1, true, msg.jwt);
+            const res2 = await Config.db.InsertOne(_data, "workflow_instances", 1, true, msg.jwt);
             msg.newinstanceid = res2._id;
 
             if (msg.initialrun) {
-                var message = { _id: res2._id, __jwt: msg.jwt, __user: tuser };
+                const message = { _id: res2._id, __jwt: msg.jwt, __user: tuser };
                 amqpwrapper.Instance().sendWithReplyTo("", msg.queue, msg.resultqueue, message, Config.amqp_default_expiration, msg.correlationId);
                 // cli.consumers[0].sendToQueueWithReply(msg.queue, msg.resultqueue, msg.correlationId, message, (60 * (60 * 1000))); // 1 hour
             }
@@ -1813,25 +1806,25 @@ export class Message {
     }
     async StripeCancelPlan(cli: WebSocketServerClient) {
         this.Reply();
-        var msg: StripeCancelPlanMessage;
-        var rootjwt = Crypt.rootToken();
+        let msg: StripeCancelPlanMessage;
+        const rootjwt = Crypt.rootToken();
         try {
             msg = StripeAddPlanMessage.assign(this.data);
             if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
             if (NoderedUtil.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
 
-            var billings = await Config.db.query<Billing>({ userid: msg.userid, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
+            const billings = await Config.db.query<Billing>({ userid: msg.userid, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
             if (billings.length == 0) throw new Error("Need billing info and a stripe customer in order to cancel plan");
-            var billing: Billing = billings[0];
+            const billing: Billing = billings[0];
             if (NoderedUtil.IsNullEmpty(billing.stripeid)) throw new Error("Need a stripe customer in order to cancel plan");
-            var customer: stripe_customer = await this.Stripe<stripe_customer>("GET", "customers", billing.stripeid, null, null);
+            const customer: stripe_customer = await this.Stripe<stripe_customer>("GET", "customers", billing.stripeid, null, null);
             if (customer == null) throw new Error("Failed locating stripe customer at stribe");
 
 
-            var subscription: stripe_subscription = null;
-            var subscriptionitem: stripe_base = null; // stripe_subscription_item
-            var hasit = customer.subscriptions.data.filter(s => {
-                var arr = s.items.data.filter(y => y.plan.id == msg.planid);
+            let subscription: stripe_subscription = null;
+            let subscriptionitem: stripe_base = null; // stripe_subscription_item
+            let hasit = customer.subscriptions.data.filter(s => {
+                const arr = s.items.data.filter(y => y.plan.id == msg.planid);
                 if (arr.length > 0) {
                     subscription = s;
                     subscriptionitem = arr[0];
@@ -1840,24 +1833,24 @@ export class Message {
             });
 
 
-            var hasit = customer.subscriptions.data.filter(s => {
-                var arr = s.items.data.filter(y => y.plan.id == msg.planid);
+            hasit = customer.subscriptions.data.filter(s => {
+                const arr = s.items.data.filter(y => y.plan.id == msg.planid);
                 return arr.length > 0;
             });
             if (hasit.length == 0) throw new Error("Customer does not have this plan");
 
             // if (hasit[0].items.total_count == 1 || hasit[0].items.total_count == 2) {
-            //     var payload: any = null;
+            //     const payload: any = null;
             //     if (hasit[0].items.total_count == 2) { // support agrement, so bill used  hours right away
             //         // payload = { invoice_now: true };
             //         // payload = { prorate: true }
             //     }
-            //     var res = await this.Stripe("DELETE", "subscriptions", subscription.id, payload, customer.id);
+            //     const res = await this.Stripe("DELETE", "subscriptions", subscription.id, payload, customer.id);
             // } else {
-            //     var res = await this.Stripe("DELETE", "subscription_items", subscriptionitem.id, null, customer.id);
+            //     const res = await this.Stripe("DELETE", "subscription_items", subscriptionitem.id, null, customer.id);
             // }
-            var payload: any = { quantity: 0 };
-            var res = await this.Stripe("POST", "subscription_items", subscriptionitem.id, payload, customer.id);
+            const payload: any = { quantity: 0 };
+            const res = await this.Stripe("POST", "subscription_items", subscriptionitem.id, payload, customer.id);
 
 
             msg.customer = customer;
@@ -1885,25 +1878,25 @@ export class Message {
     }
     async StripeAddPlan(cli: WebSocketServerClient) {
         this.Reply();
-        var msg: StripeAddPlanMessage;
-        var rootjwt = Crypt.rootToken();
+        let msg: StripeAddPlanMessage;
+        const rootjwt = Crypt.rootToken();
         try {
             msg = StripeAddPlanMessage.assign(this.data);
             if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
             if (NoderedUtil.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
 
-            var billings = await Config.db.query<Billing>({ userid: msg.userid, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
+            const billings = await Config.db.query<Billing>({ userid: msg.userid, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
             if (billings.length == 0) throw new Error("Need billing info and a stripe customer in order to add plan");
-            var billing: Billing = billings[0];
+            const billing: Billing = billings[0];
             if (NoderedUtil.IsNullEmpty(billing.stripeid)) throw new Error("Need a stripe customer in order to add plan");
-            var customer: stripe_customer = await this.Stripe<stripe_customer>("GET", "customers", billing.stripeid, null, null);
+            const customer: stripe_customer = await this.Stripe<stripe_customer>("GET", "customers", billing.stripeid, null, null);
             if (customer == null) throw new Error("Failed locating stripe customer at stribe");
 
-            var subscription: stripe_subscription = null;
-            var subscription_item: stripe_subscription_item = null;
+            let subscription: stripe_subscription = null;
+            let subscription_item: stripe_subscription_item = null;
 
-            var hasPlan = customer.subscriptions.data.filter(s => {
-                var arr = s.items.data.filter(y => y.plan.id == msg.planid);
+            const hasPlan = customer.subscriptions.data.filter(s => {
+                const arr = s.items.data.filter(y => y.plan.id == msg.planid);
                 if (arr.length == 1) {
                     subscription = s;
                     subscription_item = arr[0];
@@ -1915,21 +1908,21 @@ export class Message {
             });
 
             if (subscription != null && subscription.default_tax_rates.length == 0 && !NoderedUtil.IsNullEmpty(billing.taxrate)) {
-                var payload: any = { default_tax_rates: [billing.taxrate] };
+                const payload: any = { default_tax_rates: [billing.taxrate] };
                 await this.Stripe("POST", "subscriptions", subscription.id, payload, customer.id);
             } else if (subscription != null && subscription.default_tax_rates.length != 0 && NoderedUtil.IsNullEmpty(billing.taxrate)) {
-                var payload: any = { default_tax_rates: [] };
+                const payload: any = { default_tax_rates: [] };
                 await this.Stripe("POST", "subscriptions", subscription.id, payload, customer.id);
             }
 
             if (hasPlan.length > 0) throw new Error("Customer already has this plan");
 
-            var plan = await this.Stripe<stripe_plan>("GET", "plans", msg.planid, null, null);
+            const plan = await this.Stripe<stripe_plan>("GET", "plans", msg.planid, null, null);
 
 
             if (subscription == null) {
-                var baseurl = Config.baseurl() + "/#/Payment";
-                var payload: any = {
+                const baseurl = Config.baseurl() + "/#/Payment";
+                const payload: any = {
                     success_url: baseurl + "/success", cancel_url: baseurl + "/cancel",
                     payment_method_types: ["card"], customer: customer.id, mode: "subscription",
                     subscription_data: {
@@ -1947,16 +1940,16 @@ export class Message {
                 msg.checkout = await this.Stripe("POST", "checkout.sessions", null, payload, null);
             } else {
                 if (subscription_item != null) {
-                    var payload: any = { quantity: 1 };
+                    const payload: any = { quantity: 1 };
                     if (plan.usage_type != "metered") {
-                        var res = await this.Stripe("POST", "subscription_items", subscription_item.id, payload, customer.id);
+                        const res = await this.Stripe("POST", "subscription_items", subscription_item.id, payload, customer.id);
                     }
                 } else {
-                    var payload: any = { subscription: subscription.id, plan: msg.planid };
+                    const payload: any = { subscription: subscription.id, plan: msg.planid };
                     if (plan.usage_type != "metered") {
                         payload.quantity = 1;
                     }
-                    var res = await this.Stripe("POST", "subscription_items", null, payload, customer.id);
+                    const res = await this.Stripe("POST", "subscription_items", null, payload, customer.id);
                 }
 
             }
@@ -1985,22 +1978,22 @@ export class Message {
     }
     async EnsureStripeCustomer(cli: WebSocketServerClient) {
         this.Reply();
-        var msg: EnsureStripeCustomerMessage;
-        var rootjwt = Crypt.rootToken();
+        let msg: EnsureStripeCustomerMessage;
+        const rootjwt = Crypt.rootToken();
         try {
             msg = EnsureStripeCustomerMessage.assign(this.data);
             if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
             if (NoderedUtil.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
-            var users = await Config.db.query({ _id: msg.userid, _type: "user" }, null, 1, 0, null, "users", msg.jwt);
+            const users = await Config.db.query({ _id: msg.userid, _type: "user" }, null, 1, 0, null, "users", msg.jwt);
             if (users.length == 0) throw new Error("Unknown userid");
-            var user: User = users[0] as any;
-            var dirty: boolean = false;
-            var hasbilling: boolean = false;
+            const user: User = users[0] as any;
+            let dirty: boolean = false;
+            let hasbilling: boolean = false;
 
-            var billings = await Config.db.query<Billing>({ userid: msg.userid, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
-            var billing: Billing;
+            const billings = await Config.db.query<Billing>({ userid: msg.userid, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
+            let billing: Billing;
             if (billings.length == 0) {
-                var tax_rates = await this.Stripe<stripe_list<stripe_base>>("GET", "tax_rates", null, null, null);
+                const tax_rates = await this.Stripe<stripe_list<stripe_base>>("GET", "tax_rates", null, null, null);
                 if (tax_rates == null || tax_rates.data.length == 0) throw new Error("Failed getting tax_rates from stripe");
 
                 billing = Billing.assign(msg.billing);
@@ -2008,8 +2001,8 @@ export class Message {
                 billing.tax = 1 + ((tax_rates.data[0] as any).percentage / 100);
                 if (NoderedUtil.IsNullEmpty(billing.name)) throw new Error("Name is mandatory");
                 if (NoderedUtil.IsNullEmpty(billing.email)) throw new Error("Email is mandatory");
-                billing.addRight(user._id, user.name, [Rights.read]);
-                billing.addRight(WellknownIds.admins, "admins", [Rights.full_control]);
+                Base.addRight(billing, user._id, user.name, [Rights.read]);
+                Base.addRight(billing, WellknownIds.admins, "admins", [Rights.full_control]);
                 billing = await Config.db.InsertOne(billing, "users", 3, true, rootjwt);
             } else {
                 billing = billings[0];
@@ -2021,12 +2014,12 @@ export class Message {
                     billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
                 }
             }
-            var customer: stripe_customer;
+            let customer: stripe_customer;
             if (!NoderedUtil.IsNullEmpty(billing.stripeid)) {
                 customer = await this.Stripe<stripe_customer>("GET", "customers", billing.stripeid, null, null);
             }
+            const payload: any = { name: billing.name, email: billing.email, metadata: { userid: msg.userid }, description: user.name };
             if (customer == null) {
-                var payload: any = { name: billing.name, email: billing.email, metadata: { userid: msg.userid }, description: user.name };
                 customer = await this.Stripe<stripe_customer>("POST", "customers", null, payload, null);
                 billing.stripeid = customer.id;
                 billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
@@ -2059,14 +2052,14 @@ export class Message {
                     }
                 }
             } else if (billing.tax == 1 && customer.tax_ids.total_count == 0) {
-                var tax_rates = await this.Stripe<stripe_list<stripe_base>>("GET", "tax_rates", null, null, null);
+                const tax_rates = await this.Stripe<stripe_list<stripe_base>>("GET", "tax_rates", null, null, null);
                 if (tax_rates == null || tax_rates.total_count == 0) throw new Error("Failed getting tax_rates from stripe");
                 billing.taxrate = tax_rates.data[0].id;
                 billing.tax = 1 + ((tax_rates.data[0] as any).percentage / 100);
                 billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
             } else if (customer.tax_ids.total_count > 0 && (customer.tax_ids.data[0].verification.status != 'verified' &&
                 customer.tax_ids.data[0].verification.status != 'unavailable') && billing.tax == 1) {
-                var tax_rates = await this.Stripe<stripe_list<stripe_base>>("GET", "tax_rates", null, null, null);
+                const tax_rates = await this.Stripe<stripe_list<stripe_base>>("GET", "tax_rates", null, null, null);
                 if (tax_rates == null || tax_rates.total_count == 0) throw new Error("Failed getting tax_rates from stripe");
                 billing.taxrate = tax_rates.data[0].id;
                 billing.tax = 1 + ((tax_rates.data[0] as any).percentage / 100);
@@ -2078,16 +2071,16 @@ export class Message {
                 }
             }
             if (customer != null && NoderedUtil.IsNullEmpty(billing.coupon) && customer.discount != null) {
-                var payload: any = { coupon: "" };
+                const payload: any = { coupon: "" };
                 customer = await this.Stripe<stripe_customer>("POST", "customers", billing.stripeid, payload, null);
             }
-            var newmemory: string = "";
+            let newmemory: string = "";
             if (customer != null && billing != null && customer.subscriptions != null && customer.subscriptions.total_count > 0) {
                 if (customer.subscriptions != null && customer.subscriptions.data != null)
-                    for (var i = 0; i < customer.subscriptions.data.length; i++) {
-                        var sub = customer.subscriptions.data[i];
-                        for (var y = 0; y < sub.items.data.length; y++) {
-                            var subitem = sub.items.data[y];
+                    for (let i = 0; i < customer.subscriptions.data.length; i++) {
+                        const sub = customer.subscriptions.data[i];
+                        for (let y = 0; y < sub.items.data.length; y++) {
+                            const subitem = sub.items.data[y];
                             if (subitem.plan != null && subitem.plan.metadata != null && subitem.plan.metadata.memory != null) {
                                 newmemory = subitem.plan.metadata.memory;
                             }
@@ -2102,37 +2095,37 @@ export class Message {
             }
             if (customer != null && !NoderedUtil.IsNullEmpty(billing.coupon) && customer.discount != null) {
                 if (billing.coupon != customer.discount.coupon.name) {
-                    var payload: any = { coupon: "" };
+                    const payload: any = { coupon: "" };
                     customer = await this.Stripe<stripe_customer>("POST", "customers", billing.stripeid, payload, null);
 
-                    var coupons: stripe_list<stripe_coupon> = await this.Stripe<stripe_list<stripe_coupon>>("GET", "coupons", null, null, null);
-                    var isvalid = coupons.data.filter(c => c.name == billing.coupon);
+                    const coupons: stripe_list<stripe_coupon> = await this.Stripe<stripe_list<stripe_coupon>>("GET", "coupons", null, null, null);
+                    const isvalid = coupons.data.filter(c => c.name == billing.coupon);
                     if (isvalid.length == 0) throw new Error("Unknown coupons '" + billing.coupon + "'");
 
-                    var payload: any = { coupon: coupons.data[0].id };
-                    customer = await this.Stripe<stripe_customer>("POST", "customers", billing.stripeid, payload, null);
+                    const payload2: any = { coupon: coupons.data[0].id };
+                    customer = await this.Stripe<stripe_customer>("POST", "customers", billing.stripeid, payload2, null);
 
                 }
             }
             if (customer != null && !NoderedUtil.IsNullEmpty(billing.coupon) && customer.discount == null) {
-                var coupons: stripe_list<stripe_coupon> = await this.Stripe<stripe_list<stripe_coupon>>("GET", "coupons", null, null, null);
-                var isvalid = coupons.data.filter(c => c.name == billing.coupon);
+                const coupons: stripe_list<stripe_coupon> = await this.Stripe<stripe_list<stripe_coupon>>("GET", "coupons", null, null, null);
+                const isvalid = coupons.data.filter(c => c.name == billing.coupon);
                 if (isvalid.length == 0) throw new Error("Unknown coupons '" + billing.coupon + "'");
 
-                var payload: any = { coupon: coupons.data[0].id };
+                const payload: any = { coupon: coupons.data[0].id };
                 customer = await this.Stripe<stripe_customer>("POST", "customers", billing.stripeid, payload, null);
             }
             if (customer != null) {
-                var sources = await this.Stripe<stripe_list<stripe_base>>("GET", "sources", null, null, billing.stripeid);
+                const sources = await this.Stripe<stripe_list<stripe_base>>("GET", "sources", null, null, billing.stripeid);
                 if ((sources.data.length > 0) != billing.hascard) {
                     billing.hascard = (sources.data.length > 0);
                     billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
                 }
             }
             if (customer != null && billing != null) {
-                var openflowuserplan: string = "";
-                var supportplan: string = "";
-                var supporthourplan: string = "";
+                let openflowuserplan: string = "";
+                let supportplan: string = "";
+                let supporthourplan: string = "";
                 if (customer.subscriptions != null && customer.subscriptions.data != null)
                     customer.subscriptions.data.filter(s => {
                         s.items.data.filter(y => {
@@ -2186,7 +2179,7 @@ export class Message {
         this.Send(cli);
     }
     async Stripe<T>(method: string, object: string, id: string, payload: any, customerid: string): Promise<T> {
-        var url = "https://api.stripe.com/v1/" + object;
+        let url = "https://api.stripe.com/v1/" + object;
         if (!NoderedUtil.IsNullEmpty(id)) url = url + "/" + id;
         if (object == "tax_ids") {
             if (NoderedUtil.IsNullEmpty(customerid)) throw new Error("Need customer to work with tax_id");
@@ -2220,32 +2213,32 @@ export class Message {
             url = "https://api.stripe.com/v1/invoices/upcoming?customer=" + customerid;
         }
 
-        var auth = "Basic " + Buffer.from(Config.stripe_api_secret + ":").toString("base64");
+        const auth = "Basic " + Buffer.from(Config.stripe_api_secret + ":").toString("base64");
 
-        var options = {
+        const options = {
             headers: {
                 'Content-type': 'application/x-www-form-urlencoded',
                 'Authorization': auth
             }
         };
         if (payload != null && method != "GET" && method != "DELETE") {
-            var flattenedData = this.flattenAndStringify(payload);
+            const flattenedData = this.flattenAndStringify(payload);
             (options as any).form = flattenedData;
         }
         if (method == "POST") {
-            var response = await got.post(url, options);
+            const response = await got.post(url, options);
             payload = JSON.parse(response.body);
         }
         if (method == "GET") {
-            var response = await got.get(url, options);
+            const response = await got.get(url, options);
             payload = JSON.parse(response.body);
         }
         if (method == "PUT") {
-            var response = await got.put(url, options);
+            const response = await got.put(url, options);
             payload = JSON.parse(response.body);
         }
         if (method == "DELETE") {
-            var response = await got.delete(url, options);
+            const response = await got.delete(url, options);
             payload = JSON.parse(response.body);
         }
         if (payload != null) {
@@ -2257,7 +2250,7 @@ export class Message {
     }
     async StripeMessage(cli: WebSocketServerClient) {
         this.Reply();
-        var msg: StripeMessage;
+        let msg: StripeMessage;
         try {
             msg = StripeMessage.assign(this.data);
             if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
@@ -2313,7 +2306,7 @@ export class Message {
                     queues: client._queues
                 };
                 if (client.user != null) {
-                    var name = client.user.username.split("@").join("").split(".").join("");
+                    let name = client.user.username.split("@").join("").split(".").join("");
                     name = name.toLowerCase();
                     item.name = name + "/" + client.clientagent + "/" + client.id;
                 }
@@ -2351,7 +2344,7 @@ export class Message {
                 let item: any = {
                     name: queue.id, consumers: queue.consumers, consumer_details: queue.consumer_details, _type: "queue"
                 };
-                var consumers: number = 0;
+                let consumers: number = 0;
                 if (queue.consumers > 0) { consumers = queue.consumers; }
                 if (consumers == 0) {
                     if (queue.consumer_details != null && queue.consumer_details.length > 0) {
@@ -2359,8 +2352,8 @@ export class Message {
                     }
                 }
                 // if (consumers > 0 && queue.consumer_details == null) {
-                //     var tempconfig = await amqpwrapper.getqueue(Config.amqp_url, '/', queue.name);
-                //     // var tempconfig = await amqpwrapper.getqueue(queue.name);
+                //     const tempconfig = await amqpwrapper.getqueue(Config.amqp_url, '/', queue.name);
+                //     // const tempconfig = await amqpwrapper.getqueue(queue.name);
                 //     if (tempconfig.consumer_details != null) {
                 //         item.consumer_details = tempconfig.consumer_details
                 //     }

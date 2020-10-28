@@ -1,8 +1,8 @@
-import * as crypto  from "crypto";
+import * as crypto from "crypto";
 import { Message } from "./Messages/Message";
 
 function isNumber(value: string | number): boolean {
-   return ((value != null) && !isNaN(Number(value.toString())));
+    return ((value != null) && !isNaN(Number(value.toString())));
 }
 export class SocketMessage {
     public id: string;
@@ -11,32 +11,32 @@ export class SocketMessage {
     public data: string;
     public count: number;
     public index: number;
-    public static fromjson(json: string):SocketMessage {
-        let result:SocketMessage = new SocketMessage();
-        let obj:any = JSON.parse(json);
+    public static fromjson(json: string): SocketMessage {
+        let result: SocketMessage = new SocketMessage();
+        let obj: any = JSON.parse(json);
         result.command = obj.command;
         result.id = obj.id;
         result.replyto = obj.replyto;
         result.count = 1;
         result.index = 0;
         result.data = obj.data;
-        if(isNumber(obj.count) ) { result.count = obj.count; }
-        if(isNumber(obj.index) ) { result.index = obj.index; }
-        if(result.id === null || result.id === undefined || result.id === "") {
+        if (isNumber(obj.count)) { result.count = obj.count; }
+        if (isNumber(obj.index)) { result.index = obj.index; }
+        if (result.id === null || result.id === undefined || result.id === "") {
             result.id = crypto.randomBytes(16).toString("hex");
         }
         return result;
     }
-    public static fromcommand(command: string):SocketMessage {
-        var result:SocketMessage = new SocketMessage();
+    public static fromcommand(command: string): SocketMessage {
+        const result: SocketMessage = new SocketMessage();
         result.command = command;
         result.count = 1;
         result.index = 0;
         result.id = crypto.randomBytes(16).toString("hex");
         return result;
     }
-    public static frommessage(msg: Message, data: string, count: number, index: number):SocketMessage {
-        var result:SocketMessage = new SocketMessage();
+    public static frommessage(msg: Message, data: string, count: number, index: number): SocketMessage {
+        const result: SocketMessage = new SocketMessage();
         result.id = msg.id;
         result.replyto = msg.replyto;
         result.command = msg.command;
@@ -45,7 +45,7 @@ export class SocketMessage {
         result.data = data;
         return result;
     }
-    public tojson():string {
+    public tojson(): string {
         return JSON.stringify(this);
     }
 }

@@ -41,9 +41,9 @@ export class noderedcontribauthsaml {
     private customverify: any;
     public static async configure(baseURL: string, saml_federation_metadata: string, issuer: string, customverify: any, saml_ca: string,
         identityProviderUrl: string, saml_cert: string): Promise<noderedcontribauthsaml> {
-        var result: noderedcontribauthsaml = new noderedcontribauthsaml(baseURL);
+        const result: noderedcontribauthsaml = new noderedcontribauthsaml(baseURL);
         if (saml_federation_metadata !== null && saml_federation_metadata !== undefined) {
-            var metadata: any = await noderedcontribauthsaml.parse_federation_metadata(saml_ca, saml_federation_metadata);
+            const metadata: any = await noderedcontribauthsaml.parse_federation_metadata(saml_ca, saml_federation_metadata);
             result.strategy.options.entryPoint = metadata.identityProviderUrl;
             result.strategy.options.cert = metadata.cert;
             result.strategy.options.issuer = issuer;
@@ -63,7 +63,7 @@ export class noderedcontribauthsaml {
     public static async parse_federation_metadata(tls_ca: String, url: string): Promise<any> {
         try {
             if (tls_ca !== null && tls_ca !== undefined && tls_ca !== "") {
-                var rootCas = require('ssl-root-cas/latest').create();
+                const rootCas = require('ssl-root-cas/latest').create();
                 rootCas.push(tls_ca);
                 // rootCas.addFile( tls_ca );
                 https.globalAgent.options.ca = rootCas;
@@ -73,13 +73,13 @@ export class noderedcontribauthsaml {
             console.log(error);
         }
         // if anything throws, we retry
-        var metadata: any = await retry(async bail => {
+        const metadata: any = await retry(async bail => {
             process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
             const backupStore = new FileSystemCache(path.join(Config.logpath, '.cache-' + Config.nodered_id));
-            var reader: any = await fetch({ url, backupStore });
+            const reader: any = await fetch({ url, backupStore });
             process.env.NODE_TLS_REJECT_UNAUTHORIZED = "1";
             if (reader === null || reader === undefined) { bail(new Error("Failed getting result")); return; }
-            var config: any = toPassportConfig(reader);
+            const config: any = toPassportConfig(reader);
             // we need this, for Office 365 :-/
             if (reader.signingCerts && reader.signingCerts.length > 1) {
                 config.cert = reader.signingCerts;
@@ -101,7 +101,7 @@ export class noderedcontribauthsaml {
         this.users = (this.fn_users).bind(this);
     }
     verify(profile: any, done: IVerifyFunction): void {
-        var roles: string[] = profile["http://schemas.xmlsoap.org/claims/Group"];
+        const roles: string[] = profile["http://schemas.xmlsoap.org/claims/Group"];
         if (roles !== undefined) {
             if (roles.indexOf("nodered_users") !== -1 || roles.indexOf("nodered users") !== -1) { profile.permissions = "read"; }
             if (roles.indexOf("nodered_admins") !== -1 || roles.indexOf("nodered admins") !== -1) { profile.permissions = "*"; }
@@ -129,14 +129,14 @@ export class noderedcontribauthsaml {
         }
     }
     async _authenticate(profile: string | any, arg2: any): Promise<any> {
-        var username: string = profile;
+        let username: string = profile;
         if (profile.nameID) {
             username = profile.nameID;
         }
         return this.users(username);
     }
     async fn_users(username: string): Promise<any> {
-        var user: any = this._users[username];
+        const user: any = this._users[username];
         // this._logger.silly("users: looking up " + username);
         return user;
     }

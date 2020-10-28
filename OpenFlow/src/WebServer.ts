@@ -26,7 +26,7 @@ export class WebServer {
 
         this.app = express();
         // this.app.use(morgan('combined', { stream: (winston.stream as any).write }));
-        var loggerstream = {
+        const loggerstream = {
             write: function (message, encoding) {
                 logger.silly(message);
             }
@@ -64,43 +64,11 @@ export class WebServer {
             next();
         });
         this.app.use("/", express.static(path.join(__dirname, "/public")));
-        //     private async _GetFile(id: string): Promise<string> {
-        //     return new Promise<string>(async (resolve, reject) => {
-        //         try {
-        //             var bucket = new GridFSBucket(Config.db.db);
-        //             let downloadStream = bucket.openDownloadStream(safeObjectID(id));
-        //             var bufs = [];
-        //             downloadStream.on('data', (chunk) => {
-        //                 bufs.push(chunk);
-        //             });
-        //             downloadStream.on('error', (error) => {
-        //                 reject(error);
-        //             });
-        //             downloadStream.on('end', () => {
-
-        //                 // var contentLength = bufs.reduce(function(sum, buf){
-        //                 //     return sum + buf.length;
-        //                 //   }, 0);
-        //                 var buffer = Buffer.concat(bufs);
-        //                 //writeFileSync('/home/allan/Documents/data.png', result.body);
-        //                 //result.body = Buffer.from(result.body).toString('base64');
-        //                 var result = buffer.toString('base64');
-        //                 resolve(result);
-        //             });
-        //         } catch (err) {
-        //             reject(err);
-        //         }
-        //     });
-        // }
-
-
-
-
         await LoginProvider.configure(this._logger, this.app, baseurl);
         await SamlProvider.configure(this._logger, this.app, baseurl);
-        var server: http.Server = null;
+        let server: http.Server = null;
         if (Config.tls_crt != '' && Config.tls_key != '') {
-            var options: any = {
+            let options: any = {
                 cert: Config.tls_crt,
                 key: Config.tls_key
             };
@@ -110,7 +78,7 @@ export class WebServer {
                     key: Buffer.from(Config.tls_key, 'base64').toString('ascii')
                 };
             }
-            var ca: string = Config.tls_ca;
+            let ca: string = Config.tls_ca;
             if (ca !== "") {
                 if (ca.indexOf("---") === -1) {
                     ca = Buffer.from(Config.tls_ca, 'base64').toString('ascii');
@@ -119,24 +87,14 @@ export class WebServer {
                 // options.cert += "\n" + ca;
             }
             if (Config.tls_passphrase !== "") {
-                // options.cert = [options.cert, Config.tls_passphrase];
-                // options.key = [options.key, Config.tls_passphrase];
                 options.passphrase = Config.tls_passphrase;
             }
             server = https.createServer(options, this.app);
-
-            // var redirapp = express();
-            // var _http = http.createServer(redirapp);
-            // redirapp.get('*', function (req, res) {
-            //     //res.redirect('https://' + req.headers.host + req.url);
-            //     res.status(200).json({ status: "ok" });
-            // })
-            // _http.listen(80);
         } else {
             server = http.createServer(this.app);
         }
 
-        var port = Config.port;
+        const port = Config.port;
         server.listen(port);
         return server;
     }

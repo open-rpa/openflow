@@ -17,14 +17,14 @@ import { Crypt } from "./Crypt";
 import { Audit } from "./Audit";
 
 import * as saml from "saml20";
-var multer = require('multer');
-var GridFsStorage = require('multer-gridfs-storage');
+const multer = require('multer');
+const GridFsStorage = require('multer-gridfs-storage');
 import { GridFSBucket, ObjectID, Db, Cursor, Binary } from "mongodb";
 import { Base, User, NoderedUtil, TokenUser, WellknownIds, Rights, Role } from "openflow-api";
 import { DBHelper } from "./DBHelper";
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 
-var stringify = require('json-stringify-safe');
+const stringify = require('json-stringify-safe');
 
 interface IVerifyFunction { (error: any, profile: any): void; }
 export class Provider extends Base {
@@ -80,21 +80,18 @@ export class LoginProvider {
 
     static async validateToken(rawAssertion: string): Promise<User> {
         return new Promise<User>((resolve, reject) => {
-            var options = {
+            const options = {
                 publicKey: Buffer.from(Config.signing_crt, "base64").toString("ascii")
             }
             saml.validate(rawAssertion, options, async (err, profile) => {
                 try {
                     if (err) { return reject(err); }
-                    var claims = profile.claims;
-
-                    var claims = profile.claims; // Array of user attributes;
-                    var issuer = profile.issuer; // String Issuer name.
-                    var username = claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] ||
+                    const claims = profile.claims; // Array of user attributes;
+                    const username = claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] ||
                         claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] ||
                         claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"];
 
-                    var user = await DBHelper.FindByUsername(username);
+                    const user = await DBHelper.FindByUsername(username);
                     if (user) {
                         resolve(user);
                     } else {
@@ -109,15 +106,15 @@ export class LoginProvider {
 
     static async getProviders(): Promise<any[]> {
         LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", Crypt.rootToken());
-        var result: any[] = [];
+        const result: any[] = [];
         LoginProvider.login_providers.forEach(provider => {
-            var item: any = { name: provider.name, id: provider.id, provider: provider.provider, logo: "fa-question-circle" };
+            const item: any = { name: provider.name, id: provider.id, provider: provider.provider, logo: "fa-question-circle" };
             if (provider.provider === "google") { item.logo = "fa-google"; }
             if (provider.provider === "saml") { item.logo = "fa-windows"; }
             result.push(item);
         });
         if (result.length === 0) {
-            var item: any = { name: "Local", id: "local", provider: "local", logo: "fa-question-circle" };
+            const item: any = { name: "Local", id: "local", provider: "local", logo: "fa-question-circle" };
             result.push(item);
         }
         return result;
@@ -149,9 +146,9 @@ export class LoginProvider {
         });
         // app.get("/clients", async (req: any, res: any, next: any): Promise<void> => {
         //     try {
-        //         var result: any[] = WebSocketServer._clients;
+        //         const result: any[] = WebSocketServer._clients;
         //         res.setHeader("Content-Type", "application/json");
-        //         var json = stringify(result, null, 2);
+        //         const json = stringify(result, null, 2);
         //         // res.json(result);
         //         res.end(json);
         //         res.end();
@@ -163,9 +160,9 @@ export class LoginProvider {
         // ROLLBACK
         // app.get("/amqp", async (req: any, res: any, next: any): Promise<void> => {
         //     try {
-        //         var result: any[] = (amqpwrapper.Instance().queues as any);
+        //         const result: any[] = (amqpwrapper.Instance().queues as any);
         //         res.setHeader("Content-Type", "application/json");
-        //         var json = stringify(result, null, 2);
+        //         const json = stringify(result, null, 2);
         //         // res.json(result);
         //         res.end(json);
         //         res.end();
@@ -176,8 +173,8 @@ export class LoginProvider {
         // });
 
         app.get("/Signout", (req: any, res: any, next: any): void => {
-            // var providerid: string = req.cookies.provider;
-            // var provider: passport.Strategy;
+            // const providerid: string = req.cookies.provider;
+            // const provider: passport.Strategy;
             // if (providerid != null && providerid != undefined && providerid != "") {
             //     provider = LoginProvider._providers[providerid];
             // }
@@ -191,7 +188,7 @@ export class LoginProvider {
             //     return;
             // }
             req.logout();
-            var originalUrl: any = req.cookies.originalUrl;
+            const originalUrl: any = req.cookies.originalUrl;
             if (!NoderedUtil.IsNullEmpty(originalUrl)) {
                 res.cookie("originalUrl", "", { expires: new Date(0) });
                 LoginProvider.redirect(res, originalUrl);
@@ -201,7 +198,7 @@ export class LoginProvider {
         });
         app.get("/PassiveSignout", (req: any, res: any, next: any): void => {
             req.logout();
-            var originalUrl: any = req.cookies.originalUrl;
+            const originalUrl: any = req.cookies.originalUrl;
             if (!NoderedUtil.IsNullEmpty(originalUrl)) {
                 res.cookie("originalUrl", "", { expires: new Date(0) });
                 LoginProvider.redirect(res, originalUrl);
@@ -213,7 +210,7 @@ export class LoginProvider {
         app.get("/jwt", (req: any, res: any, next: any): void => {
             res.setHeader("Content-Type", "application/json");
             if (req.user) {
-                var user: TokenUser = TokenUser.From(req.user);
+                const user: TokenUser = TokenUser.From(req.user);
                 res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.shorttoken_expires_in), user: user }));
             } else {
                 res.end(JSON.stringify({ jwt: "" }));
@@ -223,7 +220,7 @@ export class LoginProvider {
         app.get("/jwtlong", (req: any, res: any, next: any): void => {
             res.setHeader("Content-Type", "application/json");
             if (req.user) {
-                var user: TokenUser = TokenUser.From(req.user);
+                const user: TokenUser = TokenUser.From(req.user);
                 res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.longtoken_expires_in), user: user }));
             } else {
                 res.end(JSON.stringify({ jwt: "" }));
@@ -232,9 +229,9 @@ export class LoginProvider {
         });
         app.post("/jwt", async (req: any, res: any, next: any): Promise<void> => {
             try {
-                var rawAssertion = req.body.token;
-                var user: User = await LoginProvider.validateToken(rawAssertion);
-                var tuser: TokenUser = TokenUser.From(user);
+                const rawAssertion = req.body.token;
+                const user: User = await LoginProvider.validateToken(rawAssertion);
+                const tuser: TokenUser = TokenUser.From(user);
                 res.setHeader("Content-Type", "application/json");
                 res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, Config.shorttoken_expires_in) }));
             } catch (error) {
@@ -243,14 +240,14 @@ export class LoginProvider {
             }
         });
         app.get("/config", (req: any, res: any, next: any): void => {
-            var _url: string = "";
+            let _url: string = "";
             if (url.parse(baseurl).protocol == "http:") {
                 _url = "ws://" + url.parse(baseurl).host;
             } else {
                 _url = "wss://" + url.parse(baseurl).host;
             }
             _url += "/";
-            var res2 = {
+            const res2 = {
                 wshost: _url,
                 wsurl: _url,
                 domain: Config.domain,
@@ -268,11 +265,11 @@ export class LoginProvider {
         });
         app.get("/login", async (req: any, res: any, next: any): Promise<void> => {
             try {
-                var originalUrl: any = req.cookies.originalUrl;
+                const originalUrl: any = req.cookies.originalUrl;
                 if (NoderedUtil.IsNullEmpty(originalUrl)) res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
-                var file = path.join(__dirname, 'public', 'PassiveLogin.html');
+                const file = path.join(__dirname, 'public', 'PassiveLogin.html');
                 res.sendFile(file);
-                // var result: any[] = await this.getProviders();
+                // const result: any[] = await this.getProviders();
                 // res.setHeader("Content-Type", "application/json");
                 // res.end(JSON.stringify(result));
                 // res.end();
@@ -287,7 +284,7 @@ export class LoginProvider {
         });
         app.get("/loginproviders", async (req: any, res: any, next: any): Promise<void> => {
             try {
-                var result: any[] = await this.getProviders();
+                const result: any[] = await this.getProviders();
                 res.setHeader("Content-Type", "application/json");
                 res.end(JSON.stringify(result));
                 res.end();
@@ -304,9 +301,9 @@ export class LoginProvider {
 
         app.get("/download/:id", async (req, res) => {
             try {
-                var user: TokenUser = null;
-                var jwt: string = null;
-                var authHeader = req.headers.authorization;
+                let user: TokenUser = null;
+                let jwt: string = null;
+                const authHeader = req.headers.authorization;
                 if (authHeader) {
                     user = Crypt.verityToken(authHeader);
                     jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
@@ -319,12 +316,12 @@ export class LoginProvider {
                     return res.status(404).send({ message: 'Route ' + req.url + ' Not found.' });
                 }
 
-                var id = req.params.id;
-                var rows = await Config.db.query({ _id: safeObjectID(id) }, null, 1, 0, null, "files", jwt);
+                const id = req.params.id;
+                const rows = await Config.db.query({ _id: safeObjectID(id) }, null, 1, 0, null, "files", jwt);
                 if (rows == null || rows.length != 1) { return res.status(404).send({ message: 'id ' + id + ' Not found.' }); }
-                var file = rows[0] as any;
+                const file = rows[0] as any;
 
-                var bucket = new GridFSBucket(Config.db.db);
+                const bucket = new GridFSBucket(Config.db.db);
                 let downloadStream = bucket.openDownloadStream(safeObjectID(id));
                 res.set('Content-Type', file.contentType);
                 res.set('Content-Disposition', 'attachment; filename="' + file.filename + '"');
@@ -338,7 +335,7 @@ export class LoginProvider {
             }
         });
         try {
-            var storage = GridFsStorage({
+            const storage = GridFsStorage({
                 db: Config.db,
                 file: (req, file) => {
                     return new Promise((resolve, reject) => {
@@ -352,9 +349,9 @@ export class LoginProvider {
                                 filename: filename,
                                 metadata: new Base()
                             };
-                            var user: TokenUser = null;
-                            var jwt: string = null;
-                            var authHeader = req.headers.authorization;
+                            let user: TokenUser = null;
+                            let jwt: string = null;
+                            const authHeader = req.headers.authorization;
                             if (authHeader) {
                                 user = Crypt.verityToken(authHeader);
                                 jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
@@ -374,9 +371,9 @@ export class LoginProvider {
                             fileInfo.metadata._modifiedby = user.name;
                             fileInfo.metadata._modifiedbyid = user._id;
                             fileInfo.metadata._modified = fileInfo.metadata._created;
-                            fileInfo.metadata.addRight(user._id, user.name, [Rights.full_control]);
-                            fileInfo.metadata.addRight(WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
-                            fileInfo.metadata.addRight(WellknownIds.filestore_users, "filestore users", [Rights.read]);
+                            Base.addRight(fileInfo.metadata, user._id, user.name, [Rights.full_control]);
+                            Base.addRight(fileInfo.metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
+                            Base.addRight(fileInfo.metadata, WellknownIds.filestore_users, "filestore users", [Rights.read]);
                             // Fix acl
                             fileInfo.metadata._acl.forEach((a, index) => {
                                 if (typeof a.rights === "string") {
@@ -390,14 +387,14 @@ export class LoginProvider {
                     });
                 },
             });
-            var upload = multer({ //multer settings for single upload
+            const upload = multer({ //multer settings for single upload
                 storage: storage
             }).any();
 
             app.post("/upload", async (req, res) => {
-                var user: TokenUser = null;
-                var jwt: string = null;
-                var authHeader = req.headers.authorization;
+                let user: TokenUser = null;
+                let jwt: string = null;
+                const authHeader = req.headers.authorization;
                 if (authHeader) {
                     user = Crypt.verityToken(authHeader);
                     jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
@@ -429,13 +426,13 @@ export class LoginProvider {
             const _jwt = Crypt.rootToken();
             LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", _jwt);
         }
-        var hasLocal: boolean = false;
+        let hasLocal: boolean = false;
         if (LoginProvider.login_providers.length === 0) { hasLocal = true; }
         LoginProvider.login_providers.forEach(async (provider) => {
             try {
                 if (NoderedUtil.IsNullUndefinded(LoginProvider._providers[provider.id])) {
                     if (provider.provider === "saml") {
-                        var metadata: any = await Config.parse_federation_metadata(provider.saml_federation_metadata);
+                        const metadata: any = await Config.parse_federation_metadata(provider.saml_federation_metadata);
                         LoginProvider._providers[provider.id] =
                             LoginProvider.CreateSAMLStrategy(app, provider.id, metadata.cert,
                                 metadata.identityProviderUrl, provider.issuer, baseurl);
@@ -457,13 +454,12 @@ export class LoginProvider {
         }
     }
     static CreateGoogleStrategy(app: express.Express, key: string, consumerKey: string, consumerSecret: string, baseurl: string): any {
-        var strategy: passport.Strategy = null;
-        var options: googleauthstrategyoptions = new googleauthstrategyoptions();
+        const options: googleauthstrategyoptions = new googleauthstrategyoptions();
         options.clientID = consumerKey;
         options.clientSecret = consumerSecret;
         options.callbackURL = url.parse(baseurl).protocol + "//" + url.parse(baseurl).host + "/" + key + "/";
         options.verify = (LoginProvider.googleverify).bind(this);
-        strategy = new GoogleStrategy.Strategy(options, options.verify);
+        const strategy: passport.Strategy = new GoogleStrategy.Strategy(options, options.verify);
         passport.use(key, strategy);
         strategy.name = key;
         LoginProvider._logger.info(options.callbackURL);
@@ -471,7 +467,7 @@ export class LoginProvider {
             bodyParser.urlencoded({ extended: false }),
             passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),
             function (req: any, res: any): void {
-                var originalUrl: any = req.cookies.originalUrl;
+                const originalUrl: any = req.cookies.originalUrl;
                 res.cookie("provider", key, { maxAge: 900000, httpOnly: true });
                 if (!NoderedUtil.IsNullEmpty(originalUrl)) {
                     res.cookie("originalUrl", "", { expires: new Date(0) });
@@ -486,14 +482,13 @@ export class LoginProvider {
 
     // tslint:disable-next-line: max-line-length
     static CreateSAMLStrategy(app: express.Express, key: string, cert: string, singin_url: string, issuer: string, baseurl: string): passport.Strategy {
-        var strategy: passport.Strategy = null;
-        var options: samlauthstrategyoptions = new samlauthstrategyoptions();
+        const options: samlauthstrategyoptions = new samlauthstrategyoptions();
         options.entryPoint = singin_url;
         options.cert = cert;
         options.issuer = issuer;
         options.callbackUrl = url.parse(baseurl).protocol + "//" + url.parse(baseurl).host + "/" + key + "/";
         options.verify = (LoginProvider.samlverify).bind(this);
-        strategy = new SAMLStrategy.Strategy(options, options.verify);
+        const strategy: passport.Strategy = new SAMLStrategy.Strategy(options, options.verify);
         passport.use(key, strategy);
         strategy.name = key;
         LoginProvider._logger.info(options.callbackUrl);
@@ -503,7 +498,7 @@ export class LoginProvider {
         //         cert: Buffer.from(Config.signing_crt, "base64").toString("ascii"),
         //         issuer: issuer
         //     }));
-        var CertPEM = Buffer.from(Config.signing_crt, "base64").toString("ascii").replace(/(-----(BEGIN|END) CERTIFICATE-----|\n)/g, '');
+        const CertPEM = Buffer.from(Config.signing_crt, "base64").toString("ascii").replace(/(-----(BEGIN|END) CERTIFICATE-----|\n)/g, '');
         app.get("/" + key + "/FederationMetadata/2007-06/FederationMetadata.xml",
             (req: express.Request, res: express.Response, next: express.NextFunction) => {
                 res.set("Content-Type", "text/xml");
@@ -557,7 +552,7 @@ export class LoginProvider {
             bodyParser.urlencoded({ extended: false }),
             passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),
             function (req: any, res: any): void {
-                var originalUrl: any = req.cookies.originalUrl;
+                const originalUrl: any = req.cookies.originalUrl;
                 res.cookie("provider", key, { maxAge: 900000, httpOnly: true });
                 if (!NoderedUtil.IsNullEmpty(originalUrl)) {
                     res.cookie("originalUrl", "", { expires: new Date(0) });
@@ -572,18 +567,17 @@ export class LoginProvider {
     }
 
     static CreateLocalStrategy(app: express.Express, baseurl: string): passport.Strategy {
-        var strategy: passport.Strategy = new LocalStrategy(async (username: string, password: string, done: any): Promise<void> => {
+        const strategy: passport.Strategy = new LocalStrategy(async (username: string, password: string, done: any): Promise<void> => {
             try {
                 if (username !== null && username != undefined) { username = username.toLowerCase(); }
-                var user: User = null;
-                var tuser: TokenUser = null;
+                let user: User = null;
                 if (LoginProvider.login_providers.length === 0) {
                     user = await DBHelper.FindByUsername(username);
                     if (user == null) {
                         user = new User(); user.name = username; user.username = username;
                         await Crypt.SetPassword(user, password);
                         user = await Config.db.InsertOne(user, "users", 0, false, Crypt.rootToken());
-                        var admins: Role = await DBHelper.FindRoleByName("admins");
+                        const admins: Role = await DBHelper.FindRoleByName("admins");
                         admins.AddMember(user);
                         await DBHelper.Save(admins, Crypt.rootToken())
                     } else {
@@ -598,10 +592,10 @@ export class LoginProvider {
                         }
                     }
                     Audit.LoginSuccess(TokenUser.From(user), "weblogin", "local", "", "browser", "unknown");
-                    var provider: Provider = new Provider(); provider.provider = "local"; provider.name = "Local";
-                    provider = await Config.db.InsertOne(provider, "config", 0, false, Crypt.rootToken());
-                    LoginProvider.login_providers.push(provider);
-                    tuser = TokenUser.From(user);
+                    const provider: Provider = new Provider(); provider.provider = "local"; provider.name = "Local";
+                    const result = await Config.db.InsertOne(provider, "config", 0, false, Crypt.rootToken());
+                    LoginProvider.login_providers.push(result);
+                    const tuser: TokenUser = TokenUser.From(user);
                     return done(null, tuser);
                 }
                 user = await DBHelper.FindByUsername(username);
@@ -621,7 +615,7 @@ export class LoginProvider {
                         return done(null, false);
                     }
                 }
-                tuser = TokenUser.From(user);
+                const tuser: TokenUser = TokenUser.From(user);
                 Audit.LoginSuccess(tuser, "weblogin", "local", "", "browser", "unknown");
                 return done(null, tuser);
             } catch (error) {
@@ -636,7 +630,7 @@ export class LoginProvider {
         //     //passport.authenticate("local", { failureRedirect: "/login?failed=true", failureFlash: true }),
         //     passport.authenticate("local", { failureRedirect: "/" }),
         //     function (req: any, res: any): void {
-        //         var originalUrl: any = req.cookies.originalUrl;
+        //         const originalUrl: any = req.cookies.originalUrl;
         //         if (!Util.IsNullEmpty(originalUrl)) {
         //             res.cookie("originalUrl", "", { expires: new Date(0) });
         //             LoginProvider.redirect(res, originalUrl);
@@ -650,7 +644,7 @@ export class LoginProvider {
             function (req: any, res: any, next: any): void {
                 LoginProvider._logger.debug("passport.authenticate local");
                 passport.authenticate("local", function (err, user, info) {
-                    var originalUrl: any = req.cookies.originalUrl;
+                    let originalUrl: any = req.cookies.originalUrl;
                     LoginProvider._logger.debug("originalUrl: " + originalUrl);
                     if (err) {
                         LoginProvider._logger.error(err);
@@ -678,7 +672,7 @@ export class LoginProvider {
                                 LoginProvider._logger.debug("redirect: to /");
                                 res.redirect("/");
                                 return next();
-                                // var url = Config.protocol + "://" + Config.domain + ":" + Config.port;
+                                // const url = Config.protocol + "://" + Config.domain + ":" + Config.port;
                                 // LoginProvider._logger.debug("redirect.url: " + url);
                                 // LoginProvider.redirect(res, url);
                                 // return;
@@ -717,13 +711,14 @@ export class LoginProvider {
         return strategy;
     }
     static async samlverify(profile: any, done: IVerifyFunction): Promise<void> {
-        var username: string = (profile.nameID || profile.username);
-        if (username !== null && username != undefined) { username = username.toLowerCase(); }
+        let username: string = profile.username;
+        if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
+        if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
         LoginProvider._logger.debug("verify: " + username);
-        var _user: User = await DBHelper.FindByUsernameOrFederationid(username);
+        let _user: User = await DBHelper.FindByUsernameOrFederationid(username);
 
         if (NoderedUtil.IsNullUndefinded(_user)) {
-            var createUser: boolean = Config.auto_create_users;
+            let createUser: boolean = Config.auto_create_users;
             if (Config.auto_create_domains.map(x => username.endsWith(x)).length == -1) { createUser = false; }
             if (createUser) {
                 _user = new User(); _user.name = profile.name;
@@ -739,7 +734,7 @@ export class LoginProvider {
                 }
                 if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty, please add displayname to claims", null); return; }
                 // _user = await Config.db.InsertOne(_user, "users", 0, false, Crypt.rootToken());
-                var jwt: string = Crypt.rootToken();
+                const jwt: string = Crypt.rootToken();
                 _user = await DBHelper.ensureUser(jwt, _user.name, _user.username, null, null);
             }
         } else {
@@ -747,17 +742,17 @@ export class LoginProvider {
                 if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
                     (_user as any).mobile = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"];
                 }
-                var jwt: string = Crypt.rootToken();
+                const jwt: string = Crypt.rootToken();
                 await DBHelper.Save(_user, jwt);
             }
         }
 
         if (!NoderedUtil.IsNullUndefinded(_user)) {
             if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/claims/Group"])) {
-                var jwt: string = Crypt.rootToken();
-                var strroles: string[] = profile["http://schemas.xmlsoap.org/claims/Group"];
-                for (var i = 0; i < strroles.length; i++) {
-                    var role: Role = await DBHelper.FindRoleByName(strroles[i]);
+                const jwt: string = Crypt.rootToken();
+                const strroles: string[] = profile["http://schemas.xmlsoap.org/claims/Group"];
+                for (let i = 0; i < strroles.length; i++) {
+                    const role: Role = await DBHelper.FindRoleByName(strroles[i]);
                     if (!NoderedUtil.IsNullUndefinded(role)) {
                         role.AddMember(_user);
                         await DBHelper.Save(role, jwt);
@@ -778,30 +773,30 @@ export class LoginProvider {
             return;
         }
 
-        var tuser: TokenUser = TokenUser.From(_user);
+        const tuser: TokenUser = TokenUser.From(_user);
         Audit.LoginSuccess(tuser, "weblogin", "saml", "", "samlverify", "unknown");
         done(null, tuser);
     }
     static async googleverify(token: string, tokenSecret: string, profile: any, done: IVerifyFunction): Promise<void> {
         if (profile.emails) {
-            var email: any = profile.emails[0];
+            const email: any = profile.emails[0];
             profile.username = email.value;
         }
-        var username: string = (profile.username || profile.id);
-        if (username !== null && username != undefined) { username = username.toLowerCase(); }
+        let username: string = profile.username;
+        if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
+        if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
         LoginProvider._logger.debug("verify: " + username);
-        var _user: User = await DBHelper.FindByUsernameOrFederationid(username);
+        let _user: User = await DBHelper.FindByUsernameOrFederationid(username);
         if (NoderedUtil.IsNullUndefinded(_user)) {
-            var createUser: boolean = Config.auto_create_users;
+            let createUser: boolean = Config.auto_create_users;
             if (Config.auto_create_domains.map(x => username.endsWith(x)).length == -1) { createUser = false; }
             if (createUser) {
-                var jwt: string = Crypt.rootToken();
+                const jwt: string = Crypt.rootToken();
                 _user = new User(); _user.name = profile.name;
                 if (!NoderedUtil.IsNullEmpty(profile.displayName)) { _user.name = profile.displayName; }
                 _user.username = username;
                 (_user as any).mobile = profile.mobile;
                 if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty.", null); return; }
-                var jwt: string = Crypt.rootToken();
                 _user = await DBHelper.ensureUser(jwt, _user.name, _user.username, null, null);
             }
         }
@@ -814,7 +809,7 @@ export class LoginProvider {
             done("Disabled user " + username, null);
             return;
         }
-        var tuser: TokenUser = TokenUser.From(_user);
+        const tuser: TokenUser = TokenUser.From(_user);
         Audit.LoginSuccess(tuser, "weblogin", "google", "", "googleverify", "unknown");
         done(null, tuser);
     }

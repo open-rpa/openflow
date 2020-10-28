@@ -5,9 +5,9 @@ export const logger = Logger.configure();
 const cp = require('child_process');
 const path = require('path');
 const envfile = require('envfile')
-export var envfilename = ".env";
-export var envfilepathname = "";
-export var servicename = "openflow-nodered";
+export const envfilename = ".env";
+export const envfilepathname = "";
+export var servicename = "service-name-not-set";
 const service = require("os-service");
 
 export function isWin() {
@@ -17,8 +17,8 @@ export function isMac() {
     return process.platform === "darwin";
 }
 export function isOpenFlow() {
-    var check1 = path.join(__dirname, "..", "DatabaseConnection.ts");
-    var check2 = path.join(__dirname, "..", "DatabaseConnection.js");
+    const check1 = path.join(__dirname, "..", "DatabaseConnection.ts");
+    const check2 = path.join(__dirname, "..", "DatabaseConnection.js");
     if (fs.existsSync(check1) || fs.existsSync(check2)) return true;
     return false;
 }
@@ -50,6 +50,21 @@ export function StopService(servicename: string) {
         logger.info(error.message);
     }
 }
+export function RestartService(servicename: string) {
+    try {
+        if (isWin()) {
+            // cp.execSync(`start "restart" "cmd.exe" "/c net stop ${servicename} & net start ${servicename}"`);
+            cp.exec(`start "restart" "cmd.exe" "/c net stop ${servicename} & net start ${servicename}"`);
+        } else if (isMac()) {
+            // https://medium.com/craftsmenltd/building-a-cross-platform-background-service-in-node-js-791cfcd3be60
+            // cp.execSync(`sudo launchctl unload ${LAUNCHD_PLIST_PATH}`);
+        } else {
+            cp.execSync(`service ${servicename} restart`);
+        }
+    } catch (error) {
+        logger.info(error.message);
+    }
+}
 export function RemoveService(servicename: string) {
     StopService(servicename);
     logger.info("Uninstalling service" + servicename);
@@ -75,7 +90,7 @@ export function RunService(callback: any) {
 }
 // use and copy current env file, unless we have a /config folder in root
 export function getlocaldir(): string {
-    var local = __dirname;
+    let local = __dirname;
     if (fs.existsSync(path.join(local, "..", "config"))) {
         local = path.join(local, "..", "config");
     } else if (fs.existsSync(path.join(local, "..", "..", "config"))) {
@@ -88,12 +103,12 @@ export function getlocaldir(): string {
     return local;
 }
 export function haslocalenv(): boolean {
-    var localenv = path.join(getlocaldir(), envfilename);
+    const localenv = path.join(getlocaldir(), envfilename);
     return fs.existsSync(localenv);
 }
 // set source to location of source files, unless we have a /config folder in root
 export function getsourcedir(): string {
-    var source = __dirname;
+    let source = __dirname;
     if (fs.existsSync(path.join(source, "..", "config"))) {
         source = path.join(source, "..", "config");
     } else if (fs.existsSync(path.join(source, "..", "..", "config"))) {
@@ -104,17 +119,17 @@ export function getsourcedir(): string {
     return source;
 }
 export function hassourceenv(): boolean {
-    var sourceenv = path.join(getsourcedir(), envfilename);
+    const sourceenv = path.join(getsourcedir(), envfilename);
     return fs.existsSync(sourceenv);
 }
 
 // export function copyenv() {
-//     var source = getsourcedir();
-//     var local = getlocaldir();
+//     const source = getsourcedir();
+//     const local = getlocaldir();
 
 
-//     var localenv = path.join(local, envfilename);
-//     var sourceenv = path.join(source, envfilename);
+//     const localenv = path.join(local, envfilename);
+//     const sourceenv = path.join(source, envfilename);
 //     if (localenv != sourceenv && fs.existsSync(localenv)) {
 //         logger.info("localenv : " + localenv);
 //         logger.info("sourceenv: " + sourceenv);

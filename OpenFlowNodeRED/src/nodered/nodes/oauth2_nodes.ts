@@ -165,7 +165,7 @@ export class oauth2 {
                     });
                 }
             } catch (error) {
-                var errormessage = error.message ? error.message : error;
+                const errormessage = error.message ? error.message : error;
                 msg[this.node.container] = {
                     oauth2Response: {
                         statusCode: response.statusCode,

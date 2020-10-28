@@ -4,8 +4,8 @@ import { Crypt } from "./Crypt";
 
 export class Audit {
     public static LoginSuccess(user: TokenUser, type: string, provider: string, remoteip: string, clientagent: string, clientversion: string) {
-        var log: Singin = new Singin();
-        log.addRight(user._id, user.name, [Rights.read]);
+        const log: Singin = new Singin();
+        Base.addRight(log, user._id, user.name, [Rights.read]);
         log.remoteip = remoteip;
         log.success = true;
         log.type = type;
@@ -19,9 +19,9 @@ export class Audit {
             .catch((error) => console.error("failed InsertOne in LoginSuccess: " + error));
     }
     public static ImpersonateSuccess(user: TokenUser, impostor: TokenUser, clientagent: string, clientversion: string) {
-        var log: Singin = new Singin();
-        log.addRight(user._id, user.name, [Rights.read]);
-        log.addRight(impostor._id, impostor.name, [Rights.read]);
+        const log: Singin = new Singin();
+        Base.addRight(log, user._id, user.name, [Rights.read]);
+        Base.addRight(log, impostor._id, impostor.name, [Rights.read]);
         log.success = true;
         log.type = "impersonate";
         log.userid = user._id;
@@ -36,9 +36,9 @@ export class Audit {
             .catch((error) => console.error("failed InsertOne in ImpersonateSuccess: " + error));
     }
     public static ImpersonateFailed(user: TokenUser, impostor: TokenUser, clientagent: string, clientversion: string) {
-        var log: Singin = new Singin();
-        log.addRight(user._id, user.name, [Rights.read]);
-        log.addRight(impostor._id, impostor.name, [Rights.read]);
+        const log: Singin = new Singin();
+        Base.addRight(log, user._id, user.name, [Rights.read]);
+        Base.addRight(log, impostor._id, impostor.name, [Rights.read]);
         log.success = false;
         log.type = "impersonate";
         log.userid = user._id;
@@ -52,7 +52,7 @@ export class Audit {
             .catch((error) => console.error("failed InsertOne in ImpersonateFailed: " + error));
     }
     public static LoginFailed(username: string, type: string, provider: string, remoteip: string, clientagent: string, clientversion: string) {
-        var log: Singin = new Singin();
+        const log: Singin = new Singin();
         log.remoteip = remoteip;
         log.success = false;
         log.type = type;
@@ -64,8 +64,8 @@ export class Audit {
             .catch((error) => console.error("failed InsertOne in LoginFailed: " + error));
     }
     public static NoderedAction(user: TokenUser, success: boolean, name: string, type: string, image: string, instancename: string) {
-        var log: Nodered = new Nodered();
-        log.addRight(user._id, user.name, [Rights.read]);
+        const log: Nodered = new Nodered();
+        Base.addRight(log, user._id, user.name, [Rights.read]);
         log.success = success;
         log.type = type;
         log.userid = user._id;

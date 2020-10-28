@@ -29,17 +29,18 @@ export class WebServer {
     static async configure(logger: winston.Logger, socket: WebSocketClient): Promise<http.Server> {
         this._logger = logger;
 
-        var options: any = null;
-        var RED: nodered.Red = nodered;
+        const options: any = null;
+        const RED: nodered.Red = nodered;
 
         if (this.app !== null) { return; }
 
         try {
             this._logger.debug("WebServer.configure::begin");
+            let server: http.Server = null;
             if (this.app === null) {
                 this.app = express();
                 // this.app.use(morgan('combined', { stream: (winston.stream as any).write }));
-                var loggerstream = {
+                const loggerstream = {
                     write: function (message, encoding) {
                         logger.silly(message);
                     }
@@ -59,9 +60,8 @@ export class WebServer {
                 passport.deserializeUser(function (user: any, done: any): void {
                     done(null, user);
                 });
-                var server: http.Server = null;
                 if (Config.tls_crt != '' && Config.tls_key != '') {
-                    var options: any = {
+                    let options: any = {
                         cert: Config.tls_crt,
                         key: Config.tls_key
                     };
@@ -71,7 +71,7 @@ export class WebServer {
                             key: Buffer.from(Config.tls_key, 'base64').toString('ascii')
                         };
                     }
-                    var ca: string = Config.tls_ca;
+                    let ca: string = Config.tls_ca;
                     if (ca !== "") {
                         if (ca.indexOf("---") === -1) {
                             ca = Buffer.from(ca, 'base64').toString('ascii');
@@ -86,8 +86,8 @@ export class WebServer {
                     }
                     server = https.createServer(options, this.app);
 
-                    var redirapp = express();
-                    // var _http = http.createServer(redirapp);
+                    const redirapp = express();
+                    // const _http = http.createServer(redirapp);
                     redirapp.get('*', function (req, res) {
                         // res.redirect('https://' + req.headers.host + req.url);
                         res.status(200).json({ status: "ok" });
@@ -103,7 +103,7 @@ export class WebServer {
                 });
 
                 this.settings = new nodered_settings();
-                var c = Config;
+                const c = Config;
                 if (Config.nodered_port > 0) {
                     this.settings.uiPort = Config.nodered_port;
                 }
@@ -122,13 +122,10 @@ export class WebServer {
                 //     profile.permissions = "*";
                 //     done(profile);
                 // });
-                var baseurl = Config.saml_baseurl;
-                if (NoderedUtil.IsNullEmpty(baseurl)) {
-                    baseurl = Config.baseurl();
-                }
+                const baseurl = (!NoderedUtil.IsNullEmpty(Config.saml_baseurl) ? Config.saml_baseurl : Config.baseurl());
                 this.settings.adminAuth = await noderedcontribauthsaml.configure(baseurl, Config.saml_federation_metadata, Config.saml_issuer,
                     (profile: string | any, done: any) => {
-                        var roles: string[] = profile["http://schemas.xmlsoap.org/claims/Group"];
+                        const roles: string[] = profile["http://schemas.xmlsoap.org/claims/Group"];
                         if (roles !== undefined) {
                             if (Config.noderedusers !== "") {
                                 if (roles.indexOf(Config.noderedusers) !== -1 || roles.indexOf(Config.noderedusers) !== -1) { profile.permissions = "read"; }
@@ -149,7 +146,7 @@ export class WebServer {
                 };
 
                 this.settings.storageModule = new noderedcontribopenflowstorage(logger, socket);
-                var n: noderednpmrc = await this.settings.storageModule._getnpmrc();
+                const n: noderednpmrc = await this.settings.storageModule._getnpmrc();
                 if (!NoderedUtil.IsNullUndefinded(n) && !NoderedUtil.IsNullUndefinded(n.catalogues)) {
                     this.settings.editorTheme.palette.catalogues = n.catalogues;
                 } else {
@@ -210,8 +207,7 @@ export class WebServer {
                 this.app.use(this.settings.httpNodeRoot, RED.httpNode);
             }
 
-            var hasErrors: boolean = true; var errorCounter: number = 0;
-            var err: any;
+            let hasErrors: boolean = true, errorCounter: number = 0, err: any;
             while (hasErrors) {
                 try {
                     RED.start();
@@ -226,7 +222,7 @@ export class WebServer {
                 if (errorCounter == 10) {
                     throw err;
                 } else if (hasErrors) {
-                    var wait = ms => new Promise((r, j) => setTimeout(r, ms));
+                    const wait = ms => new Promise((r, j) => setTimeout(r, ms));
                     await wait(2000);
                 }
             }

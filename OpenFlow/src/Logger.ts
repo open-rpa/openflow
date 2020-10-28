@@ -4,8 +4,8 @@ const path = require('path');
 
 export class Logger {
     static configure(): winston.Logger {
-        var filename = path.join(Config.logpath, "openflow.log");
-        var options: any = {
+        const filename = path.join(Config.logpath, "openflow.log");
+        const options: any = {
             file: {
                 level: "debug",
                 filename: filename,
@@ -24,7 +24,7 @@ export class Logger {
         };
         const enumerateErrorFormat = winston.format(info => {
             if ((info.message as any) instanceof Error) {
-                var e = (info.message as any) as Error;
+                const e = (info.message as any) as Error;
                 info.message = Object.assign({
                     message: e.message,
                     stack: e.stack

@@ -45,6 +45,7 @@ export class workflow_in_node {
     }
     async connect() {
         try {
+            Logger.instanse.info("track::workflow in::connect");
             if (this.config.queue == null || this.config.queue == "") {
                 this.node.status({ fill: "red", shape: "dot", text: "Missing queue name" });
                 return;
@@ -62,47 +63,44 @@ export class workflow_in_node {
         }
     }
     async init() {
-        var name = this.config.name;
+        let name = this.config.name;
 
+        Logger.instanse.info("track::workflow in::init");
         if (NoderedUtil.IsNullEmpty(name)) {
             name = this.config.queue;
         }
 
-        var res = await NoderedUtil.Query("workflow", { "queue": this.localqueue }, null, null, 1, 0, null);
+        const res = await NoderedUtil.Query("workflow", { "queue": this.localqueue }, null, null, 1, 0, null);
         if (res.length == 0) {
-            var noderedadmins = await NoderedUtil.GetRole(null, Config.noderedadmins);
-            var wf: Base = new Base();
+            const noderedadmins = await NoderedUtil.GetRole(null, Config.noderedadmins);
+            let wf: Base = new Base();
             wf._type = "workflow";
             wf.name = name;
             (wf as any).queue = this.localqueue;
             if (noderedadmins != null) {
-                wf.addRight(noderedadmins._id, noderedadmins.name, [-1]);
+                Base.addRight(wf, noderedadmins._id, noderedadmins.name, [-1]);
             }
             this.workflow = await NoderedUtil.InsertOne("workflow", { _type: "workflow", "queue": this.localqueue, "name": name }, 0, false, null);
         } else {
             this.workflow = res[0];
-            var hasnoderedadmins = this.workflow._acl.filter(x => x.name == Config.noderedadmins);
+            const hasnoderedadmins = this.workflow._acl.filter(x => x.name == Config.noderedadmins);
             if (hasnoderedadmins.length == 0) {
-                var noderedadmins = await NoderedUtil.GetRole(null, Config.noderedadmins);
+                const noderedadmins = await NoderedUtil.GetRole(null, Config.noderedadmins);
                 if (noderedadmins != null) {
-                    var wf: Base = Base.assign(this.workflow);
-                    wf.addRight(noderedadmins._id, noderedadmins.name, [-1]);
-                    this.workflow = wf;
+                    Base.addRight(this.workflow, noderedadmins._id, noderedadmins.name, [-1]);
                 }
             }
         }
-        var res = await NoderedUtil.Query("users", { "_type": "role", "$or": [{ "workflowid": this.workflow._id }, { "name": this.localqueue + "users" }] }, null, null, 1, 0, null);
-        var role: Base = null;
-        if (res.length == 0) {
-            var who = WebSocketClient.instance.user;
+        const res2 = await NoderedUtil.Query("users", { "_type": "role", "$or": [{ "workflowid": this.workflow._id }, { "name": this.localqueue + "users" }] }, null, null, 1, 0, null);
+        let role: Base = null;
+        if (res2.length == 0) {
+            const who = WebSocketClient.instance.user;
             (role as any) = { _type: "role", "name": this.localqueue + "users", members: [{ "_id": who._id, "name": who.name }], "workflowid": this.workflow._id };
             role = await NoderedUtil.InsertOne("users", role, 0, false, null);
         } else {
-            role = res[0];
+            role = res2[0];
         }
-        var wf: Base = Base.assign(this.workflow);
-        wf.addRight(role._id, role.name, [-1]);
-        this.workflow = wf;
+        Base.addRight(this.workflow, role._id, role.name, [-1]);
         this.workflow.queue = this.localqueue;
         this.workflow.name = name;
         this.workflow.rpa = this.config.rpa;
@@ -111,11 +109,10 @@ export class workflow_in_node {
     }
     nestedassign(target, source) {
         if (source === null || source === undefined) return null;
-        var keys = Object.keys(source);
-        var sourcekey: string = "";
-        for (var i = 0; i < keys.length; i++) {
+        const keys = Object.keys(source);
+        for (let i = 0; i < keys.length; i++) {
             try {
-                sourcekey = keys[i];
+                const sourcekey = keys[i];
                 if (Object.keys(source).find(targetkey => targetkey === sourcekey) !== undefined &&
                     Object.keys(source).find(targetkey => targetkey === sourcekey) !== null
                     && typeof source === "object" && typeof source[sourcekey] === "object") {
@@ -130,7 +127,6 @@ export class workflow_in_node {
             } catch (error) {
                 if (target != null && target != undefined) Logger.instanse.info(JSON.stringify(target));
                 if (source != null && source != undefined) Logger.instanse.info(JSON.stringify(source));
-                Logger.instanse.info(sourcekey);
                 Logger.instanse.error(error);
             }
         }
@@ -139,7 +135,7 @@ export class workflow_in_node {
     async OnMessage(msg: QueueMessage, ack: any) {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Processing" });
-            var data: any = msg;
+            let data: any = msg;
             data.payload = msg.data;
             delete data.data;
             try {
@@ -161,24 +157,26 @@ export class workflow_in_node {
             //     // UGLy ROLLBACK!
             //     data.payload = data.payload.payload;
             // }
-            var _id = data._id;
+            let _id = data._id;
             if (_id === null || _id === undefined || _id === "") {
                 if (data.payload !== null && data.payload !== undefined) {
-                    if (data.payload._id !== null && data.payload._id !== undefined && data.payload._id !== "") _id = data.payload._id;
+                    if (data.payload._id !== null && data.payload._id !== undefined && data.payload._id !== "") {
+                        _id = data.payload._id;
+                    }
                 }
             }
             if (_id !== null && _id !== undefined && _id !== "") {
                 this.node.status({ fill: "blue", shape: "dot", text: "Processing id " + _id });
-                var jwt = data.jwt;
+                const jwt = data.jwt;
                 delete data.jwt;
 
-                var res = await NoderedUtil.Query("workflow_instances", { "_id": _id }, null, null, 1, 0, jwt);
+                const res = await NoderedUtil.Query("workflow_instances", { "_id": _id }, null, null, 1, 0, jwt);
                 if (res.length == 0) {
                     NoderedUtil.HandleError(this, "Unknown workflow_instances id " + _id);
                     if (ack !== null && ack !== undefined) ack(false, "Unknown workflow_instances id " + _id);
                     return;
                 }
-                var orgmsg = res[0];
+                const orgmsg = res[0];
                 if (orgmsg.payload === null || orgmsg.payload === undefined) {
                     orgmsg.payload = data;
                     data = orgmsg;
@@ -196,25 +194,24 @@ export class workflow_in_node {
                 data.jwt = jwt;
             } else {
                 this.node.status({ fill: "blue", shape: "dot", text: "Processing new instance " });
-                var jwt = data.jwt;
+                const jwt = data.jwt;
 
-                var who = WebSocketClient.instance.user;
-                var me = WebSocketClient.instance.user;
+                let who = WebSocketClient.instance.user;
+                const me = WebSocketClient.instance.user;
                 this.node.status({ fill: "blue", shape: "dot", text: "Renew token " });
                 if (!NoderedUtil.IsNullEmpty(jwt)) {
-                    var signin = await NoderedUtil.RenewToken(jwt, true);
+                    const signin = await NoderedUtil.RenewToken(jwt, true);
                     who = signin.user;
                     data.jwt = signin.jwt;
                 }
                 // delete data.jwt;                
-                var item: Base = ({ _type: "instance", "queue": this.localqueue, "name": this.workflow.name, payload: data, workflow: this.workflow._id, targetid: who._id }) as any;
+                const item: Base = ({ _type: "instance", "queue": this.localqueue, "name": this.workflow.name, payload: data, workflow: this.workflow._id, targetid: who._id }) as any;
                 (item as any)._replyTo = msg.replyto;
                 (item as any)._correlationId = msg.correlationId;
-                item = Base.assign(item);
-                item.addRight(who._id, who.name, [-1]);
-                if (who._id != me._id) item.addRight(me._id, me.name, [-1]);
+                Base.addRight(item, who._id, who.name, [-1]);
+                if (who._id != me._id) Base.addRight(item, me._id, me.name, [-1]);
                 this.node.status({ fill: "blue", shape: "dot", text: "Create instance " });
-                var res2 = await NoderedUtil.InsertOne("workflow_instances", item, 1, true, jwt);
+                const res2 = await NoderedUtil.InsertOne("workflow_instances", item, 1, true, jwt);
 
                 // Logger.instanse.info("workflow in activated creating a new workflow instance with id " + res2._id);
                 // OpenFlow Controller.ts needs the id, when creating a new intance !
@@ -246,7 +243,7 @@ export class workflow_in_node {
             NoderedUtil.HandleError(this, error);
             try {
 
-                var data: any = {};
+                const data: any = {};
                 data.error = error;
                 data.payload = msg.data;
                 data.jwt = msg.jwt;
@@ -316,28 +313,13 @@ export class workflow_out_node {
                 delete msgcopy.user;
                 // Logger.instanse.info("Updating workflow instance with id " + msg._id + " (" + msg.name + " with state " + msg.state);
                 this.node.status({ fill: "blue", shape: "dot", text: "Updating workflow instance" });
-                var res2 = await NoderedUtil.UpdateOne("workflow_instances", null, msgcopy, 1, false, msg.jwt);
+                await NoderedUtil.UpdateOne("workflow_instances", null, msgcopy, 1, false, msg.jwt);
             }
         } catch (error) {
             NoderedUtil.HandleError(this, error);
         }
         try {
             if (msg.amqpacknowledgment) {
-                // if (msg.payload === null || msg.payload === undefined) { msg.payload == {}; }
-                // var data: any = {};
-                // data.state = msg.state;
-                // if (msg.error) {
-                //     data.error = "error";
-                //     if (msg.error.message) {
-                //         data.error = msg.error.message;
-                //     }
-                // }
-                // data._id = msg._id;
-                // data.payload = msg.payload;
-                // data.values = msg.values;
-                // data.jwt = msg.jwt;
-                // ROLLBACK
-                // msg.amqpacknowledgment(true, JSON.stringify(data));
                 this.node.status({ fill: "blue", shape: "dot", text: "amqpacknowledgment" });
                 msg.amqpacknowledgment(true);
             }
@@ -347,7 +329,7 @@ export class workflow_out_node {
         }
         try {
             if (!NoderedUtil.IsNullEmpty(msg.resultqueue) && (msg.state == "completed" || msg.state == "failed")) {
-                var data: any = {};
+                const data: any = {};
                 data.state = msg.state;
                 if (msg.error) {
                     data.error = "error";
@@ -359,14 +341,9 @@ export class workflow_out_node {
                 data.payload = msg.payload;
                 data.values = msg.values;
                 data.jwt = msg.jwt;
-                var expiration: number = (60 * 1000); // 1 min
-                if (typeof msg.expiration == 'number') {
-                    expiration = msg.expiration;
-                }
-                var expiration = Config.amqp_workflow_out_expiration;
+                const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_workflow_out_expiration);
                 this.node.status({ fill: "blue", shape: "dot", text: "QueueMessage.1" });
-                var res = await NoderedUtil.QueueMessage(WebSocketClient.instance, msg.resultqueue, null, data, msg.correlationId, expiration);
-                // this.con.SendMessage(JSON.stringify(data), msg.resultqueue, msg.correlationId, false);
+                await NoderedUtil.QueueMessage(WebSocketClient.instance, msg.resultqueue, null, data, msg.correlationId, expiration);
             }
         } catch (error) {
             NoderedUtil.HandleError(this, error);
@@ -375,7 +352,7 @@ export class workflow_out_node {
             // if (!NoderedUtil.IsNullEmpty(msg._replyTo) && NoderedUtil.IsNullEmpty(msg.resultqueue)) {
             if (!NoderedUtil.IsNullEmpty(msg._replyTo)) {
                 if (msg.payload === null || msg.payload === undefined) { msg.payload == {}; }
-                var data: any = {};
+                const data: any = {};
                 data.state = msg.state;
                 if (msg.error) {
                     data.error = "error";
@@ -387,16 +364,11 @@ export class workflow_out_node {
                 data.payload = msg.payload;
                 data.values = msg.values;
                 data.jwt = msg.jwt;
-                var expiration: number = (60 * 1000); // 1 min
-                if (typeof msg.expiration == 'number') {
-                    expiration = msg.expiration;
-                }
                 // ROLLBACK
                 // Don't wait for ack(), we don't care if the receiver is there, right ?
                 this.node.status({ fill: "blue", shape: "dot", text: "Queue message for " + msg._replyTo });
-                var result = await NoderedUtil.QueueMessage(WebSocketClient.instance, msg._replyTo, null, data, msg.correlationId, Config.amqp_workflow_out_expiration);
+                await NoderedUtil.QueueMessage(WebSocketClient.instance, msg._replyTo, null, data, msg.correlationId, Config.amqp_workflow_out_expiration);
                 // console.log("Send reply data to " + msg._replyTo, data);
-                //this.con.SendMessage(JSON.stringify(data), msg._replyTo, msg._correlationId, false);
             }
         } catch (error) {
             NoderedUtil.HandleError(this, error);
@@ -410,9 +382,9 @@ export class workflow_out_node {
 
 export async function get_workflow_forms(req, res) {
     try {
-        var rawAssertion = req.user.getAssertionXml();
-        var token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
-        var result: any[] = await NoderedUtil.Query('forms', { _type: "form" },
+        const rawAssertion = req.user.getAssertionXml();
+        const token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
+        const result: any[] = await NoderedUtil.Query('forms', { _type: "form" },
             { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
         res.json(result);
     } catch (error) {
@@ -423,10 +395,10 @@ export async function get_workflow_forms(req, res) {
 
 export async function get_workflows(req, res) {
     try {
-        var rawAssertion = req.user.getAssertionXml();
-        var token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
-        var q: any = { "_type": "workflow" };
-        var ors = [];
+        const rawAssertion = req.user.getAssertionXml();
+        const token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
+        let q: any = { "_type": "workflow" };
+        const ors = [];
         if (!NoderedUtil.IsNullEmpty(req.query.name)) {
             ors.push({ name: { $regex: ".*" + req.query.name + ".*" } });
         } else { ors.push({}); }
@@ -441,7 +413,7 @@ export async function get_workflows(req, res) {
                 ]
             };
         }
-        var result: any[] = await NoderedUtil.Query('workflow', q, { name: 1 }, { name: -1 }, 100, 0, token.jwt)
+        const result: any[] = await NoderedUtil.Query('workflow', q, { name: 1 }, { name: -1 }, 100, 0, token.jwt)
         res.json(result);
     } catch (error) {
         res.status(500).json(error);
@@ -468,7 +440,8 @@ export class assign_workflow_node {
         RED.nodes.createNode(this, config);
         this.node = this;
         this.node.status({});
-        if (this.config.queue == null || this.config.queue == "") {
+        Logger.instanse.info("track::assign workflow in::constructor");
+        if (this.config == null || this.config.queue == null || this.config.queue == "") {
             this.node.status({ fill: "red", shape: "dot", text: "Missing queue name" });
             return;
         }
@@ -497,6 +470,7 @@ export class assign_workflow_node {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
             // if (this.localqueue !== null && this.localqueue !== undefined && this.localqueue !== "") { this.localqueue = Config.queue_prefix + this.localqueue; }
 
+            Logger.instanse.info("track::assign workflow in::connect");
             this.localqueue = this.config.queue;
             this.localqueue = await NoderedUtil.RegisterQueue(WebSocketClient.instance, this.localqueue, (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
@@ -506,11 +480,10 @@ export class assign_workflow_node {
 
 
             if (!NoderedUtil.IsNullUndefinded(this.config.targetid) && !NoderedUtil.IsNullUndefinded(this.config.workflowid)) {
-                var res = await NoderedUtil.Query("users", { "_type": "role", "workflowid": this.config.workflowid }, null, null, 1, 0, null);
-                var role: Role = null;
+                const res = await NoderedUtil.Query("users", { "_type": "role", "workflowid": this.config.workflowid }, null, null, 1, 0, null);
                 if (res.length == 1) {
-                    role = res[0];
-                    var exists = role.members.filter(x => x._id == this.config.targetid);
+                    const role: Role = res[0];
+                    const exists = role.members.filter(x => x._id == this.config.targetid);
                     if (exists.length == 0) {
                         role.members.push(new Rolemember("target", this.config.targetid));
                         await NoderedUtil.UpdateOne("users", null, role, 1, true, null);
@@ -523,8 +496,8 @@ export class assign_workflow_node {
     }
     async OnMessage(msg: any, ack: any) {
         try {
-            var result: any = {};
-            var data: any = msg.data;
+            let result: any = {};
+            const data: any = msg.data;
             if (data.state == "idle") return;
             if (!NoderedUtil.IsNullUndefinded(data.__user)) {
                 data.user = data.__user;
@@ -535,30 +508,32 @@ export class assign_workflow_node {
                 delete data.__jwt;
             }
             // delete data.jwt;
-            var _id = data._id;
+            let _id = data._id;
             if (_id === null || _id === undefined || _id === "") {
                 if (data.payload !== null && data.payload !== undefined) {
-                    if (data.payload._id !== null && data.payload._id !== undefined && data.payload._id !== "") _id = data.payload._id;
+                    if (data.payload._id !== null && data.payload._id !== undefined && data.payload._id !== "") {
+                        _id = data.payload._id;
+                    }
                 }
             }
             if (_id !== null && _id !== undefined && _id !== "") {
-                var res = await NoderedUtil.Query("workflow_instances", { "_id": _id }, { parentid: 1 }, null, 1, 0, data.jwt);
+                const res = await NoderedUtil.Query("workflow_instances", { "_id": _id }, { parentid: 1 }, null, 1, 0, data.jwt);
                 if (res.length == 0) {
                     NoderedUtil.HandleError(this, "Unknown workflow_instances id " + _id);
                     if (ack !== null && ack !== undefined) ack();
                     return;
                 }
-                var state = res[0].state;
-                var _parentid = res[0].parentid;
+                const state = res[0].state;
+                const _parentid = res[0].parentid;
                 if (_parentid !== null && _parentid !== undefined && _parentid !== "") {
-                    res = await NoderedUtil.Query("workflow_instances", { "_id": _parentid }, null, null, 1, 0, null);
-                    if (res.length == 0) {
+                    const res2 = await NoderedUtil.Query("workflow_instances", { "_id": _parentid }, null, null, 1, 0, null);
+                    if (res2.length == 0) {
                         NoderedUtil.HandleError(this, "Unknown workflow_instances parentid " + _parentid);
                         if (ack !== null && ack !== undefined) ack();
                         return;
                     }
 
-                    res[0].state = state;
+                    res2[0].state = state;
                     result = res[0].msg;
                     result.payload = data.payload;
                     result.jwt = data.jwt;
@@ -582,15 +557,12 @@ export class assign_workflow_node {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Processing" });
             // if (this.localqueue !== null && this.localqueue !== undefined && this.localqueue !== "") { this.localqueue = Config.queue_prefix + this.localqueue; }
-            var jwt = msg.jwt;
-            var workflowid = this.config.workflowid;
-            if (NoderedUtil.IsNullEmpty(workflowid)) workflowid = msg.workflowid;
-
-            var name = this.config.name;
+            const jwt = msg.jwt;
+            const workflowid = (!NoderedUtil.IsNullEmpty(this.config.workflowid) ? this.config.workflowid : msg.workflowid);
+            let name = this.config.name;
             if (NoderedUtil.IsNullEmpty(name)) name = msg.name;
             if (NoderedUtil.IsNullEmpty(name)) name = this.config.queue;
-            var targetid = this.config.targetid;
-            if (NoderedUtil.IsNullEmpty(targetid)) targetid = msg.targetid;
+            const targetid = (!NoderedUtil.IsNullEmpty(this.config.targetid) ? this.config.targetid : msg.targetid);
 
             if (NoderedUtil.IsNullEmpty(targetid)) {
                 this.node.status({ fill: "red", shape: "dot", text: "targetid is mandatory" });
@@ -600,28 +572,20 @@ export class assign_workflow_node {
                 this.node.status({ fill: "red", shape: "dot", text: "workflowid is mandatory" });
                 return;
             }
-            if (NoderedUtil.IsNullEmpty(jwt)) {
-                jwt = WebSocketClient.instance.jwt;
-            }
-            var initialrun = this.config.initialrun;
-            if (!NoderedUtil.IsNullEmpty(msg.initialrun)) {
-                initialrun = msg.initialrun;
-            }
-
-
+            const initialrun = (!NoderedUtil.IsNullEmpty(msg.initialrun) ? msg.initialrun : this.config.initialrun);
             msg.jwt = (await NoderedUtil.RenewToken(jwt, true)).jwt;
             // Logger.instanse.info("run workflow called with id " + msg._id + " (" + msg.name + ")");
-            var runnerinstance = new Base();
+            const runnerinstance = new Base();
             runnerinstance._type = "instance";
             runnerinstance.name = "runner: " + name;
             (runnerinstance as any).queue = this.localqueue;
             (runnerinstance as any).state = "idle";
             (runnerinstance as any).msg = msg;
             (runnerinstance as any).jwt = msg.jwt;
-            var who = WebSocketClient.instance.user;
-            runnerinstance.addRight(who._id, who.name, [-1]);
+            const who = WebSocketClient.instance.user;
+            Base.addRight(runnerinstance, who._id, who.name, [-1]);
 
-            var res3 = await NoderedUtil.InsertOne("workflow_instances", runnerinstance, 1, true, jwt);
+            const res3 = await NoderedUtil.InsertOne("workflow_instances", runnerinstance, 1, true, jwt);
             // Logger.instanse.info("created runner instance with id " + res3._id + " (" + res3.name + ")");
             msg._parentid = res3._id;
 

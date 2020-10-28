@@ -25,7 +25,7 @@ export class OAuthProvider {
     private authorizationCodeStore: any = {};
 
     static configure(logger: winston.Logger, app: express.Express): OAuthProvider {
-        var instance = new OAuthProvider();
+        const instance = new OAuthProvider();
         try {
             OAuthProvider.instance = instance;
             instance._logger = logger;
@@ -66,8 +66,8 @@ export class OAuthProvider {
             });
             // app.get('/oauth/authorize', instance.authorize.bind(instance));
             app.all('/oauth/authorize', (req, res) => {
-                var request = new Request(req);
-                var response = new Response(res);
+                const request = new Request(req);
+                const response = new Response(res);
                 return instance.oauthServer.authenticate(request, response)
                     .then((token) => {
                         res.json(token.user);
@@ -80,7 +80,7 @@ export class OAuthProvider {
             // app.all('/oauth/authorize/emails', instance.oauthServer.authenticate.bind(instance));
         } catch (error) {
             console.error(error);
-            var json = JSON.stringify(error, null, 3);
+            const json = JSON.stringify(error, null, 3);
             console.error(json);
             throw error;
         }
@@ -88,8 +88,8 @@ export class OAuthProvider {
     }
     authorize(req, res) {
         this._logger.info("[OAuth] authorize");
-        var request = new Request(req);
-        var response = new Response(res);
+        const request = new Request(req);
+        const response = new Response(res);
         console.log(request.headers);
         return this.oauthServer.authorize(request, response)
             .then((token) => {
@@ -114,8 +114,8 @@ export class OAuthProvider {
     }
     obtainToken(req, res) {
         this._logger.info("[OAuth] obtainToken");
-        var request = new Request(req);
-        var response = new Response(res);
+        const request = new Request(req);
+        const response = new Response(res);
         return this.oauthServer.token(request, response)
             .then((token) => {
                 this._logger.info("[OAuth] obtainToken::success: token:");
@@ -128,28 +128,28 @@ export class OAuthProvider {
     }
     public getAccessToken(bearerToken) {
         this._logger.info("[OAuth] getAccessToken " + bearerToken);
-        var tokens = this.tokens.filter((token) => {
+        const tokens = this.tokens.filter((token) => {
             return token.accessToken === bearerToken;
         });
         return tokens.length ? tokens[0] : false;
     }
     public getRefreshToken(bearerToken) {
         this._logger.info("[OAuth] getRefreshToken " + bearerToken);
-        var tokens = this.tokens.filter((token) => {
+        const tokens = this.tokens.filter((token) => {
             return token.refreshToken === bearerToken;
         });
         return tokens.length ? tokens[0] : false;
     }
     public getClient(clientId, clientSecret) {
         this._logger.info("[OAuth] getClient " + clientId);
-        var clients = this.clients.filter((client) => {
+        const clients = this.clients.filter((client) => {
             return client.clientId === clientId && client.clientSecret === clientSecret;
         });
         return clients.length ? clients[0] : false;
     }
     public saveToken(token, client, user) {
         this._logger.info("[OAuth] saveToken " + token);
-        var result = {
+        const result = {
             accessToken: token.accessToken,
             access_token: token.accessToken,
             accessTokenExpiresAt: token.accessTokenExpiresAt,
@@ -167,8 +167,8 @@ export class OAuthProvider {
     }
     saveAuthorizationCode(code, client, user) {
         this._logger.info("[OAuth] saveAuthorizationCode " + code);
-        var codeToSave: any = this.codes[code];
-        codeToSave = {
+        // const codeToSave: any = this.codes[code];
+        const codeToSave: any = {
             'authorizationCode': code.authorizationCode,
             'expiresAt': code.expiresAt,
             'redirectUri': code.redirectUri,
@@ -185,17 +185,17 @@ export class OAuthProvider {
     }
     getAuthorizationCode(code) {
         this._logger.info("[OAuth] getAuthorizationCode " + code);
-        var user: TokenUser = this.codes[code];
+        let user: TokenUser = this.codes[code];
         if (user == null) return null;
-        var redirect_uri = (user as any).redirect_uri;
-        var expiresAt = new Date();
+        const redirect_uri = (user as any).redirect_uri;
+        const expiresAt = new Date();
         expiresAt.setMonth(expiresAt.getMonth() + 1);
-        var role = "Viewer";
+        let role = "Viewer";
         user = TokenUser.From(user);
         if (user.HasRoleName("admins")) role = "Admin";
         if (user.HasRoleName("grafana editors")) role = "Editor";
         if (user.HasRoleName("grafana admins")) role = "Admin";
-        var result = {
+        const result = {
             code: code,
             client: this.clients[0],
             user: {
@@ -216,7 +216,7 @@ export class OAuthProvider {
     revokeAuthorizationCode(code) {
         this._logger.info("[OAuth] revokeAuthorizationCode " + code);
         return true;
-        // var user: TokenUser = this.codes[code];
+        // const user: TokenUser = this.codes[code];
         // if (user != null) delete this.codes[code];
         // return code;
     }

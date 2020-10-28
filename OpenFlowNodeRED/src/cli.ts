@@ -30,7 +30,7 @@ const { networkInterfaces } = require('os');
 
 
 
-var options = null;
+let options = null;
 try {
     options = commandLineArgs(optionDefinitions);
     if (!options.init) {
@@ -85,23 +85,23 @@ rejectionEmitter.on("rejectionHandled", (error, promise) => {
 function getToken(): Promise<string> {
     return new Promise<string>(async (resolve, reject) => {
         logger.info("wsurl " + Config.api_ws_url);
-        var socket: WebSocketClient = new WebSocketClient(logger, Config.api_ws_url);
+        let socket: WebSocketClient = new WebSocketClient(logger, Config.api_ws_url);
         socket.agent = "nodered-cli";
         socket.version = Config.version;
         socket.events.on("onopen", async () => {
             try {
-                var username: string = readlineSync.question('username? ');
-                var password: string = readlineSync.question('password? ', { hideEchoBack: true });
+                const username: string = readlineSync.question('username? ');
+                const password: string = readlineSync.question('password? ', { hideEchoBack: true });
 
-                var result = await NoderedUtil.SigninWithUsername(username, password, null, true);
+                const result = await NoderedUtil.SigninWithUsername(username, password, null, true);
                 logger.info("signed in as " + result.user.name + " with id " + result.user._id);
                 WebSocketClient.instance.user = result.user;
                 WebSocketClient.instance.jwt = result.jwt;
-                socket.close(1000, closemsg);
+                socket.close(1000, "Close by user");
                 resolve(result.jwt);
                 socket = null;
             } catch (error) {
-                var closemsg: any = error;
+                let closemsg: any = error;
                 if (error.message) { logger.error(error.message); closemsg = error.message; }
                 else { logger.error(error); }
                 socket.close(1000, closemsg);
@@ -115,11 +115,11 @@ function getToken(): Promise<string> {
 
 async function doit() {
     if (options.init) {
-        var files = fs.readdirSync(path.join(__dirname, ".."))
-        for (var i = 0; i < files.length; i++) {
-            var filename = files[i];
+        const files = fs.readdirSync(path.join(__dirname, ".."))
+        for (let i = 0; i < files.length; i++) {
+            let filename = files[i];
             if (path.extname(filename) == '.env') {
-                var target = path.join(process.cwd(), filename);
+                const target = path.join(process.cwd(), filename);
                 if (!fs.existsSync(target)) {
                     console.log("Creating " + filename);
                     filename = path.join(__dirname, "..", filename);
@@ -171,7 +171,7 @@ async function doit() {
         loadenv();
         logger.info("Starting as service " + servicename);
         RunService(null);
-        var index = index = path.join(__dirname, "/index.js");
+        let index = path.join(__dirname, "/index.js");
         if (!fs.existsSync(index)) {
             index = path.join(__dirname, "dist", "/index.js");
         }

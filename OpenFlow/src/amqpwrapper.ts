@@ -5,7 +5,7 @@ import { Config } from "./Config";
 import { Crypt } from "./Crypt";
 import * as url from "url";
 import { NoderedUtil } from "openflow-api";
-var got = require("got");
+const got = require("got");
 type QueueOnMessage = (msg: string, options: QueueMessageOptions, ack: any, done: any) => void;
 interface IHashTable<T> {
     [key: string]: T;
@@ -27,7 +27,7 @@ export class Deferred<T> {
     reject: any;
     resolve: any;
     constructor() {
-        var me: Deferred<T> = this;
+        const me: Deferred<T> = this;
         this.promise = new Promise<T>((resolve, reject) => {
             me.reject = reject;
             me.resolve = resolve;
@@ -87,7 +87,6 @@ export class amqpwrapper {
             if (this.timeout != null) {
                 this.timeout = null;
             }
-            var me: amqpwrapper = this;
             if (this.conn == null) {
                 this.conn = await amqplib.connect(this.connectionstring);
                 this.conn.on('error', (error) => {
@@ -138,20 +137,6 @@ export class amqpwrapper {
                     console.log(error);
                 }
             });
-
-            // ROLLBACK
-            // var keys = Object.keys(this.exchanges);
-            // for (var i = 0; i < keys.length; i++) {
-            //     var q1: amqpexchange = this.exchanges[keys[i]];
-            //     this.AddExchangeConsumer(q1.exchange, q1.algorithm, q1.routingkey, q1.ExchangeOptions, null, q1.callback);
-            // }
-            // var keys = Object.keys(this.queues);
-            // for (var i = 0; i < keys.length; i++) {
-            //     if (keys[i] != this.replyqueue.queue) {
-            //         var q2: amqpqueue = this.queues[keys[i]];
-            //         this.AddQueueConsumer(q2.queue, q2.QueueOptions, null, q2.callback);
-            //     }
-            // }
         } catch (error) {
             console.error(error);
             this.timeout = setTimeout(this.connect.bind(this), 1000);
@@ -165,34 +150,32 @@ export class amqpwrapper {
     }
     async AddQueueConsumer(queuename: string, QueueOptions: any, jwt: string, callback: QueueOnMessage): Promise<amqpqueue> {
         if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Queue Consumer, not connected to rabbitmq");
-        var queue: string = queuename;
-        if (queue == null) queue = "";
-        var q: amqpqueue = null;
+        let queue: string = (NoderedUtil.IsNullEmpty(queuename) ? "" : queuename);
         if (Config.amqp_force_queue_prefix && !NoderedUtil.IsNullEmpty(jwt) && !NoderedUtil.IsNullEmpty(queue)) {
             // assume queue names if 24 letters is an mongodb is, should proberly do a real test here
             if (queue.length == 24) {
-                var tuser = Crypt.verityToken(jwt);
-                var name = tuser.username.split("@").join("").split(".").join("");
+                const tuser = Crypt.verityToken(jwt);
+                let name = tuser.username.split("@").join("").split(".").join("");
                 name = name.toLowerCase();
-                var skip: boolean = false;
+                let skip: boolean = false;
                 if (tuser._id == queue) {
                     // Queue is for me
                     skip = false;
                 } else if (tuser.roles != null) {
                     // Queue ss for a group i am a member of.
-                    var isrole = tuser.roles.filter(x => x._id == queue);
+                    const isrole = tuser.roles.filter(x => x._id == queue);
                     if (isrole.length > 0) skip = false;
                 }
                 if (skip) {
                     // Do i have permission to listen on a queue with this id ?
-                    var arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "users", jwt);
+                    const arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "users", jwt);
                     if (arr.length == 0) skip = true;
                     if (!skip) {
-                        var arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "openrpa", jwt);
+                        const arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "openrpa", jwt);
                         if (arr.length == 0) skip = true;
                     }
                     if (!skip) {
-                        var arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "workflow", jwt);
+                        const arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "workflow", jwt);
                         if (arr.length == 0) skip = true;
                     }
                     if (!skip) {
@@ -204,26 +187,26 @@ export class amqpwrapper {
                     this._logger.info("[SKIP] skipped force prefix for " + queue);
                 }
             } else {
-                var tuser = Crypt.verityToken(jwt);
-                var name = tuser.username.split("@").join("").split(".").join("");
+                const tuser = Crypt.verityToken(jwt);
+                let name = tuser.username.split("@").join("").split(".").join("");
                 name = name.toLowerCase();
                 queue = name + queue;
             }
         } else if (queue.length == 24) {
             if (NoderedUtil.IsNullEmpty(jwt)) {
-                var tuser = Crypt.verityToken(jwt);
+                const tuser = Crypt.verityToken(jwt);
 
-                var isrole = tuser.roles.filter(x => x._id == queue);
+                const isrole = tuser.roles.filter(x => x._id == queue);
                 if (isrole.length == 0 && tuser._id != queue) {
-                    var skip: boolean = false;
-                    var arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "users", jwt);
+                    let skip: boolean = false;
+                    const arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "users", jwt);
                     if (arr.length == 0) skip = true;
                     if (!skip) {
-                        var arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "openrpa", jwt);
+                        const arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "openrpa", jwt);
                         if (arr.length == 0) skip = true;
                     }
                     if (!skip) {
-                        var arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "workflow", jwt);
+                        const arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "workflow", jwt);
                         if (arr.length == 0) skip = true;
                     }
                     if (!skip) {
@@ -233,7 +216,7 @@ export class amqpwrapper {
 
             }
         }
-        q = new amqpqueue();
+        const q: amqpqueue = new amqpqueue();
         q.callback = callback;
         // q.QueueOptions = new Object((QueueOptions != null ? QueueOptions : this.AssertQueueOptions));
         q.QueueOptions = Object.assign({}, (QueueOptions != null ? QueueOptions : this.AssertQueueOptions));
@@ -244,7 +227,7 @@ export class amqpwrapper {
 
         q.queue = q.ok.queue;
         q.queuename = queuename;
-        var consumeresult = await this.channel.consume(q.ok.queue, (msg) => {
+        const consumeresult = await this.channel.consume(q.ok.queue, (msg) => {
             this.OnMessage(q, msg, q.callback);
         }, { noAck: false });
         q.consumerTag = consumeresult.consumerTag;
@@ -255,27 +238,21 @@ export class amqpwrapper {
     }
     async AddExchangeConsumer(exchange: string, algorithm: string, routingkey: string, ExchangeOptions: any, jwt: string, callback: QueueOnMessage): Promise<amqpexchange> {
         if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Exchange Consumer, not connected to rabbitmq");
-        var q: amqpexchange = null;
         if (Config.amqp_force_exchange_prefix && !NoderedUtil.IsNullEmpty(jwt)) {
-            var tuser = Crypt.verityToken(jwt);
-            var name = tuser.username.split("@").join("").split(".").join("");
+            const tuser = Crypt.verityToken(jwt);
+            let name = tuser.username.split("@").join("").split(".").join("");
             name = name.toLowerCase();
             exchange = name + exchange;
         }
-        q = new amqpexchange();
-        // if (this.exchanges[exchange] != null) {
-        //     q = this.exchanges[exchange];
-        // } else {
-        //     q = new amqpexchange();
-        // }
+        const q: amqpexchange = new amqpexchange();
         if (!NoderedUtil.IsNullEmpty(q.queue)) {
             this.RemoveQueueConsumer(q.queue);
         }
         // q.ExchangeOptions = new Object((ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));
         q.ExchangeOptions = Object.assign({}, (ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));
         q.exchange = exchange; q.algorithm = algorithm; q.routingkey = routingkey; q.callback = callback;
-        var _ok = await this.channel.assertExchange(q.exchange, q.algorithm, q.ExchangeOptions);
-        var AssertQueueOptions = null;
+        const _ok = await this.channel.assertExchange(q.exchange, q.algorithm, q.ExchangeOptions);
+        let AssertQueueOptions = null;
         if (!NoderedUtil.IsNullEmpty(Config.amqp_dlx) && exchange == Config.amqp_dlx) {
             AssertQueueOptions = Object.create(this.AssertQueueOptions);
             delete AssertQueueOptions.arguments;
@@ -290,8 +267,8 @@ export class amqpwrapper {
     OnMessage(sender: amqpqueue, msg: amqplib.ConsumeMessage, callback: QueueOnMessage): void {
         // sender._logger.info("OnMessage " + msg.content.toString());
         try {
-            var now = new Date();
-            // var seconds = (now.getTime() - sender.cli.lastheartbeat.getTime()) / 1000;
+            const now = new Date();
+            // const seconds = (now.getTime() - sender.cli.lastheartbeat.getTime()) / 1000;
             // if (seconds >= Config.client_heartbeat_timeout) {
             //     try {
             //         sender.cli._logger.info("amqpwrapper.OnMessage: receive message for inactive client, nack message and try and close");
@@ -306,19 +283,19 @@ export class amqpwrapper {
                 return;
             }
 
-            var correlationId: string = msg.properties.correlationId;
-            var replyTo: string = msg.properties.replyTo;
-            var consumerTag: string = msg.fields.consumerTag;
-            var routingkey: string = msg.fields.routingkey;
-            var exchange: string = msg.fields.exchange;
-            var options: QueueMessageOptions = {
+            const correlationId: string = msg.properties.correlationId;
+            const replyTo: string = msg.properties.replyTo;
+            const consumerTag: string = msg.fields.consumerTag;
+            const routingkey: string = msg.fields.routingkey;
+            const exchange: string = msg.fields.exchange;
+            const options: QueueMessageOptions = {
                 correlationId: correlationId,
                 replyTo: replyTo,
                 consumerTag: consumerTag,
                 routingkey: routingkey,
                 exchange: exchange
             }
-            var data: string = msg.content.toString();
+            const data: string = msg.content.toString();
             callback(data, options, (nack: boolean) => {
                 try {
                     if (nack == false) {
@@ -361,7 +338,7 @@ export class amqpwrapper {
         }
 
         this._logger.info("send to queue: " + queue + " exchange: " + exchange + " with reply to " + replyTo);
-        var options: any = { mandatory: true };
+        const options: any = { mandatory: true };
         options.replyTo = replyTo;
         if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = this.generateUuid();
         if (!NoderedUtil.IsNullEmpty(correlationId)) options.correlationId = correlationId;
@@ -393,7 +370,7 @@ export class amqpwrapper {
         if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = this.generateUuid();
 
         this._logger.info("send to queue: " + queue + " exchange: " + exchange);
-        var options: any = { mandatory: true };
+        const options: any = { mandatory: true };
         if (!NoderedUtil.IsNullEmpty(correlationId)) options.correlationId = correlationId;
         if (expiration < 1) expiration = Config.amqp_default_expiration;
         options.expiration = expiration.toString();
@@ -419,12 +396,12 @@ export class amqpwrapper {
             Math.random().toString();
     }
     static parseurl(amqp_url): url.UrlWithParsedQuery {
-        var q = url.parse(amqp_url, true);
+        const q = url.parse(amqp_url, true);
         (q as any).username = "guest";
         (q as any).password = "guest";
         if (q.port == null || q.port == "") { q.port = "15672"; }
         if (q.auth != null && q.auth != "") {
-            var arr = q.auth.split(':');
+            const arr = q.auth.split(':');
             (q as any).username = arr[0];
             (q as any).password = arr[1];
         }
@@ -435,7 +412,7 @@ export class amqpwrapper {
     // This will crash the channel, that does not seem scalable
     async checkQueue(queuename: string): Promise<boolean> {
         if (Config.amqp_check_for_consumer) {
-            var test: AssertQueue = null;
+            let test: AssertQueue = null;
             try {
                 if (Config.amqp_check_for_consumer_count) {
                     return this.checkQueueConsumerCount(queuename);
@@ -444,9 +421,8 @@ export class amqpwrapper {
                 if (test == null) {
                     return false;
                 }
-
-                // var test: AssertQueue = await this.channel.assertQueue(this.queue, this.AssertQueueOptions);
-                // var test: AssertQueue = await this.channel.assertQueue(queuename, { passive: true });
+                // const test: AssertQueue = await this.channel.assertQueue(this.queue, this.AssertQueueOptions);
+                // const test: AssertQueue = await this.channel.assertQueue(queuename, { passive: true });
                 // test = await this.channel.checkQueue(queuename);
             } catch (error) {
                 test = null;
@@ -458,11 +434,11 @@ export class amqpwrapper {
         return true;
     }
     async checkQueueConsumerCount(queuename: string): Promise<boolean> {
-        var result: boolean = false;
+        let result: boolean = false;
         try {
             result = await retry(async bail => {
-                var queue = await amqpwrapper.getqueue(Config.amqp_url, '/', queuename);
-                // var queue = await amqpwrapper.getqueue(queuename);
+                const queue = await amqpwrapper.getqueue(Config.amqp_url, '/', queuename);
+                // const queue = await amqpwrapper.getqueue(queuename);
                 let hasConsumers: boolean = false;
                 if (queue.consumers > 0) {
                     hasConsumers = true;
@@ -500,32 +476,32 @@ export class amqpwrapper {
         return false;
     }
     static async getvhosts(amqp_url) {
-        var q = this.parseurl(amqp_url);
-        var options = {
+        const q = this.parseurl(amqp_url);
+        const options = {
             headers: {
                 'Content-type': 'application/x-www-form-urlencoded'
             },
             username: (q as any).username,
             password: (q as any).password
         };
-        var _url = 'http://' + q.host + ':' + q.port + '/api/vhosts';
-        var response = await got.get(_url, options);
-        var payload = JSON.parse(response.body);
+        const _url = 'http://' + q.host + ':' + q.port + '/api/vhosts';
+        const response = await got.get(_url, options);
+        const payload = JSON.parse(response.body);
         return payload;
     }
     static async getqueues(amqp_url: string, vhost: string = null) {
-        var q = this.parseurl(amqp_url);
-        var options = {
+        const q = this.parseurl(amqp_url);
+        const options = {
             headers: {
                 'Content-type': 'application/x-www-form-urlencoded'
             },
             username: (q as any).username,
             password: (q as any).password
         };
-        var _url = 'http://' + q.host + ':' + q.port + '/api/queues';
+        let _url = 'http://' + q.host + ':' + q.port + '/api/queues';
         if (!NoderedUtil.IsNullEmpty(vhost)) _url += '/' + encodeURIComponent(vhost);
-        var response = await got.get(_url, options);
-        var payload = JSON.parse(response.body);
+        const response = await got.get(_url, options);
+        const payload = JSON.parse(response.body);
         return payload;
     }
     static async getqueue(amqp_url: string, vhost: string, queuename) {
@@ -536,8 +512,8 @@ export class amqpwrapper {
         //         return queue;
         //     }
         // }
-        var q = this.parseurl(amqp_url);
-        var options = {
+        const q = this.parseurl(amqp_url);
+        const options = {
             headers: {
                 'Content-type': 'application/x-www-form-urlencoded'
             },
@@ -545,14 +521,14 @@ export class amqpwrapper {
             password: (q as any).password,
             timeout: 500, retry: 1
         };
-        var _url = 'http://' + q.host + ':' + q.port + '/api/queues/' + encodeURIComponent(vhost) + '/' + encodeURIComponent(queuename);
-        var response = await got.get(_url, options);
-        var payload = JSON.parse(response.body);
+        const _url = 'http://' + q.host + ':' + q.port + '/api/queues/' + encodeURIComponent(vhost) + '/' + encodeURIComponent(queuename);
+        const response = await got.get(_url, options);
+        const payload = JSON.parse(response.body);
         return payload;
     }
     static async deletequeue(amqp_url: string, vhost: string, queuename) {
-        var q = this.parseurl(amqp_url);
-        var options = {
+        const q = this.parseurl(amqp_url);
+        const options = {
             headers: {
                 'Content-type': 'application/x-www-form-urlencoded'
             },
@@ -560,9 +536,9 @@ export class amqpwrapper {
             password: (q as any).password,
             timeout: 500, retry: 1
         };
-        var _url = 'http://' + q.host + ':' + q.port + '/api/queues/' + encodeURIComponent(vhost) + '/' + encodeURIComponent(queuename);
-        var response = await got.delete(_url, options);
-        var payload = JSON.parse(response.body);
+        const _url = 'http://' + q.host + ':' + q.port + '/api/queues/' + encodeURIComponent(vhost) + '/' + encodeURIComponent(queuename);
+        const response = await got.delete(_url, options);
+        const payload = JSON.parse(response.body);
         return payload;
     }
 
@@ -570,11 +546,11 @@ export class amqpwrapper {
     // This will crash the channel, that does not seem scalable
     // async checkQueue(queue: string): Promise<boolean> {
     //     if (Config.amqp_check_for_consumer) {
-    //         var q: amqpqueue = this.queues[queue];
+    //         const q: amqpqueue = this.queues[queue];
 
-    //         var test: AssertQueue = null;
+    //         const test: AssertQueue = null;
     //         try {
-    //             // var test: AssertQueue = await this.channel.assertQueue(this.queue, this.AssertQueueOptions);
+    //             // const test: AssertQueue = await this.channel.assertQueue(this.queue, this.AssertQueueOptions);
     //             test = await this.channel.checkQueue(queue);
     //             if (q != null) {
     //                 q.ok = test;

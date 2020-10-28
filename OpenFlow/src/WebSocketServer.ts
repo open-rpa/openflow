@@ -36,21 +36,21 @@ export class WebSocketServer {
     }
     private static async pingClients(): Promise<void> {
         let count: number = WebSocketServer._clients.length;
-        for (var i = WebSocketServer._clients.length - 1; i >= 0; i--) {
-            var cli: WebSocketServerClient = WebSocketServer._clients[i];
+        for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
+            const cli: WebSocketServerClient = WebSocketServer._clients[i];
             try {
                 if (!NoderedUtil.IsNullEmpty(cli.jwt)) {
-                    var payload = Crypt.decryptToken(cli.jwt);
-                    var clockTimestamp = Math.floor(Date.now() / 1000);
+                    const payload = Crypt.decryptToken(cli.jwt);
+                    const clockTimestamp = Math.floor(Date.now() / 1000);
                     if ((payload.exp - clockTimestamp) < 60) {
                         WebSocketServer._logger.debug("Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " expires in less than 1 minute, send new jwt to client");
-                        var tuser: TokenUser = await Message.DoSignin(cli, null);
+                        const tuser: TokenUser = await Message.DoSignin(cli, null);
                         if (tuser != null) {
-                            var l: SigninMessage = new SigninMessage();
+                            const l: SigninMessage = new SigninMessage();
                             cli.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
                             l.jwt = cli.jwt;
                             l.user = tuser;
-                            var m: Message = new Message(); m.command = "refreshtoken";
+                            const m: Message = new Message(); m.command = "refreshtoken";
                             m.data = JSON.stringify(l);
                             cli.Send(m);
                         } else {
@@ -62,8 +62,8 @@ export class WebSocketServer {
                 console.error(error);
                 cli.Close();
             }
-            var now = new Date();
-            var seconds = (now.getTime() - cli.lastheartbeat.getTime()) / 1000;
+            const now = new Date();
+            const seconds = (now.getTime() - cli.lastheartbeat.getTime()) / 1000;
             if (seconds >= Config.client_heartbeat_timeout) {
                 if (cli.user != null) {
                     WebSocketServer._logger.info("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " timeout, close down");
@@ -85,9 +85,9 @@ export class WebSocketServer {
         if (count !== WebSocketServer._clients.length) {
             WebSocketServer._logger.info("new client count: " + WebSocketServer._clients.length);
         }
-        for (var i = 0; i < WebSocketServer._clients.length; i++) {
+        for (let i = 0; i < WebSocketServer._clients.length; i++) {
             try {
-                var cli = WebSocketServer._clients[i];
+                const cli = WebSocketServer._clients[i];
                 if (cli.user != null) {
                     // Lets assume only robots register queues ( not true )
                     if (cli.clientagent == "openrpa") {

@@ -735,7 +735,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             reduce: {
                 value:
                     `function reduce(key, values) {
-    var reducedObject = { count: 0, value: 0, avg: 0, _acl: [] };
+    const reducedObject = { count: 0, value: 0, avg: 0, _acl: [] };
     values.forEach(function (value) {
         reducedObject.value += value.value;
         reducedObject.count += value.count;
@@ -830,10 +830,10 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
                 }
             });
 
-            var that = this;
+            const that = this;
             $("#node-function-expand-js-map").click(function (e) {
                 e.preventDefault();
-                var value = that.mapeditor.getValue();
+                const value = that.mapeditor.getValue();
                 RED.editor.editJavaScript({
                     value: value,
                     width: "Infinity",
@@ -850,7 +850,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             });
             $("#node-function-expand-js-reduce").click(function (e) {
                 e.preventDefault();
-                var value = that.reduceeditor.getValue();
+                const value = that.reduceeditor.getValue();
                 RED.editor.editJavaScript({
                     value: value,
                     width: "Infinity",
@@ -867,7 +867,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             });
             $("#node-function-expand-js-finalize").click(function (e) {
                 e.preventDefault();
-                var value = that.finalizeeditor.getValue();
+                const value = that.finalizeeditor.getValue();
                 RED.editor.editJavaScript({
                     value: value,
                     width: "Infinity",
@@ -893,9 +893,9 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         oneditsave: function () {
             this.noerr = 0;
 
-            var annot = this.mapeditor.getSession().getAnnotations();
+            let annot = this.mapeditor.getSession().getAnnotations();
             $("#node-input-noerr-map").val(0);
-            for (var k = 0; k < annot.length; k++) {
+            for (let k = 0; k < annot.length; k++) {
                 if (annot[k].type === "error") {
                     $("#node-input-noerr-map").val(annot.length);
                     this.noerr = annot.length;
@@ -904,7 +904,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 
             annot = this.reduceeditor.getSession().getAnnotations();
             $("#node-input-noerr-reduce").val(0);
-            for (var k = 0; k < annot.length; k++) {
+            for (let k = 0; k < annot.length; k++) {
                 if (annot[k].type === "error") {
                     $("#node-input-noerr-reduce").val(annot.length);
                     this.noerr = annot.length;
@@ -913,7 +913,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 
             annot = this.finalizeeditor.getSession().getAnnotations();
             $("#node-input-noerr-finalize").val(0);
-            for (var k = 0; k < annot.length; k++) {
+            for (let k = 0; k < annot.length; k++) {
                 if (annot[k].type === "error") {
                     $("#node-input-noerr-finalize").val(annot.length);
                     this.noerr = annot.length;
@@ -946,19 +946,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             delete this.finalizeeditor;
         },
         oneditresize: function (size) {
-            // var rows = $("#dialog-form>div:not(.node-text-editor-row)");
-            // var height = $("#dialog-form").height();
-            // for (var i=0; i<rows.size(); i++) {
-            //     height -= $(rows[i]).outerHeight(true);
-            // }
-            // var editorRow = $("#dialog-form>div.node-text-editor-row");
-            // height -= (parseInt(editorRow.css("marginTop"))+parseInt(editorRow.css("marginBottom")));
-            // $(".node-text-editor").css("height",height+"px");
-            // this.editor.resize();
-            // this.reduceeditor.resize();
-            // this.finalizeeditor.resize();
         }
-
     });
 </script>
 
@@ -1076,10 +1064,10 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
                     clearInterval: false
                 }
             });
-            var that = this;
+            const that = this;
             $("#node-function-expand-js-updatedocument").click(function (e) {
                 e.preventDefault();
-                var value = that.updatedocumenteditor.getValue();
+                const value = that.updatedocumenteditor.getValue();
                 RED.editor.editJavaScript({
                     value: value,
                     width: "Infinity",
@@ -1103,7 +1091,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         oneditsave: function () {
             annot = this.updatedocumenteditor.getSession().getAnnotations();
             $("#node-input-noerr-updatedocument").val(0);
-            for (var k = 0; k < annot.length; k++) {
+            for (let k = 0; k < annot.length; k++) {
                 if (annot[k].type === "error") {
                     $("#node-input-noerr-updatedocument").val(annot.length);
                     this.noerr = annot.length;
@@ -1195,10 +1183,10 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
                     clearInterval: false
                 }
             });
-            var that = this;
+            const that = this;
             $("#node-function-expand-js-aggregates").click(function (e) {
                 e.preventDefault();
-                var value = that.aggregateseditor.getValue();
+                const value = that.aggregateseditor.getValue();
                 RED.editor.editJavaScript({
                     value: value,
                     width: "Infinity",
@@ -1222,7 +1210,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         oneditsave: function () {
             annot = this.aggregateseditor.getSession().getAnnotations();
             $("#node-input-noerr-aggregates").val(0);
-            for (var k = 0; k < annot.length; k++) {
+            for (let k = 0; k < annot.length; k++) {
                 if (annot[k].type === "error") {
                     $("#node-input-noerr-aggregates").val(annot.length);
                     this.noerr = annot.length;
@@ -1401,10 +1389,10 @@ you can set filename using msg.filename<br>
                     clearInterval: false
                 }
             });
-            var that = this;
+            const that = this;
             $("#node-function-expand-js-aggregates").click(function (e) {
                 e.preventDefault();
-                var value = that.aggregateseditor.getValue();
+                const value = that.aggregateseditor.getValue();
                 RED.editor.editJavaScript({
                     value: value,
                     width: "Infinity",
@@ -1428,7 +1416,7 @@ you can set filename using msg.filename<br>
         oneditsave: function () {
             annot = this.aggregateseditor.getSession().getAnnotations();
             $("#node-input-noerr-aggregates").val(0);
-            for (var k = 0; k < annot.length; k++) {
+            for (let k = 0; k < annot.length; k++) {
                 if (annot[k].type === "error") {
                     $("#node-input-noerr-aggregates").val(annot.length);
                     this.noerr = annot.length;

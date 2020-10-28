@@ -8,7 +8,7 @@ import { NoderedUtil } from "openflow-api";
 
 export class Config {
     public static getversion(): string {
-        var versionfile: string = path.join(__dirname, "VERSION");
+        let versionfile: string = path.join(__dirname, "VERSION");
         if (!fs.existsSync(versionfile)) versionfile = path.join(__dirname, "..", "VERSION")
         if (!fs.existsSync(versionfile)) versionfile = path.join(__dirname, "..", "..", "VERSION")
         if (!fs.existsSync(versionfile)) versionfile = path.join(__dirname, "..", "..", "..", "VERSION")
@@ -161,7 +161,7 @@ export class Config {
     public static nodered_initial_liveness_delay: number = parseInt(Config.getEnv("nodered_initial_liveness_delay", "60"));
 
     public static baseurl(): string {
-        var result: string = "";
+        let result: string = "";
         if (Config.tls_crt != '' && Config.tls_key != '') {
             result = "https://" + Config.domain;
         } else {
@@ -173,16 +173,16 @@ export class Config {
         return result;
     }
     public static getEnv(name: string, defaultvalue: string): string {
-        var value: any = process.env[name];
+        let value: any = process.env[name];
         if (!value || value === "") { value = defaultvalue; }
         return value;
     }
     public static async parse_federation_metadata(url: string): Promise<any> {
         // if anything throws, we retry
-        var metadata: any = await retry(async bail => {
-            var reader: any = await fetch({ url });
+        const metadata: any = await retry(async bail => {
+            const reader: any = await fetch({ url });
             if (NoderedUtil.IsNullUndefinded(reader)) { bail(new Error("Failed getting result")); return; }
-            var config: any = toPassportConfig(reader);
+            const config: any = toPassportConfig(reader);
             // we need this, for Office 365 :-/
             if (reader.signingCerts && reader.signingCerts.length > 1) {
                 config.cert = reader.signingCerts;
@@ -197,13 +197,13 @@ export class Config {
         return metadata;
     }
     public static parseArray(s: string): string[] {
-        var arr = s.split(",");
+        let arr = s.split(",");
         arr = arr.map(p => p.trim());
         arr = arr.filter(result => (result.trim() !== ""));
         return arr;
     }
     public static parseBoolean(s: any): boolean {
-        var val: string = "false";
+        let val: string = "false";
         if (typeof s === "number") {
             val = s.toString();
         } else if (typeof s === "string") {

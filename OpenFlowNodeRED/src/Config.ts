@@ -7,7 +7,7 @@ import { NoderedUtil } from "openflow-api";
 const { networkInterfaces } = require('os');
 export class Config {
     public static getversion(): string {
-        var versionfile: string = path.join(__dirname, "VERSION");
+        let versionfile: string = path.join(__dirname, "VERSION");
         if (!fs.existsSync(versionfile)) versionfile = path.join(__dirname, "..", "VERSION")
         if (!fs.existsSync(versionfile)) versionfile = path.join(__dirname, "..", "..", "VERSION")
         if (!fs.existsSync(versionfile)) versionfile = path.join(__dirname, "..", "..", "..", "VERSION")
@@ -70,6 +70,8 @@ export class Config {
     public static NODE_ENV: string = Config.getEnv("NODE_ENV", "development");
 
     public static allow_start_from_cache: boolean = Config.parseBoolean(Config.getEnv("allow_start_from_cache", "false"));
+    public static auto_restart_when_needed: boolean = Config.parseBoolean(Config.getEnv("auto_restart_when_needed", "true"));
+
 
     public static saml_federation_metadata: string = Config.getEnv("saml_federation_metadata", "");
     public static saml_issuer: string = Config.getEnv("saml_issuer", "");
@@ -134,7 +136,7 @@ export class Config {
         }
         if (NoderedUtil.IsNullEmpty(Config.domain)) {
             if (Config.nodered_sa === null || Config.nodered_sa === undefined || Config.nodered_sa === "") {
-                var matches = Config.nodered_id.match(/\d+/);
+                const matches = Config.nodered_id.match(/\d+/);
                 if (matches !== null && matches !== undefined) {
                     if (matches.length > 0) {
                         Config.nodered_id = matches[matches.length - 1]; // Just grab the last number
@@ -153,16 +155,13 @@ export class Config {
         //     return "https://" + Config.domain + ":" + Config.port + "/";
         // }
         // return "http://" + Config.domain + ":" + Config.port + "/";
-        var result: string = "";
+        let result: string = "";
         if (Config.tls_crt != '' && Config.tls_key != '') {
             result = "https://" + Config.domain;
         } else {
             result = Config.protocol + "://" + Config.domain;
         }
-        var port: number = Config.port;
-        if (Config.nodered_port > 0) {
-            port = Config.nodered_port;
-        }
+        const port: number = (Config.nodered_port > 0 ? Config.nodered_port : Config.port);
         if (port != 80 && port != 443) {
             result = result + ":" + port + "/";
         } else { result = result + "/"; }
@@ -170,12 +169,12 @@ export class Config {
     }
 
     public static getEnv(name: string, defaultvalue: string): string {
-        var value: any = process.env[name];
+        let value: any = process.env[name];
         if (!value || value === "") { value = defaultvalue; }
         return value;
     }
     public static parseBoolean(s: any): boolean {
-        var val: string = "false";
+        let val: string = "false";
         if (typeof s === "number") {
             val = s.toString();
         } else if (typeof s === "string") {
@@ -195,8 +194,8 @@ export class Config {
     public static async parse_federation_metadata(url: string): Promise<any> {
         try {
             if (Config.tls_ca !== "") {
-                var tls_ca: string = Buffer.from(Config.tls_ca, 'base64').toString('ascii')
-                var rootCas = require('ssl-root-cas/latest').create();
+                const tls_ca: string = Buffer.from(Config.tls_ca, 'base64').toString('ascii')
+                const rootCas = require('ssl-root-cas/latest').create();
                 rootCas.push(tls_ca);
                 // rootCas.addFile( tls_ca );
                 https.globalAgent.options.ca = rootCas;
@@ -207,12 +206,12 @@ export class Config {
         }
 
         // if anything throws, we retry
-        var metadata: any = await retry(async bail => {
+        const metadata: any = await retry(async bail => {
             process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-            var reader: any = await fetch({ url });
+            const reader: any = await fetch({ url });
             process.env.NODE_TLS_REJECT_UNAUTHORIZED = "1";
             if (reader === null || reader === undefined) { bail(new Error("Failed getting result")); return; }
-            var config: any = toPassportConfig(reader);
+            const config: any = toPassportConfig(reader);
             // we need this, for Office 365 :-/
             if (reader.signingCerts && reader.signingCerts.length > 1) {
                 config.cert = reader.signingCerts;
