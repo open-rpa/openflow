@@ -655,6 +655,7 @@ export class noderedcontribopenflowstorage {
             } catch (error) {
             }
             let oldsettings: any = null;
+            let exitprocess: boolean = false;
             if (this._settings != null) {
                 this.bussy = true;
                 try {
@@ -663,8 +664,6 @@ export class noderedcontribopenflowstorage {
                     newsettings = JSON.parse(newsettings);
 
                     let keys = Object.keys(oldsettings.nodes);
-                    let exitprocess: boolean = false;
-                    const modules = {};
                     for (let i = 0; i < keys.length; i++) {
                         const key = keys[i];
                         if (key != "node-red") {
@@ -693,7 +692,10 @@ export class noderedcontribopenflowstorage {
                                     }
                                 }
                             } catch (error) {
-                                this._logger.error((error.message ? error.message : error));
+                                var message = (error.message ? error.message : error);
+                                this._logger.error(message);
+                                if (message == "Uninstall failed") exitprocess = true;
+                                if (message == "Install failed") exitprocess = true;
                             }
                         }
                     }
@@ -734,7 +736,10 @@ export class noderedcontribopenflowstorage {
                                     }
                                 }
                             } catch (error) {
-                                this._logger.error((error.message ? error.message : error));
+                                var message = (error.message ? error.message : error);
+                                this._logger.error(message);
+                                if (message == "Uninstall failed") exitprocess = true;
+                                if (message == "Install failed") exitprocess = true;
                             }
                         }
                     }
@@ -742,25 +747,6 @@ export class noderedcontribopenflowstorage {
                         update = true;
                     }
                     this._settings = newsettings;
-                    if (exitprocess && Config.auto_restart_when_needed) {
-                        if (NoderedUtil.isDocker()) {
-                            this._logger.info("Running as docker, just quit process, kubernetes will start a new version");
-                            process.exit(1);
-                        } else {
-                            if (servicename != "service-name-not-set") {
-                                var _servicename = path.basename(servicename)
-                                this._logger.info("Restarting service " + _servicename);
-                                RestartService(_servicename);
-                                process.exit(1);
-                            } else {
-                                this._logger.info("Not running in docker, nor started as a service, please restart Node-Red manually");
-                            }
-                        }
-                    } else if (exitprocess) {
-                        this._logger.info("Restart is needed, auto_restart_when_needed is false");
-                    } else if (!exitprocess) {
-                        this._logger.info("Restart not needed");
-                    }
                 } catch (error) {
                     this._logger.error(error);
                     update = true;
@@ -769,6 +755,26 @@ export class noderedcontribopenflowstorage {
             } else {
                 update = true;
             }
+            if (exitprocess && Config.auto_restart_when_needed) {
+                if (NoderedUtil.isDocker()) {
+                    this._logger.info("Running as docker, just quit process, kubernetes will start a new version");
+                    process.exit(1);
+                } else {
+                    if (servicename != "service-name-not-set") {
+                        var _servicename = path.basename(servicename)
+                        this._logger.info("Restarting service " + _servicename);
+                        RestartService(_servicename);
+                        process.exit(1);
+                    } else {
+                        this._logger.info("Not running in docker, nor started as a service, please restart Node-Red manually");
+                    }
+                }
+            } else if (exitprocess) {
+                this._logger.info("Restart is needed, auto_restart_when_needed is false");
+            } else if (!exitprocess) {
+                this._logger.info("Restart not needed");
+            }
+
         } else {
             this._logger.info("**************************************************");
             this._logger.info("* Unknown type " + entity._type + " last updated " + seconds + " seconds ago");
