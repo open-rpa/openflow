@@ -7,6 +7,7 @@ import { Config } from "./Config";
 import { WebSocketClient, NoderedUtil, Base } from "openflow-api";
 import * as nodered from "node-red";
 import { FileSystemCache } from "openflow-api";
+import { StopService, StartService, servicename } from "./nodeclient/cliutil";
 export class noderednpmrc {
     public _id: string;
     public _type: string = "npmrc";
@@ -536,8 +537,9 @@ export class noderedcontribopenflowstorage {
                     for (let i = 0; i < keys.length; i++) {
                         const key = keys[i];
                         const val = settings.nodes[key];
-                        if (["node-red", "node-red-node-email", "node-red-node-feedparser", "node-red-node-rbe",
-                            "node-red-node-sentiment", "node-red-node-tail", "node-red-node-twitter"].indexOf(key) === -1) {
+                        if (["node-red"].indexOf(key) === -1) {
+                            // if (["node-red", "node-red-node-email", "node-red-node-feedparser", "node-red-node-rbe",
+                            //     "node-red-node-sentiment", "node-red-node-tail", "node-red-node-twitter"].indexOf(key) === -1) {
                             let pname: string = val.name + "@" + val.version;
                             if (val.pending_version) {
                                 pname = val.name + "@" + val.pending_version;
@@ -658,6 +660,7 @@ export class noderedcontribopenflowstorage {
                     newsettings = JSON.parse(newsettings);
 
                     let keys = Object.keys(oldsettings.nodes);
+                    let exitprocess: boolean = false;
                     const modules = {};
                     for (let i = 0; i < keys.length; i++) {
                         const key = keys[i];
@@ -671,6 +674,9 @@ export class noderedcontribopenflowstorage {
                                     this._logger.info("Install module " + key + "@" + newsettings.nodes[key].version + " up from " + oldsettings.nodes[key].version);
                                     let result = await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: newsettings.nodes[key].version });
                                     this._logger.debug(result);
+                                    if (result.pending_version != result.version) {
+                                        exitprocess = true;
+                                    }
                                 }
                             } catch (error) {
                                 this._logger.error((error.message ? error.message : error));
@@ -687,9 +693,16 @@ export class noderedcontribopenflowstorage {
                                     this._logger.info("Install new module " + key + "@" + val.version);
                                     let result = await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: val.version });
                                     this._logger.debug(result);
+                                    if (result.pending_version != result.version) {
+                                        exitprocess = true;
+                                    }
                                 } else if (newsettings.nodes[key].version != oldsettings.nodes[key].version) {
                                     this._logger.info("Install module " + key + "@" + newsettings.nodes[key].version + " up from " + oldsettings.nodes[key].version);
-                                    await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: val.version });
+                                    let result = await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: val.version });
+                                    this._logger.debug(result);
+                                    if (result.pending_version != result.version) {
+                                        exitprocess = true;
+                                    }
                                 }
                             } catch (error) {
                                 this._logger.error((error.message ? error.message : error));
@@ -698,6 +711,27 @@ export class noderedcontribopenflowstorage {
                     }
                     if (this.DiffObjects(newsettings, oldsettings)) {
                         update = true;
+                    }
+                    this._settings = newsettings;
+                    if (exitprocess && Config.auto_restart_when_needed) {
+                        if (NoderedUtil.isDocker()) {
+                            this._logger.info("Running as docker, just quit process, kubernetes will start a new version");
+                            process.exit(1);
+                        } else {
+                            if (servicename != "service-name-not-set") {
+                                var _servicename = path.basename(servicename)
+                                this._logger.info("Restarting service " + _servicename);
+                                StopService(_servicename);
+                                StartService(_servicename);
+                                process.exit(1);
+                            } else {
+                                this._logger.info("Not running in docker, nor started as a service, please restart Node-Red manually");
+                            }
+                        }
+                    } else if (exitprocess) {
+                        this._logger.info("Restart us needed, auto_restart_when_needed is false");
+                    } else if (!exitprocess) {
+                        this._logger.info("Restart not needed");
                     }
                 } catch (error) {
                     this._logger.error(error);

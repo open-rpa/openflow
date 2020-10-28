@@ -70,6 +70,8 @@ export class Config {
     public static NODE_ENV: string = Config.getEnv("NODE_ENV", "development");
 
     public static allow_start_from_cache: boolean = Config.parseBoolean(Config.getEnv("allow_start_from_cache", "false"));
+    public static auto_restart_when_needed: boolean = Config.parseBoolean(Config.getEnv("auto_restart_when_needed", "true"));
+
 
     public static saml_federation_metadata: string = Config.getEnv("saml_federation_metadata", "");
     public static saml_issuer: string = Config.getEnv("saml_issuer", "");

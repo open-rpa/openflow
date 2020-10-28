@@ -7,7 +7,7 @@ const path = require('path');
 const envfile = require('envfile')
 export const envfilename = ".env";
 export const envfilepathname = "";
-export const servicename = "openflow-nodered";
+export var servicename = "service-name-not-set";
 const service = require("os-service");
 
 export function isWin() {
