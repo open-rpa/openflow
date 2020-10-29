@@ -92,6 +92,16 @@ gulp.task("compose", shell.task([
 //     'tsc -p OpenFlow/tsconfig.json'
 // ]));
 
+gulp.task("bumpyml", function () {
+    console.log('cloudhack/openflow:' + version);
+    const openflow = gulp.src(["./*.yml"]).pipe(replace(/openflow:\d+(\.\d+)+/g, 'openflow:' + version)).
+        pipe(gulp.dest("./"));
+
+    console.log('cloudhack/openflownodered:' + version);
+    const nodered = gulp.src(["./*.yml"]).pipe(replace(/openflownodered:\d+(\.\d+)+/g, 'openflownodered:' + version)).
+        pipe(gulp.dest("./"));
+    return merge(openflow, nodered);
+});
 gulp.task("bumpflow", function () {
     console.log('cloudhack/openflow:' + version);
     return gulp.src(["config/**/controllers.yml"])
@@ -135,6 +145,6 @@ gulp.task("bumpprojectfiles", function () {
 
 });
 
-gulp.task("bump", gulp.series("bumpflow", "bumpnodered", "bumpconfigmap", "bumpaiotfrontend", "bumpprojectfiles"));
+gulp.task("bump", gulp.series("bumpyml", "bumpflow", "bumpnodered", "bumpconfigmap", "bumpaiotfrontend", "bumpprojectfiles"));
 
 gulp.task("default", gulp.series("copyfiles1", "browserify", "watch"));
