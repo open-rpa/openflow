@@ -137,8 +137,8 @@ export class WebSocketServerClient {
             this._receiveQueue.push(msg);
             this.ProcessQueue();
         } catch (error) {
-            this._logger.error("WebSocket error encountered " + error.message);
-            const errormessage: Message = new Message(); errormessage.command = "error"; errormessage.data = error.message;
+            this._logger.error("WebSocket error encountered " + (error.message ? error.message : error));
+            const errormessage: Message = new Message(); errormessage.command = "error"; errormessage.data = (error.message ? error.message : error);
             this._socketObject.send(JSON.stringify(errormessage));
         }
     }
@@ -224,11 +224,7 @@ export class WebSocketServerClient {
                         ack(false);
                         // ack(); // just eat the error 
                         done(_data);
-                        if (error.message != null && error.message != "") {
-                            console.log(qname + " failed message queue message, nack and re queue message: ", error.message);
-                        } else {
-                            console.log(qname + " failed message queue message, nack and re queue message: ", error);
-                        }
+                        console.log(qname + " failed message queue message, nack and re queue message: ", (error.message ? error.message : error));
                     }, Config.amqp_requeue_time);
                 }
             });

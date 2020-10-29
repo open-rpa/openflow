@@ -77,15 +77,13 @@ let server: http.Server = null;
                 }
                 socket.events.emit("onsignedin", result.user);
             } catch (error) {
-                let closemsg: any = error;
-                if (error.message) { logger.error(error.message); closemsg = error.message; }
-                else { logger.error(error); }
+                let closemsg: any = (error.message ? error.message : error);
+                logger.error(closemsg);
                 socket.close(1000, closemsg);
             }
         });
     } catch (error) {
-        if (error.message) { logger.error(error.message); }
-        else { logger.error(error); }
+        logger.error(error.message ? error.message : error);
     }
 })();
 

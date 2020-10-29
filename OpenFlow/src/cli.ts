@@ -35,7 +35,7 @@ try {
         if (options.config != null && options.config != "") (envfilepathname as any) = options.config;
     }
 } catch (error) {
-    logger.info(error.message);
+    logger.info(error.message ? error.message : error);
     printusage();
     process.exit();
 }
@@ -57,9 +57,8 @@ function getToken(): Promise<string> {
                 resolve(result.jwt);
                 socket = null;
             } catch (error) {
-                let closemsg: any = error;
-                if (error.message) { logger.error(error.message); closemsg = error.message; }
-                else { logger.error(error); }
+                const closemsg: any = (error.message ? error.message : error);
+                this._logger.error(closemsg);
                 socket.close(1000, closemsg);
                 reject(closemsg);
                 socket = null;

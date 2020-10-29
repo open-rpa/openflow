@@ -1859,9 +1859,7 @@ export class Message {
             cli._logger.error(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
-                msg.error = error;
-                if (error.message) msg.error = error.message;
-                // if (error.stack) msg.error = error.stack;
+                msg.error = (error.message ? error.message : error);
                 if (error.response && error.response.body) {
                     msg.error = error.response.body;
                 }
@@ -1959,9 +1957,7 @@ export class Message {
             cli._logger.error(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
-                msg.error = error;
-                if (error.message) msg.error = error.message;
-                // if (error.stack) msg.error = error.stack;
+                msg.error = (error.message ? error.message : error);
                 if (error.response && error.response.body) {
                     msg.error = error.response.body;
                 }
@@ -2161,9 +2157,7 @@ export class Message {
             cli._logger.error(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
-                msg.error = error;
-                if (error.message) msg.error = error.message;
-                // if (error.stack) msg.error = error.stack;
+                msg.error = (error.message ? error.message : error);
                 if (error.response && error.response.body) {
                     msg.error = error.response.body;
                 }
@@ -2274,9 +2268,7 @@ export class Message {
             cli._logger.error(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
-                msg.error = error;
-                if (error.message) msg.error = error.message;
-                // if (error.stack) msg.error = error.stack;
+                msg.error = (error.message ? error.message : error);
                 if (error.response && error.response.body) {
                     msg.error = error.response.body;
                 }

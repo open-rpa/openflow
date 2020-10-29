@@ -50,8 +50,7 @@ export class amqp_connection {
                     this.webcli.jwt = result.jwt;
                     this.webcli.events.emit("onsignedin", result.user);
                 } catch (error) {
-                    if (error.message) { this.webcli._logger.error(error.message); }
-                    else { this.webcli._logger.error(error); }
+                    this.webcli._logger.error(error.message ? error.message : error);
                 }
             });
             this.webcli.events.on("onsignedin", async (user) => {

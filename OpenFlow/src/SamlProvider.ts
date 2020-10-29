@@ -105,9 +105,9 @@ export class SamlProvider {
                             res.redirect("/");
                         });
                     } catch (error) {
-                        res.body(error.message);
+                        res.body(error.message ? error.message : error);
                         res.end();
-                        console.error(error);
+                        console.error(error.message ? error.message : error);
                     }
                 } else {
                     // continue with issuing token using samlp

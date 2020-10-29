@@ -97,8 +97,7 @@ export class WebServer {
                     server = http.createServer(this.app);
                 }
                 server.on("error", (error) => {
-                    if (error.message) { this._logger.error(error.message); }
-                    else { this._logger.error(error); }
+                    this._logger.error(error.message ? error.message : error);
                     process.exit(404);
                 });
 
@@ -216,8 +215,7 @@ export class WebServer {
                     err = error;
                     errorCounter++;
                     hasErrors = true;
-                    if (error.message) { this._logger.error(error.message); }
-                    else { this._logger.error(error); }
+                    this._logger.error(error.message ? error.message : error);
                 }
                 if (errorCounter == 10) {
                     throw err;
@@ -228,8 +226,7 @@ export class WebServer {
             }
             return server;
         } catch (error) {
-            if (error.message) { this._logger.error(error.message); }
-            else { this._logger.error(error); }
+            this._logger.error(error.message ? error.message : error);
             process.exit(404);
         }
         return null;
