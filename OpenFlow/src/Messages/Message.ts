@@ -361,8 +361,12 @@ export class Message {
                 const result = [];
                 // filter out collections that are empty, or we don't have access too
                 for (let i = 0; i < msg.result.length; i++) {
-                    const q = await Config.db.query({}, null, 1, 0, null, msg.result[i].name, msg.jwt);
-                    if (q.length > 0) result.push(msg.result[i]);
+                    if (msg.result[i].name != "entities") {
+                        const q = await Config.db.query({}, null, 1, 0, null, msg.result[i].name, msg.jwt);
+                        if (q.length > 0) result.push(msg.result[i]);
+                    } else {
+                        result.push(msg.result[i]);
+                    }
                 }
                 if (result.filter(x => x.name == "entities").length == 0) {
                     result.push({ name: "entities", type: "collection" });
