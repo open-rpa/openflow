@@ -3,6 +3,7 @@ import { Config } from "../Config";
 import * as fs from "fs";
 export const logger = Logger.configure();
 const cp = require('child_process');
+const spawn = cp.spawn;
 const path = require('path');
 const envfile = require('envfile')
 export const envfilename = ".env";
@@ -54,12 +55,25 @@ export function RestartService(servicename: string) {
     try {
         if (isWin()) {
             // cp.execSync(`start "restart" "cmd.exe" "/c net stop ${servicename} & net start ${servicename}"`);
-            cp.exec(`start "restart" "cmd.exe" "/c net stop ${servicename} & net start ${servicename}"`);
+            // cp.exec(`start "restart" "cmd.exe" "/c net stop ${servicename} & net start ${servicename}"`);
+            // var child = spawn("powershell.exe", ["-Command", `Restart-Service ${servicename}`, "-NoExit"], {
+            var child = spawn("cmd", [`start "restart" "cmd.exe" "/c net stop ${servicename} & net start ${servicename}"`], {
+                shell: true, detached: true,
+                stdio: ['ignore', 'ignore', 'ignore']
+            });
+            child.unref();
         } else if (isMac()) {
             // https://medium.com/craftsmenltd/building-a-cross-platform-background-service-in-node-js-791cfcd3be60
             // cp.execSync(`sudo launchctl unload ${LAUNCHD_PLIST_PATH}`);
         } else {
-            cp.execSync(`service ${servicename} restart`);
+            // cp.execSync(`service ${servicename} restart`);
+            // var child = spawn(`service ${servicename} restart`, [], {
+            var child = spawn("service", [`${servicename} restart`], {
+                shell: true, detached: true,
+                stdio: ['ignore', 'ignore', 'ignore']
+            });
+            child.unref();
+
         }
     } catch (error) {
         logger.info(error.message ? error.message : error);

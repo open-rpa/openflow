@@ -257,5 +257,6 @@ try {
     } catch (error) {
         console.error(error.message ? error.message : error);
         logger.error(error.message ? error.message : error);
+        process.exit(404);
     }
 })();

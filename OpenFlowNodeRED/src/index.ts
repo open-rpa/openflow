@@ -8,6 +8,7 @@ import { WebServer } from "./WebServer";
 import { Config } from "./Config";
 import { Crypt } from "./nodeclient/Crypt";
 import { FileSystemCache } from "openflow-api";
+import { RestartService } from "./nodeclient/cliutil";
 
 const logger: winston.Logger = Logger.configure();
 logger.info("starting openflow nodered");
