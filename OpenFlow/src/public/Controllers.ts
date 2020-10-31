@@ -2335,6 +2335,7 @@ export class EntityCtrl extends entityCtrl<Base> {
                 ids.push(this.model._acl[i]._id);
             }
         }
+        if (this.model._encrypt == null) { this.model._encrypt = []; }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         this.fixtextarea();
     }
@@ -2343,13 +2344,14 @@ export class EntityCtrl extends entityCtrl<Base> {
             const tx = document.getElementsByTagName('textarea');
             for (let i = 0; i < tx.length; i++) {
                 tx[i].setAttribute('style', 'height:' + (tx[i].scrollHeight) + 'px;overflow-y:hidden;');
-                tx[i].addEventListener("input", OnInput, false);
+                // tx[i].addEventListener("input", OnInput, false);
             }
 
-            function OnInput() {
-                this.style.height = 'auto';
-                this.style.height = (this.scrollHeight) + 'px';
-            }
+            // function OnInput() {
+            //     console.log(this.scrollHeight);
+            //     this.style.height = 'auto';
+            //     this.style.height = (this.scrollHeight) + 'px';
+            // }
 
         }, 500);
     }
