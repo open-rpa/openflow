@@ -1,5 +1,5 @@
 import {
-    ObjectID, Db, Binary, InsertOneWriteOpResult, DeleteWriteOpResultObject, ObjectId, MapReduceOptions, CollectionInsertOneOptions, UpdateWriteOpResult, WriteOpResult, GridFSBucket, ReadPreference, ChangeStream
+    ObjectID, Db, Binary, InsertOneWriteOpResult, DeleteWriteOpResultObject, ObjectId, MapReduceOptions, CollectionInsertOneOptions, UpdateWriteOpResult, WriteOpResult, GridFSBucket, ReadPreference, ChangeStream, CollectionAggregationOptions
 } from "mongodb";
 import { MongoClient } from "mongodb";
 import winston = require("winston");
@@ -251,7 +251,7 @@ export class DatabaseConnection {
      * @returns Promise<T[]> Array of results
      */
     // tslint:disable-next-line: max-line-length
-    async query<T extends Base>(query: any, projection: Object, top: number, skip: number, orderby: Object | string, collectionname: string, jwt: string, queryas: string = null): Promise<T[]> {
+    async query<T extends Base>(query: any, projection: Object, top: number, skip: number, orderby: Object | string, collectionname: string, jwt: string, queryas: string = null, hint: Object | string = null): Promise<T[]> {
         await this.connect();
         let mysort: Object = {};
         if (orderby) {
@@ -270,6 +270,24 @@ export class DatabaseConnection {
                 mysort = orderby;
             }
         }
+        let myhint: Object = {};
+        if (hint) {
+            if (typeof hint === "string" || hint instanceof String) {
+                let newhint = null;
+                try {
+                    if (hint.indexOf("{") > -1) {
+                        newhint = JSON.parse((hint as string));
+                        myhint = newhint;
+                    }
+                } catch (error) {
+                    console.log(error, hint);
+                }
+                if (newhint == null) myhint[(hint as string)] = 1;
+            } else {
+                myhint = hint;
+            }
+        }
+        // orderby: Object | string
         if (projection) {
             if (typeof projection === "string" || projection instanceof String) {
                 projection = JSON.parse((projection as string));
@@ -339,11 +357,24 @@ export class DatabaseConnection {
         //     _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
         // }
         let arr: T[] = [];
+
+        var _pipe = this.db.collection(collectionname).find(_query);
         if (projection != null) {
-            arr = await this.db.collection(collectionname).find(_query).project(projection).sort(mysort as any).limit(top).skip(skip).toArray();
-        } else {
-            arr = await this.db.collection(collectionname).find(_query).sort(mysort as any).limit(top).skip(skip).toArray();
+            _pipe = _pipe.project(projection);
         }
+        _pipe = _pipe.sort(mysort as any).limit(top).skip(skip);
+        if (projection != null) {
+            _pipe = _pipe.project(projection);
+        }
+        if (hint) {
+            _pipe = _pipe.hint(myhint);
+        }
+        arr = await _pipe.toArray();
+        // if (projection != null) {
+        //     arr = await this.db.collection(collectionname).find(_query).project(projection).sort(mysort as any).limit(top).skip(skip).toArray();
+        // } else {
+        //     arr = await this.db.collection(collectionname).find(_query).sort(mysort as any).limit(top).skip(skip).toArray();
+        // }
         for (let i: number = 0; i < arr.length; i++) { arr[i] = this.decryptentity(arr[i]); }
         DatabaseConnection.traversejsondecode(arr);
         if (Config.log_queries) this._logger.debug("[" + user.username + "][" + collectionname + "] query gave " + arr.length + " results ");
@@ -397,7 +428,7 @@ export class DatabaseConnection {
      * @param  {string} jwt
      * @returns Promise
      */
-    async aggregate<T extends Base>(aggregates: object[], collectionname: string, jwt: string): Promise<T[]> {
+    async aggregate<T extends Base>(aggregates: object[], collectionname: string, jwt: string, hint: Object | string = null): Promise<T[]> {
         await this.connect();
 
         let json: any = aggregates;
@@ -409,7 +440,23 @@ export class DatabaseConnection {
                     return value;
             });
         }
-
+        let myhint: Object = {};
+        if (hint) {
+            if (typeof hint === "string" || hint instanceof String) {
+                let newhint = null;
+                try {
+                    if (hint.indexOf("{") > -1) {
+                        newhint = JSON.parse((hint as string));
+                        myhint = newhint;
+                    }
+                } catch (error) {
+                    console.log(error, hint);
+                }
+                if (newhint == null) myhint[(hint as string)] = 1;
+            } else {
+                myhint = hint;
+            }
+        }
         aggregates = JSON.parse(json, (key, value) => {
             if (typeof value === 'string' && value.match(isoDatePattern)) {
                 return new Date(value); // isostring, so cast to js date
@@ -420,19 +467,16 @@ export class DatabaseConnection {
                 return value; // leave any other value as-is
         });
 
-
-        // if (typeof aggregates === "string" || aggregates instanceof String) {
-        //     aggregates = JSON.parse((aggregates as any));
-        // }
         const base = this.getbasequery(jwt, "_acl", [Rights.read]);
         if (Array.isArray(aggregates)) {
             aggregates.unshift({ $match: base });
         } else {
             aggregates = [{ $match: base }, aggregates];
         }
-        // todo: add permissions check on aggregates
-        // aggregates.unshift(this.getbasequery(jwt, [Rights.read]));
-        const items: T[] = await this.db.collection(collectionname).aggregate(aggregates).toArray();
+        // const items: T[] = await this.db.collection(collectionname).aggregate(aggregates).toArray();
+        var options: CollectionAggregationOptions = {};
+        options.hint = myhint;
+        const items: T[] = await this.db.collection(collectionname).aggregate(aggregates, options).toArray();
         DatabaseConnection.traversejsondecode(items);
         return items;
     }
