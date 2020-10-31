@@ -45,7 +45,7 @@ services:
       - "traefik.http.routers.web.rule=Host(`localhost.openrpa.dk`)"
       - "traefik.http.routers.web.entrypoints=web"
       - "traefik.frontend.passHostHeader=true"
-    image: "cloudhack/openflow:1.1.43"
+    image: "cloudhack/openflow:1.1.50"
     container_name: "web"
     environment:
       - update_acl_based_on_groups=true

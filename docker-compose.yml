@@ -18,7 +18,7 @@ services:
       - "5672:5672"
       - "15672:15672"
   web:
-    image: "cloudhack/openflow:1.1.43"
+    image: "cloudhack/openflow:1.1.50"
     environment:
       - update_acl_based_on_groups=true
       - multi_tenant=false
