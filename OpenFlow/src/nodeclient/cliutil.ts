@@ -32,7 +32,7 @@ export function StartService(servicename: string) {
             cp.execSync(`service ${servicename} start`);
         }
     } catch (error) {
-        logger.info(error.message);
+        logger.info(error.message ? error.message : error);
     }
 }
 export function StopService(servicename: string) {
@@ -46,21 +46,21 @@ export function StopService(servicename: string) {
             cp.execSync(`service ${servicename} stop`);
         }
     } catch (error) {
-        logger.info(error.message);
+        logger.info(error.message ? error.message : error);
     }
 }
 export function RemoveService(servicename: string) {
     StopService(servicename);
     logger.info("Uninstalling service" + servicename);
     service.remove(servicename, function (error) {
-        if (error) { logger.info(error.message); return }
+        if (error) { logger.info(error.message ? error.message : error); return }
         logger.info("Service" + servicename + " uninstalled");
     });
 }
 export function InstallService(servicename: string, configfile: string) {
     logger.info("Installing service" + servicename);
     service.add(servicename, { programArgs: [servicename, "--run", "--config", configfile] }, function (error) {
-        if (error) { logger.info(error.message); return }
+        if (error) { logger.info(error.message ? error.message : error); return }
         logger.info("Service" + servicename + " installed");
         StartService(servicename);
     });

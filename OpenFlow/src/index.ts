@@ -255,10 +255,8 @@ try {
             process.exit(404);
         }
     } catch (error) {
-        // logger.error(error.message);
-        console.error(error);
-        const json = JSON.stringify(error, null, 3);
-        console.error(json);
-
+        console.error(error.message ? error.message : error);
+        logger.error(error.message ? error.message : error);
+        process.exit(404);
     }
 })();

@@ -467,8 +467,7 @@ export class amqpwrapper {
                 }
             });
         } catch (error) {
-            if (!NoderedUtil.IsNullEmpty(error.message)) this._logger.debug(error.message);
-            if (NoderedUtil.IsNullEmpty(error.message)) this._logger.debug(error);
+            this._logger.debug(error.message ? error.message : error);
         }
         if (result == true) {
             return result;

@@ -267,6 +267,7 @@ export class noderedcontribopenflowstorage {
                 fs.mkdirSync(this.settings.userDir);
             }
             fs.statSync(packageFile);
+            process.chdir(this.settings.userDir);
             this._logger.debug(packageFile + " exists.");
         } catch (err) {
         }
@@ -282,10 +283,10 @@ export class noderedcontribopenflowstorage {
             },
         };
         // Let's not !
-        if (fs.existsSync(packageFile)) {
-            this._logger.debug("creating new packageFile " + packageFile);
-            fs.writeFileSync(packageFile, JSON.stringify(defaultPackage, null, 4));
-        }
+        //if (!fs.existsSync(packageFile)) {
+        this._logger.debug("creating new packageFile " + packageFile);
+        fs.writeFileSync(packageFile, JSON.stringify(defaultPackage, null, 4));
+        //}
         // const dbsettings = await this._getSettings();
         // spawn gettings, so it starts installing
         return true;
@@ -301,14 +302,12 @@ export class noderedcontribopenflowstorage {
                 try {
                     this.npmrc = array[0];
                 } catch (error) {
-                    if (error.message) { this._logger.error(error.message); }
-                    else { this._logger.error(error); }
+                    this._logger.error(error.message ? error.message : error);
                     this.npmrc = null;
                 }
             }
         } catch (error) {
-            if (error.message) { this._logger.error(error.message); }
-            else { this._logger.error(error); }
+            this._logger.error(error.message ? error.message : error);
             this.npmrc = null;
         }
         try {
@@ -323,8 +322,7 @@ export class noderedcontribopenflowstorage {
             // }
             return this.npmrc;
         } catch (error) {
-            if (error.message) { this._logger.error(error.message); }
-            else { this._logger.error(error); }
+            this._logger.error(error.message ? error.message : error);
             this.npmrc = null;
         }
         return null;
@@ -348,8 +346,7 @@ export class noderedcontribopenflowstorage {
                 }
             }
         } catch (error) {
-            if (error.message) { this._logger.error(error.message); }
-            else { this._logger.error(error); }
+            this._logger.error(error.message ? error.message : error);
         }
     }
     public async _getFlows(): Promise<any[]> {
@@ -363,14 +360,12 @@ export class noderedcontribopenflowstorage {
                     this._flows = JSON.parse(array[0].flows);
                     result = this._flows;
                 } catch (error) {
-                    if (error.message) { this._logger.error(error.message); }
-                    else { this._logger.error(error); }
+                    this._logger.error(error.message ? error.message : error);
                     result = [];
                 }
             }
         } catch (error) {
-            if (error.message) { this._logger.error(error.message); }
-            else { this._logger.error(error); }
+            this._logger.error(error.message ? error.message : error);
             result = [];
         }
         const filename: string = Config.nodered_id + "_flows.json";
@@ -407,8 +402,7 @@ export class noderedcontribopenflowstorage {
                 this._flows = flows;
             }
         } catch (error) {
-            if (error.message) { this._logger.error(error.message); }
-            else { this._logger.error(error); }
+            this._logger.error(error.message ? error.message : error);
         }
     }
     public async _getCredentials(): Promise<any> {
@@ -431,8 +425,7 @@ export class noderedcontribopenflowstorage {
                 this._credentials = cred;
             }
         } catch (error) {
-            if (error.message) { this._logger.error(error.message); }
-            else { this._logger.error(error); }
+            this._logger.error(error.message ? error.message : error);
             cred = [];
         }
         const filename: string = Config.nodered_id + "_credentials";
@@ -485,8 +478,7 @@ export class noderedcontribopenflowstorage {
                 this._credentials = credentials;
             }
         } catch (error) {
-            if (error.message) { this._logger.error(error.message); }
-            else { this._logger.error(error); }
+            this._logger.error(error.message ? error.message : error);
         }
     }
     private firstrun: boolean = true;
@@ -500,8 +492,7 @@ export class noderedcontribopenflowstorage {
                 settings = JSON.parse(result[0].settings);
             }
         } catch (error) {
-            if (error.message) { this._logger.error(error.message); }
-            else { this._logger.error(error); }
+            this._logger.error(error.message ? error.message : error);
         }
         const filename: string = Config.nodered_id + "_settings";
         try {
@@ -517,8 +508,7 @@ export class noderedcontribopenflowstorage {
             }
             //}
         } catch (error) {
-            if (error.message) { this._logger.error(error.message); }
-            else { this._logger.error(error); }
+            this._logger.error(error.message ? error.message : error);
         }
         if (settings == null) {
             settings = {};
@@ -570,8 +560,7 @@ export class noderedcontribopenflowstorage {
                     this._logger.silly("noderedcontribopenflowstorage::_getSettings: return result");
                     this._logger.info("Installation of NPM packages complete");
                 } catch (error) {
-                    if (error.message) { this._logger.error(error.message); }
-                    else { this._logger.error(error); }
+                    this._logger.error(error.message ? error.message : error);
                     settings = {};
                 }
             }
@@ -614,63 +603,121 @@ export class noderedcontribopenflowstorage {
     public last_reload: Date = new Date();
     public bussy: boolean = false;
     public async onupdate(msg: any) {
-        let update: boolean = false;
-        let entity: Base = msg.fullDocument;
-
-        const begin: number = this.last_reload.getTime();
-        const end: number = new Date().getTime();
-        const seconds = Math.round((end - begin) / 1000);
-        if (seconds < 2 || this.bussy) {
-            this._logger.info("**************************************************");
-            this._logger.info("* " + entity._type);
-            this._logger.info("* Skip, less than 2 seconds since last update " + seconds + " or is bussy");
-            this._logger.info("**************************************************");
-            return;
-        }
-        if (entity._type == "flow") {
-            let oldflows: any[] = null;
-            if (this._flows != null) {
-                oldflows = JSON.parse(JSON.stringify(this._flows));
-                if (this.DiffObjects(entity, oldflows)) {
+        try {
+            const begin: number = this.last_reload.getTime();
+            const end: number = new Date().getTime();
+            const seconds = Math.round((end - begin) / 1000);
+            if (seconds < 2 || this.bussy) {
+                return;
+            }
+            let update: boolean = false;
+            let entity: Base = msg.fullDocument;
+            this._logger.info("noderedcontribopenflowstorage::onupdate " + entity._type + " - " + new Date().toLocaleTimeString());
+            if (entity._type != "setting" && entity._type != "flow" && entity._type != "credential") {
+                this._logger.info("noderedcontribopenflowstorage::onupdate " + entity._type + " - skipped " + new Date().toLocaleTimeString());
+                return;
+            }
+            if (entity._type == "flow") {
+                let oldflows: any[] = null;
+                if (this._flows != null) {
+                    oldflows = JSON.parse(JSON.stringify(this._flows));
+                    if (this.DiffObjects(entity, oldflows)) {
+                        update = true;
+                        this._flows = (entity as any).flows;
+                    }
+                } else {
                     update = true;
                     this._flows = (entity as any).flows;
                 }
-            } else {
-                update = true;
-                this._flows = (entity as any).flows;
-            }
-        } else if (entity._type == "credential") {
-            let oldcredentials: any[] = null;
-            if (this._credentials != null) {
-                oldcredentials = JSON.parse(JSON.stringify(this._credentials));
-                if (this.DiffObjects(entity, oldcredentials)) {
+            } else if (entity._type == "credential") {
+                let oldcredentials: any[] = null;
+                if (this._credentials != null) {
+                    oldcredentials = JSON.parse(JSON.stringify(this._credentials));
+                    if (this.DiffObjects(entity, oldcredentials)) {
+                        update = true;
+                    }
+                } else {
                     update = true;
                 }
-            } else {
-                update = true;
-            }
-        } else if (entity._type == "setting") {
-            try {
-                await this.RED.nodes.loadFlows(true);
-            } catch (error) {
-            }
-            let oldsettings: any = null;
-            let exitprocess: boolean = false;
-            if (this._settings != null) {
-                this.bussy = true;
-                try {
-                    oldsettings = JSON.parse(JSON.stringify(this._settings));
-                    let newsettings = (entity as any).settings;
-                    newsettings = JSON.parse(newsettings);
+            } else if (entity._type == "setting") {
+                console.log("SETTINGs!!! 1");
+                this._logger.info("noderedcontribopenflowstorage::onupdate setting init " + new Date().toLocaleTimeString());
+                console.log("SETTINGs!!! 2");
+                let oldsettings: any = null;
+                let exitprocess: boolean = false;
+                if (this._settings != null) {
+                    this.bussy = true;
+                    try {
+                        this._logger.info("noderedcontribopenflowstorage::onupdate parse settings " + new Date().toLocaleTimeString());
+                        oldsettings = JSON.parse(JSON.stringify(this._settings));
+                        let newsettings = (entity as any).settings;
+                        newsettings = JSON.parse(newsettings);
 
-                    let keys = Object.keys(oldsettings.nodes);
-                    for (let i = 0; i < keys.length; i++) {
-                        const key = keys[i];
-                        if (key != "node-red") {
-                            const val = oldsettings.nodes[key];
-                            try {
+                        this._logger.info("noderedcontribopenflowstorage::onupdate parse oldsettings " + new Date().toLocaleTimeString());
+                        let keys = Object.keys(oldsettings.nodes);
+                        for (let i = 0; i < keys.length; i++) {
+                            const key = keys[i];
+                            this._logger.info("noderedcontribopenflowstorage::onupdate key " + key + " " + new Date().toLocaleTimeString());
+                            if (key != "node-red") {
+                                const val = oldsettings.nodes[key];
+                                try {
+                                    let version = val.version;
+                                    if (val != null && val.pending_version) {
+                                        version = val.pending_version;
+                                    }
+                                    let oldversion = null;
+                                    if (oldsettings != null && oldsettings.nodes[key] != null) {
+                                        oldversion = oldsettings.nodes[key].version;
+                                        if (oldsettings.nodes[key].pending_version) {
+                                            oldversion = oldsettings.nodes[key].pending_version;
+                                        }
+                                    }
+                                    if (newsettings.nodes[key] == null) {
+                                        // this._logger.info("**************************************************");
+                                        this._logger.info("Remove module " + key + "@" + version);
+                                        await this.RED.runtime.nodes.removeModule({ user: "admin", module: key, version: version });
+                                        // HACK
+                                        // exitprocess = true;
+                                    } else if (version != oldversion) {
+                                        // this._logger.info("**************************************************");
+                                        this._logger.info("Install module " + key + "@" + version + " up from " + oldversion);
+                                        let result = await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: version });
+                                        if (result != null && result.pending_version != null && result.pending_version != result.version) {
+                                            this._logger.info(key + " now has pending_version " + result.pending_version + " request process exit");
+                                            exitprocess = true;
+                                        }
+                                        // HACK
+                                        // exitprocess = true;
+                                    }
+                                } catch (error) {
+                                    var message = (error.message ? error.message : error);
+                                    this._logger.error(message);
+                                    if (message == "Uninstall failed") {
+                                        this._logger.info("Uninstall failed, request process exit");
+                                        exitprocess = true;
+                                    }
+                                    if (message == "Install failed") {
+                                        this._logger.info("Install failed, request process exit");
+                                        exitprocess = true;
+                                    }
+                                    if (message == "Module already loaded") {
+                                        // this._logger.info("Install failed, Module already loaded");
+                                    }
+                                }
+                            }
+                        }
+                        this._logger.info("noderedcontribopenflowstorage::onupdate parse newsettings " + new Date().toLocaleTimeString());
+                        keys = Object.keys(newsettings.nodes);
+                        for (let i = 0; i < keys.length; i++) {
+                            const key = keys[i];
+                            if (key != "node-red") {
+                                const val = newsettings.nodes[key];
+                                if (val == null) {
+                                    this._logger.info("val == null at " + key + " ???");
+                                    continue;
+                                }
                                 let version = val.version;
-                                if (val != null && val.pending_version) {
+                                if (val.pending_version) {
                                     version = val.pending_version;
                                 }
                                 let oldversion = null;
@@ -680,118 +727,102 @@ export class noderedcontribopenflowstorage {
                                         oldversion = oldsettings.nodes[key].pending_version;
                                     }
                                 }
-                                if (newsettings.nodes[key] == null) {
-                                    this._logger.info("Remove module " + key + "@" + version);
-                                    await this.RED.runtime.nodes.removeModule({ user: "admin", module: key, version: version });
-                                } else if (version != oldversion) {
-                                    this._logger.info("Install module " + key + "@" + version + " up from " + oldversion);
-                                    let result = await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: version });
-                                    this._logger.debug(result);
-                                    if (result != null && result.pending_version != result.version) {
+                                try {
+                                    if (oldsettings.nodes[key] == null) {
+                                        // this._logger.info("**************************************************");
+                                        this._logger.info("Install new module " + key + "@" + version);
+                                        let result = await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: version });
+                                        if (result != null && result.pending_version != null && result.pending_version != result.version) {
+                                            this._logger.info(key + " now has pending_version " + result.pending_version + " request process exit");
+                                            exitprocess = true;
+                                        }
+                                        // HACK
+                                        // exitprocess = true;
+                                    } else if (version != oldversion) {
+                                        // this._logger.info("**************************************************");
+                                        this._logger.info("Install module " + key + "@" + version + " up from " + oldversion);
+                                        let result = await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: version });
+                                        if (result != null && result.pending_version != null && result.pending_version != result.version) {
+                                            this._logger.info(key + " now has pending_version " + result.pending_version + " request process exit");
+                                            exitprocess = true;
+                                        }
+                                        // HACK
+                                        // exitprocess = true;
+                                    }
+                                } catch (error) {
+                                    var message = (error.message ? error.message : error);
+                                    this._logger.error(message);
+                                    if (message == "Uninstall failed") {
+                                        this._logger.info("Uninstall failed, request process exit");
                                         exitprocess = true;
                                     }
+                                    if (message == "Install failed") {
+                                        this._logger.info("Install failed, request process exit");
+                                        exitprocess = true;
+                                    }
+                                    if (message == "Module already loaded") {
+                                        // this._logger.info("Install failed, Module already loaded");
+                                    }
                                 }
-                            } catch (error) {
-                                var message = (error.message ? error.message : error);
-                                this._logger.error(message);
-                                if (message == "Uninstall failed") exitprocess = true;
-                                if (message == "Install failed") exitprocess = true;
                             }
                         }
-                    }
-                    keys = Object.keys(newsettings.nodes);
-                    for (let i = 0; i < keys.length; i++) {
-                        const key = keys[i];
-                        if (key != "node-red") {
-                            const val = newsettings.nodes[key];
-                            if (val == null) {
-                                this._logger.info("val == null at " + key + " ???");
-                                continue;
-                            }
-                            let version = val.version;
-                            if (val.pending_version) {
-                                version = val.pending_version;
-                            }
-                            let oldversion = null;
-                            if (oldsettings != null && oldsettings.nodes[key] != null) {
-                                oldversion = oldsettings.nodes[key].version;
-                                if (oldsettings.nodes[key].pending_version) {
-                                    oldversion = oldsettings.nodes[key].pending_version;
-                                }
-                            }
-                            try {
-                                if (oldsettings.nodes[key] == null) {
-                                    this._logger.info("Install new module " + key + "@" + version);
-                                    let result = await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: version });
-                                    this._logger.debug(result);
-                                    if (result != null && result.pending_version != result.version) {
-                                        exitprocess = true;
-                                    }
-                                } else if (version != oldversion) {
-                                    this._logger.info("Install module " + key + "@" + version + " up from " + oldversion);
-                                    let result = await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: version });
-                                    this._logger.debug(result);
-                                    if (result != null && result.pending_version != result.version) {
-                                        exitprocess = true;
-                                    }
-                                }
-                            } catch (error) {
-                                var message = (error.message ? error.message : error);
-                                this._logger.error(message);
-                                if (message == "Uninstall failed") exitprocess = true;
-                                if (message == "Install failed") exitprocess = true;
-                            }
+                        this._logger.info("noderedcontribopenflowstorage::onupdate DiffObjects " + new Date().toLocaleTimeString());
+                        if (this.DiffObjects(newsettings, oldsettings)) {
+                            update = true;
+                            // this._logger.info("**************************************************");
                         }
+                        this._settings = newsettings;
+                    } catch (error) {
+                        this._logger.error(error);
+                        // update = true;
                     }
-                    if (this.DiffObjects(newsettings, oldsettings)) {
-                        update = true;
-                    }
-                    this._settings = newsettings;
-                } catch (error) {
-                    this._logger.error(error);
-                    update = true;
+                    this.bussy = false;
                 }
-                this.bussy = false;
-            } else {
-                update = true;
-            }
-            if (exitprocess && Config.auto_restart_when_needed) {
-                if (NoderedUtil.isDocker()) {
-                    this._logger.info("Running as docker, just quit process, kubernetes will start a new version");
-                    process.exit(1);
-                } else {
-                    if (servicename != "service-name-not-set") {
-                        var _servicename = path.basename(servicename)
-                        this._logger.info("Restarting service " + _servicename);
-                        RestartService(_servicename);
+
+                this._logger.info("noderedcontribopenflowstorage::onupdate check for exit exitprocess: " + exitprocess + " update: " + update + " " + new Date().toLocaleTimeString());
+
+                if (exitprocess && Config.auto_restart_when_needed) {
+                    if (NoderedUtil.isDocker()) {
+                        this._logger.info("noderedcontribopenflowstorage::onupdate: Running as docker, just quit process, kubernetes will start a new version");
                         process.exit(1);
                     } else {
-                        this._logger.info("Not running in docker, nor started as a service, please restart Node-Red manually");
+                        if (servicename != "service-name-not-set") {
+                            var _servicename = path.basename(servicename)
+                            this._logger.info("noderedcontribopenflowstorage::onupdate: Restarting service " + _servicename);
+                            RestartService(_servicename);
+                            // process.exit(1);
+                        } else {
+                            this._logger.info("noderedcontribopenflowstorage::onupdate: Not running in docker, nor started as a service, please restart Node-Red manually");
+                        }
                     }
+                } else if (exitprocess) {
+                    this._logger.info("noderedcontribopenflowstorage::onupdate: Restart is needed, auto_restart_when_needed is false");
+                } else if (!exitprocess) {
+                    this._logger.info("noderedcontribopenflowstorage::onupdate: Restart not needed");
                 }
-            } else if (exitprocess) {
-                this._logger.info("Restart is needed, auto_restart_when_needed is false");
-            } else if (!exitprocess) {
-                this._logger.info("Restart not needed");
-            }
 
-        } else {
-            this._logger.info("**************************************************");
-            this._logger.info("* Unknown type " + entity._type + " last updated " + seconds + " seconds ago");
-            this._logger.info("**************************************************");
-        }
-        if (update) {
-            this.last_reload = new Date();
-            this._logger.info("**************************************************");
-            this._logger.info("* " + entity._type);
-            this._logger.info("* loadFlows last updated " + seconds + " seconds ago");
-            this._logger.info("**************************************************");
-            await this.RED.nodes.loadFlows(true);
+            }
+            if (update) {
+                this.last_reload = new Date();
+                this._logger.info("**************************************************");
+                this._logger.info("* " + entity._type + " was updated, reloading NodeRED flows");
+                this._logger.info("* loadFlows last updated " + seconds + " seconds ago");
+                this._logger.info("**************************************************");
+                await this.RED.nodes.loadFlows(true);
+            } else {
+                this._logger.info("noderedcontribopenflowstorage::onupdate " + entity._type + " - COMPLETE !! " + new Date().toLocaleTimeString());
+            }
+        } catch (error) {
+            this._logger.error("**************************************************");
+            this._logger.error("* ERROR");
+            this._logger.error(error.message ? error.message : error);
+            this._logger.error("**************************************************");
         }
     }
     public async _saveSettings(settings: any): Promise<void> {
         try {
             this._logger.silly("noderedcontribopenflowstorage::_saveSettings");
+            this._logger.info(" _saveSettings - " + new Date().toLocaleTimeString());
             const filename: string = Config.nodered_id + "_settings";
             await this.backupStore.set(filename, JSON.stringify(settings));
             if (WebSocketClient.instance.isConnected()) {
@@ -809,6 +840,7 @@ export class noderedcontribopenflowstorage {
                     await NoderedUtil.UpdateOne("nodered", null, result[0], 1, true, null);
                 }
             }
+
             this._settings = settings;
             let exitprocess: boolean = false;
             let keys = Object.keys(settings.nodes);
@@ -827,27 +859,27 @@ export class noderedcontribopenflowstorage {
             }
             if (exitprocess && Config.auto_restart_when_needed) {
                 if (NoderedUtil.isDocker()) {
-                    this._logger.info("Running as docker, just quit process, kubernetes will start a new version");
+                    this._logger.info("noderedcontribopenflowstorage::onupdate: Running as docker, just quit process, kubernetes will start a new version");
                     process.exit(1);
                 } else {
                     if (servicename != "service-name-not-set") {
                         var _servicename = path.basename(servicename)
-                        this._logger.info("Restarting service " + _servicename);
+                        this._logger.info("noderedcontribopenflowstorage::onupdate: Restarting service " + _servicename);
                         RestartService(_servicename);
                         // process.exit(1);
                     } else {
-                        this._logger.info("Not running in docker, nor started as a service, please restart Node-Red manually");
+                        this._logger.info("noderedcontribopenflowstorage::onupdate: Not running in docker, nor started as a service, please restart Node-Red manually");
                     }
                 }
             } else if (exitprocess) {
-                this._logger.info("Restart is needed, auto_restart_when_needed is false");
+                this._logger.info("noderedcontribopenflowstorage::onupdate: Restart is needed, auto_restart_when_needed is false");
             } else if (!exitprocess) {
-                this._logger.info("Restart not needed");
+                this._logger.info("noderedcontribopenflowstorage::onupdate: Restart not needed");
             }
         } catch (error) {
-            if (error.message) { this._logger.error(error.message); }
-            else { this._logger.error(error); }
+            this._logger.error(error.message ? error.message : error);
         }
+        this._logger.info(" _saveSettings - COMPLETE!!! " + new Date().toLocaleTimeString());
     }
 
     public async _getSessions(): Promise<any[]> {
@@ -860,8 +892,7 @@ export class noderedcontribopenflowstorage {
                 item = JSON.parse(result[0].sessions);
             }
         } catch (error) {
-            if (error.message) { this._logger.error(error.message); }
-            else { this._logger.error(error); }
+            this._logger.error(error.message ? error.message : error);
             item = [];
         }
         const filename: string = Config.nodered_id + "_sessions";
@@ -895,48 +926,8 @@ export class noderedcontribopenflowstorage {
                 }
             }
         } catch (error) {
-            if (error.message) { this._logger.error(error.message); }
-            else { this._logger.error(error); }
+            this._logger.error(error.message ? error.message : error);
         }
     }
-
-    // public async _getLibraryEntry(type:string, path:string) {
-    //     const query = {
-    //         $and: [
-    //             { _type: "library" },
-    //             { type: type },
-    //             { path: new RegExp("^" + path)}
-    //         ]
-    //     }
-    //             const items = await this.collection.find(query).toArray();
-    //             const LibraryEntry = [];
-    //             items.forEach((item) => {
-    //                 if(path==item.path) {
-    //                     const body = item.body;
-    //                     if(item.type=="flows") {
-    //                         body = JSON.parse(body);
-    //                         body.fn = item.path;
-    //                     }
-    //                     resolve(body);
-    //                     return;
-    //                 } else {
-    //                     const meta = item.meta;
-    //                     meta.type = item.type;
-    //                     meta.fn = item.path;
-    //                     LibraryEntry.push(meta);
-    //                 }
-    // }
-    // public async _saveLibraryEntry(type:string, path:string, meta:any, body:any) {
-    //     if(path.indexOf("/")!=0) { path = "/" + path; }
-    //     const query = {
-    //         $and: [
-    //             { _type: "library" },
-    //             { type: type },
-    //             { path: path }
-    //         ]
-    //     }
-    //     const LibraryEntry = { _type: "library", type: type, path: path, meta: meta, body: body }
-    //     await this.collection.updateOne(query, LibraryEntry, { upsert: true });
-    // }
 
 }

@@ -8,6 +8,7 @@ import { WebServer } from "./WebServer";
 import { Config } from "./Config";
 import { Crypt } from "./nodeclient/Crypt";
 import { FileSystemCache } from "openflow-api";
+import { RestartService } from "./nodeclient/cliutil";
 
 const logger: winston.Logger = Logger.configure();
 logger.info("starting openflow nodered");
@@ -77,15 +78,13 @@ let server: http.Server = null;
                 }
                 socket.events.emit("onsignedin", result.user);
             } catch (error) {
-                let closemsg: any = error;
-                if (error.message) { logger.error(error.message); closemsg = error.message; }
-                else { logger.error(error); }
+                let closemsg: any = (error.message ? error.message : error);
+                logger.error(closemsg);
                 socket.close(1000, closemsg);
             }
         });
     } catch (error) {
-        if (error.message) { logger.error(error.message); }
-        else { logger.error(error); }
+        logger.error(error.message ? error.message : error);
     }
 })();
 

@@ -69,7 +69,7 @@ export class LoginProvider {
     public static redirect(res: any, originalUrl: string) {
         res.write('<!DOCTYPE html>');
         res.write('<body>');
-        res.write('<script>top.location = "' + originalUrl + '";</script>');
+        res.write('<script>top.location = "' + encodeURIComponent(originalUrl) + '";</script>');
         // res.write('<a href="' + originalUrl + '">click here</a>');
         res.write('</body>');
         res.write('</html>');
@@ -144,34 +144,6 @@ export class LoginProvider {
             res.header('Pragma', 'no-cache');
             next();
         });
-        // app.get("/clients", async (req: any, res: any, next: any): Promise<void> => {
-        //     try {
-        //         const result: any[] = WebSocketServer._clients;
-        //         res.setHeader("Content-Type", "application/json");
-        //         const json = stringify(result, null, 2);
-        //         // res.json(result);
-        //         res.end(json);
-        //         res.end();
-        //     } catch (error) {
-        //         res.end(error);
-        //         console.error(error);
-        //     }
-        // });
-        // ROLLBACK
-        // app.get("/amqp", async (req: any, res: any, next: any): Promise<void> => {
-        //     try {
-        //         const result: any[] = (amqpwrapper.Instance().queues as any);
-        //         res.setHeader("Content-Type", "application/json");
-        //         const json = stringify(result, null, 2);
-        //         // res.json(result);
-        //         res.end(json);
-        //         res.end();
-        //     } catch (error) {
-        //         res.end(error);
-        //         console.error(error);
-        //     }
-        // });
-
         app.get("/Signout", (req: any, res: any, next: any): void => {
             // const providerid: string = req.cookies.provider;
             // const provider: passport.Strategy;
@@ -235,8 +207,8 @@ export class LoginProvider {
                 res.setHeader("Content-Type", "application/json");
                 res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, Config.shorttoken_expires_in) }));
             } catch (error) {
-                res.end(error);
-                console.error(error);
+                console.error(error.message ? error.message : error);
+                return res.status(500).send({ message: error.message ? error.message : error });
             }
         });
         app.get("/config", (req: any, res: any, next: any): void => {
@@ -274,8 +246,8 @@ export class LoginProvider {
                 // res.end(JSON.stringify(result));
                 // res.end();
             } catch (error) {
-                res.end(error);
-                console.error(error);
+                console.error(error.message ? error.message : error);
+                return res.status(500).send({ message: error.message ? error.message : error });
             }
             try {
                 LoginProvider.RegisterProviders(app, baseurl);
@@ -289,8 +261,8 @@ export class LoginProvider {
                 res.end(JSON.stringify(result));
                 res.end();
             } catch (error) {
-                res.end(error);
-                console.error(error);
+                console.error(error.message ? error.message : error);
+                return res.status(500).send({ message: error.message ? error.message : error });
             }
             try {
                 LoginProvider.RegisterProviders(app, baseurl);
@@ -331,7 +303,7 @@ export class LoginProvider {
                 });
                 downloadStream.pipe(res);
             } catch (error) {
-                return res.status(500).send({ message: error });
+                return res.status(500).send({ message: error.message ? error.message : error });
             }
         });
         try {
@@ -417,7 +389,7 @@ export class LoginProvider {
                 });
             });
         } catch (error) {
-            console.error(error);
+            console.error(error.message ? error.message : error);
         }
 
     }
@@ -444,7 +416,7 @@ export class LoginProvider {
                 }
                 if (provider.provider === "local") { hasLocal = true; }
             } catch (error) {
-                console.error(error);
+                console.error(error.message ? error.message : error);
             }
         });
         if (hasLocal === true) {
@@ -619,8 +591,8 @@ export class LoginProvider {
                 Audit.LoginSuccess(tuser, "weblogin", "local", "", "browser", "unknown");
                 return done(null, tuser);
             } catch (error) {
-                done(error);
-                console.error(error);
+                console.error(error.message ? error.message : error);
+                done(error.message ? error.message : error);
             }
         });
         passport.use("local", strategy);
@@ -666,7 +638,7 @@ export class LoginProvider {
                                     LoginProvider._logger.debug("redirect: " + originalUrl);
                                     return;
                                 } catch (error) {
-                                    console.error(error);
+                                    console.error(error.message ? error.message : error);
                                 }
                             } else {
                                 LoginProvider._logger.debug("redirect: to /");
@@ -693,7 +665,7 @@ export class LoginProvider {
                             LoginProvider._logger.debug("redirect: " + originalUrl);
                             LoginProvider.redirect(res, originalUrl);
                         } catch (error) {
-                            console.error(error);
+                            console.error(error.message ? error.message : error);
                         }
                     } else {
                         try {
@@ -701,7 +673,7 @@ export class LoginProvider {
                             res.redirect("/");
                             return next();
                         } catch (error) {
-                            console.error(error);
+                            console.error(error.message ? error.message : error);
                         }
                     }
                 })(req, res, next);
