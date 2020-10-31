@@ -10,6 +10,7 @@ import * as SAMLStrategy from "passport-saml";
 import * as GoogleStrategy from "passport-google-oauth20";
 import * as LocalStrategy from "passport-local";
 
+
 import * as passport from "passport";
 import { Config } from "./Config";
 
@@ -19,12 +20,31 @@ import { Audit } from "./Audit";
 import * as saml from "saml20";
 const multer = require('multer');
 const GridFsStorage = require('multer-gridfs-storage');
+const { RateLimiterMemory, RateLimiterRes } = require('rate-limiter-flexible')
 import { GridFSBucket, ObjectID, Db, Cursor, Binary } from "mongodb";
 import { Base, User, NoderedUtil, TokenUser, WellknownIds, Rights, Role } from "openflow-api";
 import { DBHelper } from "./DBHelper";
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 
-const stringify = require('json-stringify-safe');
+const BaseRateLimiter = new RateLimiterMemory({
+    points: 10,
+    duration: 5,
+});
+
+const rateLimiter = (req: express.Request, res: express.Response, next: express.NextFunction): void => {
+    BaseRateLimiter
+        .consume(req.ip)
+        .then((e) => {
+            // console.log("NO_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints);
+            next();
+        })
+        .catch((e) => {
+            console.log("RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints + " msBeforeNext: " + e.msBeforeNext);
+            res.status(429).json({ response: 'RATE_LIMIT' });
+        });
+};
+
+
 
 interface IVerifyFunction { (error: any, profile: any): void; }
 export class Provider extends Base {
@@ -66,10 +86,20 @@ export class LoginProvider {
     public static _providers: any = {};
     public static login_providers: Provider[] = [];
 
+    public static escape(s: string): string {
+        let lookup: any = {
+            '&': "&amp;",
+            '"': "&quot;",
+            '<': "&lt;",
+            '>': "&gt;"
+        };
+        return s.replace(/[&"<>]/g, (c) => lookup[c]);
+    }
     public static redirect(res: any, originalUrl: string) {
         res.write('<!DOCTYPE html>');
         res.write('<body>');
-        res.write('<script>top.location = "' + encodeURI(originalUrl) + '";</script>');
+        // res.write('<script>top.location = "' + encodeURI(originalUrl) + '";</script>');
+        res.write('<script>top.location = "' + LoginProvider.escape(originalUrl) + '";</script>');
         // res.write('<a href="' + originalUrl + '">click here</a>');
         res.write('</body>');
         res.write('</html>');
@@ -135,6 +165,7 @@ export class LoginProvider {
             done(null, user);
             // Audit.LoginSuccess(TokenUser.From(user), "weblogin", "cookie", "");
         });
+        app.use(rateLimiter);
 
         app.use(function (req, res, next) {
             res.header('Access-Control-Allow-Origin', (req.headers.origin as any));
