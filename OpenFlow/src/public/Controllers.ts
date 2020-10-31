@@ -2131,24 +2131,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 });
                 return emptyStr;
             }
-            const replaceElem = function (targetId, replaceWith) {
-                $(targetId).each(function () {
-                    const attributes = concatHashToString(this.attributes);
-                    const replacingStartTag = '<' + replaceWith + attributes + '>';
-                    const replacingEndTag = '</' + replaceWith + '>';
-                    $(this).replaceWith(replacingStartTag + $(this).html() + replacingEndTag);
-                });
-            }
-            const replaceElementTag = function (targetSelector, newTagString) {
-                $(targetSelector).each(function () {
-                    const newElem = $(newTagString, { html: $(this).html() });
-                    $.each(this.attributes, function () {
-                        newElem.attr(this.name, this.value);
-                    });
-                    $(this).replaceWith(newElem);
-                });
-            }
-
             setTimeout(() => {
                 console.debug("Attach buttons! 2");
                 $('button[type="button"]').each(function () {
