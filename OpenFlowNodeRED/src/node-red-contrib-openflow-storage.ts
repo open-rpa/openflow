@@ -604,9 +604,28 @@ export class noderedcontribopenflowstorage {
     public bussy: boolean = false;
     public async onupdate(msg: any) {
         try {
+            // let events = this.RED.runtime.events;
+            // events.emit("runtime-event", { id: "runtime-deploy", payload: { revision: "1" }, retain: true });
+            // events.emit("runtime-event", { id: Math.random().toString(36).substr(2, 9), payload: { type: "warning", text: "Hi mom1" }, retain: false });
+            // events.emit("runtime-event", { id: Math.random().toString(36).substr(2, 9), payload: { type: "warning", text: "Hi mom2" }, retain: true });
+            // events.emit("runtime-event", { id: Math.random().toString(36).substr(2, 9), payload: { text: "Hi mom3" }, retain: true });
+            // events.emit("runtime-event", { id: Math.random().toString(36).substr(2, 9), payload: { text: "Hi mom4" }, retain: false });
+            // events.emit("runtime-event", { id: "runtime-state", payload: { type: "warning", text: "Hi mom" }, retain: true });
+            // events.emit("runtime-event", { id: "runtime-state", payload: { type: "warning", text: "Hi mom" }, retain: false });
+            // events.emit("runtime-event", { id: "node/added", retain: false, payload: "Hi mom" });
+            // events.emit("runtime-event", { id: "runtime-state", retain: true });
+            // events.emit("runtime-event", { id: "node/enabled", retain: false, payload: "Hi mom" });
+            // try {
+            // events.emit("runtime-event", { id: Math.random().toString(36).substr(2, 9), payload: { text: "Hi mom" }, retain: false });
+            // events.emit("runtime-event", { id: Math.random().toString(36).substr(2, 9), payload: { type: "info", text: "Hi mom" }, retain: false });
+            // events.emit("runtime-event", { id: Math.random().toString(36).substr(2, 9), payload: { text: "Hi mom" } });
+            // } catch (error) {
+            //     console.error(error);
+            // }
             const begin: number = this.last_reload.getTime();
             const end: number = new Date().getTime();
             const seconds = Math.round((end - begin) / 1000);
+            var r = this.RED.runtime;
             if (seconds < 2 || this.bussy) {
                 return;
             }
@@ -675,15 +694,18 @@ export class noderedcontribopenflowstorage {
                                     if (newsettings.nodes[key] == null) {
                                         // this._logger.info("**************************************************");
                                         this._logger.info("Remove module " + key + "@" + version);
+                                        this.RED.log.warn("Remove module " + key + "@" + version);
                                         await this.RED.runtime.nodes.removeModule({ user: "admin", module: key, version: version });
                                         // HACK
                                         // exitprocess = true;
                                     } else if (version != oldversion) {
                                         // this._logger.info("**************************************************");
                                         this._logger.info("Install module " + key + "@" + version + " up from " + oldversion);
+                                        this.RED.log.warn("Install module " + key + "@" + version + " up from " + oldversion);
                                         let result = await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: version });
                                         if (result != null && result.pending_version != null && result.pending_version != result.version) {
                                             this._logger.info(key + " now has pending_version " + result.pending_version + " request process exit");
+                                            this.RED.log.warn(key + " now has pending_version " + result.pending_version + " request process exit");
                                             exitprocess = true;
                                         }
                                         // HACK
@@ -694,10 +716,12 @@ export class noderedcontribopenflowstorage {
                                     this._logger.error(message);
                                     if (message == "Uninstall failed") {
                                         this._logger.info("Uninstall failed, request process exit");
+                                        this.RED.log.error("Uninstall failed, request process exit");
                                         exitprocess = true;
                                     }
                                     if (message == "Install failed") {
                                         this._logger.info("Install failed, request process exit");
+                                        this.RED.log.error("Install failed, request process exit");
                                         exitprocess = true;
                                     }
                                     if (message == "Module already loaded") {
@@ -729,35 +753,35 @@ export class noderedcontribopenflowstorage {
                                 }
                                 try {
                                     if (oldsettings.nodes[key] == null) {
-                                        // this._logger.info("**************************************************");
                                         this._logger.info("Install new module " + key + "@" + version);
+                                        this.RED.log.warn("Install new module " + key + "@" + version);
                                         let result = await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: version });
                                         if (result != null && result.pending_version != null && result.pending_version != result.version) {
                                             this._logger.info(key + " now has pending_version " + result.pending_version + " request process exit");
+                                            this.RED.log.warn(key + " now has pending_version " + result.pending_version + " request process exit");
                                             exitprocess = true;
                                         }
-                                        // HACK
-                                        // exitprocess = true;
                                     } else if (version != oldversion) {
-                                        // this._logger.info("**************************************************");
                                         this._logger.info("Install module " + key + "@" + version + " up from " + oldversion);
+                                        this.RED.log.warn("Install module " + key + "@" + version + " up from " + oldversion);
                                         let result = await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: version });
                                         if (result != null && result.pending_version != null && result.pending_version != result.version) {
                                             this._logger.info(key + " now has pending_version " + result.pending_version + " request process exit");
+                                            this.RED.log.warn(key + " now has pending_version " + result.pending_version + " request process exit");
                                             exitprocess = true;
                                         }
-                                        // HACK
-                                        // exitprocess = true;
                                     }
                                 } catch (error) {
                                     var message = (error.message ? error.message : error);
                                     this._logger.error(message);
                                     if (message == "Uninstall failed") {
                                         this._logger.info("Uninstall failed, request process exit");
+                                        this.RED.log.error("Uninstall failed, request process exit");
                                         exitprocess = true;
                                     }
                                     if (message == "Install failed") {
                                         this._logger.info("Install failed, request process exit");
+                                        this.RED.log.error("Install failed, request process exit");
                                         exitprocess = true;
                                     }
                                     if (message == "Module already loaded") {
@@ -784,21 +808,26 @@ export class noderedcontribopenflowstorage {
                 if (exitprocess && Config.auto_restart_when_needed) {
                     if (NoderedUtil.isDocker()) {
                         this._logger.info("noderedcontribopenflowstorage::onupdate: Running as docker, just quit process, kubernetes will start a new version");
+                        this.RED.log.warn("noderedcontribopenflowstorage::onupdate: Running as docker, just quit process, kubernetes will start a new version");
                         process.exit(1);
                     } else {
                         if (servicename != "service-name-not-set") {
                             var _servicename = path.basename(servicename)
                             this._logger.info("noderedcontribopenflowstorage::onupdate: Restarting service " + _servicename);
+                            this.RED.log.warn("noderedcontribopenflowstorage::onupdate: Restarting service " + _servicename);
                             RestartService(_servicename);
                             // process.exit(1);
                         } else {
+                            this.RED.log.error("noderedcontribopenflowstorage::onupdate: Not running in docker, nor started as a service, please restart Node-Red manually");
                             this._logger.info("noderedcontribopenflowstorage::onupdate: Not running in docker, nor started as a service, please restart Node-Red manually");
                         }
                     }
                 } else if (exitprocess) {
                     this._logger.info("noderedcontribopenflowstorage::onupdate: Restart is needed, auto_restart_when_needed is false");
+                    this.RED.log.warn("noderedcontribopenflowstorage::onupdate: Restart is needed, auto_restart_when_needed is false");
                 } else if (!exitprocess) {
                     this._logger.info("noderedcontribopenflowstorage::onupdate: Restart not needed");
+                    this.RED.log.warn("noderedcontribopenflowstorage::onupdate: Restart not needed");
                 }
 
             }
@@ -808,6 +837,7 @@ export class noderedcontribopenflowstorage {
                 this._logger.info("* " + entity._type + " was updated, reloading NodeRED flows");
                 this._logger.info("* loadFlows last updated " + seconds + " seconds ago");
                 this._logger.info("**************************************************");
+                this.RED.log.warn("Reloading flows");
                 await this.RED.nodes.loadFlows(true);
             } else {
                 this._logger.info("noderedcontribopenflowstorage::onupdate " + entity._type + " - COMPLETE !! " + new Date().toLocaleTimeString());
