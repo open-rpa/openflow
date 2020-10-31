@@ -152,8 +152,7 @@ export class LoginProvider {
     static async configure(logger: winston.Logger, app: express.Express, baseurl: string): Promise<void> {
         LoginProvider._logger = logger;
         app.use(cookieSession({
-            name: "session",
-            keys: ["key1", "key2"]
+            name: "session", secret: Config.cookie_secret
         }));
 
         app.use(passport.initialize());
