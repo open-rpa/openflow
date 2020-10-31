@@ -169,8 +169,7 @@ export class WebServer {
 
 
                 this.app.use(cookieSession({
-                    name: 'session',
-                    keys: ['key1', 'key2']
+                    name: 'session', secret: Config.cookie_secret
                 }))
 
                 // initialise the runtime with a server and settings

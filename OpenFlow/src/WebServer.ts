@@ -38,8 +38,7 @@ export class WebServer {
         this.app.use(bodyParser.json());
         this.app.use(cookieParser());
         this.app.use(cookieSession({
-            name: "session",
-            keys: ["key1", "key2"]
+            name: "session", secret: Config.cookie_secret
         }));
         this.app.use(flash());
 

@@ -52,7 +52,7 @@ export class Config {
         Config.protocol = Config.getEnv("protocol", "http"); // used by personal nodered and baseurl()
         Config.port = parseInt(Config.getEnv("port", "3000"));
         Config.domain = Config.getEnv("domain", "localhost"); // sent to website and used in baseurl()
-
+        Config.cookie_secret = Config.getEnv("cookie_secret", "NLgUIsozJaxO38ze0WuHthfj2eb1eIEu");
 
         Config.amqp_reply_expiration = parseInt(Config.getEnv("amqp_reply_expiration", "10000")); // 10 seconds
         Config.amqp_force_queue_prefix = Config.parseBoolean(Config.getEnv("amqp_force_queue_prefix", "true"));
@@ -125,7 +125,7 @@ export class Config {
     public static protocol: string = Config.getEnv("protocol", "http"); // used by personal nodered and baseurl()
     public static port: number = parseInt(Config.getEnv("port", "3000"));
     public static domain: string = Config.getEnv("domain", "localhost"); // sent to website and used in baseurl()
-
+    public static cookie_secret: string = Config.getEnv("cookie_secret", "NLgUIsozJaxO38ze0WuHthfj2eb1eIEu"); // Used to protect cookies
 
     public static amqp_reply_expiration: number = parseInt(Config.getEnv("amqp_reply_expiration", (60 * 1000).toString())); // 1 min
     public static amqp_force_queue_prefix: boolean = Config.parseBoolean(Config.getEnv("amqp_force_queue_prefix", "true"));

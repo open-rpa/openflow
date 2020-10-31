@@ -37,6 +37,7 @@ export class Config {
         Config.nodered_domain_schema = Config.getEnv("nodered_domain_schema", "");
         Config.noderedusers = Config.getEnv("noderedusers", "");
         Config.noderedadmins = Config.getEnv("noderedadmins", "");
+        Config.cookie_secret = Config.getEnv("cookie_secret", "NLgUIsozJaxO38ze0WuHthfj2eb1eIEu");
 
         Config.flow_refresh_interval = parseInt(Config.getEnv("flow_refresh_interval", "60000"));
         Config.flow_refresh_initial_interval = parseInt(Config.getEnv("flow_refresh_initial_interval", "60000"));
@@ -87,6 +88,7 @@ export class Config {
     public static nodered_domain_schema: string = Config.getEnv("nodered_domain_schema", "");
     public static noderedusers: string = Config.getEnv("noderedusers", "");
     public static noderedadmins: string = Config.getEnv("noderedadmins", "");
+    public static cookie_secret: string = Config.getEnv("cookie_secret", "NLgUIsozJaxO38ze0WuHthfj2eb1eIEu"); // Used to protect cookies
 
     public static flow_refresh_interval: number = parseInt(Config.getEnv("flow_refresh_interval", "60000"));
     public static flow_refresh_initial_interval: number = parseInt(Config.getEnv("flow_refresh_initial_interval", "60000"));
