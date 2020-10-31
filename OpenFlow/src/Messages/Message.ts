@@ -886,7 +886,7 @@ export class Message {
         let name: string = "";
         if (_id !== null && _id !== undefined && _id !== "" && _id != myid) {
             var qs: any[] = [{ _id: _id }];
-            qs.push(Config.db.getbasequery(jwt, "metadata._acl", [Rights.update]))
+            qs.push(Config.db.getbasequery(jwt, "_acl", [Rights.update]))
             const res = await Config.db.query<User>({ "$and": qs }, null, 1, 0, null, "users", jwt);
             if (res.length == 0) {
                 throw new Error("Unknown userid " + _id + " or permission denied");
