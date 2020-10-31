@@ -69,7 +69,7 @@ export class LoginProvider {
     public static redirect(res: any, originalUrl: string) {
         res.write('<!DOCTYPE html>');
         res.write('<body>');
-        res.write('<script>top.location = "' + encodeURIComponent(originalUrl) + '";</script>');
+        res.write('<script>top.location = "' + encodeURI(originalUrl) + '";</script>');
         // res.write('<a href="' + originalUrl + '">click here</a>');
         res.write('</body>');
         res.write('</html>');
