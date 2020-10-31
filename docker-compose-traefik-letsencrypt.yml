@@ -107,7 +107,7 @@ services:
       - "traefik.http.routers.nodered.entrypoints=web,websecure"
       - "traefik.http.services.nodered.loadbalancer.server.port=1880"
       - "traefik.http.routers.nodered.tls.certresolver=myresolver"
-    image: "cloudhack/openflownodered:1.1.51"
+    image: "cloudhack/openflownodered:1.1.52"
     container_name: "nodered"
     environment:
       #      - nodered_id=1
