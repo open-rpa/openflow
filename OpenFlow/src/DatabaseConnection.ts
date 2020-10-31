@@ -1195,7 +1195,7 @@ export class DatabaseConnection {
      * @param  {number[]} bits Permission wanted on objects
      * @returns Object MongoDB query
      */
-    private getbasequery(jwt: string, field: string, bits: number[]): Object {
+    public getbasequery(jwt: string, field: string, bits: number[]): Object {
         if (Config.api_bypass_perm_check) {
             return { _id: { $ne: "bum" } };
         }

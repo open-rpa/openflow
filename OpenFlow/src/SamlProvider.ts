@@ -167,13 +167,13 @@ export class SamlProvider {
                         let html = "<html><head></head><body>";
                         html += "<h1>Logud</h1><br>";
                         if (!NoderedUtil.IsNullEmpty(referer)) {
-                            html += "<br/><p><a href='" + referer + "'>Til login</a></p>";
+                            html += "<br/><p><a href='" + encodeURIComponent(referer) + "'>Til login</a></p>";
                         } else {
                             html += "<br/><p><a href='/'>Til login</a></p>";
                         }
-                        html += "<iframe src='" + provider.saml_signout_url + "'></iframe>";
+                        html += "<iframe src='" + encodeURIComponent(provider.saml_signout_url) + "'></iframe>";
                         if (!NoderedUtil.IsNullEmpty(referer)) {
-                            html += "<br/><p><a href='" + referer + "'>Til login</a></p>";
+                            html += "<br/><p><a href='" + encodeURIComponent(referer) + "'>Til login</a></p>";
                         } else {
                             html += "<br/><p><a href='/'>Til login</a></p>";
                         }
