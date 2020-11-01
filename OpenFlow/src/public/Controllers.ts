@@ -3974,8 +3974,140 @@ export class CredentialCtrl extends entityCtrl<Base> {
 }
 
 
+export class OAuthClientsCtrl extends entitiesCtrl<Base> {
+    constructor(
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        this.autorefresh = true;
+        console.debug("OAuthClientsCtrl");
+        this.basequery = { _type: "oauthclient" };
+        this.collection = "config";
+        this.searchfields = ["name", "username"];
+        this.postloadData = this.processData;
+        if (this.userdata.data.OAuthClientsCtrl) {
+            this.basequery = this.userdata.data.OAuthClientsCtrl.basequery;
+            this.collection = this.userdata.data.OAuthClientsCtrl.collection;
+            this.baseprojection = this.userdata.data.OAuthClientsCtrl.baseprojection;
+            this.orderby = this.userdata.data.OAuthClientsCtrl.orderby;
+            this.searchstring = this.userdata.data.OAuthClientsCtrl.searchstring;
+            this.basequeryas = this.userdata.data.OAuthClientsCtrl.basequeryas;
+        }
 
+        WebSocketClientService.onSignedin((user: TokenUser) => {
+            this.loadData();
+        });
+    }
+    async processData(): Promise<void> {
+        if (!this.userdata.data.OAuthClientsCtrl) this.userdata.data.OAuthClientsCtrl = {};
+        this.userdata.data.OAuthClientsCtrl.basequery = this.basequery;
+        this.userdata.data.OAuthClientsCtrl.collection = this.collection;
+        this.userdata.data.OAuthClientsCtrl.baseprojection = this.baseprojection;
+        this.userdata.data.OAuthClientsCtrl.orderby = this.orderby;
+        this.userdata.data.OAuthClientsCtrl.searchstring = this.searchstring;
+        this.userdata.data.OAuthClientsCtrl.basequeryas = this.basequeryas;
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+}
+export class OAuthClientCtrl extends entityCtrl<Base> {
+    searchFilteredList: TokenUser[] = [];
+    searchSelectedItem: TokenUser = null;
+    searchtext: string = "";
+    e: any = null;
+    constructor(
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api
+    ) {
+        super($scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        console.debug("OAuthClientCtrl");
+        this.collection = "config";
+        WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            if (this.id !== null && this.id !== undefined) {
+                await this.loadData();
+            } else {
+                this.model = new Base();
+                this.model._type = "oauthclient";
+                this.model._encrypt = ["clientSecret"];
+                (this.model as any).clientId = "application";
+                (this.model as any).clientSecret = 'secret';
+                (this.model as any).grants = ['password', 'refresh_token', 'authorization_code'];
+                (this.model as any).redirectUris = [];
+                (this.model as any).rolemappings = { "admins": "admin", "grafana editors": "Editor", "grafana admins": "Admin" };
+            }
+        });
+    }
+    async submit(): Promise<void> {
+        this.model["id"] = this.model["clientId"];
+        if (this.model.name == null || this.model.name == "") this.model.name = this.model["id"];
+        if (this.model._id) {
+            await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null);
+        } else {
+            await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null);
+        }
+        this.$location.path("/OAuthClients");
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    deletefromarray(name: string, id: string) {
+        if (id == null || id == "") return false;
+        console.log(id);
+        this.model[name] = this.model[name].filter(x => x != id);
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        return true;
+    }
+    addtoarray(name: string, id: string) {
+        if (id == null || id == "") return false;
+        console.log(id);
+        if (!Array.isArray(this.model[name])) this.model[name] = [];
+        this.model[name] = this.model[name].filter(x => x != id);
+        this.model[name].push(id);
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        return true;
+    }
+    addrolemapping(name: string, value: string) {
+        if (name == null || name == "") return false;
+        if (value == null || value == "") return false;
+        if (!this.model["rolemappings"]) this.model["rolemappings"] = {};
+        this.model["rolemappings"]["name"] = value;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    deleterolemapping(name) {
+        if (name == null || name == "") return false;
+        if (!this.model["rolemappings"]) this.model["rolemappings"] = {};
+        delete this.model["rolemappings"]["name"];
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    CopySecret(field) {
+        /* Get the text field */
+        var copyText = document.querySelector(field);
+        copyText.type = "text";
+        // var copythis = copyText.value;
+        // copyText = document.getElementById('just_for_copy');
+        // copyText.value = copythis;
 
+        /* Select the text field */
+        copyText.select();
+        copyText.setSelectionRange(0, 99999); /*For mobile devices*/
+
+        /* Copy the text inside the text field */
+        document.execCommand("copy");
+        /* Alert the copied text */
+        // alert("Copied the text: " + copyText.value);
+        console.log("Copied the text: " + copyText.value);
+        copyText.type = "password";
+    }
+
+}
 
 export class DuplicatesCtrl extends entitiesCtrl<Base> {
     public collections: any;

@@ -204,6 +204,30 @@ export class userdata {
         this.data = {};
     }
 }
+export class copytext implements ng.IDirective {
+    restrict = 'A';
+    require = '?ngModel';
+    constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService, public locale) {
+    }
+    link: ng.IDirectiveLinkFn = (scope: ng.IScope, element: ng.IAugmentedJQuery, attr: ng.IAttributes, ngModelCtrl: any) => {
+        console.debug("copytext", element);
+        if (!ngModelCtrl) return;
+        element.attr('unselectable', 'on');
+        element.on('mousedown', function (e, eventData) {
+            /* istanbul ignore else: this is for catching the jqLite testing*/
+            if (eventData) angular.extend(e, eventData);
+            // this prevents focusout from firing on the editor when clicking toolbar buttons
+            e.preventDefault();
+            console.debug("Prevent mousedown");
+            return false;
+        });
+    }
+    static factory(): ng.IDirectiveFactory {
+        const directive = ($location: ng.ILocationService, $timeout: ng.ITimeoutService, locale) => new copytext($location, $timeout, locale);
+        directive.$inject = ['$location', '$timeout', 'locale'];
+        return directive;
+    }
+}
 export class fileread implements ng.IDirective {
     restrict = 'A';
     require = '?ngModel';

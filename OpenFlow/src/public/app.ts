@@ -1,7 +1,7 @@
 import { WebSocketClientService } from "./WebSocketClientService";
 import angular = require("angular");
-import { timesince, translate, textarea, fileread, userdata, api } from "./CommonControllers";
-import { MenuCtrl, ProvidersCtrl, MainCtrl, LoginCtrl, ProviderCtrl, UsersCtrl, UserCtrl, RolesCtrl, RoleCtrl, RPAWorkflowsCtrl, RPAWorkflowCtrl, WorkflowsCtrl, ReportsCtrl, jslogCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, SocketCtrl, NoderedCtrl, hdrobotsCtrl, RobotsCtrl, AuditlogsCtrl, SignupCtrl, PaymentCtrl, QueuesCtrl, SocketsCtrl, QueueCtrl, CredentialsCtrl, CredentialCtrl, DuplicatesCtrl } from "./Controllers";
+import { timesince, translate, textarea, fileread, userdata, api, copytext } from "./CommonControllers";
+import { MenuCtrl, ProvidersCtrl, MainCtrl, LoginCtrl, ProviderCtrl, UsersCtrl, UserCtrl, RolesCtrl, RoleCtrl, RPAWorkflowsCtrl, RPAWorkflowCtrl, WorkflowsCtrl, ReportsCtrl, jslogCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, SocketCtrl, NoderedCtrl, hdrobotsCtrl, RobotsCtrl, AuditlogsCtrl, SignupCtrl, PaymentCtrl, QueuesCtrl, SocketsCtrl, QueueCtrl, CredentialsCtrl, CredentialCtrl, DuplicatesCtrl, OAuthClientsCtrl, OAuthClientCtrl } from "./Controllers";
 
 /**
  * @type {angular.Module}
@@ -19,6 +19,7 @@ module openflow {
         .directive("translate", translate.factory())
         .directive("textarea", textarea.factory())
         .directive("fileread", fileread.factory())
+        .directive("copytext", copytext.factory())
         .service("userdata", userdata)
         .service("WebSocketClientService", WebSocketClientService)
 
@@ -96,6 +97,10 @@ module openflow {
                 .when('/Credentials', { templateUrl: 'Credentials.html', controller: CredentialsCtrl, controllerAs: 'ctrl' })
                 .when('/Credential', { templateUrl: 'Credential.html', controller: CredentialCtrl, controllerAs: 'ctrl' })
                 .when('/Credential/:id', { templateUrl: 'Credential.html', controller: CredentialCtrl, controllerAs: 'ctrl' })
+
+                .when('/OAuthClients', { templateUrl: 'OAuthClients.html', controller: OAuthClientsCtrl, controllerAs: 'ctrl' })
+                .when('/OAuthClient', { templateUrl: 'OAuthClient.html', controller: OAuthClientCtrl, controllerAs: 'ctrl' })
+                .when('/OAuthClient/:id', { templateUrl: 'OAuthClient.html', controller: OAuthClientCtrl, controllerAs: 'ctrl' })
 
                 .otherwise({ redirectTo: '/main' });
         }
