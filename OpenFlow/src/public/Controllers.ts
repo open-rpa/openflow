@@ -112,13 +112,18 @@ export class RPAWorkflowsCtrl extends entitiesCtrl<Base> {
         this.basequery = { _type: "workflow" };
         this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1, projectandname: 1 };
         this.postloadData = this.processdata;
-        if (this.userdata.data.RPAWorkflowsCtrl) {
-            this.basequery = this.userdata.data.RPAWorkflowsCtrl.basequery;
-            this.collection = this.userdata.data.RPAWorkflowsCtrl.collection;
-            this.baseprojection = this.userdata.data.RPAWorkflowsCtrl.baseprojection;
-            this.orderby = this.userdata.data.RPAWorkflowsCtrl.orderby;
-            this.searchstring = this.userdata.data.RPAWorkflowsCtrl.searchstring;
-            this.basequeryas = this.userdata.data.RPAWorkflowsCtrl.basequeryas;
+        if (this.userdata.data != null && this.userdata.data.basequeryas != null) {
+            this.basequeryas = this.userdata.data.basequeryas;
+        } else if (this.userdata.data.RPAWorkflowsCtrl) {
+            if (this.userdata.data.RPAWorkflowsCtrl.basequeryas) this.basequeryas = this.userdata.data.RPAWorkflowsCtrl.basequeryas;
+            if (this.userdata.data.RPAWorkflowsCtrl.basequery) {
+                this.basequery = this.userdata.data.RPAWorkflowsCtrl.basequery;
+                this.collection = this.userdata.data.RPAWorkflowsCtrl.collection;
+                this.baseprojection = this.userdata.data.RPAWorkflowsCtrl.baseprojection;
+                this.orderby = this.userdata.data.RPAWorkflowsCtrl.orderby;
+                this.searchstring = this.userdata.data.RPAWorkflowsCtrl.searchstring;
+                this.basequeryas = this.userdata.data.RPAWorkflowsCtrl.basequeryas;
+            }
         }
         WebSocketClientService.onSignedin((user: TokenUser) => {
             this.loadData();
@@ -2955,7 +2960,7 @@ export class RobotsCtrl extends entitiesCtrl<unattendedclient> {
     ) {
         super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         this.autorefresh = true;
-        console.debug("RolesCtrl");
+        console.debug("RobotsCtrl");
         this.basequery = { _type: "user" };
         this.collection = "users";
         this.postloadData = this.processdata;
@@ -3014,6 +3019,8 @@ export class RobotsCtrl extends entitiesCtrl<unattendedclient> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     ShowWorkflows(model: any) {
+        if (!this.userdata.data.RPAWorkflowsCtrl) this.userdata.data.RPAWorkflowsCtrl = {};
+        this.userdata.data.RPAWorkflowsCtrl.basequeryas = model._id;
         this.userdata.data.basequeryas = model._id;
         this.$location.path("/RPAWorkflows");
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
