@@ -27,7 +27,7 @@ import { DBHelper } from "./DBHelper";
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 
 const BaseRateLimiter = new RateLimiterMemory({
-    points: 10,
+    points: 40,
     duration: 5,
 });
 
