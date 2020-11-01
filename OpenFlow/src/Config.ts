@@ -33,6 +33,7 @@ export class Config {
         Config.allow_user_registration = Config.parseBoolean(Config.getEnv("allow_user_registration", "false"));
         Config.allow_personal_nodered = Config.parseBoolean(Config.getEnv("allow_personal_nodered", "false"));
         Config.auto_create_personal_nodered_group = Config.parseBoolean(Config.getEnv("auto_create_personal_nodered_group", "false"));
+        Config.force_add_admins = Config.parseBoolean(Config.getEnv("force_add_admins", "true"));
 
         Config.tls_crt = Config.getEnv("tls_crt", "");
         Config.tls_key = Config.getEnv("tls_key", "");
@@ -106,6 +107,7 @@ export class Config {
     public static allow_user_registration: boolean = Config.parseBoolean(Config.getEnv("allow_user_registration", "false"));
     public static allow_personal_nodered: boolean = Config.parseBoolean(Config.getEnv("allow_personal_nodered", "false"));
     public static auto_create_personal_nodered_group: boolean = Config.parseBoolean(Config.getEnv("auto_create_personal_nodered_group", "false"));
+    public static force_add_admins: boolean = Config.parseBoolean(Config.getEnv("force_add_admins", "true"));
 
     public static tls_crt: string = Config.getEnv("tls_crt", "");
     public static tls_key: string = Config.getEnv("tls_key", "");

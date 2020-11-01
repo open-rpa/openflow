@@ -110,6 +110,7 @@ export class DatabaseConnection {
                 } else { ace.name = arr[0].name; }
             }
         }
+        if (Config.force_add_admins) Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control], false);
         return item;
     }
     async Cleanmembers<T extends Role>(item: T, original: T): Promise<T> {
