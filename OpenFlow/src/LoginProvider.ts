@@ -27,8 +27,8 @@ import { DBHelper } from "./DBHelper";
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 
 const BaseRateLimiter = new RateLimiterMemory({
-    points: 60,
-    duration: 1,
+    points: Config.api_rate_limit_points,
+    duration: Config.api_rate_limit_duration,
 });
 
 const rateLimiter = (req: express.Request, res: express.Response, next: express.NextFunction): void => {

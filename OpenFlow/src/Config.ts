@@ -41,6 +41,8 @@ export class Config {
         Config.tls_passphrase = Config.getEnv("tls_passphrase", "");
 
         Config.api_credential_cache_seconds = parseInt(Config.getEnv("api_credential_cache_seconds", "60000"));
+        Config.api_rate_limit_points = parseInt(Config.getEnv("api_rate_limit_points", "40"));
+        Config.api_rate_limit_duration = parseInt(Config.getEnv("api_rate_limit_duration", "5"));
 
         Config.client_heartbeat_timeout = parseInt(Config.getEnv("client_heartbeat_timeout", "60"));
 
@@ -115,6 +117,8 @@ export class Config {
     public static tls_passphrase: string = Config.getEnv("tls_passphrase", "");
 
     public static api_credential_cache_seconds: number = parseInt(Config.getEnv("api_credential_cache_seconds", "60000"));
+    public static api_rate_limit_points: number = parseInt(Config.getEnv("api_rate_limit_points", "40"));
+    public static api_rate_limit_duration: number = parseInt(Config.getEnv("api_rate_limit_duration", "5"));
 
     public static client_heartbeat_timeout: number = parseInt(Config.getEnv("client_heartbeat_timeout", "60"));
 
