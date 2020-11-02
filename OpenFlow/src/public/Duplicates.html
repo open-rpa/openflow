@@ -85,7 +85,7 @@
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">{{ctrl.model.name}} </h5>
+        <h5 class="modal-title">First 20 duplicates</h5>
         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
           <span aria-hidden="true">&times;</span>
         </button>
@@ -99,7 +99,7 @@
             <th></th>
           </thead>
           <tbody>
-            <tr ng-repeat="model in ctrl.model.items">
+            <tr ng-repeat="model in ctrl.model.items | limitTo: 20">
               <td class="btn-cell">
                 <!-- <a ng-click="ctrl.OpenEntity(model)" class="table-btn"><i class="az-edit"></i>{{ model }}</a> -->
                 <a ng-href="#/Entity/{{ctrl.collection}}/{{model._id}}" ng-click="ctrl.CloseModal()"
