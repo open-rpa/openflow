@@ -2772,11 +2772,11 @@ export class NoderedCtrl {
                 }
             }
             this.loading = true;
-            this.messages += 'Updating ' + this.user.name + "\n";
+            this.messages = 'Updating ' + this.user.name + "\n" + this.messages;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             await NoderedUtil.UpdateOne("users", null, this.user, 1, false, null);
             this.loading = false;
-            this.messages += 'update complete\n';
+            this.messages = 'update complete\n' + this.messages;
             this.EnsureNoderedInstance();
         } catch (error) {
             this.errormessage = error;
@@ -2803,13 +2803,24 @@ export class NoderedCtrl {
                 }
             } else {
                 this.instancestatus = "non existent";
-                // this.messages += "GetNoderedInstance completed, status unknown/non existent" + "\n";
+                // this.messages = "GetNoderedInstance completed, status unknown/non existent" + "\n" + this.messages;
             }
+            let reload: boolean = false;
+            this.instances.forEach(instance => {
+                if (this.instance.metadata.deletionTimestamp != null) reload = true;
+                if (instance.status.phase == "deleting" || instance.status.phase == "Pending") reload = true;
+            });
 
-            this.messages += "GetNoderedInstance completed, status " + this.instancestatus + "\n";
+            this.messages = "GetNoderedInstance completed, status " + this.instancestatus + "\n" + this.messages;
+
+            if (reload) {
+                setTimeout(() => {
+                    this.GetNoderedInstance();
+                }, 2000);
+            }
         } catch (error) {
             this.errormessage = error;
-            this.messages += error + "\n";
+            this.messages = error + "\n" + this.messages;
             this.instancestatus = "";
             console.error(error);
         }
@@ -2823,11 +2834,11 @@ export class NoderedCtrl {
             console.debug("GetNoderedInstanceLog:");
             this.instancelog = await NoderedUtil.GetNoderedInstanceLog(this.userid, instancename, null);
             this.instancelog = this.instancelog.split("\n").reverse().join("\n");
-            this.messages += "GetNoderedInstanceLog completed\n";
+            this.messages = "GetNoderedInstanceLog completed\n" + this.messages;
             this.instancestatus = "";
         } catch (error) {
             this.errormessage = error;
-            this.messages += error + "\n";
+            this.messages = error + "\n" + this.messages;
             this.instancestatus = "";
             console.error(error);
         }
@@ -2837,11 +2848,11 @@ export class NoderedCtrl {
         try {
             this.errormessage = "";
             await NoderedUtil.EnsureNoderedInstance(this.userid, false, null);
-            this.messages += "EnsureNoderedInstance completed" + "\n";
+            this.messages = "EnsureNoderedInstance completed" + "\n" + this.messages;
             this.GetNoderedInstance();
         } catch (error) {
             this.errormessage = error;
-            this.messages += error + "\n";
+            this.messages = error + "\n" + this.messages;
             console.error(error);
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -2850,11 +2861,11 @@ export class NoderedCtrl {
         try {
             this.errormessage = "";
             await NoderedUtil.DeleteNoderedInstance(this.userid, null);
-            this.messages += "DeleteNoderedInstance completed" + "\n";
+            this.messages = "DeleteNoderedInstance completed" + "\n" + this.messages;
             this.GetNoderedInstance();
         } catch (error) {
             this.errormessage = error;
-            this.messages += error + "\n";
+            this.messages = error + "\n" + this.messages;
             console.error(error);
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -2863,11 +2874,11 @@ export class NoderedCtrl {
         try {
             this.errormessage = "";
             await NoderedUtil.DeleteNoderedPod(this.userid, instancename, null);
-            this.messages += "DeleteNoderedPod completed" + "\n";
+            this.messages = "DeleteNoderedPod completed" + "\n" + this.messages;
             this.GetNoderedInstance();
         } catch (error) {
             this.errormessage = error;
-            this.messages += error + "\n";
+            this.messages = error + "\n" + this.messages;
             console.error(error);
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -2876,11 +2887,11 @@ export class NoderedCtrl {
         try {
             this.errormessage = "";
             await NoderedUtil.RestartNoderedInstance(this.userid, null);
-            this.messages += "RestartNoderedInstance completed" + "\n";
+            this.messages = "RestartNoderedInstance completed" + "\n" + this.messages;
             this.GetNoderedInstance();
         } catch (error) {
             this.errormessage = error;
-            this.messages += error + "\n";
+            this.messages = error + "\n" + this.messages;
             console.error(error);
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -2889,11 +2900,11 @@ export class NoderedCtrl {
         try {
             this.errormessage = "";
             await NoderedUtil.StartNoderedInstance(this.userid, null);
-            this.messages += "StartNoderedInstance completed" + "\n";
+            this.messages = "StartNoderedInstance completed" + "\n" + this.messages;
             this.GetNoderedInstance();
         } catch (error) {
             this.errormessage = error;
-            this.messages += error + "\n";
+            this.messages = error + "\n" + this.messages;
             console.error(error);
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -2902,11 +2913,11 @@ export class NoderedCtrl {
         try {
             this.errormessage = "";
             await NoderedUtil.StopNoderedInstance(this.userid, null);
-            this.messages += "StopNoderedInstance completed" + "\n";
+            this.messages = "StopNoderedInstance completed" + "\n" + this.messages;
             this.GetNoderedInstance();
         } catch (error) {
             this.errormessage = error;
-            this.messages += error + "\n";
+            this.messages = error + "\n" + this.messages;
             console.error(error);
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
