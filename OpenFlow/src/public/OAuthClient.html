@@ -79,10 +79,10 @@
     <div class="form-group">
         <label for="rolemappings" class="col-sm-2 control-label" translate lib="web">rolemappings</label>
         <table style="width: 50%;" class="table table-striped">
-            <tr ng-repeat="mapping in ctrl.model.rolemappings">
+            <tr ng-repeat="key in ctrl.model.rolemappings">
                 <td style="width: 15px;"></td>
-                <td>{{ mapping }}</td>
-                <td>{{ ctrl.model.rolemappings[mapping] }}</td>
+                <td>{{ key }}</td>
+                <td>{{ (ctrl.model.rolemappings[key]) }}</td>
                 <td><a href="" ng-click="ctrl.deletefromarray('rolemappings', id)" translate lib="web">delete</a></td>
             </tr>
         </table>
