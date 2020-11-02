@@ -3,7 +3,7 @@ FROM node:latest
 EXPOSE 80
 EXPOSE 5858
 WORKDIR /data
-COPY package*.json ./
+COPY docker-package.json ./package.json
 RUN npm install
 COPY dist ./
 
@@ -22,3 +22,5 @@ ENTRYPOINT ["/usr/local/bin/node", "--inspect=0.0.0.0:5858", "index.js"]
 # COPY dist ./
 # https://medium.com/trendyol-tech/how-we-reduce-node-docker-image-size-in-3-steps-ff2762b51d5a
 # ENTRYPOINT ["/usr/local/bin/node", "--inspect=0.0.0.0:5858", "index.js"]
+
+# docker system prune -a

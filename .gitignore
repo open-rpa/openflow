@@ -7,3 +7,4 @@ temp
 .cache
 .npmrc
 .openflowapicache
+docker-package.json
