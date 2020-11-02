@@ -4021,6 +4021,7 @@ export class OAuthClientCtrl extends entityCtrl<Base> {
     searchSelectedItem: TokenUser = null;
     searchtext: string = "";
     e: any = null;
+    public rolemappings: any;
     constructor(
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
@@ -4078,14 +4079,16 @@ export class OAuthClientCtrl extends entityCtrl<Base> {
     addrolemapping(name: string, value: string) {
         if (name == null || name == "") return false;
         if (value == null || value == "") return false;
+        console.log(name, value);
         if (!this.model["rolemappings"]) this.model["rolemappings"] = {};
-        this.model["rolemappings"]["name"] = value;
+        this.model["rolemappings"][name] = value;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     deleterolemapping(name) {
+        console.log(name);
         if (name == null || name == "") return false;
         if (!this.model["rolemappings"]) this.model["rolemappings"] = {};
-        delete this.model["rolemappings"]["name"];
+        delete this.model["rolemappings"][name];
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     CopySecret(field) {
