@@ -252,7 +252,7 @@ export class api_add {
             const _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
             if (!NoderedUtil.IsNullUndefinded(_data)) {
                 if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
-                if (data.length === 0) { this.node.warn("input array is empty"); return; }
+                if (data.length === 0) { this.node.warn("input array is empty"); }
             } else { this.node.warn("Input data is null"); }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Inserting items" });
@@ -327,7 +327,7 @@ export class api_update {
             const _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
             if (!NoderedUtil.IsNullUndefinded(_data)) {
                 if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
-                if (data.length === 0) { this.node.warn("input array is empty"); return; }
+                if (data.length === 0) { this.node.warn("input array is empty"); }
             } else { this.node.warn("Input data is null"); }
 
             // this.node.status({ fill: "blue", shape: "dot", text: "Inserting items" });
@@ -416,7 +416,7 @@ export class api_addorupdate {
             const _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
             if (!NoderedUtil.IsNullUndefinded(_data)) {
                 if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
-                if (data.length === 0) { this.node.warn("input array is empty"); return; }
+                if (data.length === 0) { this.node.warn("input array is empty"); }
             } else { this.node.warn("Input data is null"); }
 
             this.node.status({ fill: "blue", shape: "dot", text: "processing ..." });
@@ -483,7 +483,7 @@ export class api_delete {
             const _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
             if (!NoderedUtil.IsNullUndefinded(_data)) {
                 if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
-                if (data.length === 0) { this.node.warn("input array is empty"); return; }
+                if (data.length === 0) { this.node.warn("input array is empty"); }
             } else { this.node.warn("Input data is null"); }
 
             this.node.status({ fill: "blue", shape: "dot", text: "processing ..." });
@@ -799,7 +799,7 @@ export class grant_permission {
             const _data = NoderedUtil.FetchFromObject(msg, this.config.entities);
             if (!NoderedUtil.IsNullUndefinded(_data)) {
                 if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
-                if (data.length === 0) { this.node.warn("input array is empty"); return; }
+                if (data.length === 0) { this.node.warn("input array is empty"); }
             } else { this.node.warn("Input data is null"); }
 
             this.node.status({ fill: "blue", shape: "dot", text: "processing ..." });
@@ -866,7 +866,7 @@ export class revoke_permission {
             const _data = NoderedUtil.FetchFromObject(msg, this.config.entities);
             if (!NoderedUtil.IsNullUndefinded(_data)) {
                 if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
-                if (data.length === 0) { this.node.warn("input array is empty"); return; }
+                if (data.length === 0) { this.node.warn("input array is empty"); }
             } else { this.node.warn("Input data is null"); }
 
             for (let i = 0; i < data.length; i++) {
