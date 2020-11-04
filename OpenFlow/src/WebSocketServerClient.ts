@@ -6,6 +6,12 @@ import { Config } from "./Config";
 import { amqpwrapper, QueueMessageOptions, amqpqueue } from "./amqpwrapper";
 import { NoderedUtil, Base, InsertOneMessage, QueueMessage, MapReduceMessage, QueryMessage, UpdateOneMessage, UpdateManyMessage, DeleteOneMessage, User, mapFunc, reduceFunc, finalizeFunc, QueuedMessage, QueuedMessageCallback, WatchEventMessage } from "openflow-api";
 import { ChangeStream } from "mongodb";
+const { RateLimiterMemory } = require('rate-limiter-flexible')
+
+const BaseRateLimiter = new RateLimiterMemory({
+    points: Config.socket_rate_limit_points,
+    duration: Config.socket_rate_limit_duration,
+});
 
 interface IHashTable<T> {
     [key: string]: T;
@@ -70,7 +76,7 @@ export class WebSocketServerClient {
         }
         logger.info("new client " + this.id + " from " + this.remoteip);
         socketObject.on("open", (e: Event): void => this.open(e));
-        socketObject.on("message", (e: string): void => this.message(e)); // e: MessageEvent
+        socketObject.on("message", (e: string): void => (this.message(e) as any)); // e: MessageEvent
         socketObject.on("error", (e: Event): void => this.error(e));
         socketObject.on("close", (e: CloseEvent): void => this.close(e));
     }
@@ -129,15 +135,30 @@ export class WebSocketServerClient {
             }
         }
     }
-    private message(message: string): void { // e: MessageEvent
+    private _message(message: string): void {
+        //this._logger.silly("WebSocket message received " + message);
+        let msg: SocketMessage = SocketMessage.fromjson(message);
+        this._logger.silly("WebSocket message received id: " + msg.id + " index: " + msg.index + " count: " + msg.count);
+        this._receiveQueue.push(msg);
+        if ((msg.index + 1) >= msg.count) this.ProcessQueue();
+    }
+    private async message(message: string): Promise<void> {
+        let username: string = "Unknown";
         try {
-            //this._logger.silly("WebSocket message received " + message);
-            let msg: SocketMessage = SocketMessage.fromjson(message);
-            this._logger.silly("WebSocket message received id: " + msg.id + " index: " + msg.index + " count: " + msg.count);
-            this._receiveQueue.push(msg);
-            this.ProcessQueue();
+            try {
+
+                if (!NoderedUtil.IsNullUndefinded(this.user)) { username = this.user.username; }
+
+                // await this.consume("me");
+                var res = await BaseRateLimiter.consume("me");
+                // console.log("SOCKET_NO_RATE_LIMIT consumedPoints: " + res.consumedPoints + " remainingPoints: " + res.remainingPoints);
+                this._message(message);
+            } catch (error) {
+                this._logger.debug("[" + username + "/" + this.clientagent + "/" + this.id + "] SOCKET_RATE_LIMIT consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
+                setTimeout(() => { this.message(message); }, Math.floor(Math.random() * 10) * 100);
+            }
         } catch (error) {
-            this._logger.error("WebSocket error encountered " + (error.message ? error.message : error));
+            this._logger.error("[" + username + "/" + this.clientagent + "/" + this.id + "] WebSocket error encountered " + (error.message ? error.message : error));
             const errormessage: Message = new Message(); errormessage.command = "error"; errormessage.data = (error.message ? error.message : error);
             this._socketObject.send(JSON.stringify(errormessage));
         }
@@ -163,7 +184,7 @@ export class WebSocketServerClient {
         if (this._socketObject != null) {
             try {
                 this._socketObject.removeListener("open", (e: Event): void => this.open(e));
-                this._socketObject.removeListener("message", (e: string): void => this.message(e)); // e: MessageEvent
+                this._socketObject.removeListener("message", (e: string): void => (this.message(e) as any)); // e: MessageEvent
                 this._socketObject.removeListener("error", (e: Event): void => this.error(e));
                 this._socketObject.removeListener("close", (e: CloseEvent): void => this.close(e));
             } catch (error) {

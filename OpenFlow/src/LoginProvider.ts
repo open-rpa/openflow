@@ -20,7 +20,7 @@ import { Audit } from "./Audit";
 import * as saml from "saml20";
 const multer = require('multer');
 const GridFsStorage = require('multer-gridfs-storage');
-const { RateLimiterMemory, RateLimiterRes } = require('rate-limiter-flexible')
+const { RateLimiterMemory } = require('rate-limiter-flexible')
 import { GridFSBucket, ObjectID, Db, Cursor, Binary } from "mongodb";
 import { Base, User, NoderedUtil, TokenUser, WellknownIds, Rights, Role } from "openflow-api";
 import { DBHelper } from "./DBHelper";
@@ -35,11 +35,11 @@ const rateLimiter = (req: express.Request, res: express.Response, next: express.
     BaseRateLimiter
         .consume(req.ip)
         .then((e) => {
-            // console.log("NO_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints);
+            // console.log("API_O_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints);
             next();
         })
         .catch((e) => {
-            console.log("RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints + " msBeforeNext: " + e.msBeforeNext);
+            console.log("API_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints + " msBeforeNext: " + e.msBeforeNext);
             res.status(429).json({ response: 'RATE_LIMIT' });
         });
 };
