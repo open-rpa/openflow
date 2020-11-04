@@ -146,16 +146,16 @@ export class WebSocketServerClient {
         let username: string = "Unknown";
         try {
             try {
-
                 if (!NoderedUtil.IsNullUndefinded(this.user)) { username = this.user.username; }
-
-                // await this.consume("me");
-                var res = await BaseRateLimiter.consume("me");
+                var res = await BaseRateLimiter.consume(this.id);
                 // console.log("SOCKET_NO_RATE_LIMIT consumedPoints: " + res.consumedPoints + " remainingPoints: " + res.remainingPoints);
                 this._message(message);
             } catch (error) {
-                this._logger.debug("[" + username + "/" + this.clientagent + "/" + this.id + "] SOCKET_RATE_LIMIT consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
-                setTimeout(() => { this.message(message); }, Math.floor(Math.random() * 10) * 100);
+                if (error.consumedPoints) {
+                    if ((error.consumedPoints % 100) == 0) this._logger.debug("[" + username + "/" + this.clientagent + "/" + this.id + "] SOCKET_RATE_LIMIT consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
+                    setTimeout(() => { this.message(message); }, 250);
+                }
+                // setTimeout(() => { this.message(message); }, Math.floor(Math.random() * 10) * 100);
             }
         } catch (error) {
             this._logger.error("[" + username + "/" + this.clientagent + "/" + this.id + "] WebSocket error encountered " + (error.message ? error.message : error));
