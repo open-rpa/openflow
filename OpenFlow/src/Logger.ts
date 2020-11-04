@@ -43,10 +43,11 @@ export class Logger {
         const logger: winston.Logger = winston.createLogger({
             level: "debug",
             //format: winston.format.json(),
-
             format: winston.format.combine(
                 enumerateErrorFormat(),
-                winston.format.json()
+                winston.format.timestamp({ format: 'HH:mm:ss' }),
+                // winston.format.json()
+                winston.format.printf(info => `${info.timestamp} ${info.level}: ${info.message}` + (info.splat !== undefined ? `${info.splat}` : " "))
             ),
             transports: [
                 new winston.transports.File(options.file),
