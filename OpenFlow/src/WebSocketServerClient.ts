@@ -6,13 +6,6 @@ import { Config } from "./Config";
 import { amqpwrapper, QueueMessageOptions, amqpqueue } from "./amqpwrapper";
 import { NoderedUtil, Base, InsertOneMessage, QueueMessage, MapReduceMessage, QueryMessage, UpdateOneMessage, UpdateManyMessage, DeleteOneMessage, User, mapFunc, reduceFunc, finalizeFunc, QueuedMessage, QueuedMessageCallback, WatchEventMessage } from "openflow-api";
 import { ChangeStream } from "mongodb";
-const { RateLimiterMemory } = require('rate-limiter-flexible')
-
-const BaseRateLimiter = new RateLimiterMemory({
-    points: Config.socket_rate_limit_points,
-    duration: Config.socket_rate_limit_duration,
-});
-
 interface IHashTable<T> {
     [key: string]: T;
 }
@@ -145,18 +138,8 @@ export class WebSocketServerClient {
     private async message(message: string): Promise<void> {
         let username: string = "Unknown";
         try {
-            try {
-                if (!NoderedUtil.IsNullUndefinded(this.user)) { username = this.user.username; }
-                var res = await BaseRateLimiter.consume(this.id);
-                // console.log("SOCKET_NO_RATE_LIMIT consumedPoints: " + res.consumedPoints + " remainingPoints: " + res.remainingPoints);
-                this._message(message);
-            } catch (error) {
-                if (error.consumedPoints) {
-                    if ((error.consumedPoints % 100) == 0) this._logger.debug("[" + username + "/" + this.clientagent + "/" + this.id + "] SOCKET_RATE_LIMIT consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
-                    setTimeout(() => { this.message(message); }, 250);
-                }
-                // setTimeout(() => { this.message(message); }, Math.floor(Math.random() * 10) * 100);
-            }
+            if (!NoderedUtil.IsNullUndefinded(this.user)) { username = this.user.username; }
+            this._message(message);
         } catch (error) {
             this._logger.error("[" + username + "/" + this.clientagent + "/" + this.id + "] WebSocket error encountered " + (error.message ? error.message : error));
             const errormessage: Message = new Message(); errormessage.command = "error"; errormessage.data = (error.message ? error.message : error);
