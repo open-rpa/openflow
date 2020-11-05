@@ -312,6 +312,41 @@ export class entitiesCtrl<T> {
             }
         }
     }
+    private static parseJson(txt, reviver, context) {
+        context = context || 20
+        try {
+            return JSON.parse(txt, reviver)
+        } catch (e) {
+            if (typeof txt !== "string") {
+                const isEmptyArray = Array.isArray(txt) && txt.length === 0
+                const errorMessage = "Cannot parse " +
+                    (isEmptyArray ? "an empty array" : String(txt))
+                throw new TypeError(errorMessage)
+            }
+            const syntaxErr = e.message.match(/^Unexpected token.*position\s+(\d+)/i)
+            const errIdx = syntaxErr
+                ? +syntaxErr[1]
+                : e.message.match(/^Unexpected end of JSON.*/i)
+                    ? txt.length - 1
+                    : null
+            if (errIdx != null) {
+                const start = errIdx <= context
+                    ? 0
+                    : errIdx - context
+                const end = errIdx + context >= txt.length
+                    ? txt.length
+                    : errIdx + context
+                e.message += ` while parsing near "${
+                    start === 0 ? "" : "..."
+                    }${txt.slice(start, end)}${
+                    end === txt.length ? "" : "..."
+                    }"`
+            } else {
+                e.message += ` while parsing "${txt.slice(0, context * 2)}"`
+            }
+            throw e
+        }
+    }
     async loadData(): Promise<void> {
         try {
             if (this.loading == true) { console.log("allready loading data, exit"); return; }
@@ -320,25 +355,36 @@ export class entitiesCtrl<T> {
             if (this.preloadData != null) {
                 this.preloadData();
             }
-            let query = this.basequery;
+            let query: object = this.basequery;
             if (this.searchstring !== "") {
-                const finalor = [];
-                for (let i = 0; i < this.searchfields.length; i++) {
-                    const newq: any = {};
-                    // exact match case sensitive
-                    // newq[this.searchfields[i]] = this.searchstring;
-                    // exact match case insensitive
-                    newq[this.searchfields[i]] = new RegExp(["^", this.searchstring, "$"].join(""), "i");
-
-                    // exact match string contains
-                    newq[this.searchfields[i]] = new RegExp([this.searchstring].join(""), "i");
-
-                    finalor.push(newq);
-                }
-                if (Object.keys(query).length == 0) {
-                    query = { $or: finalor.concat() };
+                if ((this.searchstring as string).indexOf("{") == 0) {
+                    if ((this.searchstring as string).lastIndexOf("}") == ((this.searchstring as string).length - 1)) {
+                        try {
+                            query = entitiesCtrl.parseJson(this.searchstring, null, null);
+                        } catch (error) {
+                            this.errormessage = error.message ? error.message : error;
+                        }
+                    }
                 } else {
-                    query = { $and: [query, { $or: finalor.concat() }] };
+                    const finalor = [];
+                    for (let i = 0; i < this.searchfields.length; i++) {
+                        const newq: any = {};
+                        // exact match case sensitive
+                        // newq[this.searchfields[i]] = this.searchstring;
+                        // exact match case insensitive
+                        newq[this.searchfields[i]] = new RegExp(["^", this.searchstring, "$"].join(""), "i");
+
+                        // exact match string contains
+                        newq[this.searchfields[i]] = new RegExp([this.searchstring].join(""), "i");
+
+                        finalor.push(newq);
+                    }
+                    if (Object.keys(query).length == 0) {
+                        query = { $or: finalor.concat() };
+                    } else {
+                        query = { $and: [query, { $or: finalor.concat() }] };
+                    }
+
                 }
             }
             this.models = await NoderedUtil.Query(this.collection, query, this.baseprojection, this.orderby, this.pagesize, 0, null, this.basequeryas);

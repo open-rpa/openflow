@@ -82,7 +82,7 @@ services:
       - "traefik.http.routers.nodered.rule=Host(`nodered1.toolbox.openrpa.dk`)"
       - "traefik.http.routers.nodered.entrypoints=web"
       - "traefik.http.services.nodered.loadbalancer.server.port=1880"
-    image: "cloudhack/openflownodered:1.1.66"
+    image: "cloudhack/openflownodered:1.1.67"
     container_name: "nodered"
     environment:
       #      - nodered_id=1
