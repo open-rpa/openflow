@@ -69,7 +69,7 @@ services:
       - "traefik.http.routers.web.entrypoints=web,websecure"
       - "traefik.frontend.passHostHeader=true"
       - "traefik.http.routers.web.tls.certresolver=myresolver"
-    image: "cloudhack/openflow:1.1.59"
+    image: "cloudhack/openflow:1.1.67"
     container_name: "web"
     environment:
       - update_acl_based_on_groups=true
