@@ -20,6 +20,11 @@ import { DBHelper } from "../DBHelper";
 import { WebSocketServer } from "../WebSocketServer";
 const request = require("request");
 const got = require("got");
+const { RateLimiterMemory } = require('rate-limiter-flexible')
+const BaseRateLimiter = new RateLimiterMemory({
+    points: Config.socket_rate_limit_points,
+    duration: Config.socket_rate_limit_duration,
+});
 
 
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
@@ -47,37 +52,43 @@ export class Message {
         this.replyto = this.id;
         this.id = crypto.randomBytes(16).toString("hex");
     }
-    public Process(cli: WebSocketServerClient): void {
+    public async Process(cli: WebSocketServerClient): Promise<void> {
         try {
+            let username: string = "Unknown";
+            if (!NoderedUtil.IsNullUndefinded(cli.user)) { username = cli.user.username; }
+
             if (!NoderedUtil.IsNullEmpty(this.command)) { this.command = this.command.toLowerCase(); }
             let command: string = this.command;
-            if (this.command !== "ping" && this.command !== "pong") {
-
-                if (!NoderedUtil.IsNullEmpty(this.replyto)) {
-                    const qmsg: QueuedMessage = cli.messageQueue[this.replyto];
-                    if (!NoderedUtil.IsNullUndefinded(qmsg)) {
-                        try {
-                            qmsg.message = Object.assign(qmsg.message, JSON.parse(this.data));
-                        } catch (error) {
-                            // TODO: should we set message to data ?
-                        }
-                        if (!NoderedUtil.IsNullUndefinded(qmsg.cb)) { qmsg.cb(this); }
-                        delete cli.messageQueue[this.id];
-                    }
-                    return;
+            if (command == "ping" || command == "pong") {
+                if (command == "ping") this.Ping(cli);
+                cli.lastheartbeat = new Date();
+                return;
+            }
+            try {
+                var res = await BaseRateLimiter.consume(cli.id);
+                // console.log("SOCKET_NO_RATE_LIMIT consumedPoints: " + res.consumedPoints + " remainingPoints: " + res.remainingPoints);
+            } catch (error) {
+                if (error.consumedPoints) {
+                    if ((error.consumedPoints % 100) == 0) cli._logger.debug("[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
+                    setTimeout(() => { this.Process(cli); }, 250);
                 }
+                return;
             }
 
-            if (command !== "ping" && command !== "pong") {
-                command = command;
+            if (!NoderedUtil.IsNullEmpty(this.replyto)) {
+                const qmsg: QueuedMessage = cli.messageQueue[this.replyto];
+                if (!NoderedUtil.IsNullUndefinded(qmsg)) {
+                    try {
+                        qmsg.message = Object.assign(qmsg.message, JSON.parse(this.data));
+                    } catch (error) {
+                        // TODO: should we set message to data ?
+                    }
+                    if (!NoderedUtil.IsNullUndefinded(qmsg.cb)) { qmsg.cb(this); }
+                    delete cli.messageQueue[this.id];
+                }
+                return;
             }
             switch (command) {
-                case "ping":
-                    this.Ping(cli);
-                    break;
-                case "pong":
-                    cli.lastheartbeat = new Date();
-                    break;
                 case "listcollections":
                     this.ListCollections(cli);
                     break;
@@ -358,9 +369,13 @@ export class Message {
                 const result = [];
                 // filter out collections that are empty, or we don't have access too
                 for (let i = 0; i < msg.result.length; i++) {
-                    if (msg.result[i].name != "entities") {
-                        const q = await Config.db.query({}, null, 1, 0, null, msg.result[i].name, msg.jwt);
-                        if (q.length > 0) result.push(msg.result[i]);
+                    const collectioname = msg.result[i].name;
+                    if (msg.result[i].name != "entities" && !cli.user.HasRoleName("admins")) {
+                        // cli._logger.debug("Check if user has objects in " + collectioname);
+                        const q = await Config.db.query({}, null, 1, 0, null, collectioname, msg.jwt);
+                        if (q.length > 0) {
+                            result.push(msg.result[i]);
+                        }
                     } else {
                         result.push(msg.result[i]);
                     }

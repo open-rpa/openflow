@@ -250,10 +250,10 @@ export class api_add {
 
             let data: any[] = [];
             const _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
-            if (NoderedUtil.IsNullUndefinded(_data)) { return NoderedUtil.HandleError(this, "Input data is null"); }
-            if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
-
-            if (data.length === 0) { this.node.warn("input array is empty"); return; }
+            if (!NoderedUtil.IsNullUndefinded(_data)) {
+                if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
+                if (data.length === 0) { this.node.warn("input array is empty"); }
+            } else { this.node.warn("Input data is null"); }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Inserting items" });
             const Promises: Promise<any>[] = [];
@@ -325,10 +325,10 @@ export class api_update {
 
             let data: any[] = [];
             const _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
-            if (NoderedUtil.IsNullUndefinded(_data)) { return NoderedUtil.HandleError(this, "Input data is null"); }
-            if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
-
-            if (data.length === 0) { this.node.warn("input array is empty"); return; }
+            if (!NoderedUtil.IsNullUndefinded(_data)) {
+                if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
+                if (data.length === 0) { this.node.warn("input array is empty"); }
+            } else { this.node.warn("Input data is null"); }
 
             // this.node.status({ fill: "blue", shape: "dot", text: "Inserting items" });
             // const Promises: Promise<any>[] = [];
@@ -351,7 +351,7 @@ export class api_update {
                     }
                     Promises.push(NoderedUtil.UpdateOne(this.config.collection, null, element, this.config.writeconcern, this.config.journal, msg.jwt));
                 }
-                this.node.status({ fill: "blue", shape: "dot", text: "processing " + y + " to " + (y + 49) });
+                this.node.status({ fill: "blue", shape: "dot", text: y + " to " + (y + 49) + " of " + data.length });
                 const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
                 results = results.concat(tempresults);
                 Promises = [];
@@ -412,13 +412,12 @@ export class api_addorupdate {
             if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
             if ((this.config.journal as any) === undefined || (this.config.journal as any) === null) this.config.journal = false;
 
-
             let data: any[] = [];
             const _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
-            if (NoderedUtil.IsNullUndefinded(_data)) { return NoderedUtil.HandleError(this, "Input data is null"); }
-            if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
-
-            if (data.length === 0) { this.node.warn("input array is empty"); return; }
+            if (!NoderedUtil.IsNullUndefinded(_data)) {
+                if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
+                if (data.length === 0) { this.node.warn("input array is empty"); }
+            } else { this.node.warn("Input data is null"); }
 
             this.node.status({ fill: "blue", shape: "dot", text: "processing ..." });
             let Promises: Promise<any>[] = [];
@@ -431,7 +430,7 @@ export class api_addorupdate {
                     }
                     Promises.push(NoderedUtil.InsertOrUpdateOne(this.config.collection, element, this.config.uniqeness, this.config.writeconcern, this.config.journal, msg.jwt));
                 }
-                this.node.status({ fill: "blue", shape: "dot", text: "processing " + y + " to " + (y + 49) });
+                this.node.status({ fill: "blue", shape: "dot", text: y + " to " + (y + 49) + " of " + data.length });
                 const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
                 results = results.concat(tempresults);
                 Promises = [];
@@ -482,10 +481,10 @@ export class api_delete {
 
             let data: any[] = [];
             const _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
-            if (NoderedUtil.IsNullUndefinded(_data)) { return NoderedUtil.HandleError(this, "Input data is null"); }
-            if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
-
-            if (data.length === 0) { this.node.warn("input array is empty"); return; }
+            if (!NoderedUtil.IsNullUndefinded(_data)) {
+                if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
+                if (data.length === 0) { this.node.warn("input array is empty"); }
+            } else { this.node.warn("Input data is null"); }
 
             this.node.status({ fill: "blue", shape: "dot", text: "processing ..." });
             let Promises: Promise<any>[] = [];
@@ -497,7 +496,7 @@ export class api_delete {
                     if (NoderedUtil.isObject(element)) { id = element._id; }
                     Promises.push(NoderedUtil.DeleteOne(this.config.collection, id, msg.jwt));
                 }
-                this.node.status({ fill: "blue", shape: "dot", text: "processing " + y + " to " + (y + 49) });
+                this.node.status({ fill: "blue", shape: "dot", text: y + " to " + (y + 49) + " of " + data.length });
                 const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
                 results = results.concat(tempresults);
                 Promises = [];
@@ -798,9 +797,10 @@ export class grant_permission {
 
             let data: any[] = [];
             const _data = NoderedUtil.FetchFromObject(msg, this.config.entities);
-            if (NoderedUtil.IsNullUndefinded(_data)) { return NoderedUtil.HandleError(this, "Input data is null"); }
-            if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
-            if (data.length === 0) { this.node.warn("input array is empty"); return; }
+            if (!NoderedUtil.IsNullUndefinded(_data)) {
+                if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
+                if (data.length === 0) { this.node.warn("input array is empty"); }
+            } else { this.node.warn("Input data is null"); }
 
             this.node.status({ fill: "blue", shape: "dot", text: "processing ..." });
             for (let i = 0; i < data.length; i++) {
@@ -864,9 +864,10 @@ export class revoke_permission {
 
             let data: any[] = [];
             const _data = NoderedUtil.FetchFromObject(msg, this.config.entities);
-            if (NoderedUtil.IsNullUndefinded(_data)) { return NoderedUtil.HandleError(this, "Input data is null"); }
-            if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
-            if (data.length === 0) { this.node.warn("input array is empty"); return; }
+            if (!NoderedUtil.IsNullUndefinded(_data)) {
+                if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
+                if (data.length === 0) { this.node.warn("input array is empty"); }
+            } else { this.node.warn("Input data is null"); }
 
             for (let i = 0; i < data.length; i++) {
 

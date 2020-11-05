@@ -112,13 +112,18 @@ export class RPAWorkflowsCtrl extends entitiesCtrl<Base> {
         this.basequery = { _type: "workflow" };
         this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1, projectandname: 1 };
         this.postloadData = this.processdata;
-        if (this.userdata.data.RPAWorkflowsCtrl) {
-            this.basequery = this.userdata.data.RPAWorkflowsCtrl.basequery;
-            this.collection = this.userdata.data.RPAWorkflowsCtrl.collection;
-            this.baseprojection = this.userdata.data.RPAWorkflowsCtrl.baseprojection;
-            this.orderby = this.userdata.data.RPAWorkflowsCtrl.orderby;
-            this.searchstring = this.userdata.data.RPAWorkflowsCtrl.searchstring;
-            this.basequeryas = this.userdata.data.RPAWorkflowsCtrl.basequeryas;
+        if (this.userdata.data != null && this.userdata.data.basequeryas != null) {
+            this.basequeryas = this.userdata.data.basequeryas;
+        } else if (this.userdata.data.RPAWorkflowsCtrl) {
+            if (this.userdata.data.RPAWorkflowsCtrl.basequeryas) this.basequeryas = this.userdata.data.RPAWorkflowsCtrl.basequeryas;
+            if (this.userdata.data.RPAWorkflowsCtrl.basequery) {
+                this.basequery = this.userdata.data.RPAWorkflowsCtrl.basequery;
+                this.collection = this.userdata.data.RPAWorkflowsCtrl.collection;
+                this.baseprojection = this.userdata.data.RPAWorkflowsCtrl.baseprojection;
+                this.orderby = this.userdata.data.RPAWorkflowsCtrl.orderby;
+                this.searchstring = this.userdata.data.RPAWorkflowsCtrl.searchstring;
+                this.basequeryas = this.userdata.data.RPAWorkflowsCtrl.basequeryas;
+            }
         }
         WebSocketClientService.onSignedin((user: TokenUser) => {
             this.loadData();
@@ -2767,11 +2772,11 @@ export class NoderedCtrl {
                 }
             }
             this.loading = true;
-            this.messages += 'Updating ' + this.user.name + "\n";
+            this.messages = 'Updating ' + this.user.name + "\n" + this.messages;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             await NoderedUtil.UpdateOne("users", null, this.user, 1, false, null);
             this.loading = false;
-            this.messages += 'update complete\n';
+            this.messages = 'update complete\n' + this.messages;
             this.EnsureNoderedInstance();
         } catch (error) {
             this.errormessage = error;
@@ -2798,13 +2803,24 @@ export class NoderedCtrl {
                 }
             } else {
                 this.instancestatus = "non existent";
-                // this.messages += "GetNoderedInstance completed, status unknown/non existent" + "\n";
+                // this.messages = "GetNoderedInstance completed, status unknown/non existent" + "\n" + this.messages;
             }
+            let reload: boolean = false;
+            this.instances.forEach(instance => {
+                if (this.instance.metadata.deletionTimestamp != null) reload = true;
+                if (instance.status.phase == "deleting" || instance.status.phase == "Pending") reload = true;
+            });
 
-            this.messages += "GetNoderedInstance completed, status " + this.instancestatus + "\n";
+            this.messages = "GetNoderedInstance completed, status " + this.instancestatus + "\n" + this.messages;
+
+            if (reload) {
+                setTimeout(() => {
+                    this.GetNoderedInstance();
+                }, 2000);
+            }
         } catch (error) {
             this.errormessage = error;
-            this.messages += error + "\n";
+            this.messages = error + "\n" + this.messages;
             this.instancestatus = "";
             console.error(error);
         }
@@ -2818,11 +2834,11 @@ export class NoderedCtrl {
             console.debug("GetNoderedInstanceLog:");
             this.instancelog = await NoderedUtil.GetNoderedInstanceLog(this.userid, instancename, null);
             this.instancelog = this.instancelog.split("\n").reverse().join("\n");
-            this.messages += "GetNoderedInstanceLog completed\n";
+            this.messages = "GetNoderedInstanceLog completed\n" + this.messages;
             this.instancestatus = "";
         } catch (error) {
             this.errormessage = error;
-            this.messages += error + "\n";
+            this.messages = error + "\n" + this.messages;
             this.instancestatus = "";
             console.error(error);
         }
@@ -2832,11 +2848,11 @@ export class NoderedCtrl {
         try {
             this.errormessage = "";
             await NoderedUtil.EnsureNoderedInstance(this.userid, false, null);
-            this.messages += "EnsureNoderedInstance completed" + "\n";
+            this.messages = "EnsureNoderedInstance completed" + "\n" + this.messages;
             this.GetNoderedInstance();
         } catch (error) {
             this.errormessage = error;
-            this.messages += error + "\n";
+            this.messages = error + "\n" + this.messages;
             console.error(error);
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -2845,11 +2861,11 @@ export class NoderedCtrl {
         try {
             this.errormessage = "";
             await NoderedUtil.DeleteNoderedInstance(this.userid, null);
-            this.messages += "DeleteNoderedInstance completed" + "\n";
+            this.messages = "DeleteNoderedInstance completed" + "\n" + this.messages;
             this.GetNoderedInstance();
         } catch (error) {
             this.errormessage = error;
-            this.messages += error + "\n";
+            this.messages = error + "\n" + this.messages;
             console.error(error);
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -2858,11 +2874,11 @@ export class NoderedCtrl {
         try {
             this.errormessage = "";
             await NoderedUtil.DeleteNoderedPod(this.userid, instancename, null);
-            this.messages += "DeleteNoderedPod completed" + "\n";
+            this.messages = "DeleteNoderedPod completed" + "\n" + this.messages;
             this.GetNoderedInstance();
         } catch (error) {
             this.errormessage = error;
-            this.messages += error + "\n";
+            this.messages = error + "\n" + this.messages;
             console.error(error);
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -2871,11 +2887,11 @@ export class NoderedCtrl {
         try {
             this.errormessage = "";
             await NoderedUtil.RestartNoderedInstance(this.userid, null);
-            this.messages += "RestartNoderedInstance completed" + "\n";
+            this.messages = "RestartNoderedInstance completed" + "\n" + this.messages;
             this.GetNoderedInstance();
         } catch (error) {
             this.errormessage = error;
-            this.messages += error + "\n";
+            this.messages = error + "\n" + this.messages;
             console.error(error);
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -2884,11 +2900,11 @@ export class NoderedCtrl {
         try {
             this.errormessage = "";
             await NoderedUtil.StartNoderedInstance(this.userid, null);
-            this.messages += "StartNoderedInstance completed" + "\n";
+            this.messages = "StartNoderedInstance completed" + "\n" + this.messages;
             this.GetNoderedInstance();
         } catch (error) {
             this.errormessage = error;
-            this.messages += error + "\n";
+            this.messages = error + "\n" + this.messages;
             console.error(error);
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -2897,11 +2913,11 @@ export class NoderedCtrl {
         try {
             this.errormessage = "";
             await NoderedUtil.StopNoderedInstance(this.userid, null);
-            this.messages += "StopNoderedInstance completed" + "\n";
+            this.messages = "StopNoderedInstance completed" + "\n" + this.messages;
             this.GetNoderedInstance();
         } catch (error) {
             this.errormessage = error;
-            this.messages += error + "\n";
+            this.messages = error + "\n" + this.messages;
             console.error(error);
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -2955,7 +2971,7 @@ export class RobotsCtrl extends entitiesCtrl<unattendedclient> {
     ) {
         super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         this.autorefresh = true;
-        console.debug("RolesCtrl");
+        console.debug("RobotsCtrl");
         this.basequery = { _type: "user" };
         this.collection = "users";
         this.postloadData = this.processdata;
@@ -3014,6 +3030,8 @@ export class RobotsCtrl extends entitiesCtrl<unattendedclient> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     ShowWorkflows(model: any) {
+        if (!this.userdata.data.RPAWorkflowsCtrl) this.userdata.data.RPAWorkflowsCtrl = {};
+        this.userdata.data.RPAWorkflowsCtrl.basequeryas = model._id;
         this.userdata.data.basequeryas = model._id;
         this.$location.path("/RPAWorkflows");
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -3967,8 +3985,144 @@ export class CredentialCtrl extends entityCtrl<Base> {
 }
 
 
+export class OAuthClientsCtrl extends entitiesCtrl<Base> {
+    constructor(
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        this.autorefresh = true;
+        console.debug("OAuthClientsCtrl");
+        this.basequery = { _type: "oauthclient" };
+        this.collection = "config";
+        this.searchfields = ["name", "username"];
+        this.postloadData = this.processData;
+        if (this.userdata.data.OAuthClientsCtrl) {
+            this.basequery = this.userdata.data.OAuthClientsCtrl.basequery;
+            this.collection = this.userdata.data.OAuthClientsCtrl.collection;
+            this.baseprojection = this.userdata.data.OAuthClientsCtrl.baseprojection;
+            this.orderby = this.userdata.data.OAuthClientsCtrl.orderby;
+            this.searchstring = this.userdata.data.OAuthClientsCtrl.searchstring;
+            this.basequeryas = this.userdata.data.OAuthClientsCtrl.basequeryas;
+        }
 
+        WebSocketClientService.onSignedin((user: TokenUser) => {
+            this.loadData();
+        });
+    }
+    async processData(): Promise<void> {
+        if (!this.userdata.data.OAuthClientsCtrl) this.userdata.data.OAuthClientsCtrl = {};
+        this.userdata.data.OAuthClientsCtrl.basequery = this.basequery;
+        this.userdata.data.OAuthClientsCtrl.collection = this.collection;
+        this.userdata.data.OAuthClientsCtrl.baseprojection = this.baseprojection;
+        this.userdata.data.OAuthClientsCtrl.orderby = this.orderby;
+        this.userdata.data.OAuthClientsCtrl.searchstring = this.searchstring;
+        this.userdata.data.OAuthClientsCtrl.basequeryas = this.basequeryas;
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+}
+export class OAuthClientCtrl extends entityCtrl<Base> {
+    searchFilteredList: TokenUser[] = [];
+    searchSelectedItem: TokenUser = null;
+    searchtext: string = "";
+    e: any = null;
+    public rolemappings: any;
+    constructor(
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api
+    ) {
+        super($scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        console.debug("OAuthClientCtrl");
+        this.collection = "config";
+        WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            if (this.id !== null && this.id !== undefined) {
+                await this.loadData();
+            } else {
+                this.model = new Base();
+                this.model._type = "oauthclient";
+                this.model._encrypt = ["clientSecret"];
+                (this.model as any).clientId = "application";
+                (this.model as any).clientSecret = 'secret';
+                (this.model as any).grants = ['password', 'refresh_token', 'authorization_code'];
+                (this.model as any).redirectUris = [];
+                (this.model as any).defaultrole = "Viewer";
+                (this.model as any).rolemappings = { "admins": "admin", "grafana editors": "Editor", "grafana admins": "Admin" };
+            }
+        });
+    }
+    async submit(): Promise<void> {
+        this.model["id"] = this.model["clientId"];
+        if (this.model.name == null || this.model.name == "") this.model.name = this.model["id"];
+        if (this.model._id) {
+            await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null);
+        } else {
+            await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null);
+        }
+        this.$location.path("/OAuthClients");
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    deletefromarray(name: string, id: string) {
+        if (id == null || id == "") return false;
+        console.log(id);
+        this.model[name] = this.model[name].filter(x => x != id);
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        return true;
+    }
+    addtoarray(name: string, id: string) {
+        if (id == null || id == "") return false;
+        console.log(id);
+        if (!Array.isArray(this.model[name])) this.model[name] = [];
+        this.model[name] = this.model[name].filter(x => x != id);
+        this.model[name].push(id);
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        return true;
+    }
+    addrolemapping(name: string, value: string) {
+        if (name == null || name == "") return false;
+        if (value == null || value == "") return false;
+        console.log(name, value);
+        if (!this.model["rolemappings"]) this.model["rolemappings"] = {};
+        this.model["rolemappings"][name] = value;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    deleterolemapping(name) {
+        console.log(name);
+        if (name == null || name == "") return false;
+        if (!this.model["rolemappings"]) this.model["rolemappings"] = {};
+        delete this.model["rolemappings"][name];
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    CopySecret(field) {
+        /* Get the text field */
+        var copyText = document.querySelector(field);
+        copyText.type = "text";
+        // var copythis = copyText.value;
+        // copyText = document.getElementById('just_for_copy');
+        // copyText.value = copythis;
 
+        /* Select the text field */
+        copyText.select();
+        copyText.setSelectionRange(0, 99999); /*For mobile devices*/
+
+        /* Copy the text inside the text field */
+        document.execCommand("copy");
+        /* Alert the copied text */
+        // alert("Copied the text: " + copyText.value);
+        console.log("Copied the text: " + copyText.value);
+        copyText.type = "password";
+    }
+
+}
 
 export class DuplicatesCtrl extends entitiesCtrl<Base> {
     public collections: any;

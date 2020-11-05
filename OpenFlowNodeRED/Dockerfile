@@ -2,7 +2,7 @@ FROM node:latest
 EXPOSE 80
 EXPOSE 5859
 WORKDIR /data
-COPY package*.json ./
+COPY docker-package.json ./package.json
 RUN npm install
 COPY dist ./
 

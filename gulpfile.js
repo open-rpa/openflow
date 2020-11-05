@@ -44,11 +44,13 @@ gulp.task("browserify", function () {
     return bfi;
 });
 
-gulp.task("clean", shell.task([
-    'echo "delete npmrc and cache"',
-    'if exist "OpenFlowNodeRED\\dist\\nodered\\.npmrc" del OpenFlowNodeRED\\dist\\nodered\\.npmrc',
-    'if exist "OpenFlowNodeRED\\dist\\.cache" rmdir OpenFlowNodeRED\\dist\\.cache /s /q '
-]));
+//  package.json -> scripts ->     "prepare": "gulp clean"
+
+// gulp.task("clean", shell.task([
+//     'echo "delete npmrc and cache"',
+//     'if exist "OpenFlowNodeRED\\dist\\nodered\\.npmrc" del OpenFlowNodeRED\\dist\\nodered\\.npmrc',
+//     'if exist "OpenFlowNodeRED\\dist\\.cache" rmdir OpenFlowNodeRED\\dist\\.cache /s /q '
+// ]));
 
 gulp.task("compose", shell.task([
     'echo "delete npmrc and cache"',
@@ -135,16 +137,24 @@ gulp.task("bumpprojectfiles", function () {
     data.version = version;
     let json = JSON.stringify(data, null, 2);
     fs.writeFileSync("package.json", json);
+    data.version = "1.1.57";
+    json = JSON.stringify(data, null, 2);
+    fs.writeFileSync("docker-package.json", json); // keep a project file that is not changed so we dont need to rebuild everything every time
 
     data = require("./OpenFlowNodeRED/package.json");
     console.log(data.version + " updated to " + version);
     data.version = version;
     json = JSON.stringify(data, null, 2);
     fs.writeFileSync("OpenFlowNodeRED/package.json", json);
+
+    data.version = "1.1.57";
+    json = JSON.stringify(data, null, 2);
+    fs.writeFileSync("OpenFlowNodeRED/docker-package.json", json); // keep a project file that is not changed so we dont need to rebuild everything every time
+
     return gulp.src('.');
 
 });
 
-gulp.task("bump", gulp.series("bumpyml", "bumpflow", "bumpnodered", "bumpconfigmap", "bumpaiotfrontend", "bumpprojectfiles"));
+gulp.task("bump", gulp.series("bumpyml", "bumpflow", "bumpnodered", "bumpconfigmap", "bumpaiotfrontend", "bumpprojectfiles", "copyfiles1"));
 
 gulp.task("default", gulp.series("copyfiles1", "browserify", "watch"));
