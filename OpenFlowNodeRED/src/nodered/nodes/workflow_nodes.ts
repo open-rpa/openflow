@@ -311,6 +311,7 @@ export class workflow_out_node {
             if (msg._id !== null && msg._id !== undefined && msg._id !== "") {
                 if (this.config.removestate) {
                     let msgcopy: any = {};
+                    msgcopy._id = msg._id;
                     msgcopy.queue = msg.queue;
                     msgcopy.name = msg.name;
                     msgcopy.workflow = msg.workflow;
