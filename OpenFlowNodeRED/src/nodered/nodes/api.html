@@ -465,7 +465,60 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 
 
 
+<script type="text/x-red" data-template-name="api delete many">
+    <div class="form-row">
+        <label><i class="fa fa-tag"></i> Collection</label>
+        <input type="text" id="node-input-collection" placeholder="Collection">
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-list"></i> Entity from</label>
+        <input id="node-input-typed-inputfield" type="text" style="width: 70%">
+        <input id="node-input-inputfield" type="hidden">
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-list"></i> Delete Query</label>
+        <input type="text" id="node-input-Query" placeholder="Deleted using Query">
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>
+<script type="text/x-red" data-help-name="api delete many">
+    <p>Deletes payload from database. Payload can be a string with the id, or an object with an _id field, or an array of text/objects</p>
+</script>
+<script type="text/javascript">
+    RED.nodes.registerType('api delete many', {
+        category: 'api',
+        color: "#E9967A",
+        paletteLabel: 'delete many',
+        icon: "font-awesome/fa-trash",
+        defaults: {
+            name: { value: "" },
+            entitytype: { value: "" },
+            collection: { value: "entities", required: true },
+            inputfield: { value: "payload" },
+            query: { value: "" }
+        },
+        inputs: 1,
+        outputs: 1,
+        label: function () {
+            return this.name || "delete many";
+        },
+        labelStyle: function () {
+            return this.name ? "node_label_italic" : "";
+        },
 
+        oneditprepare: function () {
+            $("#node-input-typed-inputfield").typedInput({ types: ['msg'] });
+            $("#node-input-typed-inputfield").typedInput('value', this.inputfield);
+        },
+        oneditsave: function () {
+            $("#node-input-inputfield").val($("#node-input-typed-inputfield").typedInput('value'));
+        }
+
+    });
+</script>
 
 
 

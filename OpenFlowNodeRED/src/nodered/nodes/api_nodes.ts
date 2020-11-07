@@ -521,6 +521,70 @@ export class api_delete {
 
 
 
+export interface Iapi_deletemany {
+    collection: string;
+    inputfield: string;
+    query: string;
+}
+export class api_deletemany {
+    public node: Red = null;
+
+    constructor(public config: Iapi_deletemany) {
+        RED.nodes.createNode(this, config);
+        this.node = this;
+        this.node.status({});
+        this.node.on("input", this.oninput);
+        this.node.on("close", this.onclose);
+    }
+    async oninput(msg: any) {
+        try {
+            this.node.status({});
+            let collection = this.config.collection;
+            let query = this.config.query;
+            let inputfield = this.config.inputfield;
+            if (!NoderedUtil.IsNullEmpty(msg.collection)) collection = msg.collection;
+            if (!NoderedUtil.IsNullEmpty(msg.query)) query = msg.query;
+            if (!NoderedUtil.IsNullEmpty(msg.inputfield)) inputfield = msg.inputfield;
+
+            let data: any[] = [];
+            const _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
+            // if (NoderedUtil.IsNullUndefinded(query)) {
+            if (!NoderedUtil.IsNullEmpty(query) && !NoderedUtil.IsNullUndefinded(_data)) {
+                throw new Error("Received both data and a query, ending to avoid mistakes!");
+            }
+            if (NoderedUtil.IsNullEmpty(query)) {
+                if (!NoderedUtil.IsNullUndefinded(_data)) {
+                    if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
+                    // if (data.length === 0) { this.node.warn("input array is empty"); }
+                } else { this.node.warn("Input data is null and no query"); }
+            } else {
+                if (NoderedUtil.IsString(query)) {
+                    query = JSON.parse(query);
+                }
+            }
+            let ids: string[] = null;
+            if (!NoderedUtil.IsNullUndefinded(_data)) {
+                ids = []; query = null;
+                for (let i: number = 0; i < _data.length; i++) {
+                    let id: string = _data[i];
+                    if (NoderedUtil.isObject(_data[i])) { id = _data[i]._id; }
+                    ids.push(id);
+                }
+            }
+            this.node.status({ fill: "blue", shape: "dot", text: "processing ..." });
+            const affectedrows = await NoderedUtil.DeleteMany(this.config.collection, query, ids, msg.jwt);
+            this.node.send(msg);
+            this.node.status({ fill: "green", shape: "dot", text: "deleted " + affectedrows + " rows" });
+        } catch (error) {
+            NoderedUtil.HandleError(this, error);
+        }
+    }
+    onclose() {
+    }
+}
+
+
+
 
 
 export interface Iapi_map_reduce {

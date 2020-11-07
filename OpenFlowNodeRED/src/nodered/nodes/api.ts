@@ -17,6 +17,8 @@ export = function (RED: Red) {
     RED.nodes.registerType("api update", api.api_update);
     RED.nodes.registerType("api addorupdate", api.api_addorupdate);
     RED.nodes.registerType("api delete", api.api_delete);
+    RED.nodes.registerType("api delete many", api.api_deletemany);
+
 
     RED.nodes.registerType("map reduce", api.api_map_reduce);
     RED.nodes.registerType("api updatedocument", api.api_updatedocument);

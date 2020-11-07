@@ -362,7 +362,7 @@ export class DatabaseConnection {
         // }
         let arr: T[] = [];
 
-        var _pipe = this.db.collection(collectionname).find(_query);
+        let _pipe = this.db.collection(collectionname).find(_query);
         if (projection != null) {
             _pipe = _pipe.project(projection);
         }
@@ -478,7 +478,7 @@ export class DatabaseConnection {
             aggregates = [{ $match: base }, aggregates];
         }
         // const items: T[] = await this.db.collection(collectionname).aggregate(aggregates).toArray();
-        var options: CollectionAggregationOptions = {};
+        const options: CollectionAggregationOptions = {};
         options.hint = myhint;
         const items: T[] = await this.db.collection(collectionname).aggregate(aggregates, options).toArray();
         DatabaseConnection.traversejsondecode(items);
@@ -607,9 +607,6 @@ export class DatabaseConnection {
         } catch (error) {
             throw error;
         }
-        // const result:T[] = await this.db.collection(outcol).find({}).toArray(); // .limit(top)
-        // // this.db.collection("map_temp_res").deleteMany({});
-        // return result;
     }
     /**
      * Create a new document in the database
@@ -1164,6 +1161,66 @@ export class DatabaseConnection {
             // } catch (error) {
             //     console.error(error)
             // }
+        }
+    }
+
+    /**
+     * @param  {string} id id of object to delete
+     * @param  {string} collectionname collectionname Collection containing item
+     * @param  {string} jwt JWT of user who is doing the delete, ensuring rights
+     * @returns Promise<void>
+     */
+    async DeleteMany(query: string | any, ids: string[], collectionname: string, jwt: string): Promise<number> {
+        if (NoderedUtil.IsNullUndefinded(ids) && NoderedUtil.IsNullUndefinded(query)) { throw Error("id cannot be null"); }
+        await this.connect();
+        const user: TokenUser = Crypt.verityToken(jwt);
+        let _query: any = {};
+        let aclfield = "_acl";
+        if (collectionname === "files") { collectionname = "fs.files"; }
+        if (collectionname === "fs.files") {
+            aclfield = "metadata._acl"
+        }
+        const baseq = this.getbasequery(jwt, aclfield, [Rights.delete]);
+        if (NoderedUtil.IsNullUndefinded(query) && !NoderedUtil.IsNullUndefinded(ids)) {
+            _query = { $and: [{ _id: { "$in": ids } }, baseq] };
+        } else if (!NoderedUtil.IsNullUndefinded(query)) {
+            if (query !== null && query !== undefined) {
+                let json: any = query;
+                if (typeof json !== 'string' && !(json instanceof String)) {
+                    json = JSON.stringify(json, (key, value) => {
+                        if (value instanceof RegExp)
+                            return ("__REGEXP " + value.toString());
+                        else
+                            return value;
+                    });
+                }
+                query = JSON.parse(json, (key, value) => {
+                    if (typeof value === 'string' && value.match(isoDatePattern)) {
+                        return new Date(value); // isostring, so cast to js date
+                    } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") == 0) {
+                        const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
+                        return new RegExp(m[1], m[2] || "");
+                    } else
+                        return value; // leave any other value as-is
+                });
+            }
+            _query = { $and: [query, baseq] };
+        } else {
+            throw new Error("DeleteMany needs either a list of ids or a query");
+        }
+
+        if (collectionname === "files") { collectionname = "fs.files"; }
+        if (collectionname === "fs.files") {
+            const arr = await this.db.collection(collectionname).find(_query).toArray();
+            this._logger.debug("[" + user.username + "][" + collectionname + "] Deleting " + arr.length + " files in database");
+            for (let i = 0; i < arr.length; i++) {
+                await this._DeleteFile(arr[i]._id);
+            }
+            return arr.length;
+        } else {
+            const res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteMany(_query);
+            this._logger.debug("[" + user.username + "][" + collectionname + "] Deleted " + res.deletedCount + " items in database");
+            return res.deletedCount;
         }
     }
     /**
