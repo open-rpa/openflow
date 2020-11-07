@@ -66,6 +66,10 @@ msg.user will contain the TokenUser of the calling user<br>
         <input id="node-input-form" type="hidden">
     </div>
     <div class="form-row">
+        <label><i class="fa fa-tag"></i> Remove state data</label>
+        <input type="checkbox" id="node-input-removestate" style="width: auto;">
+    </div>
+    <div class="form-row">
         <label ><i class="fa fa-tag"></i> Name</label>
         <input type="text" id="node-input-name" placeholder="Node name">
     </div>
@@ -93,7 +97,8 @@ If you have buttons on the form, you can get the name of the button clicked in m
         defaults: {
             name: { value: "" },
             form: { value: "" },
-            state: { value: "completed", required: true }
+            state: { value: "completed", required: true },
+            removestate: { value: false, required: true }
         },
         inputs: 1,
         outputs: 1,

@@ -14,6 +14,7 @@ export = function (RED: Red) {
     RED.nodes.registerType("api get jwt", api.api_get_jwt);
     RED.nodes.registerType("api get", api.api_get);
     RED.nodes.registerType("api add", api.api_add);
+    RED.nodes.registerType("api add many", api.api_addmany);
     RED.nodes.registerType("api update", api.api_update);
     RED.nodes.registerType("api addorupdate", api.api_addorupdate);
     RED.nodes.registerType("api delete", api.api_delete);

@@ -289,6 +289,7 @@ export class workflow_in_node {
 export interface Iworkflow_out_node {
     state: string;
     form: string;
+    removestate: boolean;
 }
 export class workflow_out_node {
     public node: Red = null;
@@ -308,12 +309,30 @@ export class workflow_out_node {
             msg.state = this.config.state;
             msg.form = this.config.form;
             if (msg._id !== null && msg._id !== undefined && msg._id !== "") {
-                let msgcopy = Object.assign({}, msg);
-                delete msgcopy.jwt;
-                delete msgcopy.user;
-                // Logger.instanse.info("Updating workflow instance with id " + msg._id + " (" + msg.name + " with state " + msg.state);
-                this.node.status({ fill: "blue", shape: "dot", text: "Updating workflow instance" });
-                await NoderedUtil.UpdateOne("workflow_instances", null, msgcopy, 1, false, msg.jwt);
+                if (this.config.removestate) {
+                    let msgcopy: any = {};
+                    msgcopy.queue = msg.queue;
+                    msgcopy.name = msg.name;
+                    msgcopy.workflow = msg.workflow;
+                    msgcopy.targetid = msg.targetid;
+                    msgcopy.replyto = msg.replyto;
+                    msgcopy.correlationId = msg.correlationId;
+                    msgcopy.queuename = msg.queuename;
+                    msgcopy.consumerTag = msg.consumerTag;
+                    msgcopy.exchange = msg.exchange;
+                    msgcopy._msgid = msg._msgid;
+                    msgcopy.state = msg.state;
+                    msgcopy.form = msg.form;
+                    this.node.status({ fill: "blue", shape: "dot", text: "Updating workflow instance" });
+                    await NoderedUtil.UpdateOne("workflow_instances", null, msgcopy, 1, false, msg.jwt);
+                } else {
+                    let msgcopy = Object.assign({}, msg);
+                    delete msgcopy.jwt;
+                    delete msgcopy.user;
+                    // Logger.instanse.info("Updating workflow instance with id " + msg._id + " (" + msg.name + " with state " + msg.state);
+                    this.node.status({ fill: "blue", shape: "dot", text: "Updating workflow instance" });
+                    await NoderedUtil.UpdateOne("workflow_instances", null, msgcopy, 1, false, msg.jwt);
+                }
             }
         } catch (error) {
             NoderedUtil.HandleError(this, error);

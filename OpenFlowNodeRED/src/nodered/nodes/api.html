@@ -230,6 +230,95 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 </script>
 
 
+
+<script type="text/x-red" data-template-name="api add many">
+    <div class="form-row">
+        <label><i class="fa fa-tag"></i> Type</label>
+        <input type="text" id="node-input-entitytype" placeholder="Override new entity type">
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-tag"></i> Collection</label>
+        <input type="text" id="node-input-collection" placeholder="Collection">
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-list"></i> Entity from</label>
+        <input id="node-input-typed-inputfield" type="text" style="width: 70%">
+        <input id="node-input-inputfield" type="hidden">
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-list"></i> Result to</label>
+        <input id="node-input-typed-resultfield" type="text" style="width: 70%">
+        <input id="node-input-resultfield" type="hidden">
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-list"></i> Write Concern</label>
+        <select id="node-input-writeconcern">
+            <option value="0">Requests no acknowledgment</option>
+            <option value="majority">Requests majority</option>
+            <option value="1">Requests acknowledgment from 1</option>
+            <option value="2">Requests acknowledgment from 2</option>
+            <option value="3">Requests acknowledgment from 3</option>
+        </select>
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-list"></i> Journal</label>
+        <select id="node-input-journal">
+            <option value="false">In memory</option>
+            <option value="true">Written to the journal</option>
+        </select>
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-tag"></i> Skip results</label>
+        <input type="checkbox" id="node-input-skipresults" style="width: auto;">
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>
+<script type="text/x-red" data-help-name="api add many">
+    <p>Add payload as new entity in collection, can be an object or array of objects, returns an array of results</p>
+</script>
+<script type="text/javascript">
+    RED.nodes.registerType('api add many', {
+        category: 'api',
+        color: "#DEBD5C",
+        paletteLabel: 'add many',
+        icon: "font-awesome/fa-plus",
+        defaults: {
+            name: { value: "" },
+            entitytype: { value: "" },
+            writeconcern: { value: "0", required: true },
+            journal: { value: "false", required: true },
+            collection: { value: "entities", required: true },
+            inputfield: { value: "payload", required: true },
+            resultfield: { value: "payload", required: true },
+            skipresults: { value: false, required: true }
+        },
+        inputs: 1,
+        outputs: 1,
+        label: function () {
+            return this.name || "api add many";
+        },
+        labelStyle: function () {
+            return this.name ? "node_label_italic" : "";
+        },
+
+        oneditprepare: function () {
+            $("#node-input-typed-inputfield").typedInput({ types: ['msg'] });
+            $("#node-input-typed-inputfield").typedInput('value', this.inputfield);
+            $("#node-input-typed-resultfield").typedInput({ types: ['msg'] });
+            $("#node-input-typed-resultfield").typedInput('value', this.resultfield);
+        },
+        oneditsave: function () {
+            $("#node-input-inputfield").val($("#node-input-typed-inputfield").typedInput('value'));
+            $("#node-input-resultfield").val($("#node-input-typed-resultfield").typedInput('value'));
+        }
+
+    });
+
+</script>
+
 <script type="text/x-red" data-template-name="api update">
     <div class="form-row">
         <label><i class="fa fa-tag"></i> Type</label>
