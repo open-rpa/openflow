@@ -11,7 +11,7 @@ import { Readable, Stream } from "stream";
 import { GridFSBucket, ObjectID, Db, Cursor, MongoNetworkError } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
-import { StripeMessage, EnsureStripeCustomerMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage } from "openflow-api";
+import { StripeMessage, EnsureStripeCustomerMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage } from "openflow-api";
 import { Billing, stripe_customer, stripe_base, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription, stripe_subscription_item, stripe_plan, stripe_coupon } from "openflow-api";
 import { V1ResourceRequirements, V1Deployment } from "@kubernetes/client-node";
 import { amqpwrapper } from "../amqpwrapper";
@@ -113,6 +113,9 @@ export class Message {
                 case "insertone":
                     this.InsertOne(cli);
                     break;
+                case "insertmany":
+                    this.InsertMany(cli);
+                    break;
                 case "updateone":
                     this.UpdateOne(cli);
                     break;
@@ -124,6 +127,9 @@ export class Message {
                     break;
                 case "deleteone":
                     this.DeleteOne(cli);
+                    break;
+                case "deletemany":
+                    this.DeleteMany(cli);
                     break;
                 case "signin":
                     this.Signin(cli);
@@ -370,15 +376,16 @@ export class Message {
                 // filter out collections that are empty, or we don't have access too
                 for (let i = 0; i < msg.result.length; i++) {
                     const collectioname = msg.result[i].name;
-                    if (msg.result[i].name != "entities" && !cli.user.HasRoleName("admins")) {
-                        // cli._logger.debug("Check if user has objects in " + collectioname);
-                        const q = await Config.db.query({}, null, 1, 0, null, collectioname, msg.jwt);
-                        if (q.length > 0) {
-                            result.push(msg.result[i]);
-                        }
-                    } else {
-                        result.push(msg.result[i]);
-                    }
+                    // if (msg.result[i].name != "entities" && !cli.user.HasRoleName("admins")) {
+                    //     // cli._logger.debug("Check if user has objects in " + collectioname);
+                    //     const q = await Config.db.query({}, { _id: 1 }, 1, 0, null, collectioname, msg.jwt);
+                    //     if (q.length > 0) {
+                    //         result.push(msg.result[i]);
+                    //     }
+                    // } else {
+                    //     result.push(msg.result[i]);
+                    // }
+                    result.push(msg.result[i]);
                 }
                 if (result.filter(x => x.name == "entities").length == 0) {
                     result.push({ name: "entities", type: "collection" });
@@ -547,13 +554,46 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
             if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
-            if (NoderedUtil.IsNullEmpty(msg.jwt) && msg.collectionname === "jslog") {
-                msg.jwt = Crypt.rootToken();
-            }
+            // if (NoderedUtil.IsNullEmpty(msg.jwt) && msg.collectionname === "jslog") {
+            //     msg.jwt = Crypt.rootToken();
+            // }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) {
                 throw new Error("jwt is null and client is not authenticated");
             }
             msg.result = await Config.db.InsertOne(msg.item, msg.collectionname, msg.w, msg.j, msg.jwt);
+        } catch (error) {
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
+            cli._logger.error(error.message ? error.message : error);
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            cli._logger.error(error.message ? error.message : error);
+        }
+        this.Send(cli);
+    }
+    private async InsertMany(cli: WebSocketServerClient): Promise<void> {
+        this.Reply();
+        let msg: InsertManyMessage
+        try {
+            msg = InsertManyMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
+            if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
+            // if (NoderedUtil.IsNullEmpty(msg.jwt) && msg.collectionname === "jslog") {
+            //     msg.jwt = Crypt.rootToken();
+            // }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) {
+                throw new Error("jwt is null and client is not authenticated");
+            }
+            const Promises: Promise<any>[] = [];
+            for (let i: number = 0; i < msg.items.length; i++) {
+                Promises.push(Config.db.InsertOne(msg.items[i], msg.collectionname, msg.w, msg.j, msg.jwt));
+            }
+            msg.results = await Promise.all(Promises.map(p => p.catch(e => e)));
+            if (msg.skipresults) msg.results = [];
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -643,6 +683,26 @@ export class Message {
             msg = DeleteOneMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             await Config.db.DeleteOne(msg._id, msg.collectionname, msg.jwt);
+        } catch (error) {
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
+            cli._logger.error(error.message ? error.message : error);
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            cli._logger.error(error.message ? error.message : error);
+        }
+        this.Send(cli);
+    }
+    private async DeleteMany(cli: WebSocketServerClient): Promise<void> {
+        this.Reply();
+        let msg: DeleteManyMessage
+        try {
+            msg = DeleteManyMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            msg.affectedrows = await Config.db.DeleteMany(msg.query, msg.ids, msg.collectionname, msg.jwt);
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;

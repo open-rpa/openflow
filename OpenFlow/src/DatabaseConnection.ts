@@ -362,7 +362,7 @@ export class DatabaseConnection {
         // }
         let arr: T[] = [];
 
-        var _pipe = this.db.collection(collectionname).find(_query);
+        let _pipe = this.db.collection(collectionname).find(_query);
         if (projection != null) {
             _pipe = _pipe.project(projection);
         }
@@ -478,7 +478,7 @@ export class DatabaseConnection {
             aggregates = [{ $match: base }, aggregates];
         }
         // const items: T[] = await this.db.collection(collectionname).aggregate(aggregates).toArray();
-        var options: CollectionAggregationOptions = {};
+        const options: CollectionAggregationOptions = {};
         options.hint = myhint;
         const items: T[] = await this.db.collection(collectionname).aggregate(aggregates, options).toArray();
         DatabaseConnection.traversejsondecode(items);
@@ -607,9 +607,6 @@ export class DatabaseConnection {
         } catch (error) {
             throw error;
         }
-        // const result:T[] = await this.db.collection(outcol).find({}).toArray(); // .limit(top)
-        // // this.db.collection("map_temp_res").deleteMany({});
-        // return result;
     }
     /**
      * Create a new document in the database
@@ -642,7 +639,7 @@ export class DatabaseConnection {
         if ((hasUser === null || hasUser === undefined)) {
             Base.addRight(item, user._id, user.name, [Rights.full_control]);
         }
-        if (collectionname != "audit") { this._logger.debug("[" + user.username + "][" + collectionname + "] Adding " + item._type + " " + name + " to database"); }
+        if (collectionname != "audit") { this._logger.silly("[" + user.username + "][" + collectionname + "] Adding " + item._type + " " + name + " to database"); }
         if (!this.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
 
         item = this.encryptentity(item) as T;
@@ -1015,7 +1012,7 @@ export class DatabaseConnection {
         (q.item["$set"])._modified = new Date(new Date().toISOString());
 
 
-        this._logger.debug("[" + user.username + "][" + q.collectionname + "] UpdateMany " + (q.item.name || q.item._name) + " in database");
+        this._logger.silly("[" + user.username + "][" + q.collectionname + "] UpdateMany " + (q.item.name || q.item._name) + " in database");
 
         q.j = ((q.j as any) === 'true' || q.j === true);
         if ((q.w as any) !== "majority") q.w = parseInt((q.w as any));
@@ -1081,7 +1078,7 @@ export class DatabaseConnection {
         if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to InsertOrUpdateOne"); }
         // if (q.item._id !== null && q.item._id !== undefined && q.item._id !== "") {
         if (exists.length == 1) {
-            this._logger.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Updating found one in database");
+            this._logger.silly("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Updating found one in database");
             const uq = new UpdateOneMessage();
             // uq.query = query; 
             uq.item = q.item; uq.collectionname = q.collectionname; uq.w = q.w; uq.j; uq.jwt = q.jwt;
@@ -1089,7 +1086,7 @@ export class DatabaseConnection {
             q.opresult = uqres.opresult;
             q.result = uqres.result;
         } else {
-            this._logger.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Inserting as new in database");
+            this._logger.silly("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Inserting as new in database");
             q.result = await this.InsertOne(q.item, q.collectionname, q.w, q.j, q.jwt);
         }
         return q;
@@ -1119,16 +1116,11 @@ export class DatabaseConnection {
         if (id === null || id === undefined || id === "") { throw Error("id cannot be null"); }
         await this.connect();
         const user: TokenUser = Crypt.verityToken(jwt);
-        // const original:Base = await this.getbyid(id, collectionname, jwt);
-        // if(!original) { throw Error("item not found!"); }
-        // if(!this.hasAuthorization(user, original, "delete")) { throw new Error("Access denied, no authorization to DeleteOne"); }
         let _query: any = {};
         if (typeof id === 'string' || id instanceof String) {
             _query = { $and: [{ _id: id }, this.getbasequery(jwt, "_acl", [Rights.delete])] };
-            //_query = { $and: [{ _id: { $ne: user._id } }, _query] };
         } else {
             _query = { $and: [{ id }, this.getbasequery(jwt, "_acl", [Rights.delete])] };
-            //_query = { $and: [{ _id: { $ne: user._id } }, _query] };
         }
 
         if (collectionname === "files") { collectionname = "fs.files"; }
@@ -1142,28 +1134,67 @@ export class DatabaseConnection {
                 throw Error("item not found!");
             }
         }
-
-
-        // const arr = await this.db.collection(collectionname).find(_query).toArray();
-
-        this._logger.debug("[" + user.username + "][" + collectionname + "] Deleting " + id + " in database");
+        this._logger.silly("[" + user.username + "][" + collectionname + "] Deleting " + id + " in database");
         const res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne(_query);
+    }
 
-        // const res:DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne({_id:id});
-        // const res:DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne(id);
-        if (res.deletedCount === 0) { throw Error("item not found!"); } else {
-            // try {
-            //     const item: any = { _id: id, };
-            //     item._modifiedby = user.name;
-            //     item._modifiedbyid = user._id;
-            //     item._modified = new Date(new Date().toISOString());
-            //     item._deletedby = user.name;
-            //     item._deletedbyid = user._id;
-            //     item._deleted = new Date(new Date().toISOString());
-            //     await this.SaveDiff(collectionname, null, item);
-            // } catch (error) {
-            //     console.error(error)
-            // }
+    /**
+     * @param  {string} id id of object to delete
+     * @param  {string} collectionname collectionname Collection containing item
+     * @param  {string} jwt JWT of user who is doing the delete, ensuring rights
+     * @returns Promise<void>
+     */
+    async DeleteMany(query: string | any, ids: string[], collectionname: string, jwt: string): Promise<number> {
+        if (NoderedUtil.IsNullUndefinded(ids) && NoderedUtil.IsNullUndefinded(query)) { throw Error("id cannot be null"); }
+        await this.connect();
+        const user: TokenUser = Crypt.verityToken(jwt);
+        let _query: any = {};
+        let aclfield = "_acl";
+        if (collectionname === "files") { collectionname = "fs.files"; }
+        if (collectionname === "fs.files") {
+            aclfield = "metadata._acl"
+        }
+        const baseq = this.getbasequery(jwt, aclfield, [Rights.delete]);
+        if (NoderedUtil.IsNullUndefinded(query) && !NoderedUtil.IsNullUndefinded(ids)) {
+            _query = { $and: [{ _id: { "$in": ids } }, baseq] };
+        } else if (!NoderedUtil.IsNullUndefinded(query)) {
+            if (query !== null && query !== undefined) {
+                let json: any = query;
+                if (typeof json !== 'string' && !(json instanceof String)) {
+                    json = JSON.stringify(json, (key, value) => {
+                        if (value instanceof RegExp)
+                            return ("__REGEXP " + value.toString());
+                        else
+                            return value;
+                    });
+                }
+                query = JSON.parse(json, (key, value) => {
+                    if (typeof value === 'string' && value.match(isoDatePattern)) {
+                        return new Date(value); // isostring, so cast to js date
+                    } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") == 0) {
+                        const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
+                        return new RegExp(m[1], m[2] || "");
+                    } else
+                        return value; // leave any other value as-is
+                });
+            }
+            _query = { $and: [query, baseq] };
+        } else {
+            throw new Error("DeleteMany needs either a list of ids or a query");
+        }
+
+        if (collectionname === "files") { collectionname = "fs.files"; }
+        if (collectionname === "fs.files") {
+            const arr = await this.db.collection(collectionname).find(_query).toArray();
+            this._logger.debug("[" + user.username + "][" + collectionname + "] Deleting " + arr.length + " files in database");
+            for (let i = 0; i < arr.length; i++) {
+                await this._DeleteFile(arr[i]._id);
+            }
+            return arr.length;
+        } else {
+            const res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteMany(_query);
+            this._logger.debug("[" + user.username + "][" + collectionname + "] Deleted " + res.deletedCount + " items in database");
+            return res.deletedCount;
         }
     }
     /**

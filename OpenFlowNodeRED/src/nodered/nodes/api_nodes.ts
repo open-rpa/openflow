@@ -240,11 +240,6 @@ export class api_add {
             if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { this.config.resultfield = msg.resultfield; }
             if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
             if (!NoderedUtil.IsNullEmpty(msg.journal)) { this.config.journal = msg.journal; }
-            // if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
-            //     msg.jwt = Config.jwt;
-            // }
-
-
             if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
             if ((this.config.journal as any) === undefined || (this.config.journal as any) === null) this.config.journal = false;
 
@@ -255,16 +250,23 @@ export class api_add {
                 if (data.length === 0) { this.node.warn("input array is empty"); }
             } else { this.node.warn("Input data is null"); }
 
-            this.node.status({ fill: "blue", shape: "dot", text: "Inserting items" });
-            const Promises: Promise<any>[] = [];
-            for (let i: number = 0; i < data.length; i++) {
-                const element: any = data[i];
-                if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
-                    element._type = this.config.entitytype;
+            this.node.status({ fill: "blue", shape: "dot", text: "processing " + data.length + " items" });
+            let Promises: Promise<any>[] = [];
+            let results: any[] = [];
+            for (let y: number = 0; y < data.length; y += 50) {
+                for (let i: number = y; i < (y + 50) && i < data.length; i++) {
+                    const element: any = data[i];
+                    if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
+                        element._type = this.config.entitytype;
+                    }
+                    Promises.push(NoderedUtil.InsertOne(this.config.collection, element, this.config.writeconcern, this.config.journal, msg.jwt));
                 }
-                Promises.push(NoderedUtil.InsertOne(this.config.collection, element, this.config.writeconcern, this.config.journal, msg.jwt));
+                this.node.status({ fill: "blue", shape: "dot", text: y + " to " + (y + 49) + " of " + data.length });
+                const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
+                results = results.concat(tempresults);
+                Promises = [];
             }
-            data = await Promise.all(Promises.map(p => p.catch(e => e)));
+            data = results;
 
             const errors = data.filter(result => NoderedUtil.IsString(result) || (result instanceof Error));
             if (errors.length > 0) {
@@ -284,6 +286,72 @@ export class api_add {
     }
 }
 
+
+export interface Iapi_addmany {
+    entitytype: string;
+    collection: string;
+    inputfield: string;
+    resultfield: string;
+    writeconcern: number;
+    skipresults: boolean;
+    journal: boolean;
+}
+export class api_addmany {
+    public node: Red = null;
+
+    constructor(public config: Iapi_addmany) {
+        RED.nodes.createNode(this, config);
+        this.node = this;
+        this.node.status({});
+        this.node.on("input", this.oninput);
+        this.node.on("close", this.onclose);
+    }
+    async oninput(msg: any) {
+        try {
+            this.node.status({});
+            // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
+
+            if (!NoderedUtil.IsNullEmpty(msg.entitytype)) { this.config.entitytype = msg.entitytype; }
+            if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
+            if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { this.config.inputfield = msg.inputfield; }
+            if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { this.config.resultfield = msg.resultfield; }
+            if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
+            if (!NoderedUtil.IsNullEmpty(msg.journal)) { this.config.journal = msg.journal; }
+            if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
+            if ((this.config.journal as any) === undefined || (this.config.journal as any) === null) this.config.journal = false;
+
+            let data: any[] = [];
+            const _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
+            if (!NoderedUtil.IsNullUndefinded(_data)) {
+                if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
+                if (data.length === 0) { this.node.warn("input array is empty"); }
+            } else { this.node.warn("Input data is null"); }
+
+            this.node.status({ fill: "blue", shape: "dot", text: "processing " + data.length + " items" });
+            let results: any[] = [];
+            for (let y: number = 0; y < data.length; y += 50) {
+                let subitems: any[] = [];
+                for (let i: number = y; i < (y + 50) && i < data.length; i++) {
+                    const element: any = data[i];
+                    if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
+                        element._type = this.config.entitytype;
+                    }
+                    subitems.push(element);
+                }
+                this.node.status({ fill: "blue", shape: "dot", text: y + " to " + (y + 49) + " of " + data.length });
+                results.push(await NoderedUtil.InsertMany(this.config.collection, subitems, this.config.writeconcern, this.config.journal, this.config.skipresults, msg.jwt));
+            }
+            data = results;
+            NoderedUtil.saveToObject(msg, this.config.resultfield, data);
+            this.node.send(msg);
+            this.node.status({});
+        } catch (error) {
+            NoderedUtil.HandleError(this, error);
+        }
+    }
+    onclose() {
+    }
+}
 
 
 
@@ -511,6 +579,70 @@ export class api_delete {
             }
             this.node.send(msg);
             this.node.status({});
+        } catch (error) {
+            NoderedUtil.HandleError(this, error);
+        }
+    }
+    onclose() {
+    }
+}
+
+
+
+export interface Iapi_deletemany {
+    collection: string;
+    inputfield: string;
+    query: string;
+}
+export class api_deletemany {
+    public node: Red = null;
+
+    constructor(public config: Iapi_deletemany) {
+        RED.nodes.createNode(this, config);
+        this.node = this;
+        this.node.status({});
+        this.node.on("input", this.oninput);
+        this.node.on("close", this.onclose);
+    }
+    async oninput(msg: any) {
+        try {
+            this.node.status({});
+            let collection = this.config.collection;
+            let query = this.config.query;
+            let inputfield = this.config.inputfield;
+            if (!NoderedUtil.IsNullEmpty(msg.collection)) collection = msg.collection;
+            if (!NoderedUtil.IsNullEmpty(msg.query)) query = msg.query;
+            if (!NoderedUtil.IsNullEmpty(msg.inputfield)) inputfield = msg.inputfield;
+
+            let data: any[] = [];
+            const _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
+            // if (NoderedUtil.IsNullUndefinded(query)) {
+            if (!NoderedUtil.IsNullEmpty(query) && !NoderedUtil.IsNullUndefinded(_data)) {
+                throw new Error("Received both data and a query, ending to avoid mistakes!");
+            }
+            if (NoderedUtil.IsNullEmpty(query)) {
+                if (!NoderedUtil.IsNullUndefinded(_data)) {
+                    if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
+                    // if (data.length === 0) { this.node.warn("input array is empty"); }
+                } else { this.node.warn("Input data is null and no query"); }
+            } else {
+                if (NoderedUtil.IsString(query)) {
+                    query = JSON.parse(query);
+                }
+            }
+            let ids: string[] = null;
+            if (!NoderedUtil.IsNullUndefinded(_data)) {
+                ids = []; query = null;
+                for (let i: number = 0; i < _data.length; i++) {
+                    let id: string = _data[i];
+                    if (NoderedUtil.isObject(_data[i])) { id = _data[i]._id; }
+                    ids.push(id);
+                }
+            }
+            this.node.status({ fill: "blue", shape: "dot", text: "processing ..." });
+            const affectedrows = await NoderedUtil.DeleteMany(this.config.collection, query, ids, msg.jwt);
+            this.node.send(msg);
+            this.node.status({ fill: "green", shape: "dot", text: "deleted " + affectedrows + " rows" });
         } catch (error) {
             NoderedUtil.HandleError(this, error);
         }
