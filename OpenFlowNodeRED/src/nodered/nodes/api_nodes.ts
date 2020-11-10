@@ -937,7 +937,7 @@ export class grant_permission {
             this.node.status({ fill: "blue", shape: "dot", text: "processing ..." });
             for (let i = 0; i < data.length; i++) {
                 if (NoderedUtil.IsNullEmpty(data[i]._type) && !NoderedUtil.IsNullUndefinded(data[i].metadata)) {
-                    const metadata: Base = (data[i].metadata as any).metadata;
+                    const metadata: Base = (data[i].metadata as any);
                     Base.addRight(metadata, this.config.targetid, found.name, this.config.bits);
                     data[i].metadata = metadata;
                 } else {
@@ -1120,6 +1120,7 @@ export class upload_file {
             msg.id = file.id;
             msg.mimeType = file.mimeType;
             msg.metadata = file.metadata;
+            msg.payload = file;
 
             this.node.send(msg);
             this.node.status({});

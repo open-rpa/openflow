@@ -45,7 +45,7 @@ services:
       - "traefik.http.routers.web.rule=Host(`localhost.openrpa.dk`)"
       - "traefik.http.routers.web.entrypoints=web"
       - "traefik.frontend.passHostHeader=true"
-    image: "cloudhack/openflow:1.1.71"
+    image: "cloudhack/openflow:1.1.72"
     container_name: "web"
     environment:
       - update_acl_based_on_groups=true
@@ -82,7 +82,7 @@ services:
       - "traefik.http.routers.nodered.rule=Host(`nodered1.localhost.openrpa.dk`)"
       - "traefik.http.routers.nodered.entrypoints=web"
       - "traefik.http.services.nodered.loadbalancer.server.port=1880"
-    image: "cloudhack/openflownodered:1.1.71"
+    image: "cloudhack/openflownodered:1.1.72"
     container_name: "nodered"
     environment:
       #      - nodered_id=1

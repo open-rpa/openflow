@@ -100,5 +100,15 @@
     "credentials": "Credentials",
     "addcredential": "Add credentials",
     "add": "Add",
-    "queues": "Queues"
+    "queues": "Queues",
+    "oauthclients": "OAuth clients",
+    "ipaddress": "IP address",
+    "Legal Name": "Legal Name",
+    "Billing email": "Billing email",
+    "Address": "Address",
+    "Country": "Country",
+    "VAT CHECK": "VAT CHECK",
+    "Coupon": "Coupon",
+    "rparole": "RPA Role",
+    "member": "Member"
 }
