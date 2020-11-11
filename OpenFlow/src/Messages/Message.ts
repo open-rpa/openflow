@@ -372,6 +372,8 @@ export class Message {
                 }
                 msg.result = msg.result.filter(x => x.name != "fs.chunks");
                 msg.result = msg.result.filter(x => x.name != "fs.files");
+                msg.result = msg.result.filter(x => x.name != "uploads.files");
+                msg.result = msg.result.filter(x => x.name != "uploads.chunks");
                 const result = [];
                 // filter out collections that are empty, or we don't have access too
                 for (let i = 0; i < msg.result.length; i++) {
