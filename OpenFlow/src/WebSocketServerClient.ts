@@ -234,7 +234,7 @@ export class WebSocketServerClient {
             });
             qname = queue.queue;
             this._queues.push(queue);
-            console.log('_queues.length: ' + this._queues.length);
+            // console.log('_queues.length: ' + this._queues.length);
         } catch (error) {
             this._logger.error("WebSocketclient::CreateConsumer " + error);
         }

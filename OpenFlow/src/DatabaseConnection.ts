@@ -367,9 +367,6 @@ export class DatabaseConnection {
             _pipe = _pipe.project(projection);
         }
         _pipe = _pipe.sort(mysort as any).limit(top).skip(skip);
-        if (projection != null) {
-            _pipe = _pipe.project(projection);
-        }
         if (hint) {
             _pipe = _pipe.hint(myhint);
         }
