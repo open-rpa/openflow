@@ -230,7 +230,7 @@ rejectionEmitter.on("rejectionHandled", (error, promise) => {
     console.log('Rejection handled at: Promise', promise, 'reason:', error);
     console.dir(error.stack);
 });
-import * as fs from "fs";
+import * as client from "prom-client";
 import { OAuthProvider } from "./OAuthProvider";
 let GrafanaProxy: any = null;
 try {
@@ -238,17 +238,28 @@ try {
 } catch (error) {
 
 }
+let Prometheus: any = null;
+let register: client.Registry = null;
+try {
+    Prometheus = require("./Prometheus");
+} catch (error) {
 
+}
+
+// https://medium.com/kubernetes-tutorials/monitoring-your-kubernetes-deployments-with-prometheus-5665eda54045
 (async function (): Promise<void> {
     try {
         await initamqp();
         logger.info("VERSION: " + Config.version);
         const server: http.Server = await WebServer.configure(logger, Config.baseurl());
+        if (Prometheus != null) {
+            register = Prometheus.Prometheus.configure(logger, WebServer.app);
+        }
         if (GrafanaProxy != null) {
-            const grafana = await GrafanaProxy.GrafanaProxy.configure(logger, WebServer.app);
+            const grafana = await GrafanaProxy.GrafanaProxy.configure(logger, WebServer.app, register);
         }
         OAuthProvider.configure(logger, WebServer.app);
-        WebSocketServer.configure(logger, server);
+        WebSocketServer.configure(logger, server, register);
         logger.info("listening on " + Config.baseurl());
         logger.info("namespace: " + Config.namespace);
         if (!await initDatabase()) {

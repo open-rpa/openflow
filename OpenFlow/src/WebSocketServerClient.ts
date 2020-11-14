@@ -6,6 +6,7 @@ import { Config } from "./Config";
 import { amqpwrapper, QueueMessageOptions, amqpqueue } from "./amqpwrapper";
 import { NoderedUtil, Base, InsertOneMessage, QueueMessage, MapReduceMessage, QueryMessage, UpdateOneMessage, UpdateManyMessage, DeleteOneMessage, User, mapFunc, reduceFunc, finalizeFunc, QueuedMessage, QueuedMessageCallback, WatchEventMessage } from "openflow-api";
 import { ChangeStream } from "mongodb";
+import { WebSocketServer } from "./WebSocketServer";
 interface IHashTable<T> {
     [key: string]: T;
 }
@@ -157,6 +158,7 @@ export class WebSocketServerClient {
                 this._logger.error("WebSocketclient::closeconsumers " + error);
             }
         }
+        WebSocketServer.websocket_queue_count.set(this._queues.length);
         semaphore.up();
         // return await this.queuesMutex.dispatch(async () => {
         // });
@@ -187,6 +189,7 @@ export class WebSocketServerClient {
                 try {
                     await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i]);
                     this._queues.splice(i, 1);
+                    WebSocketServer.websocket_queue_count.set(this._queues.length);
                 } catch (error) {
                     this._logger.error("WebSocketclient::CloseConsumer " + error);
                 }
@@ -233,6 +236,7 @@ export class WebSocketServerClient {
                 }
             });
             qname = queue.queue;
+            WebSocketServer.websocket_queue_count.set(this._queues.length);
             this._queues.push(queue);
             // console.log('_queues.length: ' + this._queues.length);
         } catch (error) {
@@ -266,6 +270,8 @@ export class WebSocketServerClient {
                 if (msgs.length === 1) {
                     this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
                     const singleresult: Message = Message.frommessage(first, first.data);
+                    WebSocketServer.websocket_incomming_stats.inc();
+                    WebSocketServer.websocket_incomming_stats.labels(singleresult.command).inc();
                     singleresult.Process(this);
                 } else {
                     let buffer: string = "";
@@ -274,6 +280,8 @@ export class WebSocketServerClient {
                     });
                     this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
                     const result: Message = Message.frommessage(first, buffer);
+                    WebSocketServer.websocket_incomming_stats.inc();
+                    WebSocketServer.websocket_incomming_stats.labels(result.command).inc();
                     result.Process(this);
                 }
             } else {
