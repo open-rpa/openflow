@@ -32,7 +32,7 @@ export class WebSocketServer {
         help: 'Total number of registered queues'
     })
     public static websocket_queue_message_count = new client.Counter({
-        name: 'websocket_queue_message_count',
+        name: 'openflow_websocket_queue_message_count',
         help: 'Total number of queues messages'
     })
 
