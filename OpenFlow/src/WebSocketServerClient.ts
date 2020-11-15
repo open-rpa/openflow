@@ -158,7 +158,7 @@ export class WebSocketServerClient {
                 this._logger.error("WebSocketclient::closeconsumers " + error);
             }
         }
-        WebSocketServer.websocket_queue_count.set(this._queues.length);
+        WebSocketServer.websocket_queue_count.labels(this.id).set(this._queues.length);
         semaphore.up();
         // return await this.queuesMutex.dispatch(async () => {
         // });
@@ -183,13 +183,14 @@ export class WebSocketServerClient {
         }
     }
     public async CloseConsumer(queuename: string): Promise<void> {
+        var old = this._queues.length;
         for (let i = this._queues.length - 1; i >= 0; i--) {
             const q = this._queues[i];
             if (q.queue == queuename || q.queuename == queuename) {
                 try {
                     await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i]);
                     this._queues.splice(i, 1);
-                    WebSocketServer.websocket_queue_count.set(this._queues.length);
+                    WebSocketServer.websocket_queue_count.labels(this.id).set(this._queues.length);
                 } catch (error) {
                     this._logger.error("WebSocketclient::CloseConsumer " + error);
                 }
@@ -236,9 +237,8 @@ export class WebSocketServerClient {
                 }
             });
             qname = queue.queue;
-            WebSocketServer.websocket_queue_count.set(this._queues.length);
             this._queues.push(queue);
-            // console.log('_queues.length: ' + this._queues.length);
+            WebSocketServer.websocket_queue_count.labels(this.id).set(this._queues.length);
         } catch (error) {
             this._logger.error("WebSocketclient::CreateConsumer " + error);
         }

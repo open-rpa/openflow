@@ -29,11 +29,13 @@ export class WebSocketServer {
     })
     public static websocket_queue_count = new client.Gauge({
         name: 'openflow_websocket_queue_count',
-        help: 'Total number of registered queues'
+        help: 'Total number of registered queues',
+        labelNames: ["clientid"]
     })
     public static websocket_queue_message_count = new client.Counter({
         name: 'openflow_websocket_queue_message_count',
-        help: 'Total number of queues messages'
+        help: 'Total number of queues messages',
+        labelNames: ["queuename"]
     })
 
     static configure(logger: winston.Logger, server: http.Server, register: client.Registry): void {

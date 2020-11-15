@@ -64,8 +64,8 @@ export class api_get_jwt {
             if (!NoderedUtil.IsNullEmpty(username) && !NoderedUtil.IsNullEmpty(password)) {
                 q.username = username; q.password = password;
             } else {
-                if (Config.jwt !== "") {
-                    q.jwt = Config.jwt;
+                if (!NoderedUtil.IsNullUndefinded(WebSocketClient.instance) && !NoderedUtil.IsNullEmpty(WebSocketClient.instance.jwt)) {
+                    q.jwt = WebSocketClient.instance.jwt;
                 } else if (Crypt.encryption_key() !== "") {
                     const user = new TokenUser();
                     if (NoderedUtil.IsNullEmpty(Config.nodered_sa)) {
@@ -133,9 +133,6 @@ export class api_get {
             if (!NoderedUtil.IsNullUndefinded(msg.orderby)) { this.config.orderby = msg.orderby; }
             if (!NoderedUtil.IsNullEmpty(msg.top)) { this.config.top = parseInt(msg.top); }
             if (!NoderedUtil.IsNullEmpty(msg.skip)) { this.config.skip = parseInt(msg.skip); }
-            // if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
-            //     msg.jwt = Config.jwt;
-            // }
 
             if (NoderedUtil.IsNullEmpty(this.config.top)) { this.config.top = 500; }
             if (NoderedUtil.IsNullEmpty(this.config.skip)) { this.config.skip = 0; }
@@ -376,17 +373,12 @@ export class api_update {
     async oninput(msg: any) {
         try {
             this.node.status({});
-            // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
-
             if (!NoderedUtil.IsNullEmpty(msg.entitytype)) { this.config.entitytype = msg.entitytype; }
             if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
             if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { this.config.inputfield = msg.inputfield; }
             if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { this.config.resultfield = msg.resultfield; }
             if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
             if (!NoderedUtil.IsNullEmpty(msg.journal)) { this.config.journal = msg.journal; }
-            // if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
-            //     msg.jwt = Config.jwt;
-            // }
 
             if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
             if ((this.config.journal as any) === undefined || (this.config.journal as any) === null) this.config.journal = false;
@@ -398,16 +390,6 @@ export class api_update {
                 if (data.length === 0) { this.node.warn("input array is empty"); }
             } else { this.node.warn("Input data is null"); }
 
-            // this.node.status({ fill: "blue", shape: "dot", text: "Inserting items" });
-            // const Promises: Promise<any>[] = [];
-            // for (let i: number = 0; i < data.length; i++) {
-            //     const element: any = data[i];
-            //     if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
-            //         element._type = this.config.entitytype;
-            //     }
-            //     Promises.push(NoderedUtil.UpdateOne(this.config.collection, null, element, this.config.writeconcern, this.config.journal, msg.jwt));
-            // }
-            // data = await Promise.all(Promises.map(p => p.catch(e => e)));
             this.node.status({ fill: "blue", shape: "dot", text: "processing ..." });
             let Promises: Promise<any>[] = [];
             let results: any[] = [];
@@ -678,17 +660,12 @@ export class api_map_reduce {
     async oninput(msg: any) {
         try {
             this.node.status({});
-            // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
-
             if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
             if (!NoderedUtil.IsNullUndefinded(msg.map)) { this.config.map = msg.map; }
             if (!NoderedUtil.IsNullUndefinded(msg.reduce)) { this.config.reduce = msg.reduce; }
             if (!NoderedUtil.IsNullUndefinded(msg.finalize)) { this.config.finalize = msg.finalize; }
             if (!NoderedUtil.IsNullUndefinded(msg.scope)) { this.config.finalize = msg.scope; }
             if (!NoderedUtil.IsNullUndefinded(msg.query)) { this.config.query = msg.query; }
-            // if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
-            //     msg.jwt = Config.jwt;
-            // }
 
             const scope = NoderedUtil.FetchFromObject(msg, this.config.scope);
             const _output: any = {};
@@ -846,9 +823,6 @@ export class api_updatedocument {
             if (!NoderedUtil.IsNullEmpty(msg.collection)) { collection = msg.collection; }
             if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { writeconcern = msg.writeconcern; }
             if (!NoderedUtil.IsNullEmpty(msg.journal)) { journal = msg.journal; }
-            // if (NoderedUtil.IsNullEmpty(jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
-            //     jwt = Config.jwt;
-            // }
 
             if ((writeconcern as any) === undefined || (writeconcern as any) === null) writeconcern = 0;
             if ((journal as any) === undefined || (journal as any) === null) journal = false;
@@ -1061,9 +1035,6 @@ export class download_file {
 
             if (!NoderedUtil.IsNullEmpty(msg.fileid)) { this.config.fileid = msg.fileid; }
             if (!NoderedUtil.IsNullEmpty(msg.filename)) { this.config.filename = msg.filename; }
-            // if (NoderedUtil.IsNullEmpty(jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
-            //     jwt = Config.jwt;
-            // }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Getting file" });
             const file = await NoderedUtil.GetFile(filename, fileid, jwt);
@@ -1108,10 +1079,6 @@ export class upload_file {
             let mimeType = this.config.mimeType;
             if (!NoderedUtil.IsNullEmpty(msg.filename)) { filename = msg.filename; }
             if (!NoderedUtil.IsNullEmpty(msg.mimeType)) { mimeType = msg.mimeType; }
-            // if (NoderedUtil.IsNullEmpty(jwt) && !NoderedUtil.IsNullEmpty(Config.jwt)) {
-            //     jwt = Config.jwt;
-            // }
-
 
             this.node.status({ fill: "blue", shape: "dot", text: "Saving file" });
             const file = await NoderedUtil.SaveFile(filename, mimeType, msg.metadata, msg.payload, jwt);

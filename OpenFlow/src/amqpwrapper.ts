@@ -114,6 +114,7 @@ export class amqpwrapper {
             // }
             this.replyqueue = await this.AddQueueConsumer("", null, null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
                 WebSocketServer.websocket_queue_message_count.inc();
+                WebSocketServer.websocket_queue_message_count.labels(this.replyqueue.queue).inc();
                 if (!NoderedUtil.IsNullUndefinded(this.activecalls[options.correlationId])) {
                     this.activecalls[options.correlationId].resolve(msg);
                     this.activecalls[options.correlationId] = null;
@@ -359,6 +360,7 @@ export class amqpwrapper {
                 throw new Error("No consumer listening at " + queue);
             }
             WebSocketServer.websocket_queue_message_count.inc();
+            WebSocketServer.websocket_queue_message_count.labels(queue).inc();
         } else {
             this.channel.publish(exchange, "", Buffer.from(data), options);
         }
@@ -390,6 +392,7 @@ export class amqpwrapper {
                 throw new Error("No consumer listening at " + queue);
             }
             WebSocketServer.websocket_queue_message_count.inc();
+            WebSocketServer.websocket_queue_message_count.labels(queue).inc();
         } else {
             this.channel.publish(exchange, "", Buffer.from(data), options);
         }
