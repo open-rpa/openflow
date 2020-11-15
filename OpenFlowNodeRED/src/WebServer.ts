@@ -59,6 +59,9 @@ export class WebServer {
                 const hostname = Config.getEnv("HOSTNAME", null);
                 const defaultLabels: any = {};
                 if (!NoderedUtil.IsNullEmpty(hostname)) defaultLabels["hostname"] = hostname;
+                const name = Config.getEnv("nodered_id", null);
+                if (!NoderedUtil.IsNullEmpty(name)) defaultLabels["name"] = name;
+                if (NoderedUtil.IsNullEmpty(name)) defaultLabels["name"] = hostname;
                 register.setDefaultLabels(defaultLabels);
                 client.collectDefaultMetrics({ register })
 

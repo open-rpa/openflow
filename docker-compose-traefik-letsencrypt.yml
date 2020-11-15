@@ -69,7 +69,7 @@ services:
       - "traefik.http.routers.web.entrypoints=web,websecure"
       - "traefik.frontend.passHostHeader=true"
       - "traefik.http.routers.web.tls.certresolver=myresolver"
-    image: "cloudhack/openflow:1.1.82"
+    image: "cloudhack/openflow:1.1.83"
     container_name: "web"
     environment:
       - update_acl_based_on_groups=true
@@ -107,7 +107,7 @@ services:
       - "traefik.http.routers.nodered.entrypoints=web,websecure"
       - "traefik.http.services.nodered.loadbalancer.server.port=1880"
       - "traefik.http.routers.nodered.tls.certresolver=myresolver"
-    image: "cloudhack/openflownodered:1.1.82"
+    image: "cloudhack/openflownodered:1.1.83"
     container_name: "nodered"
     environment:
       #      - nodered_id=1
