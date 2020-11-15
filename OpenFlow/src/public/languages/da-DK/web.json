@@ -99,6 +99,16 @@
     "credential": "Legitimation",
     "credentials": "Legitimation",
     "addcredential": "Tilføj legitimationsoplysninger",
-    "add": "Add",
-    "queues": "Queues"
+    "add": "Tilføj",
+    "queues": "Queues",
+    "oauthclients": "OAuth klienter",
+    "ipaddress": "IP addresse",
+    "Legal Name": "Legal Name",
+    "Billing email": "Billing email",
+    "Address": "Address",
+    "Country": "Country",
+    "VAT CHECK": "VAT CHECK",
+    "Coupon": "Coupon",
+    "rparole": "RPA Rolle",
+    "member": "Medlem"
 }

@@ -18,9 +18,12 @@
       ng-model-options="{debounce: 400}" />
     <p class="col-md-1 lead"></p>
     <div class="text-right">
-      <button class="btn btn-info" ng-click="ctrl.MassDeleteOnlyOne()"><i class="az-trash"></i> one</button>
-      <button class="btn btn-info" ng-click="ctrl.MassDeleteAllButOne()"><i class="az-trash"></i> all but one</button>
-      <button class="btn btn-info" ng-click="ctrl.MassDeleteAll()"><i class="az-trash"></i> all</button>
+      <button class="btn btn-info" ng-disabled="ctrl.loading==true" ng-click="ctrl.MassDeleteOnlyOne()"><i
+          class="az-trash"></i> one</button>
+      <button class="btn btn-info" ng-disabled="ctrl.loading==true" ng-click="ctrl.MassDeleteAllButOne()"><i
+          class="az-trash"></i> all but one</button>
+      <button class="btn btn-info" ng-disabled="ctrl.loading==true" ng-click="ctrl.MassDeleteAll()"><i
+          class="az-trash"></i> all</button>
     </div>
   </div>
 </div>

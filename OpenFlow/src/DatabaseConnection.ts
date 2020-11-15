@@ -96,7 +96,7 @@ export class DatabaseConnection {
         await this.db.dropCollection(collectionname);
     }
 
-    async CleanACL<T extends Base>(item: T): Promise<T> {
+    async CleanACL<T extends Base>(item: T, user: TokenUser): Promise<T> {
         for (let i = item._acl.length - 1; i >= 0; i--) {
             {
                 const ace = item._acl[i];
@@ -112,6 +112,19 @@ export class DatabaseConnection {
         }
         if (Config.force_add_admins) {
             Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control], false);
+            this.ensureResource(item);
+        }
+        var addself: boolean = true;
+        item._acl.forEach(ace => {
+            if (ace._id == user._id) addself = false;
+            if (addself) {
+                user.roles.forEach(role => {
+                    if (ace._id == role._id) addself = false;
+                });
+            }
+        })
+        if (addself) {
+            Base.addRight(item, user._id, user.name, [Rights.full_control], false);
             this.ensureResource(item);
         }
         return item;
@@ -367,9 +380,6 @@ export class DatabaseConnection {
             _pipe = _pipe.project(projection);
         }
         _pipe = _pipe.sort(mysort as any).limit(top).skip(skip);
-        if (projection != null) {
-            _pipe = _pipe.project(projection);
-        }
         if (hint) {
             _pipe = _pipe.hint(myhint);
         }
@@ -661,7 +671,7 @@ export class DatabaseConnection {
             item._version = await this.SaveDiff(collectionname, null, item);
         }
 
-        item = await this.CleanACL(item);
+        item = await this.CleanACL(item, user);
         if (item._type === "role" && collectionname === "users") {
             item = await this.Cleanmembers(item as any, null);
         }
@@ -689,17 +699,17 @@ export class DatabaseConnection {
             Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
             const users: Role = await DBHelper.FindRoleByNameOrId("users", jwt);
             users.AddMember(item);
-            item = await this.CleanACL(item);
+            item = await this.CleanACL(item, user);
             await DBHelper.Save(users, Crypt.rootToken());
-            const user: TokenUser = item as any;
+            const user2: TokenUser = item as any;
             if (Config.auto_create_personal_nodered_group) {
-                let name = user.username;
+                let name = user2.username;
                 name = name.split("@").join("").split(".").join("");
                 name = name.toLowerCase();
 
                 const noderedadmins = await DBHelper.EnsureRole(jwt, name + "noderedadmins", null);
-                Base.addRight(noderedadmins, user._id, user.username, [Rights.full_control]);
-                Base.removeRight(noderedadmins, user._id, [Rights.delete]);
+                Base.addRight(noderedadmins, user2._id, user2.username, [Rights.full_control]);
+                Base.removeRight(noderedadmins, user2._id, [Rights.delete]);
                 noderedadmins.AddMember(item);
                 await DBHelper.Save(noderedadmins, Crypt.rootToken());
             }
@@ -707,7 +717,7 @@ export class DatabaseConnection {
         }
         if (collectionname === "users" && item._type === "role") {
             Base.addRight(item, item._id, item.name, [Rights.read]);
-            item = await this.CleanACL(item);
+            item = await this.CleanACL(item, user);
             await this.db.collection(collectionname).replaceOne({ _id: item._id }, item);
         }
         DatabaseConnection.traversejsondecode(item);
@@ -914,9 +924,9 @@ export class DatabaseConnection {
         try {
             if (itemReplace) {
                 if (q.collectionname != "fs.files") {
-                    q.item = await this.CleanACL(q.item);
+                    q.item = await this.CleanACL(q.item, user);
                 } else {
-                    (q.item as any).metadata = await this.CleanACL((q.item as any).metadata);
+                    (q.item as any).metadata = await this.CleanACL((q.item as any).metadata, user);
                 }
                 if (q.item._type === "role" && q.collectionname === "users") {
                     q.item = await this.Cleanmembers(q.item as any, original);

@@ -20,11 +20,26 @@ import { noderedcontribmiddlewareauth } from "./node-red-contrib-middleware-auth
 import * as passport from "passport";
 import { noderedcontribauthsaml } from "./node-red-contrib-auth-saml";
 import { WebSocketClient, NoderedUtil } from "openflow-api";
+import * as client from "prom-client";
+import * as promBundle from "express-prom-bundle";
 
 export class WebServer {
     private static _logger: winston.Logger;
     private static app: express.Express = null;
 
+    public static openflow_nodered_node_count = new client.Counter({
+        name: 'openflow_nodered_node_count',
+        help: 'Total number of node calls',
+        labelNames: ["nodetype"]
+    })
+    public static openflow_nodered_node_duration = new client.Histogram({
+        name: 'openflow_nodered_node_duration',
+        help: 'Duration of each node call',
+        labelNames: ["nodetype"],
+        buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10]
+    })
+
+    public static log_messages: any = {};
     private static settings: nodered_settings = null;
     static async configure(logger: winston.Logger, socket: WebSocketClient): Promise<http.Server> {
         this._logger = logger;
@@ -39,6 +54,23 @@ export class WebServer {
             let server: http.Server = null;
             if (this.app === null) {
                 this.app = express();
+
+                const register = new client.Registry()
+                const hostname = Config.getEnv("HOSTNAME", null);
+                const defaultLabels: any = {};
+                if (!NoderedUtil.IsNullEmpty(hostname)) defaultLabels["hostname"] = hostname;
+                const name = Config.getEnv("nodered_id", null);
+                if (!NoderedUtil.IsNullEmpty(name)) defaultLabels["name"] = name;
+                if (NoderedUtil.IsNullEmpty(name)) defaultLabels["name"] = hostname;
+                register.setDefaultLabels(defaultLabels);
+                client.collectDefaultMetrics({ register })
+
+                if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebServer.openflow_nodered_node_count);
+                if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebServer.openflow_nodered_node_duration);
+
+
+                const metricsMiddleware = promBundle({ includeMethod: true, includePath: true, promRegistry: register, autoregister: true });
+                this.app.use(metricsMiddleware);
                 // this.app.use(morgan('combined', { stream: (winston.stream as any).write }));
                 const loggerstream = {
                     write: function (message, encoding) {
@@ -108,6 +140,50 @@ export class WebServer {
                 }
                 else {
                     this.settings.uiPort = Config.port;
+                }
+                this.settings.logging.customLogger = {
+                    level: 'debug',
+                    metrics: true,
+                    handler: function (settings) {
+                        // 
+                        // Return the logging function
+                        // return function (msg) {
+                        //     console.log(msg.timestamp, msg.event);
+                        // }
+                        return function (msg) {
+                            if (!NoderedUtil.IsNullEmpty(msg.msgid) && msg.event.startsWith("node.")) {
+                                msg.event = msg.event.substring(5);
+                                if (msg.event.endsWith(".receive")) {
+                                    msg.event = msg.event.substring(0, msg.event.length - 8);
+                                    msg.end = WebServer.openflow_nodered_node_duration.startTimer()
+                                    WebServer.openflow_nodered_node_count.labels(msg.event).inc();
+                                    WebServer.log_messages[msg.msgid] = msg;
+                                }
+                                if (msg.event.endsWith(".send")) {
+                                    msg.event = msg.event.substring(0, msg.event.length - 5);
+                                    const startmessage = WebServer.log_messages[msg.msgid];
+                                    if (!NoderedUtil.IsNullUndefinded(startmessage)) {
+                                        startmessage.end({ nodetype: startmessage.event });
+                                        delete WebServer.log_messages[msg.msgid];
+                                    }
+                                }
+                                const keys = Object.keys(WebServer.log_messages);
+                                keys.forEach(key => {
+                                    const meg = WebServer.log_messages[key];
+                                    var from = new Date(msg.timestamp);
+                                    const now = new Date();
+                                    const seconds = (now.getTime() - from.getTime()) / 1000;
+                                    if (seconds > Config.prometheus_max_node_time_seconds) {
+                                        console.log("Deleting message " + key + " that is more " + seconds + " seconds old");
+                                        delete WebServer.log_messages[key];
+                                    }
+                                });
+                                // } else {
+                                //     console.log(msg);
+                            }
+                            // console.log(msg.timestamp, msg.event);
+                        }
+                    }
                 }
 
 

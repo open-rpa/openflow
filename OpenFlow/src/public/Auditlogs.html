@@ -29,6 +29,7 @@
       <th ng-click="ctrl.ToggleOrder('impostorname')"><b translate lib="web">impostorname</b></th>
       <th ng-click="ctrl.ToggleOrder('clientagent')"><b translate lib="web">clientagent</b></th>
       <th ng-click="ctrl.ToggleOrder('clientversion')"><b translate lib="web">clientversion</b></th>
+      <th ng-click="ctrl.ToggleOrder('remoteip')"><b translate lib="web">ipaddress</b></th>
       <th scope="col" ng-click="ctrl.ToggleOrder('_created')"><b translate lib="web">created</b></th>
     </tr>
   </thead>
@@ -53,6 +54,7 @@
       <td>{{model.impostorname}}</td>
       <td>{{model.clientagent || model.imagename}}</td>
       <td>{{model.clientversion || model.imageversion}}</td>
+      <td>{{model.remoteip}}</td>
       <td>
         <timesince ng-model="model._created" />
       </td>

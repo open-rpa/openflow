@@ -7,6 +7,7 @@ import { Crypt } from "./Crypt";
 import { Message } from "./Messages/Message";
 import { Config } from "./Config";
 import { SigninMessage, NoderedUtil, TokenUser } from "openflow-api";
+import * as client from "prom-client";
 
 export class WebSocketServer {
     private static _logger: winston.Logger;
@@ -15,7 +16,29 @@ export class WebSocketServer {
     public static _clients: WebSocketServerClient[];
     private static _db: DatabaseConnection;
 
-    static configure(logger: winston.Logger, server: http.Server): void {
+    private static p_all = new client.Gauge({
+        name: 'openflow_websocket_online_clients',
+        help: 'Total number of online websocket clients',
+        labelNames: ["agent", "version"]
+    })
+
+    public static websocket_incomming_stats = new client.Counter({
+        name: 'openflow_websocket_incomming_packages',
+        help: 'Total number of websocket packages',
+        labelNames: ["command"]
+    })
+    public static websocket_queue_count = new client.Gauge({
+        name: 'openflow_websocket_queue_count',
+        help: 'Total number of registered queues',
+        labelNames: ["clientid"]
+    })
+    public static websocket_queue_message_count = new client.Counter({
+        name: 'openflow_websocket_queue_message_count',
+        help: 'Total number of queues messages',
+        labelNames: ["queuename"]
+    })
+
+    static configure(logger: winston.Logger, server: http.Server, register: client.Registry): void {
         this._clients = [];
         this._logger = logger;
         this._server = server;
@@ -26,16 +49,16 @@ export class WebSocketServer {
         this._socketserver.on("error", (error: Error): void => {
             this._logger.error(error);
         });
-        // this._socketserver.on("listening", (cb: () => void):void => {
-        //     this._logger.debug("WebSocketServer is listening");
-        // });
-        // this._socketserver.on("headers", (headers: string[], request: http.IncomingMessage):void => {
-        //     this._logger.debug("headers" + headers.join(","));
-        // });
+        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebSocketServer.p_all);
+        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebSocketServer.websocket_incomming_stats);
+        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebSocketServer.websocket_queue_count);
+        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebSocketServer.websocket_queue_message_count);
         setInterval(this.pingClients, 10000);
     }
     private static async pingClients(): Promise<void> {
         let count: number = WebSocketServer._clients.length;
+        WebSocketServer.p_all.reset();
+        WebSocketServer.p_all.set(count);
         for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
             const cli: WebSocketServerClient = WebSocketServer._clients[i];
             try {
@@ -85,12 +108,18 @@ export class WebSocketServer {
         if (count !== WebSocketServer._clients.length) {
             WebSocketServer._logger.info("new client count: " + WebSocketServer._clients.length);
         }
+        // let openrpa: number = 0;
+        // this.p_online_clients.labels("openrpa").set(count);
         for (let i = 0; i < WebSocketServer._clients.length; i++) {
             try {
                 const cli = WebSocketServer._clients[i];
                 if (cli.user != null) {
+                    if (!NoderedUtil.IsNullEmpty(cli.clientagent)) {
+                        WebSocketServer.p_all.labels(cli.clientagent, cli.clientversion).inc();
+                    }
                     // Lets assume only robots register queues ( not true )
                     if (cli.clientagent == "openrpa") {
+
                         Config.db.db.collection("users").updateOne({ _id: cli.user._id },
                             { $set: { _rpaheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
                                 console.error(err);

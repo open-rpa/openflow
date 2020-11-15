@@ -17,22 +17,29 @@ import { LoginProvider } from "./LoginProvider";
 import { DatabaseConnection } from "./DatabaseConnection";
 import { Config } from "./Config";
 
+import * as promBundle from "express-prom-bundle";
+import * as client from "prom-client";
+import { NoderedUtil } from "openflow-api";
+
 export class WebServer {
     private static _logger: winston.Logger;
     public static app: express.Express;
 
-    static async configure(logger: winston.Logger, baseurl: string): Promise<http.Server> {
+    static async configure(logger: winston.Logger, baseurl: string, register: client.Registry): Promise<http.Server> {
         this._logger = logger;
 
         this.app = express();
-        // this.app.use(morgan('combined', { stream: (winston.stream as any).write }));
+        if (!NoderedUtil.IsNullUndefinded(register)) {
+            const metricsMiddleware = promBundle({ includeMethod: true, includePath: true, promRegistry: register, autoregister: true });
+            this.app.use(metricsMiddleware);
+        }
+
         const loggerstream = {
             write: function (message, encoding) {
                 logger.silly(message);
             }
         };
         this.app.use(morgan('combined', { stream: loggerstream }));
-
         this.app.use(compression());
         this.app.use(bodyParser.urlencoded({ extended: true }));
         this.app.use(bodyParser.json());

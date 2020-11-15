@@ -555,6 +555,7 @@ export class assign_workflow_node {
 
                     res2[0].state = state;
                     result = res[0].msg;
+                    if (NoderedUtil.IsNullUndefinded(result)) result = {};
                     result.payload = data.payload;
                     result.jwt = data.jwt;
                     result.user = data.user;
@@ -577,7 +578,6 @@ export class assign_workflow_node {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Processing" });
             // if (this.localqueue !== null && this.localqueue !== undefined && this.localqueue !== "") { this.localqueue = Config.queue_prefix + this.localqueue; }
-            const jwt = msg.jwt;
             const workflowid = (!NoderedUtil.IsNullEmpty(this.config.workflowid) ? this.config.workflowid : msg.workflowid);
             let name = this.config.name;
             if (NoderedUtil.IsNullEmpty(name)) name = msg.name;
@@ -592,7 +592,14 @@ export class assign_workflow_node {
                 this.node.status({ fill: "red", shape: "dot", text: "workflowid is mandatory" });
                 return;
             }
+            let jwt = msg.jwt;
             const initialrun = (!NoderedUtil.IsNullEmpty(msg.initialrun) ? msg.initialrun : this.config.initialrun);
+            if (NoderedUtil.IsNullEmpty(jwt) && !NoderedUtil.IsNullUndefinded(WebSocketClient.instance)
+                && !NoderedUtil.IsNullEmpty(WebSocketClient.instance.jwt)) {
+                jwt = WebSocketClient.instance.jwt;
+            }
+
+
             msg.jwt = (await NoderedUtil.RenewToken(jwt, true)).jwt;
             // Logger.instanse.info("run workflow called with id " + msg._id + " (" + msg.name + ")");
             const runnerinstance = new Base();

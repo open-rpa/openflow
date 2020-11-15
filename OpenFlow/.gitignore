@@ -4,3 +4,4 @@ logs
 dist
 *grafana-proxy*
 *license*
+*rometheus*
