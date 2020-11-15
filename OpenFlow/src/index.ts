@@ -251,10 +251,10 @@ try {
     try {
         await initamqp();
         logger.info("VERSION: " + Config.version);
-        const server: http.Server = await WebServer.configure(logger, Config.baseurl());
         if (Prometheus != null) {
-            register = Prometheus.Prometheus.configure(logger, WebServer.app);
+            register = Prometheus.Prometheus.configure(logger);
         }
+        const server: http.Server = await WebServer.configure(logger, Config.baseurl(), register);
         if (GrafanaProxy != null) {
             const grafana = await GrafanaProxy.GrafanaProxy.configure(logger, WebServer.app, register);
         }

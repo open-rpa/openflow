@@ -20,6 +20,8 @@ import { noderedcontribmiddlewareauth } from "./node-red-contrib-middleware-auth
 import * as passport from "passport";
 import { noderedcontribauthsaml } from "./node-red-contrib-auth-saml";
 import { WebSocketClient, NoderedUtil } from "openflow-api";
+import * as client from "prom-client";
+import * as promBundle from "express-prom-bundle";
 
 export class WebServer {
     private static _logger: winston.Logger;
@@ -39,6 +41,16 @@ export class WebServer {
             let server: http.Server = null;
             if (this.app === null) {
                 this.app = express();
+
+                const register = new client.Registry()
+                const hostname = Config.getEnv("HOSTNAME", null);
+                const defaultLabels: any = {};
+                if (!NoderedUtil.IsNullEmpty(hostname)) defaultLabels["hostname"] = hostname;
+                register.setDefaultLabels(defaultLabels);
+                client.collectDefaultMetrics({ register })
+
+                const metricsMiddleware = promBundle({ includeMethod: true, includePath: true, promRegistry: register, autoregister: true });
+                this.app.use(metricsMiddleware);
                 // this.app.use(morgan('combined', { stream: (winston.stream as any).write }));
                 const loggerstream = {
                     write: function (message, encoding) {
