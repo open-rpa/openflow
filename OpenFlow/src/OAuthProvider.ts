@@ -1,7 +1,7 @@
 import * as OAuthServer from "oauth2-server";
 import * as winston from "winston";
 import * as express from "express";
-import { TokenUser, Base } from "openflow-api";
+import { TokenUser, Base, NoderedUtil } from "openflow-api";
 import { Config } from "./Config";
 import { Crypt } from "./Crypt";
 const Request = OAuthServer.Request;
@@ -54,7 +54,10 @@ export class OAuthProvider {
                 const scope = req.query.scope;
                 let client = instance.getClientById(client_id);
                 if (req.user) {
-                    if (client.redirectUris.length > 0) {
+                    if (!NoderedUtil.IsNullUndefinded(client) && !Array.isArray(client.redirectUris)) {
+                        client.redirectUris = [];
+                    }
+                    if (!NoderedUtil.IsNullUndefinded(client) && client.redirectUris.length > 0) {
                         if (client.redirectUris.indexOf(redirect_uri) == -1) {
                             return res.status(500).json({ message: 'illegal redirect_uri ' + redirect_uri });
                             // client.redirectUris.push(redirect_uri);
