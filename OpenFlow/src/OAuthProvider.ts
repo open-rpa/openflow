@@ -45,13 +45,13 @@ export class OAuthProvider {
             app.get('/oauth/login', async (req, res) => {
                 instance.clients = await Config.db.query<Base>({ _type: "oauthclient" }, null, 10, 0, null, "config", Crypt.rootToken());
                 if (instance.clients == null || instance.clients.length == 0) return res.status(500).json({ message: 'OAuth not configured' });
-                let state = req.params.state;
-                if (state == null) state = encodeURIComponent(req.query.state as any);
-                const access_type = req.query.access_type;
-                const client_id = req.query.client_id;
-                const redirect_uri = req.query.redirect_uri;
-                const response_type = req.query.response_type;
-                const scope = req.query.scope;
+                let state = (req.params.state ? req.params.state : req.params["amp;state"]);
+                if (state == null) state = encodeURIComponent((req.query.state ? req.query.state : req.query["amp;state"]) as any);
+                const access_type = (req.query.access_type ? req.query.access_type : req.query["amp;access_type"]);
+                const client_id = (req.query.client_id ? req.query.client_id : req.query["amp;client_id"]);
+                const redirect_uri = (req.query.redirect_uri ? req.query.redirect_uri : req.query["amp;redirect_uri"]);
+                const response_type = (req.query.response_type ? req.query.response_type : req.query["amp;response_type"]);
+                const scope = (req.query.scope ? req.query.scope : req.query["amp;scope"]);
                 let client = instance.getClientById(client_id);
                 if (req.user) {
                     if (!NoderedUtil.IsNullUndefinded(client) && !Array.isArray(client.redirectUris)) {
@@ -160,7 +160,7 @@ export class OAuthProvider {
         const clients = this.clients.filter((client) => {
             return client.clientId === clientId;
         });
-        return clients.length ? clients[0] : false;
+        return clients.length ? clients[0] : null;
     }
 
     public async saveToken(token, client, user) {
@@ -212,6 +212,7 @@ export class OAuthProvider {
         expiresAt.setMonth(expiresAt.getMonth() + 1);
         user = TokenUser.From(user);
         let client = this.getClientById(client_id);
+        if (NoderedUtil.IsNullUndefinded(client)) return null;
 
         let role = client.defaultrole;
         const keys: string[] = Object.keys(client.rolemappings);
