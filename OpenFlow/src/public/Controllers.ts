@@ -2658,11 +2658,13 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
     }
     async CompareThen(model) {
         if (model.item == null || model.delta == null) {
-            const items = await NoderedUtil.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby, 100, 0, null);
-            if (items.length > 0) {
-                model.item = items[0].item;
-                model.delta = items[0].delta;
-            }
+            // const items = await NoderedUtil.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby, 100, 0, null);
+            // if (items.length > 0) {
+            //     model.item = items[0].item;
+            //     model.delta = items[0].delta;
+            // }
+            const item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null);
+            if (item != null) model.item = item;
         }
         const modal: any = $("#exampleModal");
         modal.modal();
@@ -2671,11 +2673,13 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
     }
     async RevertTo(model) {
         if (model.item == null) {
-            const items = await NoderedUtil.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby, 100, 0, null);
-            if (items.length > 0) {
-                model.item = items[0].item;
-                model.delta = items[0].delta;
-            }
+            // const items = await NoderedUtil.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby, 100, 0, null);
+            // if (items.length > 0) {
+            //     model.item = items[0].item;
+            //     model.delta = items[0].delta;
+            // }
+            const item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null);
+            if (item != null) model.item = item;
         }
         let result = window.confirm("Overwrite current version with version " + model._version + "?");
         if (result) {
