@@ -2633,13 +2633,7 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
     async CompareNow(model) {
         const modal: any = $("#exampleModal");
         modal.modal()
-        // const delta = jsondiffpatch.diff(this.model, model.item);
         if (model.item == null) {
-            // const items = await NoderedUtil.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby, 100, 0, null);
-            // if (items.length > 0) {
-            //     model.item = items[0].item;
-            //     model.delta = items[0].delta;
-            // }
             const item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null);
             if (item != null) model.item = item;
         }
@@ -2652,32 +2646,24 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
                 delete model.item[key];
             }
         });
-
         const delta = jsondiffpatch.diff(model.item, this.model);
         document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(delta, this.model);
     }
     async CompareThen(model) {
-        if (model.item == null || model.delta == null) {
-            // const items = await NoderedUtil.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby, 100, 0, null);
-            // if (items.length > 0) {
-            //     model.item = items[0].item;
-            //     model.delta = items[0].delta;
-            // }
-            const item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null);
-            if (item != null) model.item = item;
+        if (model.delta == null) {
+            const items = await NoderedUtil.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby, 100, 0, null);
+            if (items.length > 0) {
+                model.item = items[0].item;
+                model.delta = items[0].delta;
+            }
         }
         const modal: any = $("#exampleModal");
         modal.modal();
-        // document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(model.delta, model.item);
+        console.log(model.delta);
         document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(model.delta, {});
     }
     async RevertTo(model) {
         if (model.item == null) {
-            // const items = await NoderedUtil.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby, 100, 0, null);
-            // if (items.length > 0) {
-            //     model.item = items[0].item;
-            //     model.delta = items[0].delta;
-            // }
             const item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null);
             if (item != null) model.item = item;
         }
