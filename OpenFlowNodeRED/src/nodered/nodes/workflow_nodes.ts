@@ -364,6 +364,7 @@ export class workflow_out_node {
                 const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_workflow_out_expiration);
                 this.node.status({ fill: "blue", shape: "dot", text: "QueueMessage.1" });
                 await NoderedUtil.QueueMessage(WebSocketClient.instance, msg.resultqueue, null, data, msg.correlationId, expiration);
+                msg._replyTo = null; // don't double message (??)
             }
         } catch (error) {
             NoderedUtil.HandleError(this, error);
