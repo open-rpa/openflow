@@ -37,7 +37,7 @@ export class rpa_detector_node {
     }
     onsocketclose(message) {
         if (message == null) message = "";
-        this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
+        if (this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
         // this.onclose(false, null);
     }
     async connect() {
@@ -130,7 +130,7 @@ export class rpa_workflow_node {
     }
     onsocketclose(message) {
         if (message == null) message = "";
-        this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
+        if (this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
         // this.onclose(false, null);
     }
     async connect() {
