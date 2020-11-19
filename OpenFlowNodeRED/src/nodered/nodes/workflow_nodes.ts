@@ -40,7 +40,7 @@ export class workflow_in_node {
     }
     onsocketclose(message) {
         if (message == null) message = "";
-        this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
+        if (this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
         // this.onclose(false, null);
     }
     async connect() {
@@ -364,7 +364,8 @@ export class workflow_out_node {
                 const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_workflow_out_expiration);
                 this.node.status({ fill: "blue", shape: "dot", text: "QueueMessage.1" });
                 await NoderedUtil.QueueMessage(WebSocketClient.instance, msg.resultqueue, null, data, msg.correlationId, expiration);
-                msg._replyTo = null; // don't double message (??)
+                if (msg.resultqueue == msg._replyTo) msg._replyTo = null; // don't double message (??)
+
             }
         } catch (error) {
             NoderedUtil.HandleError(this, error);
@@ -481,7 +482,7 @@ export class assign_workflow_node {
     }
     onsocketclose(message) {
         if (message == null) message = "";
-        this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
+        if (this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
         this.onclose(false, null);
 
     }
@@ -544,6 +545,7 @@ export class assign_workflow_node {
                     if (ack !== null && ack !== undefined) ack();
                     return;
                 }
+                const currentinstance = res[0];
                 const state = res[0].state;
                 const _parentid = res[0].parentid;
                 if (_parentid !== null && _parentid !== undefined && _parentid !== "") {
@@ -553,16 +555,16 @@ export class assign_workflow_node {
                         if (ack !== null && ack !== undefined) ack();
                         return;
                     }
-
-                    res2[0].state = state;
-                    result = res[0].msg;
+                    const parentinstance = res2[0];
+                    result = parentinstance.msg;
                     if (NoderedUtil.IsNullUndefinded(result)) result = {};
+                    result.state = data.state;
                     result.payload = data.payload;
                     result.jwt = data.jwt;
                     result.user = data.user;
                     this.node.send([null, result]);
                     if (ack !== null && ack !== undefined) ack();
-                    await NoderedUtil.UpdateOne("workflow_instances", null, res[0], 1, false, null);
+                    // await NoderedUtil.UpdateOne("workflow_instances", null, res[0], 1, false, null);
                     return;
                 }
             }
