@@ -20,6 +20,34 @@ import { Config } from "./Config";
 import * as promBundle from "express-prom-bundle";
 import * as client from "prom-client";
 import { NoderedUtil } from "openflow-api";
+const { RateLimiterMemory } = require('rate-limiter-flexible')
+import * as url from "url";
+
+const BaseRateLimiter = new RateLimiterMemory({
+    points: Config.api_rate_limit_points,
+    duration: Config.api_rate_limit_duration,
+});
+
+const rateLimiter = (req: express.Request, res: express.Response, next: express.NextFunction): void => {
+    BaseRateLimiter
+        .consume(req.ip)
+        .then((e) => {
+            // console.log("API_O_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints);
+            next();
+        })
+        .catch((e) => {
+            const route = url.parse(req.url).pathname;
+            webserver_rate_limit.inc();
+            webserver_rate_limit.labels(route).inc();
+            console.log("API_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints + " msBeforeNext: " + e.msBeforeNext);
+            res.status(429).json({ response: 'RATE_LIMIT' });
+        });
+};
+const webserver_rate_limit = new client.Counter({
+    name: 'openflow_webserver_rate_limit_count',
+    help: 'Total number of rate limited web request',
+    labelNames: ["route"]
+})
 
 export class WebServer {
     private static _logger: winston.Logger;
@@ -32,6 +60,7 @@ export class WebServer {
         if (!NoderedUtil.IsNullUndefinded(register)) {
             const metricsMiddleware = promBundle({ includeMethod: true, includePath: true, promRegistry: register, autoregister: true });
             this.app.use(metricsMiddleware);
+            if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(webserver_rate_limit);
         }
 
         const loggerstream = {
@@ -48,6 +77,7 @@ export class WebServer {
             name: "session", secret: Config.cookie_secret
         }));
         this.app.use(flash());
+        this.app.use(rateLimiter);
 
 
         // Add headers
