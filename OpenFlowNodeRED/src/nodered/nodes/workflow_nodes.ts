@@ -40,7 +40,7 @@ export class workflow_in_node {
     }
     onsocketclose(message) {
         if (message == null) message = "";
-        if (this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
+        if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
         // this.onclose(false, null);
     }
     async connect() {
@@ -482,8 +482,8 @@ export class assign_workflow_node {
     }
     onsocketclose(message) {
         if (message == null) message = "";
-        if (this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
-        this.onclose(false, null);
+        if (this != null && this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
+        if (this != null) this.onclose(false, null);
 
     }
 

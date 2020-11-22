@@ -98,7 +98,7 @@ export class amqp_consumer_node {
     }
     onsocketclose(message) {
         if (message == null) message = "";
-        if (this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
+        if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
         // this.onclose(false, null);
     }
     onsignedin() {
@@ -196,7 +196,7 @@ export class amqp_publisher_node {
     }
     onsocketclose(message) {
         if (message == null) message = "";
-        if (this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
+        if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
         // this.onclose(false, null);
     }
     websocket(): WebSocketClient {
