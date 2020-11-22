@@ -69,6 +69,8 @@ export class Message {
                 // console.log("SOCKET_NO_RATE_LIMIT consumedPoints: " + res.consumedPoints + " remainingPoints: " + res.remainingPoints);
             } catch (error) {
                 if (error.consumedPoints) {
+                    WebSocketServer.websocket_rate_limit.inc();
+                    WebSocketServer.websocket_rate_limit.labels(command).inc();
                     if ((error.consumedPoints % 100) == 0) cli._logger.debug("[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
                     setTimeout(() => { this.Process(cli); }, 250);
                 }
@@ -76,6 +78,7 @@ export class Message {
             }
 
             if (!NoderedUtil.IsNullEmpty(this.replyto)) {
+                const end = WebSocketServer.websocket_messages.startTimer();
                 const qmsg: QueuedMessage = cli.messageQueue[this.replyto];
                 if (!NoderedUtil.IsNullUndefinded(qmsg)) {
                     try {
@@ -86,8 +89,10 @@ export class Message {
                     if (!NoderedUtil.IsNullUndefinded(qmsg.cb)) { qmsg.cb(this); }
                     delete cli.messageQueue[this.id];
                 }
+                end({ command: command });
                 return;
             }
+            const end = WebSocketServer.websocket_messages.startTimer();
             switch (command) {
                 case "listcollections":
                     this.ListCollections(cli);
@@ -218,6 +223,7 @@ export class Message {
                     this.UnknownCommand(cli);
                     break;
             }
+            end({ command: command });
         } catch (error) {
             cli._logger.error(error.message ? error.message : error);
         }
