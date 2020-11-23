@@ -119,9 +119,9 @@ export class Config {
     public static tls_passphrase: string = Config.getEnv("tls_passphrase", "");
 
     public static api_credential_cache_seconds: number = parseInt(Config.getEnv("api_credential_cache_seconds", "60000"));
-    public static api_rate_limit_points: number = parseInt(Config.getEnv("api_rate_limit_points", "40"));
-    public static api_rate_limit_duration: number = parseInt(Config.getEnv("api_rate_limit_duration", "5"));
-    public static socket_rate_limit_points: number = parseInt(Config.getEnv("socket_rate_limit_points", "10"));
+    public static api_rate_limit_points: number = parseInt(Config.getEnv("api_rate_limit_points", "60"));
+    public static api_rate_limit_duration: number = parseInt(Config.getEnv("api_rate_limit_duration", "1"));
+    public static socket_rate_limit_points: number = parseInt(Config.getEnv("socket_rate_limit_points", "30"));
     public static socket_rate_limit_duration: number = parseInt(Config.getEnv("socket_rate_limit_duration", "1"));
 
     public static client_heartbeat_timeout: number = parseInt(Config.getEnv("client_heartbeat_timeout", "60"));
