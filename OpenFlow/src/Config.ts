@@ -19,6 +19,11 @@ export class Config {
         Config.getversion();
         Config.logpath = Config.getEnv("logpath", __dirname);
         Config.log_queries = Config.parseBoolean(Config.getEnv("log_queries", "false"));
+        Config.log_aggregates = Config.parseBoolean(Config.getEnv("log_aggregates", "false"));
+        Config.log_inserts = Config.parseBoolean(Config.getEnv("log_inserts", "false"));
+        Config.log_updates = Config.parseBoolean(Config.getEnv("log_updates", "false"));
+        Config.log_deletes = Config.parseBoolean(Config.getEnv("log_deletes", "false"));
+
         Config.getting_started_url = Config.getEnv("getting_started_url", "");
 
         Config.NODE_ENV = Config.getEnv("NODE_ENV", "development");
@@ -97,6 +102,11 @@ export class Config {
     public static version: string = Config.getversion();
     public static logpath: string = Config.getEnv("logpath", __dirname);
     public static log_queries: boolean = Config.parseBoolean(Config.getEnv("log_queries", "false"));
+    public static log_aggregates: boolean = Config.parseBoolean(Config.getEnv("log_aggregates", "false"));
+    public static log_inserts: boolean = Config.parseBoolean(Config.getEnv("log_inserts", "false"));
+    public static log_updates: boolean = Config.parseBoolean(Config.getEnv("log_updates", "false"));
+    public static log_deletes: boolean = Config.parseBoolean(Config.getEnv("log_deletes", "false"));
+
     public static getting_started_url: string = Config.getEnv("getting_started_url", "");
 
     public static NODE_ENV: string = Config.getEnv("NODE_ENV", "development");

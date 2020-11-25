@@ -492,6 +492,8 @@ export class DatabaseConnection {
         options.hint = myhint;
         const items: T[] = await this.db.collection(collectionname).aggregate(aggregates, options).toArray();
         DatabaseConnection.traversejsondecode(items);
+        const user: TokenUser = Crypt.verityToken(jwt);
+        if (Config.log_aggregates) this._logger.debug("[" + user.username + "][" + collectionname + "] aggregate gave " + items.length + " results ");
         return items;
     }
     /**
@@ -721,6 +723,7 @@ export class DatabaseConnection {
             await this.db.collection(collectionname).replaceOne({ _id: item._id }, item);
         }
         DatabaseConnection.traversejsondecode(item);
+        if (Config.log_inserts) this._logger.debug("[" + user.username + "][" + collectionname + "] inserted " + item.name);
         return item;
     }
     /**
@@ -957,6 +960,7 @@ export class DatabaseConnection {
         } catch (error) {
             throw error;
         }
+        if (Config.log_updates) this._logger.debug("[" + user.username + "][" + q.collectionname + "] updated " + q.item.name);
         return q;
     }
     /**
@@ -1041,6 +1045,7 @@ export class DatabaseConnection {
             // } else {
             //     throw Error("UpdateOne failed!!!");
             // }
+            if (Config.log_updates && q.opresult) this._logger.debug("[" + user.username + "][" + q.collectionname + "] updated " + q.opresult.modifiedCount + " items");
             return q;
         } catch (error) {
             throw error;
@@ -1088,7 +1093,7 @@ export class DatabaseConnection {
         if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to InsertOrUpdateOne"); }
         // if (q.item._id !== null && q.item._id !== undefined && q.item._id !== "") {
         if (exists.length == 1) {
-            this._logger.silly("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Updating found one in database");
+            if (Config.log_updates) this._logger.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Updating found one in database");
             const uq = new UpdateOneMessage();
             // uq.query = query; 
             uq.item = q.item; uq.collectionname = q.collectionname; uq.w = q.w; uq.j; uq.jwt = q.jwt;
@@ -1096,7 +1101,7 @@ export class DatabaseConnection {
             q.opresult = uqres.opresult;
             q.result = uqres.result;
         } else {
-            this._logger.silly("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Inserting as new in database");
+            if (Config.log_updates) this._logger.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Inserting as new in database");
             q.result = await this.InsertOne(q.item, q.collectionname, q.w, q.j, q.jwt);
         }
         return q;
@@ -1144,7 +1149,7 @@ export class DatabaseConnection {
                 throw Error("item not found!");
             }
         }
-        this._logger.silly("[" + user.username + "][" + collectionname + "] Deleting " + id + " in database");
+        if (Config.log_deletes) this._logger.verbose("[" + user.username + "][" + collectionname + "] Deleting " + id + " in database");
         const res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne(_query);
     }
 
@@ -1200,10 +1205,11 @@ export class DatabaseConnection {
             for (let i = 0; i < arr.length; i++) {
                 await this._DeleteFile(arr[i]._id);
             }
+            if (Config.log_deletes) this._logger.verbose("[" + user.username + "][" + collectionname + "] deleted " + arr.length + " items in database");
             return arr.length;
         } else {
             const res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteMany(_query);
-            this._logger.debug("[" + user.username + "][" + collectionname + "] Deleted " + res.deletedCount + " items in database");
+            if (Config.log_deletes) this._logger.verbose("[" + user.username + "][" + collectionname + "] deleted " + res.deletedCount + " items in database");
             return res.deletedCount;
         }
     }
