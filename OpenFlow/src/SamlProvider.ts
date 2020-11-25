@@ -114,7 +114,7 @@ export class SamlProvider {
                     next();
                 }
             } else {
-                res.send("go away!");
+                res.send("Please login again");
                 res.end();
             }
         });
