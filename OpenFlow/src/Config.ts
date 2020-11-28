@@ -19,6 +19,11 @@ export class Config {
         Config.getversion();
         Config.logpath = Config.getEnv("logpath", __dirname);
         Config.log_queries = Config.parseBoolean(Config.getEnv("log_queries", "false"));
+        Config.log_aggregates = Config.parseBoolean(Config.getEnv("log_aggregates", "false"));
+        Config.log_inserts = Config.parseBoolean(Config.getEnv("log_inserts", "false"));
+        Config.log_updates = Config.parseBoolean(Config.getEnv("log_updates", "false"));
+        Config.log_deletes = Config.parseBoolean(Config.getEnv("log_deletes", "false"));
+
         Config.getting_started_url = Config.getEnv("getting_started_url", "");
 
         Config.NODE_ENV = Config.getEnv("NODE_ENV", "development");
@@ -41,9 +46,11 @@ export class Config {
         Config.tls_passphrase = Config.getEnv("tls_passphrase", "");
 
         Config.api_credential_cache_seconds = parseInt(Config.getEnv("api_credential_cache_seconds", "60000"));
-        Config.api_rate_limit_points = parseInt(Config.getEnv("api_rate_limit_points", "40"));
-        Config.api_rate_limit_duration = parseInt(Config.getEnv("api_rate_limit_duration", "5"));
-        Config.socket_rate_limit_points = parseInt(Config.getEnv("socket_rate_limit_points", "10"));
+        Config.api_rate_limit = Config.parseBoolean(Config.getEnv("api_rate_limit", "true"));
+        Config.api_rate_limit_points = parseInt(Config.getEnv("api_rate_limit_points", "60"));
+        Config.api_rate_limit_duration = parseInt(Config.getEnv("api_rate_limit_duration", "1"));
+        Config.socket_rate_limit = Config.parseBoolean(Config.getEnv("socket_rate_limit", "true"));
+        Config.socket_rate_limit_points = parseInt(Config.getEnv("socket_rate_limit_points", "30"));
         Config.socket_rate_limit_duration = parseInt(Config.getEnv("socket_rate_limit_duration", "1"));
 
         Config.client_heartbeat_timeout = parseInt(Config.getEnv("client_heartbeat_timeout", "60"));
@@ -97,6 +104,11 @@ export class Config {
     public static version: string = Config.getversion();
     public static logpath: string = Config.getEnv("logpath", __dirname);
     public static log_queries: boolean = Config.parseBoolean(Config.getEnv("log_queries", "false"));
+    public static log_aggregates: boolean = Config.parseBoolean(Config.getEnv("log_aggregates", "false"));
+    public static log_inserts: boolean = Config.parseBoolean(Config.getEnv("log_inserts", "false"));
+    public static log_updates: boolean = Config.parseBoolean(Config.getEnv("log_updates", "false"));
+    public static log_deletes: boolean = Config.parseBoolean(Config.getEnv("log_deletes", "false"));
+
     public static getting_started_url: string = Config.getEnv("getting_started_url", "");
 
     public static NODE_ENV: string = Config.getEnv("NODE_ENV", "development");
@@ -119,9 +131,12 @@ export class Config {
     public static tls_passphrase: string = Config.getEnv("tls_passphrase", "");
 
     public static api_credential_cache_seconds: number = parseInt(Config.getEnv("api_credential_cache_seconds", "60000"));
-    public static api_rate_limit_points: number = parseInt(Config.getEnv("api_rate_limit_points", "40"));
-    public static api_rate_limit_duration: number = parseInt(Config.getEnv("api_rate_limit_duration", "5"));
-    public static socket_rate_limit_points: number = parseInt(Config.getEnv("socket_rate_limit_points", "10"));
+    public static oauth_token_cache_seconds: number = parseInt(Config.getEnv("oauth_token_cache_seconds", "60000"));
+    public static api_rate_limit: boolean = Config.parseBoolean(Config.getEnv("api_rate_limit", "true"));
+    public static api_rate_limit_points: number = parseInt(Config.getEnv("api_rate_limit_points", "60"));
+    public static api_rate_limit_duration: number = parseInt(Config.getEnv("api_rate_limit_duration", "1"));
+    public static socket_rate_limit: boolean = Config.parseBoolean(Config.getEnv("socket_rate_limit", "true"));
+    public static socket_rate_limit_points: number = parseInt(Config.getEnv("socket_rate_limit_points", "30"));
     public static socket_rate_limit_duration: number = parseInt(Config.getEnv("socket_rate_limit_duration", "1"));
 
     public static client_heartbeat_timeout: number = parseInt(Config.getEnv("client_heartbeat_timeout", "60"));

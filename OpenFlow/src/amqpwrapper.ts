@@ -92,8 +92,7 @@ export class amqpwrapper {
                 this.conn = await amqplib.connect(this.connectionstring);
                 this.conn.on('error', (error) => {
                     if (error.code != 404) {
-                        this._logger.error(JSON.stringify(error));
-                        console.log(error);
+                        this._logger.error(error);
                     }
                 });
                 this.conn.on("close", () => {
@@ -106,19 +105,15 @@ export class amqpwrapper {
             }
 
             this.channel = await this.conn.createConfirmChannel();
-
-            // this.channel = await this.conn.createChannel();
-            // this.confirmchannel = await this.conn.createConfirmChannel();
-            // if (!NoderedUtil.IsNullEmpty(this.replyqueue)) {
-            //     this.queues = this.queues.filter(x => x.consumerTag != this.replyqueue.consumerTag);
-            // }
             this.replyqueue = await this.AddQueueConsumer("", null, null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
-                WebSocketServer.websocket_queue_message_count.inc();
-                WebSocketServer.websocket_queue_message_count.labels(this.replyqueue.queue).inc();
-                if (!NoderedUtil.IsNullUndefinded(this.activecalls[options.correlationId])) {
-                    this.activecalls[options.correlationId].resolve(msg);
-                    this.activecalls[options.correlationId] = null;
-                    delete this.activecalls[options.correlationId];
+                if (this.replyqueue) {
+                    WebSocketServer.websocket_queue_message_count.inc();
+                    WebSocketServer.websocket_queue_message_count.labels(this.replyqueue.queue).inc();
+                    if (!NoderedUtil.IsNullUndefinded(this.activecalls[options.correlationId])) {
+                        this.activecalls[options.correlationId].resolve(msg);
+                        this.activecalls[options.correlationId] = null;
+                        delete this.activecalls[options.correlationId];
+                    }
                 }
                 ack();
                 done();
@@ -136,8 +131,7 @@ export class amqpwrapper {
             });
             this.channel.on('error', (error) => {
                 if (error.code != 404) {
-                    this._logger.error(JSON.stringify(error));
-                    console.log(error);
+                    this._logger.error(error);
                 }
             });
         } catch (error) {
@@ -221,22 +215,20 @@ export class amqpwrapper {
         }
         const q: amqpqueue = new amqpqueue();
         q.callback = callback;
-        // q.QueueOptions = new Object((QueueOptions != null ? QueueOptions : this.AssertQueueOptions));
         q.QueueOptions = Object.assign({}, (QueueOptions != null ? QueueOptions : this.AssertQueueOptions));
         if (NoderedUtil.IsNullEmpty(queue)) queue = "";
         if (queue.startsWith("amq.")) queue = "";
         if (NoderedUtil.IsNullEmpty(queue)) q.QueueOptions.autoDelete = true;
         q.ok = await this.channel.assertQueue(queue, q.QueueOptions);
-
-        q.queue = q.ok.queue;
-        q.queuename = queuename;
-        const consumeresult = await this.channel.consume(q.ok.queue, (msg) => {
-            this.OnMessage(q, msg, q.callback);
-        }, { noAck: false });
-        q.consumerTag = consumeresult.consumerTag;
-        this._logger.info("[AMQP] Added queue consumer " + q.queue + "/" + q.consumerTag);
-        // this.queues[q.queue] = q;
-        // this.queues.push(q);
+        if (q && q.ok) {
+            q.queue = q.ok.queue;
+            q.queuename = queuename;
+            const consumeresult = await this.channel.consume(q.ok.queue, (msg) => {
+                this.OnMessage(q, msg, q.callback);
+            }, { noAck: false });
+            q.consumerTag = consumeresult.consumerTag;
+            this._logger.info("[AMQP] Added queue consumer " + q.queue + "/" + q.consumerTag);
+        }
         return q;
     }
     async AddExchangeConsumer(exchange: string, algorithm: string, routingkey: string, ExchangeOptions: any, jwt: string, callback: QueueOnMessage): Promise<amqpexchange> {
@@ -261,9 +253,10 @@ export class amqpwrapper {
             delete AssertQueueOptions.arguments;
         }
         q.queue = await this.AddQueueConsumer("", AssertQueueOptions, jwt, q.callback);
-        this.channel.bindQueue(q.queue.queue, q.exchange, q.routingkey);
-        this._logger.info("[AMQP] Added exchange consumer " + q.exchange + ' to queue ' + q.queue.queue);
-        // this.exchanges[exchange] = q;
+        if (q.queue) {
+            this.channel.bindQueue(q.queue.queue, q.exchange, q.routingkey);
+            this._logger.info("[AMQP] Added exchange consumer " + q.exchange + ' to queue ' + q.queue.queue);
+        }
         this.exchanges.push(q);
         return q;
     }
@@ -329,7 +322,9 @@ export class amqpwrapper {
     async sendWithReply(exchange: string, queue: string, data: any, expiration: number, correlationId: string): Promise<string> {
         if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = this.generateUuid();
         this.activecalls[correlationId] = new Deferred();
-        await this.sendWithReplyTo(exchange, queue, this.replyqueue.queue, data, expiration, correlationId);
+        if (this.replyqueue) {
+            await this.sendWithReplyTo(exchange, queue, this.replyqueue.queue, data, expiration, correlationId);
+        }
         return this.activecalls[correlationId].promise;
     }
     async sendWithReplyTo(exchange: string, queue: string, replyTo: string, data: any, expiration: number, correlationId: string): Promise<void> {
@@ -428,9 +423,6 @@ export class amqpwrapper {
                 if (test == null) {
                     return false;
                 }
-                // const test: AssertQueue = await this.channel.assertQueue(this.queue, this.AssertQueueOptions);
-                // const test: AssertQueue = await this.channel.assertQueue(queuename, { passive: true });
-                // test = await this.channel.checkQueue(queuename);
             } catch (error) {
                 test = null;
             }
@@ -547,27 +539,4 @@ export class amqpwrapper {
         const payload = JSON.parse(response.body);
         return payload;
     }
-
-
-    // This will crash the channel, that does not seem scalable
-    // async checkQueue(queue: string): Promise<boolean> {
-    //     if (Config.amqp_check_for_consumer) {
-    //         const q: amqpqueue = this.queues[queue];
-
-    //         const test: AssertQueue = null;
-    //         try {
-    //             // const test: AssertQueue = await this.channel.assertQueue(this.queue, this.AssertQueueOptions);
-    //             test = await this.channel.checkQueue(queue);
-    //             if (q != null) {
-    //                 q.ok = test;
-    //             }
-    //         } catch (error) {
-    //             test = null;
-    //         }
-    //         if (test == null || test.consumerCount == 0) {
-    //             return false;
-    //         }
-    //     }
-    //     return true;
-    // }
 }

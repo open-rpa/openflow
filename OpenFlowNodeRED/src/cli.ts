@@ -74,12 +74,12 @@ let rejectionEmitter = unhandledRejection({
 
 rejectionEmitter.on("unhandledRejection", (error, promise) => {
     logger.error('Unhandled Rejection at: Promise', promise, 'reason:', error);
-    logger.error(error.stack);
+    logger.error(error);
 });
 
 rejectionEmitter.on("rejectionHandled", (error, promise) => {
     logger.error('Rejection handled at: Promise', promise, 'reason:', error);
-    logger.error(error.stack);
+    logger.error(error);
 })
 
 function getToken(): Promise<string> {
@@ -102,7 +102,7 @@ function getToken(): Promise<string> {
                 socket = null;
             } catch (error) {
                 let closemsg: any = (error.message ? error.message : error);
-                logger.error(closemsg);
+                logger.error(error);
                 socket.close(1000, closemsg);
                 reject(closemsg);
                 socket = null;

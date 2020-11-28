@@ -266,8 +266,7 @@ try {
             process.exit(404);
         }
     } catch (error) {
-        console.error(error.message ? error.message : error);
-        logger.error(error.message ? error.message : error);
+        logger.error(error);
         process.exit(404);
     }
 })();

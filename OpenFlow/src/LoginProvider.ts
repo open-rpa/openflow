@@ -20,31 +20,10 @@ import { Audit } from "./Audit";
 import * as saml from "saml20";
 const multer = require('multer');
 const GridFsStorage = require('multer-gridfs-storage');
-const { RateLimiterMemory } = require('rate-limiter-flexible')
 import { GridFSBucket, ObjectID, Db, Cursor, Binary } from "mongodb";
 import { Base, User, NoderedUtil, TokenUser, WellknownIds, Rights, Role } from "openflow-api";
 import { DBHelper } from "./DBHelper";
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
-
-const BaseRateLimiter = new RateLimiterMemory({
-    points: Config.api_rate_limit_points,
-    duration: Config.api_rate_limit_duration,
-});
-
-const rateLimiter = (req: express.Request, res: express.Response, next: express.NextFunction): void => {
-    BaseRateLimiter
-        .consume(req.ip)
-        .then((e) => {
-            // console.log("API_O_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints);
-            next();
-        })
-        .catch((e) => {
-            console.log("API_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints + " msBeforeNext: " + e.msBeforeNext);
-            res.status(429).json({ response: 'RATE_LIMIT' });
-        });
-};
-
-
 
 interface IVerifyFunction { (error: any, profile: any): void; }
 export class Provider extends Base {
@@ -162,9 +141,7 @@ export class LoginProvider {
         });
         passport.deserializeUser(function (user: any, done: any): void {
             done(null, user);
-            // Audit.LoginSuccess(TokenUser.From(user), "weblogin", "cookie", "");
         });
-        app.use(rateLimiter);
 
         app.use(function (req, res, next) {
             res.header('Access-Control-Allow-Origin', (req.headers.origin as any));
@@ -626,21 +603,6 @@ export class LoginProvider {
             }
         });
         passport.use("local", strategy);
-        // http://www.passportjs.org/docs/authenticate/#custom-callback
-        // app.use("/local",
-        //     bodyParser.urlencoded({ extended: false }),
-        //     //passport.authenticate("local", { failureRedirect: "/login?failed=true", failureFlash: true }),
-        //     passport.authenticate("local", { failureRedirect: "/" }),
-        //     function (req: any, res: any): void {
-        //         const originalUrl: any = req.cookies.originalUrl;
-        //         if (!Util.IsNullEmpty(originalUrl)) {
-        //             res.cookie("originalUrl", "", { expires: new Date(0) });
-        //             LoginProvider.redirect(res, originalUrl);
-        //         } else {
-        //             res.redirect("/");
-        //         }
-        //     }
-        // );
         app.use("/local",
             bodyParser.urlencoded({ extended: false }),
             function (req: any, res: any, next: any): void {
@@ -660,7 +622,6 @@ export class LoginProvider {
                                 return next(err);
                             }
                             LoginProvider._logger.info("req.logIn success");
-                            // if (err) { return next(err); }
                             if (!NoderedUtil.IsNullEmpty(originalUrl)) {
                                 try {
                                     res.cookie("originalUrl", "", { expires: new Date(0) });
@@ -674,11 +635,6 @@ export class LoginProvider {
                                 LoginProvider._logger.debug("redirect: to /");
                                 res.redirect("/");
                                 return next();
-                                // const url = Config.protocol + "://" + Config.domain + ":" + Config.port;
-                                // LoginProvider._logger.debug("redirect.url: " + url);
-                                // LoginProvider.redirect(res, url);
-                                // return;
-
                             }
                         });
                         return;

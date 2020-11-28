@@ -58,7 +58,7 @@ function getToken(): Promise<string> {
                 socket = null;
             } catch (error) {
                 const closemsg: any = (error.message ? error.message : error);
-                this._logger.error(closemsg);
+                this._logger.error(error);
                 socket.close(1000, closemsg);
                 reject(closemsg);
                 socket = null;
@@ -165,10 +165,10 @@ let rejectionEmitter = unhandledRejection({
 });
 rejectionEmitter.on("unhandledRejection", (error, promise) => {
     logger.error('Unhandled Rejection at: Promise', promise, 'reason:', error);
-    logger.error(error.stack);
+    logger.error(error);
 });
 rejectionEmitter.on("rejectionHandled", (error, promise) => {
     logger.error('Rejection handled at: Promise', promise, 'reason:', error);
-    logger.error(error.stack);
+    logger.error(error);
 })
 doit();

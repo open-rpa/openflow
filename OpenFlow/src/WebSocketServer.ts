@@ -37,6 +37,17 @@ export class WebSocketServer {
         help: 'Total number of queues messages',
         labelNames: ["queuename"]
     })
+    public static websocket_rate_limit = new client.Counter({
+        name: 'openflow_websocket_rate_limit_count',
+        help: 'Total number of rate limited messages',
+        labelNames: ["command"]
+    })
+    public static websocket_messages = new client.Histogram({
+        name: 'openflow_websocket_messages_duration_seconds',
+        help: 'Duration for handling websocket requests in microseconds',
+        labelNames: ['command'],
+        buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10]
+    })
 
     static configure(logger: winston.Logger, server: http.Server, register: client.Registry): void {
         this._clients = [];
@@ -53,6 +64,9 @@ export class WebSocketServer {
         if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebSocketServer.websocket_incomming_stats);
         if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebSocketServer.websocket_queue_count);
         if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebSocketServer.websocket_queue_message_count);
+        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebSocketServer.websocket_rate_limit);
+        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebSocketServer.websocket_messages);
+
         setInterval(this.pingClients, 10000);
     }
     private static async pingClients(): Promise<void> {

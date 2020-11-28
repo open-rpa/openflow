@@ -10,19 +10,7 @@ export class OAuthProvider {
     private _logger: winston.Logger;
     private app: express.Express;
     public static instance: OAuthProvider = null;
-    // private clients = [{
-    //     id: 'application',	// TODO: Needed by refresh_token grant, because there is a bug at line 103 in https://github.com/oauthjs/node-oauth2-server/blob/v3.0.1/lib/grant-types/refresh-token-grant-type.js (used client.id instead of client.clientId)
-    //     clientId: 'application',
-    //     clientSecret: 'secret',
-    //     grants: [
-    //         'password',
-    //         'refresh_token',
-    //         'authorization_code'
-    //     ],
-    //     redirectUris: []
-    // }];
     private clients = [];
-    private tokens = [];
     private codes = {};
     public oauthServer: any = null;
     private authorizationCodeStore: any = {};
@@ -138,15 +126,25 @@ export class OAuthProvider {
                 res.status(err.code || 500).json(err);
             });
     }
-    public async getAccessToken(bearerToken) {
-        this._logger.info("[OAuth] getAccessToken " + bearerToken);
-        const tokens = await Config.db.query<Base>({ _type: "token", "accessToken": bearerToken }, null, 10, 0, null, "oauthtokens", Crypt.rootToken());
-        return tokens.length ? tokens[0] : false;
+    public async getAccessToken(accessToken) {
+        this._logger.info("[OAuth] getAccessToken " + accessToken);
+        let token = await OAuthProvider.getCachedAccessToken(accessToken);
+        if (token != null) return token;
+        const tokens = await Config.db.query<Base>({ _type: "token", "accessToken": accessToken }, null, 10, 0, null, "oauthtokens", Crypt.rootToken());
+        token = tokens.length ? tokens[0] as any : null;
+        await OAuthProvider.addToken(token);
+        if (token == null) return false;
+        return token;
     }
-    public async getRefreshToken(bearerToken) {
-        this._logger.info("[OAuth] getRefreshToken " + bearerToken);
-        const tokens = await Config.db.query<Base>({ _type: "token", "refreshToken": bearerToken }, null, 10, 0, null, "oauthtokens", Crypt.rootToken());
-        return tokens.length ? tokens[0] : false;
+    public async getRefreshToken(refreshToken) {
+        this._logger.info("[OAuth] getRefreshToken " + refreshToken);
+        let token = await OAuthProvider.getCachedAccessToken(refreshToken);
+        if (token != null) return token;
+        const tokens = await Config.db.query<Base>({ _type: "token", "refreshToken": refreshToken }, null, 10, 0, null, "oauthtokens", Crypt.rootToken());
+        token = tokens.length ? tokens[0] as any : null;
+        await OAuthProvider.addToken(token);
+        if (token == null) return false;
+        return token;
     }
     public getClient(clientId, clientSecret) {
         this._logger.info("[OAuth] getClient " + clientId);
@@ -178,7 +176,7 @@ export class OAuthProvider {
             client: client,
             _type: "token"
         };
-        this.tokens.push(result);
+        await OAuthProvider.addToken(result);
         await Config.db.InsertOne(result, "oauthtokens", 0, false, Crypt.rootToken());
         return result;
     }
@@ -243,4 +241,78 @@ export class OAuthProvider {
         // if (user != null) delete this.codes[code];
         // return code;
     }
+
+    public static tokenCache: CachedToken[] = [];
+    private static async getCachedAccessToken(accessToken: string): Promise<any> {
+        await semaphore.down();
+        for (let i = this.tokenCache.length - 1; i >= 0; i--) {
+            var res: CachedToken = this.tokenCache[i];
+            var begin: number = res.firstsignin.getTime();
+            var end: number = new Date().getTime();
+            var seconds = Math.round((end - begin) / 1000);
+            if (seconds > Config.oauth_token_cache_seconds) {
+                this.tokenCache.splice(i, 1);
+            } else if (res.token.accessToken == accessToken) {
+                console.log("Return token from cache, using accessToken " + accessToken);
+                semaphore.up();
+                return res.token;
+            }
+        }
+        semaphore.up();
+        return null;
+    }
+    private static async getCachedRefreshToken(refreshToken: string): Promise<any> {
+        await semaphore.down();
+        for (let i = this.tokenCache.length - 1; i >= 0; i--) {
+            var res: CachedToken = this.tokenCache[i];
+            var begin: number = res.firstsignin.getTime();
+            var end: number = new Date().getTime();
+            var seconds = Math.round((end - begin) / 1000);
+            if (seconds > Config.oauth_token_cache_seconds) {
+                this.tokenCache.splice(i, 1);
+            } else if (res.token.refreshToken == refreshToken) {
+                console.log("Return token from cache, using refreshToken " + refreshToken);
+                semaphore.up();
+                return res.token;
+            }
+        }
+        semaphore.up();
+        return null;
+    }
+    private static async addToken(token: any) {
+        await semaphore.down();
+        console.log("Adding token to cache");
+        var cuser: CachedToken = new CachedToken(token);
+        this.tokenCache.push(cuser);
+        semaphore.up();
+
+    }
 }
+export class CachedToken {
+    public firstsignin: Date;
+    constructor(
+        public token: any
+    ) {
+        this.firstsignin = new Date();
+    }
+}
+interface HashTable<T> {
+    [key: string]: T;
+}
+const Semaphore = (n) => ({
+    n,
+    async down() {
+        while (this.n <= 0) await this.wait();
+        this.n--;
+    },
+    up() {
+        this.n++;
+    },
+    async wait() {
+        if (this.n <= 0) return await new Promise((res, req) => {
+            setImmediate(async () => res(await this.wait()))
+        });
+        return;
+    },
+});
+const semaphore = Semaphore(1);

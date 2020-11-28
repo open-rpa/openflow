@@ -302,12 +302,12 @@ export class noderedcontribopenflowstorage {
                 try {
                     this.npmrc = array[0];
                 } catch (error) {
-                    this._logger.error(error.message ? error.message : error);
+                    this._logger.error(error);
                     this.npmrc = null;
                 }
             }
         } catch (error) {
-            this._logger.error(error.message ? error.message : error);
+            this._logger.error(error);
             this.npmrc = null;
         }
         try {
@@ -322,7 +322,7 @@ export class noderedcontribopenflowstorage {
             // }
             return this.npmrc;
         } catch (error) {
-            this._logger.error(error.message ? error.message : error);
+            this._logger.error(error);
             this.npmrc = null;
         }
         return null;
@@ -346,7 +346,7 @@ export class noderedcontribopenflowstorage {
                 }
             }
         } catch (error) {
-            this._logger.error(error.message ? error.message : error);
+            this._logger.error(error);
         }
     }
     public async _getFlows(): Promise<any[]> {
@@ -360,12 +360,12 @@ export class noderedcontribopenflowstorage {
                     this._flows = JSON.parse(array[0].flows);
                     result = this._flows;
                 } catch (error) {
-                    this._logger.error(error.message ? error.message : error);
+                    this._logger.error(error);
                     result = [];
                 }
             }
         } catch (error) {
-            this._logger.error(error.message ? error.message : error);
+            this._logger.error(error);
             result = [];
         }
         const filename: string = Config.nodered_id + "_flows.json";
@@ -402,7 +402,7 @@ export class noderedcontribopenflowstorage {
                 this._flows = flows;
             }
         } catch (error) {
-            this._logger.error(error.message ? error.message : error);
+            this._logger.error(error);
         }
     }
     public async _getCredentials(): Promise<any> {
@@ -425,7 +425,7 @@ export class noderedcontribopenflowstorage {
                 this._credentials = cred;
             }
         } catch (error) {
-            this._logger.error(error.message ? error.message : error);
+            this._logger.error(error);
             cred = [];
         }
         const filename: string = Config.nodered_id + "_credentials";
@@ -478,7 +478,7 @@ export class noderedcontribopenflowstorage {
                 this._credentials = credentials;
             }
         } catch (error) {
-            this._logger.error(error.message ? error.message : error);
+            this._logger.error(error);
         }
     }
     private firstrun: boolean = true;
@@ -492,7 +492,7 @@ export class noderedcontribopenflowstorage {
                 settings = JSON.parse(result[0].settings);
             }
         } catch (error) {
-            this._logger.error(error.message ? error.message : error);
+            this._logger.error(error);
         }
         const filename: string = Config.nodered_id + "_settings";
         try {
@@ -508,7 +508,7 @@ export class noderedcontribopenflowstorage {
             }
             //}
         } catch (error) {
-            this._logger.error(error.message ? error.message : error);
+            this._logger.error(error);
         }
         if (settings == null) {
             settings = {};
@@ -560,7 +560,7 @@ export class noderedcontribopenflowstorage {
                     this._logger.silly("noderedcontribopenflowstorage::_getSettings: return result");
                     this._logger.info("Installation of NPM packages complete");
                 } catch (error) {
-                    this._logger.error(error.message ? error.message : error);
+                    this._logger.error(error);
                     settings = {};
                 }
             }
@@ -713,7 +713,7 @@ export class noderedcontribopenflowstorage {
                                     }
                                 } catch (error) {
                                     var message = (error.message ? error.message : error);
-                                    this._logger.error(message);
+                                    this._logger.error(error);
                                     if (message == "Uninstall failed") {
                                         this._logger.info("Uninstall failed, request process exit");
                                         this.RED.log.error("Uninstall failed, request process exit");
@@ -773,7 +773,7 @@ export class noderedcontribopenflowstorage {
                                     }
                                 } catch (error) {
                                     var message = (error.message ? error.message : error);
-                                    this._logger.error(message);
+                                    this._logger.error(error);
                                     if (message == "Uninstall failed") {
                                         this._logger.info("Uninstall failed, request process exit");
                                         this.RED.log.error("Uninstall failed, request process exit");
@@ -845,7 +845,7 @@ export class noderedcontribopenflowstorage {
         } catch (error) {
             this._logger.error("**************************************************");
             this._logger.error("* ERROR");
-            this._logger.error(error.message ? error.message : error);
+            this._logger.error(error);
             this._logger.error("**************************************************");
         }
     }
@@ -907,7 +907,7 @@ export class noderedcontribopenflowstorage {
                 this._logger.info("noderedcontribopenflowstorage::onupdate: Restart not needed");
             }
         } catch (error) {
-            this._logger.error(error.message ? error.message : error);
+            this._logger.error(error);
         }
         this._logger.info(" _saveSettings - COMPLETE!!! " + new Date().toLocaleTimeString());
     }
@@ -922,7 +922,7 @@ export class noderedcontribopenflowstorage {
                 item = JSON.parse(result[0].sessions);
             }
         } catch (error) {
-            this._logger.error(error.message ? error.message : error);
+            this._logger.error(error);
             item = [];
         }
         const filename: string = Config.nodered_id + "_sessions";
@@ -956,7 +956,7 @@ export class noderedcontribopenflowstorage {
                 }
             }
         } catch (error) {
-            this._logger.error(error.message ? error.message : error);
+            this._logger.error(error);
         }
     }
 
