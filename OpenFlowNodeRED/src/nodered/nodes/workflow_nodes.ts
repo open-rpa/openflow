@@ -480,15 +480,11 @@ export class assign_workflow_node {
     }
     onsignedin() {
         this.connect();
-
     }
     onsocketclose(message) {
         if (message == null) message = "";
         if (this != null && this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
-        if (this != null) this.onclose(false, null);
-
     }
-
     async connect() {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });

@@ -65,8 +65,7 @@ export class Message {
                 return;
             }
             try {
-                var res = await BaseRateLimiter.consume(cli.id);
-                // console.log("SOCKET_NO_RATE_LIMIT consumedPoints: " + res.consumedPoints + " remainingPoints: " + res.remainingPoints);
+                if (Config.socket_rate_limit) await BaseRateLimiter.consume(cli.id);
             } catch (error) {
                 if (error.consumedPoints) {
                     WebSocketServer.websocket_rate_limit.inc();
@@ -78,7 +77,7 @@ export class Message {
             }
 
             if (!NoderedUtil.IsNullEmpty(this.replyto)) {
-                // const end = WebSocketServer.websocket_messages.startTimer();
+                const end = WebSocketServer.websocket_messages.startTimer();
                 const qmsg: QueuedMessage = cli.messageQueue[this.replyto];
                 if (!NoderedUtil.IsNullUndefinded(qmsg)) {
                     try {
@@ -89,10 +88,10 @@ export class Message {
                     if (!NoderedUtil.IsNullUndefinded(qmsg.cb)) { qmsg.cb(this); }
                     delete cli.messageQueue[this.id];
                 }
-                // end({ command: command });
+                end({ command: command });
                 return;
             }
-            // const end = WebSocketServer.websocket_messages.startTimer();
+            const end = WebSocketServer.websocket_messages.startTimer();
             switch (command) {
                 case "listcollections":
                     this.ListCollections(cli);
@@ -223,7 +222,7 @@ export class Message {
                     this.UnknownCommand(cli);
                     break;
             }
-            // end({ command: command });
+            end({ command: command });
         } catch (error) {
             cli._logger.error(error);
         }
@@ -257,10 +256,6 @@ export class Message {
                 if (typeof msg.data == 'string') {
                     try {
                         const obj = JSON.parse(msg.data);
-                        // if (NoderedUtil.IsNullUndefinded(obj.jwt)) {
-                        //     obj.jwt = msg.jwt;
-                        //     msg.data = JSON.stringify(obj);
-                        // }
                     } catch (error) {
                     }
                 } else {
@@ -294,22 +289,14 @@ export class Message {
                 cli._logger.error(error);
             }
             if (NoderedUtil.IsNullEmpty(msg.replyto)) {
-                // const sendthis = { data: msg.data, jwt: cli.jwt, user: cli.user };
                 const sendthis = msg.data;
                 await amqpwrapper.Instance().send("", msg.queuename, sendthis, expiration, msg.correlationId);
             } else {
                 if (msg.queuename === msg.replyto) {
                     throw new Error("Cannot send reply to self queuename:" + msg.queuename + " correlationId:" + msg.correlationId);
-                    // cli._logger.warn("Ignore reply to self queuename:" + msg.queuename + " correlationId:" + msg.correlationId);
-                    // return
                 }
-                //const sendthis = { data: msg.data, jwt: cli.jwt, user: cli.user };
                 const sendthis = msg.data;
                 const result = await amqpwrapper.Instance().sendWithReplyTo("", msg.queuename, msg.replyto, sendthis, expiration, msg.correlationId);
-                // const result = await amqpwrapper.Instance().sendWithReply("", msg.queuename, sendthis, expiration, msg.correlationId);
-
-                // this.replyto = msg.correlationId;
-                // await cli.sendQueueReply(msg, expiration);
             }
         } catch (error) {
             cli._logger.error(error);
@@ -384,15 +371,6 @@ export class Message {
                 // filter out collections that are empty, or we don't have access too
                 for (let i = 0; i < msg.result.length; i++) {
                     const collectioname = msg.result[i].name;
-                    // if (msg.result[i].name != "entities" && !cli.user.HasRoleName("admins")) {
-                    //     // cli._logger.debug("Check if user has objects in " + collectioname);
-                    //     const q = await Config.db.query({}, { _id: 1 }, 1, 0, null, collectioname, msg.jwt);
-                    //     if (q.length > 0) {
-                    //         result.push(msg.result[i]);
-                    //     }
-                    // } else {
-                    //     result.push(msg.result[i]);
-                    // }
                     result.push(msg.result[i]);
                 }
                 if (result.filter(x => x.name == "entities").length == 0) {
@@ -562,9 +540,6 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
             if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
-            // if (NoderedUtil.IsNullEmpty(msg.jwt) && msg.collectionname === "jslog") {
-            //     msg.jwt = Crypt.rootToken();
-            // }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) {
                 throw new Error("jwt is null and client is not authenticated");
             }
@@ -590,9 +565,6 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
             if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
-            // if (NoderedUtil.IsNullEmpty(msg.jwt) && msg.collectionname === "jslog") {
-            //     msg.jwt = Crypt.rootToken();
-            // }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) {
                 throw new Error("jwt is null and client is not authenticated");
             }
@@ -760,7 +732,6 @@ export class Message {
         if (user.disabled) {
             Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
             tuser = null;
-            // cli._logger.debug("Disabled user " + tuser.username + " failed logging in using " + type);
         } else {
             Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
         }
@@ -797,13 +768,6 @@ export class Message {
                 if (impostor !== "") {
                     tuser.impostor = msg.impersonate;
                 }
-                // } else if (tuser.username.startsWith("nodered")) {
-                //     user = new User(); user.name = tuser.name; user.username = tuser.username;
-                //     await user.Save(Crypt.rootToken());
-                //     tuser = TokenUser.From(user);
-                // } else {
-                //     msg.error = "Unknown username or password";
-                // }
             } else if (msg.rawAssertion !== null && msg.rawAssertion !== undefined) {
                 type = "samltoken";
                 user = await LoginProvider.validateToken(msg.rawAssertion);
@@ -1099,8 +1063,6 @@ export class Message {
         if (deployment == null) {
             if (skipcreate) return;
             cli._logger.debug("[" + cli.user.username + "] Deployment " + name + " not found in " + namespace + " so creating it");
-            // metadata: { name: name, namespace: namespace, app: name, labels: { billed: hasbilling.toString(), userid: _id } },
-            // metadata: { labels: { name: name, app: name, billed: hasbilling.toString(), userid: _id } },
 
             const _deployment = {
                 metadata: { name: name, namespace: namespace, labels: { billed: hasbilling.toString(), userid: _id, app: name } },
@@ -1143,7 +1105,6 @@ export class Message {
                     }
                 }
             }
-            // await KubeUtil.instance().ExtensionsV1beta1Api.createNamespacedDeployment(namespace, (_deployment as any));
             try {
                 await KubeUtil.instance().AppsV1Api.createNamespacedDeployment(namespace, (_deployment as any));
                 Audit.NoderedAction(TokenUser.From(cli.user), true, name, "createdeployment", Config.nodered_image, null);
@@ -1367,12 +1328,10 @@ export class Message {
             msg = RestartNoderedInstanceMessage.assign(this.data);
             const name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt);
             const namespace = Config.namespace;
-            // const hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
             const list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
             for (let i = 0; i < list.body.items.length; i++) {
                 const item = list.body.items[i];
-                // if (item.metadata.labels.app === name || item.metadata.labels.name === name) {
                 if (item.metadata.labels.app === name) {
                     let image: string = "unknown";
                     try {
@@ -1409,10 +1368,7 @@ export class Message {
             msg = GetNoderedInstanceMessage.assign(this.data);
             const name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt);
             const namespace = Config.namespace;
-            // const hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
-
             const list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
-
             msg.result = null;
             msg.results = [];
             const rootjwt = Crypt.rootToken();
@@ -1563,7 +1519,6 @@ export class Message {
             msg = SaveFileMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.filename)) throw new Error("Filename is mandatory");
-            // if (NoderedUtil.IsNullEmpty(msg.mimeType)) throw new Error("mimeTypes is mandatory");
             if (NoderedUtil.IsNullEmpty(msg.file)) throw new Error("file is mandatory");
             if (process.platform === "win32") {
                 msg.filename = msg.filename.replace(/\//g, "\\");
@@ -1641,13 +1596,7 @@ export class Message {
                     reject(error);
                 });
                 downloadStream.on('end', () => {
-
-                    // const contentLength = bufs.reduce(function(sum, buf){
-                    //     return sum + buf.length;
-                    //   }, 0);
                     const buffer = Buffer.concat(bufs);
-                    //writeFileSync('/home/allan/Documents/data.png', result.body);
-                    //result.body = Buffer.from(result.body).toString('base64');
                     const result = buffer.toString('base64');
                     resolve(result);
                 });
@@ -1768,14 +1717,8 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.resultqueue)) throw new Error("replyqueuename is mandatory");
             if (NoderedUtil.IsNullEmpty(msg.targetid)) throw new Error("targetid is mandatory");
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-
             const tuser = Crypt.verityToken(msg.jwt);
             msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
-
-            // if (cli.consumers.length == 0) {
-            //     await cli.CreateConsumer("nodered." + Math.random().toString(36).substr(2, 9));
-            //     // throw new Error("Client not connected to any message queues");
-            // }
             let workflow: any = null;
             if (NoderedUtil.IsNullEmpty(msg.queue)) {
                 const user: any = null;
@@ -1815,7 +1758,6 @@ export class Message {
             if (msg.initialrun) {
                 const message = { _id: res2._id, __jwt: msg.jwt, __user: tuser };
                 amqpwrapper.Instance().sendWithReplyTo("", msg.queue, msg.resultqueue, message, Config.amqp_default_expiration, msg.correlationId);
-                // cli.consumers[0].sendToQueueWithReply(msg.queue, msg.resultqueue, msg.correlationId, message, (60 * (60 * 1000))); // 1 hour
             }
         } catch (error) {
             cli._logger.error(error);
@@ -1912,21 +1854,8 @@ export class Message {
                 return arr.length > 0;
             });
             if (hasit.length == 0) throw new Error("Customer does not have this plan");
-
-            // if (hasit[0].items.total_count == 1 || hasit[0].items.total_count == 2) {
-            //     const payload: any = null;
-            //     if (hasit[0].items.total_count == 2) { // support agrement, so bill used  hours right away
-            //         // payload = { invoice_now: true };
-            //         // payload = { prorate: true }
-            //     }
-            //     const res = await this.Stripe("DELETE", "subscriptions", subscription.id, payload, customer.id);
-            // } else {
-            //     const res = await this.Stripe("DELETE", "subscription_items", subscriptionitem.id, null, customer.id);
-            // }
             const payload: any = { quantity: 0 };
             const res = await this.Stripe("POST", "subscription_items", subscriptionitem.id, payload, customer.id);
-
-
             msg.customer = customer;
         } catch (error) {
             if (error == null) new Error("Unknown error");
@@ -2325,11 +2254,6 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.object)) throw new Error("object is mandatory");
             if (!cli.user.HasRoleName("admins")) {
                 if (!NoderedUtil.IsNullEmpty(msg.url)) throw new Error("Custom url not allowed");
-                // if (msg.object != "customers" && msg.object != "tax_ids"
-                //     && msg.object != "products" && msg.object != "plans" &&
-                //     msg.object != "checkout.sessions" && msg.object != "tax_rates"
-                //     && msg.object != "subscriptions" && msg.object != "subscription_items"
-                //     && msg.object != "usage_records") throw new Error("Access to " + msg.object + " is not allowed");
                 if (msg.object != "plans" && msg.object != "subscription_items" && msg.object != "invoices_upcoming") throw new Error("Access to " + msg.object + " is not allowed");
 
                 if (msg.object == "subscription_items" && msg.method != "POST") throw new Error("Access to " + msg.object + " is not allowed");
@@ -2417,13 +2341,6 @@ export class Message {
                         consumers = queue.consumer_details.length;
                     }
                 }
-                // if (consumers > 0 && queue.consumer_details == null) {
-                //     const tempconfig = await amqpwrapper.getqueue(Config.amqp_url, '/', queue.name);
-                //     // const tempconfig = await amqpwrapper.getqueue(queue.name);
-                //     if (tempconfig.consumer_details != null) {
-                //         item.consumer_details = tempconfig.consumer_details
-                //     }
-                // }
                 item.queuename = queue.name;
                 item.consumers = consumers;
                 item.name = queue.name + "(" + consumers + ")";

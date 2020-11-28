@@ -141,7 +141,6 @@ export class LoginProvider {
         });
         passport.deserializeUser(function (user: any, done: any): void {
             done(null, user);
-            // Audit.LoginSuccess(TokenUser.From(user), "weblogin", "cookie", "");
         });
 
         app.use(function (req, res, next) {
@@ -604,21 +603,6 @@ export class LoginProvider {
             }
         });
         passport.use("local", strategy);
-        // http://www.passportjs.org/docs/authenticate/#custom-callback
-        // app.use("/local",
-        //     bodyParser.urlencoded({ extended: false }),
-        //     //passport.authenticate("local", { failureRedirect: "/login?failed=true", failureFlash: true }),
-        //     passport.authenticate("local", { failureRedirect: "/" }),
-        //     function (req: any, res: any): void {
-        //         const originalUrl: any = req.cookies.originalUrl;
-        //         if (!Util.IsNullEmpty(originalUrl)) {
-        //             res.cookie("originalUrl", "", { expires: new Date(0) });
-        //             LoginProvider.redirect(res, originalUrl);
-        //         } else {
-        //             res.redirect("/");
-        //         }
-        //     }
-        // );
         app.use("/local",
             bodyParser.urlencoded({ extended: false }),
             function (req: any, res: any, next: any): void {
@@ -638,7 +622,6 @@ export class LoginProvider {
                                 return next(err);
                             }
                             LoginProvider._logger.info("req.logIn success");
-                            // if (err) { return next(err); }
                             if (!NoderedUtil.IsNullEmpty(originalUrl)) {
                                 try {
                                     res.cookie("originalUrl", "", { expires: new Date(0) });
@@ -652,11 +635,6 @@ export class LoginProvider {
                                 LoginProvider._logger.debug("redirect: to /");
                                 res.redirect("/");
                                 return next();
-                                // const url = Config.protocol + "://" + Config.domain + ":" + Config.port;
-                                // LoginProvider._logger.debug("redirect.url: " + url);
-                                // LoginProvider.redirect(res, url);
-                                // return;
-
                             }
                         });
                         return;
