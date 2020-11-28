@@ -1,7 +1,7 @@
 import * as winston from "winston";
 import { Config } from "./Config";
 const path = require('path');
-
+import { createLogger, format, transports } from 'winston';
 export class Logger {
     static configure(): winston.Logger {
         const filename = path.join(Config.logpath, "nodered" + Config.nodered_id + ".log");
@@ -10,7 +10,7 @@ export class Logger {
                 level: "debug",
                 filename: filename,
                 handleExceptions: false,
-                json: true,
+                json: false,
                 maxsize: 5242880, // 5MB
                 maxFiles: 5,
                 colorize: false,
@@ -22,32 +22,27 @@ export class Logger {
                 colorize: true
             },
         };
-        const enumerateErrorFormat = winston.format(info => {
-            if ((info.message as any) instanceof Error) {
-                const e = (info.message as any) as Error;
-                info.message = Object.assign({
-                    message: e.message,
-                    stack: e.stack
-                }, info.message);
+        const myFormat = winston.format.printf(info => {
+            if (info instanceof Error || info.stack) {
+                return `${info.timestamp} [${info.level}] ${info.message} \n ${info.stack}`;
             }
-
-            if (info instanceof Error) {
-                return Object.assign({
-                    message: info.message,
-                    stack: info.stack
-                }, info);
-            }
-
-            return info;
+            return `${info.timestamp} [${info.level}] ${info.message}`;
         });
+        options.console.format = format.combine(
+            winston.format.errors({ stack: true }),
+            winston.format.timestamp({ format: 'HH:mm:ss' }),
+            winston.format.colorize(),
+            winston.format.json(),
+            myFormat
+        );
         const logger: winston.Logger = winston.createLogger({
             level: "debug",
             //format: winston.format.json(),
             format: winston.format.combine(
-                enumerateErrorFormat(),
+                winston.format.errors({ stack: true }),
                 winston.format.timestamp({ format: 'HH:mm:ss' }),
-                // winston.format.json()
-                winston.format.printf(info => `${info.timestamp} ${info.level}: ${info.message}` + (info.splat !== undefined ? `${info.splat}` : " "))
+                winston.format.json(),
+                myFormat
             ),
             transports: [
                 new winston.transports.File(options.file),

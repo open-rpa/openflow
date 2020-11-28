@@ -118,7 +118,7 @@ export class WebSocketServerClient {
             }
             this._socketObject.send(msg.tojson());
         } catch (error) {
-            this._logger.error("WebSocketclient::WebSocket error encountered " + error);
+            this._logger.error(error);
             this._receiveQueue = [];
             this._sendQueue = [];
             try {
@@ -160,8 +160,6 @@ export class WebSocketServerClient {
         }
         WebSocketServer.websocket_queue_count.labels(this.id).set(this._queues.length);
         semaphore.up();
-        // return await this.queuesMutex.dispatch(async () => {
-        // });
     }
     public async Close(): Promise<void> {
         await this.CloseConsumers();
@@ -186,7 +184,7 @@ export class WebSocketServerClient {
         var old = this._queues.length;
         for (let i = this._queues.length - 1; i >= 0; i--) {
             const q = this._queues[i];
-            if (q.queue == queuename || q.queuename == queuename) {
+            if (q && (q.queue == queuename || q.queuename == queuename)) {
                 try {
                     await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i]);
                     this._queues.splice(i, 1);
@@ -236,8 +234,10 @@ export class WebSocketServerClient {
                     }, Config.amqp_requeue_time);
                 }
             });
-            qname = queue.queue;
-            this._queues.push(queue);
+            if (queue) {
+                qname = queue.queue;
+                this._queues.push(queue);
+            }
             WebSocketServer.websocket_queue_count.labels(this.id).set(this._queues.length);
         } catch (error) {
             this._logger.error("WebSocketclient::CreateConsumer " + error);

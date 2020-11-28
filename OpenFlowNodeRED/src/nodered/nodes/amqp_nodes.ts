@@ -50,7 +50,7 @@ export class amqp_connection {
                     this.webcli.jwt = result.jwt;
                     this.webcli.events.emit("onsignedin", result.user);
                 } catch (error) {
-                    this.webcli._logger.error(error.message ? error.message : error);
+                    this.webcli._logger.error(error);
                 }
             });
             this.webcli.events.on("onsignedin", async (user) => {
@@ -99,7 +99,6 @@ export class amqp_consumer_node {
     onsocketclose(message) {
         if (message == null) message = "";
         if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
-        // this.onclose(false, null);
     }
     onsignedin() {
         this.connect();
@@ -197,7 +196,6 @@ export class amqp_publisher_node {
     onsocketclose(message) {
         if (message == null) message = "";
         if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
-        // this.onclose(false, null);
     }
     websocket(): WebSocketClient {
         if (this.connection != null) {
@@ -211,7 +209,6 @@ export class amqp_publisher_node {
             Logger.instanse.info("track::amqp publiser node::connect");
             this.localqueue = this.config.localqueue;
             console.log(this.localqueue);
-            // if (this.localqueue !== null && this.localqueue !== undefined && this.localqueue !== "") { this.localqueue = Config.queue_prefix + this.localqueue; }
             this.localqueue = await NoderedUtil.RegisterQueue(this.websocket(), this.localqueue, (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
             });
@@ -227,8 +224,6 @@ export class amqp_publisher_node {
         try {
             const result: any = {};
             result.amqpacknowledgment = ack;
-            // const json: string = msg.content.toString();
-            // const data = JSON.parse(json);
             const data = msg.data;
             result.payload = data.payload;
             result.jwt = data.jwt;
@@ -252,8 +247,6 @@ export class amqp_publisher_node {
             data._id = msg._id;
             const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_message_ttl);
             const queue = this.config.queue;
-            //this.localqueue = this.config.queue;
-            // if (this.localqueue !== null && this.localqueue !== undefined && this.localqueue !== "") { this.localqueue = Config.queue_prefix + this.localqueue; }
             this.node.status({ fill: "blue", shape: "dot", text: "Sending message ..." });
             try {
                 await NoderedUtil.QueueMessage(this.websocket(), queue, this.localqueue, data, null, expiration);
@@ -261,7 +254,6 @@ export class amqp_publisher_node {
                 data.error = error;
                 this.node.send([null, data]);
             }
-            // this.con.SendMessage(JSON.stringify(data), this.config.queue, null, true);
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
         } catch (error) {
             NoderedUtil.HandleError(this, error);

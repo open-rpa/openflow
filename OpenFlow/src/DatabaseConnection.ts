@@ -1247,8 +1247,8 @@ export class DatabaseConnection {
                 } else {
                     newObj[key] = value;
                 }
-            } catch (err) {
-                me._logger.error("encryptentity " + err.message);
+            } catch (error) {
+                me._logger.error(error);
                 newObj[key] = value;
             }
             return newObj;
@@ -1277,8 +1277,8 @@ export class DatabaseConnection {
                 } else {
                     newObj[key] = value;
                 }
-            } catch (err) {
-                me._logger.error("decryptentity " + err.message);
+            } catch (error) {
+                me._logger.error(error);
                 newObj[key] = value;
             }
             return newObj;

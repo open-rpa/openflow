@@ -58,11 +58,11 @@
             "preLaunchTask": "openflownodered-tsc-watch",
             "program": "${workspaceRoot}/OpenFlowNodeRED/src/index.ts",
             "request": "launch",
-            "runtimeArgs": [
-                "--nolazy",
-                "--trace-warnings"
-            ],
             "showAsyncStacks": true,
+            // "runtimeArgs": [
+            //     "--nolazy",
+            //     "--trace-warnings"
+            // ],
             "trace": true,
             "runtimeExecutable": null,
             "sourceMaps": true,

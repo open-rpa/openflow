@@ -20,12 +20,15 @@ let rejectionEmitter = unhandledRejection({
 
 rejectionEmitter.on("unhandledRejection", (error, promise) => {
     console.log('Unhandled Rejection at: Promise', promise, 'reason:', error);
-    console.dir(error.stack);
+    console.dir(error);
+    promise.catch(e => {
+        console.error(e);
+    });
 });
 
 rejectionEmitter.on("rejectionHandled", (error, promise) => {
     console.log('Rejection handled at: Promise', promise, 'reason:', error);
-    console.dir(error.stack);
+    console.dir(error);
 });
 let server: http.Server = null;
 (async function (): Promise<void> {

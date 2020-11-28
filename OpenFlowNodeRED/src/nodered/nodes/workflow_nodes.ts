@@ -41,7 +41,6 @@ export class workflow_in_node {
     onsocketclose(message) {
         if (message == null) message = "";
         if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
-        // this.onclose(false, null);
     }
     async connect() {
         try {
@@ -51,7 +50,6 @@ export class workflow_in_node {
                 return;
             }
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
-            // if (this.localqueue !== null && this.localqueue !== undefined && this.localqueue !== "") { this.localqueue = Config.queue_prefix + this.localqueue; }
             this.localqueue = this.config.queue;
             this.localqueue = await NoderedUtil.RegisterQueue(WebSocketClient.instance, this.localqueue, (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
@@ -458,6 +456,8 @@ export class assign_workflow_node {
     public name: string = "";
     public host: string;
     public localqueue: string = "";
+    private _onsignedin: any = null;
+    private _onsocketclose: any = null;
     constructor(public config: Iassign_workflow_node) {
         RED.nodes.createNode(this, config);
         this.node = this;
@@ -468,15 +468,17 @@ export class assign_workflow_node {
             return;
         }
         this.host = Config.amqp_url;
+        this._onsignedin = this.onsignedin.bind(this);
+        this._onsocketclose = this.onsocketclose.bind(this);
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
-        WebSocketClient.instance.events.on("onsignedin", this.onsocketsignedin);
-        WebSocketClient.instance.events.on("onclose", this.onsocketclose);
+        WebSocketClient.instance.events.on("onsignedin", this._onsignedin);
+        WebSocketClient.instance.events.on("onclose", this._onsocketclose);
         if (WebSocketClient.instance.isConnected && WebSocketClient.instance.user != null) {
             this.connect();
         }
     }
-    onsocketsignedin() {
+    onsignedin() {
         this.connect();
 
     }
@@ -490,8 +492,6 @@ export class assign_workflow_node {
     async connect() {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
-            // if (this.localqueue !== null && this.localqueue !== undefined && this.localqueue !== "") { this.localqueue = Config.queue_prefix + this.localqueue; }
-
             Logger.instanse.info("track::assign workflow in::connect");
             this.localqueue = this.config.queue;
             this.localqueue = await NoderedUtil.RegisterQueue(WebSocketClient.instance, this.localqueue, (msg: QueueMessage, ack: any) => {
@@ -580,7 +580,6 @@ export class assign_workflow_node {
     async oninput(msg: any) {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Processing" });
-            // if (this.localqueue !== null && this.localqueue !== undefined && this.localqueue !== "") { this.localqueue = Config.queue_prefix + this.localqueue; }
             const workflowid = (!NoderedUtil.IsNullEmpty(this.config.workflowid) ? this.config.workflowid : msg.workflowid);
             let name = this.config.name;
             if (NoderedUtil.IsNullEmpty(name)) name = msg.name;
@@ -604,7 +603,6 @@ export class assign_workflow_node {
 
 
             msg.jwt = (await NoderedUtil.RenewToken(jwt, true)).jwt;
-            // Logger.instanse.info("run workflow called with id " + msg._id + " (" + msg.name + ")");
             const runnerinstance = new Base();
             runnerinstance._type = "instance";
             runnerinstance.name = "runner: " + name;
@@ -616,7 +614,6 @@ export class assign_workflow_node {
             Base.addRight(runnerinstance, who._id, who.name, [-1]);
 
             const res3 = await NoderedUtil.InsertOne("workflow_instances", runnerinstance, 1, true, jwt);
-            // Logger.instanse.info("created runner instance with id " + res3._id + " (" + res3.name + ")");
             msg._parentid = res3._id;
 
             msg.newinstanceid = await NoderedUtil.CreateWorkflowInstance(targetid, workflowid, null, this.localqueue, res3._id, msg.payload, initialrun, jwt);;
@@ -632,8 +629,8 @@ export class assign_workflow_node {
             NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
             this.localqueue = "";
         }
-        WebSocketClient.instance.events.removeListener("onsignedin", this.onsocketsignedin);
-        WebSocketClient.instance.events.removeListener("onclose", this.onsocketclose);
+        WebSocketClient.instance.events.removeListener("onsignedin", this._onsignedin);
+        WebSocketClient.instance.events.removeListener("onclose", this._onsocketclose);
         if (done != null) done();
     }
 }

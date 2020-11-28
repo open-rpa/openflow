@@ -77,7 +77,7 @@ export class WebServer {
             name: "session", secret: Config.cookie_secret
         }));
         this.app.use(flash());
-        this.app.use(rateLimiter);
+        // this.app.use(rateLimiter);
 
 
         // Add headers
