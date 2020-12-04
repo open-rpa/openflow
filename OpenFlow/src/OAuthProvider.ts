@@ -37,7 +37,7 @@ export class OAuthProvider {
                 if (state == null) state = encodeURIComponent((req.query.state ? req.query.state : req.query["amp;state"]) as any);
                 const access_type = (req.query.access_type ? req.query.access_type : req.query["amp;access_type"]);
                 const client_id = (req.query.client_id ? req.query.client_id : req.query["amp;client_id"]);
-                const redirect_uri = (req.query.redirect_uri ? req.query.redirect_uri : req.query["amp;redirect_uri"]);
+                const redirect_uri = (req.query.redirect_uri ? req.query.redirect_uri : req.query["amp;redirect_uri"]) as string;
                 const response_type = (req.query.response_type ? req.query.response_type : req.query["amp;response_type"]);
                 const scope = (req.query.scope ? req.query.scope : req.query["amp;scope"]);
                 let client = instance.getClientById(client_id);
@@ -54,9 +54,7 @@ export class OAuthProvider {
                     const code = Math.random().toString(36).substr(2, 9);
 
                     instance._logger.info("[OAuth][" + (req.user as any).username + "] /oauth/login " + state);
-                    instance.codes[code] = req.user;
-                    instance.codes[code].redirect_uri = redirect_uri;
-                    instance.codes[code].client_id = client_id;
+                    instance.saveAuthorizationCode(code, client, req.user, redirect_uri);
                     res.redirect(`${redirect_uri}?state=${state}&code=${code}`);
                 } else {
                     instance._logger.info("[OAuth][anon] /oauth/login " + state);
@@ -164,6 +162,7 @@ export class OAuthProvider {
     public async saveToken(token, client, user) {
         this._logger.info("[OAuth] saveToken " + token);
         const result: any = {
+            name: "Token for " + user.name,
             accessToken: token.accessToken,
             access_token: token.accessToken,
             accessTokenExpiresAt: token.accessTokenExpiresAt,
@@ -180,8 +179,22 @@ export class OAuthProvider {
         await Config.db.InsertOne(result, "oauthtokens", 0, false, Crypt.rootToken());
         return result;
     }
-    saveAuthorizationCode(code, client, user) {
+    public async saveAuthorizationCode(code: string, client: any, user: any, redirect_uri: string) {
         this._logger.info("[OAuth] saveAuthorizationCode " + code);
+        const codeobject = Object.assign({}, user);
+        delete codeobject._id;
+        codeobject._type = 'code';
+        codeobject.code = code;
+        codeobject.redirect_uri = redirect_uri;
+        codeobject.client_id = client.clientId
+        this.codes[code] = codeobject;
+        await Config.db.InsertOne(codeobject, "oauthtokens", 1, false, Crypt.rootToken());
+        this._logger.info("[OAuth] saveAuthorizationCode " + code + " saved");
+        // instance.codes[code].client_id = client_id;
+
+
+        // await Config.db.InsertOne(result, "oauthtokens", 0, false, Crypt.rootToken());
+
         // // const codeToSave: any = this.codes[code];
         // const codeToSave: any = {
         //     'authorizationCode': code.authorizationCode,
@@ -197,11 +210,36 @@ export class OAuthProvider {
         //     'client': client.id,
         //     'user': user.username
         // });
-        return code;
+        return codeobject;
     }
-    getAuthorizationCode(code) {
+    sleep(ms) {
+        return new Promise(resolve => {
+            setTimeout(resolve, ms)
+        })
+    }
+
+    public async getAuthorizationCode(code) {
         this._logger.info("[OAuth] getAuthorizationCode " + code);
         let user: TokenUser = this.codes[code];
+        if (user == null) {
+            let users = await Config.db.query<Base>({ _type: "code", "code": code }, null, 10, 0, null, "oauthtokens", Crypt.rootToken());
+            user = users.length ? users[0] as any : null;
+            if (user == null) {
+                await this.sleep(1000);
+                users = await Config.db.query<Base>({ _type: "code", "code": code }, null, 10, 0, null, "oauthtokens", Crypt.rootToken());
+                user = users.length ? users[0] as any : null;
+            }
+            if (user == null) {
+                await this.sleep(1000);
+                users = await Config.db.query<Base>({ _type: "code", "code": code }, null, 10, 0, null, "oauthtokens", Crypt.rootToken());
+                user = users.length ? users[0] as any : null;
+            }
+            if (user == null) {
+                this._logger.error("[OAuth] getAuthorizationCode, unkown code '" + code + "'");
+                return null;
+            }
+            if (user != null) { this.codes[code] = user; }
+        }
         const client_id: string = this.codes[code].client_id;
         if (user == null) return null;
         this.revokeAuthorizationCode(code);
@@ -236,6 +274,7 @@ export class OAuthProvider {
     revokeAuthorizationCode(code) {
         this._logger.info("[OAuth] revokeAuthorizationCode " + code);
         delete this.codes[code];
+        Config.db.DeleteMany({ _type: "code", "code": code }, null, "oauthtokens", Crypt.rootToken());
         return true;
         // const user: TokenUser = this.codes[code];
         // if (user != null) delete this.codes[code];
