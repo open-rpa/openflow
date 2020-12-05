@@ -29,11 +29,18 @@ export class OAuthProvider {
                 allowEmptyState: true,
                 allowExtendedTokenAttributes: true
             });
+            Config.db.query<Base>({ _type: "oauthclient" }, null, 10, 0, null, "config", Crypt.rootToken()).then(result => {
+                instance.clients = result;
+            }).catch(error => {
+                instance._logger.error(error);
+            });
             (app as any).oauth = instance.oauthServer;
             app.all('/oauth/token', instance.obtainToken.bind(instance));
             app.get('/oauth/login', async (req, res) => {
-                instance.clients = await Config.db.query<Base>({ _type: "oauthclient" }, null, 10, 0, null, "config", Crypt.rootToken());
-                if (instance.clients == null || instance.clients.length == 0) return res.status(500).json({ message: 'OAuth not configured' });
+                if (NoderedUtil.IsNullUndefinded(instance.clients)) {
+                    instance.clients = await Config.db.query<Base>({ _type: "oauthclient" }, null, 10, 0, null, "config", Crypt.rootToken());
+                    if (instance.clients == null || instance.clients.length == 0) return res.status(500).json({ message: 'OAuth not configured' });
+                }
                 let state = (req.params.state ? req.params.state : req.params["amp;state"]);
                 if (state == null) state = encodeURIComponent((req.query.state ? req.query.state : req.query["amp;state"]) as any);
                 const access_type = (req.query.access_type ? req.query.access_type : req.query["amp;access_type"]);
@@ -42,6 +49,10 @@ export class OAuthProvider {
                 const response_type = (req.query.response_type ? req.query.response_type : req.query["amp;response_type"]);
                 const scope = (req.query.scope ? req.query.scope : req.query["amp;scope"]);
                 let client = instance.getClientById(client_id);
+                if (NoderedUtil.IsNullUndefinded(client)) {
+                    instance.clients = await Config.db.query<Base>({ _type: "oauthclient" }, null, 10, 0, null, "config", Crypt.rootToken());
+                    if (instance.clients == null || instance.clients.length == 0) return res.status(500).json({ message: 'OAuth not configured' });
+                }
                 if (req.user) {
                     if (!NoderedUtil.IsNullUndefinded(client) && !Array.isArray(client.redirectUris)) {
                         client.redirectUris = [];

@@ -1174,7 +1174,6 @@ export class DatabaseConnection {
             _query = { $and: [{ _id: { "$in": ids } }, baseq] };
         } else if (!NoderedUtil.IsNullUndefinded(query)) {
             if (query !== null && query !== undefined) {
-                console.log(JSON.parse(JSON.stringify(query)));
                 let json: any = query;
                 if (typeof json !== 'string' && !(json instanceof String)) {
                     json = JSON.stringify(json, (key, value) => {
@@ -1206,6 +1205,7 @@ export class DatabaseConnection {
             for (let i = 0; i < arr.length; i++) {
                 await this._DeleteFile(arr[i]._id);
             }
+            // if (Config.log_deletes) console.log(JSON.parse(JSON.stringify(query)));
             if (Config.log_deletes) this._logger.verbose("[" + user.username + "][" + collectionname + "] deleted " + arr.length + " items in database");
             return arr.length;
         } else {
