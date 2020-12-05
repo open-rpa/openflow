@@ -1205,6 +1205,7 @@ export class DatabaseConnection {
             for (let i = 0; i < arr.length; i++) {
                 await this._DeleteFile(arr[i]._id);
             }
+            // if (Config.log_deletes) console.log(JSON.parse(JSON.stringify(query)));
             if (Config.log_deletes) this._logger.verbose("[" + user.username + "][" + collectionname + "] deleted " + arr.length + " items in database");
             return arr.length;
         } else {

@@ -29,11 +29,18 @@ export class OAuthProvider {
                 allowEmptyState: true,
                 allowExtendedTokenAttributes: true
             });
+            Config.db.query<Base>({ _type: "oauthclient" }, null, 10, 0, null, "config", Crypt.rootToken()).then(result => {
+                instance.clients = result;
+            }).catch(error => {
+                instance._logger.error(error);
+            });
             (app as any).oauth = instance.oauthServer;
             app.all('/oauth/token', instance.obtainToken.bind(instance));
             app.get('/oauth/login', async (req, res) => {
-                instance.clients = await Config.db.query<Base>({ _type: "oauthclient" }, null, 10, 0, null, "config", Crypt.rootToken());
-                if (instance.clients == null || instance.clients.length == 0) return res.status(500).json({ message: 'OAuth not configured' });
+                if (NoderedUtil.IsNullUndefinded(instance.clients)) {
+                    instance.clients = await Config.db.query<Base>({ _type: "oauthclient" }, null, 10, 0, null, "config", Crypt.rootToken());
+                    if (instance.clients == null || instance.clients.length == 0) return res.status(500).json({ message: 'OAuth not configured' });
+                }
                 let state = (req.params.state ? req.params.state : req.params["amp;state"]);
                 if (state == null) state = encodeURIComponent((req.query.state ? req.query.state : req.query["amp;state"]) as any);
                 const access_type = (req.query.access_type ? req.query.access_type : req.query["amp;access_type"]);
@@ -42,6 +49,10 @@ export class OAuthProvider {
                 const response_type = (req.query.response_type ? req.query.response_type : req.query["amp;response_type"]);
                 const scope = (req.query.scope ? req.query.scope : req.query["amp;scope"]);
                 let client = instance.getClientById(client_id);
+                if (NoderedUtil.IsNullUndefinded(client)) {
+                    instance.clients = await Config.db.query<Base>({ _type: "oauthclient" }, null, 10, 0, null, "config", Crypt.rootToken());
+                    if (instance.clients == null || instance.clients.length == 0) return res.status(500).json({ message: 'OAuth not configured' });
+                }
                 if (req.user) {
                     if (!NoderedUtil.IsNullUndefinded(client) && !Array.isArray(client.redirectUris)) {
                         client.redirectUris = [];
@@ -251,8 +262,7 @@ export class OAuthProvider {
         if (user == null) return null;
         this.revokeAuthorizationCode(code);
         const redirect_uri = (user as any).redirect_uri;
-        const expiresAt = new Date();
-        expiresAt.setMonth(expiresAt.getMonth() + 1);
+        const expiresAt = new Date((new Date).getTime() + (1000 * Config.oauth_access_token_lifetime));
         var tuser = TokenUser.From(user);
         let client = this.getClientById(client_id);
         if (NoderedUtil.IsNullUndefinded(client)) return null;
@@ -282,16 +292,19 @@ export class OAuthProvider {
         if (typeof code !== "string") { code = code.code; }
         this._logger.info("[OAuth] revokeAuthorizationCode " + code);
         delete this.codes[code];
-        const refreshTokenExpiresAt = new Date((new Date).getTime() + (1000 * Config.oauth_refresh_token_lifetime)).toISOString();
-        const accessTokenExpiresAt = new Date((new Date).getTime() + (1000 * Config.oauth_access_token_lifetime)).toISOString();
+        const refreshTokenExpiresAt = new Date((new Date).getTime() - (1000 * Config.oauth_refresh_token_lifetime)).toISOString();
+        const accessTokenExpiresAt = new Date((new Date).getTime() - (1000 * Config.oauth_access_token_lifetime)).toISOString();
+        const codeExpiresAt = new Date((new Date).getTime() - (1000 * 120)).toISOString();
         await Config.db.DeleteMany({
             "$or":
                 [
-                    { _type: "code", "code": code },
-                    { _type: "token", "refreshTokenExpiresAt": refreshTokenExpiresAt },
-                    { _type: "token", "accessTokenExpiresAt": accessTokenExpiresAt }
+                    { "_type": "code", "_created": { "$lte": codeExpiresAt } },
+                    { "_type": "token", "refreshTokenExpiresAt": { "$lte": refreshTokenExpiresAt } },
+                    { "_type": "token", "accessTokenExpiresAt": { "$lte": accessTokenExpiresAt } }
                 ]
         }, null, "oauthtokens", Crypt.rootToken());
+        // await Config.db.DeleteMany({ "_type": "code", "code": code }, null, "oauthtokens", Crypt.rootToken());
+        await Config.db.DeleteMany({ "_type": "code", "_created": { "$lte": codeExpiresAt } }, null, "oauthtokens", Crypt.rootToken());
         return true;
         // const user: TokenUser = this.codes[code];
         // if (user != null) delete this.codes[code];
