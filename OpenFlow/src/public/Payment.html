@@ -378,8 +378,7 @@
         Please contact us if you wish to have more users or click <a href
             ng-click="ctrl.CancelPlan(ctrl.openflowplan.id)">here to cancel</a> this subscription
     </div>
-    <div ng-show="(ctrl.supportplan!=null || ctrl.openflowplan!=null) && ctrl.loading==false"
-        class="alert alert-primary">
+    <div ng-show="(ctrl.nextbill!=null) && ctrl.loading==false" class="alert alert-primary">
         <div class="row">Next Invoce ( {{ ctrl.nextbill.dtperiod_start.toDateString() }} to
             {{ ctrl.nextbill.dtperiod_end.toDateString() }} ) </div>
         <div class="row">
@@ -416,6 +415,17 @@
             <div class="col-sm-5"></div>
             <div class="col-sm-2">{{ ctrl.nextbill.total / 100 }}</div>
         </div>
+        <div class="row">
+            <div class="col-sm-1"></div>
+            <div class="col-sm-6">Applied balance</div>
+            <div class="col-sm-2">{{ ctrl.nextbill.starting_balance / 100 }}</div>
+        </div>
+        <div class="row">
+            <div class="col-sm-1"></div>
+            <div class="col-sm-6"><b>Amount due</b></div>
+            <div class="col-sm-2">{{ (ctrl.nextbill.starting_balance + ctrl.nextbill.total) / 100 }}</div>
+        </div>
+
     </div>
     <div ng-show="ctrl.cardmessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.cardmessage}}</div>
     <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
