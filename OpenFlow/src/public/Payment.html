@@ -420,7 +420,7 @@
     <div ng-show="ctrl.cardmessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.cardmessage}}</div>
     <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
     <pre ng-show="ctrl.messages!=''" class=" alert alert-primary" role="alert">{{ ctrl.messages }}</pre>
-    <h3 ng-show="ctrl.openflowplans.length > 0">OpenFlow User w/NodeRed with a SLA</h3>
+    <!-- <h3 ng-show="ctrl.openflowplans.length > 0">OpenFlow User w/NodeRed with a SLA</h3>
     <div class="row" ng-hide="ctrl.loading==true">
         <div ng-repeat="model in ctrl.openflowplans">
             <div class="card" style="width: 17rem;height: 332px;">
@@ -437,7 +437,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div> -->
     <h3 ng-show="ctrl.supportplans.length > 0">Support agreements</h3>
     <div class="row" ng-hide="ctrl.loading==true">
         <div ng-repeat="model in ctrl.supportplans">

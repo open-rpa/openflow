@@ -24,7 +24,8 @@ export class OAuthProvider {
             instance.oauthServer = new OAuthServer({
                 model: instance,
                 grants: ['authorization_code', 'refresh_token'],
-                accessTokenLifetime: 60 * 60 * 24, // 24 hours, or 1 day
+                accessTokenLifetime: (60 * 60 * 24) * 7, // 7 days * 24 hours, or 1 day
+                refreshTokenLifetime: (60 * 60 * 24) * 7, // 7 days * 24 hours, or 1 day
                 allowEmptyState: true,
                 allowExtendedTokenAttributes: true
             });
@@ -37,7 +38,7 @@ export class OAuthProvider {
                 if (state == null) state = encodeURIComponent((req.query.state ? req.query.state : req.query["amp;state"]) as any);
                 const access_type = (req.query.access_type ? req.query.access_type : req.query["amp;access_type"]);
                 const client_id = (req.query.client_id ? req.query.client_id : req.query["amp;client_id"]);
-                const redirect_uri = (req.query.redirect_uri ? req.query.redirect_uri : req.query["amp;redirect_uri"]);
+                const redirect_uri = (req.query.redirect_uri ? req.query.redirect_uri : req.query["amp;redirect_uri"]) as string;
                 const response_type = (req.query.response_type ? req.query.response_type : req.query["amp;response_type"]);
                 const scope = (req.query.scope ? req.query.scope : req.query["amp;scope"]);
                 let client = instance.getClientById(client_id);
@@ -54,9 +55,7 @@ export class OAuthProvider {
                     const code = Math.random().toString(36).substr(2, 9);
 
                     instance._logger.info("[OAuth][" + (req.user as any).username + "] /oauth/login " + state);
-                    instance.codes[code] = req.user;
-                    instance.codes[code].redirect_uri = redirect_uri;
-                    instance.codes[code].client_id = client_id;
+                    instance.saveAuthorizationCode(code, client, req.user, redirect_uri);
                     res.redirect(`${redirect_uri}?state=${state}&code=${code}`);
                 } else {
                     instance._logger.info("[OAuth][anon] /oauth/login " + state);
@@ -162,8 +161,9 @@ export class OAuthProvider {
     }
 
     public async saveToken(token, client, user) {
-        this._logger.info("[OAuth] saveToken " + token);
+        this._logger.info("[OAuth] saveToken for " + user.name + " in " + client.clientId);
         const result: any = {
+            name: "Token for " + user.name,
             accessToken: token.accessToken,
             access_token: token.accessToken,
             accessTokenExpiresAt: token.accessTokenExpiresAt,
@@ -180,8 +180,28 @@ export class OAuthProvider {
         await Config.db.InsertOne(result, "oauthtokens", 0, false, Crypt.rootToken());
         return result;
     }
-    saveAuthorizationCode(code, client, user) {
+    public async saveAuthorizationCode(code: string, client: any, user: any, redirect_uri: string) {
         this._logger.info("[OAuth] saveAuthorizationCode " + code);
+        const codeobject = Object.assign({}, user);
+        delete codeobject._id;
+        codeobject._type = 'code';
+        codeobject.code = code;
+        codeobject.id = user._id;
+        codeobject.username = user.username;
+        codeobject.email = user.email;
+        if (NoderedUtil.IsNullEmpty(codeobject.email)) codeobject.email = user.username;
+        codeobject.fullname = user.name;
+        codeobject.redirect_uri = redirect_uri;
+        codeobject.client_id = client.clientId
+        codeobject.name = "Code " + code + " for " + user.name
+        this.codes[code] = codeobject;
+        await Config.db.InsertOne(codeobject, "oauthtokens", 1, false, Crypt.rootToken());
+        this._logger.info("[OAuth] saveAuthorizationCode " + code + " saved");
+        // instance.codes[code].client_id = client_id;
+
+
+        // await Config.db.InsertOne(result, "oauthtokens", 0, false, Crypt.rootToken());
+
         // // const codeToSave: any = this.codes[code];
         // const codeToSave: any = {
         //     'authorizationCode': code.authorizationCode,
@@ -197,33 +217,58 @@ export class OAuthProvider {
         //     'client': client.id,
         //     'user': user.username
         // });
-        return code;
+        return codeobject;
     }
-    getAuthorizationCode(code) {
+    sleep(ms) {
+        return new Promise(resolve => {
+            setTimeout(resolve, ms)
+        })
+    }
+
+    public async getAuthorizationCode(code) {
         this._logger.info("[OAuth] getAuthorizationCode " + code);
-        let user: TokenUser = this.codes[code];
+        let user: any = this.codes[code];
+        if (user == null) {
+            let users = await Config.db.query<Base>({ _type: "code", "code": code }, null, 10, 0, null, "oauthtokens", Crypt.rootToken());
+            user = users.length ? users[0] as any : null;
+            if (user == null) {
+                await this.sleep(1000);
+                users = await Config.db.query<Base>({ _type: "code", "code": code }, null, 10, 0, null, "oauthtokens", Crypt.rootToken());
+                user = users.length ? users[0] as any : null;
+            }
+            if (user == null) {
+                await this.sleep(1000);
+                users = await Config.db.query<Base>({ _type: "code", "code": code }, null, 10, 0, null, "oauthtokens", Crypt.rootToken());
+                user = users.length ? users[0] as any : null;
+            }
+            if (user == null) {
+                this._logger.error("[OAuth] getAuthorizationCode, unkown code '" + code + "'");
+                return null;
+            }
+            if (user != null) { this.codes[code] = user; }
+        }
         const client_id: string = this.codes[code].client_id;
         if (user == null) return null;
         this.revokeAuthorizationCode(code);
         const redirect_uri = (user as any).redirect_uri;
         const expiresAt = new Date();
         expiresAt.setMonth(expiresAt.getMonth() + 1);
-        user = TokenUser.From(user);
+        var tuser = TokenUser.From(user);
         let client = this.getClientById(client_id);
         if (NoderedUtil.IsNullUndefinded(client)) return null;
 
         let role = client.defaultrole;
         const keys: string[] = Object.keys(client.rolemappings);
         for (let i = 0; i < keys.length; i++) {
-            if (user.HasRoleName(keys[i])) role = client.rolemappings[keys[i]];
+            if (tuser.HasRoleName(keys[i])) role = client.rolemappings[keys[i]];
         }
         const result = {
             code: code,
             client: this.clients[0],
             user: {
-                id: user._id,
-                _id: user._id,
-                name: user.name,
+                id: user.id,
+                _id: user.id,
+                name: user.fullname,
                 username: user.username,
                 email: user.username,
                 role: role
@@ -233,15 +278,25 @@ export class OAuthProvider {
         }
         return result;
     }
-    revokeAuthorizationCode(code) {
+    public async revokeAuthorizationCode(code) {
+        if (typeof code !== "string") { code = code.code; }
         this._logger.info("[OAuth] revokeAuthorizationCode " + code);
         delete this.codes[code];
+        const refreshTokenExpiresAt = new Date((new Date).getTime() + (1000 * Config.oauth_refresh_token_lifetime)).toISOString();
+        const accessTokenExpiresAt = new Date((new Date).getTime() + (1000 * Config.oauth_access_token_lifetime)).toISOString();
+        await Config.db.DeleteMany({
+            "$or":
+                [
+                    { _type: "code", "code": code },
+                    { _type: "token", "refreshTokenExpiresAt": refreshTokenExpiresAt },
+                    { _type: "token", "accessTokenExpiresAt": accessTokenExpiresAt }
+                ]
+        }, null, "oauthtokens", Crypt.rootToken());
         return true;
         // const user: TokenUser = this.codes[code];
         // if (user != null) delete this.codes[code];
         // return code;
     }
-
     public static tokenCache: CachedToken[] = [];
     private static async getCachedAccessToken(accessToken: string): Promise<any> {
         await semaphore.down();
@@ -253,7 +308,7 @@ export class OAuthProvider {
             if (seconds > Config.oauth_token_cache_seconds) {
                 this.tokenCache.splice(i, 1);
             } else if (res.token.accessToken == accessToken) {
-                console.log("Return token from cache, using accessToken " + accessToken);
+                // console.log("Return token from cache, using accessToken " + accessToken);
                 semaphore.up();
                 return res.token;
             }
@@ -271,7 +326,7 @@ export class OAuthProvider {
             if (seconds > Config.oauth_token_cache_seconds) {
                 this.tokenCache.splice(i, 1);
             } else if (res.token.refreshToken == refreshToken) {
-                console.log("Return token from cache, using refreshToken " + refreshToken);
+                // console.log("Return token from cache, using refreshToken " + refreshToken);
                 semaphore.up();
                 return res.token;
             }
@@ -281,7 +336,7 @@ export class OAuthProvider {
     }
     private static async addToken(token: any) {
         await semaphore.down();
-        console.log("Adding token to cache");
+        // console.log("Adding token to cache");
         var cuser: CachedToken = new CachedToken(token);
         this.tokenCache.push(cuser);
         semaphore.up();

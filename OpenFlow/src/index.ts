@@ -246,6 +246,26 @@ try {
 
 }
 
+
+
+const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+const originalStderrWrite = process.stderr.write.bind(process.stderr);
+(process.stdout.write as any) = (chunk: string, encoding?: string, callback?: (err?: Error | null) => void): boolean => {
+    if (chunk.indexOf("Failed locating user with") > -1) {
+        console.log("bump");
+    }
+    return originalStdoutWrite(chunk, encoding, callback);
+};
+(process.stderr.write as any) = (chunk: string, encoding?: string, callback?: (err?: Error | null) => void): boolean => {
+    if (chunk.indexOf("Failed locating user with") > -1) {
+        console.log("bump");
+    }
+    return originalStderrWrite(chunk, encoding, callback);
+};
+
+// write(buffer: Buffer | Uint8Array | string, cb?: (err?: Error | null) => void): boolean;
+// write(str: string, encoding?: string, cb?: (err?: Error | null) => void): boolean;
+
 // https://medium.com/kubernetes-tutorials/monitoring-your-kubernetes-deployments-with-prometheus-5665eda54045
 (async function (): Promise<void> {
     try {

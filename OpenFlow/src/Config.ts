@@ -46,6 +46,10 @@ export class Config {
         Config.tls_passphrase = Config.getEnv("tls_passphrase", "");
 
         Config.api_credential_cache_seconds = parseInt(Config.getEnv("api_credential_cache_seconds", "60000"));
+        Config.api_credential_cache_seconds = parseInt(Config.getEnv("api_credential_cache_seconds", "60000"));
+        Config.oauth_token_cache_seconds = parseInt(Config.getEnv("oauth_token_cache_seconds", "60000"));
+        Config.oauth_access_token_lifetime = parseInt(Config.getEnv("oauth_access_token_lifetime", "604800"));
+        Config.oauth_refresh_token_lifetime = parseInt(Config.getEnv("oauth_refresh_token_lifetime", "604800"));
         Config.api_rate_limit = Config.parseBoolean(Config.getEnv("api_rate_limit", "true"));
         Config.api_rate_limit_points = parseInt(Config.getEnv("api_rate_limit_points", "60"));
         Config.api_rate_limit_duration = parseInt(Config.getEnv("api_rate_limit_duration", "1"));
@@ -132,6 +136,8 @@ export class Config {
 
     public static api_credential_cache_seconds: number = parseInt(Config.getEnv("api_credential_cache_seconds", "60000"));
     public static oauth_token_cache_seconds: number = parseInt(Config.getEnv("oauth_token_cache_seconds", "60000"));
+    public static oauth_access_token_lifetime: number = parseInt(Config.getEnv("oauth_access_token_lifetime", "604800"));
+    public static oauth_refresh_token_lifetime: number = parseInt(Config.getEnv("oauth_refresh_token_lifetime", "604800"));
     public static api_rate_limit: boolean = Config.parseBoolean(Config.getEnv("api_rate_limit", "true"));
     public static api_rate_limit_points: number = parseInt(Config.getEnv("api_rate_limit_points", "60"));
     public static api_rate_limit_duration: number = parseInt(Config.getEnv("api_rate_limit_duration", "1"));
