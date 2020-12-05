@@ -251,8 +251,7 @@ export class OAuthProvider {
         if (user == null) return null;
         this.revokeAuthorizationCode(code);
         const redirect_uri = (user as any).redirect_uri;
-        const expiresAt = new Date();
-        expiresAt.setMonth(expiresAt.getMonth() + 1);
+        const expiresAt = new Date((new Date).getTime() + (1000 * Config.oauth_access_token_lifetime));
         var tuser = TokenUser.From(user);
         let client = this.getClientById(client_id);
         if (NoderedUtil.IsNullUndefinded(client)) return null;
@@ -282,16 +281,19 @@ export class OAuthProvider {
         if (typeof code !== "string") { code = code.code; }
         this._logger.info("[OAuth] revokeAuthorizationCode " + code);
         delete this.codes[code];
-        const refreshTokenExpiresAt = new Date((new Date).getTime() + (1000 * Config.oauth_refresh_token_lifetime)).toISOString();
-        const accessTokenExpiresAt = new Date((new Date).getTime() + (1000 * Config.oauth_access_token_lifetime)).toISOString();
+        const refreshTokenExpiresAt = new Date((new Date).getTime() - (1000 * Config.oauth_refresh_token_lifetime)).toISOString();
+        const accessTokenExpiresAt = new Date((new Date).getTime() - (1000 * Config.oauth_access_token_lifetime)).toISOString();
+        const codeExpiresAt = new Date((new Date).getTime() - (1000 * 120)).toISOString();
         await Config.db.DeleteMany({
             "$or":
                 [
-                    { _type: "code", "code": code },
-                    { _type: "token", "refreshTokenExpiresAt": refreshTokenExpiresAt },
-                    { _type: "token", "accessTokenExpiresAt": accessTokenExpiresAt }
+                    { "_type": "code", "_created": { "$lte": codeExpiresAt } },
+                    { "_type": "token", "refreshTokenExpiresAt": { "$lte": refreshTokenExpiresAt } },
+                    { "_type": "token", "accessTokenExpiresAt": { "$lte": accessTokenExpiresAt } }
                 ]
         }, null, "oauthtokens", Crypt.rootToken());
+        // await Config.db.DeleteMany({ "_type": "code", "code": code }, null, "oauthtokens", Crypt.rootToken());
+        await Config.db.DeleteMany({ "_type": "code", "_created": { "$lte": codeExpiresAt } }, null, "oauthtokens", Crypt.rootToken());
         return true;
         // const user: TokenUser = this.codes[code];
         // if (user != null) delete this.codes[code];
