@@ -22,13 +22,13 @@ On linux this will require build tools to be present. On ubuntu you can install 
 
 `sudo apt-get install gcc g++ make`
 
-Then to install and run OpenFlow, install the openiap package 
+Then to install and run OpenFlow, install the @openiap/openflow package 
 
-`npm i openiap -g`
+`npm i @openiap/openflow -g`
 
 On Linux run with sudo
 
-`sudo npm i openiap -g`
+`sudo npm i @openiap/openflow -g`
 
 then create a template configuration file using 
 `openflow-cli --init`
@@ -61,12 +61,12 @@ On linux this will require build tools to be present. On ubuntu you can install 
 
 `sudo apt-get install gcc g++ make`
 
-Then to install and run OpenFlow Nodered, install the openflow-nodered package 
-`npm i openflow-nodered -g`
+Then to install and run OpenFlow Nodered, install the @openiap/nodered package 
+`npm i @openiap/nodered -g`
 
 On Linux run with sudo
 
-`sudo npm i openflow-nodered -g`
+`sudo npm i @openiap/nodered -g`
 
 then create a template configuration file using 
 `openflow-nodered-cli --init`

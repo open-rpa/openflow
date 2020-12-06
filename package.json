@@ -1,5 +1,5 @@
 {
-  "name": "openiap",
+  "name": "@openiap/openflow",
   "version": "1.1.109",
   "description": "Simple wrapper around NodeRed, RabbitMQ and MongoDB to support a more scaleable NodeRed implementation.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
@@ -10,6 +10,9 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/open-rpa/openflow.git"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "author": "OpenRPA / Allan Zimmermann",
   "license": "MPL-2.0",
