@@ -2739,7 +2739,9 @@ export class NoderedCtrl {
             }
             this.name = this.name.split("@").join("").split(".").join("");
             this.name = this.name.toLowerCase();
-            this.noderedurl = "https://" + WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", this.name);
+            // this.noderedurl = "https://" + WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", this.name);
+            this.noderedurl = "//" + WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", this.name);
+            console.log(this.noderedurl);
             // // this.GetNoderedInstance();
             this.GetNoderedInstance();
         });
