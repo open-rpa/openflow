@@ -1067,6 +1067,11 @@ export class Message {
             if (skipcreate) return;
             cli._logger.debug("[" + cli.user.username + "] Deployment " + name + " not found in " + namespace + " so creating it");
 
+            // const api_ws_url = Config.api_ws_url;
+            const api_ws_url = Config.baseurl();
+            // const api_ws_url = "ws://api/";
+            // const api_ws_url = "https://demo.openiap.io/"
+            // const api_ws_url = "https://demo.openiap.io/"
             const _deployment = {
                 metadata: { name: name, namespace: namespace, labels: { billed: hasbilling.toString(), userid: _id, app: name } },
                 spec: {
@@ -1090,7 +1095,7 @@ export class Message {
                                         { name: "nodered_sa", value: nodereduser.username },
                                         { name: "jwt", value: nodered_jwt },
                                         { name: "queue_prefix", value: user.nodered.queue_prefix },
-                                        { name: "api_ws_url", value: Config.api_ws_url },
+                                        { name: "api_ws_url", value: api_ws_url },
                                         { name: "amqp_url", value: Config.amqp_url },
                                         { name: "nodered_domain_schema", value: hostname },
                                         { name: "domain", value: hostname },
@@ -1380,19 +1385,23 @@ export class Message {
         try {
             cli._logger.debug("[" + cli.user.username + "] GetKubeNodeLabels");
             msg = GetKubeNodeLabels.assign(this.data);
-            const list = await KubeUtil.instance().CoreV1Api.listNode();
-            const result: any = {};
-            if (list != null) {
-                list.body.items.forEach(node => {
-                    if (node.metadata && node.metadata.labels) {
-                        const keys = Object.keys(node.metadata.labels);
-                        keys.forEach(key => {
-                            result[key] = node.metadata.labels[key];
-                        });
-                    }
-                });
+            if (Config.nodered_allow_nodeselector) {
+                const list = await KubeUtil.instance().CoreV1Api.listNode();
+                const result: any = {};
+                if (list != null) {
+                    list.body.items.forEach(node => {
+                        if (node.metadata && node.metadata.labels) {
+                            const keys = Object.keys(node.metadata.labels);
+                            keys.forEach(key => {
+                                result[key] = node.metadata.labels[key];
+                            });
+                        }
+                    });
+                }
+                msg.result = result;
+            } else {
+                msg.result = null;
             }
-            msg.result = result;
         } catch (error) {
             this.data = "";
             cli._logger.error(error);

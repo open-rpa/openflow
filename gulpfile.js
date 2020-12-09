@@ -68,6 +68,15 @@ gulp.task("compose", shell.task([
     'docker push openiap/openflow:' + version
 ]));
 
+gulp.task("latest", shell.task([
+    'docker tag openiap/nodered:edge openiap/nodered:latest',
+    'echo "Push openiap/nodered"',
+    'docker push openiap/nodered:latest',
+    'docker tag openiap/openflow:edge openiap/openflow:latest',
+    'echo "Push openiap/openflow"',
+    'docker push openiap/openflow:latest',
+]));
+
 
 gulp.task("bumpyml1", function () {
     return gulp.src(["./*.yml"]).pipe(replace(/openflow:\d+(\.\d+)+/g, 'openflow:' + version)).
