@@ -11,7 +11,7 @@ import { Readable, Stream } from "stream";
 import { GridFSBucket, ObjectID, Db, Cursor, MongoNetworkError } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
-import { StripeMessage, EnsureStripeCustomerMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage } from "openflow-api";
+import { StripeMessage, EnsureStripeCustomerMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, GetKubeNodeLabels } from "openflow-api";
 import { Billing, stripe_customer, stripe_base, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription, stripe_subscription_item, stripe_plan, stripe_coupon } from "openflow-api";
 import { V1ResourceRequirements, V1Deployment } from "@kubernetes/client-node";
 import { amqpwrapper } from "../amqpwrapper";
@@ -166,6 +166,9 @@ export class Message {
                     break;
                 case "restartnoderedinstance":
                     this.RestartNoderedInstance(cli);
+                    break;
+                case "getkubenodelabels":
+                    this.GetKubeNodeLabels(cli);
                     break;
                 case "getnoderedinstance":
                     this.GetNoderedInstance(cli);
@@ -951,7 +954,7 @@ export class Message {
         let msg: EnsureNoderedInstanceMessage;
         try {
             msg = EnsureNoderedInstanceMessage.assign(this.data);
-            await this._EnsureNoderedInstance(cli, msg._id, false);
+            await this._EnsureNoderedInstance(cli, msg._id, false, msg.labels);
         } catch (error) {
             this.data = "";
             cli._logger.error(error);
@@ -966,7 +969,7 @@ export class Message {
         }
         this.Send(cli);
     }
-    private async _EnsureNoderedInstance(cli: WebSocketServerClient, _id: string, skipcreate: boolean): Promise<void> {
+    private async _EnsureNoderedInstance(cli: WebSocketServerClient, _id: string, skipcreate: boolean, labels: any): Promise<void> {
         let user: NoderedUser;
         cli._logger.debug("[" + cli.user.username + "] EnsureNoderedInstance");
         if (_id === null || _id === undefined || _id === "") _id = cli.user._id;
@@ -1103,6 +1106,17 @@ export class Message {
                             ]
                         }
                     }
+                }
+            }
+            if (_deployment && labels && Config.nodered_allow_nodeselector) {
+                if (typeof labels === "string") {
+                    var item = JSON.parse(labels);
+                    var spec: any = _deployment.spec.template.spec;
+                    const keys = Object.keys(item);
+                    if (spec.nodeSelector == null) spec.nodeSelector = {};
+                    keys.forEach(key => {
+                        spec.nodeSelector[key] = item[key];
+                    })
                 }
             }
             try {
@@ -1304,7 +1318,7 @@ export class Message {
                     }
                 }
             } else {
-                cli._logger.warn("[" + cli.user.username + "] GetNoderedInstance: found NO Namespaced Pods ???");
+                cli._logger.warn("[" + cli.user.username + "] DeleteNoderedPod: found NO Namespaced Pods ???");
                 Audit.NoderedAction(TokenUser.From(cli.user), false, null, "deletepod", image, msg.name);
             }
         } catch (error) {
@@ -1351,6 +1365,38 @@ export class Message {
             this.data = "";
             cli._logger.error(error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            cli._logger.error(error);
+        }
+        this.Send(cli);
+    }
+    private async GetKubeNodeLabels(cli: WebSocketServerClient): Promise<void> {
+        this.Reply();
+        let msg: GetKubeNodeLabels;
+        try {
+            cli._logger.debug("[" + cli.user.username + "] GetKubeNodeLabels");
+            msg = GetKubeNodeLabels.assign(this.data);
+            const list = await KubeUtil.instance().CoreV1Api.listNode();
+            const result: any = {};
+            if (list != null) {
+                list.body.items.forEach(node => {
+                    if (node.metadata && node.metadata.labels) {
+                        const keys = Object.keys(node.metadata.labels);
+                        keys.forEach(key => {
+                            result[key] = node.metadata.labels[key];
+                        });
+                    }
+                });
+            }
+            msg.result = result;
+        } catch (error) {
+            this.data = "";
+            cli._logger.error(error);
+            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error
         }
         try {
             this.data = JSON.stringify(msg);
@@ -1435,7 +1481,7 @@ export class Message {
         this.Reply();
         let msg: GetNoderedInstanceLogMessage;
         try {
-            cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance");
+            cli._logger.debug("[" + cli.user.username + "] GetNoderedInstanceLog");
             msg = GetNoderedInstanceLogMessage.assign(this.data);
             const name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt);
             const namespace = Config.namespace;
@@ -1452,12 +1498,12 @@ export class Message {
 
                     }
                     if (!NoderedUtil.IsNullEmpty(msg.name) && item.metadata.name == msg.name && cli.user.HasRoleName("admins")) {
-                        cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance:" + name + " found one as " + item.metadata.name);
+                        cli._logger.debug("[" + cli.user.username + "] GetNoderedInstanceLog:" + name + " found one as " + item.metadata.name);
                         const obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
                         msg.result = obj.body;
                         Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name);
                     } else if (item.metadata.labels.app === name) {
-                        cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance:" + name + " found one as " + item.metadata.name);
+                        cli._logger.debug("[" + cli.user.username + "] GetNoderedInstanceLog:" + name + " found one as " + item.metadata.name);
                         const obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
                         msg.result = obj.body;
                         Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name);
@@ -2090,7 +2136,7 @@ export class Message {
             if (billing.memory != newmemory) {
                 billing.memory = newmemory;
                 billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
-                this._EnsureNoderedInstance(cli, msg.userid, true);
+                this._EnsureNoderedInstance(cli, msg.userid, true, null);
             }
             if (customer != null && !NoderedUtil.IsNullEmpty(billing.coupon) && customer.discount != null) {
                 if (billing.coupon != customer.discount.coupon.name) {

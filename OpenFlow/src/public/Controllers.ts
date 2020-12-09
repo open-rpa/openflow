@@ -1360,58 +1360,6 @@ export class SocketCtrl {
             });
         });
     }
-
-    async EnsureNoderedInstance(_id: string, name: string) {
-        try {
-            await NoderedUtil.EnsureNoderedInstance(_id, false, null);
-            this.messages += "EnsureNoderedInstance completed" + "\n";
-        } catch (error) {
-            this.messages += error + "\n";
-            console.error(error);
-        }
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
-    }
-    async DeleteNoderedInstance(_id: string, name: string) {
-        try {
-            await NoderedUtil.DeleteNoderedInstance(null, _id);
-            this.messages += "DeleteNoderedInstance completed" + "\n";
-        } catch (error) {
-            this.messages += error + "\n";
-            console.error(error);
-        }
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
-    }
-    async RestartNoderedInstance(_id: string, name: string) {
-        try {
-            await NoderedUtil.RestartNoderedInstance(null, _id);
-            this.messages += "RestartNoderedInstance completed" + "\n";
-        } catch (error) {
-            this.messages += error + "\n";
-            console.error(error);
-        }
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
-    }
-    async StartNoderedInstance(_id: string, name: string) {
-        try {
-            await NoderedUtil.StartNoderedInstance(null, _id);
-            this.messages += "StartNoderedInstance completed" + "\n";
-        } catch (error) {
-            this.messages += error + "\n";
-            console.error(error);
-        }
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
-    }
-    async StopNoderedInstance(_id: string, name: string) {
-        try {
-            await NoderedUtil.StopNoderedInstance(null, _id);
-            this.messages += "StopNoderedInstance completed" + "\n";
-        } catch (error) {
-            this.messages += error + "\n";
-            console.error(error);
-        }
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
-    }
-
 }
 export class FilesCtrl extends entitiesCtrl<Base> {
     public file: string;
@@ -2698,6 +2646,9 @@ export class NoderedCtrl {
     public user: NoderedUser = null;
     public limitsmemory: string = "";
     public loading: boolean = false;
+    public labels: any[] = [];
+    public keys: string[] = [];
+    public label: any = null;
     constructor(
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
@@ -2744,6 +2695,11 @@ export class NoderedCtrl {
             console.log(this.noderedurl);
             // // this.GetNoderedInstance();
             this.GetNoderedInstance();
+            this.labels = await NoderedUtil.GetKubeNodeLabels(null);
+            this.keys = Object.keys(this.labels);
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+
         });
     }
     async save() {
@@ -2839,7 +2795,7 @@ export class NoderedCtrl {
     async EnsureNoderedInstance() {
         try {
             this.errormessage = "";
-            await NoderedUtil.EnsureNoderedInstance(this.userid, false, null);
+            await NoderedUtil.EnsureNoderedInstance(this.userid, false, this.label, null);
             this.messages = "EnsureNoderedInstance completed" + "\n" + this.messages;
             this.GetNoderedInstance();
         } catch (error) {
