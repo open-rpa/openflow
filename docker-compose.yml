@@ -18,7 +18,7 @@ services:
       - "5672:5672"
       - "15672:15672"
   web:
-    image: "cloudhack/openflow:1.1.108"
+    image: "openiap/openflow:1.1.111"
     environment:
       - update_acl_based_on_groups=true
       - multi_tenant=false
@@ -52,7 +52,7 @@ services:
       - "80:80"
       - "5858:5858"
   nodered:
-    image: "cloudhack/openflownodered:1.1.108"
+    image: "openiap/nodered:1.1.111"
     environment:
       #      - nodered_id=1
       - nodered_sa=nodered1

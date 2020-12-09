@@ -44,14 +44,6 @@ gulp.task("browserify", function () {
     return bfi;
 });
 
-//  package.json -> scripts ->     "prepare": "gulp clean"
-
-// gulp.task("clean", shell.task([
-//     'echo "delete npmrc and cache"',
-//     'if exist "OpenFlowNodeRED\\dist\\nodered\\.npmrc" del OpenFlowNodeRED\\dist\\nodered\\.npmrc',
-//     'if exist "OpenFlowNodeRED\\dist\\.cache" rmdir OpenFlowNodeRED\\dist\\.cache /s /q '
-// ]));
-
 gulp.task("compose", shell.task([
     'echo "delete npmrc and cache"',
     'if exist "OpenFlowNodeRED\\dist\\nodered\\.npmrc" del OpenFlowNodeRED\\dist\\nodered\\.npmrc',
@@ -62,69 +54,52 @@ gulp.task("compose", shell.task([
     'cd OpenFlowNodeRED && tsc -p tsconfig.json',
     'echo "compile OpenFlow"',
     'tsc -p OpenFlow/tsconfig.json',
-    'echo "Build cloudhack/openflownodered"',
-    'cd OpenFlowNodeRED && docker build -t cloudhack/openflownodered:edge .',
-    'docker tag cloudhack/openflownodered:edge cloudhack/openflownodered:' + version,
-    'echo "Push cloudhack/openflownodered"',
-    'docker push cloudhack/openflownodered:edge',       //'docker push cloudhack/openflownodered:' + version,
-    'docker push cloudhack/openflownodered:' + version,       //'docker push cloudhack/openflownodered:' + version,
-    'echo "Build cloudhack/openflow"',
-    'docker build -t cloudhack/openflow:edge .',
-    'docker tag cloudhack/openflow:edge cloudhack/openflow:' + version,
-    'echo "Push cloudhack/openflow"',
-    'docker push cloudhack/openflow:edge',
-    'docker push cloudhack/openflow:' + version
+    'echo "Build openiap/nodered"',
+    'cd OpenFlowNodeRED && docker build -t openiap/nodered:edge .',
+    'docker tag openiap/nodered:edge openiap/nodered:' + version,
+    'echo "Push openiap/nodered"',
+    'docker push openiap/nodered:edge',       //'docker push openiap/nodered:' + version,
+    'docker push openiap/nodered:' + version,       //'docker push openiap/nodered:' + version,
+    'echo "Build openiap/openflow"',
+    'docker build -t openiap/openflow:edge .',
+    'docker tag openiap/openflow:edge openiap/openflow:' + version,
+    'echo "Push openiap/openflow"',
+    'docker push openiap/openflow:edge',
+    'docker push openiap/openflow:' + version
 ]));
 
-// gulp.task("build", shell.task([
-//     'gulp copyfiles1',
-//     'echo "compile OpenFlowNodeRED"',
-//     'cd OpenFlowNodeRED && tsc -p tsconfig.json',
-//     'echo "compile OpenFlow"',
-//     'npx webpack',
-//     'tsc -p OpenFlow/tsconfig.json'
-// ]));
-
-// gulp.task("pushopenflow", shell.task([
-//     'gulp copyfiles1',
-//     'echo "compile OpenFlowNodeRED"',
-//     'cd OpenFlowNodeRED && tsc -p tsconfig.json',
-//     'echo "compile OpenFlow"',
-//     'npx webpack',
-//     'tsc -p OpenFlow/tsconfig.json'
-// ]));
 
 gulp.task("bumpyml1", function () {
     return gulp.src(["./*.yml"]).pipe(replace(/openflow:\d+(\.\d+)+/g, 'openflow:' + version)).
         pipe(gulp.dest("./"));
 });
 gulp.task("bumpyml2", function () {
-    return nodered = gulp.src(["./*.yml"]).pipe(replace(/openflownodered:\d+(\.\d+)+/g, 'openflownodered:' + version)).
+    return nodered = gulp.src(["./*.yml"]).pipe(replace(/nodered:\d+(\.\d+)+/g, 'nodered:' + version)).
         pipe(gulp.dest("./"));
 });
 gulp.task("bumpflow", function () {
-    console.log('cloudhack/openflow:' + version);
+    console.log('openiap/openflow:' + version);
     return gulp.src(["config/**/controllers.yml"])
         .pipe(replace(/openflow:\d+(\.\d+)+/g, 'openflow:' + version))
         .pipe(gulp.dest("config"));
 });
 gulp.task("bumpnodered", function () {
-    console.log('cloudhack/openflownodered:' + version);
+    console.log('openiap/nodered:' + version);
     return gulp.src(["config/**/controllers.yml"])
-        .pipe(replace(/openflownodered:\d+(\.\d+)+/g, 'openflownodered:' + version))
+        .pipe(replace(/nodered:\d+(\.\d+)+/g, 'nodered:' + version))
         .pipe(gulp.dest("config"));
 });
 gulp.task("bumpconfigmap", function () {
-    console.log('cloudhack/openflownodered:' + version);
+    console.log('openiap/nodered:' + version);
     return gulp.src(["config/**/configmap.yml"])
-        .pipe(replace(/openflownodered:\d+(\.\d+)+/g, 'openflownodered:' + version))
+        .pipe(replace(/nodered:\d+(\.\d+)+/g, 'nodered:' + version))
         .pipe(gulp.dest("config"));
 });
 
 gulp.task("bumpaiotfrontend", function () {
     let version = "0.0.1";
     version = fs.readFileSync("../aiot-frontend/VERSION", "utf8");
-    console.log('cloudhack/aiot-frontend:' + version);
+    console.log('openiap/aiot-frontend:' + version);
     return gulp.src(["config/**/controllers.yml"])
         .pipe(replace(/aiot-frontend:\d+(\.\d+)+/g, 'aiot-frontend:' + version))
         .pipe(gulp.dest("config"));

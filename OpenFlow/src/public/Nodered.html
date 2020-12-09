@@ -106,6 +106,17 @@
   </div>
 </section>
 <section>
+  <div class="form-group" ng-show="menuctrl.hasrole('admins') && ctrl.labels">
+    <label class="col-sm-3 control-label"><span translate lib="web">label</span>: </label>
+    <div class="col-sm-9">
+      <select class="form-control" ng-model="ctrl.label">
+        <option value="">No label</option>
+        <option ng-repeat="key in ctrl.keys">{{ '{"' + key + '":"' + ctrl.labels[key] + '"}'}}</option>
+      </select>
+    </div>
+  </div>
+</section>
+<section>
   <div class="form-group">
     <div class="col-sm-offset-3 col-sm-9">
       <button type="button" ng-disabled="ctrl.loading==true" class="btn btn-success" translate lib="web"

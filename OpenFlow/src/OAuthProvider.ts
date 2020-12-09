@@ -27,7 +27,8 @@ export class OAuthProvider {
                 accessTokenLifetime: (60 * 60 * 24) * 7, // 7 days * 24 hours, or 1 day
                 refreshTokenLifetime: (60 * 60 * 24) * 7, // 7 days * 24 hours, or 1 day
                 allowEmptyState: true,
-                allowExtendedTokenAttributes: true
+                allowExtendedTokenAttributes: true,
+                allowBearerTokensInQueryString: true
             });
             Config.db.query<Base>({ _type: "oauthclient" }, null, 10, 0, null, "config", Crypt.rootToken()).then(result => {
                 instance.clients = result;
@@ -285,6 +286,16 @@ export class OAuthProvider {
             },
             expiresAt: expiresAt,
             redirectUri: redirect_uri
+        }
+        // node-bb username hack
+        if (result.user.name == result.user.email && result.user.email.indexOf("@") > -1) {
+            result.user.name = result.user.email.substr(0, result.user.email.indexOf("@") - 1);
+        }
+        if (result.user.name == result.user.email && result.user.email.indexOf("@") == -1) {
+            result.user.email = result.user.email + "@unknown.local"
+        }
+        if (result.user.name == result.user.email) {
+            result.user.name = "user " + result.user.email;
         }
         return result;
     }
