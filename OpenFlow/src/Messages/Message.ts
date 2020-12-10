@@ -1017,7 +1017,9 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
                 if (user.nodered.resources.limits) {
                     resources.limits.memory = user.nodered.resources.limits.memory;
-                    resources.limits.cpu = user.nodered.resources.limits.cpu;
+                    resources.limits.cpu = user.nodered.resources.limits.memory;
+                    resources.requests.memory = user.nodered.resources.limits.memory;
+                    resources.requests.cpu = user.nodered.resources.limits.memory;
                 }
                 if (user.nodered.resources.requests) {
                     resources.requests.memory = user.nodered.resources.requests.memory;
@@ -1028,6 +1030,7 @@ export class Message {
                 if (billings.length > 0) {
                     const billing: Billing = billings[0];
                     resources.limits.memory = billing.memory;
+                    resources.requests.memory = billing.memory;
                     if (!NoderedUtil.IsNullEmpty(billing.openflowuserplan)) {
                         hasbilling = true;
                     }
@@ -1401,7 +1404,9 @@ export class Message {
                         if (node.metadata && node.metadata.labels) {
                             const keys = Object.keys(node.metadata.labels);
                             keys.forEach(key => {
-                                result[key] = node.metadata.labels[key];
+                                let value = node.metadata.labels[key];
+                                if (result[key] == null) result[key] = [];
+                                if (result[key].indexOf(value) == -1) result[key].push(value);
                             });
                         }
                     });

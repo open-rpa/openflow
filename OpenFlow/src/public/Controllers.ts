@@ -2646,9 +2646,12 @@ export class NoderedCtrl {
     public user: NoderedUser = null;
     public limitsmemory: string = "";
     public loading: boolean = false;
-    public labels: any[] = [];
+    public labels: any = {};
     public keys: string[] = [];
+    public labelkeys: string[] = [];
     public label: any = null;
+    public newkey: string = "";
+    public newvalue: string = "";
     constructor(
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
@@ -2689,7 +2692,10 @@ export class NoderedCtrl {
                 this.limitsmemory = this.user.nodered.resources.limits.memory;
             }
             if (this.user.nodered != null && (this.user.nodered as any).nodeselector != null) {
-                this.label = JSON.stringify((this.user.nodered as any).nodeselector);
+                // this.label = JSON.stringify((this.user.nodered as any).nodeselector);
+                this.label = (this.user.nodered as any).nodeselector;
+                this.labelkeys = Object.keys(this.label);
+
             }
             this.name = this.name.split("@").join("").split(".").join("");
             this.name = this.name.toLowerCase();
@@ -2723,8 +2729,15 @@ export class NoderedCtrl {
                 }
             }
             if (this.label) {
+                const keys = Object.keys(this.label);
+                if (keys.length == 0) this.label = null;
+            }
+            if (this.label) {
                 if (this.user.nodered == null) this.user.nodered = new NoderedConfig();
-                (this.user.nodered as any).nodeselector = JSON.parse(this.label);
+                (this.user.nodered as any).nodeselector = this.label;
+            } else {
+                if (this.user.nodered == null) this.user.nodered = new NoderedConfig();
+                delete (this.user.nodered as any).nodeselector;
             }
             this.loading = true;
             this.messages = 'Updating ' + this.user.name + "\n" + this.messages;
@@ -2876,6 +2889,24 @@ export class NoderedCtrl {
             console.error(error);
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    addkey() {
+        if (this.label == null) this.label = {};
+        var _label: any[] = this.labels[this.newkey];
+        this.label[this.newkey] = _label[0];
+        if (this.newvalue != null) this.label[this.newkey] = this.newvalue;
+        this.labelkeys = Object.keys(this.label);
+    }
+    removekey(key) {
+        if (key == null) key = this.newkey;
+        if (this.label == null) this.label = {};
+        var _label: any[] = this.labels[key];
+        delete this.label[key];
+        this.labelkeys = Object.keys(this.label);
+    }
+    newkeyselected() {
+        if (this.label == null || this.label[this.newkey] == null) this.newvalue = this.labels[this.newkey][0];
+        if (this.label != null && this.label[this.newkey] != null) this.newvalue = this.label[this.newkey];
     }
 }
 export class hdrobotsCtrl extends entitiesCtrl<unattendedclient> {
