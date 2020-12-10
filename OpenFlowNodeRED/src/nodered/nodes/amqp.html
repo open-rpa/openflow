@@ -17,6 +17,7 @@
         category: 'config',
         defaults: {
             host: { value: "", required: true },
+            name: { value: "" },
         },
         credentials: {
             username: { type: "text" },
@@ -109,7 +110,8 @@ Remember that your <b>consumer queue</b> maybe get prefixed with your usename, i
         defaults: {
             queue: { value: "", required: true },
             localqueue: { value: "" },
-            config: { value: "", type: "amqp-connection", required: false }
+            config: { value: "", type: "amqp-connection", required: false },
+            name: { value: "" }
         },
         inputs: 1,
         outputs: 2,
@@ -141,6 +143,7 @@ Acknowledgment processing a AMQP message.
         category: 'amqp',
         color: "#a6bbcf",
         defaults: {
+            name: { value: "" }
         },
         inputs: 1,
         outputs: 1,
