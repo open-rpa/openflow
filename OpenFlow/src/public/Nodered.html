@@ -106,7 +106,7 @@
   </div>
 </section>
 <section>
-  <div class="form-group" ng-show="menuctrl.hasrole('admins') && ctrl.labels && ctrl.labels.length > 0">
+  <div class="form-group" ng-show="menuctrl.hasrole('admins') && ctrl.labels && ctrl.keys && ctrl.keys.length > 0">
     <label class="col-sm-3 control-label"><span translate lib="web">label</span>: </label>
     <div class="col-sm-9">
       <select class="form-control" ng-model="ctrl.label">

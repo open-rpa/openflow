@@ -954,7 +954,7 @@ export class Message {
         let msg: EnsureNoderedInstanceMessage;
         try {
             msg = EnsureNoderedInstanceMessage.assign(this.data);
-            await this._EnsureNoderedInstance(cli, msg._id, false, msg.labels);
+            await this._EnsureNoderedInstance(cli, msg._id, false);
         } catch (error) {
             this.data = "";
             cli._logger.error(error);
@@ -969,7 +969,7 @@ export class Message {
         }
         this.Send(cli);
     }
-    private async _EnsureNoderedInstance(cli: WebSocketServerClient, _id: string, skipcreate: boolean, labels: any): Promise<void> {
+    private async _EnsureNoderedInstance(cli: WebSocketServerClient, _id: string, skipcreate: boolean): Promise<void> {
         let user: NoderedUser;
         cli._logger.debug("[" + cli.user.username + "] EnsureNoderedInstance");
         if (_id === null || _id === undefined || _id === "") _id = cli.user._id;
@@ -1113,16 +1113,24 @@ export class Message {
                     }
                 }
             }
-            if (_deployment && labels && Config.nodered_allow_nodeselector) {
-                if (typeof labels === "string") {
-                    var item = JSON.parse(labels);
-                    var spec: any = _deployment.spec.template.spec;
-                    const keys = Object.keys(item);
-                    if (spec.nodeSelector == null) spec.nodeSelector = {};
-                    keys.forEach(key => {
-                        spec.nodeSelector[key] = item[key];
-                    })
-                }
+            // if (_deployment && labels && Config.nodered_allow_nodeselector) {
+            //     if (typeof labels === "string") {
+            //         let item = JSON.parse(labels);
+            //         let spec: any = _deployment.spec.template.spec;
+            //         const keys = Object.keys(item);
+            //         if (spec.nodeSelector == null) spec.nodeSelector = {};
+            //         keys.forEach(key => {
+            //             spec.nodeSelector[key] = item[key];
+            //         })
+            //     }
+            // }
+            if (user.nodered && user.nodered && (user.nodered as any).nodeselector && Config.nodered_allow_nodeselector) {
+                var spec: any = _deployment.spec.template.spec;
+                const keys = Object.keys((user.nodered as any).nodeselector);
+                if (spec.nodeSelector == null) spec.nodeSelector = {};
+                keys.forEach(key => {
+                    spec.nodeSelector[key] = (user.nodered as any).nodeselector[key];
+                })
             }
             try {
                 await KubeUtil.instance().AppsV1Api.createNamespacedDeployment(namespace, (_deployment as any));
@@ -2145,7 +2153,7 @@ export class Message {
             if (billing.memory != newmemory) {
                 billing.memory = newmemory;
                 billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
-                this._EnsureNoderedInstance(cli, msg.userid, true, null);
+                this._EnsureNoderedInstance(cli, msg.userid, true);
             }
             if (customer != null && !NoderedUtil.IsNullEmpty(billing.coupon) && customer.discount != null) {
                 if (billing.coupon != customer.discount.coupon.name) {

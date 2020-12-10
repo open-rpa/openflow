@@ -2688,6 +2688,9 @@ export class NoderedCtrl {
             if (this.user.nodered != null && this.user.nodered.resources != null && this.user.nodered.resources.limits != null) {
                 this.limitsmemory = this.user.nodered.resources.limits.memory;
             }
+            if (this.user.nodered != null && (this.user.nodered as any).nodeselector != null) {
+                this.label = JSON.stringify((this.user.nodered as any).nodeselector);
+            }
             this.name = this.name.split("@").join("").split(".").join("");
             this.name = this.name.toLowerCase();
             // this.noderedurl = "https://" + WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", this.name);
@@ -2718,6 +2721,10 @@ export class NoderedCtrl {
                         this.user.nodered.resources.limits.memory = this.limitsmemory;
                     }
                 }
+            }
+            if (this.label) {
+                if (this.user.nodered == null) this.user.nodered = new NoderedConfig();
+                (this.user.nodered as any).nodeselector = JSON.parse(this.label);
             }
             this.loading = true;
             this.messages = 'Updating ' + this.user.name + "\n" + this.messages;
@@ -2795,7 +2802,7 @@ export class NoderedCtrl {
     async EnsureNoderedInstance() {
         try {
             this.errormessage = "";
-            await NoderedUtil.EnsureNoderedInstance(this.userid, false, this.label, null);
+            await NoderedUtil.EnsureNoderedInstance(this.userid, false, null);
             this.messages = "EnsureNoderedInstance completed" + "\n" + this.messages;
             this.GetNoderedInstance();
         } catch (error) {
