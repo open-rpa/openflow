@@ -4011,7 +4011,7 @@ export class OAuthClientCtrl extends entityCtrl<Base> {
                 (this.model as any).grants = ['password', 'refresh_token', 'authorization_code'];
                 (this.model as any).redirectUris = [];
                 (this.model as any).defaultrole = "Viewer";
-                (this.model as any).rolemappings = { "admins": "admin", "grafana editors": "Editor", "grafana admins": "Admin" };
+                (this.model as any).rolemappings = { "admins": "Admin", "grafana editors": "Editor", "grafana admins": "Admin" };
             }
         });
     }
