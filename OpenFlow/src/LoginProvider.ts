@@ -226,6 +226,10 @@ export class LoginProvider {
                 _url = "wss://" + url.parse(baseurl).host;
             }
             _url += "/";
+            if (NoderedUtil.IsNullEmpty(Config.api_ws_url)) {
+                _url = Config.api_ws_url;
+                if (!_url.endsWith("/")) _url += "/";
+            }
             const res2 = {
                 wshost: _url,
                 wsurl: _url,
