@@ -98,7 +98,7 @@ export class Config {
 
         Config.nodered_image = Config.getEnv("nodered_image", "openiap/nodered");
         Config.saml_federation_metadata = Config.getEnv("saml_federation_metadata", "");
-        // Config.api_ws_url = Config.getEnv("api_ws_url", "ws://localhost:3000");
+        Config.api_ws_url = Config.getEnv("api_ws_url", "");
         Config.namespace = Config.getEnv("namespace", ""); // also sent to website 
         Config.nodered_domain_schema = Config.getEnv("nodered_domain_schema", ""); // also sent to website
         Config.nodered_initial_liveness_delay = parseInt(Config.getEnv("nodered_initial_liveness_delay", "60"));
@@ -187,7 +187,7 @@ export class Config {
 
     public static nodered_image: string = Config.getEnv("nodered_image", "openiap/nodered");
     public static saml_federation_metadata: string = Config.getEnv("saml_federation_metadata", "");
-    // public static api_ws_url: string = Config.getEnv("api_ws_url", "ws://localhost:3000");
+    public static api_ws_url: string = Config.getEnv("api_ws_url", "");
     public static namespace: string = Config.getEnv("namespace", ""); // also sent to website 
     public static nodered_domain_schema: string = Config.getEnv("nodered_domain_schema", ""); // also sent to website
     public static nodered_initial_liveness_delay: number = parseInt(Config.getEnv("nodered_initial_liveness_delay", "60"));

@@ -43,8 +43,10 @@ function getToken(): Promise<string> {
     return new Promise<string>(async (resolve, reject) => {
         // logger.info("wsurl " + Config.api_ws_url);
         // let socket: WebSocketClient = new WebSocketClient(logger, Config.api_ws_url);
-        logger.info("wsurl " + Config.baseurl());
-        let socket: WebSocketClient = new WebSocketClient(logger, Config.baseurl());
+        let wsurl = Config.baseurl();
+        if (!NoderedUtil.IsNullEmpty(Config.api_ws_url)) wsurl = Config.api_ws_url;
+        logger.info("wsurl " + wsurl);
+        let socket: WebSocketClient = new WebSocketClient(logger, wsurl);
         socket.agent = "openflow-cli";
         socket.version = Config.version;
         socket.events.on("onopen", async () => {

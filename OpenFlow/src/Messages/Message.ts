@@ -1070,8 +1070,11 @@ export class Message {
             if (skipcreate) return;
             cli._logger.debug("[" + cli.user.username + "] Deployment " + name + " not found in " + namespace + " so creating it");
 
+            let api_ws_url = Config.baseurl();
+            if (!NoderedUtil.IsNullEmpty(Config.api_ws_url)) api_ws_url = Config.api_ws_url;
+
             // const api_ws_url = Config.api_ws_url;
-            const api_ws_url = Config.baseurl();
+            // const api_ws_url = Config.baseurl();
             // const api_ws_url = "ws://api/";
             // const api_ws_url = "https://demo.openiap.io/"
             // const api_ws_url = "https://demo.openiap.io/"
