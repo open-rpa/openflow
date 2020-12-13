@@ -38,12 +38,12 @@
       <label class="col-sm-1 control-label"><span translate lib="web">cpu</span>: </label>
       <div class="col-sm-1">
         <span
-          ng-show="ctrl.instance!=null">{{ instance.spec.containers[0].resources.limits.cpu + "/" + instance.metrics.cpu }}</span>
+          ng-show="ctrl.instance!=null">{{ instance.metrics.cpu + "/" + instance.spec.containers[0].resources.limits.cpu }}</span>
       </div>
       <label class="col-sm-1 control-label"><span translate lib="web">mem</span>: </label>
       <div class="col-sm-1">
         <span
-          ng-show="ctrl.instance!=null">{{ instance.spec.containers[0].resources.limits.memory + "/" + instance.metrics.memory }}</span>
+          ng-show="ctrl.instance!=null">{{ instance.metrics.memory + "/" + instance.spec.containers[0].resources.limits.memory }}</span>
       </div>
       <label class="col-sm-1 control-label"><span translate lib="web">status</span>: </label>
       <div class="col-sm-1">

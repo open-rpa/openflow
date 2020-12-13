@@ -2785,9 +2785,9 @@ export class NoderedCtrl {
                         console.log(memory);
                         instance.metrics.memory = memory;
                     }
-                    if (instance.metrics.cpu.endsWith("n")) {
+                    if (instance.metrics.cpu.endsWith("n")) { // nanocores or nanoCPU
                         let cpu: any = parseInt(instance.metrics.cpu.replace("n", ""));
-                        cpu = Math.floor(cpu / (1024 * 1024)) + "m";
+                        cpu = Math.floor(cpu / (1024 * 1024)) + "m";  // 1000m = 1 vcpu
                         console.log(cpu);
                         instance.metrics.cpu = cpu;
                     }
