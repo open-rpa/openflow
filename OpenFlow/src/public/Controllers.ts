@@ -2705,7 +2705,7 @@ export class NoderedCtrl {
             // // this.GetNoderedInstance();
             this.GetNoderedInstance();
             this.labels = await NoderedUtil.GetKubeNodeLabels(null);
-            this.keys = Object.keys(this.labels);
+            if (this.labels != null) this.keys = Object.keys(this.labels);
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
