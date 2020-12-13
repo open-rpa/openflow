@@ -1004,8 +1004,12 @@ export class Message {
         let hasbilling: boolean = false;
         resources.limits = {};
         resources.requests = {};
-        resources.requests.memory = Config.nodered_requests_memory;
-        resources.limits.memory = Config.nodered_limits_memory;
+        if (!NoderedUtil.IsNullEmpty(Config.nodered_requests_memory)) resources.requests.memory = Config.nodered_requests_memory;
+        if (!NoderedUtil.IsNullEmpty(Config.nodered_requests_cpu)) resources.requests.cpu = Config.nodered_requests_cpu;
+        if (!NoderedUtil.IsNullEmpty(Config.nodered_limits_memory)) resources.limits.memory = Config.nodered_limits_memory;
+        if (!NoderedUtil.IsNullEmpty(Config.nodered_limits_cpu)) resources.limits.memory = Config.nodered_limits_cpu;
+
+
 
         if (user.nodered) {
             try {
@@ -1018,9 +1022,9 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
                 if (user.nodered.resources.limits) {
                     resources.limits.memory = user.nodered.resources.limits.memory;
-                    resources.limits.cpu = user.nodered.resources.limits.memory;
+                    resources.limits.cpu = user.nodered.resources.limits.cpu;
                     resources.requests.memory = user.nodered.resources.limits.memory;
-                    resources.requests.cpu = user.nodered.resources.limits.memory;
+                    resources.requests.cpu = user.nodered.resources.limits.cpu;
                 }
                 if (user.nodered.resources.requests) {
                     resources.requests.memory = user.nodered.resources.requests.memory;
@@ -1030,8 +1034,11 @@ export class Message {
                 const billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
                 if (billings.length > 0) {
                     const billing: Billing = billings[0];
-                    resources.limits.memory = billing.memory;
-                    resources.requests.memory = billing.memory;
+                    if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.limits.memory = billing.memory;
+                    if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.memory = (billing as any).cpu;
+                    if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.requests.memory = billing.memory;
+                    if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.memory = (billing as any).cpu;
+
                     if (!NoderedUtil.IsNullEmpty(billing.openflowuserplan)) {
                         hasbilling = true;
                     }
@@ -1044,6 +1051,9 @@ export class Message {
                 if (billings.length > 0) {
                     const billing: Billing = billings[0];
                     if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.limits.memory = billing.memory;
+                    if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.memory = (billing as any).cpu;
+                    if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.requests.memory = billing.memory;
+                    if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.memory = (billing as any).cpu;
                     if (!NoderedUtil.IsNullEmpty(billing.openflowuserplan)) {
                         hasbilling = true;
                     }

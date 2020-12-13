@@ -104,6 +104,10 @@ export class Config {
         Config.nodered_domain_schema = Config.getEnv("nodered_domain_schema", ""); // also sent to website
         Config.nodered_initial_liveness_delay = parseInt(Config.getEnv("nodered_initial_liveness_delay", "60"));
         Config.nodered_allow_nodeselector = Config.parseBoolean(Config.getEnv("nodered_allow_nodeselector", "false"));
+        Config.nodered_requests_memory = Config.getEnv("nodered_requests_memory", "");
+        Config.nodered_requests_cpu = Config.getEnv("nodered_requests_cpu", ""); // 1000m = 1vCPU
+        Config.nodered_limits_memory = Config.getEnv("nodered_limits_memory", "");
+        Config.nodered_limits_cpu = Config.getEnv("nodered_limits_cpu", ""); // 1000m = 1vCPU
     }
     public static db: DatabaseConnection = null;
     public static license_key: string = Config.getEnv("license_key", "");
@@ -194,8 +198,10 @@ export class Config {
     public static nodered_domain_schema: string = Config.getEnv("nodered_domain_schema", ""); // also sent to website
     public static nodered_initial_liveness_delay: number = parseInt(Config.getEnv("nodered_initial_liveness_delay", "60"));
     public static nodered_allow_nodeselector: boolean = Config.parseBoolean(Config.getEnv("nodered_allow_nodeselector", "false"));
-    public static nodered_requests_memory: string = Config.getEnv("nodered_requests_memory", "128Mi");
-    public static nodered_limits_memory: string = Config.getEnv("nodered_limits_memory", "256Mi");
+    public static nodered_requests_memory: string = Config.getEnv("nodered_requests_memory", "");
+    public static nodered_requests_cpu: string = Config.getEnv("nodered_requests_cpu", ""); // 1000m = 1vCPU
+    public static nodered_limits_memory: string = Config.getEnv("nodered_limits_memory", "");
+    public static nodered_limits_cpu: string = Config.getEnv("nodered_limits_cpu", ""); // 1000m = 1vCPU
 
     public static baseurl(): string {
         let result: string = "";
