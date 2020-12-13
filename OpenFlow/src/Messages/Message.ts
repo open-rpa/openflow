@@ -1477,6 +1477,7 @@ export class Message {
                 let found: any = null;
                 for (let i = 0; i < list.body.items.length; i++) {
                     const item = list.body.items[i];
+
                     if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
                         const itemname = item.metadata.name;
                         const create = item.metadata.creationTimestamp;
@@ -1505,12 +1506,24 @@ export class Message {
                     }
                     if (!NoderedUtil.IsNullEmpty(msg.name) && item.metadata.name == msg.name && cli.user.HasRoleName("admins")) {
                         found = item;
+                        var metrics: any = null;
+                        try {
+                            metrics = await KubeUtil.instance().GetPodMetrics(namespace, item.metadata.name);
+                            (item as any).metrics = metrics;
+                        } catch (error) {
+                        }
                         msg.results.push(item);
                     } else if (item.metadata.labels.app === name) {
                         found = item;
                         if (item.status.phase != "Failed") {
                             msg.result = item;
                             cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance:" + name + " found one");
+                        }
+                        var metrics: any = null;
+                        try {
+                            metrics = await KubeUtil.instance().GetPodMetrics(namespace, item.metadata.name);
+                            (item as any).metrics = metrics;
+                        } catch (error) {
                         }
                         msg.results.push(item);
                     }

@@ -2777,6 +2777,21 @@ export class NoderedCtrl {
             this.instances.forEach(instance => {
                 if (this.instance.metadata.deletionTimestamp != null) reload = true;
                 if (instance.status.phase == "deleting" || instance.status.phase == "Pending") reload = true;
+                if (instance.metrics && instance.metrics.memory) {
+                    console.log(instance.metrics.memory);
+                    if (instance.metrics.memory.endsWith("Ki")) {
+                        let memory: any = parseInt(instance.metrics.memory.replace("Ki", ""));
+                        memory = Math.floor(memory / 1024) + "Mi";
+                        console.log(memory);
+                        instance.metrics.memory = memory;
+                    }
+                    if (instance.metrics.cpu.endsWith("n")) {
+                        let cpu: any = parseInt(instance.metrics.cpu.replace("n", ""));
+                        cpu = Math.floor(cpu / (1024 * 1024)) + "m";
+                        console.log(cpu);
+                        instance.metrics.cpu = cpu;
+                    }
+                }
             });
 
             this.messages = "GetNoderedInstance completed, status " + this.instancestatus + "\n" + this.messages;
