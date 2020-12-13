@@ -1007,7 +1007,7 @@ export class Message {
         if (!NoderedUtil.IsNullEmpty(Config.nodered_requests_memory)) resources.requests.memory = Config.nodered_requests_memory;
         if (!NoderedUtil.IsNullEmpty(Config.nodered_requests_cpu)) resources.requests.cpu = Config.nodered_requests_cpu;
         if (!NoderedUtil.IsNullEmpty(Config.nodered_limits_memory)) resources.limits.memory = Config.nodered_limits_memory;
-        if (!NoderedUtil.IsNullEmpty(Config.nodered_limits_cpu)) resources.limits.memory = Config.nodered_limits_cpu;
+        if (!NoderedUtil.IsNullEmpty(Config.nodered_limits_cpu)) resources.limits.cpu = Config.nodered_limits_cpu;
 
 
 
