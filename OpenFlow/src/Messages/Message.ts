@@ -3,6 +3,7 @@ import { lookup } from "mimetype";
 import { SocketMessage } from "../SocketMessage";
 import { Auth } from "../Auth";
 import { Crypt } from "../Crypt";
+import * as url from "url";
 import { Config } from "../Config";
 import { Audit } from "../Audit";
 import { LoginProvider } from "../LoginProvider";
@@ -1003,8 +1004,8 @@ export class Message {
         let hasbilling: boolean = false;
         resources.limits = {};
         resources.requests = {};
-        resources.requests.memory = "70Mi";
-        resources.limits.memory = "256Mi";
+        resources.requests.memory = Config.nodered_requests_memory;
+        resources.limits.memory = Config.nodered_limits_memory;
 
         if (user.nodered) {
             try {
@@ -1072,6 +1073,25 @@ export class Message {
 
             let api_ws_url = Config.baseurl();
             if (!NoderedUtil.IsNullEmpty(Config.api_ws_url)) api_ws_url = Config.api_ws_url;
+            if (!NoderedUtil.IsNullEmpty(Config.nodered_ws_url)) api_ws_url = Config.nodered_ws_url;
+
+            let saml_baseurl = Config.protocol + "://" + hostname + "/";
+
+            let _samlparsed = url.parse(Config.saml_federation_metadata);
+            if (_samlparsed.protocol == "http:" || _samlparsed.protocol == "ws:") {
+                saml_baseurl = "http://" + hostname
+                if (_samlparsed.port && _samlparsed.port != "80") {
+                    saml_baseurl += ":" + _samlparsed.port;
+                }
+            } else {
+                saml_baseurl = "https://" + hostname
+                if (_samlparsed.port && _samlparsed.port != "443") {
+                    saml_baseurl += ":" + _samlparsed.port;
+                }
+            }
+            saml_baseurl += "/";
+
+            // _url = "ws://" + url.parse(baseurl).host;
 
             // const api_ws_url = Config.api_ws_url;
             // const api_ws_url = Config.baseurl();
@@ -1096,7 +1116,7 @@ export class Message {
                                     env: [
                                         { name: "saml_federation_metadata", value: Config.saml_federation_metadata },
                                         { name: "saml_issuer", value: Config.saml_issuer },
-                                        { name: "saml_baseurl", value: Config.protocol + "://" + hostname + "/" },
+                                        { name: "saml_baseurl", value: saml_baseurl },
                                         { name: "nodered_id", value: name },
                                         { name: "nodered_sa", value: nodereduser.username },
                                         { name: "jwt", value: nodered_jwt },
