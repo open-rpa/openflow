@@ -359,7 +359,7 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
         ];
         const data2 = await NoderedUtil.Aggregate("users", agg2, null);
         let onlinerobots = 0;
-        if (data.length > 0) onlinerobots = data2[0]._rpaheartbeat;
+        if (data2.length > 0) onlinerobots = data2[0]._rpaheartbeat;
 
         const chart: chartset = new chartset();
         chart.heading = onlinerobots + " Online and " + (totalrobots - onlinerobots) + " offline robots, seen the last " + this.timeframedesc;
