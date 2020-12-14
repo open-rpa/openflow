@@ -1140,7 +1140,7 @@ export class Message {
                                         { name: "noderedusers", value: (name + "noderedusers") },
                                         { name: "noderedadmins", value: (name + "noderedadmins") },
                                         { name: "api_allow_anonymous", value: user.nodered.api_allow_anonymous.toString() },
-                                        { name: "prometheus_measure_nodeid", value: Config.prometheus_measure_nodeid },
+                                        { name: "prometheus_measure_nodeid", value: Config.prometheus_measure_nodeid.toString() },
                                         { name: "NODE_ENV", value: Config.NODE_ENV },
                                     ],
                                     livenessProbe: livenessProbe,
