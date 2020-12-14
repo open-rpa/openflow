@@ -1081,9 +1081,12 @@ export class Message {
             if (skipcreate) return;
             cli._logger.debug("[" + cli.user.username + "] Deployment " + name + " not found in " + namespace + " so creating it");
 
-            let api_ws_url = Config.baseurl();
+            let api_ws_url = Config.basewsurl();
             if (!NoderedUtil.IsNullEmpty(Config.api_ws_url)) api_ws_url = Config.api_ws_url;
             if (!NoderedUtil.IsNullEmpty(Config.nodered_ws_url)) api_ws_url = Config.nodered_ws_url;
+            if (!api_ws_url.endsWith("/")) api_ws_url += "/";
+
+
 
             let saml_baseurl = Config.protocol + "://" + hostname + "/";
 

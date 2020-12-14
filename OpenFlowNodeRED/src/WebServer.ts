@@ -38,6 +38,17 @@ export class WebServer {
         labelNames: ["nodetype"],
         buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10]
     })
+    public static openflow_nodered_nodeid_count = new client.Counter({
+        name: 'openflow_nodered_nodeid_count',
+        help: 'Total number of node calls',
+        labelNames: ["nodetype", "nodeid"]
+    })
+    public static openflow_nodered_nodeid_duration = new client.Histogram({
+        name: 'openflow_nodered_nodeid_duration',
+        help: 'Duration of each node call',
+        labelNames: ["nodetype", "nodeid"],
+        buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10]
+    })
 
     public static log_messages: any = {};
     private static settings: nodered_settings = null;
@@ -67,18 +78,9 @@ export class WebServer {
                 client.collectDefaultMetrics({ register })
 
                 this._logger.debug("WebServer.configure::registerMetrics");
-                if (Config.prometheus_measure_nodeid) {
-                    WebServer.openflow_nodered_node_count = new client.Counter({
-                        name: 'openflow_nodered_node_count',
-                        help: 'Total number of node calls',
-                        labelNames: ["nodetype", "nodeid"]
-                    })
-                    WebServer.openflow_nodered_node_duration = new client.Histogram({
-                        name: 'openflow_nodered_node_duration',
-                        help: 'Duration of each node call',
-                        labelNames: ["nodetype", "nodeid"],
-                        buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10]
-                    })
+                if (!NoderedUtil.IsNullUndefinded(register) && Config.prometheus_measure_nodeid) {
+                    register.registerMetric(WebServer.openflow_nodered_nodeid_count);
+                    register.registerMetric(WebServer.openflow_nodered_nodeid_duration);
                 }
                 if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebServer.openflow_nodered_node_count);
                 if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebServer.openflow_nodered_node_duration);
@@ -176,19 +178,21 @@ export class WebServer {
                                 msg.event = msg.event.substring(5);
                                 if (msg.event.endsWith(".receive")) {
                                     msg.event = msg.event.substring(0, msg.event.length - 8);
-                                    msg.end = WebServer.openflow_nodered_node_duration.startTimer()
+                                    msg.end = WebServer.openflow_nodered_node_duration.startTimer();
+                                    if (Config.prometheus_measure_nodeid) {
+                                        msg.end2 = WebServer.openflow_nodered_nodeid_duration.startTimer();
+                                    }
                                     WebServer.openflow_nodered_node_count.labels(msg.event).inc();
-                                    if (Config.prometheus_measure_nodeid) WebServer.openflow_nodered_node_count.labels(msg.event, msg.nodeid).inc();
+                                    if (Config.prometheus_measure_nodeid) WebServer.openflow_nodered_nodeid_count.labels(msg.event, msg.nodeid).inc();
                                     WebServer.log_messages[msg.msgid] = msg;
                                 }
                                 if (msg.event.endsWith(".send")) {
                                     msg.event = msg.event.substring(0, msg.event.length - 5);
                                     const startmessage = WebServer.log_messages[msg.msgid];
                                     if (!NoderedUtil.IsNullUndefinded(startmessage)) {
-                                        if (Config.prometheus_measure_nodeid) {
-                                            startmessage.end({ nodetype: startmessage.event, nodeid: msg.nodeid });
-                                        } else {
-                                            startmessage.end({ nodetype: startmessage.event });
+                                        startmessage.end({ nodetype: startmessage.event });
+                                        if (Config.prometheus_measure_nodeid && startmessage.end2) {
+                                            startmessage.end2({ nodetype: startmessage.event, nodeid: msg.nodeid });
                                         }
                                         delete WebServer.log_messages[msg.msgid];
                                     }

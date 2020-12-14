@@ -217,6 +217,20 @@ export class Config {
         } else { result = result + "/"; }
         return result;
     }
+    public static basewsurl(): string {
+        let result: string = "";
+        if (Config.tls_crt != '' && Config.tls_key != '') {
+            result = "wss://" + Config.domain;
+        } else if (Config.protocol == "http") {
+            result = "ws://" + Config.domain;
+        } else {
+            result = "wss://" + Config.domain;
+        }
+        if (Config.port != 80 && Config.port != 443) {
+            result = result + ":" + Config.port + "/";
+        } else { result = result + "/"; }
+        return result;
+    }
     public static getEnv(name: string, defaultvalue: string): string {
         let value: any = process.env[name];
         if (!value || value === "") { value = defaultvalue; }

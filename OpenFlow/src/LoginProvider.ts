@@ -219,17 +219,9 @@ export class LoginProvider {
             }
         });
         app.get("/config", (req: any, res: any, next: any): void => {
-            let _url: string = "";
-            if (url.parse(baseurl).protocol == "http:") {
-                _url = "ws://" + url.parse(baseurl).host;
-            } else {
-                _url = "wss://" + url.parse(baseurl).host;
-            }
-            _url += "/";
-            if (!NoderedUtil.IsNullEmpty(Config.api_ws_url)) {
-                _url = Config.api_ws_url;
-                if (!_url.endsWith("/")) _url += "/";
-            }
+            let _url = Config.basewsurl();
+            if (!NoderedUtil.IsNullEmpty(Config.api_ws_url)) _url = Config.api_ws_url;
+            if (!_url.endsWith("/")) _url += "/";
             const res2 = {
                 wshost: _url,
                 wsurl: _url,
