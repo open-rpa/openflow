@@ -1082,7 +1082,8 @@ export class DatabaseConnection {
         const user: TokenUser = Crypt.verityToken(q.jwt);
         let exists: Base[] = [];
         if (query != null) {
-            exists = await this.query(query, { name: 1 }, 2, 0, null, q.collectionname, q.jwt);
+            // exists = await this.query(query, { name: 1 }, 2, 0, null, q.collectionname, q.jwt);
+            exists = await this.query(query, null, 2, 0, null, q.collectionname, q.jwt);
         }
         if (exists.length == 1) {
             q.item._id = exists[0]._id;
@@ -1097,6 +1098,13 @@ export class DatabaseConnection {
             const uq = new UpdateOneMessage();
             // uq.query = query; 
             uq.item = q.item; uq.collectionname = q.collectionname; uq.w = q.w; uq.j; uq.jwt = q.jwt;
+            const keys = Object.keys(exists[0]);
+            for (let i = 0; i < keys.length; i++) {
+                let key = keys[i];
+                if (key.startsWith("_")) {
+                    if (!NoderedUtil.IsNullUndefinded(uq.item[key])) uq.item[key] = exists[0][key];
+                }
+            }
             const uqres = await this.UpdateOne(uq);
             q.opresult = uqres.opresult;
             q.result = uqres.result;
