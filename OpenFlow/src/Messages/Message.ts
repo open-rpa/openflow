@@ -764,7 +764,11 @@ export class Message {
                     if (Config.auto_create_users == true) {
                         const jwt: string = Crypt.rootToken();
                         user = await DBHelper.ensureUser(jwt, tuser.name, tuser.username, null, msg.password);
-                        tuser = TokenUser.From(user);
+                        if (user != null) tuser = TokenUser.From(user);
+                        if (user == null) {
+                            tuser = new TokenUser();
+                            tuser.username = msg.username;
+                        }
                     } else {
                         if (msg !== null && msg !== undefined) msg.error = "Unknown username or password";
                     }
@@ -779,7 +783,12 @@ export class Message {
                 msg.rawAssertion = "";
             } else {
                 user = await Auth.ValidateByPassword(msg.username, msg.password);
-                tuser = TokenUser.From(user);
+                tuser = null;
+                if (user != null) tuser = TokenUser.From(user);
+                if (user == null) {
+                    tuser = new TokenUser();
+                    tuser.username = msg.username;
+                }
             }
             cli.clientagent = msg.clientagent;
             cli.clientversion = msg.clientversion;
