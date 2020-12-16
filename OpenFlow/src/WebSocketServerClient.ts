@@ -261,8 +261,13 @@ export class WebSocketServerClient {
         ids.forEach(id => {
             const msgs: SocketMessage[] = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id === id; });
             if (this._receiveQueue.length > Config.websocket_max_package_count) {
-                this._logger.error("_receiveQueue containers more than " + Config.websocket_max_package_count + " messages for id '" + id + "' so discarding all !!!!!!!");
-                this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
+                if (Config.websocket_disconnect_out_of_sync) {
+                    this._logger.error("[" + username + "/" + this.clientagent + "/" + this.id + "] _receiveQueue containers more than " + Config.websocket_max_package_count + " messages for id '" + id + "', disconnecting");
+                    this.Close();
+                } else {
+                    this._logger.error("[" + username + "/" + this.clientagent + "/" + this.id + "] _receiveQueue containers more than " + Config.websocket_max_package_count + " messages for id '" + id + "' so discarding all !!!!!!!");
+                    this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
+                }
             }
             const first: SocketMessage = msgs[0];
             if (first.count === msgs.length) {

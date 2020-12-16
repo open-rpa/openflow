@@ -160,6 +160,7 @@ export class Config {
     public static api_bypass_perm_check: boolean = Config.parseBoolean(Config.getEnv("api_bypass_perm_check", "false"));
     public static websocket_package_size: number = parseInt(Config.getEnv("websocket_package_size", "4096"), 10);
     public static websocket_max_package_count: number = parseInt(Config.getEnv("websocket_max_package_count", "1024"), 10);
+    public static websocket_disconnect_out_of_sync: boolean = Config.parseBoolean(Config.getEnv("websocket_disconnect_out_of_sync", "false"));
     public static protocol: string = Config.getEnv("protocol", "http"); // used by personal nodered and baseurl()
     public static port: number = parseInt(Config.getEnv("port", "3000"));
     public static domain: string = Config.getEnv("domain", "localhost"); // sent to website and used in baseurl()
