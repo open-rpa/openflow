@@ -1102,7 +1102,7 @@ export class DatabaseConnection {
             for (let i = 0; i < keys.length; i++) {
                 let key = keys[i];
                 if (key.startsWith("_")) {
-                    if (!NoderedUtil.IsNullUndefinded(uq.item[key])) uq.item[key] = exists[0][key];
+                    if (NoderedUtil.IsNullUndefinded(uq.item[key])) uq.item[key] = exists[0][key];
                 }
             }
             const uqres = await this.UpdateOne(uq);
