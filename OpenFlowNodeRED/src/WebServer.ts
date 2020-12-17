@@ -19,7 +19,7 @@ import { noderedcontribmiddlewareauth } from "./node-red-contrib-middleware-auth
 
 import * as passport from "passport";
 import { noderedcontribauthsaml } from "./node-red-contrib-auth-saml";
-import { WebSocketClient, NoderedUtil } from "openflow-api";
+import { WebSocketClient, NoderedUtil, Message } from "openflow-api";
 import * as client from "prom-client";
 import * as promBundle from "express-prom-bundle";
 
@@ -49,7 +49,34 @@ export class WebServer {
         labelNames: ["nodetype", "nodeid"],
         buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10]
     })
-
+    public static message_queue_count = new client.Gauge({
+        name: 'openflow_message_queue_count',
+        help: 'Total number messages waiting on reply from client',
+        labelNames: ["command"]
+    })
+    public static update_message_queue_count(cli: WebSocketClient) {
+        if (!Config.prometheus_measure_queued_messages) return;
+        const result: any = {};
+        const keys = Object.keys(cli.messageQueue);
+        keys.forEach(key => {
+            try {
+                const qmsg = cli.messageQueue[key];
+                var o = qmsg.message;
+                if (typeof o === "string") o = JSON.parse(o);
+                const msg: Message = o;
+                if (result[msg.command] == null) result[msg.command] = 0;
+                result[msg.command]++;
+            } catch (error) {
+                WebServer._logger.error(error);
+            }
+        });
+        const keys2 = Object.keys(result);
+        WebServer.message_queue_count.reset();
+        WebServer.message_queue_count.set(keys.length);
+        keys2.forEach(key => {
+            WebServer.message_queue_count.labels(key).set(result[key]);
+        });
+    }
     public static log_messages: any = {};
     private static settings: nodered_settings = null;
     static async configure(logger: winston.Logger, socket: WebSocketClient): Promise<http.Server> {
@@ -84,6 +111,7 @@ export class WebServer {
                 }
                 if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebServer.openflow_nodered_node_count);
                 if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebServer.openflow_nodered_node_duration);
+                if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebServer.message_queue_count);
 
 
                 this._logger.debug("WebServer.configure::promBundle");

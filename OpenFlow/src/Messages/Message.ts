@@ -87,7 +87,8 @@ export class Message {
                         // TODO: should we set message to data ?
                     }
                     if (!NoderedUtil.IsNullUndefinded(qmsg.cb)) { qmsg.cb(this); }
-                    delete cli.messageQueue[this.id];
+                    delete cli.messageQueue[this.replyto];
+                    WebSocketServer.update_message_queue_count(cli);
                 }
                 end({ command: command });
                 return;
@@ -1153,6 +1154,7 @@ export class Message {
                                         { name: "noderedadmins", value: (name + "noderedadmins") },
                                         { name: "api_allow_anonymous", value: user.nodered.api_allow_anonymous.toString() },
                                         { name: "prometheus_measure_nodeid", value: Config.prometheus_measure_nodeid.toString() },
+                                        { name: "prometheus_measure_queued_messages", value: Config.prometheus_measure_queued_messages.toString() },
                                         { name: "NODE_ENV", value: Config.NODE_ENV },
                                     ],
                                     livenessProbe: livenessProbe,

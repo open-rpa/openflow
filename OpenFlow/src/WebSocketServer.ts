@@ -48,7 +48,34 @@ export class WebSocketServer {
         labelNames: ['command'],
         buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10]
     })
-
+    public static message_queue_count = new client.Gauge({
+        name: 'openflow_message_queue_count',
+        help: 'Total number messages waiting on reply from client',
+        labelNames: ["clientid"]
+    })
+    public static update_message_queue_count(cli: WebSocketServerClient) {
+        if (!Config.prometheus_measure_queued_messages) return;
+        const result: any = {};
+        const keys = Object.keys(cli.messageQueue);
+        keys.forEach(key => {
+            try {
+                const qmsg = cli.messageQueue[key];
+                var o = qmsg.message;
+                if (typeof o === "string") o = JSON.parse(o);
+                const msg: Message = o;
+                if (result[msg.command] == null) result[msg.command] = 0;
+                result[msg.command]++;
+            } catch (error) {
+                WebSocketServer._logger.error(error);
+            }
+        });
+        const keys2 = Object.keys(result);
+        WebSocketServer.message_queue_count.reset();
+        WebSocketServer.message_queue_count.labels(cli.id).set(keys.length);
+        keys2.forEach(key => {
+            WebSocketServer.message_queue_count.labels(cli.id, key).set(result[key]);
+        });
+    }
     static configure(logger: winston.Logger, server: http.Server, register: client.Registry): void {
         this._clients = [];
         this._logger = logger;
@@ -66,6 +93,8 @@ export class WebSocketServer {
         if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebSocketServer.websocket_queue_message_count);
         if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebSocketServer.websocket_rate_limit);
         if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebSocketServer.websocket_messages);
+        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebSocketServer.message_queue_count);
+
 
         setInterval(this.pingClients, 10000);
     }

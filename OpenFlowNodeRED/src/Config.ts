@@ -64,6 +64,8 @@ export class Config {
         Config.amqp_message_ttl = parseInt(Config.getEnv("amqp_message_ttl", "20000"));
         Config.prometheus_max_node_time_seconds = parseInt(Config.getEnv("prometheus_max_node_time_seconds", "300"));
         Config.prometheus_measure_nodeid = Config.parseBoolean(Config.getEnv("prometheus_measure_nodeid", "false"));
+        Config.prometheus_measure_queued_messages = Config.parseBoolean(Config.getEnv("prometheus_measure_queued_messages", "false"));
+        Config.max_message_queue_time_seconds = parseInt(Config.getEnv("max_message_queue_time_seconds", "3600"));
     }
     public static version: string = Config.getversion();
     public static logpath: string = Config.getEnv("logpath", __dirname);
@@ -124,6 +126,8 @@ export class Config {
     public static prometheus_max_node_time_seconds: number = parseInt(Config.getEnv("prometheus_max_node_time_seconds", "300"));
 
     public static prometheus_measure_nodeid: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_nodeid", "false"));
+    public static prometheus_measure_queued_messages: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_queued_messages", "false"));
+    public static max_message_queue_time_seconds: number = parseInt(Config.getEnv("max_message_queue_time_seconds", "3600"));
 
 
     public static baseurl(): string {

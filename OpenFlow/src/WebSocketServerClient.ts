@@ -320,6 +320,7 @@ export class WebSocketServerClient {
             const singlemessage: SocketMessage = SocketMessage.frommessage(message, "", 1, 0);
             if (NoderedUtil.IsNullEmpty(message.replyto)) {
                 this.messageQueue[singlemessage.id] = new QueuedMessage(singlemessage, cb);
+                WebSocketServer.update_message_queue_count(this);
             }
             this._sendQueue.push(singlemessage);
             return;
@@ -331,6 +332,7 @@ export class WebSocketServerClient {
         }
         if (NoderedUtil.IsNullEmpty(message.replyto)) {
             this.messageQueue[message.id] = new QueuedMessage(message, cb);
+            WebSocketServer.update_message_queue_count(this);
         }
         // setTimeout(() => {
         //     this.ProcessQueue();
