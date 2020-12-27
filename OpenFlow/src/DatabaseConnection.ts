@@ -481,6 +481,8 @@ export class DatabaseConnection {
                 return value; // leave any other value as-is
         });
 
+        const aggregatesjson = JSON.stringify(aggregates, null, 2)
+
         const base = this.getbasequery(jwt, "_acl", [Rights.read]);
         if (Array.isArray(aggregates)) {
             aggregates.unshift({ $match: base });
@@ -490,11 +492,17 @@ export class DatabaseConnection {
         // const items: T[] = await this.db.collection(collectionname).aggregate(aggregates).toArray();
         const options: CollectionAggregationOptions = {};
         options.hint = myhint;
-        const items: T[] = await this.db.collection(collectionname).aggregate(aggregates, options).toArray();
-        DatabaseConnection.traversejsondecode(items);
-        const user: TokenUser = Crypt.verityToken(jwt);
-        if (Config.log_aggregates) this._logger.debug("[" + user.username + "][" + collectionname + "] aggregate gave " + items.length + " results ");
-        return items;
+        try {
+            const items: T[] = await this.db.collection(collectionname).aggregate(aggregates, options).toArray();
+            DatabaseConnection.traversejsondecode(items);
+            const user: TokenUser = Crypt.verityToken(jwt);
+            if (Config.log_aggregates) this._logger.debug("[" + user.username + "][" + collectionname + "] aggregate gave " + items.length + " results ");
+            if (Config.log_aggregates) this._logger.debug(aggregatesjson);
+            return items;
+        } catch (error) {
+            if (Config.log_aggregates) this._logger.debug(aggregatesjson);
+            throw error;
+        }
     }
     /**
      * Do MongoDB watch

@@ -76,7 +76,7 @@ export class api_get_jwt {
                     user.username = user.name;
                     q.jwt = Crypt.createToken(user);
                 } else {
-                    return NoderedUtil.HandleError(this, "root signin not allowed");
+                    return NoderedUtil.HandleError(this, new Error("root signin not allowed"));
                 }
             }
             this.node.status({ fill: "blue", shape: "dot", text: "Requesting token" });
@@ -93,7 +93,9 @@ export class api_get_jwt {
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            let message = error.message ? error.message : error;
+            this.node.error(new Error(message), msg);
+            this.node.status({ fill: 'red', shape: 'dot', text: message.toString().substr(0, 32) });
         }
     }
     onclose() {
