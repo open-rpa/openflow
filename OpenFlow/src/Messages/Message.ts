@@ -780,11 +780,13 @@ export class Message {
             } else if (msg.rawAssertion !== null && msg.rawAssertion !== undefined) {
                 type = "samltoken";
                 user = await LoginProvider.validateToken(msg.rawAssertion);
+                // refresh, for roles and stuff
                 if (user !== null && user != undefined) { tuser = TokenUser.From(user); }
                 msg.rawAssertion = "";
             } else {
                 user = await Auth.ValidateByPassword(msg.username, msg.password);
                 tuser = null;
+                // refresh, for roles and stuff
                 if (user != null) tuser = TokenUser.From(user);
                 if (user == null) {
                     tuser = new TokenUser();
@@ -811,6 +813,16 @@ export class Message {
                 }
 
                 msg.user = tuser;
+                if (msg.impersonate == "-1" || msg.impersonate == "false") {
+                    user.impersonating = undefined;
+                } else if (!NoderedUtil.IsNullEmpty(user.impersonating) && NoderedUtil.IsNullEmpty(msg.impersonate)) {
+                    const items = await Config.db.query({ _id: user.impersonating }, null, 1, 0, null, "users", msg.jwt);
+                    if (items.length == 0) {
+                        msg.impersonate = null;
+                    } else {
+                        msg.impersonate = user.impersonating;
+                    }
+                }
                 if (msg.impersonate !== undefined && msg.impersonate !== null && msg.impersonate !== "" && tuser._id != msg.impersonate) {
                     const items = await Config.db.query({ _id: msg.impersonate }, null, 1, 0, null, "users", msg.jwt);
                     if (items.length == 0) {

@@ -315,7 +315,7 @@ export class WebSocketServerClient {
         });
     }
     private _Send(message: Message, cb: QueuedMessageCallback): void {
-        const messages: string[] = this.chunkString(message.data, 500);
+        const messages: string[] = this.chunkString(message.data, Config.websocket_package_size);
         if (NoderedUtil.IsNullUndefinded(messages) || messages.length === 0) {
             const singlemessage: SocketMessage = SocketMessage.frommessage(message, "", 1, 0);
             if (NoderedUtil.IsNullEmpty(message.replyto)) {
