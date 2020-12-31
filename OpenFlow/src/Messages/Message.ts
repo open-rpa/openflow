@@ -775,7 +775,7 @@ export class Message {
                     }
                 }
                 if (impostor !== "") {
-                    tuser.impostor = msg.impersonate;
+                    tuser.impostor = impostor;
                 }
             } else if (msg.rawAssertion !== null && msg.rawAssertion !== undefined) {
                 type = "samltoken";
@@ -804,6 +804,13 @@ export class Message {
                 Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
                 cli._logger.debug("Disabled user " + tuser.username + " failed logging in using " + type);
             } else {
+                if (msg.impersonate == "-1" || msg.impersonate == "false") {
+                    user = await DBHelper.FindById(impostor, Crypt.rootToken());
+                    user.impersonating = undefined;
+                    tuser = TokenUser.From(user);
+                    msg.impersonate = undefined;
+                    impostor = undefined;
+                }
                 Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
                 const userid: string = user._id;
                 if (msg.longtoken) {
@@ -813,9 +820,7 @@ export class Message {
                 }
 
                 msg.user = tuser;
-                if (msg.impersonate == "-1" || msg.impersonate == "false") {
-                    user.impersonating = undefined;
-                } else if (!NoderedUtil.IsNullEmpty(user.impersonating) && NoderedUtil.IsNullEmpty(msg.impersonate)) {
+                if (!NoderedUtil.IsNullEmpty(user.impersonating) && NoderedUtil.IsNullEmpty(msg.impersonate)) {
                     const items = await Config.db.query({ _id: user.impersonating }, null, 1, 0, null, "users", msg.jwt);
                     if (items.length == 0) {
                         msg.impersonate = null;
@@ -841,6 +846,7 @@ export class Message {
                     // Check we have update rights
                     try {
                         await DBHelper.Save(user, msg.jwt);
+                        await Config.db._UpdateOne({ _id: tuserimpostor._id }, { "$set": { "impersonating": user._id } } as any, "users", 1, false, msg.jwt);
                     } catch (error) {
                         const impostors = await Config.db.query<User>({ _id: msg.impersonate }, null, 1, 0, null, "users", Crypt.rootToken());
                         const impb: User = new User(); impb.name = "unknown"; impb._id = msg.impersonate;
@@ -852,6 +858,7 @@ export class Message {
                         Audit.ImpersonateFailed(imp, tuser, cli.clientagent, cli.clientversion);
                         throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " updating and impersonating " + msg.impersonate);
                     }
+
                     tuser = TokenUser.From(user);
                     tuser.impostor = userid;
                     if (msg.longtoken) {

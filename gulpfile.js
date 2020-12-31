@@ -5,6 +5,8 @@ const replace = require('gulp-replace');
 const merge = require('merge-stream');
 const browserify = require('browserify');
 const tsify = require('tsify');
+const watchify = require('watchify');
+
 
 const OpenFlowFiles = [
     "./OpenFlow/src/public/**/*.html", "./OpenFlow/src/public/**/*.css", "./OpenFlow/src/public/**/*.js", "./OpenFlow/src/public/**/*.json",
@@ -32,16 +34,33 @@ gulp.task("copyfiles1", function () {
 gulp.task("watch", function () {
     return gulp.watch(NodeREDHTMLFiles.concat(OpenFlowFiles).concat('./VERSION').concat('./OpenFlow/src/public/**/*.ts'), gulp.series("copyfiles1", "browserify"));
 });
+let bfi = null;
 gulp.task("browserify", function () {
-    const bfi = browserify({
+    if (bfi != null) return gulp.src('.');
+    bfi = browserify({
         entries: ['./OpenFlow/src/public/app.ts'],
+        cache: {},
+        packageCache: {},
         debug: true,
-        basedir: '.'
+        basedir: '.',
+        plugin: [watchify]
+    }).plugin(tsify, { noImplicitAny: false });
+
+    bfi.on('update', bundle);
+    bfi.on('time', function (time) {
+        if (time < 1499) {
+            console.log('browserify bundle::end() in ' + time + ' ms');
+        } else {
+            console.log('browserify bundle::end() in ' + (time / 1000) + ' s');
+        }
     })
-        .plugin(tsify, { noImplicitAny: false })
-        .bundle()
-        .pipe(fs.createWriteStream('./dist/public/bundle.js'));
-    return bfi;
+    function bundle() {
+        console.log('browserify bundle::begin()');
+        const result = bfi.bundle()
+            .pipe(fs.createWriteStream('./dist/public/bundle.js'));
+        return result;
+    };
+    return bundle();
 });
 
 gulp.task("compose", shell.task([

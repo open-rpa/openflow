@@ -83,16 +83,17 @@
   },
   "devDependencies": {
     "@fortawesome/fontawesome-free": "^5.15.1",
-    "@types/mongodb": "^3.5.27",
-    "@types/passport": "^1.0.4",
     "@types/angular": "^1.7.3",
     "@types/angular-route": "^1.7.1",
     "@types/jquery": "^3.5.2",
+    "@types/mongodb": "^3.5.27",
+    "@types/passport": "^1.0.4",
     "browserify": "^17.0.0",
     "expose-loader": "^1.0.1",
     "merge-stream": "^2.0.0",
     "style-loader": "^2.0.0",
     "tsify": "^5.0.2",
-    "typescript": "^4.0.3"
+    "typescript": "^4.0.3",
+    "watchify": "^3.11.1"
   }
 }

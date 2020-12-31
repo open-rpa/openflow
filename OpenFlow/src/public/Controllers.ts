@@ -924,7 +924,9 @@ export class MenuCtrl {
         return this.WebSocketClientService.usingCordova;
     }
     stopimpersonation() {
-        this.WebSocketClientService.loadToken();
+        // this.WebSocketClientService.loadToken();
+        this.WebSocketClientService.impersonate("-1");
+        console.log("done 2");
     }
     PathIs(path: string) {
         if (this.path == null && this.path == undefined) return false;
