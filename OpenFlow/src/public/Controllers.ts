@@ -15,6 +15,42 @@ function daysBetween(startDate, endDate): number {
 }
 declare const Formio: any;
 declare const FileSaver: any;
+export class jsutil {
+    public static async ensureJQuery() {
+        try {
+            const ele = $('body');
+        } catch (error) {
+            await this.loadScript("jquery.min.js");
+        }
+    }
+    public static async loadScript(url: string): Promise<void> {
+        return new Promise<void>(async (resolve) => {
+            var script = document.createElement("script")
+            script.type = "text/javascript";
+            script.onload = function () {
+                resolve();
+            };
+            script.src = url;
+            document.getElementsByTagName("head")[0].appendChild(script);
+        });
+    }
+    public static async getScript(url: string): Promise<void> {
+        return new Promise<void>(async (resolve, reject) => {
+            $.getScript(url, () => {
+                resolve();
+            }).fail((e1, e2, e3) => {
+                if (e1.readyState == 0) {
+                    reject('script failed to load');
+                    //script failed to load
+                } else if (e3 != null) {
+                    reject(e3.toString());
+                } else {
+                    reject('unknonw error loading ' + url);
+                }
+            });
+        });
+    }
+}
 export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
     public arguments: any;
     public users: TokenUser[];
@@ -56,7 +92,7 @@ export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
                     if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
                 });
-                console.log(this.queuename);
+                console.debug("queuename: " + this.queuename);
                 await this.loadData();
                 await this.loadUsers();
             } else {
@@ -1590,8 +1626,6 @@ export class FormsCtrl extends entitiesCtrl<Base> {
         });
     }
 }
-const formBuilder = require('formBuilder');
-const formRender = require('formBuilder/dist/form-render.min');
 export class EditFormCtrl extends entityCtrl<Form> {
     public message: string = "";
     public charts: chartset[] = [];
@@ -1659,11 +1693,23 @@ export class EditFormCtrl extends entityCtrl<Form> {
                 disabledActionButtons: ['data', 'clear'],
                 onSave: this.Save.bind(this),
             };
+            await jsutil.ensureJQuery();
             const ele: any = $(document.getElementById('fb-editor'));
             if (this.formBuilder == null || this.formBuilder == undefined) {
+                if (ele.formBuilder == null) {
+                    // await this.loadScript("jquery.min.js");
+                    await jsutil.loadScript("jquery-ui.min.js");
+                    await jsutil.loadScript("form-builder.min.js");
+                    await jsutil.loadScript("form-render.min.js");
+                }
                 this.formBuilder = await ele.formBuilder(fbOptions).promise;
             }
         } else {
+            try {
+                const test = Formio.builder;
+            } catch (error) {
+                await jsutil.loadScript("formio.full.min.js");
+            }
             if (this.model.formData == null || this.model.formData == undefined) { this.model.formData = {}; }
             // "https://examples.form.io/wizard"
             if (this.model.wizard == true) {
@@ -1724,6 +1770,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
 
         this.basequery = { _id: this.id };
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            await jsutil.ensureJQuery();
             this.queuename = await NoderedUtil.RegisterQueue(WebSocketClient.instance, "", (data: QueueMessage, ack: any) => {
                 ack();
                 console.debug(data);
@@ -1740,7 +1787,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 }
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
             });
-            console.log(this.queuename);
+            console.debug("queuename: " + this.queuename);
             if (this.id !== null && this.id !== undefined && this.id !== "") {
                 this.basequery = { _id: this.id };
                 this.loadData();
@@ -1752,8 +1799,8 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         });
 
     }
-    hideFormElements() {
-        console.log("hideFormElements");
+    async hideFormElements() {
+        console.debug("hideFormElements");
         $('#workflowform :input').prop("disabled", true);
         $('#workflowform :button').prop("disabled", true);
         $('#workflowform :input').addClass("disabled");
@@ -1787,7 +1834,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 console.error(this.errormessage);
                 return;
             }
-            console.log('model', this.model);
+            // console.log('model', this.model);
             // console.debug(this.model);
             // console.debug(this.model.form);
             // console.debug("form: " + this.model.form);
@@ -2110,9 +2157,18 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             }, 500);
             const ele: any = $('.render-wrap');
             ele.show();
+            if (ele.formBuilder == null || ele.formBuilder == undefined) {
+                await jsutil.loadScript("jquery-ui.min.js");
+                await jsutil.loadScript("form-builder.min.js");
+                await jsutil.loadScript("form-render.min.js");
+            }
             this.formRender = ele.formRender(formRenderOpts);
         } else {
-
+            try {
+                const test = Formio.builder;
+            } catch (error) {
+                await jsutil.loadScript("formio.full.min.js");
+            }
             this.traversecomponentsMakeDefaults(this.form.schema.components);
 
             if (this.form.wizard == true) {
@@ -2574,7 +2630,8 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
         this.collection = $routeParams.collection;
         this.baseprojection = null;
         this.postloadData = this.ProcessData;
-        WebSocketClientService.onSignedin((user: TokenUser) => {
+        WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            await jsutil.ensureJQuery();
             this.loadData();
         });
     }
@@ -2590,7 +2647,7 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     async CompareNow(model) {
-        const modal: any = $("#exampleModal");
+        const modal: any = document.getElementById("#exampleModal");
         modal.modal()
         if (model.item == null) {
             const item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null);
@@ -3091,7 +3148,8 @@ export class AuditlogsCtrl extends entitiesCtrl<Role> {
         // this.basequery = { _type: "role" };
         this.collection = "audit";
         this.postloadData = this.processdata;
-        WebSocketClientService.onSignedin((user: TokenUser) => {
+        WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            await jsutil.ensureJQuery();
             this.loadData();
         });
     }
@@ -3210,11 +3268,24 @@ export class PaymentCtrl extends entityCtrl<Billing> {
         this.postloadData = this.processdata;
         this.collection = "users";
 
+
+
         WebSocketClientService.onSignedin(async (_user: TokenUser) => {
+            if (WebSocketClientService.stripe_api_key != null && WebSocketClientService.stripe_api_key != "") {
+                let haderror: boolean = false;
+                try {
+                    this.stripe = Stripe(this.WebSocketClientService.stripe_api_key);
+                } catch (error) {
+                    haderror = true;
+                }
+                if (haderror) {
+                    console.debug("loading stripe script")
+                    await jsutil.loadScript('//js.stripe.com/v3/');
+                }
+            }
             if (this.userid == null || this.userid == "" || this.userid == "success" || this.userid == "cancel") {
                 this.userid = _user._id;
             }
-
             this.basequery = { "userid": this.userid, "_type": "billing" };
             // this.basequery = { "userid": this.userid };
             this.stripe = Stripe(this.WebSocketClientService.stripe_api_key);
@@ -4194,6 +4265,7 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            await jsutil.ensureJQuery();
             this.loadData();
         });
     }

@@ -9,9 +9,12 @@ require('angular-sanitize');
 require('@fortawesome/fontawesome-free');
 require('chart.js');
 require('angular-chart.js');
+
+// require('formBuilder');
+// require('formBuilder/dist/form-render.min.js');
 // require('./angular-localization.min');
 
-require('./formio.full.min');
+// require('./formio.full.min');
 
 var css = require('./app.css');
 
