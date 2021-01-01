@@ -125,7 +125,7 @@ export class textarea implements ng.IDirective {
 async function getString(locale: any, lib: string, key: string): Promise<any> {
     return new Promise((resolve) => {
         try {
-            if (locale === null || locale === undefined) { return resolve(); }
+            if (locale === null || locale === undefined) { return }
             locale.ready(lib).then(function () {
                 const value = locale.getString(lib + "." + key);
                 if (value !== null && value !== undefined && value !== "") {

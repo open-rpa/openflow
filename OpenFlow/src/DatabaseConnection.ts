@@ -1122,8 +1122,8 @@ export class DatabaseConnection {
         }
         return q;
     }
-    private async _DeleteFile(id: string): Promise<string> {
-        return new Promise<string>(async (resolve, reject) => {
+    private async _DeleteFile(id: string): Promise<void> {
+        return new Promise<void>(async (resolve, reject) => {
             try {
                 const _id = new ObjectID(id);
                 const bucket = new GridFSBucket(this.db);

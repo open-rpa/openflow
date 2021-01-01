@@ -1,10 +1,11 @@
-FROM node:latest
+FROM node:lts
 # FROM node:10.16.0-jessie
 EXPOSE 80
 EXPOSE 5858
 WORKDIR /data
 COPY docker-package.json ./package.json
 RUN npm install
+# RUN npm install --force
 COPY dist ./
 
 ENTRYPOINT ["/usr/local/bin/node", "--inspect=0.0.0.0:5858", "index.js"]

@@ -3,6 +3,19 @@ import angular = require("angular");
 import { timesince, translate, textarea, fileread, userdata, api, copytext } from "./CommonControllers";
 import { MenuCtrl, ProvidersCtrl, MainCtrl, LoginCtrl, ProviderCtrl, UsersCtrl, UserCtrl, RolesCtrl, RoleCtrl, RPAWorkflowsCtrl, RPAWorkflowCtrl, WorkflowsCtrl, ReportsCtrl, jslogCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, SocketCtrl, NoderedCtrl, hdrobotsCtrl, RobotsCtrl, AuditlogsCtrl, SignupCtrl, PaymentCtrl, QueuesCtrl, SocketsCtrl, QueueCtrl, CredentialsCtrl, CredentialCtrl, DuplicatesCtrl, OAuthClientsCtrl, OAuthClientCtrl } from "./Controllers";
 
+require('bootstrap');
+require('angular-route');
+require('angular-sanitize');
+require('@fortawesome/fontawesome-free');
+require('chart.js');
+require('angular-chart.js');
+// require('./angular-localization.min');
+
+require('./formio.full.min');
+
+var css = require('./app.css');
+
+// require('./angular-localization.min')
 /**
  * @type {angular.Module}
  */
@@ -12,6 +25,7 @@ module openflow {
     //     ChartJsProvider.setOptions({ responsive: true });
     //     ChartJsProvider.setOptions('Line', { responsive: true });
     // })
+    //
     const webApp: any = angular.module("webApp", ['ngRoute', 'chart.js', 'ngLocalize', 'ngLocalize.Config'])
         .controller("MenuCtrl", MenuCtrl)
         .controller("Providers", ProvidersCtrl)

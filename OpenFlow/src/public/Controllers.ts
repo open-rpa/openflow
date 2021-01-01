@@ -746,12 +746,12 @@ export class LoginCtrl {
             }
             function errorCallback(error) {
                 console.debug(error);
-                resolve();
+                resolve(null);
             }
         });
     }
     writefile(filename: string, content: string) {
-        return new Promise<string>(async (resolve, reject) => {
+        return new Promise<void>(async (resolve, reject) => {
             const win: any = window;
             //const type = win.TEMPORARY;
             const type = win.PERSISTENT;
@@ -904,6 +904,13 @@ export class MenuCtrl {
         console.debug("MenuCtrl::constructor");
         $scope.$root.$on('$routeChangeStart', (...args) => { this.routeChangeStart.apply(this, args); });
         this.path = this.$location.path();
+        // const navMain = $(".navbar-collapse"); // avoid dependency on #id
+        // // "a:not([data-toggle])" - to avoid issues caused
+        // // when you have dropdown inside navbar
+        // navMain.on("click", "a:not([data-toggle])", null, function () {
+        //     (navMain as any).collapse('hide');
+        // });
+
         const cleanup = this.$scope.$on('signin', (event, data) => {
             if (event && data) { }
             this.user = data;
@@ -1583,6 +1590,8 @@ export class FormsCtrl extends entitiesCtrl<Base> {
         });
     }
 }
+const formBuilder = require('formBuilder');
+const formRender = require('formBuilder/dist/form-render.min');
 export class EditFormCtrl extends entityCtrl<Form> {
     public message: string = "";
     public charts: chartset[] = [];
