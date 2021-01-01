@@ -105,7 +105,7 @@ gulp.task("browserify", function () {
                     if (fs.existsSync(source)) {
                         fse.copySync(source, target);
                     } else if (source.indexOf('fontawesome-webfont') > -1) {
-                        // wtf is form.io doing here ?
+                        // console.error(source + " WHAT?????")
                     } else {
                         console.error(source + " not found")
                     }
