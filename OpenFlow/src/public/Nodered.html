@@ -35,10 +35,15 @@
       <div class="col">
         <span ng-show="ctrl.instance!=null">{{ instance.metadata.name }}</span>
       </div>
-      <label class="col-sm-1 control-label"><span translate lib="web">mem</span>: </label>
-      <div class="col-sm-2">
+      <label class="col-sm-1 control-label"><span translate lib="web">cpu</span>: </label>
+      <div class="col-sm-1">
         <span
-          ng-show="ctrl.instance!=null">{{ instance.spec.containers[0].resources.requests.memory + "/" + instance.spec.containers[0].resources.limits.memory  }}</span>
+          ng-show="ctrl.instance!=null">{{ instance.metrics.cpu + "/" + instance.spec.containers[0].resources.limits.cpu }}</span>
+      </div>
+      <label class="col-sm-1 control-label"><span translate lib="web">mem</span>: </label>
+      <div class="col-sm-1">
+        <span
+          ng-show="ctrl.instance!=null">{{ instance.metrics.memory + "/" + instance.spec.containers[0].resources.limits.memory }}</span>
       </div>
       <label class="col-sm-1 control-label"><span translate lib="web">status</span>: </label>
       <div class="col-sm-1">
@@ -106,13 +111,23 @@
   </div>
 </section>
 <section>
-  <div class="form-group" ng-show="menuctrl.hasrole('admins') && ctrl.labels">
+  <div class="form-group" ng-show="menuctrl.hasrole('admins') && ctrl.labels && ctrl.keys && ctrl.keys.length > 0">
     <label class="col-sm-3 control-label"><span translate lib="web">label</span>: </label>
-    <div class="col-sm-9">
-      <select class="form-control" ng-model="ctrl.label">
+    <div class="col-sm-15">
+      <!-- <select class="form-control" ng-model="ctrl.label">
         <option value="">No label</option>
         <option ng-repeat="key in ctrl.keys">{{ '{"' + key + '":"' + ctrl.labels[key] + '"}'}}</option>
-      </select>
+      </select> -->
+      <span class="border mr-2" ng-repeat="key in ctrl.labelkeys"
+        ng-click="ctrl.removekey(key)">{{key + '=' + ctrl.label[key]}}</span>
+      <br>
+      <select ng-model="ctrl.newkey" ng-options="item as item for item in ctrl.keys"
+        ng-change="ctrl.newkeyselected()"></select>
+      <select ng-model="ctrl.newvalue" ng-options="item as item for item in ctrl.labels[ctrl.newkey]"></select>
+      <button type="button" ng-disabled="ctrl.loading==true" class="btn" translate lib="web"
+        ng-click="ctrl.addkey()">add</button>
+      <button type="button" ng-disabled="ctrl.loading==true" class="btn" translate lib="web"
+        ng-click="ctrl.removekey()">remove</button>
     </div>
   </div>
 </section>

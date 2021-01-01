@@ -481,6 +481,8 @@ export class DatabaseConnection {
                 return value; // leave any other value as-is
         });
 
+        const aggregatesjson = JSON.stringify(aggregates, null, 2)
+
         const base = this.getbasequery(jwt, "_acl", [Rights.read]);
         if (Array.isArray(aggregates)) {
             aggregates.unshift({ $match: base });
@@ -490,11 +492,17 @@ export class DatabaseConnection {
         // const items: T[] = await this.db.collection(collectionname).aggregate(aggregates).toArray();
         const options: CollectionAggregationOptions = {};
         options.hint = myhint;
-        const items: T[] = await this.db.collection(collectionname).aggregate(aggregates, options).toArray();
-        DatabaseConnection.traversejsondecode(items);
-        const user: TokenUser = Crypt.verityToken(jwt);
-        if (Config.log_aggregates) this._logger.debug("[" + user.username + "][" + collectionname + "] aggregate gave " + items.length + " results ");
-        return items;
+        try {
+            const items: T[] = await this.db.collection(collectionname).aggregate(aggregates, options).toArray();
+            DatabaseConnection.traversejsondecode(items);
+            const user: TokenUser = Crypt.verityToken(jwt);
+            if (Config.log_aggregates) this._logger.debug("[" + user.username + "][" + collectionname + "] aggregate gave " + items.length + " results ");
+            if (Config.log_aggregates) this._logger.debug(aggregatesjson);
+            return items;
+        } catch (error) {
+            if (Config.log_aggregates) this._logger.debug(aggregatesjson);
+            throw error;
+        }
     }
     /**
      * Do MongoDB watch
@@ -1082,7 +1090,8 @@ export class DatabaseConnection {
         const user: TokenUser = Crypt.verityToken(q.jwt);
         let exists: Base[] = [];
         if (query != null) {
-            exists = await this.query(query, { name: 1 }, 2, 0, null, q.collectionname, q.jwt);
+            // exists = await this.query(query, { name: 1 }, 2, 0, null, q.collectionname, q.jwt);
+            exists = await this.query(query, null, 2, 0, null, q.collectionname, q.jwt);
         }
         if (exists.length == 1) {
             q.item._id = exists[0]._id;
@@ -1097,6 +1106,13 @@ export class DatabaseConnection {
             const uq = new UpdateOneMessage();
             // uq.query = query; 
             uq.item = q.item; uq.collectionname = q.collectionname; uq.w = q.w; uq.j; uq.jwt = q.jwt;
+            const keys = Object.keys(exists[0]);
+            for (let i = 0; i < keys.length; i++) {
+                let key = keys[i];
+                if (key.startsWith("_")) {
+                    if (NoderedUtil.IsNullUndefinded(uq.item[key])) uq.item[key] = exists[0][key];
+                }
+            }
             const uqres = await this.UpdateOne(uq);
             q.opresult = uqres.opresult;
             q.result = uqres.result;
@@ -1106,8 +1122,8 @@ export class DatabaseConnection {
         }
         return q;
     }
-    private async _DeleteFile(id: string): Promise<string> {
-        return new Promise<string>(async (resolve, reject) => {
+    private async _DeleteFile(id: string): Promise<void> {
+        return new Promise<void>(async (resolve, reject) => {
             try {
                 const _id = new ObjectID(id);
                 const bucket = new GridFSBucket(this.db);

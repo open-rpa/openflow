@@ -1,19 +1,27 @@
 const fs = require("fs");
+const fse = require('fs-extra')
+const path = require("path");
 const gulp = require("gulp");
 const shell = require("gulp-shell");
 const replace = require('gulp-replace');
 const merge = require('merge-stream');
 const browserify = require('browserify');
 const tsify = require('tsify');
+const watchify = require('watchify');
+const exorcist = require('exorcist')
+
+
+let minify = true;
+let watch = false;
 
 const OpenFlowFiles = [
     "./OpenFlow/src/public/**/*.html", "./OpenFlow/src/public/**/*.css", "./OpenFlow/src/public/**/*.js", "./OpenFlow/src/public/**/*.json",
     "./OpenFlow/src/public/**/*.ico", "./OpenFlow/src/public/**/*.eot", "./OpenFlow/src/public/**/*.svg", "./OpenFlow/src/public/**/*.ttf",
-    "./OpenFlow/src/public/**/*.woff", "./OpenFlow/src/public/**/*.woff2", "./OpenFlow/src/public/**/*.png"];
+    "./OpenFlow/src/public/**/*.woff", "./OpenFlow/src/public/**/*.woff2", "./OpenFlow/src/public/**/*.png", "./OpenFlow/src/public/**/*.lang"];
 const NodeREDHTMLFiles = ["./OpenFlowNodeRED/src/nodered/nodes/**/*.html", "./OpenFlowNodeRED/src/nodered/nodes/**/*.png", "./OpenFlowNodeRED/src/nodered/nodes/**/*.json"]
 
-
 const destination = "./dist/public";
+const mapfile = path.join(__dirname, destination, 'bundle.js.map')
 let version = "0.0.1";
 if (fs.existsSync("../VERSION")) {
     version = fs.readFileSync("../VERSION", "utf8");
@@ -21,6 +29,7 @@ if (fs.existsSync("../VERSION")) {
     version = fs.readFileSync("VERSION", "utf8");
 }
 gulp.task("copyfiles1", function () {
+    console.log("copyfiles1")
     const openflow = gulp.src(OpenFlowFiles).pipe(gulp.dest(destination));
     const nodered = gulp.src(NodeREDHTMLFiles).pipe(gulp.dest("OpenFlowNodeRED/dist/nodered/nodes"));
     const version1 = gulp.src('./VERSION').pipe(gulp.dest("./dist"));
@@ -29,31 +38,143 @@ gulp.task("copyfiles1", function () {
     const copyspurce = gulp.src('./OpenFlow/src/public/**/*.ts').pipe(gulp.dest(destination + '/OpenFlow/src/public'));
     return merge(openflow, nodered, version1, version2, copyspurce);
 });
-gulp.task("watch", function () {
-    return gulp.watch(NodeREDHTMLFiles.concat(OpenFlowFiles).concat('./VERSION').concat('./OpenFlow/src/public/**/*.ts'), gulp.series("copyfiles1", "browserify"));
+gulp.task("setwatch", async function () {
+    minify = true;
+    watch = true;
 });
+gulp.task("dowatch", function () {
+    console.log("watch")
+    return gulp.watch(NodeREDHTMLFiles.concat(OpenFlowFiles).concat('./VERSION').concat('./OpenFlow/src/public/**/*.ts'), gulp.series("browserify", "copyfiles1"));
+});
+let bfi = null;
 gulp.task("browserify", function () {
-    const bfi = browserify({
+    console.log("browserify")
+    if (bfi != null) return gulp.src('.');
+    const config = {
         entries: ['./OpenFlow/src/public/app.ts'],
+        cache: {},
+        packageCache: {},
         debug: true,
-        basedir: '.'
+        basedir: '.',
+        plugin: []
+    }
+    if (watch) {
+        console.log("Addin watchify")
+        config.plugin.push(watchify);
+    }
+    bfi = browserify(config)
+        // .transform('browserify-shim', {
+        //     global: true,
+        //     shim: {
+        //         jQuery: {
+        //             path: './node_modules/jquery/dist/jquery.min.js',
+        //             exports: '$'
+        //         }
+        //     }
+        // })
+        // .transform('exposify', { expose: { jquery: '$', three: 'THREE' } })
+        .plugin(tsify, { noImplicitAny: false });
+    if (minify) bfi.plugin('tinyify', {})
+    bfi.transform('browserify-css', {
+        minify: minify,
+        output: './dist/public/bundle.css'
+        ,
+        processRelativeUrl: function (relativeUrl) {
+            if (relativeUrl.indexOf('..\\..\\..\\OpenFlow') > -1) {
+                relativeUrl = relativeUrl.replace('..\\..\\..\\OpenFlow\\src\\public', '.');
+            }
+            try {
+                var stripQueryStringAndHashFromPath = function (url) {
+                    return url.split('?')[0].split('#')[0];
+                };
+                var rootDir = path.resolve(process.cwd(), 'OpenFlow/src/public');
+                var relativePath = stripQueryStringAndHashFromPath(relativeUrl);
+                var queryStringAndHash = relativeUrl.substring(relativePath.length);
+
+                //
+                // Copying files from '../node_modules/bootstrap/' to 'dist/vendor/bootstrap/'
+                //
+                // var prefix = '../node_modules/';
+                var prefix = '..\\..\\..\\node_modules\\';
+                if (relativeUrl.startsWith(relativePath, prefix)) {
+                    var vendorPath = 'vendor/' + relativePath.substring(prefix.length);
+                    var source = path.join(rootDir, relativePath);
+                    var target = path.join(rootDir, vendorPath);
+                    if (fs.existsSync(source)) {
+                        fse.copySync(source, target);
+                    } else if (source.indexOf('fontawesome-webfont') > -1) {
+                        // wtf is form.io doing here ?
+                    } else {
+                        console.error(source + " not found")
+                    }
+
+                    // Returns a new path string with original query string and hash fragments
+                    return vendorPath + queryStringAndHash;
+                }
+            } catch (error) {
+                console.error(error);
+
+            }
+
+            return relativeUrl;
+
+            // if (_.contains(['.jpg', '.png', '.gif', '.eot'], path.extname(relativeUrl))) {
+            //     // Embed image data with data URI
+            //     var DataUri = require('datauri');
+            //     var dUri = new DataUri(relativeUrl);
+            //     console.log(dUri.content);
+            //     return dUri.content;
+            // }
+            return relativeUrl;
+        }
     })
-        .plugin(tsify, { noImplicitAny: false })
-        .bundle()
-        .pipe(fs.createWriteStream('./dist/public/bundle.js'));
-    return bfi;
+        ;
+    // .transform('browserify-shim', { global: true })
+
+    bfi.on('update', bundle);
+    bfi.on('error', function (error) {
+        console.error(error.message);
+        this.emit('end');
+    });
+    bfi.on('time', function (time) {
+        if (time < 1499) {
+            console.log('browserify bundle::end() in ' + time + ' ms');
+        } else {
+            console.log('browserify bundle::end() in ' + (time / 1000) + ' s');
+        }
+    })
+    function bundle() {
+        console.log('browserify bundle::begin()');
+        const result = bfi.bundle()
+            .on('error', function (error) {
+                console.log(error.message);
+                this.emit('end');
+            })
+            .pipe(exorcist(mapfile))
+            .pipe(fs.createWriteStream('./dist/public/bundle.js'));
+        return result;
+    };
+    return bundle();
 });
 
+// 'echo "compile OpenFlowNodeRED"',
+// 'cd OpenFlowNodeRED && tsc -p tsconfig.json',
+// 'echo "compile OpenFlow"',
+// 'tsc -p OpenFlow/tsconfig.json',
+
+// 'echo "delete npmrc and cache"',
+// 'if exist "OpenFlowNodeRED\\dist\\nodered\\.npmrc" del OpenFlowNodeRED\\dist\\nodered\\.npmrc',
+// 'if exist "OpenFlowNodeRED\\dist\\.cache" rmdir OpenFlowNodeRED\\dist\\.cache /s /q ',
+// 'gulp copyfiles1',
+// 'gulp browserify',
+
+// 'echo "delete npmrc and cache"',
+// 'if exist "OpenFlowNodeRED\\dist\\nodered\\.npmrc" del OpenFlowNodeRED\\dist\\nodered\\.npmrc',
+// 'if exist "OpenFlowNodeRED\\dist\\.cache" rmdir OpenFlowNodeRED\\dist\\.cache /s /q ',
+// 'gulp copyfiles1',
+// 'gulp browserify',
+
 gulp.task("compose", shell.task([
-    'echo "delete npmrc and cache"',
-    'if exist "OpenFlowNodeRED\\dist\\nodered\\.npmrc" del OpenFlowNodeRED\\dist\\nodered\\.npmrc',
-    'if exist "OpenFlowNodeRED\\dist\\.cache" rmdir OpenFlowNodeRED\\dist\\.cache /s /q ',
-    'gulp copyfiles1',
-    'gulp browserify',
-    'echo "compile OpenFlowNodeRED"',
-    'cd OpenFlowNodeRED && tsc -p tsconfig.json',
-    'echo "compile OpenFlow"',
-    'tsc -p OpenFlow/tsconfig.json',
     'echo "Build openiap/nodered"',
     'cd OpenFlowNodeRED && docker build -t openiap/nodered:edge .',
     'docker tag openiap/nodered:edge openiap/nodered:' + version,
@@ -68,6 +189,15 @@ gulp.task("compose", shell.task([
     'docker push openiap/openflow:' + version
 ]));
 
+gulp.task("latest", shell.task([
+    'docker tag openiap/nodered:edge openiap/nodered:latest',
+    'echo "Push openiap/nodered"',
+    'docker push openiap/nodered:latest',
+    'docker tag openiap/openflow:edge openiap/openflow:latest',
+    'echo "Push openiap/openflow"',
+    'docker push openiap/openflow:latest',
+]));
+gulp.task("composelatest", gulp.series("compose", "latest"));
 
 gulp.task("bumpyml1", function () {
     return gulp.src(["./*.yml"]).pipe(replace(/openflow:\d+(\.\d+)+/g, 'openflow:' + version)).
@@ -130,4 +260,5 @@ gulp.task("bumpprojectfiles", function () {
 
 gulp.task("bump", gulp.series("bumpyml1", "bumpyml2", "bumpflow", "bumpnodered", "bumpconfigmap", "bumpaiotfrontend", "bumpprojectfiles", "copyfiles1"));
 
-gulp.task("default", gulp.series("copyfiles1", "browserify", "watch"));
+gulp.task("watch", gulp.series("setwatch", "browserify", "copyfiles1", "dowatch"));
+gulp.task("default", gulp.series("copyfiles1", "browserify"));

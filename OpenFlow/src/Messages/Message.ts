@@ -3,6 +3,7 @@ import { lookup } from "mimetype";
 import { SocketMessage } from "../SocketMessage";
 import { Auth } from "../Auth";
 import { Crypt } from "../Crypt";
+import * as url from "url";
 import { Config } from "../Config";
 import { Audit } from "../Audit";
 import { LoginProvider } from "../LoginProvider";
@@ -86,7 +87,8 @@ export class Message {
                         // TODO: should we set message to data ?
                     }
                     if (!NoderedUtil.IsNullUndefinded(qmsg.cb)) { qmsg.cb(this); }
-                    delete cli.messageQueue[this.id];
+                    delete cli.messageQueue[this.replyto];
+                    WebSocketServer.update_message_queue_count(cli);
                 }
                 end({ command: command });
                 return;
@@ -763,22 +765,33 @@ export class Message {
                     if (Config.auto_create_users == true) {
                         const jwt: string = Crypt.rootToken();
                         user = await DBHelper.ensureUser(jwt, tuser.name, tuser.username, null, msg.password);
-                        tuser = TokenUser.From(user);
+                        if (user != null) tuser = TokenUser.From(user);
+                        if (user == null) {
+                            tuser = new TokenUser();
+                            tuser.username = msg.username;
+                        }
                     } else {
                         if (msg !== null && msg !== undefined) msg.error = "Unknown username or password";
                     }
                 }
                 if (impostor !== "") {
-                    tuser.impostor = msg.impersonate;
+                    tuser.impostor = impostor;
                 }
             } else if (msg.rawAssertion !== null && msg.rawAssertion !== undefined) {
                 type = "samltoken";
                 user = await LoginProvider.validateToken(msg.rawAssertion);
+                // refresh, for roles and stuff
                 if (user !== null && user != undefined) { tuser = TokenUser.From(user); }
                 msg.rawAssertion = "";
             } else {
                 user = await Auth.ValidateByPassword(msg.username, msg.password);
-                tuser = TokenUser.From(user);
+                tuser = null;
+                // refresh, for roles and stuff
+                if (user != null) tuser = TokenUser.From(user);
+                if (user == null) {
+                    tuser = new TokenUser();
+                    tuser.username = msg.username;
+                }
             }
             cli.clientagent = msg.clientagent;
             cli.clientversion = msg.clientversion;
@@ -791,6 +804,13 @@ export class Message {
                 Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
                 cli._logger.debug("Disabled user " + tuser.username + " failed logging in using " + type);
             } else {
+                if (msg.impersonate == "-1" || msg.impersonate == "false") {
+                    user = await DBHelper.FindById(impostor, Crypt.rootToken());
+                    user.impersonating = undefined;
+                    tuser = TokenUser.From(user);
+                    msg.impersonate = undefined;
+                    impostor = undefined;
+                }
                 Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
                 const userid: string = user._id;
                 if (msg.longtoken) {
@@ -800,6 +820,14 @@ export class Message {
                 }
 
                 msg.user = tuser;
+                if (!NoderedUtil.IsNullEmpty(user.impersonating) && NoderedUtil.IsNullEmpty(msg.impersonate)) {
+                    const items = await Config.db.query({ _id: user.impersonating }, null, 1, 0, null, "users", msg.jwt);
+                    if (items.length == 0) {
+                        msg.impersonate = null;
+                    } else {
+                        msg.impersonate = user.impersonating;
+                    }
+                }
                 if (msg.impersonate !== undefined && msg.impersonate !== null && msg.impersonate !== "" && tuser._id != msg.impersonate) {
                     const items = await Config.db.query({ _id: msg.impersonate }, null, 1, 0, null, "users", msg.jwt);
                     if (items.length == 0) {
@@ -818,6 +846,7 @@ export class Message {
                     // Check we have update rights
                     try {
                         await DBHelper.Save(user, msg.jwt);
+                        await Config.db._UpdateOne({ _id: tuserimpostor._id }, { "$set": { "impersonating": user._id } } as any, "users", 1, false, msg.jwt);
                     } catch (error) {
                         const impostors = await Config.db.query<User>({ _id: msg.impersonate }, null, 1, 0, null, "users", Crypt.rootToken());
                         const impb: User = new User(); impb.name = "unknown"; impb._id = msg.impersonate;
@@ -829,6 +858,7 @@ export class Message {
                         Audit.ImpersonateFailed(imp, tuser, cli.clientagent, cli.clientversion);
                         throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " updating and impersonating " + msg.impersonate);
                     }
+
                     tuser = TokenUser.From(user);
                     tuser.impostor = userid;
                     if (msg.longtoken) {
@@ -954,7 +984,7 @@ export class Message {
         let msg: EnsureNoderedInstanceMessage;
         try {
             msg = EnsureNoderedInstanceMessage.assign(this.data);
-            await this._EnsureNoderedInstance(cli, msg._id, false, msg.labels);
+            await this._EnsureNoderedInstance(cli, msg._id, false);
         } catch (error) {
             this.data = "";
             cli._logger.error(error);
@@ -969,7 +999,7 @@ export class Message {
         }
         this.Send(cli);
     }
-    private async _EnsureNoderedInstance(cli: WebSocketServerClient, _id: string, skipcreate: boolean, labels: any): Promise<void> {
+    private async _EnsureNoderedInstance(cli: WebSocketServerClient, _id: string, skipcreate: boolean): Promise<void> {
         let user: NoderedUser;
         cli._logger.debug("[" + cli.user.username + "] EnsureNoderedInstance");
         if (_id === null || _id === undefined || _id === "") _id = cli.user._id;
@@ -1003,8 +1033,12 @@ export class Message {
         let hasbilling: boolean = false;
         resources.limits = {};
         resources.requests = {};
-        resources.requests.memory = "70Mi";
-        resources.limits.memory = "256Mi";
+        if (!NoderedUtil.IsNullEmpty(Config.nodered_requests_memory)) resources.requests.memory = Config.nodered_requests_memory;
+        if (!NoderedUtil.IsNullEmpty(Config.nodered_requests_cpu)) resources.requests.cpu = Config.nodered_requests_cpu;
+        if (!NoderedUtil.IsNullEmpty(Config.nodered_limits_memory)) resources.limits.memory = Config.nodered_limits_memory;
+        if (!NoderedUtil.IsNullEmpty(Config.nodered_limits_cpu)) resources.limits.cpu = Config.nodered_limits_cpu;
+
+
 
         if (user.nodered) {
             try {
@@ -1018,6 +1052,8 @@ export class Message {
                 if (user.nodered.resources.limits) {
                     resources.limits.memory = user.nodered.resources.limits.memory;
                     resources.limits.cpu = user.nodered.resources.limits.cpu;
+                    resources.requests.memory = user.nodered.resources.limits.memory;
+                    resources.requests.cpu = user.nodered.resources.limits.cpu;
                 }
                 if (user.nodered.resources.requests) {
                     resources.requests.memory = user.nodered.resources.requests.memory;
@@ -1027,7 +1063,11 @@ export class Message {
                 const billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
                 if (billings.length > 0) {
                     const billing: Billing = billings[0];
-                    resources.limits.memory = billing.memory;
+                    if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.limits.memory = billing.memory;
+                    if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.memory = (billing as any).cpu;
+                    if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.requests.memory = billing.memory;
+                    if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.memory = (billing as any).cpu;
+
                     if (!NoderedUtil.IsNullEmpty(billing.openflowuserplan)) {
                         hasbilling = true;
                     }
@@ -1040,6 +1080,9 @@ export class Message {
                 if (billings.length > 0) {
                     const billing: Billing = billings[0];
                     if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.limits.memory = billing.memory;
+                    if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.memory = (billing as any).cpu;
+                    if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.requests.memory = billing.memory;
+                    if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.memory = (billing as any).cpu;
                     if (!NoderedUtil.IsNullEmpty(billing.openflowuserplan)) {
                         hasbilling = true;
                     }
@@ -1067,6 +1110,36 @@ export class Message {
             if (skipcreate) return;
             cli._logger.debug("[" + cli.user.username + "] Deployment " + name + " not found in " + namespace + " so creating it");
 
+            let api_ws_url = Config.basewsurl();
+            if (!NoderedUtil.IsNullEmpty(Config.api_ws_url)) api_ws_url = Config.api_ws_url;
+            if (!NoderedUtil.IsNullEmpty(Config.nodered_ws_url)) api_ws_url = Config.nodered_ws_url;
+            if (!api_ws_url.endsWith("/")) api_ws_url += "/";
+
+
+
+            let saml_baseurl = Config.protocol + "://" + hostname + "/";
+
+            let _samlparsed = url.parse(Config.saml_federation_metadata);
+            if (_samlparsed.protocol == "http:" || _samlparsed.protocol == "ws:") {
+                saml_baseurl = "http://" + hostname
+                if (_samlparsed.port && _samlparsed.port != "80") {
+                    saml_baseurl += ":" + _samlparsed.port;
+                }
+            } else {
+                saml_baseurl = "https://" + hostname
+                if (_samlparsed.port && _samlparsed.port != "443") {
+                    saml_baseurl += ":" + _samlparsed.port;
+                }
+            }
+            saml_baseurl += "/";
+
+            // _url = "ws://" + url.parse(baseurl).host;
+
+            // const api_ws_url = Config.api_ws_url;
+            // const api_ws_url = Config.baseurl();
+            // const api_ws_url = "ws://api/";
+            // const api_ws_url = "https://demo.openiap.io/"
+            // const api_ws_url = "https://demo.openiap.io/"
             const _deployment = {
                 metadata: { name: name, namespace: namespace, labels: { billed: hasbilling.toString(), userid: _id, app: name } },
                 spec: {
@@ -1085,12 +1158,12 @@ export class Message {
                                     env: [
                                         { name: "saml_federation_metadata", value: Config.saml_federation_metadata },
                                         { name: "saml_issuer", value: Config.saml_issuer },
-                                        { name: "saml_baseurl", value: Config.protocol + "://" + hostname + "/" },
+                                        { name: "saml_baseurl", value: saml_baseurl },
                                         { name: "nodered_id", value: name },
                                         { name: "nodered_sa", value: nodereduser.username },
                                         { name: "jwt", value: nodered_jwt },
                                         { name: "queue_prefix", value: user.nodered.queue_prefix },
-                                        { name: "api_ws_url", value: Config.api_ws_url },
+                                        { name: "api_ws_url", value: api_ws_url },
                                         { name: "amqp_url", value: Config.amqp_url },
                                         { name: "nodered_domain_schema", value: hostname },
                                         { name: "domain", value: hostname },
@@ -1099,6 +1172,8 @@ export class Message {
                                         { name: "noderedusers", value: (name + "noderedusers") },
                                         { name: "noderedadmins", value: (name + "noderedadmins") },
                                         { name: "api_allow_anonymous", value: user.nodered.api_allow_anonymous.toString() },
+                                        { name: "prometheus_measure_nodeid", value: Config.prometheus_measure_nodeid.toString() },
+                                        { name: "prometheus_measure_queued_messages", value: Config.prometheus_measure_queued_messages.toString() },
                                         { name: "NODE_ENV", value: Config.NODE_ENV },
                                     ],
                                     livenessProbe: livenessProbe,
@@ -1108,16 +1183,24 @@ export class Message {
                     }
                 }
             }
-            if (_deployment && labels && Config.nodered_allow_nodeselector) {
-                if (typeof labels === "string") {
-                    var item = JSON.parse(labels);
-                    var spec: any = _deployment.spec.template.spec;
-                    const keys = Object.keys(item);
-                    if (spec.nodeSelector == null) spec.nodeSelector = {};
-                    keys.forEach(key => {
-                        spec.nodeSelector[key] = item[key];
-                    })
-                }
+            // if (_deployment && labels && Config.nodered_allow_nodeselector) {
+            //     if (typeof labels === "string") {
+            //         let item = JSON.parse(labels);
+            //         let spec: any = _deployment.spec.template.spec;
+            //         const keys = Object.keys(item);
+            //         if (spec.nodeSelector == null) spec.nodeSelector = {};
+            //         keys.forEach(key => {
+            //             spec.nodeSelector[key] = item[key];
+            //         })
+            //     }
+            // }
+            if (user.nodered && user.nodered && (user.nodered as any).nodeselector && Config.nodered_allow_nodeselector) {
+                var spec: any = _deployment.spec.template.spec;
+                const keys = Object.keys((user.nodered as any).nodeselector);
+                if (spec.nodeSelector == null) spec.nodeSelector = {};
+                keys.forEach(key => {
+                    spec.nodeSelector[key] = (user.nodered as any).nodeselector[key];
+                })
             }
             try {
                 await KubeUtil.instance().AppsV1Api.createNamespacedDeployment(namespace, (_deployment as any));
@@ -1380,19 +1463,25 @@ export class Message {
         try {
             cli._logger.debug("[" + cli.user.username + "] GetKubeNodeLabels");
             msg = GetKubeNodeLabels.assign(this.data);
-            const list = await KubeUtil.instance().CoreV1Api.listNode();
-            const result: any = {};
-            if (list != null) {
-                list.body.items.forEach(node => {
-                    if (node.metadata && node.metadata.labels) {
-                        const keys = Object.keys(node.metadata.labels);
-                        keys.forEach(key => {
-                            result[key] = node.metadata.labels[key];
-                        });
-                    }
-                });
+            if (Config.nodered_allow_nodeselector) {
+                const list = await KubeUtil.instance().CoreV1Api.listNode();
+                const result: any = {};
+                if (list != null) {
+                    list.body.items.forEach(node => {
+                        if (node.metadata && node.metadata.labels) {
+                            const keys = Object.keys(node.metadata.labels);
+                            keys.forEach(key => {
+                                let value = node.metadata.labels[key];
+                                if (result[key] == null) result[key] = [];
+                                if (result[key].indexOf(value) == -1) result[key].push(value);
+                            });
+                        }
+                    });
+                }
+                msg.result = result;
+            } else {
+                msg.result = null;
             }
-            msg.result = result;
         } catch (error) {
             this.data = "";
             cli._logger.error(error);
@@ -1422,6 +1511,7 @@ export class Message {
                 let found: any = null;
                 for (let i = 0; i < list.body.items.length; i++) {
                     const item = list.body.items[i];
+
                     if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
                         const itemname = item.metadata.name;
                         const create = item.metadata.creationTimestamp;
@@ -1450,12 +1540,24 @@ export class Message {
                     }
                     if (!NoderedUtil.IsNullEmpty(msg.name) && item.metadata.name == msg.name && cli.user.HasRoleName("admins")) {
                         found = item;
+                        var metrics: any = null;
+                        try {
+                            metrics = await KubeUtil.instance().GetPodMetrics(namespace, item.metadata.name);
+                            (item as any).metrics = metrics;
+                        } catch (error) {
+                        }
                         msg.results.push(item);
                     } else if (item.metadata.labels.app === name) {
                         found = item;
                         if (item.status.phase != "Failed") {
                             msg.result = item;
                             cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance:" + name + " found one");
+                        }
+                        var metrics: any = null;
+                        try {
+                            metrics = await KubeUtil.instance().GetPodMetrics(namespace, item.metadata.name);
+                            (item as any).metrics = metrics;
+                        } catch (error) {
                         }
                         msg.results.push(item);
                     }
@@ -2136,7 +2238,7 @@ export class Message {
             if (billing.memory != newmemory) {
                 billing.memory = newmemory;
                 billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
-                this._EnsureNoderedInstance(cli, msg.userid, true, null);
+                this._EnsureNoderedInstance(cli, msg.userid, true);
             }
             if (customer != null && !NoderedUtil.IsNullEmpty(billing.coupon) && customer.discount != null) {
                 if (billing.coupon != customer.discount.coupon.name) {

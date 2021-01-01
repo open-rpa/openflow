@@ -261,8 +261,13 @@ export class WebSocketServerClient {
         ids.forEach(id => {
             const msgs: SocketMessage[] = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id === id; });
             if (this._receiveQueue.length > Config.websocket_max_package_count) {
-                this._logger.error("_receiveQueue containers more than " + Config.websocket_max_package_count + " messages for id '" + id + "' so discarding all !!!!!!!");
-                this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
+                if (Config.websocket_disconnect_out_of_sync) {
+                    this._logger.error("[" + username + "/" + this.clientagent + "/" + this.id + "] _receiveQueue containers more than " + Config.websocket_max_package_count + " messages for id '" + id + "', disconnecting");
+                    this.Close();
+                } else {
+                    this._logger.error("[" + username + "/" + this.clientagent + "/" + this.id + "] _receiveQueue containers more than " + Config.websocket_max_package_count + " messages for id '" + id + "' so discarding all !!!!!!!");
+                    this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
+                }
             }
             const first: SocketMessage = msgs[0];
             if (first.count === msgs.length) {
@@ -310,11 +315,12 @@ export class WebSocketServerClient {
         });
     }
     private _Send(message: Message, cb: QueuedMessageCallback): void {
-        const messages: string[] = this.chunkString(message.data, 500);
+        const messages: string[] = this.chunkString(message.data, Config.websocket_package_size);
         if (NoderedUtil.IsNullUndefinded(messages) || messages.length === 0) {
             const singlemessage: SocketMessage = SocketMessage.frommessage(message, "", 1, 0);
             if (NoderedUtil.IsNullEmpty(message.replyto)) {
                 this.messageQueue[singlemessage.id] = new QueuedMessage(singlemessage, cb);
+                WebSocketServer.update_message_queue_count(this);
             }
             this._sendQueue.push(singlemessage);
             return;
@@ -326,6 +332,7 @@ export class WebSocketServerClient {
         }
         if (NoderedUtil.IsNullEmpty(message.replyto)) {
             this.messageQueue[message.id] = new QueuedMessage(message, cb);
+            WebSocketServer.update_message_queue_count(this);
         }
         // setTimeout(() => {
         //     this.ProcessQueue();

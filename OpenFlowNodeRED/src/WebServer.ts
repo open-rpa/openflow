@@ -19,7 +19,7 @@ import { noderedcontribmiddlewareauth } from "./node-red-contrib-middleware-auth
 
 import * as passport from "passport";
 import { noderedcontribauthsaml } from "./node-red-contrib-auth-saml";
-import { WebSocketClient, NoderedUtil } from "openflow-api";
+import { WebSocketClient, NoderedUtil, Message } from "openflow-api";
 import * as client from "prom-client";
 import * as promBundle from "express-prom-bundle";
 
@@ -38,7 +38,45 @@ export class WebServer {
         labelNames: ["nodetype"],
         buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10]
     })
-
+    public static openflow_nodered_nodeid_count = new client.Counter({
+        name: 'openflow_nodered_nodeid_count',
+        help: 'Total number of node calls',
+        labelNames: ["nodetype", "nodeid"]
+    })
+    public static openflow_nodered_nodeid_duration = new client.Histogram({
+        name: 'openflow_nodered_nodeid_duration',
+        help: 'Duration of each node call',
+        labelNames: ["nodetype", "nodeid"],
+        buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10]
+    })
+    public static message_queue_count = new client.Gauge({
+        name: 'openflow_message_queue_count',
+        help: 'Total number messages waiting on reply from client',
+        labelNames: ["command"]
+    })
+    public static update_message_queue_count(cli: WebSocketClient) {
+        if (!Config.prometheus_measure_queued_messages) return;
+        const result: any = {};
+        const keys = Object.keys(cli.messageQueue);
+        keys.forEach(key => {
+            try {
+                const qmsg = cli.messageQueue[key];
+                var o = qmsg.message;
+                if (typeof o === "string") o = JSON.parse(o);
+                const msg: Message = o;
+                if (result[msg.command] == null) result[msg.command] = 0;
+                result[msg.command]++;
+            } catch (error) {
+                WebServer._logger.error(error);
+            }
+        });
+        const keys2 = Object.keys(result);
+        WebServer.message_queue_count.reset();
+        WebServer.message_queue_count.set(keys.length);
+        keys2.forEach(key => {
+            WebServer.message_queue_count.labels(key).set(result[key]);
+        });
+    }
     public static log_messages: any = {};
     private static settings: nodered_settings = null;
     static async configure(logger: winston.Logger, socket: WebSocketClient): Promise<http.Server> {
@@ -62,13 +100,21 @@ export class WebServer {
                 const name = Config.getEnv("nodered_id", null);
                 if (!NoderedUtil.IsNullEmpty(name)) defaultLabels["name"] = name;
                 if (NoderedUtil.IsNullEmpty(name)) defaultLabels["name"] = hostname;
+                this._logger.debug("WebServer.configure::configure register");
                 register.setDefaultLabels(defaultLabels);
                 client.collectDefaultMetrics({ register })
 
+                this._logger.debug("WebServer.configure::registerMetrics");
+                if (!NoderedUtil.IsNullUndefinded(register) && Config.prometheus_measure_nodeid) {
+                    register.registerMetric(WebServer.openflow_nodered_nodeid_count);
+                    register.registerMetric(WebServer.openflow_nodered_nodeid_duration);
+                }
                 if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebServer.openflow_nodered_node_count);
                 if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebServer.openflow_nodered_node_duration);
+                if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebServer.message_queue_count);
 
 
+                this._logger.debug("WebServer.configure::promBundle");
                 const metricsMiddleware = promBundle({ includeMethod: true, includePath: true, promRegistry: register, autoregister: true });
                 this.app.use(metricsMiddleware);
                 // this.app.use(morgan('combined', { stream: (winston.stream as any).write }));
@@ -77,6 +123,7 @@ export class WebServer {
                         logger.silly(message);
                     }
                 };
+                this._logger.debug("WebServer.configure::setup express middleware");
                 this.app.use(morgan('combined', { stream: loggerstream }));
                 this.app.use(compression());
                 this.app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }))
@@ -93,6 +140,7 @@ export class WebServer {
                     done(null, user);
                 });
                 if (Config.tls_crt != '' && Config.tls_key != '') {
+                    this._logger.debug("WebServer.configure::configure ssl");
                     let options: any = {
                         cert: Config.tls_crt,
                         key: Config.tls_key
@@ -116,6 +164,7 @@ export class WebServer {
                     if (Config.tls_passphrase !== "") {
                         options.passphrase = Config.tls_passphrase;
                     }
+                    this._logger.debug("WebServer.configure::create https server");
                     server = https.createServer(options, this.app);
 
                     const redirapp = express();
@@ -126,6 +175,7 @@ export class WebServer {
                     })
                     // _http.listen(80);
                 } else {
+                    this._logger.debug("WebServer.configure::create http server");
                     server = http.createServer(this.app);
                 }
                 server.on("error", (error) => {
@@ -133,6 +183,7 @@ export class WebServer {
                     process.exit(404);
                 });
 
+                this._logger.debug("WebServer.configure::configure nodered settings");
                 this.settings = new nodered_settings();
                 const c = Config;
                 if (Config.nodered_port > 0) {
@@ -155,8 +206,12 @@ export class WebServer {
                                 msg.event = msg.event.substring(5);
                                 if (msg.event.endsWith(".receive")) {
                                     msg.event = msg.event.substring(0, msg.event.length - 8);
-                                    msg.end = WebServer.openflow_nodered_node_duration.startTimer()
+                                    msg.end = WebServer.openflow_nodered_node_duration.startTimer();
+                                    if (Config.prometheus_measure_nodeid) {
+                                        msg.end2 = WebServer.openflow_nodered_nodeid_duration.startTimer();
+                                    }
                                     WebServer.openflow_nodered_node_count.labels(msg.event).inc();
+                                    if (Config.prometheus_measure_nodeid) WebServer.openflow_nodered_nodeid_count.labels(msg.event, msg.nodeid).inc();
                                     WebServer.log_messages[msg.msgid] = msg;
                                 }
                                 if (msg.event.endsWith(".send")) {
@@ -164,6 +219,9 @@ export class WebServer {
                                     const startmessage = WebServer.log_messages[msg.msgid];
                                     if (!NoderedUtil.IsNullUndefinded(startmessage)) {
                                         startmessage.end({ nodetype: startmessage.event });
+                                        if (Config.prometheus_measure_nodeid && startmessage.end2) {
+                                            startmessage.end2({ nodetype: startmessage.event, nodeid: msg.nodeid });
+                                        }
                                         delete WebServer.log_messages[msg.msgid];
                                     }
                                 }
@@ -220,6 +278,7 @@ export class WebServer {
                     noderedcontribmiddlewareauth.process(socket, req, res, next);
                 };
 
+                this._logger.debug("WebServer.configure::configure nodered storageModule");
                 this.settings.storageModule = new noderedcontribopenflowstorage(logger, socket);
                 const n: noderednpmrc = await this.settings.storageModule._getnpmrc();
                 if (!NoderedUtil.IsNullUndefinded(n) && !NoderedUtil.IsNullUndefinded(n.catalogues)) {
@@ -248,6 +307,7 @@ export class WebServer {
                     name: 'session', secret: Config.cookie_secret
                 }))
 
+                this._logger.debug("WebServer.configure::init nodered");
                 // initialise the runtime with a server and settings
                 await (RED as any).init(server, this.settings);
 
@@ -263,10 +323,18 @@ export class WebServer {
                 });
 
                 if (Config.nodered_port > 0) {
-                    server.listen(Config.nodered_port);
+                    this._logger.debug("WebServer.configure::server.listen on port " + Config.nodered_port);
+                    server.listen(Config.nodered_port).on('error', function (error) {
+                        WebServer._logger.error(error);
+                        process.exit(404);
+                    });
                 }
                 else {
-                    server.listen(Config.port);
+                    this._logger.debug("WebServer.configure::server.listen on port " + Config.port);
+                    server.listen(Config.port).on('error', function (error) {
+                        WebServer._logger.error(error);
+                        process.exit(404);
+                    });
                 }
 
             } else {
@@ -284,6 +352,7 @@ export class WebServer {
             let hasErrors: boolean = true, errorCounter: number = 0, err: any;
             while (hasErrors) {
                 try {
+                    this._logger.debug("WebServer.configure::restarting nodered ...");
                     RED.start();
                     hasErrors = false;
                 } catch (error) {

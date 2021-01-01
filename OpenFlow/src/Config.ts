@@ -96,13 +96,20 @@ export class Config {
         Config.downloadtoken_expires_in = Config.getEnv("downloadtoken_expires_in", "15m");
         Config.personalnoderedtoken_expires_in = Config.getEnv("personalnoderedtoken_expires_in", "365d");
 
-        Config.nodered_image = Config.getEnv("nodered_image", "openiap/nodered:edge");
+        Config.nodered_image = Config.getEnv("nodered_image", "openiap/nodered");
         Config.saml_federation_metadata = Config.getEnv("saml_federation_metadata", "");
-        Config.api_ws_url = Config.getEnv("api_ws_url", "ws://localhost:3000");
+        Config.api_ws_url = Config.getEnv("api_ws_url", "");
+        Config.nodered_ws_url = Config.getEnv("nodered_ws_url", "");
         Config.namespace = Config.getEnv("namespace", ""); // also sent to website 
         Config.nodered_domain_schema = Config.getEnv("nodered_domain_schema", ""); // also sent to website
         Config.nodered_initial_liveness_delay = parseInt(Config.getEnv("nodered_initial_liveness_delay", "60"));
         Config.nodered_allow_nodeselector = Config.parseBoolean(Config.getEnv("nodered_allow_nodeselector", "false"));
+        Config.nodered_requests_memory = Config.getEnv("nodered_requests_memory", "");
+        Config.nodered_requests_cpu = Config.getEnv("nodered_requests_cpu", ""); // 1000m = 1vCPU
+        Config.nodered_limits_memory = Config.getEnv("nodered_limits_memory", "");
+        Config.nodered_limits_cpu = Config.getEnv("nodered_limits_cpu", ""); // 1000m = 1vCPU
+        Config.prometheus_measure_nodeid = Config.parseBoolean(Config.getEnv("prometheus_measure_nodeid", "false"));
+        Config.prometheus_measure_queued_messages = Config.parseBoolean(Config.getEnv("prometheus_measure_queued_messages", "false"));
     }
     public static db: DatabaseConnection = null;
     public static license_key: string = Config.getEnv("license_key", "");
@@ -154,6 +161,7 @@ export class Config {
     public static api_bypass_perm_check: boolean = Config.parseBoolean(Config.getEnv("api_bypass_perm_check", "false"));
     public static websocket_package_size: number = parseInt(Config.getEnv("websocket_package_size", "4096"), 10);
     public static websocket_max_package_count: number = parseInt(Config.getEnv("websocket_max_package_count", "1024"), 10);
+    public static websocket_disconnect_out_of_sync: boolean = Config.parseBoolean(Config.getEnv("websocket_disconnect_out_of_sync", "false"));
     public static protocol: string = Config.getEnv("protocol", "http"); // used by personal nodered and baseurl()
     public static port: number = parseInt(Config.getEnv("port", "3000"));
     public static domain: string = Config.getEnv("domain", "localhost"); // sent to website and used in baseurl()
@@ -185,13 +193,20 @@ export class Config {
     public static downloadtoken_expires_in: string = Config.getEnv("downloadtoken_expires_in", "15m");
     public static personalnoderedtoken_expires_in: string = Config.getEnv("personalnoderedtoken_expires_in", "365d");
 
-    public static nodered_image: string = Config.getEnv("nodered_image", "openiap/nodered:edge");
+    public static nodered_image: string = Config.getEnv("nodered_image", "openiap/nodered");
     public static saml_federation_metadata: string = Config.getEnv("saml_federation_metadata", "");
-    public static api_ws_url: string = Config.getEnv("api_ws_url", "ws://localhost:3000");
+    public static api_ws_url: string = Config.getEnv("api_ws_url", "");
+    public static nodered_ws_url: string = Config.getEnv("nodered_ws_url", "");
     public static namespace: string = Config.getEnv("namespace", ""); // also sent to website 
     public static nodered_domain_schema: string = Config.getEnv("nodered_domain_schema", ""); // also sent to website
     public static nodered_initial_liveness_delay: number = parseInt(Config.getEnv("nodered_initial_liveness_delay", "60"));
     public static nodered_allow_nodeselector: boolean = Config.parseBoolean(Config.getEnv("nodered_allow_nodeselector", "false"));
+    public static nodered_requests_memory: string = Config.getEnv("nodered_requests_memory", "");
+    public static nodered_requests_cpu: string = Config.getEnv("nodered_requests_cpu", ""); // 1000m = 1vCPU
+    public static nodered_limits_memory: string = Config.getEnv("nodered_limits_memory", "");
+    public static nodered_limits_cpu: string = Config.getEnv("nodered_limits_cpu", ""); // 1000m = 1vCPU
+    public static prometheus_measure_nodeid: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_nodeid", "false"));
+    public static prometheus_measure_queued_messages: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_queued_messages", "false"));
 
     public static baseurl(): string {
         let result: string = "";
@@ -199,6 +214,20 @@ export class Config {
             result = "https://" + Config.domain;
         } else {
             result = Config.protocol + "://" + Config.domain;
+        }
+        if (Config.port != 80 && Config.port != 443) {
+            result = result + ":" + Config.port + "/";
+        } else { result = result + "/"; }
+        return result;
+    }
+    public static basewsurl(): string {
+        let result: string = "";
+        if (Config.tls_crt != '' && Config.tls_key != '') {
+            result = "wss://" + Config.domain;
+        } else if (Config.protocol == "http") {
+            result = "ws://" + Config.domain;
+        } else {
+            result = "wss://" + Config.domain;
         }
         if (Config.port != 80 && Config.port != 443) {
             result = result + ":" + Config.port + "/";

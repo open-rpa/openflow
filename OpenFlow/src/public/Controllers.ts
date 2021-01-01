@@ -359,7 +359,7 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
         ];
         const data2 = await NoderedUtil.Aggregate("users", agg2, null);
         let onlinerobots = 0;
-        if (data.length > 0) onlinerobots = data2[0]._rpaheartbeat;
+        if (data2.length > 0) onlinerobots = data2[0]._rpaheartbeat;
 
         const chart: chartset = new chartset();
         chart.heading = onlinerobots + " Online and " + (totalrobots - onlinerobots) + " offline robots, seen the last " + this.timeframedesc;
@@ -746,12 +746,12 @@ export class LoginCtrl {
             }
             function errorCallback(error) {
                 console.debug(error);
-                resolve();
+                resolve(null);
             }
         });
     }
     writefile(filename: string, content: string) {
-        return new Promise<string>(async (resolve, reject) => {
+        return new Promise<void>(async (resolve, reject) => {
             const win: any = window;
             //const type = win.TEMPORARY;
             const type = win.PERSISTENT;
@@ -904,6 +904,13 @@ export class MenuCtrl {
         console.debug("MenuCtrl::constructor");
         $scope.$root.$on('$routeChangeStart', (...args) => { this.routeChangeStart.apply(this, args); });
         this.path = this.$location.path();
+        // const navMain = $(".navbar-collapse"); // avoid dependency on #id
+        // // "a:not([data-toggle])" - to avoid issues caused
+        // // when you have dropdown inside navbar
+        // navMain.on("click", "a:not([data-toggle])", null, function () {
+        //     (navMain as any).collapse('hide');
+        // });
+
         const cleanup = this.$scope.$on('signin', (event, data) => {
             if (event && data) { }
             this.user = data;
@@ -924,7 +931,9 @@ export class MenuCtrl {
         return this.WebSocketClientService.usingCordova;
     }
     stopimpersonation() {
-        this.WebSocketClientService.loadToken();
+        // this.WebSocketClientService.loadToken();
+        this.WebSocketClientService.impersonate("-1");
+        console.log("done 2");
     }
     PathIs(path: string) {
         if (this.path == null && this.path == undefined) return false;
@@ -1581,6 +1590,8 @@ export class FormsCtrl extends entitiesCtrl<Base> {
         });
     }
 }
+const formBuilder = require('formBuilder');
+const formRender = require('formBuilder/dist/form-render.min');
 export class EditFormCtrl extends entityCtrl<Form> {
     public message: string = "";
     public charts: chartset[] = [];
@@ -2646,9 +2657,12 @@ export class NoderedCtrl {
     public user: NoderedUser = null;
     public limitsmemory: string = "";
     public loading: boolean = false;
-    public labels: any[] = [];
+    public labels: any = {};
     public keys: string[] = [];
+    public labelkeys: string[] = [];
     public label: any = null;
+    public newkey: string = "";
+    public newvalue: string = "";
     constructor(
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
@@ -2688,6 +2702,12 @@ export class NoderedCtrl {
             if (this.user.nodered != null && this.user.nodered.resources != null && this.user.nodered.resources.limits != null) {
                 this.limitsmemory = this.user.nodered.resources.limits.memory;
             }
+            if (this.user.nodered != null && (this.user.nodered as any).nodeselector != null) {
+                // this.label = JSON.stringify((this.user.nodered as any).nodeselector);
+                this.label = (this.user.nodered as any).nodeselector;
+                this.labelkeys = Object.keys(this.label);
+
+            }
             this.name = this.name.split("@").join("").split(".").join("");
             this.name = this.name.toLowerCase();
             // this.noderedurl = "https://" + WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", this.name);
@@ -2696,7 +2716,7 @@ export class NoderedCtrl {
             // // this.GetNoderedInstance();
             this.GetNoderedInstance();
             this.labels = await NoderedUtil.GetKubeNodeLabels(null);
-            this.keys = Object.keys(this.labels);
+            if (this.labels != null) this.keys = Object.keys(this.labels);
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
@@ -2718,6 +2738,17 @@ export class NoderedCtrl {
                         this.user.nodered.resources.limits.memory = this.limitsmemory;
                     }
                 }
+            }
+            if (this.label) {
+                const keys = Object.keys(this.label);
+                if (keys.length == 0) this.label = null;
+            }
+            if (this.label) {
+                if (this.user.nodered == null) this.user.nodered = new NoderedConfig();
+                (this.user.nodered as any).nodeselector = this.label;
+            } else {
+                if (this.user.nodered == null) this.user.nodered = new NoderedConfig();
+                delete (this.user.nodered as any).nodeselector;
             }
             this.loading = true;
             this.messages = 'Updating ' + this.user.name + "\n" + this.messages;
@@ -2757,6 +2788,21 @@ export class NoderedCtrl {
             this.instances.forEach(instance => {
                 if (this.instance.metadata.deletionTimestamp != null) reload = true;
                 if (instance.status.phase == "deleting" || instance.status.phase == "Pending") reload = true;
+                if (instance.metrics && instance.metrics.memory) {
+                    console.log(instance.metrics.memory);
+                    if (instance.metrics.memory.endsWith("Ki")) {
+                        let memory: any = parseInt(instance.metrics.memory.replace("Ki", ""));
+                        memory = Math.floor(memory / 1024) + "Mi";
+                        console.log(memory);
+                        instance.metrics.memory = memory;
+                    }
+                    if (instance.metrics.cpu.endsWith("n")) { // nanocores or nanoCPU
+                        let cpu: any = parseInt(instance.metrics.cpu.replace("n", ""));
+                        cpu = Math.floor(cpu / (1024 * 1024)) + "m";  // 1000m = 1 vcpu
+                        console.log(cpu);
+                        instance.metrics.cpu = cpu;
+                    }
+                }
             });
 
             this.messages = "GetNoderedInstance completed, status " + this.instancestatus + "\n" + this.messages;
@@ -2795,7 +2841,7 @@ export class NoderedCtrl {
     async EnsureNoderedInstance() {
         try {
             this.errormessage = "";
-            await NoderedUtil.EnsureNoderedInstance(this.userid, false, this.label, null);
+            await NoderedUtil.EnsureNoderedInstance(this.userid, false, null);
             this.messages = "EnsureNoderedInstance completed" + "\n" + this.messages;
             this.GetNoderedInstance();
         } catch (error) {
@@ -2869,6 +2915,24 @@ export class NoderedCtrl {
             console.error(error);
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    addkey() {
+        if (this.label == null) this.label = {};
+        var _label: any[] = this.labels[this.newkey];
+        this.label[this.newkey] = _label[0];
+        if (this.newvalue != null) this.label[this.newkey] = this.newvalue;
+        this.labelkeys = Object.keys(this.label);
+    }
+    removekey(key) {
+        if (key == null) key = this.newkey;
+        if (this.label == null) this.label = {};
+        var _label: any[] = this.labels[key];
+        delete this.label[key];
+        this.labelkeys = Object.keys(this.label);
+    }
+    newkeyselected() {
+        if (this.label == null || this.label[this.newkey] == null) this.newvalue = this.labels[this.newkey][0];
+        if (this.label != null && this.label[this.newkey] != null) this.newvalue = this.label[this.newkey];
     }
 }
 export class hdrobotsCtrl extends entitiesCtrl<unattendedclient> {
@@ -4004,7 +4068,7 @@ export class OAuthClientCtrl extends entityCtrl<Base> {
                 (this.model as any).grants = ['password', 'refresh_token', 'authorization_code'];
                 (this.model as any).redirectUris = [];
                 (this.model as any).defaultrole = "Viewer";
-                (this.model as any).rolemappings = { "admins": "admin", "grafana editors": "Editor", "grafana admins": "Admin" };
+                (this.model as any).rolemappings = { "admins": "Admin", "grafana editors": "Editor", "grafana admins": "Admin" };
             }
         });
     }

@@ -46,6 +46,8 @@ let server: http.Server = null;
         socket.agent = "nodered";
         socket.version = Config.version;
         logger.info("VERSION: " + Config.version);
+        socket.update_message_queue_count = WebServer.update_message_queue_count;
+        socket.max_message_queue_time_seconds = Config.max_message_queue_time_seconds;
         socket.events.on("onerror", async () => {
         });
         socket.events.on("onclose", async () => {

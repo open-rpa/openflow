@@ -12,6 +12,7 @@
     RED.nodes.registerType('onesignal-credentials', {
         category: 'config',
         defaults: {
+            name: { value: "" }
         },
         credentials: {
             restKey: { type: "text" },
@@ -74,6 +75,7 @@ Create notification <a href="https://documentation.onesignal.com/reference#creat
         category: 'onesignal',
         color: "#a6bbcf",
         defaults: {
+            name: { value: "" },
             config: { value: "", type: "onesignal-credentials", required: true },
             included_segments: { value: "", required: false },
             excluded_segments: { value: "", required: false },
