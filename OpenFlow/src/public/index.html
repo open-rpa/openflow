@@ -5,6 +5,8 @@
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="preload" href="/vendor/fortawesome/fontawesome-free/webfonts/fa-brands-400.woff2" as="font"
+    type="font/woff2" crossorigin>
   <title>OpenFlow</title>
   <style>
     body {
@@ -61,14 +63,14 @@
                 lib="web">providers</span></a>
             <a class="dropdown-item" href="#/OAuthClients" ng-show="menuctrl.hasrole('admins')"><span translate
                 lib="web">oauthclients</span></a>
-            <a class="dropdown-item" href="#/jslog" ng-show="menuctrl.hasrole('admins')"><span translate
-                lib="web">jslog</span></a>
             <a class="dropdown-item" href="#/Files"><span translate lib="web">files</span></a>
             <a class="dropdown-item" href="#/hdrobots"><span translate lib="web">hdrobots</span></a>
-            <a class="dropdown-item" href="#/Queues" ng-show="menuctrl.hasrole('admins')"><span translate
+            <!-- <a class="dropdown-item" href="#/jslog" ng-show="menuctrl.hasrole('admins')"><span translate
+              lib="web">jslog</span></a>
+          <a class="dropdown-item" href="#/Queues" ng-show="menuctrl.hasrole('admins')"><span translate
                 lib="web">queues</span></a>
             <a class="dropdown-item" href="#/Sockets" ng-show="menuctrl.hasrole('admins')"><span translate
-                lib="web">sockets</span></a>
+                lib="web">sockets</span></a> -->
             <a class="dropdown-item" href>ver {{menuctrl.WebSocketClientService.version}}</a>
           </div>
         </li>
@@ -87,9 +89,6 @@
     </div>
   </main>
 
-
-  <script src="jquery.min.js"></script>
-  <script src="jquery-ui.min.js"></script>
   <script src="bundle.js"></script>
   <script src="angular-localization.min.js"></script>
   <link rel="stylesheet" href="bundle.css">

@@ -39,7 +39,7 @@ gulp.task("copyfiles1", function () {
     return merge(openflow, nodered, version1, version2, copyspurce);
 });
 gulp.task("setwatch", async function () {
-    minify = true;
+    minify = false;
     watch = true;
 });
 gulp.task("dowatch", function () {
@@ -98,12 +98,14 @@ gulp.task("browserify", function () {
                 var prefix = '..\\..\\..\\node_modules\\';
                 if (relativeUrl.startsWith(relativePath, prefix)) {
                     var vendorPath = 'vendor/' + relativePath.substring(prefix.length);
+                    vendorPath = vendorPath.replace("@", "");
+                    console.log("vendorPath: " + vendorPath)
                     var source = path.join(rootDir, relativePath);
                     var target = path.join(rootDir, vendorPath);
                     if (fs.existsSync(source)) {
                         fse.copySync(source, target);
                     } else if (source.indexOf('fontawesome-webfont') > -1) {
-                        // wtf is form.io doing here ?
+                        // console.error(source + " WHAT?????")
                     } else {
                         console.error(source + " not found")
                     }

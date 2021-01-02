@@ -742,10 +742,32 @@ export class Message {
         }
         return tuser;
     }
-    private async Signin(cli: WebSocketServerClient): Promise<void> {
+    private async Signin2(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
         let msg: SigninMessage
         let impostor: string = "";
+        try {
+        } catch (error) {
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
+            cli._logger.error(error);
+        }
+        try {
+            msg.websocket_package_size = Config.websocket_package_size;
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            cli._logger.error(error);
+        }
+        this.Send(cli);
+    }
+    private async Signin(cli: WebSocketServerClient): Promise<void> {
+        this.Reply();
+        const hrstart = process.hrtime()
+        let hrend = process.hrtime(hrstart)
+        let msg: SigninMessage
+        let impostor: string = "";
+        const UpdateDoc: any = { "$set": {} };
         try {
             msg = SigninMessage.assign(this.data);
             let tuser: TokenUser = null;
@@ -806,6 +828,7 @@ export class Message {
             } else {
                 if (msg.impersonate == "-1" || msg.impersonate == "false") {
                     user = await DBHelper.FindById(impostor, Crypt.rootToken());
+                    UpdateDoc.$set["impersonating"] = undefined;
                     user.impersonating = undefined;
                     tuser = TokenUser.From(user);
                     msg.impersonate = undefined;
@@ -818,7 +841,6 @@ export class Message {
                 } else {
                     msg.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
                 }
-
                 msg.user = tuser;
                 if (!NoderedUtil.IsNullEmpty(user.impersonating) && NoderedUtil.IsNullEmpty(msg.impersonate)) {
                     const items = await Config.db.query({ _id: user.impersonating }, null, 1, 0, null, "users", msg.jwt);
@@ -870,18 +892,19 @@ export class Message {
                     Audit.ImpersonateSuccess(tuser, tuserimpostor, cli.clientagent, cli.clientversion);
                 }
                 if (msg.firebasetoken != null && msg.firebasetoken != undefined && msg.firebasetoken != "") {
+                    UpdateDoc.$set["firebasetoken"] = msg.firebasetoken;
                     user.firebasetoken = msg.firebasetoken;
                 }
                 if (msg.onesignalid != null && msg.onesignalid != undefined && msg.onesignalid != "") {
+                    UpdateDoc.$set["onesignalid"] = msg.onesignalid;
                     user.onesignalid = msg.onesignalid;
                 }
-                if ((msg.onesignalid != null && msg.onesignalid != undefined && msg.onesignalid != "") ||
-                    (msg.onesignalid != null && msg.onesignalid != undefined && msg.onesignalid != "")) {
-                }
                 if (msg.gpslocation != null && msg.gpslocation != undefined && msg.gpslocation != "") {
+                    UpdateDoc.$set["gpslocation"] = msg.gpslocation;
                     user.gpslocation = msg.gpslocation;
                 }
                 if (msg.device != null && msg.device != undefined && msg.device != "") {
+                    UpdateDoc.$set["device"] = msg.device;
                     user.device = msg.device;
                 }
                 if (msg.validate_only !== true) {
@@ -893,20 +916,27 @@ export class Message {
                 }
                 if (msg.impersonate === undefined || msg.impersonate === null || msg.impersonate === "") {
                     user.lastseen = new Date(new Date().toISOString());
+                    UpdateDoc.$set["lastseen"] = user.lastseen;
                 }
                 msg.supports_watch = Config.supports_watch;
                 user._lastclientagent = cli.clientagent;
+                UpdateDoc.$set["clientagent"] = cli.clientagent;
                 user._lastclientversion = cli.clientversion;
+                UpdateDoc.$set["clientversion"] = cli.clientversion;
                 if (cli.clientagent == "openrpa") {
                     user._lastopenrpaclientversion = cli.clientversion;
+                    UpdateDoc.$set["_lastopenrpaclientversion"] = cli.clientversion;
                 }
                 if (cli.clientagent == "nodered") {
                     user._lastnoderedclientversion = cli.clientversion;
+                    UpdateDoc.$set["_lastnoderedclientversion"] = cli.clientversion;
                 }
                 if (cli.clientagent == "powershell") {
                     user._lastpowershellclientversion = cli.clientversion;
+                    UpdateDoc.$set["_lastpowershellclientversion"] = cli.clientversion;
                 }
-                await DBHelper.Save(user, Crypt.rootToken());
+                // await DBHelper.Save(user, Crypt.rootToken());
+                await Config.db._UpdateOne({ "_id": user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken())
             }
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -920,6 +950,8 @@ export class Message {
             this.data = "";
             cli._logger.error(error);
         }
+        hrend = process.hrtime(hrstart)
+        console.log(`[Signin Completed] Execution time:${(hrend[0] * 1000000000 + hrend[1]) / 1000000} ms`)
         this.Send(cli);
     }
     private async RegisterUser(cli: WebSocketServerClient): Promise<void> {
@@ -1522,7 +1554,7 @@ export class Message {
                         const a: number = (date as any) - (create as any);
                         // const diffminutes = a / (1000 * 60);
                         const diffhours = a / (1000 * 60 * 60);
-                        if (image.indexOf("openflownodered") > 0 && !NoderedUtil.IsNullEmpty(userid)) {
+                        if ((image.indexOf("openflownodered") > -1 || image.indexOf("openiap/nodered") > -1) && !NoderedUtil.IsNullEmpty(userid)) {
                             try {
                                 if (billed != "true" && diffhours > 24) {
                                     cli._logger.debug("[" + cli.user.username + "] Remove un billed nodered instance " + itemname + " that has been running for " + diffhours + " hours");
@@ -1530,7 +1562,7 @@ export class Message {
                                 }
                             } catch (error) {
                             }
-                        } else if (image.indexOf("openflownodered") > 0) {
+                        } else if (image.indexOf("openflownodered") > -1 || image.indexOf("openiap/nodered") > -1) {
                             if (billed != "true" && diffhours > 24) {
                                 console.debug("unbilled " + itemname + " with no userid, should be removed, it has been running for " + diffhours + " hours");
                             } else {

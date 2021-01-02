@@ -33,11 +33,6 @@ export class WebSocketClientService {
                 this.websocket_package_size = data.websocket_package_size;
                 this.stripe_api_key = data.stripe_api_key;
 
-                if (this.stripe_api_key != null && this.stripe_api_key != "") {
-                    console.debug("loading stripe script")
-                    $.getScript("//js.stripe.com/v3/");
-                }
-
                 if (WebSocketClient.instance == null) {
                     const cli: WebSocketClient = new WebSocketClient(this.logger, wsurl);
                     cli.agent = "webapp";
