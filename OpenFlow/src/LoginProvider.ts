@@ -6,7 +6,7 @@ import * as cookieSession from "cookie-session";
 import * as bodyParser from "body-parser";
 import * as path from "path";
 
-import * as SAMLStrategy from "passport-saml";
+// import * as SAMLStrategy from "passport-saml";
 import * as GoogleStrategy from "passport-google-oauth20";
 import * as LocalStrategy from "passport-local";
 
@@ -56,7 +56,7 @@ export class samlauthstrategyoptions {
     public cert: string = null;
 
     public audience: string = null;
-    public signatureAlgorithm: string = "sha256";
+    public signatureAlgorithm: 'sha1' | 'sha256' | 'sha512' = "sha256";
     public callbackMethod: string = "POST";
     public verify: any;
 }
@@ -463,7 +463,8 @@ export class LoginProvider {
         options.issuer = issuer;
         options.callbackUrl = url.parse(baseurl).protocol + "//" + url.parse(baseurl).host + "/" + key + "/";
         options.verify = (LoginProvider.samlverify).bind(this);
-        const strategy: passport.Strategy = new SAMLStrategy.Strategy(options, options.verify);
+        const SamlStrategy = require('passport-saml').Strategy
+        const strategy: passport.Strategy = new SamlStrategy(options, options.verify);
         passport.use(key, strategy);
         strategy.name = key;
         LoginProvider._logger.info(options.callbackUrl);
