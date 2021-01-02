@@ -30,7 +30,7 @@ export class Logger {
         });
         options.console.format = winston.format.combine(
             winston.format.errors({ stack: true }),
-            winston.format.timestamp({ format: 'HH:mm:ss' }),
+            winston.format.timestamp({ format: 'HH:mm:ss.sss' }),
             winston.format.colorize(),
             winston.format.json(),
             myFormat
@@ -40,7 +40,7 @@ export class Logger {
             //format: winston.format.json(),
             format: winston.format.combine(
                 winston.format.errors({ stack: true }),
-                winston.format.timestamp({ format: 'HH:mm:ss' }),
+                winston.format.timestamp({ format: 'HH:mm:ss.sss' }),
                 winston.format.json(),
                 myFormat
             ),
