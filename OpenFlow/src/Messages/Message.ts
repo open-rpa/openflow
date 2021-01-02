@@ -1554,7 +1554,7 @@ export class Message {
                         const a: number = (date as any) - (create as any);
                         // const diffminutes = a / (1000 * 60);
                         const diffhours = a / (1000 * 60 * 60);
-                        if ((image.indexOf("openflownodered") > 0 || image.indexOf("openiap/nodered") > 0) && !NoderedUtil.IsNullEmpty(userid)) {
+                        if ((image.indexOf("openflownodered") > -1 || image.indexOf("openiap/nodered") > -1) && !NoderedUtil.IsNullEmpty(userid)) {
                             try {
                                 if (billed != "true" && diffhours > 24) {
                                     cli._logger.debug("[" + cli.user.username + "] Remove un billed nodered instance " + itemname + " that has been running for " + diffhours + " hours");
@@ -1562,7 +1562,7 @@ export class Message {
                                 }
                             } catch (error) {
                             }
-                        } else if (image.indexOf("openflownodered") > 0 || image.indexOf("openiap/nodered") > 0) {
+                        } else if (image.indexOf("openflownodered") > -1 || image.indexOf("openiap/nodered") > -1) {
                             if (billed != "true" && diffhours > 24) {
                                 console.debug("unbilled " + itemname + " with no userid, should be removed, it has been running for " + diffhours + " hours");
                             } else {
