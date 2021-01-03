@@ -82,6 +82,14 @@ export class WebSocketClientService {
                     this.$location.path(redirecturl);
                 }
             } catch (error) {
+                if (error == "User not validated, please login again") {
+                    console.log('validateurl', this.$location.path());
+                    this.setCookie("validateurl", this.$location.path(), 365);
+                    setTimeout(() => {
+                        top.location.href = '/login';
+                        document.write('<script>top.location = "/login";</script>')
+                    }, 500);
+                }
                 console.log(error);
                 try {
                     document.write(error);

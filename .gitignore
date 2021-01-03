@@ -6,4 +6,5 @@ temp
 .cache
 .npmrc
 .openflowapicache
+package-lock.json
 docker-package.json

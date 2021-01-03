@@ -1,5 +1,4 @@
 const fs = require("fs");
-const fse = require('fs-extra')
 const path = require("path");
 const gulp = require("gulp");
 const shell = require("gulp-shell");
@@ -103,7 +102,7 @@ gulp.task("browserify", function () {
                     var source = path.join(rootDir, relativePath);
                     var target = path.join(rootDir, vendorPath);
                     if (fs.existsSync(source)) {
-                        fse.copySync(source, target);
+                        fs.copyFileSync(source, target);
                     } else if (source.indexOf('fontawesome-webfont') > -1) {
                         // console.error(source + " WHAT?????")
                     } else {

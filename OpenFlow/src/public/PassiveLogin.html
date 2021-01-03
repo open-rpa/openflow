@@ -5,15 +5,11 @@
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.2/css/all.css"
-    integrity="sha256-piqEf7Ap7CMps8krDQsSOTZgF+MU/0MPyPW2enj5I40=" crossorigin="anonymous" />
-
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
-    integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-
-  <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
-  <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+  <link rel="preload" href="/vendor/fortawesome/fontawesome-free/webfonts/fa-brands-400.woff2" as="font"
+    type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="bundle.css">
+  <script src="bundle.js"></script>
+  <script src="angular-localization.min.js"></script>
 </head>
 
 <script>
@@ -60,6 +56,33 @@
     };
     xhr.send();
   }
+  function postJSON(url, data, callback) {
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+    xhr.onload = function () {
+      const status = xhr.status;
+      if (status === 200) {
+        let data = xhr.response;
+        if (typeof data === "string" || data instanceof String) {
+          data = JSON.parse(data);
+        }
+        callback(null, data);
+      } else {
+        callback(status, xhr.response);
+      }
+    };
+    xhr.send(JSON.stringify(data));
+  }
+  function loadScript(url, callback) {
+    var script = document.createElement("script")
+    script.type = "text/javascript";
+    script.onload = function () {
+      if (callback) callback();
+    };
+    script.src = url;
+    document.getElementsByTagName("head")[0].appendChild(script);
+  }
 
   function SettingsController2($scope, $http) {
     this.user = null;
@@ -87,8 +110,44 @@
       if (!$scope.$$phase) { $scope.$apply(); }
     };
     this.jwt = function (error, data) {
-      if (data.user) {
-        this.user = data.user;
+      if (this.user) {
+        console.log('validated', this.user.validated)
+        if (this.validate_user_form != "" && this.user.validated != true) {
+          delete this.user.roles;
+          if (!this.user.email && this.user.username) {
+            if (this.user.username.indexOf("@") > -1) this.user.email = this.user.username;
+          }
+          loadScript("formio.full.min.js", () => {
+            console.log('validated', this.user.validated)
+            if (this.validate_user_form != "" && this.user.validated != true) {
+              getJSON("/validateuserform", async (err, data) => {
+                this.form = data;
+                this.formioRender = await Formio.createForm(document.getElementById('formio'), this.form.schema,
+                  {
+                    breadcrumbSettings: { clickable: true },
+                    buttonSettings: { showCancel: false }
+                  });
+                this.formioRender.submission = { data: this.user };
+                console.log('submission', this.formioRender.submission);
+                this.formioRender.on('submit', async submission => {
+                  console.debug('onsubmit', submission);
+                  // $(".alert-success").hide();
+                  // setTimeout(() => {
+                  //   // just to be safe
+                  //   $(".alert-success").hide();
+                  // }, 200);
+                  postJSON("/validateuserform", submission, (err, data) => {
+                    location.reload();
+                    // location.reload(true);
+                    // console.log(data);
+                    // console.log(err);
+                  })
+                });
+                if (!$scope.$$phase) { $scope.$apply(); }
+              });
+            }
+          });
+        }
       } else {
         getJSON("/loginproviders", this.process.bind(this));
       }
@@ -96,13 +155,23 @@
     };
     this.config = function (error, data) {
       this.allow_user_registration = data.allow_user_registration;
-      this.allow_user_registration = true;
+      this.validate_user_form = data.validate_user_form
       if (!$scope.$$phase) { $scope.$apply(); }
     };
 
-    getJSON("/jwt", this.jwt.bind(this));
+    getJSON("/user", async (err, data) => {
+      console.log(err);
+      console.log(data);
+      if (data._id) {
+        this.user = data;
+        this.jwt.bind(this)(null, null);
+        // getJSON("/jwt", this.jwt.bind(this));
+      }
+      getJSON("/loginproviders", this.process.bind(this));
+    });
 
-    getJSON("/jwt", this.config.bind(this));
+
+    getJSON("/config", this.config.bind(this));
 
   }
   angular.module('controllerExample', [])
@@ -159,8 +228,11 @@
       <div class="col-sm-9 col-md-7 col-lg-5 mx-auto">
         <div class="card card-signin my-5">
           <div class="card-body">
-            Hello {{ctrl.user.name}}<br>
-            <a ng-href="/Signout" class="btn btn-lg btn-block text-uppercase">
+            <div ng-show="ctrl.form==null">Hello {{ctrl.user.name}}<br></div>
+
+            <div id='formio' ng-show="ctrl.form!=null">
+            </div>
+            <a tabindex="-1" ng-href="/Signout" class="btn btn-lg btn-block text-uppercase">
               <i class="fas fa-sign-out-alt"></i>
               Singout
             </a>

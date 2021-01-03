@@ -186,7 +186,19 @@ export class LoginProvider {
             }
         });
         await LoginProvider.RegisterProviders(app, baseurl);
+        app.get("/user", async (req: any, res: any, next: any): Promise<void> => {
+            console.log("/user " + !(req.user == null));
+            res.setHeader("Content-Type", "application/json");
+            if (req.user) {
+                const user: User = await DBHelper.FindById(req.user._id);
+                res.end(JSON.stringify(user));
+            } else {
+                res.end(JSON.stringify({}));
+            }
+            res.end();
+        });
         app.get("/jwt", (req: any, res: any, next: any): void => {
+            console.log("/jwt " + !(req.user == null));
             res.setHeader("Content-Type", "application/json");
             if (req.user) {
                 const user: TokenUser = TokenUser.From(req.user);
@@ -197,16 +209,22 @@ export class LoginProvider {
             res.end();
         });
         app.get("/jwtlong", (req: any, res: any, next: any): void => {
+            console.log("/jwtlong " + !(req.user == null));
             res.setHeader("Content-Type", "application/json");
             if (req.user) {
                 const user: TokenUser = TokenUser.From(req.user);
-                res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.longtoken_expires_in), user: user }));
+                if (!(user.validated == true) && Config.validate_user_form != "") {
+                    res.end(JSON.stringify({ jwt: "" }));
+                } else {
+                    res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.longtoken_expires_in), user: user }));
+                }
             } else {
                 res.end(JSON.stringify({ jwt: "" }));
             }
             res.end();
         });
         app.post("/jwt", async (req: any, res: any, next: any): Promise<void> => {
+            console.log("/jwt " + !(req.user == null));
             try {
                 const rawAssertion = req.body.token;
                 const user: User = await LoginProvider.validateToken(rawAssertion);
@@ -235,13 +253,31 @@ export class LoginProvider {
                 version: Config.version,
                 stripe_api_key: Config.stripe_api_key,
                 getting_started_url: Config.getting_started_url,
+                validate_user_form: Config.validate_user_form
             }
             res.end(JSON.stringify(res2));
         });
         app.get("/login", async (req: any, res: any, next: any): Promise<void> => {
+            console.log("/login " + !(req.user == null));
             try {
                 const originalUrl: any = req.cookies.originalUrl;
+                const validateurl: any = req.cookies.validateurl;
                 if (NoderedUtil.IsNullEmpty(originalUrl)) res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
+                if (!NoderedUtil.IsNullEmpty(validateurl)) {
+                    console.log("validateurl: " + validateurl);
+                    if (req.user) {
+                        const user: User = await DBHelper.FindById(req.user._id);
+                        const tuser: TokenUser = TokenUser.From(user);
+                        req.session.passport.user.validated = tuser.validated;
+                        if (!(tuser.validated == true) && Config.validate_user_form != "") {
+                        } else {
+                            res.cookie("validateurl", "", { expires: new Date(0) });
+                            res.cookie("originalUrl", "", { expires: new Date(0) });
+                            this.redirect(res, "/#" + validateurl);
+                            return;
+                        }
+                    }
+                }
                 const file = path.join(__dirname, 'public', 'PassiveLogin.html');
                 res.sendFile(file);
                 // const result: any[] = await this.getProviders();
@@ -257,6 +293,76 @@ export class LoginProvider {
             } catch (error) {
             }
         });
+        app.get("/validateuserform", async (req: any, res: any, next: any): Promise<void> => {
+            console.log("/validateuserform " + !(req.user == null));
+            res.setHeader("Content-Type", "application/json");
+            if (NoderedUtil.IsNullEmpty(Config.validate_user_form)) {
+                res.end(JSON.stringify({}));
+                res.end();
+                return;
+            }
+            var forms = await Config.db.query<Base>({ _id: Config.validate_user_form, _type: "form" }, null, 1, 0, null, "forms", Crypt.rootToken());
+            if (forms.length == 1) {
+                res.end(JSON.stringify(forms[0]));
+                res.end();
+                return;
+            }
+            LoginProvider._logger.error("validate_user_form " + Config.validate_user_form + " does not exists!");
+            Config.validate_user_form = "";
+            res.end(JSON.stringify({}));
+            res.end();
+            return;
+        });
+        app.post("/validateuserform", async (req: any, res) => {
+            console.log("/validateuserform " + !(req.user == null));
+            res.setHeader("Content-Type", "application/json");
+            try {
+                if (req.user) {
+                    if (req.body && req.body.data) {
+                        const tuser: TokenUser = TokenUser.From(req.user);
+                        delete req.body.data._id;
+                        delete req.body.data.username;
+                        delete req.body.data.disabled;
+                        delete req.body.data.type;
+                        delete req.body.data.roles;
+                        delete req.body.data.submit;
+                        req.body.data.validated = true;
+                        delete req.body.data.federationids;
+                        delete req.body.data.nodered;
+                        delete req.body.data.billing;
+                        delete req.body.data.clientagent;
+                        delete req.body.data.clientversion;
+                        const UpdateDoc: any = { "$set": {} };
+                        const keys = Object.keys(req.body.data);
+                        keys.forEach(key => {
+                            if (key.startsWith("_")) {
+                            } else if (key.indexOf("$") > -1) {
+                            } else {
+                                UpdateDoc.$set[key] = req.body.data[key];
+                            }
+                        });
+                        var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, false, Crypt.rootToken());
+                        const user: TokenUser = Object.assign(tuser, req.body.data);
+                        req.session.passport.user.validated = true;
+
+
+                        if (!(user.validated == true) && Config.validate_user_form != "") {
+                            res.end(JSON.stringify({ jwt: "" }));
+                        } else {
+                            res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.longtoken_expires_in), user: user }));
+                        }
+                    }
+                } else {
+                    res.end(JSON.stringify({ jwt: "" }));
+                }
+            } catch (error) {
+                console.error(error);
+                return res.status(500).send({ message: error.message ? error.message : error });
+            }
+
+            res.end();
+        });
+
         app.get("/loginproviders", async (req: any, res: any, next: any): Promise<void> => {
             try {
                 const result: any[] = await this.getProviders();
@@ -272,8 +378,6 @@ export class LoginProvider {
             } catch (error) {
             }
         });
-
-
         app.get("/download/:id", async (req, res) => {
             try {
                 let user: TokenUser = null;
