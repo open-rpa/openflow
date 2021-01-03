@@ -1,4 +1,4 @@
-import { WebSocketClient, TokenUser, NoderedUtil } from "openflow-api";
+import { WebSocketClient, TokenUser, NoderedUtil } from "@openiap/openflow-api";
 
 interface IHashTable<T> {
     [key: string]: T;

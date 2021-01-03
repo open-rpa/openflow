@@ -1,6 +1,6 @@
 import * as RED from "node-red";
 import { Red } from "node-red";
-import { NoderedUtil } from "openflow-api";
+import { NoderedUtil } from "@openiap/openflow-api";
 import { Config } from "../../Config";
 const { GoogleAuth, OAuth2Client } = require('google-auth-library');
 const fs = require("fs");

@@ -3,7 +3,7 @@ import * as retry from "async-retry";
 import * as fs from "fs";
 import * as path from "path";
 import { fetch, toPassportConfig } from "passport-saml-metadata";
-import { NoderedUtil } from "openflow-api";
+import { NoderedUtil } from "@openiap/openflow-api";
 const { networkInterfaces } = require('os');
 export class Config {
     public static getversion(): string {

@@ -1,4 +1,4 @@
-import { Base } from "openflow-api";
+import { Base } from "@openiap/openflow-api";
 export class Provider extends Base {
     constructor(name: string, public id: string, public provider: string, public issuer: string, public saml_federation_metadata: string) {
         super();

@@ -1,5 +1,5 @@
 import { libmailserver } from "./libmailserver";
-import { NoderedUtil } from "openflow-api";
+import { NoderedUtil } from "@openiap/openflow-api";
 
 module.exports = function (RED) {
     "use strict";

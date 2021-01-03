@@ -1,7 +1,7 @@
 import * as OAuthServer from "oauth2-server";
 import * as winston from "winston";
 import * as express from "express";
-import { TokenUser, Base, NoderedUtil } from "openflow-api";
+import { TokenUser, Base, NoderedUtil } from "@openiap/openflow-api";
 import { Config } from "./Config";
 import { Crypt } from "./Crypt";
 const Request = OAuthServer.Request;

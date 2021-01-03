@@ -1,9 +1,8 @@
 import { Crypt } from "./Crypt";
-import { User, Role, Rolemember, WellknownIds, Rights, NoderedUtil, Base } from "openflow-api";
+import { User, Role, Rolemember, WellknownIds, Rights, NoderedUtil, Base, TokenUser } from "@openiap/openflow-api";
 import { Config } from "./Config";
 
 export class DBHelper {
-
     public static async FindByUsername(username: string, jwt: string = null): Promise<User> {
         const byuser = { username: new RegExp(["^", username, "$"].join(""), "i") };
         const byid = { federationids: new RegExp(["^", username, "$"].join(""), "i") }

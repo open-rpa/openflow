@@ -19,7 +19,7 @@ import { Config } from "./Config";
 
 import * as promBundle from "express-prom-bundle";
 import * as client from "prom-client";
-import { NoderedUtil } from "openflow-api";
+import { NoderedUtil } from "@openiap/openflow-api";
 const { RateLimiterMemory } = require('rate-limiter-flexible')
 import * as url from "url";
 

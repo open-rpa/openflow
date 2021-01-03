@@ -4,7 +4,7 @@ import * as amqplib from "amqplib";
 import { Config } from "./Config";
 import { Crypt } from "./Crypt";
 import * as url from "url";
-import { NoderedUtil } from "openflow-api";
+import { NoderedUtil } from "@openiap/openflow-api";
 import { WebSocketServer } from "./WebSocketServer";
 const got = require("got");
 type QueueOnMessage = (msg: string, options: QueueMessageOptions, ack: any, done: any) => void;

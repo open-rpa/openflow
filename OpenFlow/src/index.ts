@@ -8,7 +8,7 @@ import { DatabaseConnection } from "./DatabaseConnection";
 import { Crypt } from "./Crypt";
 import { Config } from "./Config";
 import { amqpwrapper, QueueMessageOptions } from "./amqpwrapper";
-import { WellknownIds, Role, Rights, User, Base } from "openflow-api";
+import { WellknownIds, Role, Rights, User, Base } from "@openiap/openflow-api";
 import { DBHelper } from "./DBHelper";
 
 const logger: winston.Logger = Logger.configure();

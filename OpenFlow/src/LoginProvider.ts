@@ -21,7 +21,7 @@ import * as saml from "saml20";
 const multer = require('multer');
 const GridFsStorage = require('multer-gridfs-storage');
 import { GridFSBucket, ObjectID, Db, Cursor, Binary } from "mongodb";
-import { Base, User, NoderedUtil, TokenUser, WellknownIds, Rights, Role } from "openflow-api";
+import { Base, User, NoderedUtil, TokenUser, WellknownIds, Rights, Role } from "@openiap/openflow-api";
 import { DBHelper } from "./DBHelper";
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 
