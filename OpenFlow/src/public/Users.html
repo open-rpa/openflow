@@ -21,8 +21,13 @@
       <th ng-click="ctrl.ToggleOrder('username')"><b translate lib="web">username</b></th>
       <th ng-click="ctrl.ToggleOrder('_created')"><b translate lib="web">created</b></th>
       <th ng-click="ctrl.ToggleOrder('lastseen')"><b translate lib="web">lastseen</b></th>
+      <th ng-show="ctrl.WebSocketClientService.stripe_api_key != ''" ng-click="ctrl.ToggleOrder('_hasbilling')">
+        <i class="fas fa-money-bill-wave"></i>
+      </th>
       <th></th>
-      <th></th>
+      <th ng-show="ctrl.WebSocketClientService.validate_user_form != ''" ng-click="ctrl.ToggleOrder('validated')">
+        <i class="fas fa-check"></i>
+      </th>
       <th></th>
       <th></th>
     </tr>
@@ -42,14 +47,17 @@
           chart-labels="model.chart.labels" chart-series="model.chart.series" height="40px" width="200">
         </canvas>
       </td> -->
-      <td class="btn-cell">
+      <td class="btn-cell" ng-show="ctrl.WebSocketClientService.stripe_api_key != ''">
         <a ng-href="#/Payment/{{model._id}}" class="table-btn"
-          ng-show="menuctrl.WebSocketClientService.stripe_api_key != '' && menuctrl.hasrole('admins') && model._hasbilling == true">
+          ng-show="menuctrl.hasrole('admins') && model._hasbilling == true">
           <i class="fas fa-money-bill-wave"></i></a>
       </td>
       <td class="btn-cell">
         <a ng-href ng-click="ctrl.Impersonate(model)" ng-show="model._id != ctrl.WebSocketClientService.user._id"><i
             class="fas fa-user-secret" style="color: #007bff;"></i></a>
+      </td>
+      <td class="btn-cell" ng-show="ctrl.WebSocketClientService.validate_user_form != ''">
+        <i ng-show="model.validated" class="fas fa-check"></i></th>
       </td>
       <td class="btn-cell">
         <a ng-href="#/User/{{model._id}}"><i class="az-edit"></i></a>

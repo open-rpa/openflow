@@ -32,6 +32,7 @@ export class WebSocketClientService {
                 this.nodered_domain_schema = data.nodered_domain_schema;
                 this.websocket_package_size = data.websocket_package_size;
                 this.stripe_api_key = data.stripe_api_key;
+                this.validate_user_form = data.validate_user_form;
 
                 if (WebSocketClient.instance == null) {
                     const cli: WebSocketClient = new WebSocketClient(this.logger, wsurl);
@@ -151,6 +152,7 @@ export class WebSocketClientService {
     public nodered_domain_schema: string = "";
     public websocket_package_size: number = 4096;
     public stripe_api_key: string = "";
+    public validate_user_form: string = "";
 
     getJSON(url: string, callback: any): void {
         const xhr: XMLHttpRequest = new XMLHttpRequest();
