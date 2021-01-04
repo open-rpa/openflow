@@ -1,5 +1,5 @@
 import { Config } from "./Config";
-import { TokenUser, Base, Rights, NoderedUtil } from "openflow-api";
+import { TokenUser, Base, Rights, NoderedUtil } from "@openiap/openflow-api";
 import { Crypt } from "./Crypt";
 
 export class Audit {

@@ -4,7 +4,7 @@ import * as samlp from "samlp";
 import { Config } from "./Config";
 import { Audit } from "./Audit";
 import { LoginProvider } from "./LoginProvider";
-import { NoderedUtil, TokenUser } from "openflow-api";
+import { NoderedUtil, TokenUser } from "@openiap/openflow-api";
 
 export class SamlProvider {
     private static _logger: winston.Logger;

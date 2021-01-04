@@ -4,7 +4,7 @@ import * as path from "path";
 import * as retry from "async-retry";
 import { DatabaseConnection } from "./DatabaseConnection";
 import { Logger } from "./Logger";
-import { NoderedUtil } from "openflow-api";
+import { NoderedUtil } from "@openiap/openflow-api";
 
 export class Config {
     public static getversion(): string {
@@ -110,6 +110,7 @@ export class Config {
         Config.nodered_limits_cpu = Config.getEnv("nodered_limits_cpu", ""); // 1000m = 1vCPU
         Config.prometheus_measure_nodeid = Config.parseBoolean(Config.getEnv("prometheus_measure_nodeid", "false"));
         Config.prometheus_measure_queued_messages = Config.parseBoolean(Config.getEnv("prometheus_measure_queued_messages", "false"));
+        Config.validate_user_form = Config.getEnv("validate_user_form", "");
     }
     public static db: DatabaseConnection = null;
     public static license_key: string = Config.getEnv("license_key", "");
@@ -207,6 +208,7 @@ export class Config {
     public static nodered_limits_cpu: string = Config.getEnv("nodered_limits_cpu", ""); // 1000m = 1vCPU
     public static prometheus_measure_nodeid: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_nodeid", "false"));
     public static prometheus_measure_queued_messages: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_queued_messages", "false"));
+    public static validate_user_form: string = Config.getEnv("validate_user_form", "");
 
     public static baseurl(): string {
         let result: string = "";

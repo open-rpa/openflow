@@ -7,7 +7,7 @@ import * as retry from "async-retry";
 import { Logger } from "./Logger";
 import { Config } from "./Config";
 export const logger = Logger.configure();
-import { FileSystemCache } from "openflow-api";
+import { FileSystemCache } from "@openiap/openflow-api";
 
 // tslint:disable-next-line: class-name
 export class samlauthstrategyoptions {

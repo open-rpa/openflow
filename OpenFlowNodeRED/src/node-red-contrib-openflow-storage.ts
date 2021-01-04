@@ -4,9 +4,9 @@ import * as crypto from "crypto";
 import winston = require("winston");
 import { nodered_settings } from "./nodered_settings";
 import { Config } from "./Config";
-import { WebSocketClient, NoderedUtil, Base } from "openflow-api";
+import { WebSocketClient, NoderedUtil, Base } from "@openiap/openflow-api";
 import * as nodered from "node-red";
-import { FileSystemCache } from "openflow-api";
+import { FileSystemCache } from "@openiap/openflow-api";
 import { RestartService, servicename } from "./nodeclient/cliutil";
 export class noderednpmrc {
     public _id: string;

@@ -19,7 +19,7 @@ import { noderedcontribmiddlewareauth } from "./node-red-contrib-middleware-auth
 
 import * as passport from "passport";
 import { noderedcontribauthsaml } from "./node-red-contrib-auth-saml";
-import { WebSocketClient, NoderedUtil, Message } from "openflow-api";
+import { WebSocketClient, NoderedUtil, Message } from "@openiap/openflow-api";
 import * as client from "prom-client";
 import * as promBundle from "express-prom-bundle";
 

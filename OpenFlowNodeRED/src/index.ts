@@ -2,12 +2,12 @@ import * as fs from "fs";
 import * as path from "path";
 import * as winston from "winston";
 import * as http from "http";
-import { WebSocketClient, NoderedUtil, TokenUser } from "openflow-api";
+import { WebSocketClient, NoderedUtil, TokenUser } from "@openiap/openflow-api";
 import { Logger } from "./Logger";
 import { WebServer } from "./WebServer";
 import { Config } from "./Config";
 import { Crypt } from "./nodeclient/Crypt";
-import { FileSystemCache } from "openflow-api";
+import { FileSystemCache } from "@openiap/openflow-api";
 import { RestartService } from "./nodeclient/cliutil";
 
 const logger: winston.Logger = Logger.configure();

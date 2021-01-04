@@ -6,7 +6,7 @@ import { DatabaseConnection } from "./DatabaseConnection";
 import { Crypt } from "./Crypt";
 import { Message } from "./Messages/Message";
 import { Config } from "./Config";
-import { SigninMessage, NoderedUtil, TokenUser } from "openflow-api";
+import { SigninMessage, NoderedUtil, TokenUser } from "@openiap/openflow-api";
 import * as client from "prom-client";
 
 export class WebSocketServer {

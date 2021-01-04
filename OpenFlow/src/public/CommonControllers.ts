@@ -1,6 +1,6 @@
 import angular = require("angular");
 import { WebSocketClientService } from "./WebSocketClientService";
-import { NoderedUtil } from "openflow-api";
+import { NoderedUtil } from "@openiap/openflow-api";
 
 
 export class api {

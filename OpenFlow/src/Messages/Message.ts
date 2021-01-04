@@ -12,8 +12,8 @@ import { Readable, Stream } from "stream";
 import { GridFSBucket, ObjectID, Db, Cursor, MongoNetworkError } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
-import { StripeMessage, EnsureStripeCustomerMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, GetKubeNodeLabels } from "openflow-api";
-import { Billing, stripe_customer, stripe_base, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription, stripe_subscription_item, stripe_plan, stripe_coupon } from "openflow-api";
+import { StripeMessage, EnsureStripeCustomerMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, GetKubeNodeLabels } from "@openiap/openflow-api";
+import { Billing, stripe_customer, stripe_base, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription, stripe_subscription_item, stripe_plan, stripe_coupon } from "@openiap/openflow-api";
 import { V1ResourceRequirements, V1Deployment } from "@kubernetes/client-node";
 import { amqpwrapper } from "../amqpwrapper";
 import { WebSocketServerClient } from "../WebSocketServerClient";
@@ -723,43 +723,33 @@ export class Message {
     }
     public static async DoSignin(cli: WebSocketServerClient, rawAssertion: string): Promise<TokenUser> {
         let tuser: TokenUser;
-        let user: User;
         let type: string = "jwtsignin";
         if (!NoderedUtil.IsNullEmpty(rawAssertion)) {
             type = "samltoken";
-            user = await LoginProvider.validateToken(rawAssertion);
-            tuser = TokenUser.From(user);
+            cli.user = await LoginProvider.validateToken(rawAssertion);
+            tuser = TokenUser.From(cli.user);
         } else if (!NoderedUtil.IsNullEmpty(cli.jwt)) {
             tuser = Crypt.verityToken(cli.jwt);
-            user = await DBHelper.FindByUsername(tuser.username);
-            tuser = TokenUser.From(user);
+            const impostor: string = tuser.impostor;
+            cli.user = await DBHelper.FindById(cli.user._id);
+            tuser = TokenUser.From(cli.user);
+            tuser.impostor = impostor;
         }
-        if (user.disabled) {
+        if (!NoderedUtil.IsNullUndefinded(cli.user)) {
+            if (!(cli.user.validated == true) && Config.validate_user_form != "") {
+                if (cli.clientagent != "nodered" && NoderedUtil.IsNullEmpty(tuser.impostor)) {
+                    Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
+                    tuser = null;
+                }
+            }
+        }
+        if (tuser != null && cli.user != null && cli.user.disabled) {
             Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
             tuser = null;
-        } else {
+        } else if (tuser != null) {
             Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
         }
         return tuser;
-    }
-    private async Signin2(cli: WebSocketServerClient): Promise<void> {
-        this.Reply();
-        let msg: SigninMessage
-        let impostor: string = "";
-        try {
-        } catch (error) {
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            cli._logger.error(error);
-        }
-        try {
-            msg.websocket_package_size = Config.websocket_package_size;
-            this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            cli._logger.error(error);
-        }
-        this.Send(cli);
     }
     private async Signin(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
@@ -768,11 +758,11 @@ export class Message {
         let msg: SigninMessage
         let impostor: string = "";
         const UpdateDoc: any = { "$set": {} };
+        let type: string = "local";
         try {
             msg = SigninMessage.assign(this.data);
             let tuser: TokenUser = null;
             let user: User = null;
-            let type: string = "local";
             if (msg.jwt !== null && msg.jwt !== undefined) {
                 type = "jwtsignin";
                 tuser = Crypt.verityToken(msg.jwt);
@@ -828,9 +818,14 @@ export class Message {
             } else {
                 if (msg.impersonate == "-1" || msg.impersonate == "false") {
                     user = await DBHelper.FindById(impostor, Crypt.rootToken());
-                    UpdateDoc.$set["impersonating"] = undefined;
+                    UpdateDoc.$unset = { "impersonating": "" };
                     user.impersonating = undefined;
-                    tuser = TokenUser.From(user);
+                    if (!NoderedUtil.IsNullEmpty(tuser.impostor)) {
+                        tuser = TokenUser.From(user);
+                        tuser.validated = true;
+                    } else {
+                        tuser = TokenUser.From(user);
+                    }
                     msg.impersonate = undefined;
                     impostor = undefined;
                 }
@@ -880,6 +875,7 @@ export class Message {
                         Audit.ImpersonateFailed(imp, tuser, cli.clientagent, cli.clientversion);
                         throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " updating and impersonating " + msg.impersonate);
                     }
+                    tuser.impostor = tuserimpostor._id;
 
                     tuser = TokenUser.From(user);
                     tuser.impostor = userid;
@@ -942,6 +938,15 @@ export class Message {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             cli._logger.error(error);
+        }
+        if (!NoderedUtil.IsNullUndefinded(msg.user) && !NoderedUtil.IsNullEmpty(msg.jwt)) {
+            if (!(msg.user.validated == true) && Config.validate_user_form != "") {
+                if (cli.clientagent != "nodered" && NoderedUtil.IsNullEmpty(msg.user.impostor)) {
+                    Audit.LoginFailed(msg.user.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
+                    msg.error = "User not validated, please login again";
+                    msg.jwt = undefined;
+                }
+            }
         }
         try {
             msg.websocket_package_size = Config.websocket_package_size;

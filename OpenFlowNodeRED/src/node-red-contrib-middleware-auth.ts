@@ -1,7 +1,7 @@
 import * as express from "express";
 import { Config } from "./Config";
 import { Logger } from "./Logger";
-import { NoderedUtil, TokenUser, WebSocketClient } from "openflow-api";
+import { NoderedUtil, TokenUser, WebSocketClient } from "@openiap/openflow-api";
 
 interface HashTable<T> {
     [key: string]: T;

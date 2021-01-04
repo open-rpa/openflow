@@ -4,7 +4,7 @@
 import * as fs from "fs";
 import { Config } from "./Config";
 import { logger, StopService, StartService, RemoveService, InstallService, RunService, loadenv, envfilename, envfilepathname, servicename, isOpenFlow } from "./nodeclient/cliutil";
-import { WebSocketClient, NoderedUtil } from "openflow-api";
+import { WebSocketClient, NoderedUtil } from "@openiap/openflow-api";
 const optionDefinitions = [
     { name: 'verbose', alias: 'v', type: Boolean },
     { name: 'authenticate', alias: 'a', type: Boolean },

@@ -1,5 +1,5 @@
 import { Crypt } from "./Crypt";
-import { User } from "openflow-api";
+import { User } from "@openiap/openflow-api";
 import { DBHelper } from "./DBHelper";
 export class Auth {
     public static async ValidateByPassword(username: string, password: string): Promise<User> {

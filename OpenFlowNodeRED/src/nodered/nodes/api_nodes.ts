@@ -3,9 +3,9 @@ import { Red } from "node-red";
 import { Crypt } from "../../nodeclient/Crypt";
 import { Config } from "../../Config";
 import { Logger } from "../../Logger";
-import { NoderedUtil, SigninMessage, TokenUser, Message, WebSocketClient, Base, mapFunc, reduceFunc, finalizeFunc, UpdateOneMessage } from "openflow-api";
+import { NoderedUtil, SigninMessage, TokenUser, Message, WebSocketClient, Base, mapFunc, reduceFunc, finalizeFunc, UpdateOneMessage } from "@openiap/openflow-api";
 import * as path from "path";
-import { FileSystemCache } from "openflow-api";
+import { FileSystemCache } from "@openiap/openflow-api";
 
 export interface Iapi_credentials {
 }
