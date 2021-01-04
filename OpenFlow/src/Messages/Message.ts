@@ -818,9 +818,14 @@ export class Message {
             } else {
                 if (msg.impersonate == "-1" || msg.impersonate == "false") {
                     user = await DBHelper.FindById(impostor, Crypt.rootToken());
-                    UpdateDoc.$set["impersonating"] = undefined;
+                    UpdateDoc.$unset = { "impersonating": "" };
                     user.impersonating = undefined;
-                    tuser = TokenUser.From(user);
+                    if (!NoderedUtil.IsNullEmpty(tuser.impostor)) {
+                        tuser = TokenUser.From(user);
+                        tuser.validated = true;
+                    } else {
+                        tuser = TokenUser.From(user);
+                    }
                     msg.impersonate = undefined;
                     impostor = undefined;
                 }
