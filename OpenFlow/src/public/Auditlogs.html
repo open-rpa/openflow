@@ -49,7 +49,8 @@
           <i ng-class="model.fa2">
 
       </td>
-      <td class="btn-cell"><a href ng-click="ctrl.ShowAudit(model)" class="table-btn">{{model.name}}</a></td>
+      <td class="btn-cell"><a href ng-click="ctrl.ShowAudit(model)"
+          class="table-btn">{{( model.name == "" || model.name == null? "unknown": model.name)}}</a></td>
       <td>{{model.type}}</td>
       <td>{{model.impostorname}}</td>
       <td>{{model.clientagent || model.imagename}}</td>

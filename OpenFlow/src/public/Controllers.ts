@@ -2647,8 +2647,15 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     async CompareNow(model) {
-        const modal: any = document.getElementById("#exampleModal");
-        modal.modal()
+        const modal: any = $("#exampleModal");
+        try {
+            modal.modal();
+        } catch (error) {
+            await jsutil.loadScript("bootstrap.js");
+            modal.modal();
+        }
+
+
         if (model.item == null) {
             const item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null);
             if (item != null) model.item = item;
@@ -2674,7 +2681,12 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
             }
         }
         const modal: any = $("#exampleModal");
-        modal.modal();
+        try {
+            modal.modal();
+        } catch (error) {
+            await jsutil.loadScript("bootstrap.js");
+            modal.modal();
+        }
         console.log(model.delta);
         document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(model.delta, {});
     }
@@ -3180,7 +3192,12 @@ export class AuditlogsCtrl extends entitiesCtrl<Role> {
     async ShowAudit(model: any): Promise<any> {
         this.model = null;
         const modal: any = $("#exampleModal");
-        modal.modal();
+        try {
+            modal.modal();
+        } catch (error) {
+            await jsutil.loadScript("bootstrap.js");
+            modal.modal();
+        }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         const arr = await NoderedUtil.Query(this.collection, { _id: model._id }, null, null, 1, 0, null);
         if (arr.length == 1) {
@@ -4331,7 +4348,12 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
     }
     async ShowData(model) {
         const modal: any = $("#exampleModal");
-        modal.modal();
+        try {
+            modal.modal();
+        } catch (error) {
+            await jsutil.loadScript("bootstrap.js");
+            modal.modal();
+        }
         this.model = model;
     }
     async CloseModal() {
