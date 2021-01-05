@@ -40,7 +40,8 @@ export class DBHelper {
         await this.DecorateWithRoles(result);
         return result;
     }
-    public static async GetRoles(_id: string): Promise<Role[]> {
+    public static async GetRoles(_id: string, ident: number): Promise<Role[]> {
+        if (ident > Config.max_recursive_group_depth) return [];
         const result: Role[] = [];
         const query: any = { "members": { "$elemMatch": { _id: _id } } };
         const ids: string[] = [];
@@ -50,9 +51,11 @@ export class DBHelper {
             if (ids.indexOf(role._id) == -1) {
                 ids.push(role._id);
                 result.push(role);
-                const _subroles: Role[] = await Config.db.query<Role>(query, null, Config.expected_max_roles, 0, null, "users", Crypt.rootToken());
+                console.log(role.name + " " + role._id);
+                const _subroles: Role[] = await this.GetRoles(role._id, ident + 1);
                 for (let y = 0; y < _subroles.length; y++) {
                     const subrole = _subroles[y];
+                    console.log(role.name + " " + subrole.name + " " + subrole._id);
                     if (ids.indexOf(subrole._id) == -1) {
                         ids.push(subrole._id);
                         result.push(subrole);
@@ -63,7 +66,7 @@ export class DBHelper {
         return result;
     }
     public static async DecorateWithRoles(user: User): Promise<void> {
-        const roles: Role[] = await this.GetRoles(user._id);
+        const roles: Role[] = await this.GetRoles(user._id, 0);
         user.roles = [];
         roles.forEach(role => {
             user.roles.push(new Rolemember(role.name, role._id));

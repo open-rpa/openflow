@@ -157,6 +157,7 @@ export class Config {
     public static client_heartbeat_timeout: number = parseInt(Config.getEnv("client_heartbeat_timeout", "60"));
 
     public static expected_max_roles: number = parseInt(Config.getEnv("expected_max_roles", "4000"));
+    public static max_recursive_group_depth: number = parseInt(Config.getEnv("max_recursive_group_depth", "3"));
     public static update_acl_based_on_groups: boolean = Config.parseBoolean(Config.getEnv("update_acl_based_on_groups", "false"));
     public static multi_tenant: boolean = Config.parseBoolean(Config.getEnv("multi_tenant", "false"));
     public static api_bypass_perm_check: boolean = Config.parseBoolean(Config.getEnv("api_bypass_perm_check", "false"));
