@@ -3026,8 +3026,8 @@ export class hdrobotsCtrl extends entitiesCtrl<unattendedclient> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 }
-export class RobotsCtrl extends entitiesCtrl<unattendedclient> {
-    public showall: boolean = false;
+export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
+    public showall: boolean = true;
     public showinactive: boolean = false;
     constructor(
         public $scope: ng.IScope,
@@ -3060,30 +3060,30 @@ export class RobotsCtrl extends entitiesCtrl<unattendedclient> {
                 this.basequery = { _rpaheartbeat: { "$gte": dt } };
             }
         };
-        if (this.userdata.data.RobotsCtrl) {
-            this.basequery = this.userdata.data.RobotsCtrl.basequery;
-            this.collection = this.userdata.data.RobotsCtrl.collection;
-            this.baseprojection = this.userdata.data.RobotsCtrl.baseprojection;
-            this.orderby = this.userdata.data.RobotsCtrl.orderby;
-            this.searchstring = this.userdata.data.RobotsCtrl.searchstring;
-            this.basequeryas = this.userdata.data.RobotsCtrl.basequeryas;
-            this.showinactive = this.userdata.data.RobotsCtrl.showinactive;
-            this.showall = this.userdata.data.RobotsCtrl.showall;
+        if (this.userdata.data.ClientsCtrl) {
+            this.basequery = this.userdata.data.ClientsCtrl.basequery;
+            this.collection = this.userdata.data.ClientsCtrl.collection;
+            this.baseprojection = this.userdata.data.ClientsCtrl.baseprojection;
+            this.orderby = this.userdata.data.ClientsCtrl.orderby;
+            this.searchstring = this.userdata.data.ClientsCtrl.searchstring;
+            this.basequeryas = this.userdata.data.ClientsCtrl.basequeryas;
+            this.showinactive = this.userdata.data.ClientsCtrl.showinactive;
+            this.showall = this.userdata.data.ClientsCtrl.showall;
         }
         WebSocketClientService.onSignedin((user: TokenUser) => {
             this.loadData();
         });
     }
     processdata() {
-        if (!this.userdata.data.RobotsCtrl) this.userdata.data.RobotsCtrl = {};
-        this.userdata.data.RobotsCtrl.basequery = this.basequery;
-        this.userdata.data.RobotsCtrl.collection = this.collection;
-        this.userdata.data.RobotsCtrl.baseprojection = this.baseprojection;
-        this.userdata.data.RobotsCtrl.orderby = this.orderby;
-        this.userdata.data.RobotsCtrl.searchstring = this.searchstring;
-        this.userdata.data.RobotsCtrl.basequeryas = this.basequeryas;
-        this.userdata.data.RobotsCtrl.showinactive = this.showinactive;
-        this.userdata.data.RobotsCtrl.showall = this.showall;
+        if (!this.userdata.data.ClientsCtrl) this.userdata.data.ClientsCtrl = {};
+        this.userdata.data.ClientsCtrl.basequery = this.basequery;
+        this.userdata.data.ClientsCtrl.collection = this.collection;
+        this.userdata.data.ClientsCtrl.baseprojection = this.baseprojection;
+        this.userdata.data.ClientsCtrl.orderby = this.orderby;
+        this.userdata.data.ClientsCtrl.searchstring = this.searchstring;
+        this.userdata.data.ClientsCtrl.basequeryas = this.basequeryas;
+        this.userdata.data.ClientsCtrl.showinactive = this.showinactive;
+        this.userdata.data.ClientsCtrl.showall = this.showall;
 
         for (let i = 0; i < this.models.length; i++) {
             const model: any = this.models[i];

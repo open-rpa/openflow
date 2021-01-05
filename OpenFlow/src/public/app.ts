@@ -1,7 +1,7 @@
 import { WebSocketClientService } from "./WebSocketClientService";
 import angular = require("angular");
 import { timesince, translate, textarea, fileread, userdata, api, copytext } from "./CommonControllers";
-import { MenuCtrl, ProvidersCtrl, MainCtrl, LoginCtrl, ProviderCtrl, UsersCtrl, UserCtrl, RolesCtrl, RoleCtrl, RPAWorkflowsCtrl, RPAWorkflowCtrl, WorkflowsCtrl, ReportsCtrl, jslogCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, SocketCtrl, NoderedCtrl, hdrobotsCtrl, RobotsCtrl, AuditlogsCtrl, SignupCtrl, PaymentCtrl, QueuesCtrl, SocketsCtrl, QueueCtrl, CredentialsCtrl, CredentialCtrl, DuplicatesCtrl, OAuthClientsCtrl, OAuthClientCtrl } from "./Controllers";
+import { MenuCtrl, ProvidersCtrl, MainCtrl, LoginCtrl, ProviderCtrl, UsersCtrl, UserCtrl, RolesCtrl, RoleCtrl, RPAWorkflowsCtrl, RPAWorkflowCtrl, WorkflowsCtrl, ReportsCtrl, jslogCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, SocketCtrl, NoderedCtrl, hdrobotsCtrl, ClientsCtrl, AuditlogsCtrl, SignupCtrl, PaymentCtrl, QueuesCtrl, SocketsCtrl, QueueCtrl, CredentialsCtrl, CredentialCtrl, DuplicatesCtrl, OAuthClientsCtrl, OAuthClientCtrl } from "./Controllers";
 
 require('bootstrap');
 require('angular-route');
@@ -98,7 +98,7 @@ module openflow {
                 .when('/Nodered/:id', { templateUrl: 'Nodered.html', controller: NoderedCtrl, controllerAs: 'ctrl' })
 
                 .when('/hdrobots', { templateUrl: 'hdrobots.html', controller: hdrobotsCtrl, controllerAs: 'ctrl' })
-                .when('/Robots', { templateUrl: 'Robots.html', controller: RobotsCtrl, controllerAs: 'ctrl' })
+                .when('/Clients', { templateUrl: 'Clients.html', controller: ClientsCtrl, controllerAs: 'ctrl' })
 
                 .when('/Auditlogs', { templateUrl: 'Auditlogs.html', controller: AuditlogsCtrl, controllerAs: 'ctrl' })
 
