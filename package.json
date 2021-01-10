@@ -26,7 +26,7 @@
   },
   "dependencies": {
     "@kubernetes/client-node": "^0.13.2",
-    "@openiap/openflow-api": "^1.0.56",
+    "@openiap/openflow-api": "^1.0.57",
     "amqplib": "^0.6.0",
     "async-retry": "^1.3.1",
     "bcryptjs": "^2.4.3",

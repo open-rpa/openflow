@@ -22,6 +22,8 @@ import * as client from "prom-client";
 import { NoderedUtil } from "@openiap/openflow-api";
 const { RateLimiterMemory } = require('rate-limiter-flexible')
 import * as url from "url";
+import { WebSocketServer } from "./WebSocketServer";
+import { WebSocketServerClient } from "./WebSocketServerClient";
 
 const BaseRateLimiter = new RateLimiterMemory({
     points: Config.api_rate_limit_points,
@@ -57,11 +59,51 @@ export class WebServer {
         this._logger = logger;
 
         this.app = express();
-        if (!NoderedUtil.IsNullUndefinded(register)) {
-            const metricsMiddleware = promBundle({ includeMethod: true, includePath: true, promRegistry: register, autoregister: true });
-            this.app.use(metricsMiddleware);
-            if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(webserver_rate_limit);
-        }
+        // if (!NoderedUtil.IsNullUndefinded(register)) {
+        //     const metricsMiddleware = promBundle({ includeMethod: true, includePath: true, promRegistry: register, autoregister: true });
+        //     this.app.use(metricsMiddleware);
+        //     if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(webserver_rate_limit);
+        // }
+
+        this.app.get("/metrics", async (req: any, res: any, next: any): Promise<void> => {
+            let result: string = ""
+            if (!NoderedUtil.IsNullUndefinded(register)) {
+                result += await register.metrics() + '\n';
+            }
+
+            for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
+                const cli: WebSocketServerClient = WebSocketServer._clients[i];
+                try {
+                    if (!NoderedUtil.IsNullEmpty(cli.metrics) && cli.user != null) {
+                        const arr: string[] = cli.metrics.split('\n');
+                        const replacer = (match: any, offset: any, string: any) => {
+                            return '{' + offset + ',username="' + cli.user.username + '"}';
+                        }
+                        for (let y = 0; y < arr.length; y++) {
+                            let line = arr[y];
+                            if (!line.startsWith("#")) {
+                                if (line.indexOf("}") > -1) {
+                                    line = line.replace(/{(.*)}/gi, replacer);
+                                    arr[y] = line
+                                } else if (!NoderedUtil.IsNullEmpty(line) && line.indexOf(' ') > -1) {
+                                    const _arr = line.split(' ');
+                                    _arr[0] += '{username="' + cli.user.username + '"}';
+                                    line = _arr.join(' ');
+                                    arr[y] = line
+                                }
+                            }
+
+                        }
+
+                        result += arr.join('\n') + '\n';
+                    }
+                } catch (error) {
+                    console.error(error);
+                }
+            }
+            res.set({ 'Content-Type': 'text/plain' });
+            res.send(result);
+        });
 
         const loggerstream = {
             write: function (message, encoding) {

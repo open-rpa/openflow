@@ -114,10 +114,20 @@ export class WebServer {
                 if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebServer.message_queue_count);
 
 
-                this._logger.debug("WebServer.configure::promBundle");
-                const metricsMiddleware = promBundle({ includeMethod: true, includePath: true, promRegistry: register, autoregister: true });
-                this.app.use(metricsMiddleware);
-                // this.app.use(morgan('combined', { stream: (winston.stream as any).write }));
+                if (Config.prometheus_expose_metric) {
+                    this._logger.debug("WebServer.configure::promBundle");
+                    const metricsMiddleware = promBundle({ includeMethod: true, includePath: true, promRegistry: register, autoregister: true });
+                    this.app.use(metricsMiddleware);
+                    this.app.use(morgan('combined', { stream: (winston.stream as any).write }));
+                } else {
+                    setInterval(async () => {
+                        try {
+                            NoderedUtil.PushMetrics(await register.metrics(), null);
+                        } catch (error) {
+                            // console.error(error);
+                        }
+                    }, 5000);
+                }
                 const loggerstream = {
                     write: function (message, encoding) {
                         logger.silly(message);
