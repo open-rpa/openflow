@@ -66,40 +66,44 @@ export class DBHelper {
         return result;
     }
     public static async DecorateWithRoles(user: User): Promise<void> {
-        const roles: Role[] = await this.GetRoles(user._id, 0);
-        user.roles = [];
-        roles.forEach(role => {
-            user.roles.push(new Rolemember(role.name, role._id));
-        });
-        // let query: any = { _type: "role" };
-        // const _roles: Role[] = await Config.db.query<Role>(query, null, Config.expected_max_roles, 0, null, "users", Crypt.rootToken());
-        // if (_roles.length === 0 && user.username !== "root") {
-        //     throw new Error("System has no roles !!!!!!");
-        // }
-        // user.roles = [];
-        // _roles.forEach(role => {
-        //     let isMember: number = -1;
-        //     if (role.members !== undefined) { isMember = role.members.map(function (e: Rolemember): string { return e._id; }).indexOf(user._id); }
-        //     const beenAdded: number = user.roles.map(function (e: Rolemember): string { return e._id; }).indexOf(user._id);
-        //     if (isMember > -1 && beenAdded === -1) {
-        //         user.roles.push(new Rolemember(role.name, role._id));
-        //     }
-        // });
-        // let foundone: boolean = true;
-        // while (foundone) {
-        //     foundone = false;
-        //     user.roles.forEach(userrole => {
-        //         _roles.forEach(role => {
-        //             let isMember: number = -1;
-        //             if (role.members !== undefined) { isMember = role.members.map(function (e: Rolemember): string { return e._id; }).indexOf(userrole._id); }
-        //             const beenAdded: number = user.roles.map(function (e: Rolemember): string { return e._id; }).indexOf(role._id);
-        //             if (isMember > -1 && beenAdded === -1) {
-        //                 user.roles.push(new Rolemember(role.name, role._id));
-        //                 foundone = true;
-        //             }
-        //         });
-        //     });
-        // }
+        if (!Config.decorate_roles_fetching_all_roles) {
+            const roles: Role[] = await this.GetRoles(user._id, 0);
+            user.roles = [];
+            roles.forEach(role => {
+                user.roles.push(new Rolemember(role.name, role._id));
+            });
+        } else {
+            let query: any = { _type: "role" };
+            const _roles: Role[] = await Config.db.query<Role>(query, null, Config.expected_max_roles, 0, null, "users", Crypt.rootToken());
+            if (_roles.length === 0 && user.username !== "root") {
+                throw new Error("System has no roles !!!!!!");
+            }
+            user.roles = [];
+            _roles.forEach(role => {
+                let isMember: number = -1;
+                if (role.members !== undefined) { isMember = role.members.map(function (e: Rolemember): string { return e._id; }).indexOf(user._id); }
+                const beenAdded: number = user.roles.map(function (e: Rolemember): string { return e._id; }).indexOf(user._id);
+                if (isMember > -1 && beenAdded === -1) {
+                    user.roles.push(new Rolemember(role.name, role._id));
+                }
+            });
+            let foundone: boolean = true;
+            while (foundone) {
+                foundone = false;
+                user.roles.forEach(userrole => {
+                    _roles.forEach(role => {
+                        let isMember: number = -1;
+                        if (role.members !== undefined) { isMember = role.members.map(function (e: Rolemember): string { return e._id; }).indexOf(userrole._id); }
+                        const beenAdded: number = user.roles.map(function (e: Rolemember): string { return e._id; }).indexOf(role._id);
+                        if (isMember > -1 && beenAdded === -1) {
+                            user.roles.push(new Rolemember(role.name, role._id));
+                            foundone = true;
+                        }
+                    });
+                });
+            }
+        }
+
     }
     public static async FindRoleByName(name: string): Promise<Role> {
         const items: Role[] = await Config.db.query<Role>({ name: name }, null, 1, 0, null, "users", Crypt.rootToken());

@@ -60,6 +60,7 @@ export class Config {
         Config.client_heartbeat_timeout = parseInt(Config.getEnv("client_heartbeat_timeout", "60"));
 
         Config.expected_max_roles = parseInt(Config.getEnv("expected_max_roles", "4000"));
+        Config.decorate_roles_fetching_all_roles = Config.parseBoolean(Config.getEnv("decorate_roles_fetching_all_roles", "true"));
         Config.update_acl_based_on_groups = Config.parseBoolean(Config.getEnv("update_acl_based_on_groups", "false"));
         Config.multi_tenant = Config.parseBoolean(Config.getEnv("multi_tenant", "false"));
         Config.api_bypass_perm_check = Config.parseBoolean(Config.getEnv("api_bypass_perm_check", "false"));
@@ -157,6 +158,7 @@ export class Config {
     public static client_heartbeat_timeout: number = parseInt(Config.getEnv("client_heartbeat_timeout", "60"));
 
     public static expected_max_roles: number = parseInt(Config.getEnv("expected_max_roles", "4000"));
+    public static decorate_roles_fetching_all_roles = Config.parseBoolean(Config.getEnv("decorate_roles_fetching_all_roles", "true"));
     public static max_recursive_group_depth: number = parseInt(Config.getEnv("max_recursive_group_depth", "3"));
     public static update_acl_based_on_groups: boolean = Config.parseBoolean(Config.getEnv("update_acl_based_on_groups", "false"));
     public static multi_tenant: boolean = Config.parseBoolean(Config.getEnv("multi_tenant", "false"));
