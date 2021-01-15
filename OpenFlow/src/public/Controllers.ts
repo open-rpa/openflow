@@ -3360,7 +3360,7 @@ export class PaymentCtrl extends entityCtrl<Billing> {
                     }
                 }
             }
-            if (this.stripe_customer && this.stripe_customer) {
+            if (this.stripe_customer && this.stripe_customer && this.stripe_customer.tax_ids) {
                 if (this.stripe_customer.tax_ids.total_count > 0) {
                     this.hastaxinfo = true;
                     this.taxstatus = this.stripe_customer.tax_ids.data[0].verification.status;
@@ -3412,17 +3412,19 @@ export class PaymentCtrl extends entityCtrl<Billing> {
             //}
             if (this.hascustomer) {
                 const hasOpenflow = this.openflowplans.filter(plan => {
-                    const hasit = this.stripe_customer.subscriptions.data.filter(s => {
-                        const arr = s.items.data.filter(y => y.plan.id == plan.id);
-                        if (arr.length == 1) {
-                            if (arr[0].quantity > 0) {
-                                // this.openflowplan = arr[0];
-                                return true;
+                    if (this.stripe_customer.subscriptions != null) {
+                        const hasit = this.stripe_customer.subscriptions.data.filter(s => {
+                            const arr = s.items.data.filter(y => y.plan.id == plan.id);
+                            if (arr.length == 1) {
+                                if (arr[0].quantity > 0) {
+                                    // this.openflowplan = arr[0];
+                                    return true;
+                                }
                             }
-                        }
-                        return false;
-                    });
-                    if (hasit.length > 0) return true;
+                            return false;
+                        });
+                        if (hasit.length > 0) return true;
+                    }
                     return false;
                     // const hasit = this.stripe_customer.subscriptions.data.filter(s => s.items.data.filter(y => y.plan.id == plan.id).length > 0);
                     // if (hasit.length > 0) return true;
