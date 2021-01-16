@@ -187,7 +187,7 @@ export class LoginProvider {
         });
         await LoginProvider.RegisterProviders(app, baseurl);
         app.get("/user", async (req: any, res: any, next: any): Promise<void> => {
-            console.log("/user " + !(req.user == null));
+            // console.log("/user " + !(req.user == null));
             res.setHeader("Content-Type", "application/json");
             if (req.user) {
                 const user: User = await DBHelper.FindById(req.user._id);
@@ -198,7 +198,7 @@ export class LoginProvider {
             res.end();
         });
         app.get("/jwt", (req: any, res: any, next: any): void => {
-            console.log("/jwt " + !(req.user == null));
+            // console.log("/jwt " + !(req.user == null));
             res.setHeader("Content-Type", "application/json");
             if (req.user) {
                 const user: TokenUser = TokenUser.From(req.user);
@@ -209,7 +209,7 @@ export class LoginProvider {
             res.end();
         });
         app.get("/jwtlong", (req: any, res: any, next: any): void => {
-            console.log("/jwtlong " + !(req.user == null));
+            // console.log("/jwtlong " + !(req.user == null));
             res.setHeader("Content-Type", "application/json");
             if (req.user) {
                 const user: TokenUser = TokenUser.From(req.user);
@@ -224,7 +224,7 @@ export class LoginProvider {
             res.end();
         });
         app.post("/jwt", async (req: any, res: any, next: any): Promise<void> => {
-            console.log("/jwt " + !(req.user == null));
+            // console.log("/jwt " + !(req.user == null));
             try {
                 const rawAssertion = req.body.token;
                 const user: User = await LoginProvider.validateToken(rawAssertion);
@@ -258,13 +258,13 @@ export class LoginProvider {
             res.end(JSON.stringify(res2));
         });
         app.get("/login", async (req: any, res: any, next: any): Promise<void> => {
-            console.log("/login " + !(req.user == null));
+            // console.log("/login " + !(req.user == null));
             try {
                 const originalUrl: any = req.cookies.originalUrl;
                 const validateurl: any = req.cookies.validateurl;
                 if (NoderedUtil.IsNullEmpty(originalUrl)) res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
                 if (!NoderedUtil.IsNullEmpty(validateurl)) {
-                    console.log("validateurl: " + validateurl);
+                    // console.log("validateurl: " + validateurl);
                     if (req.user) {
                         const user: User = await DBHelper.FindById(req.user._id);
                         const tuser: TokenUser = TokenUser.From(user);
@@ -294,7 +294,7 @@ export class LoginProvider {
             }
         });
         app.get("/validateuserform", async (req: any, res: any, next: any): Promise<void> => {
-            console.log("/validateuserform " + !(req.user == null));
+            // console.log("/validateuserform " + !(req.user == null));
             res.setHeader("Content-Type", "application/json");
             if (NoderedUtil.IsNullEmpty(Config.validate_user_form)) {
                 res.end(JSON.stringify({}));
@@ -314,7 +314,7 @@ export class LoginProvider {
             return;
         });
         app.post("/validateuserform", async (req: any, res) => {
-            console.log("/validateuserform " + !(req.user == null));
+            // console.log("/validateuserform " + !(req.user == null));
             res.setHeader("Content-Type", "application/json");
             try {
                 if (req.user) {
