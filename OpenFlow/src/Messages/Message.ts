@@ -1180,6 +1180,12 @@ export class Message {
             // const api_ws_url = "ws://api/";
             // const api_ws_url = "https://demo.openiap.io/"
             // const api_ws_url = "https://demo.openiap.io/"
+
+            if (!NoderedUtil.IsNullUndefinded(resources.limits) && NoderedUtil.IsNullEmpty(resources.limits.memory)) delete resources.limits.memory;
+            if (!NoderedUtil.IsNullUndefinded(resources.limits) && NoderedUtil.IsNullEmpty(resources.limits.cpu)) delete resources.limits.cpu;
+            if (!NoderedUtil.IsNullUndefinded(resources.requests) && NoderedUtil.IsNullEmpty(resources.requests.memory)) delete resources.requests.memory;
+            if (!NoderedUtil.IsNullUndefinded(resources.requests) && NoderedUtil.IsNullEmpty(resources.requests.memory)) delete resources.requests.memory;
+
             const _deployment = {
                 metadata: { name: name, namespace: namespace, labels: { billed: hasbilling.toString(), userid: _id, app: name } },
                 spec: {
@@ -1304,7 +1310,7 @@ export class Message {
             await KubeUtil.instance().CoreV1Api.createNamespacedService(namespace, _service);
         }
         cli._logger.debug("[" + cli.user.username + "] GetIngress useringress");
-        const ingress = await KubeUtil.instance().GetIngress(namespace, "useringress");
+        const ingress = await KubeUtil.instance().GetIngressV1beta1(namespace, "useringress");
         if (ingress !== null) {
             let rule = null;
             for (let i = 0; i < ingress.spec.rules.length; i++) {
@@ -1314,21 +1320,42 @@ export class Message {
             }
             if (rule == null) {
                 cli._logger.debug("[" + cli.user.username + "] ingress " + hostname + " not found in useringress creating it");
-                rule = {
-                    host: hostname,
-                    http: {
-                        paths: [{
-                            path: "/",
-                            backend: {
-                                serviceName: name,
-                                servicePort: "www"
-                            }
-                        }]
+                if (Config.use_ingress_beta1_syntax) {
+                    rule = {
+                        host: hostname,
+                        http: {
+                            paths: [{
+                                path: "/",
+                                backend: {
+                                    serviceName: name,
+                                    servicePort: "www"
+                                }
+                            }]
+                        }
                     }
+                    ingress.spec.rules.push(rule);
+                } else {
+                    rule = {
+                        host: hostname,
+                        http: {
+                            paths: [{
+                                path: "/",
+                                pathType: "Prefix",
+                                backend: {
+                                    service: {
+                                        name: name,
+                                        port: {
+                                            number: 80
+                                        }
+                                    }
+                                }
+                            }]
+                        }
+                    }
+                    ingress.spec.rules.push(rule);
                 }
                 delete ingress.metadata.creationTimestamp;
                 delete ingress.status;
-                ingress.spec.rules.push(rule);
                 cli._logger.debug("[" + cli.user.username + "] replaceNamespacedIngress");
                 await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("useringress", namespace, ingress);
             }
@@ -1367,7 +1394,7 @@ export class Message {
         if (replicaset !== null) {
             KubeUtil.instance().AppsV1Api.deleteNamespacedReplicaSet(replicaset.metadata.name, namespace);
         }
-        const ingress = await KubeUtil.instance().GetIngress(namespace, "useringress");
+        const ingress = await KubeUtil.instance().GetIngressV1beta1(namespace, "useringress");
         if (ingress !== null) {
             let updated = false;
             for (let i = ingress.spec.rules.length - 1; i >= 0; i--) {
@@ -1394,7 +1421,7 @@ export class Message {
             await this._DeleteNoderedInstance(msg._id, cli.user._id, cli.user.username, cli.jwt);
 
         } catch (error) {
-            cli._logger.error("[" + cli.user.username + "] failed locating useringress");
+            cli._logger.error("[" + cli.user.username + "] failed deleting Nodered Instance");
             this.data = "";
             cli._logger.error(error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
