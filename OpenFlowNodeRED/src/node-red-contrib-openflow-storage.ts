@@ -8,6 +8,7 @@ import { WebSocketClient, NoderedUtil, Base } from "@openiap/openflow-api";
 import * as nodered from "node-red";
 import { FileSystemCache } from "@openiap/openflow-api";
 import { RestartService, servicename } from "./nodeclient/cliutil";
+const child_process = require("child_process");
 export class noderednpmrc {
     public _id: string;
     public _type: string = "npmrc";
@@ -134,6 +135,41 @@ export class noderedcontribopenflowstorage {
                 return reject(error)
             }
         });
+    }
+    async GetMissingModules(settings: any) {
+        const globaldir = await this.getGlobalModulesDir();
+        let currentmodules = this.scanDirForNodesModules(path.resolve('.'));
+        currentmodules = currentmodules.concat(this.scanDirForNodesModules(globaldir));
+        // currentmodules.forEach(pck => {
+        //     console.log(pck.name + "@" + pck.version);
+        // });
+        const keys = Object.keys(settings.nodes);
+        let modules = "";
+        for (let i = 0; i < keys.length; i++) {
+            const key = keys[i];
+            if (key == "node-red" || key == "node-red-node-rbe" || key == "node-red-node-tail") continue;
+            const val = settings.nodes[key];
+            const version = (val.pending_version ? val.pending_version : val.version)
+            const pcks = currentmodules.filter(x => x.name == key && x.version == version);
+            if (pcks.length != 1) {
+                modules += (" " + key + "@" + version);
+            }
+        }
+        return modules.trim();
+    }
+    // key + "@" + version
+    installNPMPackage(pck: string) {
+        try {
+            this._logger.info("Installing " + pck);
+            child_process.execSync("npm install " + pck, { stdio: [0, 1, 2], cwd: this.settings.userDir });
+        } catch (error) {
+            this._logger.error("npm install error");
+            if (error.status) this._logger.error("npm install status: " + error.status);
+            if (error.message) this._logger.error("npm install message: " + error.message);
+            if (error.stderr) this._logger.error("npm install stderr: " + error.stderr);
+            if (error.stdout) this._logger.error("npm install stdout: " + error.stdout);
+        }
+
     }
     DiffObjects(o1, o2) {
         // choose a map() impl.
@@ -562,34 +598,27 @@ export class noderedcontribopenflowstorage {
             if (this._settings == null) {
                 this._settings = settings;
                 try {
-                    const child_process = require("child_process");
-                    const globaldir = await this.getGlobalModulesDir();
-                    let currentmodules = this.scanDirForNodesModules(path.resolve('.'));
-                    currentmodules = currentmodules.concat(this.scanDirForNodesModules(globaldir));
-                    // currentmodules.forEach(pck => {
-                    //     console.log(pck.name + "@" + pck.version);
-                    // });
-                    const keys = Object.keys(settings.nodes);
-                    // let modules = "";
-                    for (let i = 0; i < keys.length; i++) {
-                        const key = keys[i];
-                        if (key == "node-red" || key == "node-red-node-rbe" || key == "node-red-node-tail") continue;
-                        const val = settings.nodes[key];
-                        const version = (val.pending_version ? val.pending_version : val.version)
-                        const pcks = currentmodules.filter(x => x.name == key && x.version == version);
-                        if (pcks.length != 1) {
-                            try {
-                                this._logger.info("Installing " + key + "@" + version);
-                                child_process.execSync("npm install " + key + "@" + version, { stdio: [0, 1, 2], cwd: this.settings.userDir });
-                            } catch (error) {
-                                this._logger.error("npm install error");
-                                if (error.status) this._logger.error("npm install status: " + error.status);
-                                if (error.message) this._logger.error("npm install message: " + error.message);
-                                if (error.stderr) this._logger.error("npm install stderr: " + error.stderr);
-                                if (error.stdout) this._logger.error("npm install stdout: " + error.stdout);
-                            }
+                    let modules = await this.GetMissingModules(settings);
+                    if (!NoderedUtil.IsNullEmpty(modules)) {
+                        let hadErrors: boolean = false;
+                        try {
+                            this.installNPMPackage(modules);
+                            hadErrors = false;
+                        } catch (error) {
+                            hadErrors = true;
+                        }
+                        if (hadErrors) {
+                            modules = await this.GetMissingModules(settings);
+                            var arr = modules.split(" ");
+                            arr.forEach(pck => {
+                                try {
+                                    this.installNPMPackage(pck);
+                                } catch (error) {
+                                }
+                            });
 
                         }
+
                     }
                 } catch (error) {
                     this._logger.error(error);
