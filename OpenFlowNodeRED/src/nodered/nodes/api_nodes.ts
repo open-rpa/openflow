@@ -76,7 +76,7 @@ export class api_get_jwt {
                     user.username = user.name;
                     q.jwt = Crypt.createToken(user);
                 } else {
-                    return NoderedUtil.HandleError(this, new Error("root signin not allowed"));
+                    return NoderedUtil.HandleError(this, "root signin not allowed", msg);
                 }
             }
             this.node.status({ fill: "blue", shape: "dot", text: "Requesting token" });
@@ -94,7 +94,8 @@ export class api_get_jwt {
             this.node.status({});
         } catch (error) {
             let message = error.message ? error.message : error;
-            this.node.error(new Error(message), msg);
+            // this.node.error(new Error(message), msg);
+            NoderedUtil.HandleError(this, message, msg);
             this.node.status({ fill: 'red', shape: 'dot', text: message.toString().substr(0, 32) });
         }
     }
@@ -143,9 +144,7 @@ export class api_get {
                     try {
                         this.config.orderby = JSON.parse(this.config.orderby);
                     } catch (error) {
-                        (this as Red).error("Error parsing orderby", error);
-                        // this.node.er
-                        // NoderedUtil.HandleError(this, error);
+                        NoderedUtil.HandleError(this, "Error parsing orderby", msg);
                         return;
                     }
                 }
@@ -166,9 +165,7 @@ export class api_get {
                 try {
                     this.config.projection = JSON.parse(this.config.projection);
                 } catch (error) {
-                    (this as Red).error("Error parsing projection", error);
-                    // this.node.er
-                    // NoderedUtil.HandleError(this, error);
+                    NoderedUtil.HandleError(this, "Error parsing projection", msg);
                     return;
                 }
             }
@@ -203,7 +200,7 @@ export class api_get {
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, msg);
         }
     }
     onclose() {
@@ -270,7 +267,7 @@ export class api_add {
             const errors = data.filter(result => NoderedUtil.IsString(result) || (result instanceof Error));
             if (errors.length > 0) {
                 for (let i: number = 0; i < errors.length; i++) {
-                    NoderedUtil.HandleError(this, errors[i]);
+                    NoderedUtil.HandleError(this, errors[i], msg);
                 }
             }
             data = data.filter(result => !NoderedUtil.IsString(result) && !(result instanceof Error));
@@ -278,7 +275,7 @@ export class api_add {
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, msg);
         }
     }
     onclose() {
@@ -345,7 +342,7 @@ export class api_addmany {
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, msg);
         }
     }
     onclose() {
@@ -414,7 +411,7 @@ export class api_update {
             const errors = data.filter(result => NoderedUtil.IsString(result) || (result instanceof Error));
             if (errors.length > 0) {
                 for (let i: number = 0; i < errors.length; i++) {
-                    NoderedUtil.HandleError(this, errors[i]);
+                    NoderedUtil.HandleError(this, errors[i], msg);
                 }
             }
             data = data.filter(result => !NoderedUtil.IsString(result) && !(result instanceof Error));
@@ -422,7 +419,7 @@ export class api_update {
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, msg);
         }
     }
     onclose() {
@@ -492,7 +489,7 @@ export class api_addorupdate {
             const errors = data.filter(result => NoderedUtil.IsString(result) || (result instanceof Error));
             if (errors.length > 0) {
                 for (let i: number = 0; i < errors.length; i++) {
-                    NoderedUtil.HandleError(this, errors[i]);
+                    NoderedUtil.HandleError(this, errors[i], msg);
                 }
             }
             data = data.filter(result => !NoderedUtil.IsString(result) && !(result instanceof Error));
@@ -500,7 +497,7 @@ export class api_addorupdate {
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, msg);
         }
     }
     onclose() {
@@ -558,13 +555,13 @@ export class api_delete {
             const errors = data.filter(result => NoderedUtil.IsString(result) || (result instanceof Error));
             if (errors.length > 0) {
                 for (let i: number = 0; i < errors.length; i++) {
-                    NoderedUtil.HandleError(this, errors[i]);
+                    NoderedUtil.HandleError(this, errors[i], msg);
                 }
             }
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, msg);
         }
     }
     onclose() {
@@ -628,7 +625,7 @@ export class api_deletemany {
             this.node.send(msg);
             this.node.status({ fill: "green", shape: "dot", text: "deleted " + affectedrows + " rows" });
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, msg);
         }
     }
     onclose() {
@@ -683,7 +680,7 @@ export class api_map_reduce {
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, msg);
         }
     }
     onclose() {
@@ -857,7 +854,7 @@ export class api_updatedocument {
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, msg);
         }
     }
     onclose() {
@@ -900,7 +897,7 @@ export class grant_permission {
             }
 
             const result: any[] = await NoderedUtil.Query('users', { _id: this.config.targetid }, { name: 1 }, { name: -1 }, 1, 0, msg.jwt)
-            if (result.length === 0) { return NoderedUtil.HandleError(this, "Target " + this.config.targetid + " not found "); }
+            if (result.length === 0) { return NoderedUtil.HandleError(this, "Target " + this.config.targetid + " not found ", msg); }
             const found = result[0];
 
             let data: any[] = [];
@@ -930,7 +927,7 @@ export class grant_permission {
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, msg);
         }
     }
     onclose() {
@@ -1001,7 +998,7 @@ export class revoke_permission {
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, msg);
         }
     }
     onclose() {
@@ -1051,7 +1048,7 @@ export class download_file {
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, msg);
         }
     }
     onclose() {
@@ -1094,7 +1091,7 @@ export class upload_file {
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, msg);
         }
     }
     onclose() {
@@ -1137,7 +1134,7 @@ export class api_aggregate {
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, msg);
         }
     }
     onclose() {
@@ -1203,7 +1200,7 @@ export class api_watch {
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, msg);
         }
     }
     async onclose(removed: boolean, done: any) {
@@ -1213,7 +1210,7 @@ export class api_watch {
                 await NoderedUtil.UnWatch(this.watchid, null);
             }
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, null);
         }
         this.watchid = null;
         this.node.status({ text: "Not watching" });

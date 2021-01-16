@@ -27,7 +27,7 @@ export class get_pods {
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, msg);
         }
     }
     onclose() {

@@ -65,7 +65,7 @@ export class oauth2 {
             this.node.on("input", this.oninput);
             this.node.on("close", this.onclose);
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, null);
         }
     }
     async oninput(msg: any) {

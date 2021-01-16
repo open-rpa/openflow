@@ -29,7 +29,7 @@ export class rpa_detector_node {
                 this.connect();
             }
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, null);
         }
     }
     onsignedin() {
@@ -49,7 +49,7 @@ export class rpa_detector_node {
             });
             this.node.status({ fill: "green", shape: "dot", text: "Connected" });
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, null);
         }
     }
     async OnMessage(msg: any, ack: any) {
@@ -72,7 +72,7 @@ export class rpa_detector_node {
             this.node.send(msg);
             ack();
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, msg);
         }
     }
     async onclose(removed: boolean, done: any) {
@@ -121,7 +121,7 @@ export class rpa_workflow_node {
                 this.connect();
             }
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, null);
         }
     }
     onsignedin() {
@@ -141,7 +141,7 @@ export class rpa_workflow_node {
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
 
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, null);
         }
     }
     async OnMessage(msg: any, ack: any) {
@@ -199,7 +199,7 @@ export class rpa_workflow_node {
             ack();
         } catch (error) {
             this.node.status({});
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, msg);
         }
     }
     messages: any[] = [];

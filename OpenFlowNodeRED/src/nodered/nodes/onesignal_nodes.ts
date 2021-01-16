@@ -53,7 +53,7 @@ export class create_notification {
             this.node.on("input", this.oninput);
             this.node.on("close", this.onclose);
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, null);
         }
     }
     async oninput(msg: any) {
@@ -101,12 +101,12 @@ export class create_notification {
                         this.node.send(msg);
                     } else {
                         console.error('Error:', body.errors);
-                        NoderedUtil.HandleError(this, body.errors);
+                        NoderedUtil.HandleError(this, body.errors, msg);
                     }
                 }
             );
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, msg);
         }
     }
     onclose() {
