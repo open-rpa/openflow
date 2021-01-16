@@ -123,14 +123,16 @@ export class noderedcontribopenflowstorage {
     }
     getGlobalModulesDir() {
         return new Promise<string>((resolve, reject) => {
-            var npm = require("global-npm")
-            var myConfigObject = {}
-            npm.load(myConfigObject, function (err) {
-                if (err) return reject(err)
-                // const test = npm.get('prefix');
-                // console.log(test);
-                resolve(npm.globalPrefix);
-            })
+            try {
+                var npm = require("global-npm")
+                // work around for https://github.com/npm/cli/issues/2137
+                npm.load(function (err) {
+                    if (err) return reject(err)
+                    resolve(npm.globalPrefix);
+                })
+            } catch (error) {
+                return reject(error)
+            }
         });
     }
     DiffObjects(o1, o2) {
