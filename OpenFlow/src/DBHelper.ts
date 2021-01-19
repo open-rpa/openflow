@@ -51,11 +51,11 @@ export class DBHelper {
             if (ids.indexOf(role._id) == -1) {
                 ids.push(role._id);
                 result.push(role);
-                console.log(role.name + " " + role._id);
+                // console.log(role.name + " " + role._id);
                 const _subroles: Role[] = await this.GetRoles(role._id, ident + 1);
                 for (let y = 0; y < _subroles.length; y++) {
                     const subrole = _subroles[y];
-                    console.log(role.name + " " + subrole.name + " " + subrole._id);
+                    // console.log(role.name + " " + subrole.name + " " + subrole._id);
                     if (ids.indexOf(subrole._id) == -1) {
                         ids.push(subrole._id);
                         result.push(subrole);
@@ -65,21 +65,33 @@ export class DBHelper {
         }
         return result;
     }
+    public static cached_roles: Role[] = [];
+    public static cached_at: Date = new Date();
     public static async DecorateWithRoles(user: User): Promise<void> {
         if (!Config.decorate_roles_fetching_all_roles) {
+            console.log("DecorateWithRoles::begin - multiple queries");
             const roles: Role[] = await this.GetRoles(user._id, 0);
             user.roles = [];
             roles.forEach(role => {
                 user.roles.push(new Rolemember(role.name, role._id));
             });
         } else {
-            let query: any = { _type: "role" };
-            const _roles: Role[] = await Config.db.query<Role>(query, null, Config.expected_max_roles, 0, null, "users", Crypt.rootToken());
-            if (_roles.length === 0 && user.username !== "root") {
+            console.log("DecorateWithRoles::begin - load all roles at once");
+            var end: number = new Date().getTime();
+            var seconds = Math.round((end - this.cached_at.getTime()) / 1000);
+            if (seconds > 60) {
+                this.cached_roles = [];
+            }
+            if (this.cached_roles.length == 0) {
+                let query: any = { _type: "role" };
+                this.cached_roles = await Config.db.query<Role>(query, { "name": 1, "members": 1 }, Config.expected_max_roles, 0, null, "users", Crypt.rootToken());
+                this.cached_at = new Date();
+            }
+            if (this.cached_roles.length === 0 && user.username !== "root") {
                 throw new Error("System has no roles !!!!!!");
             }
             user.roles = [];
-            _roles.forEach(role => {
+            this.cached_roles.forEach(role => {
                 let isMember: number = -1;
                 if (role.members !== undefined) { isMember = role.members.map(function (e: Rolemember): string { return e._id; }).indexOf(user._id); }
                 const beenAdded: number = user.roles.map(function (e: Rolemember): string { return e._id; }).indexOf(user._id);
@@ -91,7 +103,7 @@ export class DBHelper {
             while (foundone) {
                 foundone = false;
                 user.roles.forEach(userrole => {
-                    _roles.forEach(role => {
+                    this.cached_roles.forEach(role => {
                         let isMember: number = -1;
                         if (role.members !== undefined) { isMember = role.members.map(function (e: Rolemember): string { return e._id; }).indexOf(userrole._id); }
                         const beenAdded: number = user.roles.map(function (e: Rolemember): string { return e._id; }).indexOf(role._id);
@@ -103,7 +115,7 @@ export class DBHelper {
                 });
             }
         }
-
+        console.log("DecorateWithRoles::end");
     }
     public static async FindRoleByName(name: string): Promise<Role> {
         const items: Role[] = await Config.db.query<Role>({ name: name }, null, 1, 0, null, "users", Crypt.rootToken());

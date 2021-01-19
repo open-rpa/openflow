@@ -762,6 +762,7 @@ export class DatabaseConnection {
             Base.addRight(item, item._id, item.name, [Rights.read]);
             item = await this.CleanACL(item, user);
             await this.db.collection(collectionname).replaceOne({ _id: item._id }, item);
+            DBHelper.cached_roles = [];
         }
         DatabaseConnection.traversejsondecode(item);
         if (Config.log_inserts) this._logger.debug("[" + user.username + "][" + collectionname + "] inserted " + item.name);
@@ -974,6 +975,7 @@ export class DatabaseConnection {
                 }
                 if (q.item._type === "role" && q.collectionname === "users") {
                     q.item = await this.Cleanmembers(q.item as any, original);
+                    DBHelper.cached_roles = [];
                 }
 
                 if (q.collectionname != "fs.files") {
@@ -1152,6 +1154,9 @@ export class DatabaseConnection {
         } else {
             if (Config.log_updates) this._logger.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Inserting as new in database");
             q.result = await this.InsertOne(q.item, q.collectionname, q.w, q.j, q.jwt);
+        }
+        if (q.collectionname === "users" && q.item._type === "role") {
+            DBHelper.cached_roles = [];
         }
         return q;
     }
