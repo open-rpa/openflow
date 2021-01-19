@@ -3392,9 +3392,25 @@ export class PaymentCtrl extends entityCtrl<Billing> {
                         if (stripeplan.metadata.openflowuser == "true") {
                             this.openflowplans.push(stripeplan);
                         }
-                        if (stripeplan.metadata.supportplan == "true") {
+                        else if (stripeplan.metadata.supportplan == "true") {
                             this.supportplans.push(stripeplan);
                         }
+                        else if (this.stripe_customer && this.stripe_customer.subscriptions && this.stripe_customer.subscriptions.data) {
+
+                            const hasit = this.stripe_customer.subscriptions.data.filter(s => {
+                                const arr = s.items.data.filter(y => y.plan.id == stripeplan.id);
+                                if (arr.length == 1) {
+                                    if (arr[0].quantity > 0) {
+                                        return true;
+                                    }
+                                }
+                                return false;
+                            });
+
+                            if (hasit.length > 0) this.supportplans.push(stripeplan);
+
+                        }
+
                     }
                 }
                 for (let y = 0; y < this.supportplans.length; y++) {
@@ -3405,6 +3421,21 @@ export class PaymentCtrl extends entityCtrl<Billing> {
                             this.supporthoursplans.push(stripeplan);
                             (supportplan as any).subplan = stripeplan;
                         }
+                        else if (this.stripe_customer && this.stripe_customer.subscriptions && this.stripe_customer.subscriptions.data) {
+                            const hasit = this.stripe_customer.subscriptions.data.filter(s => {
+                                const arr = s.items.data.filter(y => y.plan.id == stripeplan.id);
+                                if (arr.length == 1) {
+                                    if (arr[0].quantity > 0) {
+                                        return true;
+                                    }
+                                }
+                                return false;
+                            });
+
+                            if (hasit.length > 0) this.supporthoursplans.push(stripeplan);
+
+                        }
+
                     }
 
                 }
