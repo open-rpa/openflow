@@ -69,17 +69,15 @@ export class DBHelper {
     public static cached_at: Date = new Date();
     public static async DecorateWithRoles(user: User): Promise<void> {
         if (!Config.decorate_roles_fetching_all_roles) {
-            console.log("DecorateWithRoles::begin - multiple queries");
             const roles: Role[] = await this.GetRoles(user._id, 0);
             user.roles = [];
             roles.forEach(role => {
                 user.roles.push(new Rolemember(role.name, role._id));
             });
         } else {
-            console.log("DecorateWithRoles::begin - load all roles at once");
             var end: number = new Date().getTime();
             var seconds = Math.round((end - this.cached_at.getTime()) / 1000);
-            if (seconds > 60) {
+            if (seconds > Config.roles_cached_in_seconds || Config.roles_cached_in_seconds <= 0) {
                 this.cached_roles = [];
             }
             if (this.cached_roles.length == 0) {
@@ -115,7 +113,6 @@ export class DBHelper {
                 });
             }
         }
-        console.log("DecorateWithRoles::end");
     }
     public static async FindRoleByName(name: string): Promise<Role> {
         const items: Role[] = await Config.db.query<Role>({ name: name }, null, 1, 0, null, "users", Crypt.rootToken());
