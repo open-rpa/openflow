@@ -228,7 +228,7 @@ export class googleauth_request {
             this.node.on('input', this.oninput);
             this.node.status({});
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, null);
         }
     }
 
@@ -287,7 +287,7 @@ export class googleauth_request {
                 }
                 request(options, (error, response, body) => {
                     if (error) {
-                        NoderedUtil.HandleError(this, error);
+                        NoderedUtil.HandleError(this, error, msg);
                         return done();
                     }
                     msg.payload = body;
@@ -300,7 +300,7 @@ export class googleauth_request {
             }
         } catch (error) {
             done();
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, msg);
         }
     }
     onclose() {

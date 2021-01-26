@@ -40,7 +40,8 @@ export class DBHelper {
         await this.DecorateWithRoles(result);
         return result;
     }
-    public static async GetRoles(_id: string): Promise<Role[]> {
+    public static async GetRoles(_id: string, ident: number): Promise<Role[]> {
+        if (ident > Config.max_recursive_group_depth) return [];
         const result: Role[] = [];
         const query: any = { "members": { "$elemMatch": { _id: _id } } };
         const ids: string[] = [];
@@ -50,9 +51,11 @@ export class DBHelper {
             if (ids.indexOf(role._id) == -1) {
                 ids.push(role._id);
                 result.push(role);
-                const _subroles: Role[] = await Config.db.query<Role>(query, null, Config.expected_max_roles, 0, null, "users", Crypt.rootToken());
+                // console.log(role.name + " " + role._id);
+                const _subroles: Role[] = await this.GetRoles(role._id, ident + 1);
                 for (let y = 0; y < _subroles.length; y++) {
                     const subrole = _subroles[y];
+                    // console.log(role.name + " " + subrole.name + " " + subrole._id);
                     if (ids.indexOf(subrole._id) == -1) {
                         ids.push(subrole._id);
                         result.push(subrole);
@@ -62,41 +65,54 @@ export class DBHelper {
         }
         return result;
     }
+    public static cached_roles: Role[] = [];
+    public static cached_at: Date = new Date();
     public static async DecorateWithRoles(user: User): Promise<void> {
-        const roles: Role[] = await this.GetRoles(user._id);
-        user.roles = [];
-        roles.forEach(role => {
-            user.roles.push(new Rolemember(role.name, role._id));
-        });
-        // let query: any = { _type: "role" };
-        // const _roles: Role[] = await Config.db.query<Role>(query, null, Config.expected_max_roles, 0, null, "users", Crypt.rootToken());
-        // if (_roles.length === 0 && user.username !== "root") {
-        //     throw new Error("System has no roles !!!!!!");
-        // }
-        // user.roles = [];
-        // _roles.forEach(role => {
-        //     let isMember: number = -1;
-        //     if (role.members !== undefined) { isMember = role.members.map(function (e: Rolemember): string { return e._id; }).indexOf(user._id); }
-        //     const beenAdded: number = user.roles.map(function (e: Rolemember): string { return e._id; }).indexOf(user._id);
-        //     if (isMember > -1 && beenAdded === -1) {
-        //         user.roles.push(new Rolemember(role.name, role._id));
-        //     }
-        // });
-        // let foundone: boolean = true;
-        // while (foundone) {
-        //     foundone = false;
-        //     user.roles.forEach(userrole => {
-        //         _roles.forEach(role => {
-        //             let isMember: number = -1;
-        //             if (role.members !== undefined) { isMember = role.members.map(function (e: Rolemember): string { return e._id; }).indexOf(userrole._id); }
-        //             const beenAdded: number = user.roles.map(function (e: Rolemember): string { return e._id; }).indexOf(role._id);
-        //             if (isMember > -1 && beenAdded === -1) {
-        //                 user.roles.push(new Rolemember(role.name, role._id));
-        //                 foundone = true;
-        //             }
-        //         });
-        //     });
-        // }
+        if (!Config.decorate_roles_fetching_all_roles) {
+            const roles: Role[] = await this.GetRoles(user._id, 0);
+            user.roles = [];
+            roles.forEach(role => {
+                user.roles.push(new Rolemember(role.name, role._id));
+            });
+        } else {
+            var end: number = new Date().getTime();
+            var seconds = Math.round((end - this.cached_at.getTime()) / 1000);
+            if (seconds > Config.roles_cached_in_seconds || Config.roles_cached_in_seconds <= 0) {
+                this.cached_roles = [];
+            }
+            if (this.cached_roles.length == 0) {
+                let query: any = { _type: "role" };
+                this.cached_roles = await Config.db.query<Role>(query, { "name": 1, "members": 1 }, Config.expected_max_roles, 0, null, "users", Crypt.rootToken());
+                this.cached_at = new Date();
+            }
+            if (this.cached_roles.length === 0 && user.username !== "root") {
+                throw new Error("System has no roles !!!!!!");
+            }
+            user.roles = [];
+            this.cached_roles.forEach(role => {
+                let isMember: number = -1;
+                if (role.members !== undefined) { isMember = role.members.map(function (e: Rolemember): string { return e._id; }).indexOf(user._id); }
+                const beenAdded: number = user.roles.map(function (e: Rolemember): string { return e._id; }).indexOf(user._id);
+                if (isMember > -1 && beenAdded === -1) {
+                    user.roles.push(new Rolemember(role.name, role._id));
+                }
+            });
+            let foundone: boolean = true;
+            while (foundone) {
+                foundone = false;
+                user.roles.forEach(userrole => {
+                    this.cached_roles.forEach(role => {
+                        let isMember: number = -1;
+                        if (role.members !== undefined) { isMember = role.members.map(function (e: Rolemember): string { return e._id; }).indexOf(userrole._id); }
+                        const beenAdded: number = user.roles.map(function (e: Rolemember): string { return e._id; }).indexOf(role._id);
+                        if (isMember > -1 && beenAdded === -1) {
+                            user.roles.push(new Rolemember(role.name, role._id));
+                            foundone = true;
+                        }
+                    });
+                });
+            }
+        }
     }
     public static async FindRoleByName(name: string): Promise<Role> {
         const items: Role[] = await Config.db.query<Role>({ name: name }, null, 1, 0, null, "users", Crypt.rootToken());

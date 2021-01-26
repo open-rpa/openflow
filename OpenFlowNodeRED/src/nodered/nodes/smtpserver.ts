@@ -49,7 +49,7 @@ module.exports = function (RED) {
                     //     config.log(1, email);
                 }
             } catch (error) {
-                NoderedUtil.HandleError(this, error);
+                NoderedUtil.HandleError(this, error, null);
             }
         }
         async function init(port: number) {
@@ -59,7 +59,7 @@ module.exports = function (RED) {
                 //mailserver.on('email', onEmail);
                 //libmailserver.current.on('email', onEmail);
             } catch (error) {
-                NoderedUtil.HandleError(this, error);
+                NoderedUtil.HandleError(this, error, null);
             }
         }
 

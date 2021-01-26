@@ -93,7 +93,7 @@ export class amqp_consumer_node {
                 this.connect();
             }
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, null);
         }
     }
     onsocketclose(message) {
@@ -120,7 +120,7 @@ export class amqp_consumer_node {
             this.websocket()._logger.info("registed amqp consumer as " + this.localqueue);
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, null);
         }
     }
     async OnMessage(msg: any, ack: any) {
@@ -138,7 +138,7 @@ export class amqp_consumer_node {
             this.node.send(data);
             ack();
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, msg);
         }
     }
     async onclose(removed: boolean, done: any) {
@@ -187,7 +187,7 @@ export class amqp_publisher_node {
                 this.connect();
             }
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, null);
         }
     }
     onsignedin() {
@@ -217,7 +217,7 @@ export class amqp_publisher_node {
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
 
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, null);
         }
     }
     async OnMessage(msg: any, ack: any) {
@@ -235,7 +235,7 @@ export class amqp_publisher_node {
             }
             ack();
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, msg);
         }
     }
     async oninput(msg: any) {
@@ -256,7 +256,7 @@ export class amqp_publisher_node {
             }
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, msg);
         }
     }
     async onclose(removed: boolean, done: any) {
@@ -296,7 +296,7 @@ export class amqp_acknowledgment_node {
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
-            NoderedUtil.HandleError(this, error);
+            NoderedUtil.HandleError(this, error, msg);
         }
     }
     onclose() {

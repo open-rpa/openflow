@@ -7,6 +7,7 @@ import { Crypt } from "./Crypt";
 import { Config } from "./Config";
 import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User } from "@openiap/openflow-api";
 import { DBHelper } from "./DBHelper";
+import * as client from "prom-client";
 // tslint:disable-next-line: typedef
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 const isoDatePattern = new RegExp(/\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z)/);
@@ -46,6 +47,29 @@ export class DatabaseConnection {
         this._dbname = dbname;
         this.mongodburl = mongodburl;
     }
+
+    public static mongodb_query = new client.Histogram({
+        name: 'openflow_mongodb_query_seconds',
+        help: 'Duration for mongodb queries microseconds',
+        labelNames: ['collection'],
+        buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10]
+    })
+    public static mongodb_query_count = new client.Counter({
+        name: 'openflow_mongodb_query_count',
+        help: 'Total number of mongodb queues',
+        labelNames: ["collection"]
+    })
+    public static mongodb_aggregate = new client.Histogram({
+        name: 'openflow_mongodb_aggregate_seconds',
+        help: 'Duration for mongodb queries microseconds',
+        labelNames: ['collection'],
+        buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10]
+    })
+    public static mongodb_aggregate_count = new client.Counter({
+        name: 'openflow_mongodb_aggregate_count',
+        help: 'Total number of mongodb queues',
+        labelNames: ["collection"]
+    })
     static toArray(iterator): Promise<any[]> {
         return new Promise((resolve, reject) => {
             iterator.toArray((err, res) => {
@@ -375,6 +399,10 @@ export class DatabaseConnection {
         // }
         let arr: T[] = [];
 
+
+        DatabaseConnection.mongodb_query_count.inc();
+        DatabaseConnection.mongodb_query_count.labels(collectionname).inc();
+        const end = DatabaseConnection.mongodb_query.startTimer();
         let _pipe = this.db.collection(collectionname).find(_query);
         if (projection != null) {
             _pipe = _pipe.project(projection);
@@ -384,6 +412,7 @@ export class DatabaseConnection {
             _pipe = _pipe.hint(myhint);
         }
         arr = await _pipe.toArray();
+        end({ collection: collectionname });
         // if (projection != null) {
         //     arr = await this.db.collection(collectionname).find(_query).project(projection).sort(mysort as any).limit(top).skip(skip).toArray();
         // } else {
@@ -493,7 +522,11 @@ export class DatabaseConnection {
         const options: CollectionAggregationOptions = {};
         options.hint = myhint;
         try {
+            DatabaseConnection.mongodb_aggregate_count.inc();
+            DatabaseConnection.mongodb_aggregate_count.labels(collectionname).inc();
+            const end = DatabaseConnection.mongodb_aggregate.startTimer();
             const items: T[] = await this.db.collection(collectionname).aggregate(aggregates, options).toArray();
+            end({ collection: collectionname });
             DatabaseConnection.traversejsondecode(items);
             const user: TokenUser = Crypt.verityToken(jwt);
             if (Config.log_aggregates) this._logger.debug("[" + user.username + "][" + collectionname + "] aggregate gave " + items.length + " results ");
@@ -729,6 +762,7 @@ export class DatabaseConnection {
             Base.addRight(item, item._id, item.name, [Rights.read]);
             item = await this.CleanACL(item, user);
             await this.db.collection(collectionname).replaceOne({ _id: item._id }, item);
+            DBHelper.cached_roles = [];
         }
         DatabaseConnection.traversejsondecode(item);
         if (Config.log_inserts) this._logger.debug("[" + user.username + "][" + collectionname + "] inserted " + item.name);
@@ -941,6 +975,7 @@ export class DatabaseConnection {
                 }
                 if (q.item._type === "role" && q.collectionname === "users") {
                     q.item = await this.Cleanmembers(q.item as any, original);
+                    DBHelper.cached_roles = [];
                 }
 
                 if (q.collectionname != "fs.files") {
@@ -1119,6 +1154,9 @@ export class DatabaseConnection {
         } else {
             if (Config.log_updates) this._logger.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Inserting as new in database");
             q.result = await this.InsertOne(q.item, q.collectionname, q.w, q.j, q.jwt);
+        }
+        if (q.collectionname === "users" && q.item._type === "role") {
+            DBHelper.cached_roles = [];
         }
         return q;
     }

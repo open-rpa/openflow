@@ -94,6 +94,10 @@ export class WebSocketServer {
         if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebSocketServer.websocket_rate_limit);
         if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebSocketServer.websocket_messages);
         if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebSocketServer.message_queue_count);
+        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(DatabaseConnection.mongodb_query);
+        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(DatabaseConnection.mongodb_query_count);
+        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(DatabaseConnection.mongodb_aggregate);
+        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(DatabaseConnection.mongodb_aggregate_count);
 
 
         setInterval(this.pingClients, 10000);

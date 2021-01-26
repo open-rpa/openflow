@@ -1,6 +1,6 @@
 {
   "name": "@openiap/openflow",
-  "version": "1.1.160",
+  "version": "1.1.169",
   "description": "Simple wrapper around NodeRed, RabbitMQ and MongoDB to support a more scaleable NodeRed implementation.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {
@@ -26,7 +26,7 @@
   },
   "dependencies": {
     "@kubernetes/client-node": "^0.13.2",
-    "@openiap/openflow-api": "^1.0.56",
+    "@openiap/openflow-api": "^1.0.58",
     "amqplib": "^0.6.0",
     "async-retry": "^1.3.1",
     "bcryptjs": "^2.4.3",

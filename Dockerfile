@@ -4,7 +4,8 @@ EXPOSE 80
 EXPOSE 5858
 WORKDIR /data
 COPY docker-package.json ./package.json
-RUN npm install
+RUN npm install --only=prod
+# RUN npm install --production
 # RUN npm install --force
 COPY dist ./
 

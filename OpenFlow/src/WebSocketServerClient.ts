@@ -45,6 +45,7 @@ export class WebSocketServerClient {
     public clientagent: string;
     public clientversion: string;
     public lastheartbeat: Date = new Date();
+    public metrics: string = "";
     public id: string = "";
     user: User;
     public _queues: amqpqueue[] = [];

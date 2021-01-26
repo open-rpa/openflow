@@ -85,7 +85,7 @@ export class KubeUtil {
         }
         return null;
     }
-    async GetIngress(namespace, name) {
+    async GetIngressV1beta1(namespace, name) {
         const list = await this.ExtensionsV1beta1Api.listNamespacedIngress(namespace);
         for (let i = 0; i < list.body.items.length; i++) {
             const item = list.body.items[i];

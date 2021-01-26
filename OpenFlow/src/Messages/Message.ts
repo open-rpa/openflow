@@ -12,7 +12,7 @@ import { Readable, Stream } from "stream";
 import { GridFSBucket, ObjectID, Db, Cursor, MongoNetworkError } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
-import { StripeMessage, EnsureStripeCustomerMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, GetKubeNodeLabels } from "@openiap/openflow-api";
+import { StripeMessage, EnsureStripeCustomerMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, GetKubeNodeLabels, PushMetricsMessage } from "@openiap/openflow-api";
 import { Billing, stripe_customer, stripe_base, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription, stripe_subscription_item, stripe_plan, stripe_coupon } from "@openiap/openflow-api";
 import { V1ResourceRequirements, V1Deployment } from "@kubernetes/client-node";
 import { amqpwrapper } from "../amqpwrapper";
@@ -222,6 +222,9 @@ export class Message {
                     break;
                 case "deleterabbitmqqueue":
                     this.DeleterabbitmqQueue(cli);
+                    break;
+                case "pushmetrics":
+                    this.PushMetrics(cli);
                     break;
                 default:
                     this.UnknownCommand(cli);
@@ -1177,6 +1180,12 @@ export class Message {
             // const api_ws_url = "ws://api/";
             // const api_ws_url = "https://demo.openiap.io/"
             // const api_ws_url = "https://demo.openiap.io/"
+
+            if (!NoderedUtil.IsNullUndefinded(resources.limits) && NoderedUtil.IsNullEmpty(resources.limits.memory)) delete resources.limits.memory;
+            if (!NoderedUtil.IsNullUndefinded(resources.limits) && NoderedUtil.IsNullEmpty(resources.limits.cpu)) delete resources.limits.cpu;
+            if (!NoderedUtil.IsNullUndefinded(resources.requests) && NoderedUtil.IsNullEmpty(resources.requests.memory)) delete resources.requests.memory;
+            if (!NoderedUtil.IsNullUndefinded(resources.requests) && NoderedUtil.IsNullEmpty(resources.requests.memory)) delete resources.requests.memory;
+
             const _deployment = {
                 metadata: { name: name, namespace: namespace, labels: { billed: hasbilling.toString(), userid: _id, app: name } },
                 spec: {
@@ -1212,6 +1221,7 @@ export class Message {
                                         { name: "prometheus_measure_nodeid", value: Config.prometheus_measure_nodeid.toString() },
                                         { name: "prometheus_measure_queued_messages", value: Config.prometheus_measure_queued_messages.toString() },
                                         { name: "NODE_ENV", value: Config.NODE_ENV },
+                                        { name: "prometheus_expose_metric", value: "true" },
                                     ],
                                     livenessProbe: livenessProbe,
                                 }
@@ -1300,7 +1310,7 @@ export class Message {
             await KubeUtil.instance().CoreV1Api.createNamespacedService(namespace, _service);
         }
         cli._logger.debug("[" + cli.user.username + "] GetIngress useringress");
-        const ingress = await KubeUtil.instance().GetIngress(namespace, "useringress");
+        const ingress = await KubeUtil.instance().GetIngressV1beta1(namespace, "useringress");
         if (ingress !== null) {
             let rule = null;
             for (let i = 0; i < ingress.spec.rules.length; i++) {
@@ -1310,21 +1320,42 @@ export class Message {
             }
             if (rule == null) {
                 cli._logger.debug("[" + cli.user.username + "] ingress " + hostname + " not found in useringress creating it");
-                rule = {
-                    host: hostname,
-                    http: {
-                        paths: [{
-                            path: "/",
-                            backend: {
-                                serviceName: name,
-                                servicePort: "www"
-                            }
-                        }]
+                if (Config.use_ingress_beta1_syntax) {
+                    rule = {
+                        host: hostname,
+                        http: {
+                            paths: [{
+                                path: "/",
+                                backend: {
+                                    serviceName: name,
+                                    servicePort: "www"
+                                }
+                            }]
+                        }
                     }
+                    ingress.spec.rules.push(rule);
+                } else {
+                    rule = {
+                        host: hostname,
+                        http: {
+                            paths: [{
+                                path: "/",
+                                pathType: "Prefix",
+                                backend: {
+                                    service: {
+                                        name: name,
+                                        port: {
+                                            number: 80
+                                        }
+                                    }
+                                }
+                            }]
+                        }
+                    }
+                    ingress.spec.rules.push(rule);
                 }
                 delete ingress.metadata.creationTimestamp;
                 delete ingress.status;
-                ingress.spec.rules.push(rule);
                 cli._logger.debug("[" + cli.user.username + "] replaceNamespacedIngress");
                 await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("useringress", namespace, ingress);
             }
@@ -1363,7 +1394,7 @@ export class Message {
         if (replicaset !== null) {
             KubeUtil.instance().AppsV1Api.deleteNamespacedReplicaSet(replicaset.metadata.name, namespace);
         }
-        const ingress = await KubeUtil.instance().GetIngress(namespace, "useringress");
+        const ingress = await KubeUtil.instance().GetIngressV1beta1(namespace, "useringress");
         if (ingress !== null) {
             let updated = false;
             for (let i = ingress.spec.rules.length - 1; i >= 0; i--) {
@@ -1390,7 +1421,7 @@ export class Message {
             await this._DeleteNoderedInstance(msg._id, cli.user._id, cli.user.username, cli.jwt);
 
         } catch (error) {
-            cli._logger.error("[" + cli.user.username + "] failed locating useringress");
+            cli._logger.error("[" + cli.user.username + "] failed deleting Nodered Instance");
             this.data = "";
             cli._logger.error(error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -2600,7 +2631,29 @@ export class Message {
         }
         this.Send(cli);
     }
-
+    async PushMetrics(cli: WebSocketServerClient) {
+        this.Reply();
+        let msg: PushMetricsMessage;
+        try {
+            msg = PushMetricsMessage.assign(this.data);
+            cli.metrics = msg.metrics;
+            if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+        } catch (error) {
+            if (error == null) new Error("Unknown error");
+            cli._logger.error(error);
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) {
+                msg.error = (error.message ? error.message : error);
+            }
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            cli._logger.error(error);
+        }
+        this.Send(cli);
+    }
 }
 
 export class JSONfn {
