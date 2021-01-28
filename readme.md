@@ -12,6 +12,7 @@ Build to run on docker, how to setup docker is not supported on GitHub/slack
 For now only Linux (tested on ubuntu 18LTS) and windows is supported
 Install NodeJS version 12 (google how to do that, if in doubt, hint, use nvm if you got the wrong version installed)
 Also you need to have an installation of  [mongoDB](https://www.mongodb.com/download-center/community) and [RabbitMQ](https://www.rabbitmq.com/download.html)
+Importantent! You need to [enable management console](https://www.rabbitmq.com/management.html) in RabbitMQ 
 
 On window, run from a command prompt with admin rights
 
