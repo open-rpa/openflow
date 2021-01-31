@@ -253,7 +253,8 @@ export class LoginProvider {
                 version: Config.version,
                 stripe_api_key: Config.stripe_api_key,
                 getting_started_url: Config.getting_started_url,
-                validate_user_form: Config.validate_user_form
+                validate_user_form: Config.validate_user_form,
+                supports_watch: Config.supports_watch
             }
             res.end(JSON.stringify(res2));
         });
