@@ -53,6 +53,11 @@ export class WebSocketServer {
         help: 'Total number messages waiting on reply from client',
         labelNames: ["clientid"]
     })
+    public static mongodb_watch_count = new client.Gauge({
+        name: 'mongodb_watch_count',
+        help: 'Total number af steams  watching for changes',
+        labelNames: ["agent", "clientid"]
+    })
     public static update_message_queue_count(cli: WebSocketServerClient) {
         if (!Config.prometheus_measure_queued_messages) return;
         const result: any = {};
@@ -76,6 +81,16 @@ export class WebSocketServer {
             WebSocketServer.message_queue_count.labels(cli.id, key).set(result[key]);
         });
     }
+    public static update_mongodb_watch_count(cli: WebSocketServerClient) {
+        if (!Config.prometheus_measure__mongodb_watch) return;
+        const result: any = {};
+        let total: number = 0;
+        WebSocketServer.mongodb_watch_count.reset();
+        for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
+            const cli: WebSocketServerClient = WebSocketServer._clients[i];
+            WebSocketServer.mongodb_watch_count.labels(cli.clientagent, cli.id).set(cli.streamcount());
+        }
+    }
     static configure(logger: winston.Logger, server: http.Server, register: client.Registry): void {
         this._clients = [];
         this._logger = logger;
@@ -94,6 +109,7 @@ export class WebSocketServer {
         if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebSocketServer.websocket_rate_limit);
         if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebSocketServer.websocket_messages);
         if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebSocketServer.message_queue_count);
+        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebSocketServer.mongodb_watch_count);
         if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(DatabaseConnection.mongodb_query);
         if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(DatabaseConnection.mongodb_query_count);
         if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(DatabaseConnection.mongodb_aggregate);

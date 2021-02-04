@@ -180,6 +180,7 @@ export class WebSocketServerClient {
                 this._logger.error("WebSocketclient::Close " + error);
             }
         }
+        WebSocketServer.update_mongodb_watch_count(this);
     }
     public async CloseConsumer(queuename: string): Promise<void> {
         var old = this._queues.length;
@@ -444,6 +445,7 @@ export class WebSocketServerClient {
                 }
             }
         }
+        WebSocketServer.update_mongodb_watch_count(this);
     }
     async UnWatch(id: string, jwt: string): Promise<void> {
         this.CloseStream(id);
@@ -474,6 +476,7 @@ export class WebSocketServerClient {
                     this._logger.error("WebSocketclient::Watch::changeListener " + error + " " + this.id + "/" + this.clientagent);
                 }
             }, options);
+            WebSocketServer.update_mongodb_watch_count(this);
             return stream.id;
         } catch (error) {
             this._logger.error("WebSocketclient::Watch " + error + " " + this.id + "/" + this.clientagent);
