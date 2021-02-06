@@ -183,7 +183,10 @@ export class DatabaseConnection {
                     const b = new Binary(Buffer.from(ace.rights, "base64"), 0);
                     (ace.rights as any) = b;
                 }
+                DatabaseConnection.mongodb_query_count.labels("users").inc();
+                const end = DatabaseConnection.mongodb_query.startTimer();
                 const arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1 }).limit(1).toArray();
+                end({ collection: "users" });
                 if (arr.length == 0) {
                     item._acl.splice(i, 1);
                 } else { ace.name = arr[0].name; }
@@ -244,7 +247,10 @@ export class DatabaseConnection {
                     if (exists.length > 1) {
                         item.members.splice(i, 1);
                     } else {
+                        DatabaseConnection.mongodb_query_count.labels("users").inc();
+                        const end = DatabaseConnection.mongodb_query.startTimer();
                         const arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1, _acl: 1, _type: 1 }).limit(1).toArray();
+                        end({ collection: "users" });
                         if (arr.length == 0) {
                             item.members.splice(i, 1);
                         }
@@ -262,7 +268,6 @@ export class DatabaseConnection {
                                     const end = DatabaseConnection.mongodb_update.startTimer();
                                     await this.db.collection("users").updateOne({ _id: u._id }, { $set: { _acl: u._acl } });
                                     end({ collection: "users" });
-                                    // await this.db.collection("users").save(u);
                                 } else if (u._id != item._id) {
                                     this._logger.debug(item.name + " allready exists on " + u.name);
                                 }
@@ -279,7 +284,6 @@ export class DatabaseConnection {
                                     const end = DatabaseConnection.mongodb_update.startTimer();
                                     await this.db.collection("users").updateOne({ _id: r._id }, { $set: { _acl: r._acl } });
                                     end({ collection: "users" });
-                                    // await this.db.collection("users").save(r);
                                 } else if (r._id != item._id) {
                                     this._logger.debug(item.name + " allready exists on " + r.name);
                                 }
@@ -294,7 +298,10 @@ export class DatabaseConnection {
         if (Config.update_acl_based_on_groups) {
             for (let i = removed.length - 1; i >= 0; i--) {
                 const ace = removed[i];
+                DatabaseConnection.mongodb_query_count.labels("users").inc();
+                const end = DatabaseConnection.mongodb_query.startTimer();
                 const arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1, _acl: 1, _type: 1 }).limit(1).toArray();
+                end({ collection: "users" });
                 if (arr.length == 1 && item._id != WellknownIds.admins && item._id != WellknownIds.root) {
                     if (Config.multi_tenant && multi_tenant_skip.indexOf(item._id) > -1) {
                         // when multi tenant don't allow members of common user groups to see each other
@@ -308,7 +315,6 @@ export class DatabaseConnection {
                             const right = Base.getRight(u, item._id, false);
                             if (right == null) {
                                 this._logger.debug("Removing " + item.name + " read permissions from " + u.name);
-                                // await this.db.collection("users").save(u);
                                 DatabaseConnection.mongodb_update_count.labels('users').inc();
                                 const end = DatabaseConnection.mongodb_update.startTimer();
                                 await this.db.collection("users").updateOne({ _id: u._id }, { $set: { _acl: u._acl } });
@@ -327,7 +333,6 @@ export class DatabaseConnection {
                             const right = Base.getRight(r, item._id, false);
                             if (right == null) {
                                 this._logger.debug("Removing " + item.name + " read permissions from " + r.name);
-                                // await this.db.collection("users").save(r);
                                 DatabaseConnection.mongodb_update_count.labels('users').inc();
                                 const end = DatabaseConnection.mongodb_update.startTimer();
                                 await this.db.collection("users").updateOne({ _id: r._id }, { $set: { _acl: r._acl } });
@@ -443,12 +448,6 @@ export class DatabaseConnection {
             }
             projection = null;
         } else {
-            // if (!collectionname.endsWith("_hist")) {
-            //     _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
-            // } else {
-            //     // todo: enforcer permissions when fetching _hist ?
-            //     _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
-            // }
             if (!NoderedUtil.IsNullEmpty(queryas)) {
                 _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read]), await this.getbasequeryuserid(queryas, "_acl", [Rights.read])] };
             } else {
@@ -457,11 +456,6 @@ export class DatabaseConnection {
         }
         if (!top) { top = 500; }
         if (!skip) { skip = 0; }
-        // if (collectionname == "openrpa") {
-        //     const user: TokenUser = Crypt.verityToken(jwt);
-        //     arr = await this.db.collection(collectionname).find(query).limit(top).skip(skip).toArray();
-        //     _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
-        // }
         let arr: T[] = [];
 
 
@@ -477,11 +471,6 @@ export class DatabaseConnection {
         }
         arr = await _pipe.toArray();
         end({ collection: collectionname });
-        // if (projection != null) {
-        //     arr = await this.db.collection(collectionname).find(_query).project(projection).sort(mysort as any).limit(top).skip(skip).toArray();
-        // } else {
-        //     arr = await this.db.collection(collectionname).find(_query).sort(mysort as any).limit(top).skip(skip).toArray();
-        // }
         for (let i: number = 0; i < arr.length; i++) { arr[i] = this.decryptentity(arr[i]); }
         DatabaseConnection.traversejsondecode(arr);
         if (Config.log_queries) this._logger.debug("[" + user.username + "][" + collectionname + "] query gave " + arr.length + " results ");
@@ -582,7 +571,6 @@ export class DatabaseConnection {
         } else {
             aggregates = [{ $match: base }, aggregates];
         }
-        // const items: T[] = await this.db.collection(collectionname).aggregate(aggregates).toArray();
         const options: CollectionAggregationOptions = {};
         options.hint = myhint;
         try {
@@ -708,9 +696,6 @@ export class DatabaseConnection {
             if (out.hasOwnProperty("inline")) { inline = true; }
         }
         opt.scope = scope;
-        // opt.readPreference = ReadPreference.PRIMARY_PREFERRED;
-
-        // const result:T[] = await this.db.collection(collectionname).mapReduce(map, reduce, {query: q, out : {inline : 1}});
         try {
             if (inline) {
                 opt.out = { inline: 1 };
@@ -1275,7 +1260,10 @@ export class DatabaseConnection {
         if (collectionname === "files") { collectionname = "fs.files"; }
         if (collectionname === "fs.files") {
             _query = { $and: [{ _id: safeObjectID(id) }, this.getbasequery(jwt, "metadata._acl", [Rights.delete])] };
+            DatabaseConnection.mongodb_query_count.labels(collectionname).inc();
+            const end = DatabaseConnection.mongodb_query.startTimer();
             const arr = await this.db.collection(collectionname).find(_query).toArray();
+            end({ collection: collectionname });
             if (arr.length == 1) {
                 DatabaseConnection.mongodb_delete_count.labels(collectionname).inc();
                 const end = DatabaseConnection.mongodb_delete.startTimer();
@@ -1340,10 +1328,16 @@ export class DatabaseConnection {
 
         if (collectionname === "files") { collectionname = "fs.files"; }
         if (collectionname === "fs.files") {
+            DatabaseConnection.mongodb_query_count.labels(collectionname).inc();
+            const end = DatabaseConnection.mongodb_query.startTimer();
             const arr = await this.db.collection(collectionname).find(_query).toArray();
+            end({ collection: collectionname });
             this._logger.debug("[" + user.username + "][" + collectionname + "] Deleting " + arr.length + " files in database");
             for (let i = 0; i < arr.length; i++) {
+                DatabaseConnection.mongodb_deletemany_count.labels(collectionname).inc();
+                const end = DatabaseConnection.mongodb_deletemany.startTimer();
                 await this._DeleteFile(arr[i]._id);
+                end({ collection: collectionname });
             }
             // if (Config.log_deletes) console.log(JSON.parse(JSON.stringify(query)));
             if (Config.log_deletes) this._logger.verbose("[" + user.username + "][" + collectionname + "] deleted " + arr.length + " items in database");
