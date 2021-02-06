@@ -69,7 +69,6 @@ export class Message {
                 if (Config.socket_rate_limit) await BaseRateLimiter.consume(cli.id);
             } catch (error) {
                 if (error.consumedPoints) {
-                    WebSocketServer.websocket_rate_limit.inc();
                     WebSocketServer.websocket_rate_limit.labels(command).inc();
                     if ((error.consumedPoints % 100) == 0) cli._logger.debug("[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
                     setTimeout(() => { this.Process(cli); }, 250);

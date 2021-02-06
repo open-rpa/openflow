@@ -72,7 +72,6 @@ export class WebServer {
         });
         const keys2 = Object.keys(result);
         WebServer.message_queue_count.reset();
-        WebServer.message_queue_count.set(keys.length);
         keys2.forEach(key => {
             WebServer.message_queue_count.labels(key).set(result[key]);
         });

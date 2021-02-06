@@ -114,6 +114,16 @@ export class WebSocketServer {
         if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(DatabaseConnection.mongodb_query_count);
         if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(DatabaseConnection.mongodb_aggregate);
         if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(DatabaseConnection.mongodb_aggregate_count);
+        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(DatabaseConnection.mongodb_insert);
+        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(DatabaseConnection.mongodb_insert_count);
+        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(DatabaseConnection.mongodb_update);
+        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(DatabaseConnection.mongodb_update_count);
+        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(DatabaseConnection.mongodb_replace);
+        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(DatabaseConnection.mongodb_replace_count);
+        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(DatabaseConnection.mongodb_delete);
+        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(DatabaseConnection.mongodb_delete_count);
+        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(DatabaseConnection.mongodb_deletemany);
+        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(DatabaseConnection.mongodb_deletemany_count);
 
 
         setInterval(this.pingClients, 10000);
@@ -121,7 +131,6 @@ export class WebSocketServer {
     private static async pingClients(): Promise<void> {
         let count: number = WebSocketServer._clients.length;
         WebSocketServer.p_all.reset();
-        WebSocketServer.p_all.set(count);
         for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
             const cli: WebSocketServerClient = WebSocketServer._clients[i];
             try {
@@ -182,17 +191,22 @@ export class WebSocketServer {
                     }
                     // Lets assume only robots register queues ( not true )
                     if (cli.clientagent == "openrpa") {
-
+                        DatabaseConnection.mongodb_update_count.labels("users").inc();
+                        const end = DatabaseConnection.mongodb_update.startTimer();
                         Config.db.db.collection("users").updateOne({ _id: cli.user._id },
                             { $set: { _rpaheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
                                 console.error(err);
                             });
+                        end({ collection: "users" });
                     }
                     if (cli.clientagent == "nodered") {
+                        DatabaseConnection.mongodb_update_count.labels("users").inc();
+                        const end = DatabaseConnection.mongodb_update.startTimer();
                         Config.db.db.collection("users").updateOne({ _id: cli.user._id },
                             { $set: { _noderedheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
                                 console.error(err);
                             });
+                        end({ collection: "users" });
                     }
                     if (cli.clientagent == "webapp" || cli.clientagent == "aiotwebapp") {
                         Config.db.db.collection("users").updateOne({ _id: cli.user._id },
@@ -201,22 +215,31 @@ export class WebSocketServer {
                             });
                     }
                     if (cli.clientagent == "powershell") {
+                        DatabaseConnection.mongodb_update_count.labels("users").inc();
+                        const end = DatabaseConnection.mongodb_update.startTimer();
                         Config.db.db.collection("users").updateOne({ _id: cli.user._id },
                             { $set: { _powershellheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
                                 console.error(err);
                             });
+                        end({ collection: "users" });
                     }
                     if (cli.clientagent == "mobileapp" || cli.clientagent == "aiotmobileapp") {
+                        DatabaseConnection.mongodb_update_count.labels("users").inc();
+                        const end = DatabaseConnection.mongodb_update.startTimer();
                         Config.db.db.collection("users").updateOne({ _id: cli.user._id },
                             { $set: { _webheartbeat: new Date(new Date().toISOString()), _mobilheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
                                 console.error(err);
                             });
+                        end({ collection: "users" });
                     }
                     else {
                         // Should proberly turn this a little down, so we dont update all online users every 10th second
+                        DatabaseConnection.mongodb_update_count.labels("users").inc();
+                        const end = DatabaseConnection.mongodb_update.startTimer();
                         Config.db.db.collection("users").updateOne({ _id: cli.user._id }, { $set: { _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
                             console.error(err);
                         });
+                        end({ collection: "users" });
                     }
                 }
             } catch (error) {

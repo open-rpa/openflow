@@ -70,6 +70,61 @@ export class DatabaseConnection {
         help: 'Total number of mongodb queues',
         labelNames: ["collection"]
     })
+    public static mongodb_insert = new client.Histogram({
+        name: 'openflow_mongodb_insert_seconds',
+        help: 'Duration for mongodb inserts microseconds',
+        labelNames: ['collection'],
+        buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10]
+    })
+    public static mongodb_insert_count = new client.Counter({
+        name: 'openflow_mongodb_insert_count',
+        help: 'Total number of mongodb inserts',
+        labelNames: ["collection"]
+    })
+    public static mongodb_update = new client.Histogram({
+        name: 'openflow_mongodb_update_seconds',
+        help: 'Duration for mongodb updates microseconds',
+        labelNames: ['collection'],
+        buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10]
+    })
+    public static mongodb_update_count = new client.Counter({
+        name: 'openflow_mongodb_update_count',
+        help: 'Total number of mongodb updates',
+        labelNames: ["collection"]
+    })
+    public static mongodb_replace = new client.Histogram({
+        name: 'openflow_mongodb_replace_seconds',
+        help: 'Duration for mongodb replaces microseconds',
+        labelNames: ['collection'],
+        buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10]
+    })
+    public static mongodb_replace_count = new client.Counter({
+        name: 'openflow_mongodb_replace_count',
+        help: 'Total number of mongodb replaces',
+        labelNames: ["collection"]
+    })
+    public static mongodb_delete = new client.Histogram({
+        name: 'openflow_mongodb_delete_seconds',
+        help: 'Duration for mongodb deletes microseconds',
+        labelNames: ['collection'],
+        buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10]
+    })
+    public static mongodb_delete_count = new client.Counter({
+        name: 'openflow_mongodb_delete_count',
+        help: 'Total number of mongodb deletes',
+        labelNames: ["collection"]
+    })
+    public static mongodb_deletemany = new client.Histogram({
+        name: 'openflow_mongodb_deletemany_seconds',
+        help: 'Duration for mongodb deletemanys microseconds',
+        labelNames: ['collection'],
+        buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10]
+    })
+    public static mongodb_deletemany_count = new client.Counter({
+        name: 'openflow_mongodb_deletemany_count',
+        help: 'Total number of mongodb deletemanys',
+        labelNames: ["collection"]
+    })
     static toArray(iterator): Promise<any[]> {
         return new Promise((resolve, reject) => {
             iterator.toArray((err, res) => {
@@ -203,8 +258,10 @@ export class DatabaseConnection {
                                 if (!Base.hasRight(u, item._id, Rights.read)) {
                                     this._logger.debug("Assigning " + item.name + " read permission to " + u.name);
                                     Base.addRight(u, item._id, item.name, [Rights.read], false);
-
+                                    DatabaseConnection.mongodb_update_count.labels("users").inc();
+                                    const end = DatabaseConnection.mongodb_update.startTimer();
                                     await this.db.collection("users").updateOne({ _id: u._id }, { $set: { _acl: u._acl } });
+                                    end({ collection: "users" });
                                     // await this.db.collection("users").save(u);
                                 } else if (u._id != item._id) {
                                     this._logger.debug(item.name + " allready exists on " + u.name);
@@ -218,7 +275,10 @@ export class DatabaseConnection {
                                     }
                                     this._logger.debug("Assigning " + item.name + " read permission to " + r.name);
                                     Base.addRight(r, item._id, item.name, [Rights.read], false);
+                                    DatabaseConnection.mongodb_update_count.labels("users").inc();
+                                    const end = DatabaseConnection.mongodb_update.startTimer();
                                     await this.db.collection("users").updateOne({ _id: r._id }, { $set: { _acl: r._acl } });
+                                    end({ collection: "users" });
                                     // await this.db.collection("users").save(r);
                                 } else if (r._id != item._id) {
                                     this._logger.debug(item.name + " allready exists on " + r.name);
@@ -249,8 +309,10 @@ export class DatabaseConnection {
                             if (right == null) {
                                 this._logger.debug("Removing " + item.name + " read permissions from " + u.name);
                                 // await this.db.collection("users").save(u);
+                                DatabaseConnection.mongodb_update_count.labels('users').inc();
+                                const end = DatabaseConnection.mongodb_update.startTimer();
                                 await this.db.collection("users").updateOne({ _id: u._id }, { $set: { _acl: u._acl } });
-
+                                end({ collection: 'users' });
                             }
 
                         } else {
@@ -266,7 +328,10 @@ export class DatabaseConnection {
                             if (right == null) {
                                 this._logger.debug("Removing " + item.name + " read permissions from " + r.name);
                                 // await this.db.collection("users").save(r);
+                                DatabaseConnection.mongodb_update_count.labels('users').inc();
+                                const end = DatabaseConnection.mongodb_update.startTimer();
                                 await this.db.collection("users").updateOne({ _id: r._id }, { $set: { _acl: r._acl } });
+                                end({ collection: 'users' });
                             }
 
                         } else {
@@ -400,7 +465,6 @@ export class DatabaseConnection {
         let arr: T[] = [];
 
 
-        DatabaseConnection.mongodb_query_count.inc();
         DatabaseConnection.mongodb_query_count.labels(collectionname).inc();
         const end = DatabaseConnection.mongodb_query.startTimer();
         let _pipe = this.db.collection(collectionname).find(_query);
@@ -522,7 +586,6 @@ export class DatabaseConnection {
         const options: CollectionAggregationOptions = {};
         options.hint = myhint;
         try {
-            DatabaseConnection.mongodb_aggregate_count.inc();
             DatabaseConnection.mongodb_aggregate_count.labels(collectionname).inc();
             const end = DatabaseConnection.mongodb_aggregate.startTimer();
             const items: T[] = await this.db.collection(collectionname).aggregate(aggregates, options).toArray();
@@ -736,7 +799,10 @@ export class DatabaseConnection {
         // const options:CollectionInsertOneOptions = { writeConcern: { w: parseInt((w as any)), j: j } };
         const options: CollectionInsertOneOptions = { w: w, j: j };
         //const options: CollectionInsertOneOptions = { w: "majority" };
+        DatabaseConnection.mongodb_insert_count.labels(collectionname).inc();
+        const end = DatabaseConnection.mongodb_insert.startTimer();
         const result: InsertOneWriteOpResult<T> = await this.db.collection(collectionname).insertOne(item, options);
+        end({ collection: collectionname });
         item = result.ops[0];
         if (collectionname === "users" && item._type === "user") {
             Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
@@ -761,7 +827,10 @@ export class DatabaseConnection {
         if (collectionname === "users" && item._type === "role") {
             Base.addRight(item, item._id, item.name, [Rights.read]);
             item = await this.CleanACL(item, user);
+            DatabaseConnection.mongodb_replace_count.labels(collectionname).inc();
+            const end = DatabaseConnection.mongodb_replace.startTimer();
             await this.db.collection(collectionname).replaceOne({ _id: item._id }, item);
+            end({ collection: collectionname });
             DBHelper.cached_roles = [];
         }
         DatabaseConnection.traversejsondecode(item);
@@ -942,7 +1011,6 @@ export class DatabaseConnection {
             delete (q.item as any).newpassword;
         }
         this._logger.silly("[" + user.username + "][" + q.collectionname + "] Updating " + (q.item.name || q.item._name) + " in database");
-        // await this.db.collection(collectionname).replaceOne({ _id: item._id }, item, options);
 
         if (q.query === null || q.query === undefined) {
             const id: string = q.item._id;
@@ -979,10 +1047,16 @@ export class DatabaseConnection {
                 }
 
                 if (q.collectionname != "fs.files") {
+                    DatabaseConnection.mongodb_replace_count.labels(q.collectionname).inc();
+                    const end = DatabaseConnection.mongodb_replace.startTimer();
                     q.opresult = await this.db.collection(q.collectionname).replaceOne(_query, q.item, options);
+                    end({ collection: q.collectionname });
                 } else {
                     const fsc = Config.db.db.collection("fs.files");
+                    DatabaseConnection.mongodb_update_count.labels('fs.files').inc();
+                    const end = DatabaseConnection.mongodb_update.startTimer();
                     q.opresult = await fsc.updateOne(_query, { $set: { metadata: (q.item as any).metadata } });
+                    end({ collection: 'fs.files' });
                 }
             } else {
                 if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };
@@ -991,7 +1065,10 @@ export class DatabaseConnection {
                 (q.item["$set"])._modified = new Date(new Date().toISOString());
                 if ((q.item["$inc"]) === undefined) { (q.item["$inc"]) = {} };
                 (q.item["$inc"])._version = 1;
+                DatabaseConnection.mongodb_update_count.labels(q.collectionname).inc();
+                const end = DatabaseConnection.mongodb_update.startTimer();
                 q.opresult = await this.db.collection(q.collectionname).updateOne(_query, q.item, options);
+                end({ collection: q.collectionname });
             }
             if (q.collectionname != "fs.files") {
                 q.item = this.decryptentity(q.item);
@@ -1153,7 +1230,10 @@ export class DatabaseConnection {
             q.result = uqres.result;
         } else {
             if (Config.log_updates) this._logger.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Inserting as new in database");
+            DatabaseConnection.mongodb_insert_count.labels(q.collectionname).inc();
+            const end = DatabaseConnection.mongodb_insert.startTimer();
             q.result = await this.InsertOne(q.item, q.collectionname, q.w, q.j, q.jwt);
+            end({ collection: q.collectionname });
         }
         if (q.collectionname === "users" && q.item._type === "role") {
             DBHelper.cached_roles = [];
@@ -1197,14 +1277,20 @@ export class DatabaseConnection {
             _query = { $and: [{ _id: safeObjectID(id) }, this.getbasequery(jwt, "metadata._acl", [Rights.delete])] };
             const arr = await this.db.collection(collectionname).find(_query).toArray();
             if (arr.length == 1) {
+                DatabaseConnection.mongodb_delete_count.labels(collectionname).inc();
+                const end = DatabaseConnection.mongodb_delete.startTimer();
                 await this._DeleteFile(id);
+                end({ collection: collectionname });
                 return;
             } else {
                 throw Error("item not found!");
             }
         }
         if (Config.log_deletes) this._logger.verbose("[" + user.username + "][" + collectionname + "] Deleting " + id + " in database");
+        DatabaseConnection.mongodb_delete_count.labels(collectionname).inc();
+        const end = DatabaseConnection.mongodb_delete.startTimer();
         const res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne(_query);
+        end({ collection: collectionname });
     }
 
     /**
@@ -1263,7 +1349,10 @@ export class DatabaseConnection {
             if (Config.log_deletes) this._logger.verbose("[" + user.username + "][" + collectionname + "] deleted " + arr.length + " items in database");
             return arr.length;
         } else {
+            DatabaseConnection.mongodb_deletemany_count.labels(collectionname).inc();
+            const end = DatabaseConnection.mongodb_deletemany.startTimer();
             const res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteMany(_query);
+            end({ collection: collectionname });
             if (Config.log_deletes) this._logger.verbose("[" + user.username + "][" + collectionname + "] deleted " + res.deletedCount + " items in database");
             return res.deletedCount;
         }
@@ -1590,7 +1679,10 @@ export class DatabaseConnection {
                 _version: _version,
                 reason: ""
             }
+            DatabaseConnection.mongodb_insert_count.labels(q.collectionname).inc();
+            const end = DatabaseConnection.mongodb_insert.startTimer();
             await this.db.collection(q.collectionname + '_hist').insertOne(updatehist);
+            end({ collection: q.collectionname });
         } catch (error) {
             this._logger.error(error);
         }
@@ -1680,7 +1772,10 @@ export class DatabaseConnection {
                     if (baseversion == _version) {
                         deltahist.item = original;
                     }
+                    DatabaseConnection.mongodb_insert_count.labels(collectionname + '_hist').inc();
+                    const end = DatabaseConnection.mongodb_insert.startTimer();
                     await this.db.collection(collectionname + '_hist').insertOne(deltahist);
+                    end({ collection: collectionname + '_hist' });
                 }
             } else {
                 const fullhist = {
@@ -1698,7 +1793,10 @@ export class DatabaseConnection {
                     _version: _version,
                     reason: reason
                 }
+                DatabaseConnection.mongodb_insert_count.labels(collectionname + '_hist').inc();
+                const end = DatabaseConnection.mongodb_insert.startTimer();
                 await this.db.collection(collectionname + '_hist').insertOne(fullhist);
+                end({ collection: collectionname + '_hist' });
             }
             item._modifiedby = _modifiedby;
             item._modifiedbyid = _modifiedbyid;

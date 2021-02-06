@@ -277,7 +277,6 @@ export class WebSocketServerClient {
                 if (msgs.length === 1) {
                     this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
                     const singleresult: Message = Message.frommessage(first, first.data);
-                    WebSocketServer.websocket_incomming_stats.inc();
                     WebSocketServer.websocket_incomming_stats.labels(singleresult.command).inc();
                     singleresult.Process(this);
                 } else {
@@ -287,7 +286,6 @@ export class WebSocketServerClient {
                     });
                     this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
                     const result: Message = Message.frommessage(first, buffer);
-                    WebSocketServer.websocket_incomming_stats.inc();
                     WebSocketServer.websocket_incomming_stats.labels(result.command).inc();
                     result.Process(this);
                 }
