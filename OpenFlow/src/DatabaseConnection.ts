@@ -822,6 +822,30 @@ export class DatabaseConnection {
         if (Config.log_inserts) this._logger.debug("[" + user.username + "][" + collectionname + "] inserted " + item.name);
         return item;
     }
+    synRawUpdateOne(collection: string, query: any, updatedoc: any, measure: boolean, cb: any) {
+        let end: any = null;
+        if (measure) {
+            DatabaseConnection.mongodb_update_count.labels(collection).inc();
+            end = DatabaseConnection.mongodb_update.startTimer();
+        }
+        Config.db.db.collection(collection).updateOne(query, updatedoc).catch(err => {
+            if (measure) end({ collection: collection });
+            console.error(err);
+            if (cb) cb(err, null);
+        }).then((result) => {
+            if (measure) end({ collection: collection });
+            if (cb) cb(null, result);
+        });
+    }
+    async rawUpdateOne(collection: string, query: any, updatedoc: any, measure: boolean) {
+        let end: any = null;
+        if (measure) {
+            DatabaseConnection.mongodb_update_count.labels("users").inc();
+            end = DatabaseConnection.mongodb_update.startTimer();
+        }
+        await Config.db.db.collection(collection).updateOne(query, updatedoc);
+        if (measure) end({ collection: "users" });
+    }
     /**
      * Update entity in database
      * @param  {T} item Item to update
@@ -1805,4 +1829,76 @@ export class DatabaseConnection {
     }
 
 
+    async createIndex(collectionname: string, name: string, keypath: any) {
+        return new Promise((resolve, reject) => {
+            this._logger.info("Adding index " + name + " to " + collectionname);
+            this.db.collection(collectionname).createIndex(keypath, (err, name) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                resolve(name);
+            })
+        });
+    }
+    async ensureindexes() {
+        if (!Config.ensure_indexes) return;
+        const collections = await DatabaseConnection.toArray(this.db.listCollections());
+
+        for (var i = 0; i < collections.length; i++) {
+            try {
+                const collection = collections[i];
+                if (collection.type != "collection") continue;
+                const indexes = await this.db.collection(collection.name).indexes();
+                const indexnames = indexes.map(x => x.name);
+                if (collection.name.endsWith("_hist")) {
+                    if (indexnames.indexOf("id_1__version_-1") == -1) {
+                        await this.createIndex(collection.name, "id_1__version_-1", { "id": 1, "_version": -1 })
+                    }
+                } else {
+                    switch (collection.name) {
+                        case "fs.files":
+                            if (indexnames.indexOf("metadata.workflow_1") == -1) {
+                                await this.createIndex(collection.name, "metadata.workflow_1", { "metadata.workflow": 1 })
+                            }
+                            break;
+                        case "fs.chunks":
+                            break;
+                        case "workflow":
+                            if (indexnames.indexOf("queue_1") == -1) {
+                                await this.createIndex(collection.name, "queue_1", { "queue": 1 })
+                            }
+                            break;
+                        case "users":
+                            if (indexnames.indexOf("workflowid_1") == -1) {
+                                await this.createIndex(collection.name, "workflowid_1", { "workflowid": 1 })
+                            }
+                            if (indexnames.indexOf("_rpaheartbeat_1") == -1) {
+                                await this.createIndex(collection.name, "_rpaheartbeat_1", { "_rpaheartbeat": 1 })
+                            }
+                            if (indexnames.indexOf("name_1") == -1) {
+                                await this.createIndex(collection.name, "name_1", { "name": 1 })
+                            }
+                            if (indexnames.indexOf("_type_1") == -1) {
+                                await this.createIndex(collection.name, "_type_1", { "_type": 1 })
+                            }
+                            if (indexnames.indexOf("_created_1") == -1) {
+                                await this.createIndex(collection.name, "_created_1", { "_created": 1 })
+                            }
+                            break;
+                        default:
+                            if (indexnames.indexOf("_type_1") == -1) {
+                                await this.createIndex(collection.name, "_type_1", { "_type": 1 })
+                            }
+                            if (indexnames.indexOf("_created_1") == -1) {
+                                await this.createIndex(collection.name, "_created_1", { "_created": 1 })
+                            }
+                            break;
+                    }
+                }
+            } catch (error) {
+                this._logger.error(error);
+            }
+        }
+    }
 }

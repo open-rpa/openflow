@@ -191,55 +191,35 @@ export class WebSocketServer {
                     }
                     // Lets assume only robots register queues ( not true )
                     if (cli.clientagent == "openrpa") {
-                        DatabaseConnection.mongodb_update_count.labels("users").inc();
-                        const end = DatabaseConnection.mongodb_update.startTimer();
-                        Config.db.db.collection("users").updateOne({ _id: cli.user._id },
-                            { $set: { _rpaheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
-                                console.error(err);
-                            });
-                        end({ collection: "users" });
+                        Config.db.synRawUpdateOne("users", { _id: cli.user._id },
+                            { $set: { _rpaheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } },
+                            Config.prometheus_measure_onlineuser, null);
                     }
                     if (cli.clientagent == "nodered") {
-                        DatabaseConnection.mongodb_update_count.labels("users").inc();
-                        const end = DatabaseConnection.mongodb_update.startTimer();
-                        Config.db.db.collection("users").updateOne({ _id: cli.user._id },
-                            { $set: { _noderedheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
-                                console.error(err);
-                            });
-                        end({ collection: "users" });
+                        Config.db.synRawUpdateOne("users", { _id: cli.user._id },
+                            { $set: { _noderedheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } },
+                            Config.prometheus_measure_onlineuser, null);
                     }
                     if (cli.clientagent == "webapp" || cli.clientagent == "aiotwebapp") {
-                        Config.db.db.collection("users").updateOne({ _id: cli.user._id },
-                            { $set: { _webheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
-                                console.error(err);
-                            });
+                        Config.db.synRawUpdateOne("users", { _id: cli.user._id },
+                            { $set: { _webheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } },
+                            Config.prometheus_measure_onlineuser, null);
                     }
                     if (cli.clientagent == "powershell") {
-                        DatabaseConnection.mongodb_update_count.labels("users").inc();
-                        const end = DatabaseConnection.mongodb_update.startTimer();
-                        Config.db.db.collection("users").updateOne({ _id: cli.user._id },
-                            { $set: { _powershellheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
-                                console.error(err);
-                            });
-                        end({ collection: "users" });
+                        Config.db.synRawUpdateOne("users", { _id: cli.user._id },
+                            { $set: { _powershellheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } },
+                            Config.prometheus_measure_onlineuser, null);
                     }
                     if (cli.clientagent == "mobileapp" || cli.clientagent == "aiotmobileapp") {
-                        DatabaseConnection.mongodb_update_count.labels("users").inc();
-                        const end = DatabaseConnection.mongodb_update.startTimer();
-                        Config.db.db.collection("users").updateOne({ _id: cli.user._id },
-                            { $set: { _webheartbeat: new Date(new Date().toISOString()), _mobilheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
-                                console.error(err);
-                            });
-                        end({ collection: "users" });
+                        Config.db.synRawUpdateOne("users", { _id: cli.user._id },
+                            { $set: { _webheartbeat: new Date(new Date().toISOString()), _mobilheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } },
+                            Config.prometheus_measure_onlineuser, null);
                     }
                     else {
                         // Should proberly turn this a little down, so we dont update all online users every 10th second
-                        DatabaseConnection.mongodb_update_count.labels("users").inc();
-                        const end = DatabaseConnection.mongodb_update.startTimer();
-                        Config.db.db.collection("users").updateOne({ _id: cli.user._id }, { $set: { _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
-                            console.error(err);
-                        });
-                        end({ collection: "users" });
+                        Config.db.synRawUpdateOne("users", { _id: cli.user._id },
+                            { $set: { _heartbeat: new Date(new Date().toISOString()) } },
+                            Config.prometheus_measure_onlineuser, null);
                     }
                 }
             } catch (error) {

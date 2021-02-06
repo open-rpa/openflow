@@ -207,12 +207,18 @@ async function initDatabase(): Promise<boolean> {
             Base.addRight(filestore_users, filestore_users._id, "filestore users", [Rights.read]);
         }
         await DBHelper.Save(filestore_users, jwt);
+
+        await Config.db.ensureindexes();
+
         return true;
     } catch (error) {
         logger.error(error);
         return false;
     }
 }
+
+
+
 
 
 

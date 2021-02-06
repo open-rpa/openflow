@@ -32,6 +32,7 @@ export class Config {
         Config.stripe_api_secret = Config.getEnv("stripe_api_secret", "");
 
         Config.supports_watch = Config.parseBoolean(Config.getEnv("supports_watch", "false"));
+        Config.ensure_indexes = Config.parseBoolean(Config.getEnv("ensure_indexes", "true"));
 
         Config.auto_create_users = Config.parseBoolean(Config.getEnv("auto_create_users", "false"));
         Config.auto_create_domains = Config.parseArray(Config.getEnv("auto_create_domains", ""));
@@ -112,6 +113,7 @@ export class Config {
         Config.prometheus_measure_nodeid = Config.parseBoolean(Config.getEnv("prometheus_measure_nodeid", "false"));
         Config.prometheus_measure_queued_messages = Config.parseBoolean(Config.getEnv("prometheus_measure_queued_messages", "false"));
         Config.prometheus_measure__mongodb_watch = Config.parseBoolean(Config.getEnv("prometheus_measure__mongodb_watch", "false"));
+        Config.prometheus_measure_onlineuser = Config.parseBoolean(Config.getEnv("prometheus_measure_onlineuser", "false"));
         Config.validate_user_form = Config.getEnv("validate_user_form", "");
     }
     public static db: DatabaseConnection = null;
@@ -132,6 +134,7 @@ export class Config {
     public static stripe_api_secret: string = Config.getEnv("stripe_api_secret", "");
 
     public static supports_watch: boolean = Config.parseBoolean(Config.getEnv("supports_watch", "false"));
+    public static ensure_indexes: boolean = Config.parseBoolean(Config.getEnv("ensure_indexes", "true"));
 
     public static auto_create_users: boolean = Config.parseBoolean(Config.getEnv("auto_create_users", "false"));
     public static auto_create_domains: string[] = Config.parseArray(Config.getEnv("auto_create_domains", ""));
@@ -215,6 +218,7 @@ export class Config {
     public static prometheus_measure_nodeid: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_nodeid", "false"));
     public static prometheus_measure_queued_messages: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_queued_messages", "false"));
     public static prometheus_measure__mongodb_watch: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure__mongodb_watch", "false"));
+    public static prometheus_measure_onlineuser: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_onlineuser", "false"));
     public static validate_user_form: string = Config.getEnv("validate_user_form", "");
 
     public static baseurl(): string {
