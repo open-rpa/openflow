@@ -60,26 +60,26 @@ export class WebSocketServer {
     })
     public static update_message_queue_count(cli: WebSocketServerClient) {
         if (!Config.prometheus_measure_queued_messages) return;
-        const result: any = {};
+        // const result: any = {};
         const keys = Object.keys(cli.messageQueue);
-        keys.forEach(key => {
-            try {
-                const qmsg = cli.messageQueue[key];
-                var o = qmsg.message;
-                if (typeof o === "string") o = JSON.parse(o);
-                const msg: Message = o;
-                if (result[msg.command] == null) result[msg.command] = 0;
-                result[msg.command]++;
-            } catch (error) {
-                WebSocketServer._logger.error(error);
-            }
-        });
-        const keys2 = Object.keys(result);
+        // keys.forEach(key => {
+        //     try {
+        //         const qmsg = cli.messageQueue[key];
+        //         var o = qmsg.message;
+        //         if (typeof o === "string") o = JSON.parse(o);
+        //         const msg: Message = o;
+        //         if (result[msg.command] == null) result[msg.command] = 0;
+        //         result[msg.command]++;
+        //     } catch (error) {
+        //         WebSocketServer._logger.error(error);
+        //     }
+        // });
+        // const keys2 = Object.keys(result);
         WebSocketServer.message_queue_count.reset();
         WebSocketServer.message_queue_count.labels(cli.id).set(keys.length);
-        keys2.forEach(key => {
-            WebSocketServer.message_queue_count.labels(cli.id, key).set(result[key]);
-        });
+        // keys2.forEach(key => {
+        //     WebSocketServer.message_queue_count.labels(cli.id, key).set(result[key]);
+        // });
     }
     public static update_mongodb_watch_count(cli: WebSocketServerClient) {
         if (!Config.prometheus_measure__mongodb_watch) return;
