@@ -84,6 +84,7 @@ export class Config {
 
         Config.mongodb_url = Config.getEnv("mongodb_url", "mongodb://localhost:27017");
         Config.mongodb_db = Config.getEnv("mongodb_db", "openflow");
+        Config.mongodb_minpoolsize = parseInt(Config.getEnv("mongodb_minpoolsize", "25"));
 
         Config.skip_history_collections = Config.getEnv("skip_history_collections", "");
         Config.history_delta_count = parseInt(Config.getEnv("history_delta_count", "1000"));
@@ -189,6 +190,7 @@ export class Config {
 
     public static mongodb_url: string = Config.getEnv("mongodb_url", "mongodb://localhost:27017");
     public static mongodb_db: string = Config.getEnv("mongodb_db", "openflow");
+    public static mongodb_minpoolsize:number = parseInt(Config.getEnv("mongodb_minpoolsize", "25"));
 
     public static skip_history_collections: string = Config.getEnv("skip_history_collections", "");
     public static history_delta_count = parseInt(Config.getEnv("history_delta_count", "1000"));

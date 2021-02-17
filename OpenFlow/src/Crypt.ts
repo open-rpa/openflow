@@ -3,6 +3,7 @@ import * as bcrypt from "bcryptjs";
 import * as jsonwebtoken from "jsonwebtoken";
 import { Config } from "./Config";
 import { NoderedUtil, TokenUser, WellknownIds, Rolemember, User } from "@openiap/openflow-api";
+import { Exception } from "handlebars";
 export class Crypt {
     static encryption_key: string = Config.aes_secret.substr(0, 32); // must be 256 bytes (32 characters)
     static iv_length: number = 16; // for AES, this is always 16
@@ -75,6 +76,8 @@ export class Crypt {
         user.roles = item.roles;
 
         const key = Crypt.encryption_key;
+        if(NoderedUtil.IsNullEmpty(Config.aes_secret)) throw new Exception("Config missing aes_secret");
+        if(NoderedUtil.IsNullEmpty(key)) throw new Exception("Config missing aes_secret");
         const token: string = jsonwebtoken.sign({ data: user }, key,
             { expiresIn: expiresIn }); // 60 (seconds), "2 days", "10h", "7d"
         return token;
