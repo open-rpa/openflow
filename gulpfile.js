@@ -229,6 +229,7 @@ gulp.task("bumpconfigmap", function () {
 
 gulp.task("bumpaiotfrontend", function () {
     let version = "0.0.1";
+    if(!fs.existsSync('../aiot-frontend')) return gulp.src('.');
     version = fs.readFileSync("../aiot-frontend/VERSION", "utf8");
     console.log('openiap/aiot-frontend:' + version);
     return gulp.src(["config/**/controllers.yml"])

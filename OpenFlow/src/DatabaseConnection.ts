@@ -1,5 +1,5 @@
 import {
-    ObjectID, Db, Binary, InsertOneWriteOpResult, DeleteWriteOpResultObject, ObjectId, MapReduceOptions, CollectionInsertOneOptions, UpdateWriteOpResult, WriteOpResult, GridFSBucket, ReadPreference, ChangeStream, CollectionAggregationOptions
+    ObjectID, Db, Binary, InsertOneWriteOpResult, DeleteWriteOpResultObject, ObjectId, MapReduceOptions, CollectionInsertOneOptions, UpdateWriteOpResult, WriteOpResult, GridFSBucket, ReadPreference, ChangeStream, CollectionAggregationOptions, MongoClientOptions
 } from "mongodb";
 import { MongoClient } from "mongodb";
 import winston = require("winston");
@@ -148,7 +148,8 @@ export class DatabaseConnection {
             return;
         }
         this.cli = await (Promise as any).retry(100, (resolve, reject) => {
-            MongoClient.connect(this.mongodburl, { autoReconnect: false, useNewUrlParser: true, useUnifiedTopology: true }).then((cli) => {
+            const options: MongoClientOptions = { minPoolSize: 50, autoReconnect: false, useNewUrlParser: true, useUnifiedTopology: true };
+            MongoClient.connect(this.mongodburl, options).then((cli) => {
                 resolve(cli);
             }).catch((reason) => {
                 console.error(reason);
@@ -780,9 +781,14 @@ export class DatabaseConnection {
             if (exists2 != null) { throw new Error("Access denied, role '" + r.name + "' already exists"); }
         }
 
-        // const options:CollectionInsertOneOptions = { writeConcern: { w: parseInt((w as any)), j: j } };
-        const options: CollectionInsertOneOptions = { w: w, j: j };
+        // const options:CollectionInsertOneOptions = {  writeConcern: { w: parseInt((w as any)), j: j } };
+        // const options: CollectionInsertOneOptions = { w: w, j: j };
         //const options: CollectionInsertOneOptions = { w: "majority" };
+        const options: CollectionInsertOneOptions = { };
+        options.WriteConcern = {}; // new WriteConcern();
+        options.WriteConcern.w = w;
+        options.WriteConcern.j = j;
+
         DatabaseConnection.mongodb_insert_count.labels(collectionname).inc();
         const end = DatabaseConnection.mongodb_insert.startTimer();
         const result: InsertOneWriteOpResult<T> = await this.db.collection(collectionname).insertOne(item, options);
@@ -1050,7 +1056,14 @@ export class DatabaseConnection {
         q.j = ((q.j as any) === 'true' || q.j === true);
         if ((q.w as any) !== "majority") q.w = parseInt((q.w as any));
 
-        const options: CollectionInsertOneOptions = { w: q.w, j: q.j };
+        // const options: CollectionInsertOneOptions = { w: q.w, j: q.j };
+        const options: CollectionInsertOneOptions = { };
+        options.WriteConcern = {}; // new WriteConcern();
+        options.WriteConcern.w = q.w;
+        options.WriteConcern.j = q.j;
+
+        // const options: CollectionInsertOneOptions = { };
+
         q.opresult = null;
         try {
             if (itemReplace) {
@@ -1168,7 +1181,10 @@ export class DatabaseConnection {
 
         q.j = ((q.j as any) === 'true' || q.j === true);
         if ((q.w as any) !== "majority") q.w = parseInt((q.w as any));
-        const options: CollectionInsertOneOptions = { w: q.w, j: q.j };
+        const options: CollectionInsertOneOptions = { };
+        options.WriteConcern = {}; // new WriteConcern();
+        options.WriteConcern.w = q.w;
+        options.WriteConcern.j = q.j;
         try {
             q.opresult = await this.db.collection(q.collectionname).updateMany(_query, q.item, options);
             // if (res.modifiedCount == 0) {
