@@ -449,10 +449,10 @@
             </div>
         </div>
     </div> -->
-    <h3 ng-show="ctrl.supportplans.length > 0">Support agreements</h3>
+    <h3 ng-show="ctrl.supportplans.length > 0">OpenFlow Licenses</h3>
     <div class="row" ng-hide="ctrl.loading==true">
         <div ng-repeat="model in ctrl.supportplans">
-            <div class="card" style="width: 17rem;height: 362px;">
+            <div class="card" style="width: 17rem;height: 400px; vertical-align: top;">
                 <div class="card-body">
                     <h5 class="card-title">{{model.metadata.webname}}</h5>
                     <h6 class="card-subtitle mb-2 text-muted">{{(model.subplan.amount / 100)*ctrl.model.tax}} DKK/hour

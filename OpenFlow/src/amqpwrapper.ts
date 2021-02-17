@@ -294,7 +294,6 @@ export class amqpwrapper {
             callback(data, options, (nack: boolean) => {
                 try {
                     if (nack == false) {
-                        console.log("nack message");
                         this.channel.nack(msg);
                         // this.channel.nack(msg, false, true);
                         msg = null;
@@ -346,10 +345,6 @@ export class amqpwrapper {
                 throw new Error("No consumer listening at " + queue);
             }
             if (!this.channel.sendToQueue(queue, Buffer.from(data), options, (err, ok) => {
-                // console.log(err ? 'nacked' : 'acked');
-                // console.log(err);
-                // console.log(ok);
-
             })) {
                 throw new Error("No consumer listening at " + queue);
             }
@@ -377,10 +372,6 @@ export class amqpwrapper {
                 throw new Error("No consumer listening at " + queue);
             }
             if (!this.channel.sendToQueue(queue, Buffer.from(data), options, (err, ok) => {
-                // console.log(err ? 'nacked' : 'acked');
-                // console.log(err);
-                // console.log(ok);
-
             })) {
                 throw new Error("No consumer listening at " + queue);
             }
@@ -441,7 +432,6 @@ export class amqpwrapper {
                 }
                 if (!hasConsumers) {
                     if (queue.consumer_details != null && queue.consumer_details.length > 0) {
-                        // console.log(queue.consumer_details[0]);
                         hasConsumers = true;
                     } else {
                         hasConsumers = false;
@@ -459,7 +449,7 @@ export class amqpwrapper {
                 maxTimeout: 500,
                 onRetry: function (error: Error, count: number): void {
                     result = false;
-                    console.log("retry " + count + " error " + error.message + " getting " + url);
+                    console.warn("retry " + count + " error " + error.message + " getting " + url);
                 }
             });
         } catch (error) {

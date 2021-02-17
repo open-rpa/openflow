@@ -1,9 +1,14 @@
 import * as OAuthServer from "oauth2-server";
 import * as winston from "winston";
 import * as express from "express";
-import { TokenUser, Base, NoderedUtil } from "@openiap/openflow-api";
+import { TokenUser, Base, NoderedUtil, User } from "@openiap/openflow-api";
 import { Config } from "./Config";
 import { Crypt } from "./Crypt";
+const fs = require("fs");
+import { Provider, KoaContextWithOIDC } from "oidc-provider";
+import { MongoAdapter } from "./MongoAdapter";
+import { DBHelper } from "./DBHelper";
+// import * as Provider from "oidc-provider";
 const Request = OAuthServer.Request;
 const Response = OAuthServer.Response;
 export class OAuthProvider {
@@ -14,10 +19,296 @@ export class OAuthProvider {
     private codes = {};
     public oauthServer: any = null;
     private authorizationCodeStore: any = {};
+    public oidc: Provider;
+    static async interactionsUrl(ctx: KoaContextWithOIDC, interaction): Promise<any> {
+        // return `/interaction/${ctx.oidc.uid}`;
+        if (ctx && ctx.req && (ctx.req as any).user) {
+            return "/oidccb";
+        } else {
+            (ctx.res as any).cookie("originalUrl", "/oidccb", { maxAge: 900000, httpOnly: true });
+            return "/login";
+        }
+    }
+    static async logoutSource(ctx, form) {
+        // @param ctx - koa request context
+        // @param form - form source (id="op.logoutForm") to be embedded in the page and submitted by
+        //   the End-User
+        ctx.body = `<!DOCTYPE html>
+      <head>
+      <title>Logout Request</title>
+      <style>/* css and html classes omitted for brevity, see lib/helpers/defaults.js */</style>
+      </head>
+      <body onload="logout()">
+      <div>
+        <h1>Do you want to sign-out from ${ctx.host}?</h1>
+        <script>
+          function logout() {
+            var form = document.getElementById('op.logoutForm');
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'logout';
+            input.value = 'yes';
+            form.appendChild(input);
+            form.submit();
+          }
+          function rpLogoutOnly() {
+            var form = document.getElementById('op.logoutForm');
+            form.submit();
+          }
+          
+        </script>
+        ${form}
+        <button onclick="logout()">Yes, sign me out</button>
+        <button onclick="rpLogoutOnly()">No, stay signed in</button>
+      </div>
+      </body>
+      </html>`;
+    }
+    static store = new Map();
+    public static generatekeys() {
+        return new Promise((resolve, reject) => {
+            const jose = require('jose');
+            const keystore = new jose.JWKS.KeyStore();
+            Promise.all([
+                keystore.generate('RSA', 2048, { use: 'sig' }),
+                keystore.generate('RSA', 2048, { use: 'enc' }),
+                keystore.generate('EC', 'P-256', { use: 'sig' }),
+                keystore.generate('EC', 'P-256', { use: 'enc' }),
+                keystore.generate('OKP', 'Ed25519', { use: 'sig' }),
+            ]).then(() => {
+                resolve(keystore.toJWKS(true));
+            }).catch((err) => {
+                reject(err);
+            });
+        });
+    }
+    public static async LoadClients() {
+        const instance = OAuthProvider.instance;
+        try {
+            const jwksresults = await Config.db.query<Base>({ _type: "jwks" }, null, 10, 0, null, "config", Crypt.rootToken());
+            let jwks = null;
+            if (jwksresults.length == 0) {
+                jwks = await this.generatekeys();
+                jwks._type = "jwks";
+                Config.db.InsertOne(jwks, "config", 1, true, Crypt.rootToken());
+            } else {
+                jwks = jwksresults[0];
+            }
+            const result = await Config.db.query<Base>({ _type: "oauthclient" }, null, 10, 0, null, "config", Crypt.rootToken());
+            instance.clients = result;
+            instance.clients.forEach(cli => {
+                cli.client_id = cli.clientId;
+                cli.client_secret = cli.clientSecret;
+                cli.redirect_uris = cli.redirectUris;
+                // token_endpoint_auth_method can only be none, client_secret_post, client_secret_basic, private_key_jwt or tls_client_auth
+                if (NoderedUtil.IsNullEmpty(cli.token_endpoint_auth_method)) cli.token_endpoint_auth_method = "none";
+                // response_types can only contain 'code id_token', 'code', 'id_token', or 'none' 
+                // id_token token
+                if (NoderedUtil.IsNullEmpty(cli.response_types)) cli.response_types = ['code', 'id_token', 'code id_token'];
 
+                // https://github.com/panva/node-oidc-provider/blob/64edda69a84e556531f45ac814788c8c92ab6212/test/claim_types/claim_types.test.js
+
+
+                // cli.grant_types = cli.grants;
+                // if (cli.grant_types == null) cli.grant_types = ['authorization_code'];
+                if (cli.grant_types == null) cli.grant_types = ['implicit', 'authorization_code'];
+
+
+                // cli.redirect_uris.push("https://localhost.openiap.io/")
+            });
+            const provider = new Provider("https://localhost.openiap.io/oidc", {
+                clients: instance.clients,
+                adapter: MongoAdapter,
+                formats: {
+                    AccessToken: 'jwt',
+                },
+                jwks: jwks,
+                features: {
+                    encryption: { enabled: true },
+                    introspection: { enabled: true },
+                    revocation: { enabled: true },
+                    devInteractions: { enabled: false },
+                    clientCredentials: { enabled: true },
+                    userinfo: { enabled: true },
+                    jwtUserinfo: { enabled: true },
+                    claimsParameter: { enabled: false },
+                    rpInitiatedLogout: {
+                        enabled: true,
+                        logoutSource: this.logoutSource
+                    }
+                    // sessionManagement: { enabled: true },
+                },
+                claims: {
+                    acr: null,
+                    auth_time: null,
+                    iss: null,
+                    openid: [
+                        'sub', 'name', 'email', 'email_verified', 'role'
+                    ],
+                    sid: null
+                },
+                conformIdTokenClaims: false,
+                interactions: {
+                    url: this.interactionsUrl
+                },
+                // logoutSource: this.logoutSource,
+                // findAccount: this.FindAccount,
+                // findAccount: this.findAccount,
+                findAccount: Account.findAccount,
+                cookies: {
+                    short: {
+                        path: '/',
+                    },
+                },
+            });
+            provider.proxy = true;
+            const { invalidate: orig } = (provider.Client as any).Schema.prototype;
+            (provider.Client as any).Schema.prototype.invalidate = function invalidate(message, code) {
+                if (code === 'implicit-force-https' || code === 'implicit-forbid-localhost') {
+                    return;
+                }
+                if (message === 'redirect_uris must contain members') return;
+                console.log(code + " " + message);
+                orig.call(this, message);
+            };
+            for (let i = 0; i < this.instance.clients.length; i++) {
+                const client = await provider.Client.find(this.instance.clients[i].client_id);
+                var org = (client as any).redirectUriAllowed;
+                (client as any).redirectUriAllowed = (value) => {
+                    if (client.redirectUris.length == 0) return true;
+                    let parsed;
+                    try {
+                        parsed = new URL(value);
+                    } catch (err) {
+                        return false;
+                    }
+
+                    const match = client.redirectUris.includes(value) || client.redirectUris.includes(value + '/');
+                    if (
+                        match
+                        || client.applicationType !== 'native'
+                        || parsed.protocol !== 'http:'
+                    ) {
+                        return match;
+                    }
+
+                    parsed.port = '';
+
+                    return !!client.redirectUris
+                        .find((registeredUri) => {
+                            const registered = new URL(registeredUri);
+                            registered.port = '';
+                            return parsed.href === registered.href;
+                        });
+                }
+
+            }
+            if (instance.oidc != null) {
+                instance.oidc = provider;
+                return;
+            }
+            instance.oidc = provider;
+
+            instance.app.use('/oidc', async (req, res, next) => {
+                if (req.originalUrl == "/oidc/me/emails") {
+                    // if (req.user) {
+                    //     res.send('["' + (req.user as any).username + '"]');
+                    // } else {
+                    //     res.send('[]');
+                    // }
+                    res.send('[]');
+                    return;
+                }
+                if (req.originalUrl.startsWith("/oidc/auth?access_type=online")) {
+                    const _session = req.cookies["_session"];
+                    const session = req.cookies["session"];
+                    var session1 = await this.instance.oidc.Session.find(_session)
+                    var session2 = await this.instance.oidc.Session.find(session)
+                    if (session1 != null) {
+                        const referer: string = req.headers.referer;
+                        if (NoderedUtil.IsNullEmpty(referer)) {
+                            res.redirect("/oidc/session/end");
+                        } else {
+                            await session1.destroy();
+                            res.redirect(referer);
+                            // if (session1.state == null) session1.state = {};
+                            // session1.state.postLogoutRedirectUri = referer;
+                            // res.redirect("/oidc/session/end?postLogoutRedirectUri=" + referer);
+                        }
+
+                        return;
+                        // session1.resetIdentifier(); session1.destroy(); 
+                    }
+                    if (session2 != null) { session2.resetIdentifier(); session2.destroy(); }
+
+                    req.logout();
+                }
+                instance.oidc.callback(req, res);
+            });
+
+            instance.app.use('/oidccb', async (req, res, next) => {
+                try {
+
+                    const {
+                        uid, prompt, params, session,
+                    } = await this.instance.oidc.interactionDetails(req, res);
+                    var r = req;
+                    var u = req.user;
+                    if (req.isAuthenticated()) {
+                    } else {
+                        res.cookie("originalUrl", "/oidccb", { maxAge: 900000, httpOnly: true });
+                        res.redirect('/login');
+                        return;
+                    }
+
+                    if (req.user) {
+                        const client = await this.instance.clients.filter(x => x.clientId == params.client_id)[0];
+                        const tuser: TokenUser = TokenUser.From(req.user as any);
+                        Account.AddAccount(tuser, client);
+                        await this.instance.oidc.interactionFinished(req, res,
+
+                            // result should be an object with some or all the following properties
+                            {
+                                // authentication/login prompt got resolved, omit if no authentication happened, i.e. the user
+                                // cancelled
+                                login: {
+                                    account: tuser._id, // logged-in account id
+                                    acr: "acr", // acr value for the authentication
+                                    remember: false, // true if provider should use a persistent cookie rather than a session one, defaults to true
+                                    // ts: number, // unix timestamp of the authentication, defaults to now()
+                                },
+
+                                // consent was given by the user to the client for this session
+                                consent: {
+                                    rejectedScopes: [], // array of strings, scope names the end-user has not granted
+                                    rejectedClaims: [], // array of strings, claim names the end-user has not granted
+                                },
+
+                                // meta is a free object you may store alongside an authorization. It can be useful
+                                // during the interaction check to verify information on the ongoing session.
+                                meta: {
+                                    // object structure up-to-you
+                                    "openflow": "true"
+                                },
+
+                                ['custom prompt name resolved']: {},
+                            }
+                        );
+                    }
+                } catch (error) {
+                    res.json(error)
+
+                }
+            });
+        } catch (error) {
+            instance._logger.error(error);
+        }
+    }
     static configure(logger: winston.Logger, app: express.Express): OAuthProvider {
         const instance = new OAuthProvider();
         try {
+
+
             OAuthProvider.instance = instance;
             instance._logger = logger;
             instance.app = app;
@@ -30,11 +321,12 @@ export class OAuthProvider {
                 allowExtendedTokenAttributes: true,
                 allowBearerTokensInQueryString: true
             });
-            Config.db.query<Base>({ _type: "oauthclient" }, null, 10, 0, null, "config", Crypt.rootToken()).then(result => {
-                instance.clients = result;
-            }).catch(error => {
-                instance._logger.error(error);
-            });
+            this.LoadClients();
+
+
+
+
+
             (app as any).oauth = instance.oauthServer;
             app.all('/oauth/token', instance.obtainToken.bind(instance));
             app.get('/oauth/login', async (req, res) => {
@@ -101,7 +393,6 @@ export class OAuthProvider {
         this._logger.info("[OAuth] authorize");
         const request = new Request(req);
         const response = new Response(res);
-        console.log(request.headers);
         return this.oauthServer.authorize(request, response)
             .then((token) => {
                 res.json(token);
@@ -332,7 +623,6 @@ export class OAuthProvider {
             if (seconds > Config.oauth_token_cache_seconds) {
                 this.tokenCache.splice(i, 1);
             } else if (res.token.accessToken == accessToken) {
-                // console.log("Return token from cache, using accessToken " + accessToken);
                 semaphore.up();
                 return res.token;
             }
@@ -350,7 +640,6 @@ export class OAuthProvider {
             if (seconds > Config.oauth_token_cache_seconds) {
                 this.tokenCache.splice(i, 1);
             } else if (res.token.refreshToken == refreshToken) {
-                // console.log("Return token from cache, using refreshToken " + refreshToken);
                 semaphore.up();
                 return res.token;
             }
@@ -360,7 +649,6 @@ export class OAuthProvider {
     }
     private static async addToken(token: any) {
         await semaphore.down();
-        // console.log("Adding token to cache");
         var cuser: CachedToken = new CachedToken(token);
         this.tokenCache.push(cuser);
         semaphore.up();
@@ -395,3 +683,63 @@ const Semaphore = (n) => ({
     },
 });
 const semaphore = Semaphore(1);
+
+
+
+
+const accountStorage = new Map();
+export class Account {
+    constructor(public accountId: string, public user: TokenUser) {
+        accountStorage.set(`Account:${this.accountId}`, this);
+        if (user == null) throw new Error("Cannot create Account from null user for id ${this.accountId}");
+        user = Object.assign(user, { accountId: accountId, sub: accountId });
+        // var roles = [];
+        // user.roles.forEach(role => {
+        //     roles.push(role.name);
+        // });
+        // user.roles = roles;
+
+        // node-bb username hack
+        if (user.name == user.email && user.email.indexOf("@") > -1) {
+            user.name = user.email.substr(0, user.email.indexOf("@") - 1);
+        }
+        if (user.name == user.email && user.email.indexOf("@") == -1) {
+            user.email = user.email + "@unknown.local"
+        }
+        if (user.name == user.email) {
+            user.name = "user " + user.email;
+        }
+    }
+    static get storage() {
+        return accountStorage;
+    }
+    claims() {
+        return this.user;
+    }
+    static async findAccount(ctx: KoaContextWithOIDC, id) {
+        let acc = accountStorage.get(`Account:${id}`);
+        if (!acc) {
+            const user = await DBHelper.FindById(id);
+            acc = new Account(id, TokenUser.From(user));
+        }
+        return acc;
+    }
+    static AddAccount(tuser: TokenUser, client: any) {
+        try {
+            let acc = accountStorage.get(`Account:${tuser._id}`);
+            if (!acc) {
+                let role = client.defaultrole;
+                const keys: string[] = Object.keys(client.rolemappings);
+                for (let i = 0; i < keys.length; i++) {
+                    if (tuser.HasRoleName(keys[i])) role = client.rolemappings[keys[i]];
+                }
+                (tuser as any).role = role;
+                acc = new Account(tuser._id, tuser);
+            }
+            return acc;
+        } catch (error) {
+            console.error(error);
+        }
+        return undefined;
+    }
+}

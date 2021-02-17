@@ -3485,8 +3485,12 @@ export class PaymentCtrl extends entityCtrl<Billing> {
                 }
                 const hasSupportHours = this.supporthoursplans.filter(plan => {
                     const hasit = this.stripe_customer.subscriptions.data.filter(s => {
+                        var p = plan;
+                        var items = s.items;
+                        console.log(items);
                         const arr = s.items.data.filter(y => y.plan.id == plan.id);
-                        if (arr.length == 1) {
+                        var arr2 = s.items.data.filter(y => y.plan.id == plan.id);;
+                        if (arr.length == 1 && plan.usage_type == "metered") {
                             //if (arr[0].quantity > 0) {
                             this.supporthourssubscription = arr[0];
                             return true;
@@ -4190,6 +4194,12 @@ export class OAuthClientCtrl extends entityCtrl<Base> {
                 (this.model as any).redirectUris = [];
                 (this.model as any).defaultrole = "Viewer";
                 (this.model as any).rolemappings = { "admins": "Admin", "grafana editors": "Editor", "grafana admins": "Admin" };
+
+                // (this.model as any).token_endpoint_auth_method = "none";
+                (this.model as any).token_endpoint_auth_method = "client_secret_post";
+                (this.model as any).response_types = ['code', 'id_token', 'code id_token'];
+                (this.model as any).grant_types = ['implicit', 'authorization_code'];
+                (this.model as any).post_logout_redirect_uris = [];
             }
         });
     }

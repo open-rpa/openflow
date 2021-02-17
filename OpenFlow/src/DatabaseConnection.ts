@@ -8,6 +8,7 @@ import { Config } from "./Config";
 import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User } from "@openiap/openflow-api";
 import { DBHelper } from "./DBHelper";
 import * as client from "prom-client";
+import { OAuthProvider } from "./OAuthProvider";
 // tslint:disable-next-line: typedef
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 const isoDatePattern = new RegExp(/\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z)/);
@@ -23,7 +24,7 @@ Object.defineProperty(Promise, 'retry', {
     configurable: true,
     writable: true,
     value: function retry(retries, executor) {
-        console.log(`${retries} retries left!`)
+        console.warn(`${retries} retries left!`)
 
         if (typeof retries !== 'number') {
             throw new TypeError('retries is not a number')
@@ -374,7 +375,7 @@ export class DatabaseConnection {
                         mysort = neworderby;
                     }
                 } catch (error) {
-                    console.log(error, orderby);
+                    console.error(error, orderby);
                 }
                 if (neworderby == null) mysort[(orderby as string)] = 1;
             } else {
@@ -391,7 +392,7 @@ export class DatabaseConnection {
                         myhint = newhint;
                     }
                 } catch (error) {
-                    console.log(error, hint);
+                    console.error(error, hint);
                 }
                 if (newhint == null) myhint[(hint as string)] = 1;
             } else {
@@ -457,8 +458,6 @@ export class DatabaseConnection {
         if (!top) { top = 500; }
         if (!skip) { skip = 0; }
         let arr: T[] = [];
-
-
         DatabaseConnection.mongodb_query_count.labels(collectionname).inc();
         const end = DatabaseConnection.mongodb_query.startTimer();
         let _pipe = this.db.collection(collectionname).find(_query);
@@ -546,7 +545,7 @@ export class DatabaseConnection {
                         myhint = newhint;
                     }
                 } catch (error) {
-                    console.log(error, hint);
+                    console.error(error, hint);
                 }
                 if (newhint == null) myhint[(hint as string)] = 1;
             } else {
@@ -818,6 +817,11 @@ export class DatabaseConnection {
             end({ collection: collectionname });
             DBHelper.cached_roles = [];
         }
+        if (collectionname == "config" && item._type == "oauthclient") {
+            if (user.HasRoleName("admins")) {
+                setTimeout(() => OAuthProvider.LoadClients(), 1000);
+            }
+        }
         DatabaseConnection.traversejsondecode(item);
         if (Config.log_inserts) this._logger.debug("[" + user.username + "][" + collectionname + "] inserted " + item.name);
         return item;
@@ -1018,6 +1022,11 @@ export class DatabaseConnection {
         if (q.collectionname === "users" && q.item._type === "user" && q.item.hasOwnProperty("newpassword")) {
             (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
             delete (q.item as any).newpassword;
+        }
+        if (q.collectionname == "config" && q.item._type == "oauthclient") {
+            if (user.HasRoleName("admins")) {
+                setTimeout(() => OAuthProvider.LoadClients(), 1000);
+            }
         }
         this._logger.silly("[" + user.username + "][" + q.collectionname + "] Updating " + (q.item.name || q.item._name) + " in database");
 
@@ -1363,7 +1372,6 @@ export class DatabaseConnection {
                 await this._DeleteFile(arr[i]._id);
                 end({ collection: collectionname });
             }
-            // if (Config.log_deletes) console.log(JSON.parse(JSON.stringify(query)));
             if (Config.log_deletes) this._logger.verbose("[" + user.username + "][" + collectionname + "] deleted " + arr.length + " items in database");
             return arr.length;
         } else {

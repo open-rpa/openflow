@@ -31,7 +31,7 @@ async function initamqp() {
             msg.command = "timeout";
             // Resend message, this time to the reply queue for the correct node (replyTo)
             // this.SendMessage(JSON.stringify(data), msg.properties.replyTo, msg.properties.correlationId, false);
-            console.log("[DLX][" + options.exchange + "] Send timeout to " + options.replyTo)
+            logger.info("[DLX][" + options.exchange + "] Send timeout to " + options.replyTo)
             amqpwrapper.Instance().sendWithReply("", options.replyTo, msg, 20000, options.correlationId);
         } catch (error) {
         }
@@ -40,17 +40,17 @@ async function initamqp() {
     });
 
     // await amqp.AddExchangeConsumer("testexchange", "fanout", "", null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
-    //     console.log("testexchange: " + msg);
+    //     console.info("testexchange: " + msg);
     //     ack();
     //     done(msg + " hi from testexchange");
     // });
     // await amqp.AddQueueConsumer("testqueue", null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
-    //     console.log("testqueue: " + msg);
+    //     console.info("testqueue: " + msg);
     //     ack();
     //     done(msg + " hi from testqueue.1");
     // });
     // await amqp.AddQueueConsumer("testqueue", null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
-    //     console.log("tempqueue: " + msg);
+    //     console.info("tempqueue: " + msg);
     //     ack();
     //     done(msg + " hi from testqueue.2");
     // });
@@ -61,13 +61,13 @@ async function initamqp() {
 //     try {
 //         flipper = !flipper;
 //         if (flipper) {
-//             console.log(await amqpwrapper.Instance().sendWithReply("", "testqueue", "Hi mom", 20000, ""));
+//             console.info(await amqpwrapper.Instance().sendWithReply("", "testqueue", "Hi mom", 20000, ""));
 //         } else {
-//             // console.log(await amqpwrapper.Instance().sendWithReply("", "testqueue2", "Hi mom", 2000));
-//             console.log(await amqpwrapper.Instance().sendWithReply("testexchange", "", "Hi mom", 20000, ""));
+//             // console.info(await amqpwrapper.Instance().sendWithReply("", "testqueue2", "Hi mom", 2000));
+//             console.info(await amqpwrapper.Instance().sendWithReply("testexchange", "", "Hi mom", 20000, ""));
 //         }
 //     } catch (error) {
-//         console.log(error);
+//         console.error(error);
 //     }
 //     setTimeout(() => {
 //         doitagain()
@@ -228,12 +228,12 @@ let rejectionEmitter = unhandledRejection({
 });
 
 rejectionEmitter.on("unhandledRejection", (error, promise) => {
-    console.log('Unhandled Rejection at: Promise', promise, 'reason:', error);
+    console.error('Unhandled Rejection at: Promise', promise, 'reason:', error);
     console.dir(error.stack);
 });
 
 rejectionEmitter.on("rejectionHandled", (error, promise) => {
-    console.log('Rejection handled at: Promise', promise, 'reason:', error);
+    console.error('Rejection handled at: Promise', promise, 'reason:', error);
     console.dir(error.stack);
 });
 import * as client from "prom-client";
@@ -257,15 +257,9 @@ try {
 const originalStdoutWrite = process.stdout.write.bind(process.stdout);
 const originalStderrWrite = process.stderr.write.bind(process.stderr);
 (process.stdout.write as any) = (chunk: string, encoding?: string, callback?: (err?: Error | null) => void): boolean => {
-    if (chunk.indexOf("Failed locating user with") > -1) {
-        console.log("bump");
-    }
     return originalStdoutWrite(chunk, encoding, callback);
 };
 (process.stderr.write as any) = (chunk: string, encoding?: string, callback?: (err?: Error | null) => void): boolean => {
-    if (chunk.indexOf("Failed locating user with") > -1) {
-        console.log("bump");
-    }
     return originalStderrWrite(chunk, encoding, callback);
 };
 

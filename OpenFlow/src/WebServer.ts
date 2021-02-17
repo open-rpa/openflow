@@ -34,14 +34,14 @@ const rateLimiter = (req: express.Request, res: express.Response, next: express.
     BaseRateLimiter
         .consume(req.ip)
         .then((e) => {
-            // console.log("API_O_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints);
+            // console.info("API_O_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints);
             next();
         })
         .catch((e) => {
             const route = url.parse(req.url).pathname;
             webserver_rate_limit.inc();
             webserver_rate_limit.labels(route).inc();
-            console.log("API_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints + " msBeforeNext: " + e.msBeforeNext);
+            console.warn("API_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints + " msBeforeNext: " + e.msBeforeNext);
             res.status(429).json({ response: 'RATE_LIMIT' });
         });
 };
@@ -110,6 +110,7 @@ export class WebServer {
                 logger.silly(message);
             }
         };
+        this.app.use("/", express.static(path.join(__dirname, "/public")));
         this.app.use(morgan('combined', { stream: loggerstream }));
         this.app.use(compression());
         this.app.use(bodyParser.urlencoded({ extended: true }));
@@ -141,7 +142,6 @@ export class WebServer {
             // Pass to next layer of middleware
             next();
         });
-        this.app.use("/", express.static(path.join(__dirname, "/public")));
         await LoginProvider.configure(this._logger, this.app, baseurl);
         await SamlProvider.configure(this._logger, this.app, baseurl);
         let server: http.Server = null;

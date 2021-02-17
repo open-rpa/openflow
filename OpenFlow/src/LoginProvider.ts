@@ -144,12 +144,23 @@ export class LoginProvider {
         });
 
         app.use(function (req, res, next) {
-            res.header('Access-Control-Allow-Origin', (req.headers.origin as any));
-            res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+            logger.debug(req.originalUrl);
+            const origin: string = (req.headers.origin as any);
+            if (NoderedUtil.IsNullEmpty(origin)) {
+                res.header('Access-Control-Allow-Origin', '*');
+            } else {
+                res.header('Access-Control-Allow-Origin', origin);
+            }
+            res.header("Access-Control-Allow-Methods", "DELETE, POST, PUT, GET, OPTIONS");
+            res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Access-Control-Allow-Headers, Authorization");
             res.header('Cache-Control', 'private, no-cache, no-store, must-revalidate');
             res.header('Expires', '-1');
             res.header('Pragma', 'no-cache');
-            next();
+            if (req.originalUrl == "/oidc/me" && req.method == "OPTIONS") {
+                res.send("ok");
+            } else {
+                next();
+            }
         });
         app.get("/Signout", (req: any, res: any, next: any): void => {
             // const providerid: string = req.cookies.provider;
@@ -187,7 +198,7 @@ export class LoginProvider {
         });
         await LoginProvider.RegisterProviders(app, baseurl);
         app.get("/user", async (req: any, res: any, next: any): Promise<void> => {
-            // console.log("/user " + !(req.user == null));
+            // logger.debug("/user " + !(req.user == null));
             res.setHeader("Content-Type", "application/json");
             if (req.user) {
                 const user: User = await DBHelper.FindById(req.user._id);
@@ -198,7 +209,7 @@ export class LoginProvider {
             res.end();
         });
         app.get("/jwt", (req: any, res: any, next: any): void => {
-            // console.log("/jwt " + !(req.user == null));
+            // logger.debug("/jwt " + !(req.user == null));
             res.setHeader("Content-Type", "application/json");
             if (req.user) {
                 const user: TokenUser = TokenUser.From(req.user);
@@ -209,7 +220,7 @@ export class LoginProvider {
             res.end();
         });
         app.get("/jwtlong", (req: any, res: any, next: any): void => {
-            // console.log("/jwtlong " + !(req.user == null));
+            // logger.debug("/jwtlong " + !(req.user == null));
             res.setHeader("Content-Type", "application/json");
             if (req.user) {
                 const user: TokenUser = TokenUser.From(req.user);
@@ -224,7 +235,7 @@ export class LoginProvider {
             res.end();
         });
         app.post("/jwt", async (req: any, res: any, next: any): Promise<void> => {
-            // console.log("/jwt " + !(req.user == null));
+            // logger.debug("/jwt " + !(req.user == null));
             try {
                 const rawAssertion = req.body.token;
                 const user: User = await LoginProvider.validateToken(rawAssertion);
@@ -259,13 +270,13 @@ export class LoginProvider {
             res.end(JSON.stringify(res2));
         });
         app.get("/login", async (req: any, res: any, next: any): Promise<void> => {
-            // console.log("/login " + !(req.user == null));
+            // logger.debug("/login " + !(req.user == null));
             try {
                 const originalUrl: any = req.cookies.originalUrl;
                 const validateurl: any = req.cookies.validateurl;
                 if (NoderedUtil.IsNullEmpty(originalUrl)) res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
                 if (!NoderedUtil.IsNullEmpty(validateurl)) {
-                    // console.log("validateurl: " + validateurl);
+                    // logger.debug("validateurl: " + validateurl);
                     if (req.user) {
                         const user: User = await DBHelper.FindById(req.user._id);
                         const tuser: TokenUser = TokenUser.From(user);
@@ -295,7 +306,7 @@ export class LoginProvider {
             }
         });
         app.get("/validateuserform", async (req: any, res: any, next: any): Promise<void> => {
-            // console.log("/validateuserform " + !(req.user == null));
+            // logger.debug("/validateuserform " + !(req.user == null));
             res.setHeader("Content-Type", "application/json");
             if (NoderedUtil.IsNullEmpty(Config.validate_user_form)) {
                 res.end(JSON.stringify({}));
@@ -315,7 +326,7 @@ export class LoginProvider {
             return;
         });
         app.post("/validateuserform", async (req: any, res) => {
-            // console.log("/validateuserform " + !(req.user == null));
+            // logger.debug("/validateuserform " + !(req.user == null));
             res.setHeader("Content-Type", "application/json");
             try {
                 if (req.user) {

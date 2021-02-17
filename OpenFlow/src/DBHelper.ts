@@ -51,11 +51,9 @@ export class DBHelper {
             if (ids.indexOf(role._id) == -1) {
                 ids.push(role._id);
                 result.push(role);
-                // console.log(role.name + " " + role._id);
                 const _subroles: Role[] = await this.GetRoles(role._id, ident + 1);
                 for (let y = 0; y < _subroles.length; y++) {
                     const subrole = _subroles[y];
-                    // console.log(role.name + " " + subrole.name + " " + subrole._id);
                     if (ids.indexOf(subrole._id) == -1) {
                         ids.push(subrole._id);
                         result.push(subrole);
