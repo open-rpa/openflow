@@ -51,6 +51,8 @@ export class amqp_connection {
                     this.webcli.events.emit("onsignedin", result.user);
                 } catch (error) {
                     this.webcli._logger.error(error);
+                    this.webcli.events.emit("onclose", (error.message ? error.message : error));
+                    NoderedUtil.HandleError(this.node, error, null);
                 }
             });
             this.webcli.events.on("onsignedin", async (user) => {
@@ -82,7 +84,8 @@ export class amqp_consumer_node {
         RED.nodes.createNode(this, config);
         try {
             this.node = this;
-            this.node.status({});
+            // this.node.status({});
+            this.node.status({ fill: "blue", shape: "dot", text: "Offline" });
             this.node.on("close", this.onclose);
             this.connection = RED.nodes.getNode(this.config.config);
             this._onsignedin = this.onsignedin.bind(this);
@@ -91,6 +94,8 @@ export class amqp_consumer_node {
             this.websocket().events.on("onclose", this._onsocketclose);
             if (this.websocket().isConnected && this.websocket().user != null) {
                 this.connect();
+            } else {
+                this.node.status({ fill: "blue", shape: "dot", text: "Waiting on conn" });
             }
         } catch (error) {
             NoderedUtil.HandleError(this, error, null);

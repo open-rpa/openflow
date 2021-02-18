@@ -11,6 +11,10 @@
         <label><i class="icon-bookmark"></i> Password</label>
         <input type="password" id="node-config-input-password">
     </div>
+    <div class="form-row">
+        <label ><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-config-input-name" placeholder="Node name">
+    </div>
 </script>
 <script type="text/javascript">
     RED.nodes.registerType('amqp-connection', {
@@ -24,7 +28,7 @@
             password: { type: "password" }
         },
         label: function () {
-            return this.host || "amqp credentials";
+            return (this.name || this.host) || "amqp credentials";
         }
     });
 </script>
