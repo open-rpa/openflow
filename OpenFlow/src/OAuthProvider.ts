@@ -168,54 +168,31 @@ export class OAuthProvider {
                 if (code === 'implicit-force-https' || code === 'implicit-forbid-localhost') {
                     return;
                 }
-                if (message === 'redirect_uris must contain members') return;
+                if (message === 'redirect_uris must contain members') {
+                    return;
+                }
                 console.log(code + " " + message);
                 orig.call(this, message);
             };
-            for (let i = 0; i < this.instance.clients.length; i++) {
-                const client = await provider.Client.find(this.instance.clients[i].client_id);
-                var org = (client as any).redirectUriAllowed;
-                (client as any).redirectUriAllowed = (value) => {
-                    if (client.redirectUris.length == 0) return true;
-                    let parsed;
-                    try {
-                        parsed = new URL(value);
-                    } catch (err) {
-                        return false;
-                    }
-
-                    const match = client.redirectUris.includes(value) || client.redirectUris.includes(value + '/');
-                    if (
-                        match
-                        || client.applicationType !== 'native'
-                        || parsed.protocol !== 'http:'
-                    ) {
-                        return match;
-                    }
-
-                    parsed.port = '';
-
-                    return !!client.redirectUris
-                        .find((registeredUri) => {
-                            const registered = new URL(registeredUri);
-                            registered.port = '';
-                            return parsed.href === registered.href;
-                        });
-                }
-                if(client.postLogoutRedirectUris == null || client.postLogoutRedirectUris.length == 0) {
-                    var org2 = (client as any).postLogoutRedirectUriAllowed;
-                    (client as any).postLogoutRedirectUriAllowed = (value) => true;
-                }
-
-            }
+            const orgpostLogoutRedirectUriAllowed = provider.Client.prototype.postLogoutRedirectUriAllowed;
+            provider.Client.prototype.postLogoutRedirectUriAllowed = function (value) { 
+                // const client = await provider.Client.find(this.clientId);
+                if (this.postLogoutRedirectUris == null || this.postLogoutRedirectUris.length == 0) return true;
+                return orgpostLogoutRedirectUriAllowed(value);
+            };
+            const orgredirectUriAllowed = provider.Client.prototype.redirectUriAllowed;
+            provider.Client.prototype.redirectUriAllowed = function (value) { 
+                // const client = await provider.Client.find(this.clientId);
+                if (this.redirectUris == null || this.redirectUris.length == 0) return true;
+                return orgredirectUriAllowed(value);
+            };
             if (instance.oidc != null) {
                 instance.oidc = provider;
                 return;
             }
             instance.oidc = provider;
-
             instance.app.use('/oidc', async (req, res, next) => {
-                if (req.originalUrl == "/oidc/me/emails") {
+                if (req.originalUrl == "/oidc/me/emails") { // Grafana old school hack
                     // if (req.user) {
                     //     res.send('["' + (req.user as any).username + '"]');
                     // } else {
@@ -236,13 +213,8 @@ export class OAuthProvider {
                         } else {
                             await session1.destroy();
                             res.redirect(referer);
-                            // if (session1.state == null) session1.state = {};
-                            // session1.state.postLogoutRedirectUri = referer;
-                            // res.redirect("/oidc/session/end?postLogoutRedirectUri=" + referer);
                         }
-
                         return;
-                        // session1.resetIdentifier(); session1.destroy(); 
                     }
                     if (session2 != null) { session2.resetIdentifier(); session2.destroy(); }
 
