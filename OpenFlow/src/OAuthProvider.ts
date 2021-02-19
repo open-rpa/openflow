@@ -112,6 +112,7 @@ export class OAuthProvider {
                 // cli.grant_types = cli.grants;
                 // if (cli.grant_types == null) cli.grant_types = ['authorization_code'];
                 if (cli.grant_types == null) cli.grant_types = ['implicit', 'authorization_code'];
+                console.log(cli.post_logout_redirect_uri)
 
 
                 // cli.redirect_uris.push("https://localhost.openiap.io/")
@@ -200,6 +201,10 @@ export class OAuthProvider {
                             registered.port = '';
                             return parsed.href === registered.href;
                         });
+                }
+                if(client.postLogoutRedirectUris == null || client.postLogoutRedirectUris.length == 0) {
+                    var org2 = (client as any).postLogoutRedirectUriAllowed;
+                    (client as any).postLogoutRedirectUriAllowed = (value) => true;
                 }
 
             }
