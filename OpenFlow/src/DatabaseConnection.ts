@@ -158,10 +158,15 @@ export class DatabaseConnection {
         });
         this._logger.info(`Really connected to mongodb`);
         // this.cli = await MongoClient.connect(this.mongodburl, { autoReconnect: false, useNewUrlParser: true });
-        this.cli.on("error", (error) => {
+        const errEvent = (error) => {
             this.isConnected = false;
             this._logger.error(error);
-        });
+        }
+        this.cli
+            .on('error', errEvent)
+            .on('parseError', errEvent)
+            .on('timeout', errEvent)
+            .on('close', errEvent);
         this.db = this.cli.db(this._dbname);
         this.isConnected = true;
     }

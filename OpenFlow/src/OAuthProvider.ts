@@ -112,12 +112,12 @@ export class OAuthProvider {
                 // cli.grant_types = cli.grants;
                 // if (cli.grant_types == null) cli.grant_types = ['authorization_code'];
                 if (cli.grant_types == null) cli.grant_types = ['implicit', 'authorization_code'];
-                console.log(cli.post_logout_redirect_uri)
+                console.log(cli.clientId + " " + cli.token_endpoint_auth_method);
 
 
                 // cli.redirect_uris.push("https://localhost.openiap.io/")
             });
-            const provider = new Provider("https://localhost.openiap.io/oidc", {
+            const provider = new Provider(Config.baseurl() + "oidc", {
                 clients: instance.clients,
                 adapter: MongoAdapter,
                 formats: {
@@ -156,10 +156,19 @@ export class OAuthProvider {
                 // findAccount: this.FindAccount,
                 // findAccount: this.findAccount,
                 findAccount: Account.findAccount,
+                // cookies: {
+                //     long: { signed: false, maxAge: 0, path: '/' },
+                //     keys: ["Y6SPiXCxDhAJbN7cbydMw5eX1wIrdy8PiWApqEcguss="], // node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+                //     short: {
+                //         signed: false,
+                //         path: '/',
+                //     },
+                // },
                 cookies: {
                     short: {
                         path: '/',
                     },
+                    keys: [Config.oidc_cookie_key], // node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
                 },
             });
             provider.proxy = true;
@@ -201,7 +210,7 @@ export class OAuthProvider {
                     res.send('[]');
                     return;
                 }
-                if (req.originalUrl.startsWith("/oidc/auth?access_type=online")) {
+                if (req.originalUrl.startsWith("/oidc/auth")) {
                     const _session = req.cookies["_session"];
                     const session = req.cookies["session"];
                     var session1 = await this.instance.oidc.Session.find(_session)
@@ -226,12 +235,19 @@ export class OAuthProvider {
             instance.app.use('/oidccb', async (req, res, next) => {
                 try {
 
+                    var test = await this.instance.oidc.interactionDetails(req, res);
                     const {
                         uid, prompt, params, session,
                     } = await this.instance.oidc.interactionDetails(req, res);
                     var r = req;
                     var u = req.user;
-                    if (req.isAuthenticated()) {
+                    const isAuthenticated:boolean = req.isAuthenticated();
+                    console.log("isAuthenticated: " + isAuthenticated)
+                    if (isAuthenticated) {
+                        // if(!NoderedUtil.IsNullEmpty(test.returnTo) ) {
+                        //     res.redirect(test.returnTo);
+                        //     return;                            
+                        // }
                     } else {
                         res.cookie("originalUrl", "/oidccb", { maxAge: 900000, httpOnly: true });
                         res.redirect('/login');

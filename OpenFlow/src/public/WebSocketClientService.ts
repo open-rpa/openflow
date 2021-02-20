@@ -3,6 +3,7 @@ import { WebSocketClient, TokenUser, NoderedUtil } from "@openiap/openflow-api";
 interface IHashTable<T> {
     [key: string]: T;
 }
+declare type onSignedinCallback = (user: TokenUser) => void;
 export class WebSocketClientService {
     static $inject = ["$rootScope", "$location", "$window"];
     constructor(
@@ -168,8 +169,7 @@ export class WebSocketClientService {
         };
         xhr.send();
     }
-
-    onSignedin(callback) {
+    public onSignedin(callback:onSignedinCallback) {
         if (this.user !== null) {
             callback(this.user);
             return;

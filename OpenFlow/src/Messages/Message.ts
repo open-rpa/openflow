@@ -19,6 +19,7 @@ import { amqpwrapper } from "../amqpwrapper";
 import { WebSocketServerClient } from "../WebSocketServerClient";
 import { DBHelper } from "../DBHelper";
 import { WebSocketServer } from "../WebSocketServer";
+import { OAuthProvider } from "../OAuthProvider";
 const request = require("request");
 const got = require("got");
 const { RateLimiterMemory } = require('rate-limiter-flexible')
@@ -765,7 +766,7 @@ export class Message {
             msg = SigninMessage.assign(this.data);
             let tuser: TokenUser = null;
             let user: User = null;
-            if (msg.jwt !== null && msg.jwt !== undefined) {
+            if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
                 type = "jwtsignin";
                 tuser = Crypt.verityToken(msg.jwt);
                 if (tuser.impostor !== null && tuser.impostor !== undefined && tuser.impostor !== "") {
@@ -791,12 +792,30 @@ export class Message {
                 if (impostor !== "") {
                     tuser.impostor = impostor;
                 }
-            } else if (msg.rawAssertion !== null && msg.rawAssertion !== undefined) {
-                type = "samltoken";
-                user = await LoginProvider.validateToken(msg.rawAssertion);
-                // refresh, for roles and stuff
-                if (user !== null && user != undefined) { tuser = TokenUser.From(user); }
-                msg.rawAssertion = "";
+            } else if (!NoderedUtil.IsNullEmpty(msg.rawAssertion)) {
+                let AccessToken = null;
+                let User = null;
+                try {
+                    AccessToken = await OAuthProvider.instance.oidc.AccessToken.find(msg.rawAssertion);
+                    if(!NoderedUtil.IsNullUndefinded(AccessToken)) {
+                        User = await OAuthProvider.instance.oidc.Account.findAccount(null, AccessToken.accountId);
+                        console.log('User:', User);
+                    }
+                    console.log('AccessToken:', AccessToken);
+                } catch (error) {
+                    console.error(error);                    
+                }
+                if(!NoderedUtil.IsNullUndefinded(AccessToken)) {
+                    user = User.user;
+                    console.log('User:', user);
+                    if (user !== null && user != undefined) { tuser = TokenUser.From(user); }
+                } else {
+                    type = "samltoken";
+                    user = await LoginProvider.validateToken(msg.rawAssertion);
+                    // refresh, for roles and stuff
+                    if (user !== null && user != undefined) { tuser = TokenUser.From(user); }
+                    msg.rawAssertion = "";
+                }
             } else {
                 user = await Auth.ValidateByPassword(msg.username, msg.password);
                 tuser = null;
