@@ -21,13 +21,8 @@ export class OAuthProvider {
     private authorizationCodeStore: any = {};
     public oidc: Provider;
     static async interactionsUrl(ctx: KoaContextWithOIDC, interaction): Promise<any> {
+        return "/oidclogin";
         // return `/interaction/${ctx.oidc.uid}`;
-        if (ctx && ctx.req && (ctx.req as any).user) {
-            return "/oidccb";
-        } else {
-            (ctx.res as any).cookie("originalUrl", "/oidccb", { maxAge: 900000, httpOnly: true });
-            return "/login";
-        }
     }
     static async logoutSource(ctx, form) {
         // @param ctx - koa request context
@@ -232,6 +227,19 @@ export class OAuthProvider {
                 instance.oidc.callback(req, res);
             });
 
+            instance.app.use('/oidclogin', async (req, res, next) => {
+                if (req && (req as any).user) {
+                    // const _session = req.cookies["_session"];
+                    // var session1 = await this.instance.oidc.Session.find(_session)
+                    // if (session1 != null) {
+                    // }
+                    res.cookie("originalUrl", "/oidccb", { maxAge: 900000, httpOnly: true });
+                    res.redirect("/oidccb");
+                } else {
+                    res.cookie("originalUrl", "/oidclogin", { maxAge: 900000, httpOnly: true });
+                    res.redirect("/login");
+                }
+            });
             instance.app.use('/oidccb', async (req, res, next) => {
                 try {
 
