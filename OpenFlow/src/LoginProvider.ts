@@ -274,7 +274,9 @@ export class LoginProvider {
             try {
                 const originalUrl: any = req.cookies.originalUrl;
                 const validateurl: any = req.cookies.validateurl;
-                if (NoderedUtil.IsNullEmpty(originalUrl)) res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
+                if (NoderedUtil.IsNullEmpty(originalUrl) && !req.originalUrl.startsWith("/login") ) {
+                    res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
+                }
                 if (!NoderedUtil.IsNullEmpty(validateurl)) {
                     // logger.debug("validateurl: " + validateurl);
                     if (req.user) {
