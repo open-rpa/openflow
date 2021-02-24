@@ -839,7 +839,7 @@ export class Message {
             } else {
                 if (msg.impersonate == "-1" || msg.impersonate == "false") {
                     user = await DBHelper.FindById(impostor, Crypt.rootToken());
-                    UpdateDoc.$unset = { "impersonating": "" };
+                    if(Config.persist_user_impersonation) UpdateDoc.$unset = { "impersonating": "" };
                     user.impersonating = undefined;
                     if (!NoderedUtil.IsNullEmpty(tuser.impostor)) {
                         tuser = TokenUser.From(user);
@@ -884,7 +884,9 @@ export class Message {
                     // Check we have update rights
                     try {
                         await DBHelper.Save(user, msg.jwt);
-                        await Config.db._UpdateOne({ _id: tuserimpostor._id }, { "$set": { "impersonating": user._id } } as any, "users", 1, false, msg.jwt);
+                        if(Config.persist_user_impersonation) {
+                            await Config.db._UpdateOne({ _id: tuserimpostor._id }, { "$set": { "impersonating": user._id } } as any, "users", 1, false, msg.jwt);
+                        }
                     } catch (error) {
                         const impostors = await Config.db.query<User>({ _id: msg.impersonate }, null, 1, 0, null, "users", Crypt.rootToken());
                         const impb: User = new User(); impb.name = "unknown"; impb._id = msg.impersonate;
