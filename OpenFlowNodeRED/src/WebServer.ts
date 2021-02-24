@@ -36,7 +36,7 @@ export class WebServer {
         name: 'openflow_nodered_node_duration',
         help: 'Duration of each node call',
         labelNames: ["nodetype"],
-        buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10]
+        buckets: [0.01, 0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10, 50]
     })
     public static openflow_nodered_nodeid_count = new client.Counter({
         name: 'openflow_nodered_nodeid_count',
@@ -47,7 +47,7 @@ export class WebServer {
         name: 'openflow_nodered_nodeid_duration',
         help: 'Duration of each node call',
         labelNames: ["nodetype", "nodeid"],
-        buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10]
+        buckets: [0.01, 0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10, 50]
     })
     public static message_queue_count = new client.Gauge({
         name: 'openflow_message_queue_count',
