@@ -52,8 +52,7 @@ export class DatabaseConnection {
     public static mongodb_query = new client.Histogram({
         name: 'openflow_mongodb_query_seconds',
         help: 'Duration for mongodb queries microseconds',
-        labelNames: ['collection'],
-        buckets: [0.01, 0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10, 50]
+        labelNames: ['collection']
     })
     public static mongodb_query_count = new client.Counter({
         name: 'openflow_mongodb_query_count',
@@ -63,8 +62,7 @@ export class DatabaseConnection {
     public static mongodb_aggregate = new client.Histogram({
         name: 'openflow_mongodb_aggregate_seconds',
         help: 'Duration for mongodb queries microseconds',
-        labelNames: ['collection'],
-        buckets: [0.01, 0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10, 50]
+        labelNames: ['collection']
     })
     public static mongodb_aggregate_count = new client.Counter({
         name: 'openflow_mongodb_aggregate_count',
@@ -74,8 +72,7 @@ export class DatabaseConnection {
     public static mongodb_insert = new client.Histogram({
         name: 'openflow_mongodb_insert_seconds',
         help: 'Duration for mongodb inserts microseconds',
-        labelNames: ['collection'],
-        buckets: [0.01, 0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10, 50]
+        labelNames: ['collection']
     })
     public static mongodb_insert_count = new client.Counter({
         name: 'openflow_mongodb_insert_count',
@@ -85,8 +82,7 @@ export class DatabaseConnection {
     public static mongodb_update = new client.Histogram({
         name: 'openflow_mongodb_update_seconds',
         help: 'Duration for mongodb updates microseconds',
-        labelNames: ['collection'],
-        buckets: [0.01, 0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10, 50]
+        labelNames: ['collection']
     })
     public static mongodb_update_count = new client.Counter({
         name: 'openflow_mongodb_update_count',
@@ -96,8 +92,7 @@ export class DatabaseConnection {
     public static mongodb_replace = new client.Histogram({
         name: 'openflow_mongodb_replace_seconds',
         help: 'Duration for mongodb replaces microseconds',
-        labelNames: ['collection'],
-        buckets: [0.01, 0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10, 50]
+        labelNames: ['collection']
     })
     public static mongodb_replace_count = new client.Counter({
         name: 'openflow_mongodb_replace_count',
@@ -107,8 +102,7 @@ export class DatabaseConnection {
     public static mongodb_delete = new client.Histogram({
         name: 'openflow_mongodb_delete_seconds',
         help: 'Duration for mongodb deletes microseconds',
-        labelNames: ['collection'],
-        buckets: [0.01, 0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10, 50]
+        labelNames: ['collection']
     })
     public static mongodb_delete_count = new client.Counter({
         name: 'openflow_mongodb_delete_count',
@@ -118,8 +112,7 @@ export class DatabaseConnection {
     public static mongodb_deletemany = new client.Histogram({
         name: 'openflow_mongodb_deletemany_seconds',
         help: 'Duration for mongodb deletemanys microseconds',
-        labelNames: ['collection'],
-        buckets: [0.01, 0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10, 50]
+        labelNames: ['collection']
     })
     public static mongodb_deletemany_count = new client.Counter({
         name: 'openflow_mongodb_deletemany_count',

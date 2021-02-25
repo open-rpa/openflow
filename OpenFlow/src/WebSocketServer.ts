@@ -45,8 +45,7 @@ export class WebSocketServer {
     public static websocket_messages = new client.Histogram({
         name: 'openflow_websocket_messages_duration_seconds',
         help: 'Duration for handling websocket requests in microseconds',
-        labelNames: ['command'],
-        buckets: [0.01, 0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10, 50]
+        labelNames: ['command']
     })
     public static message_queue_count = new client.Gauge({
         name: 'openflow_message_queue_count',
