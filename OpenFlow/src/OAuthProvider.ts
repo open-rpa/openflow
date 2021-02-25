@@ -701,7 +701,7 @@ export class Account {
         // user.roles = roles;
 
         // node-bb username hack
-        if(user.email == null || user.email == "") user.email = user.username;
+        if(NoderedUtil.IsNullEmpty(user.email)) user.email = user.username;
         if (user.name == user.email && user.email.indexOf("@") > -1) {
             user.name = user.email.substr(0, user.email.indexOf("@") - 1);
         }
