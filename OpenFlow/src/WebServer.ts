@@ -71,36 +71,36 @@ export class WebServer {
             //     result += await register.metrics() + '\n';
             // }
 
-            // for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
-            //     const cli: WebSocketServerClient = WebSocketServer._clients[i];
-            //     try {
-            //         if (!NoderedUtil.IsNullEmpty(cli.metrics) && cli.user != null) {
-            //             const arr: string[] = cli.metrics.split('\n');
-            //             const replacer = (match: any, offset: any, string: any) => {
-            //                 return '{' + offset + ',username="' + cli.user.username + '"}';
-            //             }
-            //             for (let y = 0; y < arr.length; y++) {
-            //                 let line = arr[y];
-            //                 if (!line.startsWith("#")) {
-            //                     if (line.indexOf("}") > -1) {
-            //                         line = line.replace(/{(.*)}/gi, replacer);
-            //                         arr[y] = line
-            //                     } else if (!NoderedUtil.IsNullEmpty(line) && line.indexOf(' ') > -1) {
-            //                         const _arr = line.split(' ');
-            //                         _arr[0] += '{username="' + cli.user.username + '"}';
-            //                         line = _arr.join(' ');
-            //                         arr[y] = line
-            //                     }
-            //                 }
+            for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
+                const cli: WebSocketServerClient = WebSocketServer._clients[i];
+                try {
+                    if (!NoderedUtil.IsNullEmpty(cli.metrics) && cli.user != null) {
+                        const arr: string[] = cli.metrics.split('\n');
+                        const replacer = (match: any, offset: any, string: any) => {
+                            return '{' + offset + ',username="' + cli.user.username + '"}';
+                        }
+                        for (let y = 0; y < arr.length; y++) {
+                            let line = arr[y];
+                            if (!line.startsWith("#")) {
+                                if (line.indexOf("}") > -1) {
+                                    line = line.replace(/{(.*)}/gi, replacer);
+                                    arr[y] = line
+                                } else if (!NoderedUtil.IsNullEmpty(line) && line.indexOf(' ') > -1) {
+                                    const _arr = line.split(' ');
+                                    _arr[0] += '{username="' + cli.user.username + '"}';
+                                    line = _arr.join(' ');
+                                    arr[y] = line
+                                }
+                            }
 
-            //             }
+                        }
 
-            //             result += arr.join('\n') + '\n';
-            //         }
-            //     } catch (error) {
-            //         console.error(error);
-            //     }
-            // }
+                        result += arr.join('\n') + '\n';
+                    }
+                } catch (error) {
+                    console.error(error);
+                }
+            }
             res.set({ 'Content-Type': 'text/plain' });
             res.send(result);
         });

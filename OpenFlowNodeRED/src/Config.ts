@@ -17,6 +17,7 @@ export class Config {
     public static reload(): void {
         Config.getversion();
         Config.logpath = Config.getEnv("logpath", __dirname);
+        Config.log_otel_times = Config.parseBoolean(Config.getEnv("log_otel_times", "false"));
 
         Config.nodered_id = Config.getEnv("nodered_id", "1");
         Config.nodered_sa = Config.getEnv("nodered_sa", "");
@@ -67,9 +68,17 @@ export class Config {
         Config.prometheus_measure_queued_messages = Config.parseBoolean(Config.getEnv("prometheus_measure_queued_messages", "false"));
         Config.max_message_queue_time_seconds = parseInt(Config.getEnv("max_message_queue_time_seconds", "3600"));
         Config.prometheus_expose_metric = Config.parseBoolean(Config.getEnv("prometheus_expose_metric", "false"));
+        Config.enable_analytics = Config.parseBoolean(Config.getEnv("enable_analytics", "true"));
+        Config.openflow_uniqueid = Config.getEnv("openflow_uniqueid", "");
+        Config.otel_trace_url = Config.getEnv("otel_trace_url", "");
+        Config.otel_metric_url = Config.getEnv("otel_metric_url", "");
+        Config.otel_servicename = Config.getEnv("otel_servicename", "openflow");
+        Config.otel_trace_interval = parseInt(Config.getEnv("otel_trace_interval", "1000"));
+        Config.otel_metric_interval = parseInt(Config.getEnv("otel_metric_interval", "1000"));
     }
     public static version: string = Config.getversion();
     public static logpath: string = Config.getEnv("logpath", __dirname);
+    public static log_otel_times: boolean = Config.parseBoolean(Config.getEnv("log_otel_times", "false"));
     public static nodered_id: string = Config.getEnv("nodered_id", "1");
     public static nodered_sa: string = Config.getEnv("nodered_sa", "");
 
@@ -130,6 +139,13 @@ export class Config {
     public static prometheus_measure_queued_messages: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_queued_messages", "false"));
     public static max_message_queue_time_seconds: number = parseInt(Config.getEnv("max_message_queue_time_seconds", "3600"));
     public static prometheus_expose_metric: boolean = Config.parseBoolean(Config.getEnv("prometheus_expose_metric", "false"));
+    public static enable_analytics: boolean = Config.parseBoolean(Config.getEnv("enable_analytics", "true"));
+    public static openflow_uniqueid: string = Config.getEnv("openflow_uniqueid", "");
+    public static otel_trace_url: string = Config.getEnv("otel_trace_url", "");
+    public static otel_metric_url: string = Config.getEnv("otel_metric_url", "");
+    public static otel_servicename: string = Config.getEnv("otel_servicename", "nodered");
+    public static otel_trace_interval: number = parseInt(Config.getEnv("otel_trace_interval", "1000"));
+    public static otel_metric_interval: number = parseInt(Config.getEnv("otel_metric_interval", "1000"));
 
     public static baseurl(): string {
         if (!NoderedUtil.IsNullEmpty(Config.domain_use_ip_from_network)) {

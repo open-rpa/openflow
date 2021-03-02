@@ -9,9 +9,21 @@ import { Config } from "./Config";
 import { Crypt } from "./nodeclient/Crypt";
 import { FileSystemCache } from "@openiap/openflow-api";
 import { RestartService } from "./nodeclient/cliutil";
+import { otel } from "./otel";
 
 const logger: winston.Logger = Logger.configure();
 logger.info("starting openflow nodered");
+
+let _otel_require: any = null;
+let _otel: otel = null;
+try {
+    _otel_require = require("./otel");
+} catch (error) {
+
+}
+if (_otel_require != null) {
+    _otel = _otel_require.otel.configure(logger);
+}
 
 const unhandledRejection = require("unhandled-rejection");
 let rejectionEmitter = unhandledRejection({
@@ -38,7 +50,7 @@ let server: http.Server = null;
         const json = await backupStore.get(filename, null);
         const socket: WebSocketClient = new WebSocketClient(logger, Config.api_ws_url);
         if (!NoderedUtil.IsNullEmpty(json) && Config.allow_start_from_cache) {
-            server = await WebServer.configure(logger, socket);
+            server = await WebServer.configure(logger, socket, _otel);
             const baseurl = (!NoderedUtil.IsNullEmpty(Config.saml_baseurl) ? Config.saml_baseurl : Config.baseurl());
             logger.info("listening on " + baseurl);
         }
@@ -75,9 +87,22 @@ let server: http.Server = null;
                 logger.info("signed in as " + result.user.name + " with id " + result.user._id);
                 WebSocketClient.instance.user = result.user;
                 WebSocketClient.instance.jwt = result.jwt;
-
+                if (!NoderedUtil.IsNullEmpty(result.openflow_uniqueid)) {
+                    Config.openflow_uniqueid = result.openflow_uniqueid;
+                    otel.defaultlabels["ofid"] = result.openflow_uniqueid;
+                }
+                if (!NoderedUtil.IsNullEmpty(result.otel_trace_url)) Config.otel_trace_url = result.otel_trace_url;
+                if (!NoderedUtil.IsNullEmpty(result.otel_metric_url)) Config.otel_metric_url = result.otel_metric_url;
+                if (result.otel_trace_interval > 0) Config.otel_trace_interval = result.otel_trace_interval;
+                if (result.otel_metric_interval > 0) Config.otel_metric_interval = result.otel_metric_interval;
+                if (!NoderedUtil.IsNullEmpty(result.openflow_uniqueid) || !NoderedUtil.IsNullEmpty(result.otel_metric_url)) {
+                    if (!NoderedUtil.IsNullUndefinded(_otel_require)) {
+                        Config.enable_analytics = result.enable_analytics;
+                        _otel = _otel_require.otel.configure(logger);
+                    }
+                }
                 if (server == null) {
-                    server = await WebServer.configure(logger, socket);
+                    server = await WebServer.configure(logger, socket, _otel);
                     const baseurl = (!NoderedUtil.IsNullEmpty(Config.saml_baseurl) ? Config.saml_baseurl : Config.baseurl());
                     logger.info("listening on " + baseurl);
                 }

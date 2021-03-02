@@ -10,6 +10,8 @@ import { Config } from "./Config";
 import { amqpwrapper, QueueMessageOptions } from "./amqpwrapper";
 import { WellknownIds, Role, Rights, User, Base } from "@openiap/openflow-api";
 import { DBHelper } from "./DBHelper";
+import { OAuthProvider } from "./OAuthProvider";
+import { otel } from "./otel";
 
 const logger: winston.Logger = Logger.configure();
 
@@ -248,8 +250,6 @@ rejectionEmitter.on("rejectionHandled", (error, promise) => {
     console.error('Rejection handled at: Promise', promise, 'reason:', error);
     console.dir(error.stack);
 });
-import { OAuthProvider } from "./OAuthProvider";
-import { otel } from "./otel";
 let GrafanaProxy: any = null;
 try {
     GrafanaProxy = require("./grafana-proxy");

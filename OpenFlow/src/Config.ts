@@ -24,6 +24,7 @@ export class Config {
         Config.log_updates = Config.parseBoolean(Config.getEnv("log_updates", "false"));
         Config.log_deletes = Config.parseBoolean(Config.getEnv("log_deletes", "false"));
         Config.log_otel_times = Config.parseBoolean(Config.getEnv("log_otel_times", "false"));
+        Config.openflow_uniqueid = Config.getEnv("openflow_uniqueid", "");
 
         Config.getting_started_url = Config.getEnv("getting_started_url", "");
 
@@ -117,6 +118,7 @@ export class Config {
         Config.prometheus_measure_queued_messages = Config.parseBoolean(Config.getEnv("prometheus_measure_queued_messages", "false"));
         Config.prometheus_measure__mongodb_watch = Config.parseBoolean(Config.getEnv("prometheus_measure__mongodb_watch", "false"));
         Config.prometheus_measure_onlineuser = Config.parseBoolean(Config.getEnv("prometheus_measure_onlineuser", "false"));
+        Config.enable_analytics = Config.parseBoolean(Config.getEnv("enable_analytics", "true"));
         Config.otel_trace_url = Config.getEnv("otel_trace_url", "");
         Config.otel_metric_url = Config.getEnv("otel_metric_url", "");
         Config.otel_servicename = Config.getEnv("otel_servicename", "openflow");
@@ -134,6 +136,7 @@ export class Config {
     public static log_updates: boolean = Config.parseBoolean(Config.getEnv("log_updates", "false"));
     public static log_deletes: boolean = Config.parseBoolean(Config.getEnv("log_deletes", "false"));
     public static log_otel_times: boolean = Config.parseBoolean(Config.getEnv("log_otel_times", "false"));
+    public static openflow_uniqueid: string = Config.getEnv("openflow_uniqueid", "");
 
 
     public static getting_started_url: string = Config.getEnv("getting_started_url", "");

@@ -974,6 +974,12 @@ export class Message {
         }
         try {
             msg.websocket_package_size = Config.websocket_package_size;
+            msg.openflow_uniqueid = Config.openflow_uniqueid;
+            if (!NoderedUtil.IsNullEmpty(Config.otel_trace_url)) msg.otel_trace_url = Config.otel_trace_url;
+            if (!NoderedUtil.IsNullEmpty(Config.otel_metric_url)) msg.otel_metric_url = Config.otel_metric_url;
+            if (Config.otel_trace_interval > 0) msg.otel_trace_interval = Config.otel_trace_interval;
+            if (Config.otel_metric_interval > 0) msg.otel_metric_interval = Config.otel_metric_interval;
+            msg.enable_analytics = Config.enable_analytics;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -1242,7 +1248,13 @@ export class Message {
                                         { name: "prometheus_measure_nodeid", value: Config.prometheus_measure_nodeid.toString() },
                                         { name: "prometheus_measure_queued_messages", value: Config.prometheus_measure_queued_messages.toString() },
                                         { name: "NODE_ENV", value: Config.NODE_ENV },
-                                        { name: "prometheus_expose_metric", value: "true" },
+                                        { name: "prometheus_expose_metric", value: "false" },
+                                        { name: "otel_trace_url", value: Config.otel_trace_url },
+                                        { name: "otel_metric_url", value: Config.otel_metric_url },
+                                        { name: "otel_servicename", value: Config.otel_servicename },
+                                        { name: "otel_trace_interval", value: Config.otel_trace_interval.toString() },
+                                        { name: "otel_metric_interval", value: Config.otel_metric_interval.toString() },
+
                                     ],
                                     livenessProbe: livenessProbe,
                                 }
