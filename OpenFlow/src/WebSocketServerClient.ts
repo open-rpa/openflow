@@ -7,6 +7,7 @@ import { amqpwrapper, QueueMessageOptions, amqpqueue } from "./amqpwrapper";
 import { NoderedUtil, Base, InsertOneMessage, QueueMessage, MapReduceMessage, QueryMessage, UpdateOneMessage, UpdateManyMessage, DeleteOneMessage, User, mapFunc, reduceFunc, finalizeFunc, QueuedMessage, QueuedMessageCallback, WatchEventMessage } from "@openiap/openflow-api";
 import { ChangeStream } from "mongodb";
 import { WebSocketServer } from "./WebSocketServer";
+import { otel } from "./otel";
 interface IHashTable<T> {
     [key: string]: T;
 }
@@ -159,7 +160,7 @@ export class WebSocketServerClient {
                 this._logger.error("WebSocketclient::closeconsumers " + error);
             }
         }
-        WebSocketServer.websocket_queue_count.labels(this.id).set(this._queues.length);
+        if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...otel.defaultlabels, clientid: this.id }).update(this._queues.length);
         semaphore.up();
     }
     public async Close(): Promise<void> {
@@ -190,7 +191,7 @@ export class WebSocketServerClient {
                 try {
                     await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i]);
                     this._queues.splice(i, 1);
-                    WebSocketServer.websocket_queue_count.labels(this.id).set(this._queues.length);
+                    if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...otel.defaultlabels, clientid: this.id }).update(this._queues.length);
                 } catch (error) {
                     this._logger.error("WebSocketclient::CloseConsumer " + error);
                 }
@@ -240,7 +241,7 @@ export class WebSocketServerClient {
                 qname = queue.queue;
                 this._queues.push(queue);
             }
-            WebSocketServer.websocket_queue_count.labels(this.id).set(this._queues.length);
+            if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...otel.defaultlabels, clientid: this.id }).update(this._queues.length);
         } catch (error) {
             this._logger.error("WebSocketclient::CreateConsumer " + error);
         }
@@ -277,7 +278,6 @@ export class WebSocketServerClient {
                 if (msgs.length === 1) {
                     this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
                     const singleresult: Message = Message.frommessage(first, first.data);
-                    WebSocketServer.websocket_incomming_stats.labels(singleresult.command).inc();
                     singleresult.Process(this);
                 } else {
                     let buffer: string = "";
@@ -286,7 +286,6 @@ export class WebSocketServerClient {
                     });
                     this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
                     const result: Message = Message.frommessage(first, buffer);
-                    WebSocketServer.websocket_incomming_stats.labels(result.command).inc();
                     result.Process(this);
                 }
             } else {

@@ -20,6 +20,7 @@ import { WebSocketServerClient } from "../WebSocketServerClient";
 import { DBHelper } from "../DBHelper";
 import { WebSocketServer } from "../WebSocketServer";
 import { OAuthProvider } from "../OAuthProvider";
+import { otel } from "../otel";
 const request = require("request");
 const got = require("got");
 const { RateLimiterMemory } = require('rate-limiter-flexible')
@@ -70,7 +71,7 @@ export class Message {
                 if (Config.socket_rate_limit) await BaseRateLimiter.consume(cli.id);
             } catch (error) {
                 if (error.consumedPoints) {
-                    WebSocketServer.websocket_rate_limit.labels(command).inc();
+                    if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_rate_limit)) WebSocketServer.websocket_rate_limit.bind({ ...otel.defaultlabels, command: command }).add(1);
                     if ((error.consumedPoints % 100) == 0) cli._logger.debug("[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
                     setTimeout(() => { this.Process(cli); }, 250);
                 }
@@ -78,7 +79,7 @@ export class Message {
             }
 
             if (!NoderedUtil.IsNullEmpty(this.replyto)) {
-                const end = WebSocketServer.websocket_messages.startTimer();
+                const ot_end = otel.startTimer();
                 const qmsg: QueuedMessage = cli.messageQueue[this.replyto];
                 if (!NoderedUtil.IsNullUndefinded(qmsg)) {
                     try {
@@ -90,10 +91,10 @@ export class Message {
                     delete cli.messageQueue[this.replyto];
                     WebSocketServer.update_message_queue_count(cli);
                 }
-                end({ command: command });
+                if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
                 return;
             }
-            const end = WebSocketServer.websocket_messages.startTimer();
+            const ot_end = otel.startTimer();
             switch (command) {
                 case "listcollections":
                     this.ListCollections(cli);
@@ -230,7 +231,7 @@ export class Message {
                     this.UnknownCommand(cli);
                     break;
             }
-            end({ command: command });
+            if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
         } catch (error) {
             cli._logger.error(error);
         }
@@ -797,15 +798,15 @@ export class Message {
                 let User = null;
                 try {
                     AccessToken = await OAuthProvider.instance.oidc.AccessToken.find(msg.rawAssertion);
-                    if(!NoderedUtil.IsNullUndefinded(AccessToken)) {
+                    if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
                         User = await OAuthProvider.instance.oidc.Account.findAccount(null, AccessToken.accountId);
                         console.log('User:', User);
                     }
                     console.log('AccessToken:', AccessToken);
                 } catch (error) {
-                    console.error(error);                    
+                    console.error(error);
                 }
-                if(!NoderedUtil.IsNullUndefinded(AccessToken)) {
+                if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
                     user = User.user;
                     console.log('User:', user);
                     if (user !== null && user != undefined) { tuser = TokenUser.From(user); }
@@ -839,7 +840,7 @@ export class Message {
             } else {
                 if (msg.impersonate == "-1" || msg.impersonate == "false") {
                     user = await DBHelper.FindById(impostor, Crypt.rootToken());
-                    if(Config.persist_user_impersonation) UpdateDoc.$unset = { "impersonating": "" };
+                    if (Config.persist_user_impersonation) UpdateDoc.$unset = { "impersonating": "" };
                     user.impersonating = undefined;
                     if (!NoderedUtil.IsNullEmpty(tuser.impostor)) {
                         tuser = TokenUser.From(user);
@@ -884,7 +885,7 @@ export class Message {
                     // Check we have update rights
                     try {
                         await DBHelper.Save(user, msg.jwt);
-                        if(Config.persist_user_impersonation) {
+                        if (Config.persist_user_impersonation) {
                             await Config.db._UpdateOne({ _id: tuserimpostor._id }, { "$set": { "impersonating": user._id } } as any, "users", 1, false, msg.jwt);
                         }
                     } catch (error) {

@@ -17,13 +17,13 @@ import { LoginProvider } from "./LoginProvider";
 import { DatabaseConnection } from "./DatabaseConnection";
 import { Config } from "./Config";
 
-import * as promBundle from "express-prom-bundle";
-import * as client from "prom-client";
 import { NoderedUtil } from "@openiap/openflow-api";
 const { RateLimiterMemory } = require('rate-limiter-flexible')
 import * as url from "url";
 import { WebSocketServer } from "./WebSocketServer";
 import { WebSocketServerClient } from "./WebSocketServerClient";
+import { Counter } from "@opentelemetry/api-metrics"
+import { otel } from "./otel";
 
 const BaseRateLimiter = new RateLimiterMemory({
     points: Config.api_rate_limit_points,
@@ -39,25 +39,25 @@ const rateLimiter = (req: express.Request, res: express.Response, next: express.
         })
         .catch((e) => {
             const route = url.parse(req.url).pathname;
-            webserver_rate_limit.inc();
-            webserver_rate_limit.labels(route).inc();
+            if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_rate_limit)) websocket_rate_limit.bind({ ...otel.defaultlabels, route: route }).add(1);
             console.warn("API_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints + " msBeforeNext: " + e.msBeforeNext);
             res.status(429).json({ response: 'RATE_LIMIT' });
         });
 };
-const webserver_rate_limit = new client.Counter({
-    name: 'openflow_webserver_rate_limit_count',
-    help: 'Total number of rate limited web request',
-    labelNames: ["route"]
-})
 
+let websocket_rate_limit: Counter = null;
 export class WebServer {
     private static _logger: winston.Logger;
     public static app: express.Express;
 
-    static async configure(logger: winston.Logger, baseurl: string, register: client.Registry): Promise<http.Server> {
-        this._logger = logger;
 
+    static async configure(logger: winston.Logger, baseurl: string, _otel: otel): Promise<http.Server> {
+        this._logger = logger;
+        if (!NoderedUtil.IsNullUndefinded(_otel)) {
+            websocket_rate_limit = _otel.meter.createCounter("openflow_webserver_rate_limit_count", {
+                description: 'Total number of rate limited web request'
+            }) // "route"
+        }
         this.app = express();
         // if (!NoderedUtil.IsNullUndefinded(register)) {
         //     const metricsMiddleware = promBundle({ includeMethod: true, includePath: true, promRegistry: register, autoregister: true });
@@ -67,40 +67,40 @@ export class WebServer {
 
         this.app.get("/metrics", async (req: any, res: any, next: any): Promise<void> => {
             let result: string = ""
-            if (!NoderedUtil.IsNullUndefinded(register)) {
-                result += await register.metrics() + '\n';
-            }
+            // if (!NoderedUtil.IsNullUndefinded(register)) {
+            //     result += await register.metrics() + '\n';
+            // }
 
-            for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
-                const cli: WebSocketServerClient = WebSocketServer._clients[i];
-                try {
-                    if (!NoderedUtil.IsNullEmpty(cli.metrics) && cli.user != null) {
-                        const arr: string[] = cli.metrics.split('\n');
-                        const replacer = (match: any, offset: any, string: any) => {
-                            return '{' + offset + ',username="' + cli.user.username + '"}';
-                        }
-                        for (let y = 0; y < arr.length; y++) {
-                            let line = arr[y];
-                            if (!line.startsWith("#")) {
-                                if (line.indexOf("}") > -1) {
-                                    line = line.replace(/{(.*)}/gi, replacer);
-                                    arr[y] = line
-                                } else if (!NoderedUtil.IsNullEmpty(line) && line.indexOf(' ') > -1) {
-                                    const _arr = line.split(' ');
-                                    _arr[0] += '{username="' + cli.user.username + '"}';
-                                    line = _arr.join(' ');
-                                    arr[y] = line
-                                }
-                            }
+            // for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
+            //     const cli: WebSocketServerClient = WebSocketServer._clients[i];
+            //     try {
+            //         if (!NoderedUtil.IsNullEmpty(cli.metrics) && cli.user != null) {
+            //             const arr: string[] = cli.metrics.split('\n');
+            //             const replacer = (match: any, offset: any, string: any) => {
+            //                 return '{' + offset + ',username="' + cli.user.username + '"}';
+            //             }
+            //             for (let y = 0; y < arr.length; y++) {
+            //                 let line = arr[y];
+            //                 if (!line.startsWith("#")) {
+            //                     if (line.indexOf("}") > -1) {
+            //                         line = line.replace(/{(.*)}/gi, replacer);
+            //                         arr[y] = line
+            //                     } else if (!NoderedUtil.IsNullEmpty(line) && line.indexOf(' ') > -1) {
+            //                         const _arr = line.split(' ');
+            //                         _arr[0] += '{username="' + cli.user.username + '"}';
+            //                         line = _arr.join(' ');
+            //                         arr[y] = line
+            //                     }
+            //                 }
 
-                        }
+            //             }
 
-                        result += arr.join('\n') + '\n';
-                    }
-                } catch (error) {
-                    console.error(error);
-                }
-            }
+            //             result += arr.join('\n') + '\n';
+            //         }
+            //     } catch (error) {
+            //         console.error(error);
+            //     }
+            // }
             res.set({ 'Content-Type': 'text/plain' });
             res.send(result);
         });

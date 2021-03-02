@@ -23,6 +23,7 @@ export class Config {
         Config.log_inserts = Config.parseBoolean(Config.getEnv("log_inserts", "false"));
         Config.log_updates = Config.parseBoolean(Config.getEnv("log_updates", "false"));
         Config.log_deletes = Config.parseBoolean(Config.getEnv("log_deletes", "false"));
+        Config.log_otel_times = Config.parseBoolean(Config.getEnv("log_otel_times", "false"));
 
         Config.getting_started_url = Config.getEnv("getting_started_url", "");
 
@@ -116,6 +117,11 @@ export class Config {
         Config.prometheus_measure_queued_messages = Config.parseBoolean(Config.getEnv("prometheus_measure_queued_messages", "false"));
         Config.prometheus_measure__mongodb_watch = Config.parseBoolean(Config.getEnv("prometheus_measure__mongodb_watch", "false"));
         Config.prometheus_measure_onlineuser = Config.parseBoolean(Config.getEnv("prometheus_measure_onlineuser", "false"));
+        Config.otel_trace_url = Config.getEnv("otel_trace_url", "");
+        Config.otel_metric_url = Config.getEnv("otel_metric_url", "");
+        Config.otel_servicename = Config.getEnv("otel_servicename", "openflow");
+        Config.otel_trace_interval = parseInt(Config.getEnv("otel_trace_interval", "1000"));
+        Config.otel_metric_interval = parseInt(Config.getEnv("otel_metric_interval", "1000"));
         Config.validate_user_form = Config.getEnv("validate_user_form", "");
     }
     public static db: DatabaseConnection = null;
@@ -127,6 +133,8 @@ export class Config {
     public static log_inserts: boolean = Config.parseBoolean(Config.getEnv("log_inserts", "false"));
     public static log_updates: boolean = Config.parseBoolean(Config.getEnv("log_updates", "false"));
     public static log_deletes: boolean = Config.parseBoolean(Config.getEnv("log_deletes", "false"));
+    public static log_otel_times: boolean = Config.parseBoolean(Config.getEnv("log_otel_times", "false"));
+
 
     public static getting_started_url: string = Config.getEnv("getting_started_url", "");
 
@@ -193,10 +201,10 @@ export class Config {
 
     public static mongodb_url: string = Config.getEnv("mongodb_url", "mongodb://localhost:27017");
     public static mongodb_db: string = Config.getEnv("mongodb_db", "openflow");
-    public static mongodb_minpoolsize:number = parseInt(Config.getEnv("mongodb_minpoolsize", "25"));
+    public static mongodb_minpoolsize: number = parseInt(Config.getEnv("mongodb_minpoolsize", "25"));
 
     public static skip_history_collections: string = Config.getEnv("skip_history_collections", "");
-    public static history_delta_count = parseInt(Config.getEnv("history_delta_count", "1000"));
+    public static history_delta_count: number = parseInt(Config.getEnv("history_delta_count", "1000"));
     public static allow_skiphistory: boolean = Config.parseBoolean(Config.getEnv("allow_skiphistory", "true"));
 
     public static saml_issuer: string = Config.getEnv("saml_issuer", "the-issuer"); // define uri of STS, also sent to personal nodereds
@@ -224,6 +232,13 @@ export class Config {
     public static prometheus_measure_queued_messages: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_queued_messages", "false"));
     public static prometheus_measure__mongodb_watch: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure__mongodb_watch", "false"));
     public static prometheus_measure_onlineuser: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_onlineuser", "false"));
+    public static enable_analytics: boolean = Config.parseBoolean(Config.getEnv("enable_analytics", "true"));
+    public static otel_trace_url: string = Config.getEnv("otel_trace_url", "");
+    public static otel_metric_url: string = Config.getEnv("otel_metric_url", "");
+    public static otel_servicename: string = Config.getEnv("otel_servicename", "openflow");
+    public static otel_trace_interval: number = parseInt(Config.getEnv("otel_trace_interval", "1000"));
+    public static otel_metric_interval: number = parseInt(Config.getEnv("otel_metric_interval", "1000"));
+
     public static validate_user_form: string = Config.getEnv("validate_user_form", "");
 
     public static baseurl(): string {

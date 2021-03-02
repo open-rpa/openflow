@@ -7,8 +7,9 @@ import { Crypt } from "./Crypt";
 import { Config } from "./Config";
 import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User } from "@openiap/openflow-api";
 import { DBHelper } from "./DBHelper";
-import * as client from "prom-client";
 import { OAuthProvider } from "./OAuthProvider";
+import { otel } from "./otel";
+import { ValueRecorder, Counter } from "@opentelemetry/api-metrics"
 // tslint:disable-next-line: typedef
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 const isoDatePattern = new RegExp(/\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z)/);
@@ -43,82 +44,57 @@ export class DatabaseConnection {
     public db: Db;
     private _logger: winston.Logger;
     private _dbname: string;
-    constructor(logger: winston.Logger, mongodburl: string, dbname: string) {
+    private _otel: otel;
+    // public static ot_mongodb_query_count: Counter;
+    public static mongodb_query: ValueRecorder;
+    public static mongodb_aggregate: ValueRecorder;
+    public static mongodb_insert: ValueRecorder;
+    public static mongodb_update: ValueRecorder;
+    public static mongodb_replace: ValueRecorder;
+    public static mongodb_delete: ValueRecorder;
+    public static mongodb_deletemany: ValueRecorder;
+    constructor(logger: winston.Logger, mongodburl: string, dbname: string, _otel: otel) {
+        this._otel = _otel;
         this._logger = logger;
         this._dbname = dbname;
         this.mongodburl = mongodburl;
+
+        if (!NoderedUtil.IsNullUndefinded(this._otel)) {
+            // DatabaseConnection.ot_mongodb_query_count = this._otel.meter.createCounter('openflow_mongodb_query_count', {
+            //     description: 'Total number of mongodb queues'
+            // });
+            // DatabaseConnection.ot_mongodb_query_count.add(1, { ...otel.defaultlabels, collection: "users" });
+            DatabaseConnection.mongodb_query = this._otel.meter.createValueRecorder('openflow_mongodb_query_seconds', {
+                description: 'Duration for mongodb queries',
+                boundaries: otel.default_boundaries
+            });
+            DatabaseConnection.mongodb_aggregate = this._otel.meter.createValueRecorder('openflow_mongodb_aggregate_seconds', {
+                description: 'Duration for mongodb aggregates',
+                boundaries: otel.default_boundaries
+            });
+            DatabaseConnection.mongodb_insert = this._otel.meter.createValueRecorder('openflow_mongodb_insert_seconds', {
+                description: 'Duration for mongodb inserts',
+                boundaries: otel.default_boundaries
+            });
+            DatabaseConnection.mongodb_update = this._otel.meter.createValueRecorder('openflow_mongodb_update_seconds', {
+                description: 'Duration for mongodb updates',
+                boundaries: otel.default_boundaries
+            });
+            DatabaseConnection.mongodb_replace = this._otel.meter.createValueRecorder('openflow_mongodb_replace_seconds', {
+                description: 'Duration for mongodb replaces',
+                boundaries: otel.default_boundaries
+            });
+            DatabaseConnection.mongodb_delete = this._otel.meter.createValueRecorder('openflow_mongodb_delete_seconds', {
+                description: 'Duration for mongodb deletes',
+                boundaries: otel.default_boundaries
+            });
+            DatabaseConnection.mongodb_deletemany = this._otel.meter.createValueRecorder('openflow_mongodb_deletemany_seconds', {
+                description: 'Duration for mongodb deletemanys',
+                boundaries: otel.default_boundaries
+            });
+        }
     }
 
-    public static mongodb_query = new client.Histogram({
-        name: 'openflow_mongodb_query_seconds',
-        help: 'Duration for mongodb queries microseconds',
-        labelNames: ['collection']
-    })
-    public static mongodb_query_count = new client.Counter({
-        name: 'openflow_mongodb_query_count',
-        help: 'Total number of mongodb queues',
-        labelNames: ["collection"]
-    })
-    public static mongodb_aggregate = new client.Histogram({
-        name: 'openflow_mongodb_aggregate_seconds',
-        help: 'Duration for mongodb queries microseconds',
-        labelNames: ['collection']
-    })
-    public static mongodb_aggregate_count = new client.Counter({
-        name: 'openflow_mongodb_aggregate_count',
-        help: 'Total number of mongodb queues',
-        labelNames: ["collection"]
-    })
-    public static mongodb_insert = new client.Histogram({
-        name: 'openflow_mongodb_insert_seconds',
-        help: 'Duration for mongodb inserts microseconds',
-        labelNames: ['collection']
-    })
-    public static mongodb_insert_count = new client.Counter({
-        name: 'openflow_mongodb_insert_count',
-        help: 'Total number of mongodb inserts',
-        labelNames: ["collection"]
-    })
-    public static mongodb_update = new client.Histogram({
-        name: 'openflow_mongodb_update_seconds',
-        help: 'Duration for mongodb updates microseconds',
-        labelNames: ['collection']
-    })
-    public static mongodb_update_count = new client.Counter({
-        name: 'openflow_mongodb_update_count',
-        help: 'Total number of mongodb updates',
-        labelNames: ["collection"]
-    })
-    public static mongodb_replace = new client.Histogram({
-        name: 'openflow_mongodb_replace_seconds',
-        help: 'Duration for mongodb replaces microseconds',
-        labelNames: ['collection']
-    })
-    public static mongodb_replace_count = new client.Counter({
-        name: 'openflow_mongodb_replace_count',
-        help: 'Total number of mongodb replaces',
-        labelNames: ["collection"]
-    })
-    public static mongodb_delete = new client.Histogram({
-        name: 'openflow_mongodb_delete_seconds',
-        help: 'Duration for mongodb deletes microseconds',
-        labelNames: ['collection']
-    })
-    public static mongodb_delete_count = new client.Counter({
-        name: 'openflow_mongodb_delete_count',
-        help: 'Total number of mongodb deletes',
-        labelNames: ["collection"]
-    })
-    public static mongodb_deletemany = new client.Histogram({
-        name: 'openflow_mongodb_deletemany_seconds',
-        help: 'Duration for mongodb deletemanys microseconds',
-        labelNames: ['collection']
-    })
-    public static mongodb_deletemany_count = new client.Counter({
-        name: 'openflow_mongodb_deletemany_count',
-        help: 'Total number of mongodb deletemanys',
-        labelNames: ["collection"]
-    })
     static toArray(iterator): Promise<any[]> {
         return new Promise((resolve, reject) => {
             iterator.toArray((err, res) => {
@@ -183,10 +159,9 @@ export class DatabaseConnection {
                     const b = new Binary(Buffer.from(ace.rights, "base64"), 0);
                     (ace.rights as any) = b;
                 }
-                DatabaseConnection.mongodb_query_count.labels("users").inc();
-                const end = DatabaseConnection.mongodb_query.startTimer();
+                const ot_end = otel.startTimer();
                 const arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1 }).limit(1).toArray();
-                end({ collection: "users" });
+                if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: "users" });
                 if (arr.length == 0) {
                     item._acl.splice(i, 1);
                 } else { ace.name = arr[0].name; }
@@ -247,10 +222,9 @@ export class DatabaseConnection {
                     if (exists.length > 1) {
                         item.members.splice(i, 1);
                     } else {
-                        DatabaseConnection.mongodb_query_count.labels("users").inc();
-                        const end = DatabaseConnection.mongodb_query.startTimer();
+                        const ot_end = otel.startTimer();
                         const arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1, _acl: 1, _type: 1 }).limit(1).toArray();
-                        end({ collection: "users" });
+                        if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: "users" });
                         if (arr.length == 0) {
                             item.members.splice(i, 1);
                         }
@@ -264,10 +238,9 @@ export class DatabaseConnection {
                                 if (!Base.hasRight(u, item._id, Rights.read)) {
                                     this._logger.debug("Assigning " + item.name + " read permission to " + u.name);
                                     Base.addRight(u, item._id, item.name, [Rights.read], false);
-                                    DatabaseConnection.mongodb_update_count.labels("users").inc();
-                                    const end = DatabaseConnection.mongodb_update.startTimer();
+                                    const ot_end = otel.startTimer();
                                     await this.db.collection("users").updateOne({ _id: u._id }, { $set: { _acl: u._acl } });
-                                    end({ collection: "users" });
+                                    if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: "users" });
                                 } else if (u._id != item._id) {
                                     this._logger.debug(item.name + " allready exists on " + u.name);
                                 }
@@ -280,10 +253,9 @@ export class DatabaseConnection {
                                     }
                                     this._logger.debug("Assigning " + item.name + " read permission to " + r.name);
                                     Base.addRight(r, item._id, item.name, [Rights.read], false);
-                                    DatabaseConnection.mongodb_update_count.labels("users").inc();
-                                    const end = DatabaseConnection.mongodb_update.startTimer();
+                                    const ot_end = otel.startTimer();
                                     await this.db.collection("users").updateOne({ _id: r._id }, { $set: { _acl: r._acl } });
-                                    end({ collection: "users" });
+                                    if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: "users" });
                                 } else if (r._id != item._id) {
                                     this._logger.debug(item.name + " allready exists on " + r.name);
                                 }
@@ -298,10 +270,9 @@ export class DatabaseConnection {
         if (Config.update_acl_based_on_groups) {
             for (let i = removed.length - 1; i >= 0; i--) {
                 const ace = removed[i];
-                DatabaseConnection.mongodb_query_count.labels("users").inc();
-                const end = DatabaseConnection.mongodb_query.startTimer();
+                const ot_end = otel.startTimer();
                 const arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1, _acl: 1, _type: 1 }).limit(1).toArray();
-                end({ collection: "users" });
+                if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: "users" });
                 if (arr.length == 1 && item._id != WellknownIds.admins && item._id != WellknownIds.root) {
                     if (Config.multi_tenant && multi_tenant_skip.indexOf(item._id) > -1) {
                         // when multi tenant don't allow members of common user groups to see each other
@@ -315,10 +286,9 @@ export class DatabaseConnection {
                             const right = Base.getRight(u, item._id, false);
                             if (right == null) {
                                 this._logger.debug("Removing " + item.name + " read permissions from " + u.name);
-                                DatabaseConnection.mongodb_update_count.labels('users').inc();
-                                const end = DatabaseConnection.mongodb_update.startTimer();
+                                const ot_end = otel.startTimer();
                                 await this.db.collection("users").updateOne({ _id: u._id }, { $set: { _acl: u._acl } });
-                                end({ collection: 'users' });
+                                if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: "users" });
                             }
 
                         } else {
@@ -333,10 +303,9 @@ export class DatabaseConnection {
                             const right = Base.getRight(r, item._id, false);
                             if (right == null) {
                                 this._logger.debug("Removing " + item.name + " read permissions from " + r.name);
-                                DatabaseConnection.mongodb_update_count.labels('users').inc();
-                                const end = DatabaseConnection.mongodb_update.startTimer();
+                                const ot_end = otel.startTimer();
                                 await this.db.collection("users").updateOne({ _id: r._id }, { $set: { _acl: r._acl } });
-                                end({ collection: 'users' });
+                                if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: "users" });
                             }
 
                         } else {
@@ -457,8 +426,7 @@ export class DatabaseConnection {
         if (!top) { top = 500; }
         if (!skip) { skip = 0; }
         let arr: T[] = [];
-        DatabaseConnection.mongodb_query_count.labels(collectionname).inc();
-        const end = DatabaseConnection.mongodb_query.startTimer();
+        const ot_end = otel.startTimer();
         let _pipe = this.db.collection(collectionname).find(_query);
         if (projection != null) {
             _pipe = _pipe.project(projection);
@@ -468,7 +436,7 @@ export class DatabaseConnection {
             _pipe = _pipe.hint(myhint);
         }
         arr = await _pipe.toArray();
-        end({ collection: collectionname });
+        if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: collectionname });
         for (let i: number = 0; i < arr.length; i++) { arr[i] = this.decryptentity(arr[i]); }
         DatabaseConnection.traversejsondecode(arr);
         if (Config.log_queries) this._logger.debug("[" + user.username + "][" + collectionname + "] query gave " + arr.length + " results ");
@@ -572,10 +540,9 @@ export class DatabaseConnection {
         const options: CollectionAggregationOptions = {};
         options.hint = myhint;
         try {
-            DatabaseConnection.mongodb_aggregate_count.labels(collectionname).inc();
-            const end = DatabaseConnection.mongodb_aggregate.startTimer();
+            const ot_end = otel.startTimer();
             const items: T[] = await this.db.collection(collectionname).aggregate(aggregates, options).toArray();
-            end({ collection: collectionname });
+            if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_aggregate, { collection: collectionname });
             DatabaseConnection.traversejsondecode(items);
             const user: TokenUser = Crypt.verityToken(jwt);
             if (Config.log_aggregates) this._logger.debug("[" + user.username + "][" + collectionname + "] aggregate gave " + items.length + " results ");
@@ -782,15 +749,14 @@ export class DatabaseConnection {
         // const options:CollectionInsertOneOptions = {  writeConcern: { w: parseInt((w as any)), j: j } };
         // const options: CollectionInsertOneOptions = { w: w, j: j };
         //const options: CollectionInsertOneOptions = { w: "majority" };
-        const options: CollectionInsertOneOptions = { };
+        const options: CollectionInsertOneOptions = {};
         options.WriteConcern = {}; // new WriteConcern();
         options.WriteConcern.w = w;
         options.WriteConcern.j = j;
 
-        DatabaseConnection.mongodb_insert_count.labels(collectionname).inc();
-        const end = DatabaseConnection.mongodb_insert.startTimer();
+        const ot_end = otel.startTimer();
         const result: InsertOneWriteOpResult<T> = await this.db.collection(collectionname).insertOne(item, options);
-        end({ collection: collectionname });
+        if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname });
         item = result.ops[0];
         if (collectionname === "users" && item._type === "user") {
             Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
@@ -815,10 +781,9 @@ export class DatabaseConnection {
         if (collectionname === "users" && item._type === "role") {
             Base.addRight(item, item._id, item.name, [Rights.read]);
             item = await this.CleanACL(item, user);
-            DatabaseConnection.mongodb_replace_count.labels(collectionname).inc();
-            const end = DatabaseConnection.mongodb_replace.startTimer();
+            const ot_end = otel.startTimer();
             await this.db.collection(collectionname).replaceOne({ _id: item._id }, item);
-            end({ collection: collectionname });
+            if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_replace, { collection: collectionname });
             DBHelper.cached_roles = [];
         }
         if (collectionname == "config" && item._type == "oauthclient") {
@@ -831,28 +796,26 @@ export class DatabaseConnection {
         return item;
     }
     synRawUpdateOne(collection: string, query: any, updatedoc: any, measure: boolean, cb: any) {
-        let end: any = null;
+        let ot_end: any = null;
         if (measure) {
-            DatabaseConnection.mongodb_update_count.labels(collection).inc();
-            end = DatabaseConnection.mongodb_update.startTimer();
+            ot_end = otel.startTimer();
         }
         Config.db.db.collection(collection).updateOne(query, updatedoc).catch(err => {
-            if (measure) end({ collection: collection });
+            if (!NoderedUtil.IsNullUndefinded(this._otel)) if (measure) otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: collection });
             console.error(err);
             if (cb) cb(err, null);
         }).then((result) => {
-            if (measure) end({ collection: collection });
+            if (!NoderedUtil.IsNullUndefinded(this._otel)) if (measure) otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: collection });
             if (cb) cb(null, result);
         });
     }
     async rawUpdateOne(collection: string, query: any, updatedoc: any, measure: boolean) {
-        let end: any = null;
+        let ot_end: any = null;
         if (measure) {
-            DatabaseConnection.mongodb_update_count.labels("users").inc();
-            end = DatabaseConnection.mongodb_update.startTimer();
+            ot_end = otel.startTimer();
         }
         await Config.db.db.collection(collection).updateOne(query, updatedoc);
-        if (measure) end({ collection: "users" });
+        if (!NoderedUtil.IsNullUndefinded(this._otel)) if (measure) otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: "users" });
     }
     /**
      * Update entity in database
@@ -1055,7 +1018,7 @@ export class DatabaseConnection {
         if ((q.w as any) !== "majority") q.w = parseInt((q.w as any));
 
         // const options: CollectionInsertOneOptions = { w: q.w, j: q.j };
-        const options: CollectionInsertOneOptions = { };
+        const options: CollectionInsertOneOptions = {};
         options.WriteConcern = {}; // new WriteConcern();
         options.WriteConcern.w = q.w;
         options.WriteConcern.j = q.j;
@@ -1076,16 +1039,14 @@ export class DatabaseConnection {
                 }
 
                 if (q.collectionname != "fs.files") {
-                    DatabaseConnection.mongodb_replace_count.labels(q.collectionname).inc();
-                    const end = DatabaseConnection.mongodb_replace.startTimer();
+                    const ot_end = otel.startTimer();
                     q.opresult = await this.db.collection(q.collectionname).replaceOne(_query, q.item, options);
-                    end({ collection: q.collectionname });
+                    if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_replace, { collection: q.collectionname });
                 } else {
                     const fsc = Config.db.db.collection("fs.files");
-                    DatabaseConnection.mongodb_update_count.labels('fs.files').inc();
-                    const end = DatabaseConnection.mongodb_update.startTimer();
+                    const ot_end = otel.startTimer();
                     q.opresult = await fsc.updateOne(_query, { $set: { metadata: (q.item as any).metadata } });
-                    end({ collection: 'fs.files' });
+                    if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: 'fs.files' });
                 }
             } else {
                 if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };
@@ -1094,10 +1055,9 @@ export class DatabaseConnection {
                 (q.item["$set"])._modified = new Date(new Date().toISOString());
                 if ((q.item["$inc"]) === undefined) { (q.item["$inc"]) = {} };
                 (q.item["$inc"])._version = 1;
-                DatabaseConnection.mongodb_update_count.labels(q.collectionname).inc();
-                const end = DatabaseConnection.mongodb_update.startTimer();
+                const ot_end = otel.startTimer();
                 q.opresult = await this.db.collection(q.collectionname).updateOne(_query, q.item, options);
-                end({ collection: q.collectionname });
+                if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: q.collectionname });
             }
             if (q.collectionname != "fs.files") {
                 q.item = this.decryptentity(q.item);
@@ -1179,7 +1139,7 @@ export class DatabaseConnection {
 
         q.j = ((q.j as any) === 'true' || q.j === true);
         if ((q.w as any) !== "majority") q.w = parseInt((q.w as any));
-        const options: CollectionInsertOneOptions = { };
+        const options: CollectionInsertOneOptions = {};
         options.WriteConcern = {}; // new WriteConcern();
         options.WriteConcern.w = q.w;
         options.WriteConcern.j = q.j;
@@ -1262,10 +1222,9 @@ export class DatabaseConnection {
             q.result = uqres.result;
         } else {
             if (Config.log_updates) this._logger.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Inserting as new in database");
-            DatabaseConnection.mongodb_insert_count.labels(q.collectionname).inc();
-            const end = DatabaseConnection.mongodb_insert.startTimer();
+            const ot_end = otel.startTimer();
             q.result = await this.InsertOne(q.item, q.collectionname, q.w, q.j, q.jwt);
-            end({ collection: q.collectionname });
+            if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: q.collectionname });
         }
         if (q.collectionname === "users" && q.item._type === "role") {
             DBHelper.cached_roles = [];
@@ -1307,25 +1266,22 @@ export class DatabaseConnection {
         if (collectionname === "files") { collectionname = "fs.files"; }
         if (collectionname === "fs.files") {
             _query = { $and: [{ _id: safeObjectID(id) }, this.getbasequery(jwt, "metadata._acl", [Rights.delete])] };
-            DatabaseConnection.mongodb_query_count.labels(collectionname).inc();
-            const end = DatabaseConnection.mongodb_query.startTimer();
+            const ot_end = otel.startTimer();
             const arr = await this.db.collection(collectionname).find(_query).toArray();
-            end({ collection: collectionname });
+            if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: collectionname });
             if (arr.length == 1) {
-                DatabaseConnection.mongodb_delete_count.labels(collectionname).inc();
-                const end = DatabaseConnection.mongodb_delete.startTimer();
+                const ot_end = otel.startTimer();
                 await this._DeleteFile(id);
-                end({ collection: collectionname });
+                if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, { collection: collectionname });
                 return;
             } else {
                 throw Error("item not found!");
             }
         }
         if (Config.log_deletes) this._logger.verbose("[" + user.username + "][" + collectionname + "] Deleting " + id + " in database");
-        DatabaseConnection.mongodb_delete_count.labels(collectionname).inc();
-        const end = DatabaseConnection.mongodb_delete.startTimer();
+        const ot_end = otel.startTimer();
         const res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne(_query);
-        end({ collection: collectionname });
+        if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, { collection: collectionname });
     }
 
     /**
@@ -1375,24 +1331,21 @@ export class DatabaseConnection {
 
         if (collectionname === "files") { collectionname = "fs.files"; }
         if (collectionname === "fs.files") {
-            DatabaseConnection.mongodb_query_count.labels(collectionname).inc();
-            const end = DatabaseConnection.mongodb_query.startTimer();
+            const ot_end = otel.startTimer();
             const arr = await this.db.collection(collectionname).find(_query).toArray();
-            end({ collection: collectionname });
+            if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: collectionname });
             this._logger.debug("[" + user.username + "][" + collectionname + "] Deleting " + arr.length + " files in database");
             for (let i = 0; i < arr.length; i++) {
-                DatabaseConnection.mongodb_deletemany_count.labels(collectionname).inc();
-                const end = DatabaseConnection.mongodb_deletemany.startTimer();
+                const ot_end = otel.startTimer();
                 await this._DeleteFile(arr[i]._id);
-                end({ collection: collectionname });
+                if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });
             }
             if (Config.log_deletes) this._logger.verbose("[" + user.username + "][" + collectionname + "] deleted " + arr.length + " items in database");
             return arr.length;
         } else {
-            DatabaseConnection.mongodb_deletemany_count.labels(collectionname).inc();
-            const end = DatabaseConnection.mongodb_deletemany.startTimer();
+            const ot_end = otel.startTimer();
             const res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteMany(_query);
-            end({ collection: collectionname });
+            if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });
             if (Config.log_deletes) this._logger.verbose("[" + user.username + "][" + collectionname + "] deleted " + res.deletedCount + " items in database");
             return res.deletedCount;
         }
@@ -1719,10 +1672,9 @@ export class DatabaseConnection {
                 _version: _version,
                 reason: ""
             }
-            DatabaseConnection.mongodb_insert_count.labels(q.collectionname).inc();
-            const end = DatabaseConnection.mongodb_insert.startTimer();
+            const ot_end = otel.startTimer();
             await this.db.collection(q.collectionname + '_hist').insertOne(updatehist);
-            end({ collection: q.collectionname });
+            if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: q.collectionname + '_hist' });
         } catch (error) {
             this._logger.error(error);
         }
@@ -1812,10 +1764,9 @@ export class DatabaseConnection {
                     if (baseversion == _version) {
                         deltahist.item = original;
                     }
-                    DatabaseConnection.mongodb_insert_count.labels(collectionname + '_hist').inc();
-                    const end = DatabaseConnection.mongodb_insert.startTimer();
+                    const ot_end = otel.startTimer();
                     await this.db.collection(collectionname + '_hist').insertOne(deltahist);
-                    end({ collection: collectionname + '_hist' });
+                    if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname + '_hist' });
                 }
             } else {
                 const fullhist = {
@@ -1833,10 +1784,9 @@ export class DatabaseConnection {
                     _version: _version,
                     reason: reason
                 }
-                DatabaseConnection.mongodb_insert_count.labels(collectionname + '_hist').inc();
-                const end = DatabaseConnection.mongodb_insert.startTimer();
+                const ot_end = otel.startTimer();
                 await this.db.collection(collectionname + '_hist').insertOne(fullhist);
-                end({ collection: collectionname + '_hist' });
+                if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname + '_hist' });
             }
             item._modifiedby = _modifiedby;
             item._modifiedbyid = _modifiedbyid;

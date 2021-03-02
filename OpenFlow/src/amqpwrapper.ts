@@ -6,6 +6,7 @@ import { Crypt } from "./Crypt";
 import * as url from "url";
 import { NoderedUtil } from "@openiap/openflow-api";
 import { WebSocketServer } from "./WebSocketServer";
+import { otel } from "./otel";
 const got = require("got");
 type QueueOnMessage = (msg: string, options: QueueMessageOptions, ack: any, done: any) => void;
 interface IHashTable<T> {
@@ -107,7 +108,7 @@ export class amqpwrapper {
             this.channel = await this.conn.createConfirmChannel();
             this.replyqueue = await this.AddQueueConsumer("", null, null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
                 if (this.replyqueue) {
-                    WebSocketServer.websocket_queue_message_count.labels(this.replyqueue.queue).inc();
+                    if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_message_count)) WebSocketServer.websocket_queue_message_count.bind({ ...otel.defaultlabels, queuename: this.replyqueue.queue }).add(1);
                     if (!NoderedUtil.IsNullUndefinded(this.activecalls[options.correlationId])) {
                         this.activecalls[options.correlationId].resolve(msg);
                         this.activecalls[options.correlationId] = null;
@@ -348,7 +349,7 @@ export class amqpwrapper {
             })) {
                 throw new Error("No consumer listening at " + queue);
             }
-            WebSocketServer.websocket_queue_message_count.labels(queue).inc();
+            if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_message_count)) WebSocketServer.websocket_queue_message_count.bind({ ...otel.defaultlabels, queuename: queue }).add(1);
         } else {
             this.channel.publish(exchange, "", Buffer.from(data), options);
         }
@@ -375,7 +376,7 @@ export class amqpwrapper {
             })) {
                 throw new Error("No consumer listening at " + queue);
             }
-            WebSocketServer.websocket_queue_message_count.labels(queue).inc();
+            if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_message_count)) WebSocketServer.websocket_queue_message_count.bind({ ...otel.defaultlabels, queuename: queue }).add(1);
         } else {
             this.channel.publish(exchange, "", Buffer.from(data), options);
         }

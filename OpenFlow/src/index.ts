@@ -12,7 +12,19 @@ import { WellknownIds, Role, Rights, User, Base } from "@openiap/openflow-api";
 import { DBHelper } from "./DBHelper";
 
 const logger: winston.Logger = Logger.configure();
-Config.db = new DatabaseConnection(logger, Config.mongodb_url, Config.mongodb_db);
+
+let _otel_require: any = null;
+let _otel: otel = null;
+try {
+    _otel_require = require("./otel");
+} catch (error) {
+
+}
+if (_otel_require != null) {
+    _otel = _otel_require.otel.configure(logger);
+}
+
+Config.db = new DatabaseConnection(logger, Config.mongodb_url, Config.mongodb_db, _otel);
 
 
 async function initamqp() {
@@ -236,8 +248,8 @@ rejectionEmitter.on("rejectionHandled", (error, promise) => {
     console.error('Rejection handled at: Promise', promise, 'reason:', error);
     console.dir(error.stack);
 });
-import * as client from "prom-client";
 import { OAuthProvider } from "./OAuthProvider";
+import { otel } from "./otel";
 let GrafanaProxy: any = null;
 try {
     GrafanaProxy = require("./grafana-proxy");
@@ -245,7 +257,6 @@ try {
 
 }
 let Prometheus: any = null;
-let register: client.Registry = null;
 try {
     Prometheus = require("./Prometheus");
 } catch (error) {
@@ -271,15 +282,13 @@ const originalStderrWrite = process.stderr.write.bind(process.stderr);
     try {
         await initamqp();
         logger.info("VERSION: " + Config.version);
-        if (Prometheus != null) {
-            register = Prometheus.Prometheus.configure(logger);
-        }
-        const server: http.Server = await WebServer.configure(logger, Config.baseurl(), register);
+        const server: http.Server = await WebServer.configure(logger, Config.baseurl(), _otel);
         if (GrafanaProxy != null) {
-            const grafana = await GrafanaProxy.GrafanaProxy.configure(logger, WebServer.app, register);
+            const grafana = await GrafanaProxy.GrafanaProxy.configure(logger, WebServer.app, _otel);
         }
+
         OAuthProvider.configure(logger, WebServer.app);
-        WebSocketServer.configure(logger, server, register);
+        WebSocketServer.configure(logger, server, _otel);
         logger.info("listening on " + Config.baseurl());
         logger.info("namespace: " + Config.namespace);
         if (!await initDatabase()) {
