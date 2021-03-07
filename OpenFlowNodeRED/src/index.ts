@@ -23,8 +23,21 @@ try {
 }
 if (_otel_require != null) {
     _otel = _otel_require.otel.configure(logger);
+} else {
+    const fakespan = {
+        addEvent: () => undefined,
+        setAttribute: () => undefined,
+        recordException: () => undefined,
+    };
+    (_otel as any) =
+    {
+        startSpan: () => fakespan,
+        startSubSpan: () => fakespan,
+        endSpan: () => undefined,
+        startTimer: () => undefined,
+        endTimer: () => undefined,
+    }
 }
-
 const unhandledRejection = require("unhandled-rejection");
 let rejectionEmitter = unhandledRejection({
     timeout: 20

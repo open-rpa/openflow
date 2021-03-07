@@ -22,6 +22,7 @@ import { noderedcontribauthsaml } from "./node-red-contrib-auth-saml";
 import { WebSocketClient, NoderedUtil, Message } from "@openiap/openflow-api";
 import { otel } from "./otel";
 import { ValueRecorder, Counter, BaseObserver } from "@opentelemetry/api-metrics"
+import { Span } from "@opentelemetry/api";
 
 export class WebServer {
     private static _logger: winston.Logger;
@@ -38,6 +39,7 @@ export class WebServer {
     // })
 
     public static log_messages: any = {};
+    public static spans: any = {};
     private static settings: nodered_settings = null;
     static async configure(logger: winston.Logger, socket: WebSocketClient, _otel: otel): Promise<http.Server> {
         this._logger = logger;
@@ -156,6 +158,7 @@ export class WebServer {
                         return function (msg) {
                             if (!NoderedUtil.IsNullEmpty(msg.msgid) && msg.event.startsWith("node.")) {
                                 msg.event = msg.event.substring(5);
+                                msg.timestamp = new Date();
                                 if (msg.event.endsWith(".receive")) {
                                     msg.event = msg.event.substring(0, msg.event.length - 8);
                                     msg.end = otel.startTimer();
@@ -164,19 +167,31 @@ export class WebServer {
                                     // }
                                     if (!NoderedUtil.IsNullUndefinded(WebServer.openflow_nodered_node_activations))
                                         WebServer.openflow_nodered_node_activations.bind({ ...otel.defaultlabels, nodetype: msg.event }).add(1);
+
+                                    const startmessage = WebServer.log_messages[msg.msgid];
+                                    if (startmessage && startmessage.span) {
+                                        otel.endSpan(startmessage.span);
+                                    }
+
+                                    const span: Span = WebServer.spans[msg.msgid] || otel.startSpan(msg.event);
+                                    WebServer.spans[msg.msgid] = span;
+
+                                    msg.span = otel.startSubSpan(msg.event, span);
                                     WebServer.log_messages[msg.msgid] = msg;
                                 }
                                 if (msg.event.endsWith(".send")) {
                                     msg.event = msg.event.substring(0, msg.event.length - 5);
                                     const startmessage = WebServer.log_messages[msg.msgid];
-                                    if (!NoderedUtil.IsNullUndefinded(startmessage)) {
+                                    if (!NoderedUtil.IsNullUndefinded(startmessage) && !NoderedUtil.IsNullUndefinded(startmessage.end)) {
                                         otel.endTimer(startmessage.end, WebServer.openflow_nodered_node_duration, { nodetype: startmessage.event });
-                                        // startmessage.end({ nodetype: startmessage.event });
-                                        // if (Config.prometheus_measure_nodeid && startmessage.end2) {
-                                        //     startmessage.end2({ nodetype: startmessage.event, nodeid: msg.nodeid });
-                                        // }
-                                        delete WebServer.log_messages[msg.msgid];
                                     }
+                                    if (startmessage && startmessage.span) {
+                                        otel.endSpan(startmessage.span);
+                                    }
+                                    const span: Span = WebServer.spans[msg.msgid] || otel.startSpan(msg.event);
+                                    WebServer.spans[msg.msgid] = span;
+                                    msg.span = otel.startSubSpan(msg.event, span);
+                                    WebServer.log_messages[msg.msgid] = msg;
                                 }
                                 const keys = Object.keys(WebServer.log_messages);
                                 keys.forEach(key => {
@@ -186,6 +201,17 @@ export class WebServer {
                                     const seconds = (now.getTime() - from.getTime()) / 1000;
                                     if (seconds > Config.prometheus_max_node_time_seconds) {
                                         delete WebServer.log_messages[key];
+                                    }
+                                });
+                                const keys2 = Object.keys(WebServer.spans);
+                                keys2.forEach(key => {
+                                    const meg = WebServer.spans[key];
+                                    var from = new Date(msg.timestamp);
+                                    const now = new Date();
+                                    const seconds = (now.getTime() - from.getTime()) / 1000;
+                                    if (seconds > Config.prometheus_max_node_time_seconds) {
+                                        otel.endSpan(WebServer.spans[key]);
+                                        delete WebServer.spans[key];
                                     }
                                 });
                             }
