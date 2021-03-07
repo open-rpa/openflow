@@ -8,6 +8,7 @@ const fs = require("fs");
 import { Provider, KoaContextWithOIDC } from "oidc-provider";
 import { MongoAdapter } from "./MongoAdapter";
 import { DBHelper } from "./DBHelper";
+import { otel } from "./otel";
 // import * as Provider from "oidc-provider";
 const Request = OAuthServer.Request;
 const Response = OAuthServer.Response;
@@ -79,13 +80,14 @@ export class OAuthProvider {
     }
     public static async LoadClients() {
         const instance = OAuthProvider.instance;
+        const span = otel.startSpan("saveToken");
         try {
             const jwksresults = await Config.db.query<Base>({ _type: "jwks" }, null, 10, 0, null, "config", Crypt.rootToken());
             let jwks = null;
             if (jwksresults.length == 0) {
                 jwks = await this.generatekeys();
                 jwks._type = "jwks";
-                Config.db.InsertOne(jwks, "config", 1, true, Crypt.rootToken());
+                Config.db.InsertOne(jwks, "config", 1, true, Crypt.rootToken(), span);
             } else {
                 jwks = jwksresults[0];
             }
@@ -179,13 +181,13 @@ export class OAuthProvider {
                 orig.call(this, message);
             };
             const orgpostLogoutRedirectUriAllowed = provider.Client.prototype.postLogoutRedirectUriAllowed;
-            provider.Client.prototype.postLogoutRedirectUriAllowed = function (value) { 
+            provider.Client.prototype.postLogoutRedirectUriAllowed = function (value) {
                 // const client = await provider.Client.find(this.clientId);
                 if (this.postLogoutRedirectUris == null || this.postLogoutRedirectUris.length == 0) return true;
                 return orgpostLogoutRedirectUriAllowed(value);
             };
             const orgredirectUriAllowed = provider.Client.prototype.redirectUriAllowed;
-            provider.Client.prototype.redirectUriAllowed = function (value) { 
+            provider.Client.prototype.redirectUriAllowed = function (value) {
                 // const client = await provider.Client.find(this.clientId);
                 if (this.redirectUris == null || this.redirectUris.length == 0) return true;
                 return orgredirectUriAllowed(value);
@@ -249,7 +251,7 @@ export class OAuthProvider {
                     } = await this.instance.oidc.interactionDetails(req, res);
                     var r = req;
                     var u = req.user;
-                    const isAuthenticated:boolean = req.isAuthenticated();
+                    const isAuthenticated: boolean = req.isAuthenticated();
                     console.log("isAuthenticated: " + isAuthenticated)
                     if (isAuthenticated) {
                         // if(!NoderedUtil.IsNullEmpty(test.returnTo) ) {
@@ -302,8 +304,10 @@ export class OAuthProvider {
                 }
             });
         } catch (error) {
+            span.recordException(error);
             instance._logger.error(error);
         }
+        otel.endSpan(span);
     }
     static configure(logger: winston.Logger, app: express.Express): OAuthProvider {
         const instance = new OAuthProvider();
@@ -465,6 +469,7 @@ export class OAuthProvider {
     }
 
     public async saveToken(token, client, user) {
+        const span = otel.startSpan("saveToken");
         this._logger.info("[OAuth] saveToken for " + user.name + " in " + client.clientId);
         const result: any = {
             name: "Token for " + user.name,
@@ -481,10 +486,12 @@ export class OAuthProvider {
             _type: "token"
         };
         await OAuthProvider.addToken(result);
-        await Config.db.InsertOne(result, "oauthtokens", 0, false, Crypt.rootToken());
+        await Config.db.InsertOne(result, "oauthtokens", 0, false, Crypt.rootToken(), span);
+        otel.endSpan(span)
         return result;
     }
     public async saveAuthorizationCode(code: string, client: any, user: any, redirect_uri: string) {
+        const span = otel.startSpan("saveAuthorizationCode");
         this._logger.info("[OAuth] saveAuthorizationCode " + code);
         const codeobject = Object.assign({}, user);
         delete codeobject._id;
@@ -499,7 +506,7 @@ export class OAuthProvider {
         codeobject.client_id = client.clientId
         codeobject.name = "Code " + code + " for " + user.name
         this.codes[code] = codeobject;
-        await Config.db.InsertOne(codeobject, "oauthtokens", 1, false, Crypt.rootToken());
+        await Config.db.InsertOne(codeobject, "oauthtokens", 1, false, Crypt.rootToken(), span);
         this._logger.info("[OAuth] saveAuthorizationCode " + code + " saved");
         // instance.codes[code].client_id = client_id;
 
@@ -521,6 +528,7 @@ export class OAuthProvider {
         //     'client': client.id,
         //     'user': user.username
         // });
+        otel.endSpan(span);
         return codeobject;
     }
     sleep(ms) {
@@ -701,7 +709,7 @@ export class Account {
         // user.roles = roles;
 
         // node-bb username hack
-        if(NoderedUtil.IsNullEmpty(user.email)) user.email = user.username;
+        if (NoderedUtil.IsNullEmpty(user.email)) user.email = user.username;
         if (user.name == user.email && user.email.indexOf("@") > -1) {
             user.name = user.email.substr(0, user.email.indexOf("@") - 1);
         }

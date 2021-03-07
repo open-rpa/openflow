@@ -122,8 +122,8 @@ export class Config {
         Config.otel_trace_url = Config.getEnv("otel_trace_url", "");
         Config.otel_metric_url = Config.getEnv("otel_metric_url", "");
         Config.otel_servicename = Config.getEnv("otel_servicename", "openflow");
-        Config.otel_trace_interval = parseInt(Config.getEnv("otel_trace_interval", "1000"));
-        Config.otel_metric_interval = parseInt(Config.getEnv("otel_metric_interval", "1000"));
+        Config.otel_trace_interval = parseInt(Config.getEnv("otel_trace_interval", "5000"));
+        Config.otel_metric_interval = parseInt(Config.getEnv("otel_metric_interval", "5000"));
         Config.validate_user_form = Config.getEnv("validate_user_form", "");
     }
     public static db: DatabaseConnection = null;
@@ -239,8 +239,8 @@ export class Config {
     public static otel_trace_url: string = Config.getEnv("otel_trace_url", "");
     public static otel_metric_url: string = Config.getEnv("otel_metric_url", "");
     public static otel_servicename: string = Config.getEnv("otel_servicename", "openflow");
-    public static otel_trace_interval: number = parseInt(Config.getEnv("otel_trace_interval", "1000"));
-    public static otel_metric_interval: number = parseInt(Config.getEnv("otel_metric_interval", "1000"));
+    public static otel_trace_interval: number = parseInt(Config.getEnv("otel_trace_interval", "5000"));
+    public static otel_metric_interval: number = parseInt(Config.getEnv("otel_metric_interval", "5000"));
 
     public static validate_user_form: string = Config.getEnv("validate_user_form", "");
 

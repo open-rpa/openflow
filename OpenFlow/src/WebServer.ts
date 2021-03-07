@@ -39,7 +39,7 @@ const rateLimiter = (req: express.Request, res: express.Response, next: express.
         })
         .catch((e) => {
             const route = url.parse(req.url).pathname;
-            if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_rate_limit)) websocket_rate_limit.bind({ ...otel.defaultlabels, route: route }).add(1);
+            if (!NoderedUtil.IsNullUndefinded(websocket_rate_limit)) websocket_rate_limit.bind({ ...otel.defaultlabels, route: route }).add(1);
             console.warn("API_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints + " msBeforeNext: " + e.msBeforeNext);
             res.status(429).json({ response: 'RATE_LIMIT' });
         });

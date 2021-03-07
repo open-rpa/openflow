@@ -130,51 +130,59 @@ export class api_get {
                 throw new Error("Not connected");
             }
             this.node.status({});
-            // if (NoderedUtil.IsNullEmpty(msg.jwt)) return NoderedUtil.HandleError(this, "Missing jwt token");
-            if (!NoderedUtil.IsNullUndefinded(msg.query)) { this.config.query = msg.query; }
-            if (!NoderedUtil.IsNullUndefinded(msg.projection)) { this.config.projection = msg.projection; }
-            if (!NoderedUtil.IsNullUndefinded(msg.orderby)) { this.config.orderby = msg.orderby; }
-            if (!NoderedUtil.IsNullEmpty(msg.top)) { this.config.top = parseInt(msg.top); }
-            if (!NoderedUtil.IsNullEmpty(msg.skip)) { this.config.skip = parseInt(msg.skip); }
+            let collection: string = this.config.collection;
+            let query: any = this.config.query;
+            let projection: any = this.config.projection;
+            let orderby: any = this.config.orderby;
+            let top: number = this.config.top;
+            let skip: number = this.config.skip;
+            let resultfield: string  = this.config.resultfield;
+            if (!NoderedUtil.IsNullEmpty(msg.collection)) { collection = msg.collection; }
+            if (!NoderedUtil.IsNullUndefinded(msg.query)) { query = msg.query; }
+            if (!NoderedUtil.IsNullUndefinded(msg.projection)) { projection = msg.projection; }
+            if (!NoderedUtil.IsNullUndefinded(msg.orderby)) { orderby = msg.orderby; }
+            if (!NoderedUtil.IsNullEmpty(msg.top)) { top = parseInt(msg.top); }
+            if (!NoderedUtil.IsNullEmpty(msg.skip)) { skip = parseInt(msg.skip); }
+            if (NoderedUtil.IsNullEmpty(top)) { top = 500; }
+            if (NoderedUtil.IsNullEmpty(skip)) { skip = 0; }
+            if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { resultfield = msg.resultfield; }
+            top = parseInt(this.config.top as any);
+            skip = parseInt(this.config.skip as any);
 
-            if (NoderedUtil.IsNullEmpty(this.config.top)) { this.config.top = 500; }
-            if (NoderedUtil.IsNullEmpty(this.config.skip)) { this.config.skip = 0; }
-            if (!NoderedUtil.IsNullEmpty(this.config.orderby) && NoderedUtil.IsString(this.config.orderby)) {
-                if (this.config.orderby.indexOf("{") > -1) {
+            if (!NoderedUtil.IsNullEmpty(orderby) && NoderedUtil.IsString(orderby)) {
+                if (orderby.indexOf("{") > -1) {
                     try {
-                        this.config.orderby = JSON.parse(this.config.orderby);
+                        orderby = JSON.parse(orderby);
                     } catch (error) {
                         NoderedUtil.HandleError(this, "Error parsing orderby", msg);
                         return;
                     }
                 }
             }
-            if (!NoderedUtil.IsNullEmpty(this.config.orderby) && NoderedUtil.IsString(this.config.orderby)) {
-                const field: string = this.config.orderby;
-                this.config.orderby = {};
-                this.config.orderby[field] = -1;
+            if (!NoderedUtil.IsNullEmpty(orderby) && NoderedUtil.IsString(orderby)) {
+                const field: string = orderby;
+                orderby = {};
+                orderby[field] = -1;
             }
-            if (NoderedUtil.IsNullEmpty(this.config.query)) {
-                this.config.query = {};
-            } else if (NoderedUtil.IsString(this.config.query)) {
-                this.config.query = JSON.parse(this.config.query);
+            if (NoderedUtil.IsNullEmpty(query)) {
+                query = {};
+            } else if (NoderedUtil.IsString(query)) {
+                query = JSON.parse(query);
             }
-            if (NoderedUtil.IsNullEmpty(this.config.projection)) {
-                this.config.projection = {};
-            } else if (NoderedUtil.IsString(this.config.projection)) {
+            if (NoderedUtil.IsNullEmpty(projection)) {
+                projection = {};
+            } else if (NoderedUtil.IsString(projection)) {
                 try {
-                    this.config.projection = JSON.parse(this.config.projection);
+                    projection = JSON.parse(projection);
                 } catch (error) {
                     NoderedUtil.HandleError(this, "Error parsing projection", msg);
                     return;
                 }
             }
-            if (NoderedUtil.IsNullEmpty(this.config.projection)) { this.config.projection = null; }
+            if (NoderedUtil.IsNullEmpty(projection)) { projection = null; }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Getting query" });
             let result: any[] = [];
-            const top: number = parseInt(this.config.top as any);
-            let skip: number = parseInt(this.config.skip as any);
             const pageby: number = 250;
             let subresult: any[] = [];
             let take: number = (top > pageby ? pageby : top);
@@ -186,7 +194,7 @@ export class api_get {
                 if ((result.length + take) > top) {
                     take = top - result.length;
                 }
-                subresult = await NoderedUtil.Query(this.config.collection, this.config.query, this.config.projection, this.config.orderby, take, skip, msg.jwt);
+                subresult = await NoderedUtil.Query(collection, query, projection, orderby, take, skip, msg.jwt);
                 skip += take;
                 result = result.concat(subresult);
                 if (result.length > top) {
@@ -194,9 +202,9 @@ export class api_get {
                 }
             } while (subresult.length == pageby && result.length < top);
 
-            // const result: any[] = await NoderedUtil.Query(this.config.collection, this.config.query,
-            //     this.config.projection, this.config.orderby, parseInt(this.config.top as any), parseInt(this.config.skip as any), msg.jwt)
-            NoderedUtil.saveToObject(msg, this.config.resultfield, result);
+            // const result: any[] = await NoderedUtil.Query(collection, query,
+            //     projection, orderby, parseInt(top as any), parseInt(skip as any), msg.jwt)
+            NoderedUtil.saveToObject(msg, resultfield, result);
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
@@ -230,17 +238,23 @@ export class api_add {
             this.node.status({});
             // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
 
-            if (!NoderedUtil.IsNullEmpty(msg.entitytype)) { this.config.entitytype = msg.entitytype; }
-            if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
-            if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { this.config.inputfield = msg.inputfield; }
-            if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { this.config.resultfield = msg.resultfield; }
-            if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
-            if (!NoderedUtil.IsNullEmpty(msg.journal)) { this.config.journal = msg.journal; }
-            if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
-            if ((this.config.journal as any) === undefined || (this.config.journal as any) === null) this.config.journal = false;
+            let entitytype = this.config.entitytype;
+            let collection = this.config.collection;
+            let inputfield = this.config.inputfield;
+            let resultfield = this.config.resultfield;
+            let writeconcern = this.config.writeconcern;
+            let journal = this.config.journal;
+            if (!NoderedUtil.IsNullEmpty(msg.entitytype)) { entitytype = msg.entitytype; }
+            if (!NoderedUtil.IsNullEmpty(msg.collection)) { collection = msg.collection; }
+            if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { inputfield = msg.inputfield; }
+            if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { resultfield = msg.resultfield; }
+            if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { writeconcern = msg.writeconcern; }
+            if (!NoderedUtil.IsNullEmpty(msg.journal)) { journal = msg.journal; }
+            if ((writeconcern as any) === undefined || (writeconcern as any) === null) writeconcern = 0;
+            if ((journal as any) === undefined || (journal as any) === null) journal = false;
 
             let data: any[] = [];
-            const _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
+            const _data = NoderedUtil.FetchFromObject(msg, inputfield);
             if (!NoderedUtil.IsNullUndefinded(_data)) {
                 if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
                 if (data.length === 0) { this.node.warn("input array is empty"); }
@@ -252,10 +266,10 @@ export class api_add {
             for (let y: number = 0; y < data.length; y += 50) {
                 for (let i: number = y; i < (y + 50) && i < data.length; i++) {
                     const element: any = data[i];
-                    if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
-                        element._type = this.config.entitytype;
+                    if (!NoderedUtil.IsNullEmpty(entitytype)) {
+                        element._type = entitytype;
                     }
-                    Promises.push(NoderedUtil.InsertOne(this.config.collection, element, this.config.writeconcern, this.config.journal, msg.jwt));
+                    Promises.push(NoderedUtil.InsertOne(collection, element, writeconcern, journal, msg.jwt));
                 }
                 this.node.status({ fill: "blue", shape: "dot", text: y + " to " + (y + 49) + " of " + data.length });
                 const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
@@ -271,7 +285,7 @@ export class api_add {
                 }
             }
             data = data.filter(result => !NoderedUtil.IsString(result) && !(result instanceof Error));
-            NoderedUtil.saveToObject(msg, this.config.resultfield, data);
+            NoderedUtil.saveToObject(msg, resultfield, data);
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
@@ -307,17 +321,25 @@ export class api_addmany {
             this.node.status({});
             // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
 
-            if (!NoderedUtil.IsNullEmpty(msg.entitytype)) { this.config.entitytype = msg.entitytype; }
-            if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
-            if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { this.config.inputfield = msg.inputfield; }
-            if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { this.config.resultfield = msg.resultfield; }
-            if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
-            if (!NoderedUtil.IsNullEmpty(msg.journal)) { this.config.journal = msg.journal; }
-            if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
-            if ((this.config.journal as any) === undefined || (this.config.journal as any) === null) this.config.journal = false;
+            let entitytype = this.config.entitytype;
+            let collection = this.config.collection;
+            let inputfield = this.config.inputfield;
+            let resultfield = this.config.resultfield;
+            let writeconcern = this.config.writeconcern;
+            let journal = this.config.journal;
+            let skipresults = this.config.skipresults;
+            if (!NoderedUtil.IsNullEmpty(msg.entitytype)) { entitytype = msg.entitytype; }
+            if (!NoderedUtil.IsNullEmpty(msg.collection)) { collection = msg.collection; }
+            if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { inputfield = msg.inputfield; }
+            if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { resultfield = msg.resultfield; }
+            if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { writeconcern = msg.writeconcern; }
+            if (!NoderedUtil.IsNullEmpty(msg.journal)) { journal = msg.journal; }
+            if (!NoderedUtil.IsNullEmpty(msg.skipresults)) { skipresults = msg.skipresults; }
+            if ((writeconcern as any) === undefined || (writeconcern as any) === null) writeconcern = 0;
+            if ((journal as any) === undefined || (journal as any) === null) journal = false;
 
             let data: any[] = [];
-            const _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
+            const _data = NoderedUtil.FetchFromObject(msg, inputfield);
             if (!NoderedUtil.IsNullUndefinded(_data)) {
                 if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
                 if (data.length === 0) { this.node.warn("input array is empty"); }
@@ -329,16 +351,16 @@ export class api_addmany {
                 let subitems: any[] = [];
                 for (let i: number = y; i < (y + 50) && i < data.length; i++) {
                     const element: any = data[i];
-                    if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
-                        element._type = this.config.entitytype;
+                    if (!NoderedUtil.IsNullEmpty(entitytype)) {
+                        element._type = entitytype;
                     }
                     subitems.push(element);
                 }
                 this.node.status({ fill: "blue", shape: "dot", text: y + " to " + (y + 49) + " of " + data.length });
-                results.push(await NoderedUtil.InsertMany(this.config.collection, subitems, this.config.writeconcern, this.config.journal, this.config.skipresults, msg.jwt));
+                results.push(await NoderedUtil.InsertMany(collection, subitems, writeconcern, journal, skipresults, msg.jwt));
             }
             data = results;
-            NoderedUtil.saveToObject(msg, this.config.resultfield, data);
+            NoderedUtil.saveToObject(msg, resultfield, data);
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
@@ -372,18 +394,24 @@ export class api_update {
     async oninput(msg: any) {
         try {
             this.node.status({});
-            if (!NoderedUtil.IsNullEmpty(msg.entitytype)) { this.config.entitytype = msg.entitytype; }
-            if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
-            if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { this.config.inputfield = msg.inputfield; }
-            if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { this.config.resultfield = msg.resultfield; }
-            if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
-            if (!NoderedUtil.IsNullEmpty(msg.journal)) { this.config.journal = msg.journal; }
+            let entitytype = this.config.entitytype;
+            let collection = this.config.collection;
+            let inputfield = this.config.inputfield;
+            let resultfield = this.config.resultfield;
+            let writeconcern = this.config.writeconcern;
+            let journal = this.config.journal;
+            if (!NoderedUtil.IsNullEmpty(msg.entitytype)) { entitytype = msg.entitytype; }
+            if (!NoderedUtil.IsNullEmpty(msg.collection)) { collection = msg.collection; }
+            if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { inputfield = msg.inputfield; }
+            if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { resultfield = msg.resultfield; }
+            if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { writeconcern = msg.writeconcern; }
+            if (!NoderedUtil.IsNullEmpty(msg.journal)) { journal = msg.journal; }
 
-            if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
-            if ((this.config.journal as any) === undefined || (this.config.journal as any) === null) this.config.journal = false;
+            if ((writeconcern as any) === undefined || (writeconcern as any) === null) writeconcern = 0;
+            if ((journal as any) === undefined || (journal as any) === null) journal = false;
 
             let data: any[] = [];
-            const _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
+            const _data = NoderedUtil.FetchFromObject(msg, inputfield);
             if (!NoderedUtil.IsNullUndefinded(_data)) {
                 if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
                 if (data.length === 0) { this.node.warn("input array is empty"); }
@@ -395,10 +423,10 @@ export class api_update {
             for (let y: number = 0; y < data.length; y += 50) {
                 for (let i: number = y; i < (y + 50) && i < data.length; i++) {
                     const element: any = data[i];
-                    if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
-                        element._type = this.config.entitytype;
+                    if (!NoderedUtil.IsNullEmpty(entitytype)) {
+                        element._type = entitytype;
                     }
-                    Promises.push(NoderedUtil.UpdateOne(this.config.collection, null, element, this.config.writeconcern, this.config.journal, msg.jwt));
+                    Promises.push(NoderedUtil.UpdateOne(collection, null, element, writeconcern, journal, msg.jwt));
                 }
                 this.node.status({ fill: "blue", shape: "dot", text: y + " to " + (y + 49) + " of " + data.length });
                 const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
@@ -415,7 +443,7 @@ export class api_update {
                 }
             }
             data = data.filter(result => !NoderedUtil.IsString(result) && !(result instanceof Error));
-            NoderedUtil.saveToObject(msg, this.config.resultfield, data);
+            NoderedUtil.saveToObject(msg, resultfield, data);
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
@@ -450,19 +478,26 @@ export class api_addorupdate {
     async oninput(msg: any) {
         try {
             this.node.status({});
-            if (!NoderedUtil.IsNullEmpty(msg.entitytype)) { this.config.entitytype = msg.entitytype; }
-            if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
-            if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { this.config.inputfield = msg.inputfield; }
-            if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { this.config.resultfield = msg.resultfield; }
-            if (!NoderedUtil.IsNullEmpty(msg.uniqeness)) { this.config.uniqeness = msg.uniqeness; }
-            if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { this.config.writeconcern = msg.writeconcern; }
-            if (!NoderedUtil.IsNullEmpty(msg.journal)) { this.config.journal = msg.journal; }
+            let entitytype = this.config.entitytype;
+            let collection = this.config.collection;
+            let inputfield = this.config.inputfield;
+            let resultfield = this.config.resultfield;
+            let uniqeness = this.config.uniqeness;
+            let writeconcern = this.config.writeconcern;
+            let journal = this.config.journal;
+            if (!NoderedUtil.IsNullEmpty(msg.entitytype)) { entitytype = msg.entitytype; }
+            if (!NoderedUtil.IsNullEmpty(msg.collection)) { collection = msg.collection; }
+            if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { inputfield = msg.inputfield; }
+            if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { resultfield = msg.resultfield; }
+            if (!NoderedUtil.IsNullEmpty(msg.uniqeness)) { uniqeness = msg.uniqeness; }
+            if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { writeconcern = msg.writeconcern; }
+            if (!NoderedUtil.IsNullEmpty(msg.journal)) { journal = msg.journal; }
 
-            if ((this.config.writeconcern as any) === undefined || (this.config.writeconcern as any) === null) this.config.writeconcern = 0;
-            if ((this.config.journal as any) === undefined || (this.config.journal as any) === null) this.config.journal = false;
+            if ((writeconcern as any) === undefined || (writeconcern as any) === null) writeconcern = 0;
+            if ((journal as any) === undefined || (journal as any) === null) journal = false;
 
             let data: any[] = [];
-            const _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
+            const _data = NoderedUtil.FetchFromObject(msg, inputfield);
             if (!NoderedUtil.IsNullUndefinded(_data)) {
                 if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
                 if (data.length === 0) { this.node.warn("input array is empty"); }
@@ -474,10 +509,10 @@ export class api_addorupdate {
             for (let y: number = 0; y < data.length; y += 50) {
                 for (let i: number = y; i < (y + 50) && i < data.length; i++) {
                     const element: any = data[i];
-                    if (!NoderedUtil.IsNullEmpty(this.config.entitytype)) {
-                        element._type = this.config.entitytype;
+                    if (!NoderedUtil.IsNullEmpty(entitytype)) {
+                        element._type = entitytype;
                     }
-                    Promises.push(NoderedUtil.InsertOrUpdateOne(this.config.collection, element, this.config.uniqeness, this.config.writeconcern, this.config.journal, msg.jwt));
+                    Promises.push(NoderedUtil.InsertOrUpdateOne(collection, element, uniqeness, writeconcern, journal, msg.jwt));
                 }
                 this.node.status({ fill: "blue", shape: "dot", text: y + " to " + (y + 49) + " of " + data.length });
                 const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
@@ -493,7 +528,7 @@ export class api_addorupdate {
                 }
             }
             data = data.filter(result => !NoderedUtil.IsString(result) && !(result instanceof Error));
-            NoderedUtil.saveToObject(msg, this.config.resultfield, data);
+            NoderedUtil.saveToObject(msg, resultfield, data);
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
@@ -525,11 +560,13 @@ export class api_delete {
     async oninput(msg: any) {
         try {
             this.node.status({});
-            if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
-            if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { this.config.inputfield = msg.inputfield; }
+            let collection = this.config.collection;
+            let inputfield = this.config.inputfield;
+            if (!NoderedUtil.IsNullEmpty(msg.collection)) { collection = msg.collection; }
+            if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { inputfield = msg.inputfield; }
 
             let data: any[] = [];
-            const _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
+            const _data = NoderedUtil.FetchFromObject(msg, inputfield);
             if (!NoderedUtil.IsNullUndefinded(_data)) {
                 if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
                 if (data.length === 0) { this.node.warn("input array is empty"); }
@@ -543,7 +580,7 @@ export class api_delete {
                     const element: any = data[i];
                     let id: string = element;
                     if (NoderedUtil.isObject(element)) { id = element._id; }
-                    Promises.push(NoderedUtil.DeleteOne(this.config.collection, id, msg.jwt));
+                    Promises.push(NoderedUtil.DeleteOne(collection, id, msg.jwt));
                 }
                 this.node.status({ fill: "blue", shape: "dot", text: y + " to " + (y + 49) + " of " + data.length });
                 const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
@@ -596,7 +633,7 @@ export class api_deletemany {
             if (!NoderedUtil.IsNullEmpty(msg.inputfield)) inputfield = msg.inputfield;
 
             let data: any[] = [];
-            const _data = NoderedUtil.FetchFromObject(msg, this.config.inputfield);
+            const _data = NoderedUtil.FetchFromObject(msg, inputfield);
             // if (NoderedUtil.IsNullUndefinded(query)) {
             if (!NoderedUtil.IsNullEmpty(query) && !NoderedUtil.IsNullUndefinded(_data)) {
                 throw new Error("Received both data and a query, ending to avoid mistakes!");
@@ -621,7 +658,7 @@ export class api_deletemany {
                 }
             }
             this.node.status({ fill: "blue", shape: "dot", text: "processing ..." });
-            const affectedrows = await NoderedUtil.DeleteMany(this.config.collection, query, ids, msg.jwt);
+            const affectedrows = await NoderedUtil.DeleteMany(collection, query, ids, msg.jwt);
             this.node.send(msg);
             this.node.status({ fill: "green", shape: "dot", text: "deleted " + affectedrows + " rows" });
         } catch (error) {
@@ -659,23 +696,33 @@ export class api_map_reduce {
     async oninput(msg: any) {
         try {
             this.node.status({});
-            if (!NoderedUtil.IsNullEmpty(msg.collection)) { this.config.collection = msg.collection; }
-            if (!NoderedUtil.IsNullUndefinded(msg.map)) { this.config.map = msg.map; }
-            if (!NoderedUtil.IsNullUndefinded(msg.reduce)) { this.config.reduce = msg.reduce; }
-            if (!NoderedUtil.IsNullUndefinded(msg.finalize)) { this.config.finalize = msg.finalize; }
-            if (!NoderedUtil.IsNullUndefinded(msg.scope)) { this.config.finalize = msg.scope; }
-            if (!NoderedUtil.IsNullUndefinded(msg.query)) { this.config.query = msg.query; }
+            let collection = this.config.collection;
+            let map = this.config.map;
+            let reduce = this.config.reduce;
+            let finalize = this.config.finalize;
+            let _scope = this.config.scope;
+            let query = this.config.query;
+            let output  = this.config.output;
+            let outcol  = this.config.outcol;
+            if (!NoderedUtil.IsNullEmpty(msg.collection)) { collection = msg.collection; }
+            if (!NoderedUtil.IsNullUndefinded(msg.map)) { map = msg.map; }
+            if (!NoderedUtil.IsNullUndefinded(msg.reduce)) { reduce = msg.reduce; }
+            if (!NoderedUtil.IsNullUndefinded(msg.finalize)) { finalize = msg.finalize; }
+            if (!NoderedUtil.IsNullUndefinded(msg.scope)) { _scope = msg.scope; }
+            if (!NoderedUtil.IsNullUndefinded(msg.query)) { query = msg.query; }
+            if (!NoderedUtil.IsNullUndefinded(msg.output)) { output = msg.output; }
+            if (!NoderedUtil.IsNullUndefinded(msg.outcol)) { outcol = msg.outcol; }
 
-            const scope = NoderedUtil.FetchFromObject(msg, this.config.scope);
+            const scope = NoderedUtil.FetchFromObject(msg, _scope);
             const _output: any = {};
-            _output[this.config.output] = this.config.outcol;
+            _output[output] = outcol;
 
-            if (!NoderedUtil.IsNullEmpty(this.config.query) && NoderedUtil.IsString(this.config.query)) {
-                this.config.query = JSON.parse(this.config.query);
+            if (!NoderedUtil.IsNullEmpty(query) && NoderedUtil.IsString(query)) {
+                query = JSON.parse(query);
             }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Running mapreduce" });
-            const result = await NoderedUtil.MapReduce(this.config.collection, this.config.map, this.config.reduce, this.config.finalize, this.config.query, _output, scope, msg.jwt);
+            const result = await NoderedUtil.MapReduce(collection, map, reduce, finalize, query, _output, scope, msg.jwt);
             msg.payload = result;
             this.node.send(msg);
             this.node.status({});
@@ -1031,9 +1078,6 @@ export class download_file {
             if (!NoderedUtil.IsNullEmpty(msg.fileid)) { fileid = msg.fileid; }
             if (!NoderedUtil.IsNullEmpty(msg.filename)) { filename = msg.filename; }
             if (!NoderedUtil.IsNullEmpty(msg.fileid)) { fileid = msg.fileid; }
-
-            if (!NoderedUtil.IsNullEmpty(msg.fileid)) { this.config.fileid = msg.fileid; }
-            if (!NoderedUtil.IsNullEmpty(msg.filename)) { this.config.filename = msg.filename; }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Getting file" });
             const file = await NoderedUtil.GetFile(filename, fileid, jwt);

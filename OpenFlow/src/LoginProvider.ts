@@ -23,6 +23,8 @@ const GridFsStorage = require('multer-gridfs-storage');
 import { GridFSBucket, ObjectID, Db, Cursor, Binary } from "mongodb";
 import { Base, User, NoderedUtil, TokenUser, WellknownIds, Rights, Role } from "@openiap/openflow-api";
 import { DBHelper } from "./DBHelper";
+import { otel } from "./otel";
+import { Span } from "@opentelemetry/api";
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 
 interface IVerifyFunction { (error: any, profile: any): void; }
@@ -274,7 +276,7 @@ export class LoginProvider {
             try {
                 const originalUrl: any = req.cookies.originalUrl;
                 const validateurl: any = req.cookies.validateurl;
-                if (NoderedUtil.IsNullEmpty(originalUrl) && !req.originalUrl.startsWith("/login") ) {
+                if (NoderedUtil.IsNullEmpty(originalUrl) && !req.originalUrl.startsWith("/login")) {
                     res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
                 }
                 if (!NoderedUtil.IsNullEmpty(validateurl)) {
@@ -328,6 +330,7 @@ export class LoginProvider {
             return;
         });
         app.post("/validateuserform", async (req: any, res) => {
+            const span: Span = otel.startSpan("LoginProvider.validateuserform");
             // logger.debug("/validateuserform " + !(req.user == null));
             res.setHeader("Content-Type", "application/json");
             try {
@@ -355,7 +358,7 @@ export class LoginProvider {
                                 UpdateDoc.$set[key] = req.body.data[key];
                             }
                         });
-                        var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, false, Crypt.rootToken());
+                        var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), span);
                         const user: TokenUser = Object.assign(tuser, req.body.data);
                         req.session.passport.user.validated = true;
 
@@ -370,10 +373,11 @@ export class LoginProvider {
                     res.end(JSON.stringify({ jwt: "" }));
                 }
             } catch (error) {
+                span.recordException(error);
                 console.error(error);
                 return res.status(500).send({ message: error.message ? error.message : error });
             }
-
+            otel.endSpan(span);
             res.end();
         });
 
@@ -662,6 +666,7 @@ export class LoginProvider {
 
     static CreateLocalStrategy(app: express.Express, baseurl: string): passport.Strategy {
         const strategy: passport.Strategy = new LocalStrategy(async (username: string, password: string, done: any): Promise<void> => {
+            const span: Span = otel.startSpan("LocalLogin");
             try {
                 if (username !== null && username != undefined) { username = username.toLowerCase(); }
                 let user: User = null;
@@ -670,24 +675,24 @@ export class LoginProvider {
                     if (user == null) {
                         user = new User(); user.name = username; user.username = username;
                         await Crypt.SetPassword(user, password);
-                        user = await Config.db.InsertOne(user, "users", 0, false, Crypt.rootToken());
+                        user = await Config.db.InsertOne(user, "users", 0, false, Crypt.rootToken(), span);
                         const admins: Role = await DBHelper.FindRoleByName("admins");
                         admins.AddMember(user);
-                        await DBHelper.Save(admins, Crypt.rootToken())
+                        await DBHelper.Save(admins, Crypt.rootToken(), span)
                     } else {
                         if (user.disabled) {
-                            Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown");
+                            Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown", span);
                             done("Disabled user " + username, null);
                             return;
                         }
                         if (!(await Crypt.ValidatePassword(user, password))) {
-                            Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown");
+                            Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown", span);
                             return done(null, false);
                         }
                     }
-                    Audit.LoginSuccess(TokenUser.From(user), "weblogin", "local", "", "browser", "unknown");
+                    Audit.LoginSuccess(TokenUser.From(user), "weblogin", "local", "", "browser", "unknown", span);
                     const provider: Provider = new Provider(); provider.provider = "local"; provider.name = "Local";
-                    const result = await Config.db.InsertOne(provider, "config", 0, false, Crypt.rootToken());
+                    const result = await Config.db.InsertOne(provider, "config", 0, false, Crypt.rootToken(), span);
                     LoginProvider.login_providers.push(result);
                     const tuser: TokenUser = TokenUser.From(user);
                     return done(null, tuser);
@@ -700,19 +705,22 @@ export class LoginProvider {
                     user = await DBHelper.ensureUser(Crypt.rootToken(), username, username, null, password);
                 } else {
                     if (user.disabled) {
-                        Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown");
+                        Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown", span);
                         done("Disabled user " + username, null);
                         return;
                     }
                     if (!(await Crypt.ValidatePassword(user, password))) {
-                        Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown");
+                        Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown", span);
                         return done(null, false);
                     }
                 }
                 const tuser: TokenUser = TokenUser.From(user);
-                Audit.LoginSuccess(tuser, "weblogin", "local", "", "browser", "unknown");
+                Audit.LoginSuccess(tuser, "weblogin", "local", "", "browser", "unknown", span);
+                otel.endSpan(span);
                 return done(null, tuser);
             } catch (error) {
+                span.recordException(error);
+                otel.endSpan(span);
                 console.error(error.message ? error.message : error);
                 done(error.message ? error.message : error);
             }
@@ -784,107 +792,120 @@ export class LoginProvider {
         return strategy;
     }
     static async samlverify(profile: any, done: IVerifyFunction): Promise<void> {
-        let username: string = profile.username;
-        if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
-        if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
-        LoginProvider._logger.debug("verify: " + username);
-        let _user: User = await DBHelper.FindByUsernameOrFederationid(username);
+        const span: Span = otel.startSpan("samlverify");
+        try {
+            let username: string = profile.username;
+            if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
+            if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
+            LoginProvider._logger.debug("verify: " + username);
+            let _user: User = await DBHelper.FindByUsernameOrFederationid(username);
 
-        if (NoderedUtil.IsNullUndefinded(_user)) {
-            let createUser: boolean = Config.auto_create_users;
-            if (Config.auto_create_domains.map(x => username.endsWith(x)).length == -1) { createUser = false; }
-            if (createUser) {
-                _user = new User(); _user.name = profile.name;
-                if (!NoderedUtil.IsNullEmpty(profile["http://schemas.microsoft.com/identity/claims/displayname"])) {
-                    _user.name = profile["http://schemas.microsoft.com/identity/claims/displayname"];
-                }
-                if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"])) {
-                    _user.name = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"];
-                }
-                _user.username = username;
-                if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
-                    (_user as any).mobile = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"];
-                }
-                if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty, please add displayname to claims", null); return; }
-                // _user = await Config.db.InsertOne(_user, "users", 0, false, Crypt.rootToken());
-                const jwt: string = Crypt.rootToken();
-                _user = await DBHelper.ensureUser(jwt, _user.name, _user.username, null, null);
-            }
-        } else {
-            if (!NoderedUtil.IsNullUndefinded(_user)) {
-                if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
-                    (_user as any).mobile = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"];
-                }
-                const jwt: string = Crypt.rootToken();
-                await DBHelper.Save(_user, jwt);
-            }
-        }
-
-        if (!NoderedUtil.IsNullUndefinded(_user)) {
-            if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/claims/Group"])) {
-                const jwt: string = Crypt.rootToken();
-                const strroles: string[] = profile["http://schemas.xmlsoap.org/claims/Group"];
-                for (let i = 0; i < strroles.length; i++) {
-                    const role: Role = await DBHelper.FindRoleByName(strroles[i]);
-                    if (!NoderedUtil.IsNullUndefinded(role)) {
-                        role.AddMember(_user);
-                        await DBHelper.Save(role, jwt);
+            if (NoderedUtil.IsNullUndefinded(_user)) {
+                let createUser: boolean = Config.auto_create_users;
+                if (Config.auto_create_domains.map(x => username.endsWith(x)).length == -1) { createUser = false; }
+                if (createUser) {
+                    _user = new User(); _user.name = profile.name;
+                    if (!NoderedUtil.IsNullEmpty(profile["http://schemas.microsoft.com/identity/claims/displayname"])) {
+                        _user.name = profile["http://schemas.microsoft.com/identity/claims/displayname"];
                     }
+                    if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"])) {
+                        _user.name = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"];
+                    }
+                    _user.username = username;
+                    if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
+                        (_user as any).mobile = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"];
+                    }
+                    if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty, please add displayname to claims", null); return; }
+                    // _user = await Config.db.InsertOne(_user, "users", 0, false, Crypt.rootToken());
+                    const jwt: string = Crypt.rootToken();
+                    _user = await DBHelper.ensureUser(jwt, _user.name, _user.username, null, null);
                 }
-                await DBHelper.DecorateWithRoles(_user);
+            } else {
+                if (!NoderedUtil.IsNullUndefinded(_user)) {
+                    if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
+                        (_user as any).mobile = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"];
+                    }
+                    const jwt: string = Crypt.rootToken();
+                    await DBHelper.Save(_user, jwt, span);
+                }
             }
-        }
 
-        if (NoderedUtil.IsNullUndefinded(_user)) {
-            Audit.LoginFailed(username, "weblogin", "saml", "", "samlverify", "unknown");
-            done("unknown user " + username, null);
-            return;
-        }
-        if (_user.disabled) {
-            Audit.LoginFailed(username, "weblogin", "saml", "", "samlverify", "unknown");
-            done("Disabled user " + username, null);
-            return;
-        }
+            if (!NoderedUtil.IsNullUndefinded(_user)) {
+                if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/claims/Group"])) {
+                    const jwt: string = Crypt.rootToken();
+                    const strroles: string[] = profile["http://schemas.xmlsoap.org/claims/Group"];
+                    for (let i = 0; i < strroles.length; i++) {
+                        const role: Role = await DBHelper.FindRoleByName(strroles[i]);
+                        if (!NoderedUtil.IsNullUndefinded(role)) {
+                            role.AddMember(_user);
+                            await DBHelper.Save(role, jwt, span);
+                        }
+                    }
+                    await DBHelper.DecorateWithRoles(_user);
+                }
+            }
 
-        const tuser: TokenUser = TokenUser.From(_user);
-        Audit.LoginSuccess(tuser, "weblogin", "saml", "", "samlverify", "unknown");
-        done(null, tuser);
+            if (NoderedUtil.IsNullUndefinded(_user)) {
+                Audit.LoginFailed(username, "weblogin", "saml", "", "samlverify", "unknown", span);
+                done("unknown user " + username, null);
+                return;
+            }
+            if (_user.disabled) {
+                Audit.LoginFailed(username, "weblogin", "saml", "", "samlverify", "unknown", span);
+                done("Disabled user " + username, null);
+                return;
+            }
+
+            const tuser: TokenUser = TokenUser.From(_user);
+            Audit.LoginSuccess(tuser, "weblogin", "saml", "", "samlverify", "unknown", span);
+            otel.endSpan(span);
+            done(null, tuser);
+        } catch (error) {
+            span.recordException(error);
+        }
+        otel.endSpan(span);
     }
     static async googleverify(token: string, tokenSecret: string, profile: any, done: IVerifyFunction): Promise<void> {
-        if (profile.emails) {
-            const email: any = profile.emails[0];
-            profile.username = email.value;
-        }
-        let username: string = profile.username;
-        if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
-        if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
-        LoginProvider._logger.debug("verify: " + username);
-        let _user: User = await DBHelper.FindByUsernameOrFederationid(username);
-        if (NoderedUtil.IsNullUndefinded(_user)) {
-            let createUser: boolean = Config.auto_create_users;
-            if (Config.auto_create_domains.map(x => username.endsWith(x)).length == -1) { createUser = false; }
-            if (createUser) {
-                const jwt: string = Crypt.rootToken();
-                _user = new User(); _user.name = profile.name;
-                if (!NoderedUtil.IsNullEmpty(profile.displayName)) { _user.name = profile.displayName; }
-                _user.username = username;
-                (_user as any).mobile = profile.mobile;
-                if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty.", null); return; }
-                _user = await DBHelper.ensureUser(jwt, _user.name, _user.username, null, null);
+        const span: Span = otel.startSpan("googleverify");
+        try {
+            if (profile.emails) {
+                const email: any = profile.emails[0];
+                profile.username = email.value;
             }
+            let username: string = profile.username;
+            if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
+            if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
+            LoginProvider._logger.debug("verify: " + username);
+            let _user: User = await DBHelper.FindByUsernameOrFederationid(username);
+            if (NoderedUtil.IsNullUndefinded(_user)) {
+                let createUser: boolean = Config.auto_create_users;
+                if (Config.auto_create_domains.map(x => username.endsWith(x)).length == -1) { createUser = false; }
+                if (createUser) {
+                    const jwt: string = Crypt.rootToken();
+                    _user = new User(); _user.name = profile.name;
+                    if (!NoderedUtil.IsNullEmpty(profile.displayName)) { _user.name = profile.displayName; }
+                    _user.username = username;
+                    (_user as any).mobile = profile.mobile;
+                    if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty.", null); return; }
+                    _user = await DBHelper.ensureUser(jwt, _user.name, _user.username, null, null);
+                }
+            }
+            if (NoderedUtil.IsNullUndefinded(_user)) {
+                Audit.LoginFailed(username, "weblogin", "google", "", "googleverify", "unknown", span);
+                done("unknown user " + username, null); return;
+            }
+            if (_user.disabled) {
+                Audit.LoginFailed(username, "weblogin", "google", "", "googleverify", "unknown", span);
+                done("Disabled user " + username, null);
+                return;
+            }
+            const tuser: TokenUser = TokenUser.From(_user);
+            Audit.LoginSuccess(tuser, "weblogin", "google", "", "googleverify", "unknown", span);
+            done(null, tuser);
+        } catch (error) {
+            span.recordException(error);
         }
-        if (NoderedUtil.IsNullUndefinded(_user)) {
-            Audit.LoginFailed(username, "weblogin", "google", "", "googleverify", "unknown");
-            done("unknown user " + username, null); return;
-        }
-        if (_user.disabled) {
-            Audit.LoginFailed(username, "weblogin", "google", "", "googleverify", "unknown");
-            done("Disabled user " + username, null);
-            return;
-        }
-        const tuser: TokenUser = TokenUser.From(_user);
-        Audit.LoginSuccess(tuser, "weblogin", "google", "", "googleverify", "unknown");
-        done(null, tuser);
+        otel.endSpan(span);
     }
 
 

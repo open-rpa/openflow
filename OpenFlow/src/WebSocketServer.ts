@@ -8,7 +8,7 @@ import { Message } from "./Messages/Message";
 import { Config } from "./Config";
 import { SigninMessage, NoderedUtil, TokenUser } from "@openiap/openflow-api";
 import { otel } from "./otel";
-import { ValueRecorder, UpDownCounter, Counter, BaseObserver } from "@opentelemetry/api-metrics"
+import { ValueRecorder, Counter, BaseObserver } from "@opentelemetry/api-metrics"
 
 export class WebSocketServer {
     private static _logger: winston.Logger;
@@ -17,13 +17,14 @@ export class WebSocketServer {
     public static _clients: WebSocketServerClient[];
     private static _db: DatabaseConnection;
 
-    public static p_all: UpDownCounter;
+    public static p_all: BaseObserver;
     public static websocket_queue_count: BaseObserver;
     public static websocket_queue_message_count: Counter;
     public static websocket_rate_limit: Counter;
+    public static webserver_rate_limit: Counter;
     public static websocket_messages: ValueRecorder;
     public static message_queue_count: BaseObserver;
-    public static mongodb_watch_count: UpDownCounter;
+    public static mongodb_watch_count: BaseObserver;
     public static update_message_queue_count(cli: WebSocketServerClient) {
         if (!Config.prometheus_measure_queued_messages) return;
         if (NoderedUtil.IsNullUndefinded(WebSocketServer.message_queue_count)) return;
@@ -39,7 +40,7 @@ export class WebSocketServer {
         WebSocketServer.mongodb_watch_count.clear();
         for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
             const cli: WebSocketServerClient = WebSocketServer._clients[i];
-            WebSocketServer.mongodb_watch_count.bind({ ...otel.defaultlabels, clientid: cli.id, agent: cli.clientagent }).add(cli.streamcount());
+            WebSocketServer.mongodb_watch_count.bind({ ...otel.defaultlabels, clientid: cli.id, agent: cli.clientagent }).update(cli.streamcount());
         }
     }
     static configure(logger: winston.Logger, server: http.Server, _otel: otel): void {
@@ -54,7 +55,7 @@ export class WebSocketServer {
             this._logger.error(error);
         });
         if (!NoderedUtil.IsNullUndefinded(_otel)) {
-            WebSocketServer.p_all = _otel.meter.createUpDownCounter("openflow_websocket_online_clients", {
+            WebSocketServer.p_all = _otel.meter.createUpDownSumObserver("openflow_websocket_online_clients", {
                 description: 'Total number of online websocket clients'
             }) // "agent", "version"
             WebSocketServer.websocket_queue_count = _otel.meter.createUpDownSumObserver("openflow_websocket_queue_count", {
@@ -66,6 +67,9 @@ export class WebSocketServer {
             WebSocketServer.websocket_rate_limit = _otel.meter.createCounter("openflow_websocket_rate_limit_count", {
                 description: 'Total number of rate limited messages'
             }) // "command"
+            WebSocketServer.webserver_rate_limit = _otel.meter.createCounter("openflow_webserver_rate_limit_count", {
+                description: 'Total number of rate limited messages'
+            }) // "command"            
             WebSocketServer.websocket_messages = _otel.meter.createValueRecorder('openflow_websocket_messages_duration_seconds', {
                 description: 'Duration for handling websocket requests',
                 boundaries: otel.default_boundaries
@@ -73,7 +77,7 @@ export class WebSocketServer {
             WebSocketServer.message_queue_count = _otel.meter.createUpDownSumObserver("openflow_message_queue_count", {
                 description: 'Total number messages waiting on reply from client'
             }) // "clientid"
-            WebSocketServer.mongodb_watch_count = _otel.meter.createUpDownCounter("mongodb_watch_count", {
+            WebSocketServer.mongodb_watch_count = _otel.meter.createUpDownSumObserver("mongodb_watch_count", {
                 description: 'Total number af steams  watching for changes'
             }) // "agent", "clientid"
         }
@@ -81,7 +85,6 @@ export class WebSocketServer {
     }
     private static async pingClients(): Promise<void> {
         let count: number = WebSocketServer._clients.length;
-        if (!NoderedUtil.IsNullUndefinded(WebSocketServer.p_all)) WebSocketServer.p_all.clear();
         for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
             const cli: WebSocketServerClient = WebSocketServer._clients[i];
             try {
@@ -133,12 +136,16 @@ export class WebSocketServer {
         }
         // let openrpa: number = 0;
         // this.p_online_clients.labels("openrpa").set(count);
+        const p_all = {};
         for (let i = 0; i < WebSocketServer._clients.length; i++) {
             try {
                 const cli = WebSocketServer._clients[i];
                 if (cli.user != null) {
                     if (!NoderedUtil.IsNullEmpty(cli.clientagent)) {
-                        if (!NoderedUtil.IsNullUndefinded(WebSocketServer.p_all)) WebSocketServer.p_all.bind({ ...otel.defaultlabels, version: cli.clientversion, agent: cli.clientagent }).add(1);
+                        if (!NoderedUtil.IsNullUndefinded(WebSocketServer.p_all)) {
+                            if(NoderedUtil.IsNullUndefinded(p_all[cli.clientagent])) p_all[cli.clientagent] = 0;
+                            p_all[cli.clientagent] += 1;
+                        }
                     }
                     // Lets assume only robots register queues ( not true )
                     if (cli.clientagent == "openrpa") {
@@ -176,6 +183,14 @@ export class WebSocketServer {
             } catch (error) {
                 console.error(error);
             }
+        }
+
+        if (!NoderedUtil.IsNullUndefinded(WebSocketServer.p_all)) {
+            WebSocketServer.p_all.clear();
+            const keys = Object.keys(p_all);
+            keys.forEach(key => {
+                WebSocketServer.p_all.bind({ ...otel.defaultlabels, agent: key }).update(p_all[key]);
+            });
         }
     }
 }

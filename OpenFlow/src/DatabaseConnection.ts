@@ -10,6 +10,7 @@ import { DBHelper } from "./DBHelper";
 import { OAuthProvider } from "./OAuthProvider";
 import { otel } from "./otel";
 import { ValueRecorder, Counter } from "@opentelemetry/api-metrics"
+import { Span } from "@opentelemetry/api";
 // tslint:disable-next-line: typedef
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 const isoDatePattern = new RegExp(/\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z)/);
@@ -111,16 +112,19 @@ export class DatabaseConnection {
      * Connect to MongoDB
      * @returns Promise<void>
      */
-    async connect(): Promise<void> {
+    async connect(parent: Span = undefined): Promise<void> {
         //if (this.cli !== null && this.cli !== undefined && this.cli.isConnected) {
         if (this.cli !== null && this.cli !== undefined && this.isConnected) {
             return;
         }
+        const span: Span = otel.startSubSpan("db.connect", parent);
         this.cli = await (Promise as any).retry(100, (resolve, reject) => {
             const options: MongoClientOptions = { minPoolSize: 50, autoReconnect: false, useNewUrlParser: true, useUnifiedTopology: true };
             MongoClient.connect(this.mongodburl, options).then((cli) => {
                 resolve(cli);
+                span.addEvent("Connected to mongodb");
             }).catch((reason) => {
+                span.recordException(reason);
                 console.error(reason);
                 reject(reason);
             });
@@ -138,6 +142,7 @@ export class DatabaseConnection {
             .on('close', errEvent);
         this.db = this.cli.db(this._dbname);
         this.isConnected = true;
+        otel.endSpan(span);
     }
     async ListCollections(jwt: string): Promise<any[]> {
         const result = await DatabaseConnection.toArray(this.db.listCollections());
@@ -151,39 +156,49 @@ export class DatabaseConnection {
         await this.db.dropCollection(collectionname);
     }
 
-    async CleanACL<T extends Base>(item: T, user: TokenUser): Promise<T> {
-        for (let i = item._acl.length - 1; i >= 0; i--) {
-            {
-                const ace = item._acl[i];
-                if (typeof ace.rights === "string") {
-                    const b = new Binary(Buffer.from(ace.rights, "base64"), 0);
-                    (ace.rights as any) = b;
+    async CleanACL<T extends Base>(item: T, user: TokenUser, parent: Span): Promise<T> {
+        const span: Span = otel.startSubSpan("db.CleanACL", parent);
+        try {
+            for (let i = item._acl.length - 1; i >= 0; i--) {
+                {
+                    const ace = item._acl[i];
+                    if (typeof ace.rights === "string") {
+                        const b = new Binary(Buffer.from(ace.rights, "base64"), 0);
+                        (ace.rights as any) = b;
+                    }
+                    const ot_end = otel.startTimer();
+                    const mongodbspan: Span = otel.startSubSpan("mongodb.find", span);
+                    mongodbspan.setAttribute("collection", "users");
+                    const arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1 }).limit(1).toArray();
+                    mongodbspan.setAttribute("results", arr.length);
+                    otel.endSpan(mongodbspan);
+                    if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: "users" });
+                    if (arr.length == 0) {
+                        item._acl.splice(i, 1);
+                    } else { ace.name = arr[0].name; }
                 }
-                const ot_end = otel.startTimer();
-                const arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1 }).limit(1).toArray();
-                if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: "users" });
-                if (arr.length == 0) {
-                    item._acl.splice(i, 1);
-                } else { ace.name = arr[0].name; }
             }
-        }
-        if (Config.force_add_admins) {
-            Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control], false);
-            this.ensureResource(item);
-        }
-        var addself: boolean = true;
-        item._acl.forEach(ace => {
-            if (ace._id == user._id) addself = false;
+            if (Config.force_add_admins) {
+                Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control], false);
+                this.ensureResource(item);
+            }
+            var addself: boolean = true;
+            item._acl.forEach(ace => {
+                if (ace._id == user._id) addself = false;
+                if (addself) {
+                    user.roles.forEach(role => {
+                        if (ace._id == role._id) addself = false;
+                    });
+                }
+            })
             if (addself) {
-                user.roles.forEach(role => {
-                    if (ace._id == role._id) addself = false;
-                });
+                Base.addRight(item, user._id, user.name, [Rights.full_control], false);
+                this.ensureResource(item);
             }
-        })
-        if (addself) {
-            Base.addRight(item, user._id, user.name, [Rights.full_control], false);
-            this.ensureResource(item);
+        } catch (error) {
+            span.recordException(error);
         }
+        otel.endSpan(span);
         return item;
     }
     async Cleanmembers<T extends Role>(item: T, original: T): Promise<T> {
@@ -331,116 +346,139 @@ export class DatabaseConnection {
      * @returns Promise<T[]> Array of results
      */
     // tslint:disable-next-line: max-line-length
-    async query<T extends Base>(query: any, projection: Object, top: number, skip: number, orderby: Object | string, collectionname: string, jwt: string, queryas: string = null, hint: Object | string = null): Promise<T[]> {
-        await this.connect();
-        let mysort: Object = {};
-        if (orderby) {
-            if (typeof orderby === "string" || orderby instanceof String) {
-                let neworderby = null;
-                try {
-                    if (orderby.indexOf("{") > -1) {
-                        neworderby = JSON.parse((orderby as string));
-                        mysort = neworderby;
+    async query<T extends Base>(query: any, projection: Object, top: number, skip: number, orderby: Object | string, collectionname: string, jwt: string, queryas: string = null, hint: Object | string = null, parent: Span = undefined): Promise<T[]> {
+        const span: Span = otel.startSubSpan("db.query", parent);
+        try {
+            await this.connect(span);
+            let mysort: Object = {};
+            if (orderby) {
+                span.addEvent("parse orderby");
+                if (typeof orderby === "string" || orderby instanceof String) {
+                    let neworderby = null;
+                    try {
+                        if (orderby.indexOf("{") > -1) {
+                            neworderby = JSON.parse((orderby as string));
+                            mysort = neworderby;
+                        }
+                    } catch (error) {
+                        console.error(error, orderby);
                     }
-                } catch (error) {
-                    console.error(error, orderby);
+                    if (neworderby == null) mysort[(orderby as string)] = 1;
+                } else {
+                    mysort = orderby;
                 }
-                if (neworderby == null) mysort[(orderby as string)] = 1;
-            } else {
-                mysort = orderby;
+                span.setAttribute("orderby", JSON.stringify(mysort));
             }
-        }
-        let myhint: Object = {};
-        if (hint) {
-            if (typeof hint === "string" || hint instanceof String) {
-                let newhint = null;
-                try {
-                    if (hint.indexOf("{") > -1) {
-                        newhint = JSON.parse((hint as string));
-                        myhint = newhint;
+            let myhint: Object = {};
+            if (hint) {
+                span.addEvent("parse hint");
+                if (typeof hint === "string" || hint instanceof String) {
+                    let newhint = null;
+                    try {
+                        if (hint.indexOf("{") > -1) {
+                            newhint = JSON.parse((hint as string));
+                            myhint = newhint;
+                        }
+                    } catch (error) {
+                        console.error(error, hint);
                     }
-                } catch (error) {
-                    console.error(error, hint);
+                    if (newhint == null) myhint[(hint as string)] = 1;
+                } else {
+                    myhint = hint;
                 }
-                if (newhint == null) myhint[(hint as string)] = 1;
-            } else {
-                myhint = hint;
+                span.setAttribute("hint", JSON.stringify(myhint));
             }
-        }
-        // orderby: Object | string
-        if (projection) {
-            if (typeof projection === "string" || projection instanceof String) {
-                projection = JSON.parse((projection as string));
+            // orderby: Object | string
+            if (projection) {
+                span.addEvent("parse projection");
+                if (typeof projection === "string" || projection instanceof String) {
+                    projection = JSON.parse((projection as string));
+                }
+                span.setAttribute("projection", JSON.stringify(projection));
             }
-        }
-        // for (let key in query) {
-        if (query !== null && query !== undefined) {
-            let json: any = query;
-            if (typeof json !== 'string' && !(json instanceof String)) {
-                json = JSON.stringify(json, (key, value) => {
-                    if (value instanceof RegExp)
-                        return ("__REGEXP " + value.toString());
-                    else
-                        return value;
+            // for (let key in query) {
+            if (query !== null && query !== undefined) {
+                span.addEvent("parse query");
+                let json: any = query;
+                if (typeof json !== 'string' && !(json instanceof String)) {
+                    json = JSON.stringify(json, (key, value) => {
+                        if (value instanceof RegExp)
+                            return ("__REGEXP " + value.toString());
+                        else
+                            return value;
+                    });
+                }
+                query = JSON.parse(json, (key, value) => {
+                    if (typeof value === 'string' && value.match(isoDatePattern)) {
+                        return new Date(value); // isostring, so cast to js date
+                    } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") == 0) {
+                        const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
+                        return new RegExp(m[1], m[2] || "");
+                    } else
+                        return value; // leave any other value as-is
                 });
+                span.setAttribute("query", JSON.stringify(query));
             }
-            query = JSON.parse(json, (key, value) => {
-                if (typeof value === 'string' && value.match(isoDatePattern)) {
-                    return new Date(value); // isostring, so cast to js date
-                } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") == 0) {
-                    const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
-                    return new RegExp(m[1], m[2] || "");
-                } else
-                    return value; // leave any other value as-is
-            });
-        }
-        const keys: string[] = Object.keys(query);
-        for (let i: number = 0; i < keys.length; i++) {
-            let key: string = keys[i];
-            if (key === "_id") {
-                const id: string = query._id;
-                const safeid = safeObjectID(id);
-                if (safeid !== null && safeid !== undefined) {
-                    delete query._id;
-                    query.$or = [{ _id: id }, { _id: safeObjectID(id) }];
+            const keys: string[] = Object.keys(query);
+            for (let i: number = 0; i < keys.length; i++) {
+                let key: string = keys[i];
+                if (key === "_id") {
+                    const id: string = query._id;
+                    const safeid = safeObjectID(id);
+                    if (safeid !== null && safeid !== undefined) {
+                        delete query._id;
+                        query.$or = [{ _id: id }, { _id: safeObjectID(id) }];
+                    }
                 }
             }
-        }
-        const user: TokenUser = Crypt.verityToken(jwt);
-        let _query: Object = {};
-        if (collectionname === "files") { collectionname = "fs.files"; }
-        if (collectionname === "fs.files") {
-            if (!NoderedUtil.IsNullEmpty(queryas)) {
-                _query = { $and: [query, this.getbasequery(jwt, "metadata._acl", [Rights.read]), await this.getbasequeryuserid(queryas, "metadata._acl", [Rights.read])] };
+            span.addEvent("verityToken");
+            const user: TokenUser = Crypt.verityToken(jwt);
+            let _query: Object = {};
+            span.addEvent("getbasequery");
+            if (collectionname === "files") { collectionname = "fs.files"; }
+            if (collectionname === "fs.files") {
+                if (!NoderedUtil.IsNullEmpty(queryas)) {
+                    _query = { $and: [query, this.getbasequery(jwt, "metadata._acl", [Rights.read]), await this.getbasequeryuserid(queryas, "metadata._acl", [Rights.read])] };
+                } else {
+                    _query = { $and: [query, this.getbasequery(jwt, "metadata._acl", [Rights.read])] };
+                }
+                projection = null;
             } else {
-                _query = { $and: [query, this.getbasequery(jwt, "metadata._acl", [Rights.read])] };
+                if (!NoderedUtil.IsNullEmpty(queryas)) {
+                    _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read]), await this.getbasequeryuserid(queryas, "_acl", [Rights.read])] };
+                } else {
+                    _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
+                }
             }
-            projection = null;
-        } else {
-            if (!NoderedUtil.IsNullEmpty(queryas)) {
-                _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read]), await this.getbasequeryuserid(queryas, "_acl", [Rights.read])] };
-            } else {
-                _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
+            if (!top) { top = 500; }
+            if (!skip) { skip = 0; }
+            span.setAttribute("collection", collectionname);
+            span.setAttribute("top", top);
+            span.setAttribute("skip", skip);
+            let arr: T[] = [];
+            const ot_end = otel.startTimer();
+            const mongodbspan: Span = otel.startSubSpan("mongodb.find", span);
+            let _pipe = this.db.collection(collectionname).find(_query);
+            if (projection != null) {
+                _pipe = _pipe.project(projection);
             }
+            _pipe = _pipe.sort(mysort as any).limit(top).skip(skip);
+            if (hint) {
+                _pipe = _pipe.hint(myhint);
+            }
+            arr = await _pipe.toArray();
+            mongodbspan.setAttribute("results", arr.length);
+            otel.endSpan(mongodbspan);
+            if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: collectionname });
+            for (let i: number = 0; i < arr.length; i++) { arr[i] = this.decryptentity(arr[i]); }
+            DatabaseConnection.traversejsondecode(arr);
+            if (Config.log_queries) this._logger.debug("[" + user.username + "][" + collectionname + "] query gave " + arr.length + " results ");
+            otel.endSpan(span);
+            return arr;
+        } catch (error) {
+            span.recordException(error);
+            otel.endSpan(span);
         }
-        if (!top) { top = 500; }
-        if (!skip) { skip = 0; }
-        let arr: T[] = [];
-        const ot_end = otel.startTimer();
-        let _pipe = this.db.collection(collectionname).find(_query);
-        if (projection != null) {
-            _pipe = _pipe.project(projection);
-        }
-        _pipe = _pipe.sort(mysort as any).limit(top).skip(skip);
-        if (hint) {
-            _pipe = _pipe.hint(myhint);
-        }
-        arr = await _pipe.toArray();
-        if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: collectionname });
-        for (let i: number = 0; i < arr.length; i++) { arr[i] = this.decryptentity(arr[i]); }
-        DatabaseConnection.traversejsondecode(arr);
-        if (Config.log_queries) this._logger.debug("[" + user.username + "][" + collectionname + "] query gave " + arr.length + " results ");
-        return arr;
     }
     async GetDocumentVersion<T extends Base>(collectionname: string, id: string, version: number, jwt: string): Promise<T> {
         const roundDown = function (num, precision): number {
@@ -490,9 +528,9 @@ export class DatabaseConnection {
      * @param  {string} jwt
      * @returns Promise
      */
-    async aggregate<T extends Base>(aggregates: object[], collectionname: string, jwt: string, hint: Object | string = null): Promise<T[]> {
-        await this.connect();
-
+    async aggregate<T extends Base>(aggregates: object[], collectionname: string, jwt: string, hint: Object | string = null, parent: Span = undefined): Promise<T[]> {
+        const span: Span = otel.startSubSpan("message.Aggregate", parent);
+        await this.connect(span);
         let json: any = aggregates;
         if (typeof json !== 'string' && !(json instanceof String)) {
             json = JSON.stringify(json, (key, value) => {
@@ -518,6 +556,7 @@ export class DatabaseConnection {
             } else {
                 myhint = hint;
             }
+            span.setAttribute("hint", JSON.stringify(myhint));
         }
         aggregates = JSON.parse(json, (key, value) => {
             if (typeof value === 'string' && value.match(isoDatePattern)) {
@@ -528,9 +567,12 @@ export class DatabaseConnection {
             } else
                 return value; // leave any other value as-is
         });
+        span.setAttribute("aggregates", JSON.stringify(aggregates));
+        span.setAttribute("collection", collectionname);
 
         const aggregatesjson = JSON.stringify(aggregates, null, 2)
 
+        span.addEvent("getbasequery");
         const base = this.getbasequery(jwt, "_acl", [Rights.read]);
         if (Array.isArray(aggregates)) {
             aggregates.unshift({ $match: base });
@@ -541,15 +583,24 @@ export class DatabaseConnection {
         options.hint = myhint;
         try {
             const ot_end = otel.startTimer();
+            const mongodbspan: Span = otel.startSubSpan("mongodb.aggregate", span);
             const items: T[] = await this.db.collection(collectionname).aggregate(aggregates, options).toArray();
+            mongodbspan.setAttribute("results", items.length);
+            otel.endSpan(mongodbspan);
             if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_aggregate, { collection: collectionname });
             DatabaseConnection.traversejsondecode(items);
-            const user: TokenUser = Crypt.verityToken(jwt);
-            if (Config.log_aggregates) this._logger.debug("[" + user.username + "][" + collectionname + "] aggregate gave " + items.length + " results ");
-            if (Config.log_aggregates) this._logger.debug(aggregatesjson);
+            if (Config.log_aggregates) {
+                const user: TokenUser = Crypt.verityToken(jwt);
+                span.setAttribute("username", user.username);
+                if (Config.log_aggregates) this._logger.debug("[" + user.username + "][" + collectionname + "] aggregate gave " + items.length + " results ");
+                if (Config.log_aggregates) this._logger.debug(aggregatesjson);
+            }
+            otel.endSpan(span);
             return items;
         } catch (error) {
             if (Config.log_aggregates) this._logger.debug(aggregatesjson);
+            span.recordException(error);
+            otel.endSpan(span);
             throw error;
         }
     }
@@ -683,116 +734,139 @@ export class DatabaseConnection {
      * @param  {string} jwt JWT of the user, creating the item, to ensure rights and permission
      * @returns Promise<T> Returns the new item added
      */
-    async InsertOne<T extends Base>(item: T, collectionname: string, w: number, j: boolean, jwt: string): Promise<T> {
-        if (item === null || item === undefined) { throw Error("Cannot create null item"); }
-        await this.connect();
-        item = this.ensureResource(item);
-        DatabaseConnection.traversejsonencode(item);
-        if (NoderedUtil.IsNullEmpty(jwt)) {
-            throw new Error("jwt is null");
-        }
-        let name = item.name;
-        if (NoderedUtil.IsNullEmpty(name)) name = item._name;
-        if (NoderedUtil.IsNullEmpty(name)) name = "Unknown";
-        const user: TokenUser = Crypt.verityToken(jwt);
-        item._createdby = user.name;
-        item._createdbyid = user._id;
-        item._created = new Date(new Date().toISOString());
-        item._modifiedby = user.name;
-        item._modifiedbyid = user._id;
-        item._modified = item._created;
-        const hasUser: Ace = item._acl.find(e => e._id === user._id);
-        if ((hasUser === null || hasUser === undefined)) {
-            Base.addRight(item, user._id, user.name, [Rights.full_control]);
-        }
-        if (collectionname != "audit") { this._logger.silly("[" + user.username + "][" + collectionname + "] Adding " + item._type + " " + name + " to database"); }
-        if (!this.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
+    async InsertOne<T extends Base>(item: T, collectionname: string, w: number, j: boolean, jwt: string, parent: Span): Promise<T> {
+        const span: Span = otel.startSubSpan("db.InsertOne", parent);
+        try {
+            if (item === null || item === undefined) { throw Error("Cannot create null item"); }
+            await this.connect(span);
+            span.addEvent("ensureResource");
+            item = this.ensureResource(item);
+            span.addEvent("traversejsonencode");
+            DatabaseConnection.traversejsonencode(item);
+            if (NoderedUtil.IsNullEmpty(jwt)) {
+                throw new Error("jwt is null");
+            }
+            let name = item.name;
+            if (NoderedUtil.IsNullEmpty(name)) name = item._name;
+            if (NoderedUtil.IsNullEmpty(name)) name = "Unknown";
+            span.addEvent("verityToken");
+            const user: TokenUser = Crypt.verityToken(jwt);
+            item._createdby = user.name;
+            item._createdbyid = user._id;
+            item._created = new Date(new Date().toISOString());
+            item._modifiedby = user.name;
+            item._modifiedbyid = user._id;
+            item._modified = item._created;
+            const hasUser: Ace = item._acl.find(e => e._id === user._id);
+            if ((hasUser === null || hasUser === undefined)) {
+                Base.addRight(item, user._id, user.name, [Rights.full_control]);
+            }
+            if (collectionname != "audit") { this._logger.silly("[" + user.username + "][" + collectionname + "] Adding " + item._type + " " + name + " to database"); }
+            if (!this.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
 
-        item = this.encryptentity(item) as T;
-        if (!item._id) { item._id = new ObjectID().toHexString(); }
+            span.addEvent("encryptentity");
+            item = this.encryptentity(item) as T;
+            if (!item._id) { item._id = new ObjectID().toHexString(); }
 
-        if (collectionname === "users" && item._type === "user" && item.hasOwnProperty("newpassword")) {
-            (item as any).passwordhash = await Crypt.hash((item as any).newpassword);
-            delete (item as any).newpassword;
-        }
-        j = ((j as any) === 'true' || j === true);
-        w = parseInt((w as any));
+            if (collectionname === "users" && item._type === "user" && item.hasOwnProperty("newpassword")) {
+                (item as any).passwordhash = await Crypt.hash((item as any).newpassword);
+                delete (item as any).newpassword;
+            }
+            j = ((j as any) === 'true' || j === true);
+            w = parseInt((w as any));
 
-        if (item.hasOwnProperty("_skiphistory")) {
-            delete (item as any)._skiphistory;
-            if (!Config.allow_skiphistory) {
+            if (item.hasOwnProperty("_skiphistory")) {
+                delete (item as any)._skiphistory;
+                if (!Config.allow_skiphistory) {
+                    item._version = await this.SaveDiff(collectionname, null, item);
+                }
+            } else {
                 item._version = await this.SaveDiff(collectionname, null, item);
             }
-        } else {
-            item._version = await this.SaveDiff(collectionname, null, item);
-        }
-
-        item = await this.CleanACL(item, user);
-        if (item._type === "role" && collectionname === "users") {
-            item = await this.Cleanmembers(item as any, null);
-        }
-
-        if (collectionname === "users" && item._type === "user") {
-            const u: TokenUser = (item as any);
-            if (u.username == null || u.username == "") { throw new Error("Username is mandatory"); }
-            if (u.name == null || u.name == "") { throw new Error("Name is mandatory"); }
-            const exists = await DBHelper.FindByUsername(u.username, Crypt.rootToken());
-            if (exists != null) { throw new Error("Access denied, user  '" + u.username + "' already exists"); }
-        }
-        if (collectionname === "users" && item._type === "role") {
-            const r: Role = (item as any);
-            if (r.name == null || r.name == "") { throw new Error("Name is mandatory"); }
-            const exists2 = await DBHelper.FindRoleByName(r.name);
-            if (exists2 != null) { throw new Error("Access denied, role '" + r.name + "' already exists"); }
-        }
-
-        // const options:CollectionInsertOneOptions = {  writeConcern: { w: parseInt((w as any)), j: j } };
-        // const options: CollectionInsertOneOptions = { w: w, j: j };
-        //const options: CollectionInsertOneOptions = { w: "majority" };
-        const options: CollectionInsertOneOptions = {};
-        options.WriteConcern = {}; // new WriteConcern();
-        options.WriteConcern.w = w;
-        options.WriteConcern.j = j;
-
-        const ot_end = otel.startTimer();
-        const result: InsertOneWriteOpResult<T> = await this.db.collection(collectionname).insertOne(item, options);
-        if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname });
-        item = result.ops[0];
-        if (collectionname === "users" && item._type === "user") {
-            Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
-            const users: Role = await DBHelper.FindRoleByNameOrId("users", jwt);
-            users.AddMember(item);
-            item = await this.CleanACL(item, user);
-            await DBHelper.Save(users, Crypt.rootToken());
-            const user2: TokenUser = item as any;
-            if (Config.auto_create_personal_nodered_group) {
-                let name = user2.username;
-                name = name.split("@").join("").split(".").join("");
-                name = name.toLowerCase();
-
-                const noderedadmins = await DBHelper.EnsureRole(jwt, name + "noderedadmins", null);
-                Base.addRight(noderedadmins, user2._id, user2.username, [Rights.full_control]);
-                Base.removeRight(noderedadmins, user2._id, [Rights.delete]);
-                noderedadmins.AddMember(item);
-                await DBHelper.Save(noderedadmins, Crypt.rootToken());
+            span.addEvent("CleanACL");
+            item = await this.CleanACL(item, user, span);
+            if (item._type === "role" && collectionname === "users") {
+                item = await this.Cleanmembers(item as any, null);
             }
 
-        }
-        if (collectionname === "users" && item._type === "role") {
-            Base.addRight(item, item._id, item.name, [Rights.read]);
-            item = await this.CleanACL(item, user);
+            if (collectionname === "users" && item._type === "user") {
+                const u: TokenUser = (item as any);
+                if (u.username == null || u.username == "") { throw new Error("Username is mandatory"); }
+                if (u.name == null || u.name == "") { throw new Error("Name is mandatory"); }
+                span.addEvent("FindByUsername");
+                const exists = await DBHelper.FindByUsername(u.username, Crypt.rootToken());
+                if (exists != null) { throw new Error("Access denied, user  '" + u.username + "' already exists"); }
+            }
+            if (collectionname === "users" && item._type === "role") {
+                const r: Role = (item as any);
+                if (r.name == null || r.name == "") { throw new Error("Name is mandatory"); }
+                span.addEvent("FindByUsername");
+                const exists2 = await DBHelper.FindRoleByName(r.name);
+                if (exists2 != null) { throw new Error("Access denied, role '" + r.name + "' already exists"); }
+            }
+
+            // const options:CollectionInsertOneOptions = {  writeConcern: { w: parseInt((w as any)), j: j } };
+            // const options: CollectionInsertOneOptions = { w: w, j: j };
+            //const options: CollectionInsertOneOptions = { w: "majority" };
+            const options: CollectionInsertOneOptions = {};
+            options.WriteConcern = {}; // new WriteConcern();
+            options.WriteConcern.w = w;
+            options.WriteConcern.j = j;
+
+            span.addEvent("do insert");
             const ot_end = otel.startTimer();
-            await this.db.collection(collectionname).replaceOne({ _id: item._id }, item);
-            if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_replace, { collection: collectionname });
-            DBHelper.cached_roles = [];
-        }
-        if (collectionname == "config" && item._type == "oauthclient") {
-            if (user.HasRoleName("admins")) {
-                setTimeout(() => OAuthProvider.LoadClients(), 1000);
+            const mongodbspan: Span = otel.startSubSpan("mongodb.insertOne", span);
+            const result: InsertOneWriteOpResult<T> = await this.db.collection(collectionname).insertOne(item, options);
+            otel.endSpan(mongodbspan);
+            if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname });
+            item = result.ops[0];
+            if (collectionname === "users" && item._type === "user") {
+                Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
+                span.addEvent("FindRoleByNameOrId");
+                const users: Role = await DBHelper.FindRoleByNameOrId("users", jwt);
+                users.AddMember(item);
+                span.addEvent("CleanACL");
+                item = await this.CleanACL(item, user, span);
+                span.addEvent("Save");
+                await DBHelper.Save(users, Crypt.rootToken(), span);
+                const user2: TokenUser = item as any;
+                if (Config.auto_create_personal_nodered_group) {
+                    let name = user2.username;
+                    name = name.split("@").join("").split(".").join("");
+                    name = name.toLowerCase();
+
+                    span.addEvent("EnsureRole");
+                    const noderedadmins = await DBHelper.EnsureRole(jwt, name + "noderedadmins", null);
+                    Base.addRight(noderedadmins, user2._id, user2.username, [Rights.full_control]);
+                    Base.removeRight(noderedadmins, user2._id, [Rights.delete]);
+                    noderedadmins.AddMember(item);
+                    span.addEvent("Save");
+                    await DBHelper.Save(noderedadmins, Crypt.rootToken(), span);
+                }
+
             }
+            if (collectionname === "users" && item._type === "role") {
+                Base.addRight(item, item._id, item.name, [Rights.read]);
+                item = await this.CleanACL(item, user, span);
+                const ot_end = otel.startTimer();
+                const mongodbspan: Span = otel.startSubSpan("mongodb.replaceOne", span);
+                await this.db.collection(collectionname).replaceOne({ _id: item._id }, item);
+                otel.endSpan(mongodbspan);
+                if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_replace, { collection: collectionname });
+                DBHelper.cached_roles = [];
+            }
+            if (collectionname == "config" && item._type == "oauthclient") {
+                if (user.HasRoleName("admins")) {
+                    setTimeout(() => OAuthProvider.LoadClients(), 1000);
+                }
+            }
+            span.addEvent("traversejsondecode");
+            DatabaseConnection.traversejsondecode(item);
+            if (Config.log_inserts) this._logger.debug("[" + user.username + "][" + collectionname + "] inserted " + item.name);
+        } catch (error) {
+            span.recordException(error);
         }
-        DatabaseConnection.traversejsondecode(item);
-        if (Config.log_inserts) this._logger.debug("[" + user.username + "][" + collectionname + "] inserted " + item.name);
+        otel.endSpan(span);
         return item;
     }
     synRawUpdateOne(collection: string, query: any, updatedoc: any, measure: boolean, cb: any) {
@@ -826,10 +900,10 @@ export class DatabaseConnection {
      * @param  {string} jwt JWT of user who is doing the update, ensuring rights
      * @returns Promise<T>
      */
-    async _UpdateOne<T extends Base>(query: any, item: T, collectionname: string, w: number, j: boolean, jwt: string): Promise<T> {
+    async _UpdateOne<T extends Base>(query: any, item: T, collectionname: string, w: number, j: boolean, jwt: string, parent: Span): Promise<T> {
         let q = new UpdateOneMessage();
         q.query = query; q.item = item; q.collectionname = collectionname; q.w = w; q.j; q.jwt = jwt;
-        q = await this.UpdateOne(q);
+        q = await this.UpdateOne(q, parent);
         if (q.opresult.result.ok == 1) {
             if (q.opresult.modifiedCount == 0) {
                 throw Error("item not found!");
@@ -843,234 +917,245 @@ export class DatabaseConnection {
         }
         return q.result;
     }
-    async UpdateOne<T extends Base>(q: UpdateOneMessage): Promise<UpdateOneMessage> {
-        let itemReplace: boolean = true;
-        if (q === null || q === undefined) { throw Error("UpdateOneMessage cannot be null"); }
-        if (q.item === null || q.item === undefined) { throw Error("Cannot update null item"); }
-        await this.connect();
-        const user: TokenUser = Crypt.verityToken(q.jwt);
-        if (!this.hasAuthorization(user, (q.item as Base), Rights.update)) {
-            const again = this.hasAuthorization(user, (q.item as Base), Rights.update);
-            throw new Error("Access denied, no authorization to UpdateOne");
-        }
-        if (q.collectionname === "files") { q.collectionname = "fs.files"; }
-
-        let original: T = null;
-        // assume empty query, means full document, else update document
-        if (q.query === null || q.query === undefined) {
-            // this will add an _acl so needs to be after we checked old item
-            if (!q.item.hasOwnProperty("_id")) {
-                throw Error("Cannot update item without _id");
+    async UpdateOne<T extends Base>(q: UpdateOneMessage, parent: Span): Promise<UpdateOneMessage> {
+        const span: Span = otel.startSubSpan("db.UpdateOne", parent);
+        try {
+            let itemReplace: boolean = true;
+            if (q === null || q === undefined) { throw Error("UpdateOneMessage cannot be null"); }
+            if (q.item === null || q.item === undefined) { throw Error("Cannot update null item"); }
+            await this.connect(span);
+            const user: TokenUser = Crypt.verityToken(q.jwt);
+            if (!this.hasAuthorization(user, (q.item as Base), Rights.update)) {
+                const again = this.hasAuthorization(user, (q.item as Base), Rights.update);
+                throw new Error("Access denied, no authorization to UpdateOne");
             }
-            let name = q.item.name;
-            if (NoderedUtil.IsNullEmpty(name)) name = (q.item as any)._name;
-            if (NoderedUtil.IsNullEmpty(name)) name = "Unknown";
+            if (q.collectionname === "files") { q.collectionname = "fs.files"; }
 
-            original = await this.getbyid<T>(q.item._id, q.collectionname, q.jwt);
-            if (!original) { throw Error("item not found!"); }
-            if (!this.hasAuthorization(user, original, Rights.update)) {
-                const again = this.hasAuthorization(user, original, Rights.update);
-                throw new Error("Access denied, no authorization to UpdateOne " + q.item._type + " " + name + " to database");
-            }
-            if (q.collectionname != "fs.files") {
-                q.item._modifiedby = user.name;
-                q.item._modifiedbyid = user._id;
-                q.item._modified = new Date(new Date().toISOString());
-                // now add all _ fields to the new object
-                const keys: string[] = Object.keys(original);
-                for (let i: number = 0; i < keys.length; i++) {
-                    let key: string = keys[i];
-                    if (key === "_created") {
-                        q.item[key] = new Date(original[key]);
-                    } else if (key === "_createdby" || key === "_createdbyid") {
-                        q.item[key] = original[key];
-                    } else if (key === "_modifiedby" || key === "_modifiedbyid" || key === "_modified") {
-                        // allready updated
-                    } else if (key.indexOf("_") === 0) {
-                        if (!q.item.hasOwnProperty(key)) {
-                            q.item[key] = original[key]; // add missing key
-                        } else if (q.item[key] === null) {
-                            delete q.item[key]; // remove key
-                        } else {
-                            // key allready exists, might been updated since last save
+            let original: T = null;
+            // assume empty query, means full document, else update document
+            if (q.query === null || q.query === undefined) {
+                // this will add an _acl so needs to be after we checked old item
+                if (!q.item.hasOwnProperty("_id")) {
+                    throw Error("Cannot update item without _id");
+                }
+                let name = q.item.name;
+                if (NoderedUtil.IsNullEmpty(name)) name = (q.item as any)._name;
+                if (NoderedUtil.IsNullEmpty(name)) name = "Unknown";
+
+                original = await this.getbyid<T>(q.item._id, q.collectionname, q.jwt);
+                if (!original) { throw Error("item not found!"); }
+                if (!this.hasAuthorization(user, original, Rights.update)) {
+                    const again = this.hasAuthorization(user, original, Rights.update);
+                    throw new Error("Access denied, no authorization to UpdateOne " + q.item._type + " " + name + " to database");
+                }
+                if (q.collectionname != "fs.files") {
+                    q.item._modifiedby = user.name;
+                    q.item._modifiedbyid = user._id;
+                    q.item._modified = new Date(new Date().toISOString());
+                    // now add all _ fields to the new object
+                    const keys: string[] = Object.keys(original);
+                    for (let i: number = 0; i < keys.length; i++) {
+                        let key: string = keys[i];
+                        if (key === "_created") {
+                            q.item[key] = new Date(original[key]);
+                        } else if (key === "_createdby" || key === "_createdbyid") {
+                            q.item[key] = original[key];
+                        } else if (key === "_modifiedby" || key === "_modifiedbyid" || key === "_modified") {
+                            // allready updated
+                        } else if (key.indexOf("_") === 0) {
+                            if (!q.item.hasOwnProperty(key)) {
+                                q.item[key] = original[key]; // add missing key
+                            } else if (q.item[key] === null) {
+                                delete q.item[key]; // remove key
+                            } else {
+                                // key allready exists, might been updated since last save
+                            }
                         }
                     }
-                }
-                if (q.item._acl === null || q.item._acl === undefined) {
-                    q.item._acl = original._acl;
-                    q.item._version = original._version;
-                }
-                q.item = this.ensureResource(q.item);
-                DatabaseConnection.traversejsonencode(q.item);
-                q.item = this.encryptentity(q.item);
-                const hasUser: Ace = q.item._acl.find(e => e._id === user._id);
-                if ((hasUser === null || hasUser === undefined) && q.item._acl.length == 0) {
-                    Base.addRight(q.item, user._id, user.name, [Rights.full_control]);
-                }
-                if (q.collectionname === "users" && q.item._type === "user") {
-                    Base.addRight(q.item, q.item._id, q.item.name, [Rights.read, Rights.update, Rights.invoke]);
-                }
-            } else {
-                (q.item as any).metadata = Base.assign((q.item as any).metadata);
-                (q.item as any).metadata._modifiedby = user.name;
-                (q.item as any).metadata._modifiedbyid = user._id;
-                (q.item as any).metadata._modified = new Date(new Date().toISOString());
-                // now add all _ fields to the new object
-                const keys: string[] = Object.keys((original as any).metadata);
-                for (let i: number = 0; i < keys.length; i++) {
-                    let key: string = keys[i];
-                    if (key === "_created") {
-                        (q.item as any).metadata[key] = new Date((original as any).metadata[key]);
-                    } else if (key === "_createdby" || key === "_createdbyid") {
-                        (q.item as any).metadata[key] = (original as any).metadata[key];
-                    } else if (key === "_modifiedby" || key === "_modifiedbyid" || key === "_modified") {
-                        // allready updated
-                    } else if (key.indexOf("_") === 0) {
-                        if (!(q.item as any).metadata.hasOwnProperty(key)) {
-                            (q.item as any).metadata[key] = (original as any).metadata[key]; // add missing key
-                        } else if ((q.item as any).metadata[key] === null) {
-                            delete (q.item as any).metadata[key]; // remove key
-                        } else {
-                            // key allready exists, might been updated since last save
+                    if (q.item._acl === null || q.item._acl === undefined) {
+                        q.item._acl = original._acl;
+                        q.item._version = original._version;
+                    }
+                    q.item = this.ensureResource(q.item);
+                    DatabaseConnection.traversejsonencode(q.item);
+                    q.item = this.encryptentity(q.item);
+                    const hasUser: Ace = q.item._acl.find(e => e._id === user._id);
+                    if ((hasUser === null || hasUser === undefined) && q.item._acl.length == 0) {
+                        Base.addRight(q.item, user._id, user.name, [Rights.full_control]);
+                    }
+                    if (q.collectionname === "users" && q.item._type === "user") {
+                        Base.addRight(q.item, q.item._id, q.item.name, [Rights.read, Rights.update, Rights.invoke]);
+                    }
+                } else {
+                    (q.item as any).metadata = Base.assign((q.item as any).metadata);
+                    (q.item as any).metadata._modifiedby = user.name;
+                    (q.item as any).metadata._modifiedbyid = user._id;
+                    (q.item as any).metadata._modified = new Date(new Date().toISOString());
+                    // now add all _ fields to the new object
+                    const keys: string[] = Object.keys((original as any).metadata);
+                    for (let i: number = 0; i < keys.length; i++) {
+                        let key: string = keys[i];
+                        if (key === "_created") {
+                            (q.item as any).metadata[key] = new Date((original as any).metadata[key]);
+                        } else if (key === "_createdby" || key === "_createdbyid") {
+                            (q.item as any).metadata[key] = (original as any).metadata[key];
+                        } else if (key === "_modifiedby" || key === "_modifiedbyid" || key === "_modified") {
+                            // allready updated
+                        } else if (key.indexOf("_") === 0) {
+                            if (!(q.item as any).metadata.hasOwnProperty(key)) {
+                                (q.item as any).metadata[key] = (original as any).metadata[key]; // add missing key
+                            } else if ((q.item as any).metadata[key] === null) {
+                                delete (q.item as any).metadata[key]; // remove key
+                            } else {
+                                // key allready exists, might been updated since last save
+                            }
                         }
                     }
+                    if ((q.item as any).metadata._acl === null || (q.item as any).metadata._acl === undefined) {
+                        (q.item as any).metadata._acl = (original as any).metadata._acl;
+                        (q.item as any).metadata._version = (original as any).metadata._version;
+                    }
+                    (q.item as any).metadata = this.ensureResource((q.item as any).metadata);
+                    DatabaseConnection.traversejsonencode(q.item);
+                    (q.item as any).metadata = this.encryptentity((q.item as any).metadata);
+                    const hasUser: Ace = (q.item as any).metadata._acl.find(e => e._id === user._id);
+                    if ((hasUser === null || hasUser === undefined) && (q.item as any).metadata._acl.length == 0) {
+                        Base.addRight((q.item as any).metadata, user._id, user.name, [Rights.full_control]);
+                    }
                 }
-                if ((q.item as any).metadata._acl === null || (q.item as any).metadata._acl === undefined) {
-                    (q.item as any).metadata._acl = (original as any).metadata._acl;
-                    (q.item as any).metadata._version = (original as any).metadata._version;
-                }
-                (q.item as any).metadata = this.ensureResource((q.item as any).metadata);
-                DatabaseConnection.traversejsonencode(q.item);
-                (q.item as any).metadata = this.encryptentity((q.item as any).metadata);
-                const hasUser: Ace = (q.item as any).metadata._acl.find(e => e._id === user._id);
-                if ((hasUser === null || hasUser === undefined) && (q.item as any).metadata._acl.length == 0) {
-                    Base.addRight((q.item as any).metadata, user._id, user.name, [Rights.full_control]);
-                }
-            }
 
-            if (q.item.hasOwnProperty("_skiphistory")) {
-                delete (q.item as any)._skiphistory;
-                if (!Config.allow_skiphistory) {
+                if (q.item.hasOwnProperty("_skiphistory")) {
+                    delete (q.item as any)._skiphistory;
+                    if (!Config.allow_skiphistory) {
+                        q.item._version = await this.SaveDiff(q.collectionname, original, q.item);
+                    }
+                } else {
                     q.item._version = await this.SaveDiff(q.collectionname, original, q.item);
                 }
             } else {
-                q.item._version = await this.SaveDiff(q.collectionname, original, q.item);
-            }
-        } else {
-            let json: string = q.item as any;
-            if (typeof json !== 'string') {
-                json = JSON.stringify(json);
-            }
-            q.item = JSON.parse(json, (key, value) => {
-                if (typeof value === 'string' && value.match(isoDatePattern)) {
-                    return new Date(value); // isostring, so cast to js date
-                } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") == 0) {
-                    const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
-                    return new RegExp(m[1], m[2] || "");
-                } else
-                    return value; // leave any other value as-is
-            });
-
-            itemReplace = false;
-            if (q.item["$set"] !== null && q.item["$set"] !== undefined) {
-                if (q.item["$set"].hasOwnProperty("_skiphistory")) {
-                    delete q.item["$set"]._skiphistory;
-                    if (!Config.allow_skiphistory) this.SaveUpdateDiff(q, user);
+                let json: string = q.item as any;
+                if (typeof json !== 'string') {
+                    json = JSON.stringify(json);
                 }
-            } else {
-                this.SaveUpdateDiff(q, user);
-            }
+                q.item = JSON.parse(json, (key, value) => {
+                    if (typeof value === 'string' && value.match(isoDatePattern)) {
+                        return new Date(value); // isostring, so cast to js date
+                    } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") == 0) {
+                        const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
+                        return new RegExp(m[1], m[2] || "");
+                    } else
+                        return value; // leave any other value as-is
+                });
 
-            // const _version = await this.SaveUpdateDiff(q, user);
-            // if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };
-            // (q.item["$set"])._version = _version;
-        }
-
-        if (q.collectionname === "users" && q.item._type === "user" && q.item.hasOwnProperty("newpassword")) {
-            (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
-            delete (q.item as any).newpassword;
-        }
-        if (q.collectionname == "config" && q.item._type == "oauthclient") {
-            if (user.HasRoleName("admins")) {
-                setTimeout(() => OAuthProvider.LoadClients(), 1000);
-            }
-        }
-        this._logger.silly("[" + user.username + "][" + q.collectionname + "] Updating " + (q.item.name || q.item._name) + " in database");
-
-        if (q.query === null || q.query === undefined) {
-            const id: string = q.item._id;
-            const safeid = safeObjectID(id);
-            q.query = { $or: [{ _id: id }, { _id: safeObjectID(id) }] };
-        }
-        let _query: Object = {};
-        if (q.collectionname === "fs.files") {
-            _query = { $and: [q.query, this.getbasequery(q.jwt, "metadata._acl", [Rights.update])] };
-        } else {
-            if (!q.collectionname.endsWith("_hist")) {
-                _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.update])] };
-            } else {
-                // todo: enforcer permissions when fetching _hist ?
-                _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.update])] };
-            }
-        }
-
-        q.j = ((q.j as any) === 'true' || q.j === true);
-        if ((q.w as any) !== "majority") q.w = parseInt((q.w as any));
-
-        // const options: CollectionInsertOneOptions = { w: q.w, j: q.j };
-        const options: CollectionInsertOneOptions = {};
-        options.WriteConcern = {}; // new WriteConcern();
-        options.WriteConcern.w = q.w;
-        options.WriteConcern.j = q.j;
-
-        // const options: CollectionInsertOneOptions = { };
-
-        q.opresult = null;
-        try {
-            if (itemReplace) {
-                if (q.collectionname != "fs.files") {
-                    q.item = await this.CleanACL(q.item, user);
+                itemReplace = false;
+                if (q.item["$set"] !== null && q.item["$set"] !== undefined) {
+                    if (q.item["$set"].hasOwnProperty("_skiphistory")) {
+                        delete q.item["$set"]._skiphistory;
+                        if (!Config.allow_skiphistory) this.SaveUpdateDiff(q, user);
+                    }
                 } else {
-                    (q.item as any).metadata = await this.CleanACL((q.item as any).metadata, user);
-                }
-                if (q.item._type === "role" && q.collectionname === "users") {
-                    q.item = await this.Cleanmembers(q.item as any, original);
-                    DBHelper.cached_roles = [];
+                    this.SaveUpdateDiff(q, user);
                 }
 
-                if (q.collectionname != "fs.files") {
-                    const ot_end = otel.startTimer();
-                    q.opresult = await this.db.collection(q.collectionname).replaceOne(_query, q.item, options);
-                    if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_replace, { collection: q.collectionname });
-                } else {
-                    const fsc = Config.db.db.collection("fs.files");
-                    const ot_end = otel.startTimer();
-                    q.opresult = await fsc.updateOne(_query, { $set: { metadata: (q.item as any).metadata } });
-                    if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: 'fs.files' });
+                // const _version = await this.SaveUpdateDiff(q, user);
+                // if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };
+                // (q.item["$set"])._version = _version;
+            }
+
+            if (q.collectionname === "users" && q.item._type === "user" && q.item.hasOwnProperty("newpassword")) {
+                (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
+                delete (q.item as any).newpassword;
+            }
+            if (q.collectionname == "config" && q.item._type == "oauthclient") {
+                if (user.HasRoleName("admins")) {
+                    setTimeout(() => OAuthProvider.LoadClients(), 1000);
                 }
-            } else {
-                if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };
-                (q.item["$set"])._modifiedby = user.name;
-                (q.item["$set"])._modifiedbyid = user._id;
-                (q.item["$set"])._modified = new Date(new Date().toISOString());
-                if ((q.item["$inc"]) === undefined) { (q.item["$inc"]) = {} };
-                (q.item["$inc"])._version = 1;
-                const ot_end = otel.startTimer();
-                q.opresult = await this.db.collection(q.collectionname).updateOne(_query, q.item, options);
-                if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: q.collectionname });
             }
-            if (q.collectionname != "fs.files") {
-                q.item = this.decryptentity(q.item);
-            } else {
-                (q.item as any).metadata = this.decryptentity<T>((q.item as any).metadata);
+            this._logger.silly("[" + user.username + "][" + q.collectionname + "] Updating " + (q.item.name || q.item._name) + " in database");
+
+            if (q.query === null || q.query === undefined) {
+                const id: string = q.item._id;
+                const safeid = safeObjectID(id);
+                q.query = { $or: [{ _id: id }, { _id: safeObjectID(id) }] };
             }
-            DatabaseConnection.traversejsondecode(q.item);
-            q.result = q.item;
+            let _query: Object = {};
+            if (q.collectionname === "fs.files") {
+                _query = { $and: [q.query, this.getbasequery(q.jwt, "metadata._acl", [Rights.update])] };
+            } else {
+                if (!q.collectionname.endsWith("_hist")) {
+                    _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.update])] };
+                } else {
+                    // todo: enforcer permissions when fetching _hist ?
+                    _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.update])] };
+                }
+            }
+
+            q.j = ((q.j as any) === 'true' || q.j === true);
+            if ((q.w as any) !== "majority") q.w = parseInt((q.w as any));
+
+            // const options: CollectionInsertOneOptions = { w: q.w, j: q.j };
+            const options: CollectionInsertOneOptions = {};
+            options.WriteConcern = {}; // new WriteConcern();
+            options.WriteConcern.w = q.w;
+            options.WriteConcern.j = q.j;
+
+            // const options: CollectionInsertOneOptions = { };
+
+            q.opresult = null;
+            try {
+                if (itemReplace) {
+                    if (q.collectionname != "fs.files") {
+                        q.item = await this.CleanACL(q.item, user, span);
+                    } else {
+                        (q.item as any).metadata = await this.CleanACL((q.item as any).metadata, user, span);
+                    }
+                    if (q.item._type === "role" && q.collectionname === "users") {
+                        q.item = await this.Cleanmembers(q.item as any, original);
+                        DBHelper.cached_roles = [];
+                    }
+
+                    if (q.collectionname != "fs.files") {
+                        const ot_end = otel.startTimer();
+                        const mongodbspan: Span = otel.startSubSpan("mongodb.replaceOne", span);
+                        q.opresult = await this.db.collection(q.collectionname).replaceOne(_query, q.item, options);
+                        otel.endSpan(mongodbspan);
+                        if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_replace, { collection: q.collectionname });
+                    } else {
+                        const fsc = Config.db.db.collection("fs.files");
+                        const ot_end = otel.startTimer();
+                        q.opresult = await fsc.updateOne(_query, { $set: { metadata: (q.item as any).metadata } });
+                        if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: 'fs.files' });
+                    }
+                } else {
+                    if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };
+                    (q.item["$set"])._modifiedby = user.name;
+                    (q.item["$set"])._modifiedbyid = user._id;
+                    (q.item["$set"])._modified = new Date(new Date().toISOString());
+                    if ((q.item["$inc"]) === undefined) { (q.item["$inc"]) = {} };
+                    (q.item["$inc"])._version = 1;
+                    const ot_end = otel.startTimer();
+                    const mongodbspan: Span = otel.startSubSpan("mongodb.updateOne", span);
+                    q.opresult = await this.db.collection(q.collectionname).updateOne(_query, q.item, options);
+                    otel.endSpan(mongodbspan);
+                    if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: q.collectionname });
+                }
+                if (q.collectionname != "fs.files") {
+                    q.item = this.decryptentity(q.item);
+                } else {
+                    (q.item as any).metadata = this.decryptentity<T>((q.item as any).metadata);
+                }
+                DatabaseConnection.traversejsondecode(q.item);
+                q.result = q.item;
+            } catch (error) {
+                throw error;
+            }
+            if (Config.log_updates) this._logger.debug("[" + user.username + "][" + q.collectionname + "] updated " + q.item.name);
+            otel.endSpan(span);
+            return q;
         } catch (error) {
-            throw error;
+            span.recordException(error);
         }
-        if (Config.log_updates) this._logger.debug("[" + user.username + "][" + q.collectionname + "] updated " + q.item.name);
-        return q;
+        otel.endSpan(span);
     }
     /**
     * Update multiple documents in database based on update document
@@ -1175,7 +1260,8 @@ export class DatabaseConnection {
     * @param  {string} jwt JWT of user who is doing the update, ensuring rights
     * @returns Promise<T>
     */
-    async InsertOrUpdateOne<T extends Base>(q: InsertOrUpdateOneMessage): Promise<InsertOrUpdateOneMessage> {
+    async InsertOrUpdateOne<T extends Base>(q: InsertOrUpdateOneMessage, parent: Span = undefined): Promise<InsertOrUpdateOneMessage> {
+        const span: Span = otel.startSubSpan("db.InsertOrUpdateOne", parent);
         let query: any = null;
         if (q.uniqeness !== null && q.uniqeness !== undefined && q.uniqeness !== "") {
             query = {};
@@ -1217,18 +1303,19 @@ export class DatabaseConnection {
                     if (NoderedUtil.IsNullUndefinded(uq.item[key])) uq.item[key] = exists[0][key];
                 }
             }
-            const uqres = await this.UpdateOne(uq);
+            const uqres = await this.UpdateOne(uq, span);
             q.opresult = uqres.opresult;
             q.result = uqres.result;
         } else {
             if (Config.log_updates) this._logger.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Inserting as new in database");
             const ot_end = otel.startTimer();
-            q.result = await this.InsertOne(q.item, q.collectionname, q.w, q.j, q.jwt);
+            q.result = await this.InsertOne(q.item, q.collectionname, q.w, q.j, q.jwt, span);
             if (!NoderedUtil.IsNullUndefinded(this._otel)) otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: q.collectionname });
         }
         if (q.collectionname === "users" && q.item._type === "role") {
             DBHelper.cached_roles = [];
         }
+        otel.endSpan(span);
         return q;
     }
     private async _DeleteFile(id: string): Promise<void> {

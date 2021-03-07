@@ -21,6 +21,7 @@ import { DBHelper } from "../DBHelper";
 import { WebSocketServer } from "../WebSocketServer";
 import { OAuthProvider } from "../OAuthProvider";
 import { otel } from "../otel";
+import { Span } from "@opentelemetry/api";
 const request = require("request");
 const got = require("got");
 const { RateLimiterMemory } = require('rate-limiter-flexible')
@@ -56,6 +57,7 @@ export class Message {
         this.id = crypto.randomBytes(16).toString("hex");
     }
     public async Process(cli: WebSocketServerClient): Promise<void> {
+        let span: Span = undefined;
         try {
             let username: string = "Unknown";
             if (!NoderedUtil.IsNullUndefinded(cli.user)) { username = cli.user.username; }
@@ -79,6 +81,11 @@ export class Message {
             }
 
             if (!NoderedUtil.IsNullEmpty(this.replyto)) {
+                span = otel.startSpan("ProcessMessageReply " + command);
+                span.setAttribute("clientid", cli.id);
+                span.setAttribute("command", command);
+                span.setAttribute("id", this.id);
+                span.setAttribute("replyto", this.replyto);
                 const ot_end = otel.startTimer();
                 const qmsg: QueuedMessage = cli.messageQueue[this.replyto];
                 if (!NoderedUtil.IsNullUndefinded(qmsg)) {
@@ -92,60 +99,65 @@ export class Message {
                     WebSocketServer.update_message_queue_count(cli);
                 }
                 if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
+                otel.endSpan(span);
                 return;
             }
             const ot_end = otel.startTimer();
+            span = otel.startSpan("ProcessMessage " + command);
+            span.setAttribute("clientid", cli.id);
+            span.setAttribute("command", command);
+            span.setAttribute("id", this.id);
             switch (command) {
                 case "listcollections":
-                    this.ListCollections(cli);
+                    await this.ListCollections(cli, span);
                     break;
                 case "dropcollection":
-                    this.DropCollection(cli);
+                    await this.DropCollection(cli);
                     break;
                 case "query":
-                    this.Query(cli);
+                    await this.Query(cli, span);
                     break;
                 case "getdocumentversion":
-                    this.GetDocumentVersion(cli);
+                    await this.GetDocumentVersion(cli);
                     break;
                 case "aggregate":
-                    this.Aggregate(cli);
+                    await this.Aggregate(cli, span);
                     break;
                 case "watch":
-                    this.Watch(cli);
+                    await this.Watch(cli);
                     break;
                 case "unwatch":
-                    this.UnWatch(cli);
+                    await this.UnWatch(cli);
                     break;
                 case "insertone":
-                    this.InsertOne(cli);
+                    await this.InsertOne(cli, span);
                     break;
                 case "insertmany":
-                    this.InsertMany(cli);
+                    await this.InsertMany(cli, span);
                     break;
                 case "updateone":
-                    this.UpdateOne(cli);
+                    await this.UpdateOne(cli, span);
                     break;
                 case "updatemany":
-                    this.UpdateMany(cli);
+                    await this.UpdateMany(cli);
                     break;
                 case "insertorupdateone":
-                    this.InsertOrUpdateOne(cli);
+                    await this.InsertOrUpdateOne(cli);
                     break;
                 case "deleteone":
-                    this.DeleteOne(cli);
+                    await this.DeleteOne(cli);
                     break;
                 case "deletemany":
-                    this.DeleteMany(cli);
+                    await this.DeleteMany(cli);
                     break;
                 case "signin":
-                    this.Signin(cli);
+                    await this.Signin(cli, span);
                     break;
                 case "registeruser":
-                    this.RegisterUser(cli);
+                    await this.RegisterUser(cli, span);
                     break;
                 case "mapreduce":
-                    this.MapReduce(cli);
+                    await this.MapReduce(cli);
                     break;
                 case "refreshtoken":
                     break;
@@ -153,79 +165,79 @@ export class Message {
                     // this.Ping(cli);
                     break;
                 case "registerqueue":
-                    this.RegisterQueue(cli);
+                    await this.RegisterQueue(cli);
                     break;
                 case "queuemessage":
-                    this.QueueMessage(cli);
+                    await this.QueueMessage(cli);
                     break;
                 case "closequeue":
-                    this.CloseQueue(cli);
+                    await this.CloseQueue(cli);
                     break;
                 case "ensurenoderedinstance":
-                    this.EnsureNoderedInstance(cli);
+                    await this.EnsureNoderedInstance(cli, span);
                     break;
                 case "deletenoderedinstance":
-                    this.DeleteNoderedInstance(cli);
+                    await this.DeleteNoderedInstance(cli, span);
                     break;
                 case "restartnoderedinstance":
-                    this.RestartNoderedInstance(cli);
+                    await this.RestartNoderedInstance(cli, span);
                     break;
                 case "getkubenodelabels":
-                    this.GetKubeNodeLabels(cli);
+                    await this.GetKubeNodeLabels(cli);
                     break;
                 case "getnoderedinstance":
-                    this.GetNoderedInstance(cli);
+                    await this.GetNoderedInstance(cli, span);
                     break;
                 case "getnoderedinstancelog":
-                    this.GetNoderedInstanceLog(cli);
+                    await this.GetNoderedInstanceLog(cli, span);
                     break;
                 case "startnoderedinstance":
-                    this.StartNoderedInstance(cli);
+                    await this.StartNoderedInstance(cli, span);
                     break;
                 case "stopnoderedinstance":
-                    this.StopNoderedInstance(cli);
+                    await this.StopNoderedInstance(cli, span);
                     break;
                 case "deletenoderedpod":
-                    this.DeleteNoderedPod(cli);
+                    await this.DeleteNoderedPod(cli, span);
                     break;
                 case "savefile":
-                    this.SaveFile(cli);
+                    await this.SaveFile(cli);
                     break;
                 case "getfile":
-                    this.GetFile(cli);
+                    await this.GetFile(cli);
                     break;
                 case "updatefile":
-                    this.UpdateFile(cli);
+                    await this.UpdateFile(cli);
                     break;
                 case "createworkflowinstance":
-                    this.CreateWorkflowInstance(cli);
+                    await this.CreateWorkflowInstance(cli, span);
                     break;
                 case "stripeaddplan":
-                    this.StripeAddPlan(cli);
+                    await this.StripeAddPlan(cli);
                     break;
                 case "stripecancelplan":
-                    this.StripeCancelPlan(cli);
+                    await this.StripeCancelPlan(cli);
                     break;
                 case "ensurestripecustomer":
-                    this.EnsureStripeCustomer(cli);
+                    await this.EnsureStripeCustomer(cli, span);
                     break;
                 case "stripemessage":
-                    this.StripeMessage(cli);
+                    await this.StripeMessage(cli);
                     break;
                 case "dumpclients":
-                    this.DumpClients(cli);
+                    await this.DumpClients(cli, span);
                     break;
                 case "dumprabbitmq":
-                    this.DumpRabbitmq(cli);
+                    await this.DumpRabbitmq(cli, span);
                     break;
                 case "getrabbitmqqueue":
-                    this.GetRabbitmqQueue(cli);
+                    await this.GetRabbitmqQueue(cli);
                     break;
                 case "deleterabbitmqqueue":
-                    this.DeleterabbitmqQueue(cli);
+                    await this.DeleterabbitmqQueue(cli);
                     break;
                 case "pushmetrics":
-                    this.PushMetrics(cli);
+                    await this.PushMetrics(cli);
                     break;
                 default:
                     this.UnknownCommand(cli);
@@ -234,7 +246,15 @@ export class Message {
             if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
         } catch (error) {
             cli._logger.error(error);
+            try {
+                if (!NoderedUtil.IsNullUndefinded(span)) {
+                    span.recordException(error);
+                }
+            } catch (error2) {
+                console.error(error2);
+            }
         }
+        otel.endSpan(span);
     }
     async RegisterQueue(cli: WebSocketServerClient) {
         this.Reply();
@@ -354,8 +374,9 @@ export class Message {
     }
     private static collectionCache: any = {};
     private static collectionCachetime: Date = new Date();
-    private async ListCollections(cli: WebSocketServerClient): Promise<void> {
+    private async ListCollections(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
+        const span: Span = otel.startSubSpan("message.ListCollections", parent);
         let msg: ListCollectionsMessage
         try {
             msg = ListCollectionsMessage.assign(this.data);
@@ -365,10 +386,15 @@ export class Message {
                 Message.collectionCache = {};
                 Message.collectionCachetime = new Date();
             }
+            const keys = Object.keys(Message.collectionCache);
             if (Message.collectionCache[msg.jwt] != null) {
+                span.addEvent("Get from cache");
+                span.setAttribute("cache size", keys.length);
                 msg.result = Message.collectionCache[msg.jwt];
             } else {
+                span.addEvent("ListCollections");
                 msg.result = await Config.db.ListCollections(msg.jwt);
+                span.addEvent("Filter collections");
                 if (msg.includehist !== true) {
                     msg.result = msg.result.filter(x => !x.name.endsWith("_hist"));
                 }
@@ -385,7 +411,9 @@ export class Message {
                 if (result.filter(x => x.name == "entities").length == 0) {
                     result.push({ name: "entities", type: "collection" });
                 }
+                span.addEvent("Add result to cache");
                 Message.collectionCache[msg.jwt] = result;
+                span.setAttribute("cache size", keys.length + 1);
                 msg.result = result;
             }
         } catch (error) {
@@ -399,6 +427,7 @@ export class Message {
             this.data = "";
             cli._logger.error(error);
         }
+        otel.endSpan(span);
         this.Send(cli);
     }
     private async DropCollection(cli: WebSocketServerClient): Promise<void> {
@@ -421,19 +450,22 @@ export class Message {
         }
         this.Send(cli);
     }
-    private async Query(cli: WebSocketServerClient): Promise<void> {
+    private async Query(cli: WebSocketServerClient, parent: Span): Promise<void> {
+        const span: Span = otel.startSubSpan("message.Query", parent);
         this.Reply();
         let msg: QueryMessage
         try {
             msg = QueryMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) {
+                span.recordException("Access denied, not signed in")
                 msg.error = "Access denied, not signed in";
             } else {
-                msg.result = await Config.db.query(msg.query, msg.projection, msg.top, msg.skip, msg.orderby, msg.collectionname, msg.jwt, msg.queryas, msg.hint);
+                msg.result = await Config.db.query(msg.query, msg.projection, msg.top, msg.skip, msg.orderby, msg.collectionname, msg.jwt, msg.queryas, msg.hint, span);
             }
         } catch (error) {
             cli._logger.error(error);
+            span.recordException(error)
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
@@ -443,6 +475,7 @@ export class Message {
             this.data = "";
             cli._logger.error(error);
         }
+        otel.endSpan(span);
         this.Send(cli);
     }
     private async GetDocumentVersion(cli: WebSocketServerClient): Promise<void> {
@@ -470,13 +503,14 @@ export class Message {
         this.Send(cli);
     }
 
-    private async Aggregate(cli: WebSocketServerClient): Promise<void> {
+    private async Aggregate(cli: WebSocketServerClient, parent: Span): Promise<void> {
+        const span: Span = otel.startSubSpan("message.Aggregate", parent);
         this.Reply();
         let msg: AggregateMessage
         try {
             msg = AggregateMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-            msg.result = await Config.db.aggregate(msg.aggregates, msg.collectionname, msg.jwt, msg.hint);
+            msg.result = await Config.db.aggregate(msg.aggregates, msg.collectionname, msg.jwt, msg.hint, span);
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -488,6 +522,7 @@ export class Message {
             this.data = "";
             cli._logger.error(error);
         }
+        otel.endSpan(span);
         this.Send(cli);
     }
     private async UnWatch(cli: WebSocketServerClient): Promise<void> {
@@ -541,8 +576,9 @@ export class Message {
         }
         this.Send(cli);
     }
-    private async InsertOne(cli: WebSocketServerClient): Promise<void> {
+    private async InsertOne(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
+        const span: Span = otel.startSubSpan("message.InsertOne", parent);
         let msg: InsertOneMessage
         try {
             msg = InsertOneMessage.assign(this.data);
@@ -552,8 +588,9 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) {
                 throw new Error("jwt is null and client is not authenticated");
             }
-            msg.result = await Config.db.InsertOne(msg.item, msg.collectionname, msg.w, msg.j, msg.jwt);
+            msg.result = await Config.db.InsertOne(msg.item, msg.collectionname, msg.w, msg.j, msg.jwt, span);
         } catch (error) {
+            span.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             cli._logger.error(error);
@@ -562,12 +599,15 @@ export class Message {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
+            span.recordException(error);
             cli._logger.error(error);
         }
+        otel.endSpan(span);
         this.Send(cli);
     }
-    private async InsertMany(cli: WebSocketServerClient): Promise<void> {
+    private async InsertMany(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
+        const span: Span = otel.startSubSpan("message.InsertOne", parent);
         let msg: InsertManyMessage
         try {
             msg = InsertManyMessage.assign(this.data);
@@ -579,11 +619,12 @@ export class Message {
             }
             const Promises: Promise<any>[] = [];
             for (let i: number = 0; i < msg.items.length; i++) {
-                Promises.push(Config.db.InsertOne(msg.items[i], msg.collectionname, msg.w, msg.j, msg.jwt));
+                Promises.push(Config.db.InsertOne(msg.items[i], msg.collectionname, msg.w, msg.j, msg.jwt, span));
             }
             msg.results = await Promise.all(Promises.map(p => p.catch(e => e)));
             if (msg.skipresults) msg.results = [];
         } catch (error) {
+            span.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             cli._logger.error(error);
@@ -591,21 +632,25 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
+            span.recordException(error);
             this.data = "";
             cli._logger.error(error);
         }
+        otel.endSpan(span);
         this.Send(cli);
     }
-    private async UpdateOne(cli: WebSocketServerClient): Promise<void> {
+    private async UpdateOne(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
+        const span: Span = otel.startSubSpan("message.UpdateOne", parent);
         let msg: UpdateOneMessage
         try {
             msg = UpdateOneMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
             if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
-            msg = await Config.db.UpdateOne(msg);
+            msg = await Config.db.UpdateOne(msg, span);
         } catch (error) {
+            span.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             cli._logger.error(error);
@@ -614,9 +659,11 @@ export class Message {
             delete msg.query;
             this.data = JSON.stringify(msg);
         } catch (error) {
+            span.recordException(error);
             this.data = "";
             cli._logger.error(error);
         }
+        otel.endSpan(span);
         this.Send(cli);
     }
     private async UpdateMany(cli: WebSocketServerClient): Promise<void> {
@@ -726,271 +773,285 @@ export class Message {
         this.Send(cli);
     }
     public static async DoSignin(cli: WebSocketServerClient, rawAssertion: string): Promise<TokenUser> {
+        const span: Span = otel.startSpan("message.DoSignin");
         let tuser: TokenUser;
-        let type: string = "jwtsignin";
-        if (!NoderedUtil.IsNullEmpty(rawAssertion)) {
-            type = "samltoken";
-            cli.user = await LoginProvider.validateToken(rawAssertion);
-            tuser = TokenUser.From(cli.user);
-        } else if (!NoderedUtil.IsNullEmpty(cli.jwt)) {
-            tuser = Crypt.verityToken(cli.jwt);
-            const impostor: string = tuser.impostor;
-            cli.user = await DBHelper.FindById(cli.user._id);
-            tuser = TokenUser.From(cli.user);
-            tuser.impostor = impostor;
-        }
-        if (!NoderedUtil.IsNullUndefinded(cli.user)) {
-            if (!(cli.user.validated == true) && Config.validate_user_form != "") {
-                if (cli.clientagent != "nodered" && NoderedUtil.IsNullEmpty(tuser.impostor)) {
-                    Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
-                    tuser = null;
+        try {
+            let type: string = "jwtsignin";
+            if (!NoderedUtil.IsNullEmpty(rawAssertion)) {
+                type = "samltoken";
+                cli.user = await LoginProvider.validateToken(rawAssertion);
+                tuser = TokenUser.From(cli.user);
+            } else if (!NoderedUtil.IsNullEmpty(cli.jwt)) {
+                tuser = Crypt.verityToken(cli.jwt);
+                const impostor: string = tuser.impostor;
+                cli.user = await DBHelper.FindById(cli.user._id);
+                tuser = TokenUser.From(cli.user);
+                tuser.impostor = impostor;
+            }
+            span.setAttribute("type", type);
+            span.setAttribute("clientid", cli.id);
+            if (!NoderedUtil.IsNullUndefinded(cli.user)) {
+                if (!(cli.user.validated == true) && Config.validate_user_form != "") {
+                    if (cli.clientagent != "nodered" && NoderedUtil.IsNullEmpty(tuser.impostor)) {
+                        Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
+                        tuser = null;
+                    }
                 }
             }
-        }
-        if (tuser != null && cli.user != null && cli.user.disabled) {
-            Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
-            tuser = null;
-        } else if (tuser != null) {
-            Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
+            if (tuser != null && cli.user != null && cli.user.disabled) {
+                Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
+                tuser = null;
+            } else if (tuser != null) {
+                Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
+            }
+        } catch (error) {
+            span.recordException(error);
         }
         return tuser;
     }
-    private async Signin(cli: WebSocketServerClient): Promise<void> {
+    private async Signin(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
-        const hrstart = process.hrtime()
-        let hrend = process.hrtime(hrstart)
-        let msg: SigninMessage
-        let impostor: string = "";
-        const UpdateDoc: any = { "$set": {} };
-        let type: string = "local";
+        const span: Span = otel.startSubSpan("message.Signin", parent);
         try {
-            msg = SigninMessage.assign(this.data);
-            let tuser: TokenUser = null;
-            let user: User = null;
-            if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
-                type = "jwtsignin";
-                tuser = Crypt.verityToken(msg.jwt);
-                if (tuser.impostor !== null && tuser.impostor !== undefined && tuser.impostor !== "") {
-                    impostor = tuser.impostor;
-                }
-                user = await DBHelper.FindByUsername(tuser.username);
-                if (user !== null && user !== undefined) {
-                    // refresh, for roles and stuff
-                    tuser = TokenUser.From(user);
-                } else { // Autocreate user .... safe ?? we use this for autocreating nodered service accounts
-                    if (Config.auto_create_users == true) {
-                        const jwt: string = Crypt.rootToken();
-                        user = await DBHelper.ensureUser(jwt, tuser.name, tuser.username, null, msg.password);
-                        if (user != null) tuser = TokenUser.From(user);
-                        if (user == null) {
-                            tuser = new TokenUser();
-                            tuser.username = msg.username;
-                        }
-                    } else {
-                        if (msg !== null && msg !== undefined) msg.error = "Unknown username or password";
+            const hrstart = process.hrtime()
+            let hrend = process.hrtime(hrstart)
+            let msg: SigninMessage
+            let impostor: string = "";
+            const UpdateDoc: any = { "$set": {} };
+            let type: string = "local";
+            try {
+                msg = SigninMessage.assign(this.data);
+                let tuser: TokenUser = null;
+                let user: User = null;
+                if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
+                    type = "jwtsignin";
+                    tuser = Crypt.verityToken(msg.jwt);
+                    if (tuser.impostor !== null && tuser.impostor !== undefined && tuser.impostor !== "") {
+                        impostor = tuser.impostor;
                     }
-                }
-                if (impostor !== "") {
-                    tuser.impostor = impostor;
-                }
-            } else if (!NoderedUtil.IsNullEmpty(msg.rawAssertion)) {
-                let AccessToken = null;
-                let User = null;
-                try {
-                    AccessToken = await OAuthProvider.instance.oidc.AccessToken.find(msg.rawAssertion);
-                    if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
-                        User = await OAuthProvider.instance.oidc.Account.findAccount(null, AccessToken.accountId);
-                        console.log('User:', User);
-                    }
-                    console.log('AccessToken:', AccessToken);
-                } catch (error) {
-                    console.error(error);
-                }
-                if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
-                    user = User.user;
-                    console.log('User:', user);
-                    if (user !== null && user != undefined) { tuser = TokenUser.From(user); }
-                } else {
-                    type = "samltoken";
-                    user = await LoginProvider.validateToken(msg.rawAssertion);
-                    // refresh, for roles and stuff
-                    if (user !== null && user != undefined) { tuser = TokenUser.From(user); }
-                    msg.rawAssertion = "";
-                }
-            } else {
-                user = await Auth.ValidateByPassword(msg.username, msg.password);
-                tuser = null;
-                // refresh, for roles and stuff
-                if (user != null) tuser = TokenUser.From(user);
-                if (user == null) {
-                    tuser = new TokenUser();
-                    tuser.username = msg.username;
-                }
-            }
-            cli.clientagent = msg.clientagent;
-            cli.clientversion = msg.clientversion;
-            if (user === null || user === undefined || tuser === null || tuser === undefined) {
-                if (msg !== null && msg !== undefined) msg.error = "Unknown username or password";
-                Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
-                cli._logger.debug(tuser.username + " failed logging in using " + type);
-            } else if (user.disabled) {
-                if (msg !== null && msg !== undefined) msg.error = "Disabled users cannot signin";
-                Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
-                cli._logger.debug("Disabled user " + tuser.username + " failed logging in using " + type);
-            } else {
-                if (msg.impersonate == "-1" || msg.impersonate == "false") {
-                    user = await DBHelper.FindById(impostor, Crypt.rootToken());
-                    if (Config.persist_user_impersonation) UpdateDoc.$unset = { "impersonating": "" };
-                    user.impersonating = undefined;
-                    if (!NoderedUtil.IsNullEmpty(tuser.impostor)) {
+                    user = await DBHelper.FindByUsername(tuser.username);
+                    if (user !== null && user !== undefined) {
+                        // refresh, for roles and stuff
                         tuser = TokenUser.From(user);
-                        tuser.validated = true;
-                    } else {
-                        tuser = TokenUser.From(user);
-                    }
-                    msg.impersonate = undefined;
-                    impostor = undefined;
-                }
-                Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
-                const userid: string = user._id;
-                if (msg.longtoken) {
-                    msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
-                } else {
-                    msg.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
-                }
-                msg.user = tuser;
-                if (!NoderedUtil.IsNullEmpty(user.impersonating) && NoderedUtil.IsNullEmpty(msg.impersonate)) {
-                    const items = await Config.db.query({ _id: user.impersonating }, null, 1, 0, null, "users", msg.jwt);
-                    if (items.length == 0) {
-                        msg.impersonate = null;
-                    } else {
-                        msg.impersonate = user.impersonating;
-                    }
-                }
-                if (msg.impersonate !== undefined && msg.impersonate !== null && msg.impersonate !== "" && tuser._id != msg.impersonate) {
-                    const items = await Config.db.query({ _id: msg.impersonate }, null, 1, 0, null, "users", msg.jwt);
-                    if (items.length == 0) {
-                        const impostors = await Config.db.query<User>({ _id: msg.impersonate }, null, 1, 0, null, "users", Crypt.rootToken());
-                        const impb: User = new User(); impb.name = "unknown"; impb._id = msg.impersonate;
-                        let imp: TokenUser = TokenUser.From(impb);
-                        if (impostors.length == 1) {
-                            imp = TokenUser.From(impostors[0]);
+                    } else { // Autocreate user .... safe ?? we use this for autocreating nodered service accounts
+                        if (Config.auto_create_users == true) {
+                            const jwt: string = Crypt.rootToken();
+                            user = await DBHelper.ensureUser(jwt, tuser.name, tuser.username, null, msg.password);
+                            if (user != null) tuser = TokenUser.From(user);
+                            if (user == null) {
+                                tuser = new TokenUser();
+                                tuser.username = msg.username;
+                            }
+                        } else {
+                            if (msg !== null && msg !== undefined) msg.error = "Unknown username or password";
                         }
-                        Audit.ImpersonateFailed(imp, tuser, cli.clientagent, cli.clientversion);
-                        throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " view and impersonating " + msg.impersonate);
                     }
-                    const tuserimpostor = tuser;
-                    user = User.assign(items[0] as User);
-                    await DBHelper.DecorateWithRoles(user);
-                    // Check we have update rights
+                    if (impostor !== "") {
+                        tuser.impostor = impostor;
+                    }
+                } else if (!NoderedUtil.IsNullEmpty(msg.rawAssertion)) {
+                    let AccessToken = null;
+                    let User = null;
                     try {
-                        await DBHelper.Save(user, msg.jwt);
-                        if (Config.persist_user_impersonation) {
-                            await Config.db._UpdateOne({ _id: tuserimpostor._id }, { "$set": { "impersonating": user._id } } as any, "users", 1, false, msg.jwt);
+                        AccessToken = await OAuthProvider.instance.oidc.AccessToken.find(msg.rawAssertion);
+                        if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
+                            User = await OAuthProvider.instance.oidc.Account.findAccount(null, AccessToken.accountId);
+                            console.log('User:', User);
                         }
+                        console.log('AccessToken:', AccessToken);
                     } catch (error) {
-                        const impostors = await Config.db.query<User>({ _id: msg.impersonate }, null, 1, 0, null, "users", Crypt.rootToken());
-                        const impb: User = new User(); impb.name = "unknown"; impb._id = msg.impersonate;
-                        let imp: TokenUser = TokenUser.From(impb);
-                        if (impostors.length == 1) {
-                            imp = TokenUser.From(impostors[0]);
-                        }
-
-                        Audit.ImpersonateFailed(imp, tuser, cli.clientagent, cli.clientversion);
-                        throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " updating and impersonating " + msg.impersonate);
+                        console.error(error);
                     }
-                    tuser.impostor = tuserimpostor._id;
-
-                    tuser = TokenUser.From(user);
-                    tuser.impostor = userid;
+                    if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
+                        user = User.user;
+                        console.log('User:', user);
+                        if (user !== null && user != undefined) { tuser = TokenUser.From(user); }
+                    } else {
+                        type = "samltoken";
+                        user = await LoginProvider.validateToken(msg.rawAssertion);
+                        // refresh, for roles and stuff
+                        if (user !== null && user != undefined) { tuser = TokenUser.From(user); }
+                        msg.rawAssertion = "";
+                    }
+                } else {
+                    user = await Auth.ValidateByPassword(msg.username, msg.password);
+                    tuser = null;
+                    // refresh, for roles and stuff
+                    if (user != null) tuser = TokenUser.From(user);
+                    if (user == null) {
+                        tuser = new TokenUser();
+                        tuser.username = msg.username;
+                    }
+                }
+                cli.clientagent = msg.clientagent;
+                cli.clientversion = msg.clientversion;
+                if (user === null || user === undefined || tuser === null || tuser === undefined) {
+                    if (msg !== null && msg !== undefined) msg.error = "Unknown username or password";
+                    Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
+                    cli._logger.debug(tuser.username + " failed logging in using " + type);
+                } else if (user.disabled) {
+                    if (msg !== null && msg !== undefined) msg.error = "Disabled users cannot signin";
+                    Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
+                    cli._logger.debug("Disabled user " + tuser.username + " failed logging in using " + type);
+                } else {
+                    if (msg.impersonate == "-1" || msg.impersonate == "false") {
+                        user = await DBHelper.FindById(impostor, Crypt.rootToken());
+                        if (Config.persist_user_impersonation) UpdateDoc.$unset = { "impersonating": "" };
+                        user.impersonating = undefined;
+                        if (!NoderedUtil.IsNullEmpty(tuser.impostor)) {
+                            tuser = TokenUser.From(user);
+                            tuser.validated = true;
+                        } else {
+                            tuser = TokenUser.From(user);
+                        }
+                        msg.impersonate = undefined;
+                        impostor = undefined;
+                    }
+                    Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
+                    const userid: string = user._id;
                     if (msg.longtoken) {
                         msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
                     } else {
                         msg.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
                     }
                     msg.user = tuser;
-                    Audit.ImpersonateSuccess(tuser, tuserimpostor, cli.clientagent, cli.clientversion);
+                    if (!NoderedUtil.IsNullEmpty(user.impersonating) && NoderedUtil.IsNullEmpty(msg.impersonate)) {
+                        const items = await Config.db.query({ _id: user.impersonating }, null, 1, 0, null, "users", msg.jwt);
+                        if (items.length == 0) {
+                            msg.impersonate = null;
+                        } else {
+                            msg.impersonate = user.impersonating;
+                        }
+                    }
+                    if (msg.impersonate !== undefined && msg.impersonate !== null && msg.impersonate !== "" && tuser._id != msg.impersonate) {
+                        const items = await Config.db.query({ _id: msg.impersonate }, null, 1, 0, null, "users", msg.jwt);
+                        if (items.length == 0) {
+                            const impostors = await Config.db.query<User>({ _id: msg.impersonate }, null, 1, 0, null, "users", Crypt.rootToken());
+                            const impb: User = new User(); impb.name = "unknown"; impb._id = msg.impersonate;
+                            let imp: TokenUser = TokenUser.From(impb);
+                            if (impostors.length == 1) {
+                                imp = TokenUser.From(impostors[0]);
+                            }
+                            Audit.ImpersonateFailed(imp, tuser, cli.clientagent, cli.clientversion, span);
+                            throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " view and impersonating " + msg.impersonate);
+                        }
+                        const tuserimpostor = tuser;
+                        user = User.assign(items[0] as User);
+                        await DBHelper.DecorateWithRoles(user);
+                        // Check we have update rights
+                        try {
+                            await DBHelper.Save(user, msg.jwt, span);
+                            if (Config.persist_user_impersonation) {
+                                await Config.db._UpdateOne({ _id: tuserimpostor._id }, { "$set": { "impersonating": user._id } } as any, "users", 1, false, msg.jwt, span);
+                            }
+                        } catch (error) {
+                            const impostors = await Config.db.query<User>({ _id: msg.impersonate }, null, 1, 0, null, "users", Crypt.rootToken());
+                            const impb: User = new User(); impb.name = "unknown"; impb._id = msg.impersonate;
+                            let imp: TokenUser = TokenUser.From(impb);
+                            if (impostors.length == 1) {
+                                imp = TokenUser.From(impostors[0]);
+                            }
+
+                            Audit.ImpersonateFailed(imp, tuser, cli.clientagent, cli.clientversion, span);
+                            throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " updating and impersonating " + msg.impersonate);
+                        }
+                        tuser.impostor = tuserimpostor._id;
+
+                        tuser = TokenUser.From(user);
+                        tuser.impostor = userid;
+                        if (msg.longtoken) {
+                            msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
+                        } else {
+                            msg.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
+                        }
+                        msg.user = tuser;
+                        Audit.ImpersonateSuccess(tuser, tuserimpostor, cli.clientagent, cli.clientversion, span);
+                    }
+                    if (msg.firebasetoken != null && msg.firebasetoken != undefined && msg.firebasetoken != "") {
+                        UpdateDoc.$set["firebasetoken"] = msg.firebasetoken;
+                        user.firebasetoken = msg.firebasetoken;
+                    }
+                    if (msg.onesignalid != null && msg.onesignalid != undefined && msg.onesignalid != "") {
+                        UpdateDoc.$set["onesignalid"] = msg.onesignalid;
+                        user.onesignalid = msg.onesignalid;
+                    }
+                    if (msg.gpslocation != null && msg.gpslocation != undefined && msg.gpslocation != "") {
+                        UpdateDoc.$set["gpslocation"] = msg.gpslocation;
+                        user.gpslocation = msg.gpslocation;
+                    }
+                    if (msg.device != null && msg.device != undefined && msg.device != "") {
+                        UpdateDoc.$set["device"] = msg.device;
+                        user.device = msg.device;
+                    }
+                    if (msg.validate_only !== true) {
+                        cli._logger.debug(tuser.username + " signed in using " + type + " " + cli.id + "/" + cli.clientagent);
+                        cli.jwt = msg.jwt;
+                        cli.user = user;
+                    } else {
+                        cli._logger.debug(tuser.username + " was validated in using " + type);
+                    }
+                    if (msg.impersonate === undefined || msg.impersonate === null || msg.impersonate === "") {
+                        user.lastseen = new Date(new Date().toISOString());
+                        UpdateDoc.$set["lastseen"] = user.lastseen;
+                    }
+                    msg.supports_watch = Config.supports_watch;
+                    user._lastclientagent = cli.clientagent;
+                    UpdateDoc.$set["clientagent"] = cli.clientagent;
+                    user._lastclientversion = cli.clientversion;
+                    UpdateDoc.$set["clientversion"] = cli.clientversion;
+                    if (cli.clientagent == "openrpa") {
+                        user._lastopenrpaclientversion = cli.clientversion;
+                        UpdateDoc.$set["_lastopenrpaclientversion"] = cli.clientversion;
+                    }
+                    if (cli.clientagent == "nodered") {
+                        user._lastnoderedclientversion = cli.clientversion;
+                        UpdateDoc.$set["_lastnoderedclientversion"] = cli.clientversion;
+                    }
+                    if (cli.clientagent == "powershell") {
+                        user._lastpowershellclientversion = cli.clientversion;
+                        UpdateDoc.$set["_lastpowershellclientversion"] = cli.clientversion;
+                    }
+                    // await DBHelper.Save(user, Crypt.rootToken());
+                    await Config.db._UpdateOne({ "_id": user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), span)
                 }
-                if (msg.firebasetoken != null && msg.firebasetoken != undefined && msg.firebasetoken != "") {
-                    UpdateDoc.$set["firebasetoken"] = msg.firebasetoken;
-                    user.firebasetoken = msg.firebasetoken;
-                }
-                if (msg.onesignalid != null && msg.onesignalid != undefined && msg.onesignalid != "") {
-                    UpdateDoc.$set["onesignalid"] = msg.onesignalid;
-                    user.onesignalid = msg.onesignalid;
-                }
-                if (msg.gpslocation != null && msg.gpslocation != undefined && msg.gpslocation != "") {
-                    UpdateDoc.$set["gpslocation"] = msg.gpslocation;
-                    user.gpslocation = msg.gpslocation;
-                }
-                if (msg.device != null && msg.device != undefined && msg.device != "") {
-                    UpdateDoc.$set["device"] = msg.device;
-                    user.device = msg.device;
-                }
-                if (msg.validate_only !== true) {
-                    cli._logger.debug(tuser.username + " signed in using " + type + " " + cli.id + "/" + cli.clientagent);
-                    cli.jwt = msg.jwt;
-                    cli.user = user;
-                } else {
-                    cli._logger.debug(tuser.username + " was validated in using " + type);
-                }
-                if (msg.impersonate === undefined || msg.impersonate === null || msg.impersonate === "") {
-                    user.lastseen = new Date(new Date().toISOString());
-                    UpdateDoc.$set["lastseen"] = user.lastseen;
-                }
-                msg.supports_watch = Config.supports_watch;
-                user._lastclientagent = cli.clientagent;
-                UpdateDoc.$set["clientagent"] = cli.clientagent;
-                user._lastclientversion = cli.clientversion;
-                UpdateDoc.$set["clientversion"] = cli.clientversion;
-                if (cli.clientagent == "openrpa") {
-                    user._lastopenrpaclientversion = cli.clientversion;
-                    UpdateDoc.$set["_lastopenrpaclientversion"] = cli.clientversion;
-                }
-                if (cli.clientagent == "nodered") {
-                    user._lastnoderedclientversion = cli.clientversion;
-                    UpdateDoc.$set["_lastnoderedclientversion"] = cli.clientversion;
-                }
-                if (cli.clientagent == "powershell") {
-                    user._lastpowershellclientversion = cli.clientversion;
-                    UpdateDoc.$set["_lastpowershellclientversion"] = cli.clientversion;
-                }
-                // await DBHelper.Save(user, Crypt.rootToken());
-                await Config.db._UpdateOne({ "_id": user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken())
+            } catch (error) {
+                if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+                if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
+                cli._logger.error(error);
             }
-        } catch (error) {
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            cli._logger.error(error);
-        }
-        if (!NoderedUtil.IsNullUndefinded(msg.user) && !NoderedUtil.IsNullEmpty(msg.jwt)) {
-            if (!(msg.user.validated == true) && Config.validate_user_form != "") {
-                if (cli.clientagent != "nodered" && NoderedUtil.IsNullEmpty(msg.user.impostor)) {
-                    Audit.LoginFailed(msg.user.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion);
-                    msg.error = "User not validated, please login again";
-                    msg.jwt = undefined;
+            if (!NoderedUtil.IsNullUndefinded(msg.user) && !NoderedUtil.IsNullEmpty(msg.jwt)) {
+                if (!(msg.user.validated == true) && Config.validate_user_form != "") {
+                    if (cli.clientagent != "nodered" && NoderedUtil.IsNullEmpty(msg.user.impostor)) {
+                        Audit.LoginFailed(msg.user.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
+                        msg.error = "User not validated, please login again";
+                        msg.jwt = undefined;
+                    }
                 }
             }
-        }
-        try {
-            msg.websocket_package_size = Config.websocket_package_size;
-            msg.openflow_uniqueid = Config.openflow_uniqueid;
-            if (!NoderedUtil.IsNullEmpty(Config.otel_trace_url)) msg.otel_trace_url = Config.otel_trace_url;
-            if (!NoderedUtil.IsNullEmpty(Config.otel_metric_url)) msg.otel_metric_url = Config.otel_metric_url;
-            if (Config.otel_trace_interval > 0) msg.otel_trace_interval = Config.otel_trace_interval;
-            if (Config.otel_metric_interval > 0) msg.otel_metric_interval = Config.otel_metric_interval;
-            msg.enable_analytics = Config.enable_analytics;
-            this.data = JSON.stringify(msg);
+            try {
+                msg.websocket_package_size = Config.websocket_package_size;
+                msg.openflow_uniqueid = Config.openflow_uniqueid;
+                if (!NoderedUtil.IsNullEmpty(Config.otel_trace_url)) msg.otel_trace_url = Config.otel_trace_url;
+                if (!NoderedUtil.IsNullEmpty(Config.otel_metric_url)) msg.otel_metric_url = Config.otel_metric_url;
+                if (Config.otel_trace_interval > 0) msg.otel_trace_interval = Config.otel_trace_interval;
+                if (Config.otel_metric_interval > 0) msg.otel_metric_interval = Config.otel_metric_interval;
+                msg.enable_analytics = Config.enable_analytics;
+                this.data = JSON.stringify(msg);
+            } catch (error) {
+                this.data = "";
+                cli._logger.error(error);
+            }
+            hrend = process.hrtime(hrstart)
+            console.log(`[Signin Completed] Execution time:${(hrend[0] * 1000000000 + hrend[1]) / 1000000} ms`)
         } catch (error) {
-            this.data = "";
-            cli._logger.error(error);
+            span.recordException(error);
         }
-        hrend = process.hrtime(hrstart)
-        console.log(`[Signin Completed] Execution time:${(hrend[0] * 1000000000 + hrend[1]) / 1000000} ms`)
+        otel.endSpan(span);
         this.Send(cli);
     }
-    private async RegisterUser(cli: WebSocketServerClient): Promise<void> {
+    private async RegisterUser(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
+        const span: Span = otel.startSubSpan("message.RegisterUser", parent);
         let msg: RegisterUserMessage;
         let user: User;
         try {
@@ -1014,9 +1075,10 @@ export class Message {
             Base.removeRight(noderedadmins, user._id, [Rights.delete]);
             noderedadmins.AddMember(user);
             cli._logger.debug("[" + user.username + "] update nodered role " + name + "noderedadmins");
-            await DBHelper.Save(noderedadmins, jwt);
+            await DBHelper.Save(noderedadmins, jwt, span);
 
         } catch (error) {
+            span.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             cli._logger.error(error);
@@ -1024,12 +1086,15 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
+            span.recordException(error);
             this.data = "";
             cli._logger.error(error);
         }
+        otel.endSpan(span);
         this.Send(cli);
     }
-    private async GetInstanceName(_id: string, myid: string, myusername: string, jwt: string): Promise<string> {
+    private async GetInstanceName(_id: string, myid: string, myusername: string, jwt: string, parent: Span): Promise<string> {
+        const span: Span = otel.startSubSpan("message.GetInstanceName", parent);
         let name: string = "";
         if (_id !== null && _id !== undefined && _id !== "" && _id != myid) {
             var qs: any[] = [{ _id: _id }];
@@ -1044,15 +1109,19 @@ export class Message {
         }
         name = name.split("@").join("").split(".").join("");
         name = name.toLowerCase();
+        span.setAttribute("instancename", name)
+        otel.endSpan(span);
         return name;
     }
-    private async EnsureNoderedInstance(cli: WebSocketServerClient): Promise<void> {
+    private async EnsureNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
+        const span: Span = otel.startSubSpan("message.EnsureNoderedInstance", parent);
         let msg: EnsureNoderedInstanceMessage;
         try {
             msg = EnsureNoderedInstanceMessage.assign(this.data);
-            await this._EnsureNoderedInstance(cli, msg._id, false);
+            await this._EnsureNoderedInstance(cli, msg._id, false, span);
         } catch (error) {
+            span.recordException(error);
             this.data = "";
             cli._logger.error(error);
             //msg.error = JSON.stringify(error, null, 2);
@@ -1061,414 +1130,442 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
+            span.recordException(error);
             this.data = "";
             cli._logger.error(error);
         }
+        otel.endSpan(span);
         this.Send(cli);
     }
-    private async _EnsureNoderedInstance(cli: WebSocketServerClient, _id: string, skipcreate: boolean): Promise<void> {
+    private async _EnsureNoderedInstance(cli: WebSocketServerClient, _id: string, skipcreate: boolean, parent: Span): Promise<void> {
         let user: NoderedUser;
-        cli._logger.debug("[" + cli.user.username + "] EnsureNoderedInstance");
-        if (_id === null || _id === undefined || _id === "") _id = cli.user._id;
-        const name = await this.GetInstanceName(_id, cli.user._id, cli.user.username, cli.jwt);
+        const span: Span = otel.startSubSpan("message._EnsureNoderedInstance", parent);
+        try {
+            cli._logger.debug("[" + cli.user.username + "] EnsureNoderedInstance");
+            if (_id === null || _id === undefined || _id === "") _id = cli.user._id;
+            const name = await this.GetInstanceName(_id, cli.user._id, cli.user.username, cli.jwt, span);
 
-        const users = await Config.db.query<NoderedUser>({ _id: _id }, null, 1, 0, null, "users", cli.jwt);
-        if (users.length == 0) {
-            throw new Error("Unknown userid " + _id);
-        }
-        user = NoderedUser.assign(users[0]);
-        const rootjwt = Crypt.rootToken();
-
-        const namespace = Config.namespace;
-        const hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
-
-        const nodereduser = await DBHelper.FindById(_id, cli.jwt);
-        const tuser: TokenUser = TokenUser.From(nodereduser);
-        const nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
-
-        cli._logger.debug("[" + cli.user.username + "] ensure nodered role " + name + "noderedadmins");
-        const noderedadmins = await DBHelper.EnsureRole(cli.jwt, name + "noderedadmins", null);
-        Base.addRight(noderedadmins, nodereduser._id, nodereduser.username, [Rights.full_control]);
-        Base.removeRight(noderedadmins, nodereduser._id, [Rights.delete]);
-        Base.addRight(noderedadmins, cli.user._id, cli.user.username, [Rights.full_control]);
-        Base.removeRight(noderedadmins, cli.user._id, [Rights.delete]);
-        noderedadmins.AddMember(nodereduser);
-        cli._logger.debug("[" + cli.user.username + "] update nodered role " + name + "noderedadmins");
-        await DBHelper.Save(noderedadmins, cli.jwt);
-
-        const resources = new V1ResourceRequirements();
-        let hasbilling: boolean = false;
-        resources.limits = {};
-        resources.requests = {};
-        if (!NoderedUtil.IsNullEmpty(Config.nodered_requests_memory)) resources.requests.memory = Config.nodered_requests_memory;
-        if (!NoderedUtil.IsNullEmpty(Config.nodered_requests_cpu)) resources.requests.cpu = Config.nodered_requests_cpu;
-        if (!NoderedUtil.IsNullEmpty(Config.nodered_limits_memory)) resources.limits.memory = Config.nodered_limits_memory;
-        if (!NoderedUtil.IsNullEmpty(Config.nodered_limits_cpu)) resources.limits.cpu = Config.nodered_limits_cpu;
-
-
-
-        if (user.nodered) {
-            try {
-                if (user.nodered.api_allow_anonymous == null) user.nodered.api_allow_anonymous = false;
-            } catch (error) {
-                user.nodered = { api_allow_anonymous: false } as any;
+            const users = await Config.db.query<NoderedUser>({ _id: _id }, null, 1, 0, null, "users", cli.jwt);
+            if (users.length == 0) {
+                throw new Error("Unknown userid " + _id);
             }
-        }
-        if (user.nodered && user.nodered.resources) {
-            if (NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
-                if (user.nodered.resources.limits) {
-                    resources.limits.memory = user.nodered.resources.limits.memory;
-                    resources.limits.cpu = user.nodered.resources.limits.cpu;
-                    resources.requests.memory = user.nodered.resources.limits.memory;
-                    resources.requests.cpu = user.nodered.resources.limits.cpu;
-                }
-                if (user.nodered.resources.requests) {
-                    resources.requests.memory = user.nodered.resources.requests.memory;
-                    resources.requests.cpu = user.nodered.resources.requests.cpu;
-                }
-            } else {
-                const billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
-                if (billings.length > 0) {
-                    const billing: Billing = billings[0];
-                    if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.limits.memory = billing.memory;
-                    if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.memory = (billing as any).cpu;
-                    if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.requests.memory = billing.memory;
-                    if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.memory = (billing as any).cpu;
+            user = NoderedUser.assign(users[0]);
+            const rootjwt = Crypt.rootToken();
 
-                    if (!NoderedUtil.IsNullEmpty(billing.openflowuserplan)) {
-                        hasbilling = true;
+            const namespace = Config.namespace;
+            const hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
+
+            const nodereduser = await DBHelper.FindById(_id, cli.jwt);
+            const tuser: TokenUser = TokenUser.From(nodereduser);
+            const nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
+
+            cli._logger.debug("[" + cli.user.username + "] ensure nodered role " + name + "noderedadmins");
+            const noderedadmins = await DBHelper.EnsureRole(cli.jwt, name + "noderedadmins", null);
+            Base.addRight(noderedadmins, nodereduser._id, nodereduser.username, [Rights.full_control]);
+            Base.removeRight(noderedadmins, nodereduser._id, [Rights.delete]);
+            Base.addRight(noderedadmins, cli.user._id, cli.user.username, [Rights.full_control]);
+            Base.removeRight(noderedadmins, cli.user._id, [Rights.delete]);
+            noderedadmins.AddMember(nodereduser);
+            cli._logger.debug("[" + cli.user.username + "] update nodered role " + name + "noderedadmins");
+            await DBHelper.Save(noderedadmins, cli.jwt, span);
+
+            const resources = new V1ResourceRequirements();
+            let hasbilling: boolean = false;
+            resources.limits = {};
+            resources.requests = {};
+            if (!NoderedUtil.IsNullEmpty(Config.nodered_requests_memory)) resources.requests.memory = Config.nodered_requests_memory;
+            if (!NoderedUtil.IsNullEmpty(Config.nodered_requests_cpu)) resources.requests.cpu = Config.nodered_requests_cpu;
+            if (!NoderedUtil.IsNullEmpty(Config.nodered_limits_memory)) resources.limits.memory = Config.nodered_limits_memory;
+            if (!NoderedUtil.IsNullEmpty(Config.nodered_limits_cpu)) resources.limits.cpu = Config.nodered_limits_cpu;
+
+
+
+            if (user.nodered) {
+                try {
+                    if (user.nodered.api_allow_anonymous == null) user.nodered.api_allow_anonymous = false;
+                } catch (error) {
+                    user.nodered = { api_allow_anonymous: false } as any;
+                }
+            }
+            if (user.nodered && user.nodered.resources) {
+                if (NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
+                    if (user.nodered.resources.limits) {
+                        resources.limits.memory = user.nodered.resources.limits.memory;
+                        resources.limits.cpu = user.nodered.resources.limits.cpu;
+                        resources.requests.memory = user.nodered.resources.limits.memory;
+                        resources.requests.cpu = user.nodered.resources.limits.cpu;
                     }
-                }
-
-            }
-        } else {
-            if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
-                const billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
-                if (billings.length > 0) {
-                    const billing: Billing = billings[0];
-                    if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.limits.memory = billing.memory;
-                    if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.memory = (billing as any).cpu;
-                    if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.requests.memory = billing.memory;
-                    if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.memory = (billing as any).cpu;
-                    if (!NoderedUtil.IsNullEmpty(billing.openflowuserplan)) {
-                        hasbilling = true;
+                    if (user.nodered.resources.requests) {
+                        resources.requests.memory = user.nodered.resources.requests.memory;
+                        resources.requests.cpu = user.nodered.resources.requests.cpu;
                     }
-                }
-            }
-        }
-        let livenessProbe: any = {
-            httpGet: {
-                path: "/livenessprobe",
-                port: 80,
-                scheme: "HTTP"
-            },
-            initialDelaySeconds: Config.nodered_initial_liveness_delay,
-            periodSeconds: 5,
-            failureThreshold: 5,
-            timeoutSeconds: 5
-        }
-        if (user.nodered && (user.nodered as any).livenessProbe) {
-            livenessProbe = (user.nodered as any).livenessProbe;
-        }
-
-        cli._logger.debug("[" + cli.user.username + "] GetDeployments");
-        const deployment: V1Deployment = await KubeUtil.instance().GetDeployment(namespace, name);
-        if (deployment == null) {
-            if (skipcreate) return;
-            cli._logger.debug("[" + cli.user.username + "] Deployment " + name + " not found in " + namespace + " so creating it");
-
-            let api_ws_url = Config.basewsurl();
-            if (!NoderedUtil.IsNullEmpty(Config.api_ws_url)) api_ws_url = Config.api_ws_url;
-            if (!NoderedUtil.IsNullEmpty(Config.nodered_ws_url)) api_ws_url = Config.nodered_ws_url;
-            if (!api_ws_url.endsWith("/")) api_ws_url += "/";
-
-
-
-            let saml_baseurl = Config.protocol + "://" + hostname + "/";
-
-            let _samlparsed = url.parse(Config.saml_federation_metadata);
-            if (_samlparsed.protocol == "http:" || _samlparsed.protocol == "ws:") {
-                saml_baseurl = "http://" + hostname
-                if (_samlparsed.port && _samlparsed.port != "80") {
-                    saml_baseurl += ":" + _samlparsed.port;
-                }
-            } else {
-                saml_baseurl = "https://" + hostname
-                if (_samlparsed.port && _samlparsed.port != "443") {
-                    saml_baseurl += ":" + _samlparsed.port;
-                }
-            }
-            saml_baseurl += "/";
-
-            // _url = "ws://" + url.parse(baseurl).host;
-
-            // const api_ws_url = Config.api_ws_url;
-            // const api_ws_url = Config.baseurl();
-            // const api_ws_url = "ws://api/";
-            // const api_ws_url = "https://demo.openiap.io/"
-            // const api_ws_url = "https://demo.openiap.io/"
-
-            if (!NoderedUtil.IsNullUndefinded(resources.limits) && NoderedUtil.IsNullEmpty(resources.limits.memory)) delete resources.limits.memory;
-            if (!NoderedUtil.IsNullUndefinded(resources.limits) && NoderedUtil.IsNullEmpty(resources.limits.cpu)) delete resources.limits.cpu;
-            if (!NoderedUtil.IsNullUndefinded(resources.requests) && NoderedUtil.IsNullEmpty(resources.requests.memory)) delete resources.requests.memory;
-            if (!NoderedUtil.IsNullUndefinded(resources.requests) && NoderedUtil.IsNullEmpty(resources.requests.memory)) delete resources.requests.memory;
-
-            const _deployment = {
-                metadata: { name: name, namespace: namespace, labels: { billed: hasbilling.toString(), userid: _id, app: name } },
-                spec: {
-                    replicas: 1,
-                    selector: { matchLabels: { app: name } },
-                    template: {
-                        metadata: { labels: { name: name, app: name, billed: hasbilling.toString(), userid: _id } },
-                        spec: {
-                            containers: [
-                                {
-                                    name: 'nodered',
-                                    image: Config.nodered_image,
-                                    imagePullPolicy: "Always",
-                                    ports: [{ containerPort: 80 }, { containerPort: 5859 }],
-                                    resources: resources,
-                                    env: [
-                                        { name: "saml_federation_metadata", value: Config.saml_federation_metadata },
-                                        { name: "saml_issuer", value: Config.saml_issuer },
-                                        { name: "saml_baseurl", value: saml_baseurl },
-                                        { name: "nodered_id", value: name },
-                                        { name: "nodered_sa", value: nodereduser.username },
-                                        { name: "jwt", value: nodered_jwt },
-                                        { name: "queue_prefix", value: user.nodered.queue_prefix },
-                                        { name: "api_ws_url", value: api_ws_url },
-                                        { name: "amqp_url", value: Config.amqp_url },
-                                        { name: "nodered_domain_schema", value: hostname },
-                                        { name: "domain", value: hostname },
-                                        { name: "protocol", value: Config.protocol },
-                                        { name: "port", value: Config.port.toString() },
-                                        { name: "noderedusers", value: (name + "noderedusers") },
-                                        { name: "noderedadmins", value: (name + "noderedadmins") },
-                                        { name: "api_allow_anonymous", value: user.nodered.api_allow_anonymous.toString() },
-                                        { name: "prometheus_measure_nodeid", value: Config.prometheus_measure_nodeid.toString() },
-                                        { name: "prometheus_measure_queued_messages", value: Config.prometheus_measure_queued_messages.toString() },
-                                        { name: "NODE_ENV", value: Config.NODE_ENV },
-                                        { name: "prometheus_expose_metric", value: "false" },
-                                        { name: "otel_trace_url", value: Config.otel_trace_url },
-                                        { name: "otel_metric_url", value: Config.otel_metric_url },
-                                        { name: "otel_servicename", value: Config.otel_servicename },
-                                        { name: "otel_trace_interval", value: Config.otel_trace_interval.toString() },
-                                        { name: "otel_metric_interval", value: Config.otel_metric_interval.toString() },
-
-                                    ],
-                                    livenessProbe: livenessProbe,
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-            // if (_deployment && labels && Config.nodered_allow_nodeselector) {
-            //     if (typeof labels === "string") {
-            //         let item = JSON.parse(labels);
-            //         let spec: any = _deployment.spec.template.spec;
-            //         const keys = Object.keys(item);
-            //         if (spec.nodeSelector == null) spec.nodeSelector = {};
-            //         keys.forEach(key => {
-            //             spec.nodeSelector[key] = item[key];
-            //         })
-            //     }
-            // }
-            if (user.nodered && user.nodered && (user.nodered as any).nodeselector && Config.nodered_allow_nodeselector) {
-                var spec: any = _deployment.spec.template.spec;
-                const keys = Object.keys((user.nodered as any).nodeselector);
-                if (spec.nodeSelector == null) spec.nodeSelector = {};
-                keys.forEach(key => {
-                    spec.nodeSelector[key] = (user.nodered as any).nodeselector[key];
-                })
-            }
-            try {
-                await KubeUtil.instance().AppsV1Api.createNamespacedDeployment(namespace, (_deployment as any));
-                Audit.NoderedAction(TokenUser.From(cli.user), true, name, "createdeployment", Config.nodered_image, null);
-            } catch (error) {
-                if (error.response && error.response.body && error.response.body.message) {
-                    cli._logger.error(new Error(error.response.body.message));
-                    throw new Error(error.response.body.message);
-                }
-                cli._logger.error(error);
-                Audit.NoderedAction(TokenUser.From(cli.user), false, name, "createdeployment", Config.nodered_image, null);
-                throw error;
-            }
-        } else {
-            deployment.spec.template.spec.containers[0].resources = resources;
-            const f = deployment.spec.template.spec.containers[0].env.filter(x => x.name == "api_allow_anonymous");
-            if (f.length > 0) {
-                f[0].value = user.nodered.api_allow_anonymous.toString();
-            }
-            deployment.metadata.labels.billed = hasbilling.toString();
-            deployment.spec.template.metadata.labels.billed = hasbilling.toString();
-            deployment.metadata.labels.userid = _id;
-            deployment.spec.template.metadata.labels.userid = _id;
-            let image: string = "unknown";
-            try {
-                image = deployment.spec.template.spec.containers[0].image;
-            } catch (error) {
-
-            }
-            try {
-                await KubeUtil.instance().AppsV1Api.replaceNamespacedDeployment(name, namespace, (deployment as any));
-                Audit.NoderedAction(TokenUser.From(cli.user), true, name, "replacedeployment", image, null);
-            } catch (error) {
-                cli._logger.error("[" + cli.user.username + "] failed updating noeredinstance");
-                cli._logger.error("[" + cli.user.username + "] " + JSON.stringify(error));
-                if (error.response && error.response.body && !NoderedUtil.IsNullEmpty(error.response.body.message)) {
-                    cli._logger.error(new Error(error.response.body.message));
-                    throw new Error(error.response.body.message);
-                }
-                Audit.NoderedAction(TokenUser.From(cli.user), false, name, "replacedeployment", image, null);
-                throw new Error("failed updating noeredinstance");
-            }
-        }
-
-        cli._logger.debug("[" + cli.user.username + "] GetService");
-        const service = await KubeUtil.instance().GetService(namespace, name);
-        if (service == null) {
-            cli._logger.debug("[" + cli.user.username + "] Service " + name + " not found in " + namespace + " creating it");
-            const _service = {
-                metadata: { name: name, namespace: namespace },
-                spec: {
-                    type: "NodePort",
-                    sessionAffinity: "ClientIP",
-                    selector: { app: name },
-                    ports: [
-                        { port: 80, name: "www" }
-                    ]
-                }
-            }
-            await KubeUtil.instance().CoreV1Api.createNamespacedService(namespace, _service);
-        }
-        cli._logger.debug("[" + cli.user.username + "] GetIngress useringress");
-        const ingress = await KubeUtil.instance().GetIngressV1beta1(namespace, "useringress");
-        if (ingress !== null) {
-            let rule = null;
-            for (let i = 0; i < ingress.spec.rules.length; i++) {
-                if (ingress.spec.rules[i].host == hostname) {
-                    rule = ingress.spec.rules[i];
-                }
-            }
-            if (rule == null) {
-                cli._logger.debug("[" + cli.user.username + "] ingress " + hostname + " not found in useringress creating it");
-                if (Config.use_ingress_beta1_syntax) {
-                    rule = {
-                        host: hostname,
-                        http: {
-                            paths: [{
-                                path: "/",
-                                backend: {
-                                    serviceName: name,
-                                    servicePort: "www"
-                                }
-                            }]
-                        }
-                    }
-                    ingress.spec.rules.push(rule);
                 } else {
-                    rule = {
-                        host: hostname,
-                        http: {
-                            paths: [{
-                                path: "/",
-                                pathType: "Prefix",
-                                backend: {
-                                    service: {
-                                        name: name,
-                                        port: {
-                                            number: 80
+                    const billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
+                    if (billings.length > 0) {
+                        const billing: Billing = billings[0];
+                        if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.limits.memory = billing.memory;
+                        if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.memory = (billing as any).cpu;
+                        if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.requests.memory = billing.memory;
+                        if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.memory = (billing as any).cpu;
+
+                        if (!NoderedUtil.IsNullEmpty(billing.openflowuserplan)) {
+                            hasbilling = true;
+                        }
+                    }
+
+                }
+            } else {
+                if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
+                    const billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
+                    if (billings.length > 0) {
+                        const billing: Billing = billings[0];
+                        if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.limits.memory = billing.memory;
+                        if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.memory = (billing as any).cpu;
+                        if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.requests.memory = billing.memory;
+                        if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.memory = (billing as any).cpu;
+                        if (!NoderedUtil.IsNullEmpty(billing.openflowuserplan)) {
+                            hasbilling = true;
+                        }
+                    }
+                }
+            }
+            let livenessProbe: any = {
+                httpGet: {
+                    path: "/livenessprobe",
+                    port: 80,
+                    scheme: "HTTP"
+                },
+                initialDelaySeconds: Config.nodered_initial_liveness_delay,
+                periodSeconds: 5,
+                failureThreshold: 5,
+                timeoutSeconds: 5
+            }
+            if (user.nodered && (user.nodered as any).livenessProbe) {
+                livenessProbe = (user.nodered as any).livenessProbe;
+            }
+
+            cli._logger.debug("[" + cli.user.username + "] GetDeployments");
+            const deployment: V1Deployment = await KubeUtil.instance().GetDeployment(namespace, name);
+            if (deployment == null) {
+                if (skipcreate) return;
+                cli._logger.debug("[" + cli.user.username + "] Deployment " + name + " not found in " + namespace + " so creating it");
+
+                let api_ws_url = Config.basewsurl();
+                if (!NoderedUtil.IsNullEmpty(Config.api_ws_url)) api_ws_url = Config.api_ws_url;
+                if (!NoderedUtil.IsNullEmpty(Config.nodered_ws_url)) api_ws_url = Config.nodered_ws_url;
+                if (!api_ws_url.endsWith("/")) api_ws_url += "/";
+
+
+
+                let saml_baseurl = Config.protocol + "://" + hostname + "/";
+
+                let _samlparsed = url.parse(Config.saml_federation_metadata);
+                if (_samlparsed.protocol == "http:" || _samlparsed.protocol == "ws:") {
+                    saml_baseurl = "http://" + hostname
+                    if (_samlparsed.port && _samlparsed.port != "80") {
+                        saml_baseurl += ":" + _samlparsed.port;
+                    }
+                } else {
+                    saml_baseurl = "https://" + hostname
+                    if (_samlparsed.port && _samlparsed.port != "443") {
+                        saml_baseurl += ":" + _samlparsed.port;
+                    }
+                }
+                saml_baseurl += "/";
+
+                // _url = "ws://" + url.parse(baseurl).host;
+
+                // const api_ws_url = Config.api_ws_url;
+                // const api_ws_url = Config.baseurl();
+                // const api_ws_url = "ws://api/";
+                // const api_ws_url = "https://demo.openiap.io/"
+                // const api_ws_url = "https://demo.openiap.io/"
+
+                if (!NoderedUtil.IsNullUndefinded(resources.limits) && NoderedUtil.IsNullEmpty(resources.limits.memory)) delete resources.limits.memory;
+                if (!NoderedUtil.IsNullUndefinded(resources.limits) && NoderedUtil.IsNullEmpty(resources.limits.cpu)) delete resources.limits.cpu;
+                if (!NoderedUtil.IsNullUndefinded(resources.requests) && NoderedUtil.IsNullEmpty(resources.requests.memory)) delete resources.requests.memory;
+                if (!NoderedUtil.IsNullUndefinded(resources.requests) && NoderedUtil.IsNullEmpty(resources.requests.memory)) delete resources.requests.memory;
+
+                const _deployment = {
+                    metadata: { name: name, namespace: namespace, labels: { billed: hasbilling.toString(), userid: _id, app: name } },
+                    spec: {
+                        replicas: 1,
+                        selector: { matchLabels: { app: name } },
+                        template: {
+                            metadata: { labels: { name: name, app: name, billed: hasbilling.toString(), userid: _id } },
+                            spec: {
+                                containers: [
+                                    {
+                                        name: 'nodered',
+                                        image: Config.nodered_image,
+                                        imagePullPolicy: "Always",
+                                        ports: [{ containerPort: 80 }, { containerPort: 5859 }],
+                                        resources: resources,
+                                        env: [
+                                            { name: "saml_federation_metadata", value: Config.saml_federation_metadata },
+                                            { name: "saml_issuer", value: Config.saml_issuer },
+                                            { name: "saml_baseurl", value: saml_baseurl },
+                                            { name: "nodered_id", value: name },
+                                            { name: "nodered_sa", value: nodereduser.username },
+                                            { name: "jwt", value: nodered_jwt },
+                                            { name: "queue_prefix", value: user.nodered.queue_prefix },
+                                            { name: "api_ws_url", value: api_ws_url },
+                                            { name: "amqp_url", value: Config.amqp_url },
+                                            { name: "nodered_domain_schema", value: hostname },
+                                            { name: "domain", value: hostname },
+                                            { name: "protocol", value: Config.protocol },
+                                            { name: "port", value: Config.port.toString() },
+                                            { name: "noderedusers", value: (name + "noderedusers") },
+                                            { name: "noderedadmins", value: (name + "noderedadmins") },
+                                            { name: "api_allow_anonymous", value: user.nodered.api_allow_anonymous.toString() },
+                                            { name: "prometheus_measure_nodeid", value: Config.prometheus_measure_nodeid.toString() },
+                                            { name: "prometheus_measure_queued_messages", value: Config.prometheus_measure_queued_messages.toString() },
+                                            { name: "NODE_ENV", value: Config.NODE_ENV },
+                                            { name: "prometheus_expose_metric", value: "false" },
+                                            { name: "enable_analytics", value: Config.enable_analytics.toString() },
+                                            { name: "otel_trace_url", value: Config.otel_trace_url },
+                                            { name: "otel_metric_url", value: Config.otel_metric_url },
+                                            { name: "otel_servicename", value: Config.otel_servicename },
+                                            { name: "otel_trace_interval", value: Config.otel_trace_interval.toString() },
+                                            { name: "otel_metric_interval", value: Config.otel_metric_interval.toString() },
+
+                                        ],
+                                        livenessProbe: livenessProbe,
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+                // if (_deployment && labels && Config.nodered_allow_nodeselector) {
+                //     if (typeof labels === "string") {
+                //         let item = JSON.parse(labels);
+                //         let spec: any = _deployment.spec.template.spec;
+                //         const keys = Object.keys(item);
+                //         if (spec.nodeSelector == null) spec.nodeSelector = {};
+                //         keys.forEach(key => {
+                //             spec.nodeSelector[key] = item[key];
+                //         })
+                //     }
+                // }
+                if (user.nodered && user.nodered && (user.nodered as any).nodeselector && Config.nodered_allow_nodeselector) {
+                    var spec: any = _deployment.spec.template.spec;
+                    const keys = Object.keys((user.nodered as any).nodeselector);
+                    if (spec.nodeSelector == null) spec.nodeSelector = {};
+                    keys.forEach(key => {
+                        spec.nodeSelector[key] = (user.nodered as any).nodeselector[key];
+                    })
+                }
+                try {
+                    await KubeUtil.instance().AppsV1Api.createNamespacedDeployment(namespace, (_deployment as any));
+                    Audit.NoderedAction(TokenUser.From(cli.user), true, name, "createdeployment", Config.nodered_image, null, span);
+                } catch (error) {
+                    if (error.response && error.response.body && error.response.body.message) {
+                        cli._logger.error(new Error(error.response.body.message));
+                        throw new Error(error.response.body.message);
+                    }
+                    cli._logger.error(error);
+                    Audit.NoderedAction(TokenUser.From(cli.user), false, name, "createdeployment", Config.nodered_image, null, span);
+                    throw error;
+                }
+            } else {
+                deployment.spec.template.spec.containers[0].resources = resources;
+                const f = deployment.spec.template.spec.containers[0].env.filter(x => x.name == "api_allow_anonymous");
+                if (f.length > 0) {
+                    f[0].value = user.nodered.api_allow_anonymous.toString();
+                }
+                deployment.metadata.labels.billed = hasbilling.toString();
+                deployment.spec.template.metadata.labels.billed = hasbilling.toString();
+                deployment.metadata.labels.userid = _id;
+                deployment.spec.template.metadata.labels.userid = _id;
+                let image: string = "unknown";
+                try {
+                    image = deployment.spec.template.spec.containers[0].image;
+                } catch (error) {
+
+                }
+                try {
+                    await KubeUtil.instance().AppsV1Api.replaceNamespacedDeployment(name, namespace, (deployment as any));
+                    Audit.NoderedAction(TokenUser.From(cli.user), true, name, "replacedeployment", image, null, span);
+                } catch (error) {
+                    cli._logger.error("[" + cli.user.username + "] failed updating noeredinstance");
+                    cli._logger.error("[" + cli.user.username + "] " + JSON.stringify(error));
+                    if (error.response && error.response.body && !NoderedUtil.IsNullEmpty(error.response.body.message)) {
+                        cli._logger.error(new Error(error.response.body.message));
+                        throw new Error(error.response.body.message);
+                    }
+                    Audit.NoderedAction(TokenUser.From(cli.user), false, name, "replacedeployment", image, null, span);
+                    throw new Error("failed updating noeredinstance");
+                }
+            }
+
+            cli._logger.debug("[" + cli.user.username + "] GetService");
+            const service = await KubeUtil.instance().GetService(namespace, name);
+            if (service == null) {
+                cli._logger.debug("[" + cli.user.username + "] Service " + name + " not found in " + namespace + " creating it");
+                const _service = {
+                    metadata: { name: name, namespace: namespace },
+                    spec: {
+                        type: "NodePort",
+                        sessionAffinity: "ClientIP",
+                        selector: { app: name },
+                        ports: [
+                            { port: 80, name: "www" }
+                        ]
+                    }
+                }
+                await KubeUtil.instance().CoreV1Api.createNamespacedService(namespace, _service);
+            }
+            cli._logger.debug("[" + cli.user.username + "] GetIngress useringress");
+            const ingress = await KubeUtil.instance().GetIngressV1beta1(namespace, "useringress");
+            if (ingress !== null) {
+                let rule = null;
+                for (let i = 0; i < ingress.spec.rules.length; i++) {
+                    if (ingress.spec.rules[i].host == hostname) {
+                        rule = ingress.spec.rules[i];
+                    }
+                }
+                if (rule == null) {
+                    cli._logger.debug("[" + cli.user.username + "] ingress " + hostname + " not found in useringress creating it");
+                    if (Config.use_ingress_beta1_syntax) {
+                        rule = {
+                            host: hostname,
+                            http: {
+                                paths: [{
+                                    path: "/",
+                                    backend: {
+                                        serviceName: name,
+                                        servicePort: "www"
+                                    }
+                                }]
+                            }
+                        }
+                        ingress.spec.rules.push(rule);
+                    } else {
+                        rule = {
+                            host: hostname,
+                            http: {
+                                paths: [{
+                                    path: "/",
+                                    pathType: "Prefix",
+                                    backend: {
+                                        service: {
+                                            name: name,
+                                            port: {
+                                                number: 80
+                                            }
                                         }
                                     }
-                                }
-                            }]
+                                }]
+                            }
                         }
+                        ingress.spec.rules.push(rule);
                     }
-                    ingress.spec.rules.push(rule);
+                    delete ingress.metadata.creationTimestamp;
+                    delete ingress.status;
+                    cli._logger.debug("[" + cli.user.username + "] replaceNamespacedIngress");
+                    await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("useringress", namespace, ingress);
                 }
-                delete ingress.metadata.creationTimestamp;
-                delete ingress.status;
-                cli._logger.debug("[" + cli.user.username + "] replaceNamespacedIngress");
-                await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("useringress", namespace, ingress);
+            } else {
+                cli._logger.error("[" + cli.user.username + "] failed locating useringress");
+                throw new Error("failed locating useringress");
             }
-        } else {
-            cli._logger.error("[" + cli.user.username + "] failed locating useringress");
-            throw new Error("failed locating useringress");
+        } catch (error) {
+            span.recordException(error);
+            otel.endSpan(span);
+            throw error;
         }
+        otel.endSpan(span);
     }
-    private async _DeleteNoderedInstance(_id: string, myuserid: string, myusername: string, jwt: string): Promise<void> {
-        const name = await this.GetInstanceName(_id, myuserid, myusername, jwt);
-        const user = Crypt.verityToken(jwt);
-        const namespace = Config.namespace;
-        const hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
+    private async _DeleteNoderedInstance(_id: string, myuserid: string, myusername: string, jwt: string, parent: Span): Promise<void> {
+        const span: Span = otel.startSubSpan("message._DeleteNoderedInstance", parent);
+        try {
+            const name = await this.GetInstanceName(_id, myuserid, myusername, jwt, span);
+            const user = Crypt.verityToken(jwt);
+            const namespace = Config.namespace;
+            const hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
-        const deployment = await KubeUtil.instance().GetDeployment(namespace, name);
-        if (deployment != null) {
-            let image: string = "unknown";
-            try {
-                image = deployment.spec.template.spec.containers[0].image;
-            } catch (error) {
+            const deployment = await KubeUtil.instance().GetDeployment(namespace, name);
+            if (deployment != null) {
+                let image: string = "unknown";
+                try {
+                    image = deployment.spec.template.spec.containers[0].image;
+                } catch (error) {
 
-            }
-            try {
-                await KubeUtil.instance().AppsV1Api.deleteNamespacedDeployment(name, namespace);
-                Audit.NoderedAction(user, true, name, "deletedeployment", image, null);
-            } catch (error) {
-                Audit.NoderedAction(user, false, name, "deletedeployment", image, null);
-                throw error;
-            }
-        }
-        const service = await KubeUtil.instance().GetService(namespace, name);
-        if (service != null) {
-            await KubeUtil.instance().CoreV1Api.deleteNamespacedService(name, namespace);
-        }
-        const replicaset = await KubeUtil.instance().GetReplicaset(namespace, "app", name);
-        if (replicaset !== null) {
-            KubeUtil.instance().AppsV1Api.deleteNamespacedReplicaSet(replicaset.metadata.name, namespace);
-        }
-        const ingress = await KubeUtil.instance().GetIngressV1beta1(namespace, "useringress");
-        if (ingress !== null) {
-            let updated = false;
-            for (let i = ingress.spec.rules.length - 1; i >= 0; i--) {
-                if (ingress.spec.rules[i].host == hostname) {
-                    ingress.spec.rules.splice(i, 1);
-                    updated = true;
+                }
+                try {
+                    await KubeUtil.instance().AppsV1Api.deleteNamespacedDeployment(name, namespace);
+                    Audit.NoderedAction(user, true, name, "deletedeployment", image, null, span);
+                } catch (error) {
+                    Audit.NoderedAction(user, false, name, "deletedeployment", image, null, span);
+                    throw error;
                 }
             }
-            if (updated) {
-                delete ingress.metadata.creationTimestamp;
-                await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("useringress", namespace, ingress);
+            const service = await KubeUtil.instance().GetService(namespace, name);
+            if (service != null) {
+                await KubeUtil.instance().CoreV1Api.deleteNamespacedService(name, namespace);
             }
-        } else {
-            throw new Error("failed locating useringress");
+            const replicaset = await KubeUtil.instance().GetReplicaset(namespace, "app", name);
+            if (replicaset !== null) {
+                KubeUtil.instance().AppsV1Api.deleteNamespacedReplicaSet(replicaset.metadata.name, namespace);
+            }
+            const ingress = await KubeUtil.instance().GetIngressV1beta1(namespace, "useringress");
+            if (ingress !== null) {
+                let updated = false;
+                for (let i = ingress.spec.rules.length - 1; i >= 0; i--) {
+                    if (ingress.spec.rules[i].host == hostname) {
+                        ingress.spec.rules.splice(i, 1);
+                        updated = true;
+                    }
+                }
+                if (updated) {
+                    delete ingress.metadata.creationTimestamp;
+                    await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("useringress", namespace, ingress);
+                }
+            } else {
+                throw new Error("failed locating useringress");
+            }
+        } catch (error) {
+            span.recordException(error);
+            otel.endSpan(span);
+            throw error;
         }
+        otel.endSpan(span);
     }
-    private async DeleteNoderedInstance(cli: WebSocketServerClient): Promise<void> {
-        this.Reply();
-        let msg: DeleteNoderedInstanceMessage;
-        let user: User;
+    private async DeleteNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
+        const span: Span = otel.startSubSpan("message.DeleteNoderedInstance", parent);
         try {
-            msg = DeleteNoderedInstanceMessage.assign(this.data);
-            cli._logger.debug("[" + cli.user.username + "] DeleteNoderedInstance");
-            await this._DeleteNoderedInstance(msg._id, cli.user._id, cli.user.username, cli.jwt);
+            this.Reply();
+            let msg: DeleteNoderedInstanceMessage;
+            let user: User;
+            try {
+                msg = DeleteNoderedInstanceMessage.assign(this.data);
+                cli._logger.debug("[" + cli.user.username + "] DeleteNoderedInstance");
+                await this._DeleteNoderedInstance(msg._id, cli.user._id, cli.user.username, cli.jwt, span);
 
+            } catch (error) {
+                cli._logger.error("[" + cli.user.username + "] failed deleting Nodered Instance");
+                this.data = "";
+                cli._logger.error(error);
+                if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
+            }
+            try {
+                this.data = JSON.stringify(msg);
+            } catch (error) {
+                this.data = "";
+                cli._logger.error(error);
+            }
         } catch (error) {
-            cli._logger.error("[" + cli.user.username + "] failed deleting Nodered Instance");
-            this.data = "";
-            cli._logger.error(error);
-            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
+            span.recordException(error);
+            otel.endSpan(span);
+            throw error;
         }
-        try {
-            this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            cli._logger.error(error);
-        }
+        otel.endSpan(span);
         this.Send(cli);
     }
-    private async DeleteNoderedPod(cli: WebSocketServerClient): Promise<void> {
+    private async DeleteNoderedPod(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
+        const span: Span = otel.startSubSpan("message.DeleteNoderedPod", parent);
         let msg: DeleteNoderedPodMessage;
         let user: User;
         try {
@@ -1494,18 +1591,19 @@ export class Message {
                         }
                         try {
                             await KubeUtil.instance().CoreV1Api.deleteNamespacedPod(item.metadata.name, namespace);
-                            Audit.NoderedAction(TokenUser.From(cli.user), true, name, "deletepod", image, msg.name);
+                            Audit.NoderedAction(TokenUser.From(cli.user), true, name, "deletepod", image, msg.name, span);
                         } catch (error) {
-                            Audit.NoderedAction(TokenUser.From(cli.user), false, name, "deletepod", image, msg.name);
+                            Audit.NoderedAction(TokenUser.From(cli.user), false, name, "deletepod", image, msg.name, span);
                             throw error;
                         }
                     }
                 }
             } else {
                 cli._logger.warn("[" + cli.user.username + "] DeleteNoderedPod: found NO Namespaced Pods ???");
-                Audit.NoderedAction(TokenUser.From(cli.user), false, null, "deletepod", image, msg.name);
+                Audit.NoderedAction(TokenUser.From(cli.user), false, null, "deletepod", image, msg.name, span);
             }
         } catch (error) {
+            span.recordException(error);
             this.data = "";
             cli._logger.error(error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -1513,18 +1611,21 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
+            span.recordException(error);
             this.data = "";
             cli._logger.error(error);
         }
+        otel.endSpan(span);
         this.Send(cli);
     }
-    private async RestartNoderedInstance(cli: WebSocketServerClient): Promise<void> {
+    private async RestartNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
+        const span: Span = otel.startSubSpan("message.RestartNoderedInstance", parent);
         let msg: RestartNoderedInstanceMessage;
         try {
             cli._logger.debug("[" + cli.user.username + "] RestartNoderedInstance");
             msg = RestartNoderedInstanceMessage.assign(this.data);
-            const name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt);
+            const name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt, span);
             const namespace = Config.namespace;
 
             const list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
@@ -1539,13 +1640,14 @@ export class Message {
                     }
                     try {
                         await KubeUtil.instance().CoreV1Api.deleteNamespacedPod(item.metadata.name, namespace);
-                        Audit.NoderedAction(TokenUser.From(cli.user), true, name, "restartdeployment", image, item.metadata.name);
+                        Audit.NoderedAction(TokenUser.From(cli.user), true, name, "restartdeployment", image, item.metadata.name, span);
                     } catch (error) {
-                        Audit.NoderedAction(TokenUser.From(cli.user), false, name, "restartdeployment", image, item.metadata.name);
+                        Audit.NoderedAction(TokenUser.From(cli.user), false, name, "restartdeployment", image, item.metadata.name, span);
                     }
                 }
             }
         } catch (error) {
+            span.recordException(error);
             this.data = "";
             cli._logger.error(error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -1553,9 +1655,11 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
+            span.recordException(error);
             this.data = "";
             cli._logger.error(error);
         }
+        otel.endSpan(span);
         this.Send(cli);
     }
     private async GetKubeNodeLabels(cli: WebSocketServerClient): Promise<void> {
@@ -1596,13 +1700,14 @@ export class Message {
         }
         this.Send(cli);
     }
-    private async GetNoderedInstance(cli: WebSocketServerClient): Promise<void> {
+    private async GetNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
         let msg: GetNoderedInstanceMessage;
+        const span: Span = otel.startSubSpan("message.GetNoderedInstance", parent);
         try {
             cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance");
             msg = GetNoderedInstanceMessage.assign(this.data);
-            const name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt);
+            const name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt, span);
             const namespace = Config.namespace;
             const list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
             msg.result = null;
@@ -1627,7 +1732,7 @@ export class Message {
                             try {
                                 if (billed != "true" && diffhours > 24) {
                                     cli._logger.debug("[" + cli.user.username + "] Remove un billed nodered instance " + itemname + " that has been running for " + diffhours + " hours");
-                                    await this._DeleteNoderedInstance(userid, cli.user._id, cli.user.username, rootjwt);
+                                    await this._DeleteNoderedInstance(userid, cli.user._id, cli.user.username, rootjwt, span);
                                 }
                             } catch (error) {
                             }
@@ -1668,6 +1773,7 @@ export class Message {
                 cli._logger.warn("[" + cli.user.username + "] GetNoderedInstance: found NO Namespaced Pods ???");
             }
         } catch (error) {
+            span.recordException(error);
             this.data = "";
             cli._logger.error(error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error
@@ -1675,18 +1781,21 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
+            span.recordException(error);
             this.data = "";
             cli._logger.error(error);
         }
+        otel.endSpan(span);
         this.Send(cli);
     }
-    private async GetNoderedInstanceLog(cli: WebSocketServerClient): Promise<void> {
+    private async GetNoderedInstanceLog(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
         let msg: GetNoderedInstanceLogMessage;
+        const span: Span = otel.startSubSpan("message.GetNoderedInstanceLog", parent);
         try {
             cli._logger.debug("[" + cli.user.username + "] GetNoderedInstanceLog");
             msg = GetNoderedInstanceLogMessage.assign(this.data);
-            const name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt);
+            const name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt, span);
             const namespace = Config.namespace;
 
             const list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
@@ -1704,19 +1813,20 @@ export class Message {
                         cli._logger.debug("[" + cli.user.username + "] GetNoderedInstanceLog:" + name + " found one as " + item.metadata.name);
                         const obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
                         msg.result = obj.body;
-                        Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name);
+                        Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name, span);
                     } else if (item.metadata.labels.app === name) {
                         cli._logger.debug("[" + cli.user.username + "] GetNoderedInstanceLog:" + name + " found one as " + item.metadata.name);
                         const obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
                         msg.result = obj.body;
-                        Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name);
+                        Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name, span);
                     }
                 }
             }
             if (NoderedUtil.IsNullUndefinded(msg.result)) {
-                Audit.NoderedAction(TokenUser.From(cli.user), false, name, "readpodlog", image, null);
+                Audit.NoderedAction(TokenUser.From(cli.user), false, name, "readpodlog", image, null, span);
             }
         } catch (error) {
+            span.recordException(error);
             this.data = "";
             cli._logger.error(error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error
@@ -1728,19 +1838,25 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
+            span.recordException(error);
             this.data = "";
             cli._logger.error(error);
         }
+        otel.endSpan(span);
         this.Send(cli);
     }
-    private async StartNoderedInstance(cli: WebSocketServerClient): Promise<void> {
+    private async StartNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
-        Audit.NoderedAction(TokenUser.From(cli.user), true, null, "startdeployment", null, null);
+        const span: Span = otel.startSubSpan("message.StartNoderedInstance", parent);
+        Audit.NoderedAction(TokenUser.From(cli.user), true, null, "startdeployment", null, null, span);
+        otel.endSpan(span);
         this.Send(cli);
     }
-    private async StopNoderedInstance(cli: WebSocketServerClient): Promise<void> {
+    private async StopNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
-        Audit.NoderedAction(TokenUser.From(cli.user), true, null, "stopdeployment", null, null);
+        const span: Span = otel.startSubSpan("message.StopNoderedInstance", parent);
+        Audit.NoderedAction(TokenUser.From(cli.user), true, null, "stopdeployment", null, null, span);
+        otel.endSpan(span);
         this.Send(cli);
     }
     private async _SaveFile(stream: Stream, filename: string, contentType: string, metadata: Base): Promise<string> {
@@ -1957,8 +2073,9 @@ export class Message {
         this.Send(cli);
     }
 
-    async CreateWorkflowInstance(cli: WebSocketServerClient) {
+    async CreateWorkflowInstance(cli: WebSocketServerClient, parent: Span) {
         this.Reply();
+        const span: Span = otel.startSubSpan("message.StartNoderedInstance", parent);
         let msg: CreateWorkflowInstanceMessage
         try {
             msg = CreateWorkflowInstanceMessage.assign(this.data);
@@ -2001,7 +2118,7 @@ export class Message {
             _data._type = "instance";
             _data.name = msg.name;
 
-            const res2 = await Config.db.InsertOne(_data, "workflow_instances", 1, true, msg.jwt);
+            const res2 = await Config.db.InsertOne(_data, "workflow_instances", 1, true, msg.jwt, span);
             msg.newinstanceid = res2._id;
 
             if (msg.initialrun) {
@@ -2009,6 +2126,7 @@ export class Message {
                 amqpwrapper.Instance().sendWithReplyTo("", msg.queue, msg.resultqueue, message, Config.amqp_default_expiration, msg.correlationId);
             }
         } catch (error) {
+            span.recordException(error);
             cli._logger.error(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -2017,9 +2135,11 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
+            span.recordException(error);
             this.data = "";
             cli._logger.error(error);
         }
+        otel.endSpan(span);
         this.Send(cli);
     }
 
@@ -2224,8 +2344,9 @@ export class Message {
         }
         this.Send(cli);
     }
-    async EnsureStripeCustomer(cli: WebSocketServerClient) {
+    async EnsureStripeCustomer(cli: WebSocketServerClient, parent: Span) {
         this.Reply();
+        const span: Span = otel.startSubSpan("message.StartNoderedInstance", parent);
         let msg: EnsureStripeCustomerMessage;
         const rootjwt = Crypt.rootToken();
         try {
@@ -2251,7 +2372,7 @@ export class Message {
                 if (NoderedUtil.IsNullEmpty(billing.email)) throw new Error("Email is mandatory");
                 Base.addRight(billing, user._id, user.name, [Rights.read]);
                 Base.addRight(billing, WellknownIds.admins, "admins", [Rights.full_control]);
-                billing = await Config.db.InsertOne(billing, "users", 3, true, rootjwt);
+                billing = await Config.db.InsertOne(billing, "users", 3, true, rootjwt, span);
             } else {
                 billing = billings[0];
                 if (billing.email != msg.billing.email || billing.vatnumber != msg.billing.vatnumber || billing.vattype != msg.billing.vattype || billing.coupon != msg.billing.coupon) {
@@ -2259,7 +2380,7 @@ export class Message {
                     billing.vatnumber = msg.billing.vatnumber;
                     billing.vattype = msg.billing.vattype;
                     billing.coupon = msg.billing.coupon;
-                    billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
+                    billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt, span);
                 }
             }
             let customer: stripe_customer;
@@ -2270,7 +2391,7 @@ export class Message {
             if (customer == null) {
                 customer = await this.Stripe<stripe_customer>("POST", "customers", null, payload, null);
                 billing.stripeid = customer.id;
-                billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
+                billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt, span);
             }
             if (customer != null && !NoderedUtil.IsNullEmpty(billing.vattype) && !NoderedUtil.IsNullEmpty(billing.vatnumber)) {
                 if (customer.tax_ids.total_count == 0) {
@@ -2296,7 +2417,7 @@ export class Message {
                         dirty = true;
                     }
                     if (dirty == true) {
-                        billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
+                        billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt, span);
                     }
                 }
             } else if (billing.tax == 1 && customer.tax_ids.total_count == 0) {
@@ -2304,14 +2425,14 @@ export class Message {
                 if (tax_rates == null || tax_rates.total_count == 0) throw new Error("Failed getting tax_rates from stripe");
                 billing.taxrate = tax_rates.data[0].id;
                 billing.tax = 1 + ((tax_rates.data[0] as any).percentage / 100);
-                billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
+                billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt, span);
             } else if (customer.tax_ids.total_count > 0 && (customer.tax_ids.data[0].verification.status != 'verified' &&
                 customer.tax_ids.data[0].verification.status != 'unavailable') && billing.tax == 1) {
                 const tax_rates = await this.Stripe<stripe_list<stripe_base>>("GET", "tax_rates", null, null, null);
                 if (tax_rates == null || tax_rates.total_count == 0) throw new Error("Failed getting tax_rates from stripe");
                 billing.taxrate = tax_rates.data[0].id;
                 billing.tax = 1 + ((tax_rates.data[0] as any).percentage / 100);
-                billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
+                billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt, span);
             }
             if (dirty) {
                 if (!NoderedUtil.IsNullEmpty(billing.stripeid)) {
@@ -2338,8 +2459,8 @@ export class Message {
             }
             if (billing.memory != newmemory) {
                 billing.memory = newmemory;
-                billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
-                this._EnsureNoderedInstance(cli, msg.userid, true);
+                billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt, span);
+                this._EnsureNoderedInstance(cli, msg.userid, true, span);
             }
             if (customer != null && !NoderedUtil.IsNullEmpty(billing.coupon) && customer.discount != null) {
                 if (billing.coupon != customer.discount.coupon.name) {
@@ -2367,7 +2488,7 @@ export class Message {
                 const sources = await this.Stripe<stripe_list<stripe_base>>("GET", "sources", null, null, billing.stripeid);
                 if ((sources.data.length > 0) != billing.hascard) {
                     billing.hascard = (sources.data.length > 0);
-                    billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
+                    billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt, span);
                 }
             }
             if (customer != null && billing != null) {
@@ -2393,18 +2514,19 @@ export class Message {
                     billing.openflowuserplan = openflowuserplan;
                     billing.supportplan = supportplan;
                     billing.supporthourplan = supporthourplan;
-                    billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt);
+                    billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt, span);
                 }
             }
 
             hasbilling = (customer != null);
             if (user._hasbilling != hasbilling) {
                 user._hasbilling = hasbilling;
-                await Config.db._UpdateOne(null, user, "users", 3, true, rootjwt);
+                await Config.db._UpdateOne(null, user, "users", 3, true, rootjwt, span);
             }
             msg.customer = customer;
 
         } catch (error) {
+            span.recordException(error);
             if (error == null) new Error("Unknown error");
             cli._logger.error(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -2419,9 +2541,11 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
+            span.recordException(error);
             this.data = "";
             cli._logger.error(error);
         }
+        otel.endSpan(span);
         this.Send(cli);
     }
     async Stripe<T>(method: string, object: string, id: string, payload: any, customerid: string): Promise<T> {
@@ -2530,8 +2654,9 @@ export class Message {
         }
         this.Send(cli);
     }
-    async DumpClients(cli: WebSocketServerClient) {
+    async DumpClients(cli: WebSocketServerClient, parent: Span) {
         this.Reply();
+        const span: Span = otel.startSubSpan("message.DumpClients", parent);
         try {
             const jwt = Crypt.rootToken();
             const known = await Config.db.query({ _type: "socketclient" }, null, 5000, 0, null, "configclients", jwt);
@@ -2550,10 +2675,10 @@ export class Message {
                     item.name = name + "/" + client.clientagent + "/" + client.id;
                 }
                 if (exists.length == 0) {
-                    await Config.db.InsertOne(item, "configclients", 1, false, jwt);
+                    await Config.db.InsertOne(item, "configclients", 1, false, jwt, span);
                 } else {
                     item._id = exists[0]._id;
-                    await Config.db._UpdateOne(null, item, "configclients", 1, false, jwt);
+                    await Config.db._UpdateOne(null, item, "configclients", 1, false, jwt, span);
                 }
             }
             for (let i = 0; i < known.length; i++) {
@@ -2565,13 +2690,16 @@ export class Message {
                 }
             }
         } catch (error) {
+            span.recordException(error);
             this.data = "";
             cli._logger.error(error);
         }
+        otel.endSpan(span);
         this.Send(cli);
     }
-    async DumpRabbitmq(cli: WebSocketServerClient) {
+    async DumpRabbitmq(cli: WebSocketServerClient, parent: Span) {
         this.Reply();
+        const span: Span = otel.startSubSpan("message.DumpRabbitmq", parent);
         try {
             const kickstartapi = amqpwrapper.getvhosts(Config.amqp_url);
             const jwt = Crypt.rootToken();
@@ -2595,14 +2723,14 @@ export class Message {
                 item.name = queue.name + "(" + consumers + ")";
                 if (exists.length == 0) {
                     try {
-                        await Config.db.InsertOne(item, "configclients", 1, false, jwt);
+                        await Config.db.InsertOne(item, "configclients", 1, false, jwt, span);
                     } catch (error) {
                         cli._logger.error(error);
                     }
                 } else {
                     item._id = exists[0]._id;
                     try {
-                        await Config.db._UpdateOne(null, item, "configclients", 1, false, jwt);
+                        await Config.db._UpdateOne(null, item, "configclients", 1, false, jwt, span);
                     } catch (error) {
                         cli._logger.error(error);
                     }
@@ -2621,9 +2749,11 @@ export class Message {
                 }
             }
         } catch (error) {
+            span.recordException(error);
             this.data = "";
             cli._logger.error(error);
         }
+        otel.endSpan(span);
         this.Send(cli);
     }
     async GetRabbitmqQueue(cli: WebSocketServerClient) {

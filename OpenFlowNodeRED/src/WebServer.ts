@@ -21,7 +21,7 @@ import * as passport from "passport";
 import { noderedcontribauthsaml } from "./node-red-contrib-auth-saml";
 import { WebSocketClient, NoderedUtil, Message } from "@openiap/openflow-api";
 import { otel } from "./otel";
-import { ValueRecorder, UpDownCounter, Counter, BaseObserver } from "@opentelemetry/api-metrics"
+import { ValueRecorder, Counter, BaseObserver } from "@opentelemetry/api-metrics"
 
 export class WebServer {
     private static _logger: winston.Logger;
