@@ -213,11 +213,9 @@ export class amqp_publisher_node {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
             Logger.instanse.info("track::amqp publiser node::connect");
             this.localqueue = this.config.localqueue;
-            console.log(this.localqueue);
             this.localqueue = await NoderedUtil.RegisterQueue(this.websocket(), this.localqueue, (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
             });
-            console.log(this.localqueue);
             this.websocket()._logger.info("registed amqp published return queue as " + this.localqueue);
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
 

@@ -21,7 +21,6 @@ export class WebSocketServer {
     public static websocket_queue_count: BaseObserver;
     public static websocket_queue_message_count: Counter;
     public static websocket_rate_limit: Counter;
-    public static webserver_rate_limit: Counter;
     public static websocket_messages: ValueRecorder;
     public static message_queue_count: BaseObserver;
     public static mongodb_watch_count: BaseObserver;
@@ -67,9 +66,6 @@ export class WebSocketServer {
             WebSocketServer.websocket_rate_limit = _otel.meter.createCounter("openflow_websocket_rate_limit_count", {
                 description: 'Total number of rate limited messages'
             }) // "command"
-            WebSocketServer.webserver_rate_limit = _otel.meter.createCounter("openflow_webserver_rate_limit_count", {
-                description: 'Total number of rate limited messages'
-            }) // "command"            
             WebSocketServer.websocket_messages = _otel.meter.createValueRecorder('openflow_websocket_messages_duration_seconds', {
                 description: 'Duration for handling websocket requests',
                 boundaries: otel.default_boundaries
@@ -143,7 +139,7 @@ export class WebSocketServer {
                 if (cli.user != null) {
                     if (!NoderedUtil.IsNullEmpty(cli.clientagent)) {
                         if (!NoderedUtil.IsNullUndefinded(WebSocketServer.p_all)) {
-                            if(NoderedUtil.IsNullUndefinded(p_all[cli.clientagent])) p_all[cli.clientagent] = 0;
+                            if (NoderedUtil.IsNullUndefinded(p_all[cli.clientagent])) p_all[cli.clientagent] = 0;
                             p_all[cli.clientagent] += 1;
                         }
                     }

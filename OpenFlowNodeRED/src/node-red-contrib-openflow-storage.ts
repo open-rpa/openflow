@@ -140,9 +140,6 @@ export class noderedcontribopenflowstorage {
         const globaldir = await this.getGlobalModulesDir();
         let currentmodules = this.scanDirForNodesModules(path.resolve('.'));
         currentmodules = currentmodules.concat(this.scanDirForNodesModules(globaldir));
-        // currentmodules.forEach(pck => {
-        //     console.log(pck.name + "@" + pck.version);
-        // });
         const keys = Object.keys(settings.nodes);
         let modules = "";
         for (let i = 0; i < keys.length; i++) {

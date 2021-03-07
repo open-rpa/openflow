@@ -969,7 +969,6 @@ export class MenuCtrl {
     stopimpersonation() {
         // this.WebSocketClientService.loadToken();
         this.WebSocketClientService.impersonate("-1");
-        console.log("done 2");
     }
     PathIs(path: string) {
         if (this.path == null && this.path == undefined) return false;
@@ -1565,7 +1564,7 @@ export class EntitiesCtrl extends entitiesCtrl<Base> {
                 return;
             }
         }
-        console.log("path: " + this.$location.path());
+        console.debug("path: " + this.$location.path());
         if (NoderedUtil.IsNullEmpty(this.collection)) {
             this.$location.path("/Entities/entities");
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -1834,7 +1833,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 console.error(this.errormessage);
                 return;
             }
-            // console.log('model', this.model);
             // console.debug(this.model);
             // console.debug(this.model.form);
             // console.debug("form: " + this.model.form);
@@ -1863,7 +1861,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                         } else {
                             this.errormessage = this.model.payload;
                         }
-                        console.log(this.model.payload);
                     } else {
                         this.message = "Processing . . .";
                     }
@@ -1914,7 +1911,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 result = JSON.parse((result as any));
             }
         } catch (error) {
-            console.log(result);
             this.errormessage = error;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             console.error(this.errormessage);
@@ -2233,7 +2229,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 } else {
                     this.errormessage = this.model.payload;
                 }
-                console.log(this.model.payload);
             }
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -2346,15 +2341,7 @@ export class EntityCtrl extends entityCtrl<Base> {
             const tx = document.getElementsByTagName('textarea');
             for (let i = 0; i < tx.length; i++) {
                 tx[i].setAttribute('style', 'height:' + (tx[i].scrollHeight) + 'px;overflow-y:hidden;');
-                // tx[i].addEventListener("input", OnInput, false);
             }
-
-            // function OnInput() {
-            //     console.log(this.scrollHeight);
-            //     this.style.height = 'auto';
-            //     this.style.height = (this.scrollHeight) + 'px';
-            // }
-
         }, 500);
     }
     togglejson() {
@@ -2687,7 +2674,6 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
             await jsutil.loadScript("bootstrap.js");
             modal.modal();
         }
-        console.log(model.delta);
         document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(model.delta, {});
     }
     async RevertTo(model) {
@@ -2746,7 +2732,6 @@ export class NoderedCtrl {
             if (this.userid == null || this.userid == undefined || this.userid == "") {
                 this.name = WebSocketClientService.user.username;
                 this.userid = WebSocketClientService.user._id;
-                console.log("user", WebSocketClientService.user);
                 const users: NoderedUser[] = await NoderedUtil.Query("users", { _id: this.userid }, null, null, 1, 0, null);
                 if (users.length == 0) {
                     this.instancestatus = "Unknown id! " + this.userid;
@@ -2781,7 +2766,6 @@ export class NoderedCtrl {
             this.name = this.name.toLowerCase();
             // this.noderedurl = "https://" + WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", this.name);
             this.noderedurl = "//" + WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", this.name);
-            console.log(this.noderedurl);
             // // this.GetNoderedInstance();
             this.GetNoderedInstance();
             this.labels = await NoderedUtil.GetKubeNodeLabels(null);
@@ -2858,17 +2842,14 @@ export class NoderedCtrl {
                 if (this.instance.metadata.deletionTimestamp != null) reload = true;
                 if (instance.status.phase == "deleting" || instance.status.phase == "Pending") reload = true;
                 if (instance.metrics && instance.metrics.memory) {
-                    console.log(instance.metrics.memory);
                     if (instance.metrics.memory.endsWith("Ki")) {
                         let memory: any = parseInt(instance.metrics.memory.replace("Ki", ""));
                         memory = Math.floor(memory / 1024) + "Mi";
-                        console.log(memory);
                         instance.metrics.memory = memory;
                     }
                     if (instance.metrics.cpu.endsWith("n")) { // nanocores or nanoCPU
                         let cpu: any = parseInt(instance.metrics.cpu.replace("n", ""));
                         cpu = Math.floor(cpu / (1024 * 1024)) + "m";  // 1000m = 1 vcpu
-                        console.log(cpu);
                         instance.metrics.cpu = cpu;
                     }
                 }
@@ -3487,7 +3468,6 @@ export class PaymentCtrl extends entityCtrl<Billing> {
                     const hasit = this.stripe_customer.subscriptions.data.filter(s => {
                         var p = plan;
                         var items = s.items;
-                        console.log(items);
                         const arr = s.items.data.filter(y => y.plan.id == plan.id);
                         var arr2 = s.items.data.filter(y => y.plan.id == plan.id);;
                         if (arr.length == 1 && plan.usage_type == "metered") {
@@ -3713,22 +3693,11 @@ export class QueueCtrl extends entityCtrl<Base> {
             this.basequery = { _type: "socketclient" };
             const clients = await NoderedUtil.Query("configclients", { _type: "socketclient" }, null, null, 2000, 0, null, null);
             for (let i = 0; i < this.data.consumer_details.length; i++) {
-                console.log("find " + this.data.consumer_details[i].consumer_tag);
-
                 for (let y = 0; y < clients.length; y++) {
                     const _client = clients[y];
                     if (_client.queues != null) {
-                        // const keys = Object.keys(_client.queues);
-                        // for (let z = 0; z < keys.length; z++) {
-                        //     const q = _client.queues[keys[z]];
-                        //     console.log(_client.name + " " + q.consumerTag);
-                        //     if (q.consumerTag == this.data.consumer_details[i].consumer_tag) {
-                        //         this.data.consumer_details[i].clientname = _client.name;
-                        //     }
-                        // }
                         for (let z = 0; z < _client.queues.length; z++) {
                             const q = _client.queues[z];
-                            console.log(_client.name + " " + q.consumerTag);
                             if (q.consumerTag == this.data.consumer_details[i].consumer_tag) {
                                 this.data.consumer_details[i].clientname = _client.name;
                             }
@@ -4216,14 +4185,12 @@ export class OAuthClientCtrl extends entityCtrl<Base> {
     }
     deletefromarray(name: string, id: string) {
         if (id == null || id == "") return false;
-        console.log(id);
         this.model[name] = this.model[name].filter(x => x != id);
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         return true;
     }
     addtoarray(name: string, id: string) {
         if (id == null || id == "") return false;
-        console.log(id);
         if (!Array.isArray(this.model[name])) this.model[name] = [];
         this.model[name] = this.model[name].filter(x => x != id);
         this.model[name].push(id);
@@ -4233,13 +4200,11 @@ export class OAuthClientCtrl extends entityCtrl<Base> {
     addrolemapping(name: string, value: string) {
         if (name == null || name == "") return false;
         if (value == null || value == "") return false;
-        console.log(name, value);
         if (!this.model["rolemappings"]) this.model["rolemappings"] = {};
         this.model["rolemappings"][name] = value;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     deleterolemapping(name) {
-        console.log(name);
         if (name == null || name == "") return false;
         if (!this.model["rolemappings"]) this.model["rolemappings"] = {};
         delete this.model["rolemappings"][name];
@@ -4261,7 +4226,6 @@ export class OAuthClientCtrl extends entityCtrl<Base> {
         document.execCommand("copy");
         /* Alert the copied text */
         // alert("Copied the text: " + copyText.value);
-        console.log("Copied the text: " + copyText.value);
         copyText.type = "password";
     }
 
@@ -4304,21 +4268,16 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
             this.basequeryas = this.userdata.data.DuplicatesCtrl.basequeryas;
         } else {
             if (NoderedUtil.IsNullEmpty(this.collection)) {
-                console.log("1 redir to /Duplicates/entities");
                 this.$location.path("/Duplicates/entities");
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 return;
             }
         }
         if (NoderedUtil.IsNullEmpty(this.collection)) {
-            console.log("2 redir to /Duplicates/entities");
             this.$location.path("/Duplicates/entities");
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             return;
         } else if (this.$location.path() != "/Duplicates/" + this.collection) {
-            console.log("3 redir from / to");
-            console.log(this.$location.path());
-            console.log("/Duplicates/" + this.collection);
             this.$location.path("/Duplicates/" + this.collection);
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             return;
@@ -4359,9 +4318,7 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
             pipe.push({ "$sort": this.orderby })
             try {
                 this.models = await NoderedUtil.Aggregate(this.collection, pipe, null);
-                console.log(this.models);
             } catch (error) {
-                console.log(pipe);
                 this.errormessage = JSON.stringify(error);
             }
         }
@@ -4415,7 +4372,6 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         this.loading = true;
         for (let x = 0; x < this.models.length; x++) {
             const item = (this.models[x] as any);
-            console.log("deleting ", item.items[0]);
             await NoderedUtil.DeleteOne(this.collection, item.items[0]._id, null);
         }
         this.loading = false;
@@ -4426,7 +4382,6 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         for (let x = 0; x < this.models.length; x++) {
             const item = (this.models[x] as any);
             for (let y = 1; y < item.items.length; y++) {
-                console.log("deleting ", item.items[y]);
                 await NoderedUtil.DeleteOne(this.collection, item.items[y]._id, null);
             }
         }
@@ -4438,7 +4393,6 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         for (let x = 0; x < this.models.length; x++) {
             const item = (this.models[x] as any);
             for (let y = 0; y < item.items.length; y++) {
-                console.log("deleting ", item.items[y]);
                 await NoderedUtil.DeleteOne(this.collection, item.items[y]._id, null);
             }
         }
@@ -4450,7 +4404,6 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         if (NoderedUtil.IsNullUndefinded(model.items)) return;
         if (model.items.length < 2) return;
         this.loading = true;
-        console.log("deleting ", model.items[0]);
         await NoderedUtil.DeleteOne(this.collection, model.items[0]._id, null);
         this.loading = false;
         this.loadData();
@@ -4460,7 +4413,6 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         if (NoderedUtil.IsNullUndefinded(model.items)) return;
         this.loading = true;
         for (let i = 1; i < model.items.length; i++) {
-            console.log("deleting ", model.items[i]);
             await NoderedUtil.DeleteOne(this.collection, model.items[i]._id, null);
         }
         this.loading = false;
@@ -4471,7 +4423,6 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         if (NoderedUtil.IsNullUndefinded(model.items)) return;
         this.loading = true;
         for (let i = 0; i < model.items.length; i++) {
-            console.log("deleting ", model.items[i]);
             await NoderedUtil.DeleteOne(this.collection, model.items[i]._id, null);
         }
         this.loading = false;

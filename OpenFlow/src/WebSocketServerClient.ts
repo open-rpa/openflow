@@ -233,7 +233,7 @@ export class WebSocketServerClient {
                         ack(false);
                         // ack(); // just eat the error 
                         done(_data);
-                        console.log(qname + " failed message queue message, nack and re queue message: ", (error.message ? error.message : error));
+                        console.error(qname + " failed message queue message, nack and re queue message: ", (error.message ? error.message : error));
                     }, Config.amqp_requeue_time);
                 }
             });
@@ -457,7 +457,7 @@ export class WebSocketServerClient {
         const me = this;
         try {
             (stream.stream as any).on("error", err => {
-                console.log(err);
+                console.error(err);
             });
             (stream.stream as any).on("change", next => {
                 try {

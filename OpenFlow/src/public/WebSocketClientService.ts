@@ -65,7 +65,6 @@ export class WebSocketClientService {
                 if (this.$location.path() !== "/Login" && this.$location.path() !== "/Signup") {
                     // const _url = this.$location.absUrl();
                     // this.setCookie("weburl", _url, 365);
-                    console.log('weburl', this.$location.path());
                     this.setCookie("weburl", this.$location.path(), 365);
                     this.$location.path("/Login");
                     this.$rootScope.$apply();
@@ -79,20 +78,18 @@ export class WebSocketClientService {
                 this.$rootScope.$broadcast("signin", result.user);
                 const redirecturl = this.getCookie("weburl");
                 if (!NoderedUtil.IsNullEmpty(redirecturl)) {
-                    console.log('redirecturl', redirecturl);
                     this.deleteCookie("weburl");
                     this.$location.path(redirecturl);
                 }
             } catch (error) {
                 if (error == "User not validated, please login again") {
-                    console.log('validateurl', this.$location.path());
                     this.setCookie("validateurl", this.$location.path(), 365);
                     setTimeout(() => {
                         top.location.href = '/login';
                         document.write('<script>top.location = "/login";</script>')
                     }, 500);
                 }
-                console.log(error);
+                console.error(error);
                 try {
                     document.write(error);
                     document.write("<br/><a href=\"/Signout\">Signout</a>");
@@ -169,7 +166,7 @@ export class WebSocketClientService {
         };
         xhr.send();
     }
-    public onSignedin(callback:onSignedinCallback) {
+    public onSignedin(callback: onSignedinCallback) {
         if (this.user !== null) {
             callback(this.user);
             return;

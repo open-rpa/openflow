@@ -109,9 +109,6 @@ export class OAuthProvider {
                 // cli.grant_types = cli.grants;
                 // if (cli.grant_types == null) cli.grant_types = ['authorization_code'];
                 if (cli.grant_types == null) cli.grant_types = ['implicit', 'authorization_code'];
-                console.log(cli.clientId + " " + cli.token_endpoint_auth_method);
-
-
                 // cli.redirect_uris.push("https://localhost.openiap.io/")
             });
             const provider = new Provider(Config.baseurl() + "oidc", {
@@ -177,7 +174,6 @@ export class OAuthProvider {
                 if (message === 'redirect_uris must contain members') {
                     return;
                 }
-                console.log(code + " " + message);
                 orig.call(this, message);
             };
             const orgpostLogoutRedirectUriAllowed = provider.Client.prototype.postLogoutRedirectUriAllowed;
@@ -252,7 +248,6 @@ export class OAuthProvider {
                     var r = req;
                     var u = req.user;
                     const isAuthenticated: boolean = req.isAuthenticated();
-                    console.log("isAuthenticated: " + isAuthenticated)
                     if (isAuthenticated) {
                         // if(!NoderedUtil.IsNullEmpty(test.returnTo) ) {
                         //     res.redirect(test.returnTo);

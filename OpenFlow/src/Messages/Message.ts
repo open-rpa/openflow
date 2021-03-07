@@ -858,15 +858,12 @@ export class Message {
                         AccessToken = await OAuthProvider.instance.oidc.AccessToken.find(msg.rawAssertion);
                         if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
                             User = await OAuthProvider.instance.oidc.Account.findAccount(null, AccessToken.accountId);
-                            console.log('User:', User);
                         }
-                        console.log('AccessToken:', AccessToken);
                     } catch (error) {
                         console.error(error);
                     }
                     if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
                         user = User.user;
-                        console.log('User:', user);
                         if (user !== null && user != undefined) { tuser = TokenUser.From(user); }
                     } else {
                         type = "samltoken";
@@ -1044,7 +1041,6 @@ export class Message {
                 cli._logger.error(error);
             }
             hrend = process.hrtime(hrstart)
-            console.log(`[Signin Completed] Execution time:${(hrend[0] * 1000000000 + hrend[1]) / 1000000} ms`)
         } catch (error) {
             span.recordException(error);
         }

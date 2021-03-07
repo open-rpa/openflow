@@ -31,7 +31,7 @@ let rejectionEmitter = unhandledRejection({
 });
 
 rejectionEmitter.on("unhandledRejection", (error, promise) => {
-    console.log('Unhandled Rejection at: Promise', promise, 'reason:', error);
+    console.error('Unhandled Rejection at: Promise', promise, 'reason:', error);
     console.dir(error);
     promise.catch(e => {
         console.error(e);
@@ -39,7 +39,7 @@ rejectionEmitter.on("unhandledRejection", (error, promise) => {
 });
 
 rejectionEmitter.on("rejectionHandled", (error, promise) => {
-    console.log('Rejection handled at: Promise', promise, 'reason:', error);
+    console.error('Rejection handled at: Promise', promise, 'reason:', error);
     console.dir(error);
 });
 let server: http.Server = null;

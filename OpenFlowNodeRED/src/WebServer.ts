@@ -153,11 +153,6 @@ export class WebServer {
                     level: 'debug',
                     metrics: true,
                     handler: function (settings) {
-                        // 
-                        // Return the logging function
-                        // return function (msg) {
-                        //     console.log(msg.timestamp, msg.event);
-                        // }
                         return function (msg) {
                             if (!NoderedUtil.IsNullEmpty(msg.msgid) && msg.event.startsWith("node.")) {
                                 msg.event = msg.event.substring(5);
@@ -190,7 +185,6 @@ export class WebServer {
                                     const now = new Date();
                                     const seconds = (now.getTime() - from.getTime()) / 1000;
                                     if (seconds > Config.prometheus_max_node_time_seconds) {
-                                        console.log("Deleting message " + key + " that is more " + seconds + " seconds old");
                                         delete WebServer.log_messages[key];
                                     }
                                 });

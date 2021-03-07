@@ -388,7 +388,6 @@ export class workflow_out_node {
                 // Don't wait for ack(), we don't care if the receiver is there, right ?
                 this.node.status({ fill: "blue", shape: "dot", text: "Queue message for " + msg._replyTo });
                 await NoderedUtil.QueueMessage(WebSocketClient.instance, msg._replyTo, null, data, msg.correlationId, Config.amqp_workflow_out_expiration);
-                // console.log("Send reply data to " + msg._replyTo, data);
             }
         } catch (error) {
             NoderedUtil.HandleError(this, error, msg);
