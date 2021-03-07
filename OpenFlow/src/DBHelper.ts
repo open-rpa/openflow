@@ -5,7 +5,8 @@ import { otel } from "./otel";
 import { Span } from "@opentelemetry/api";
 
 export class DBHelper {
-    public static async FindByUsername(username: string, jwt: string = null): Promise<User> {
+    public static async FindByUsername(username: string, jwt: string = null, parent: Span): Promise<User> {
+        const span: Span = otel.startSubSpan("dbhelper.EnsureRole", parent);
         const byuser = { username: new RegExp(["^", username, "$"].join(""), "i") };
         const byid = { federationids: new RegExp(["^", username, "$"].join(""), "i") }
         const q = { $or: [byuser, byid] };

@@ -89,29 +89,41 @@ export class LoginProvider {
     }
 
 
-    static async validateToken(rawAssertion: string): Promise<User> {
+    static async validateToken(rawAssertion: string, parent: Span): Promise<User> {
+        const span: Span = otel.startSubSpan("LoginProvider.validateToken", parent);
         return new Promise<User>((resolve, reject) => {
-            const options = {
-                publicKey: Buffer.from(Config.signing_crt, "base64").toString("ascii")
-            }
-            saml.validate(rawAssertion, options, async (err, profile) => {
-                try {
-                    if (err) { return reject(err); }
-                    const claims = profile.claims; // Array of user attributes;
-                    const username = claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] ||
-                        claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] ||
-                        claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"];
-
-                    const user = await DBHelper.FindByUsername(username);
-                    if (user) {
-                        resolve(user);
-                    } else {
-                        reject("Unknown user");
-                    }
-                } catch (error) {
-                    reject(error);
+            try {
+                const options = {
+                    publicKey: Buffer.from(Config.signing_crt, "base64").toString("ascii")
                 }
-            });
+                saml.validate(rawAssertion, options, async (err, profile) => {
+                    try {
+                        if (err) { span.recordException(err); return reject(err); }
+                        const claims = profile.claims; // Array of user attributes;
+                        const username = claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] ||
+                            claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] ||
+                            claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"];
+
+                        const user = await DBHelper.FindByUsername(username, null, span);
+                        if (user) {
+                            resolve(user);
+                        } else {
+                            span.recordException("Unknown user");
+                            reject("Unknown user");
+                        }
+                    } catch (error) {
+                        span.recordException(error);
+                        reject(error);
+                    } finally {
+                        otel.endSpan(span);
+                    }
+
+                });
+            } catch (error) {
+                span.recordException(error);
+            } finally {
+                otel.endSpan(span);
+            }
         });
     }
 
@@ -211,65 +223,99 @@ export class LoginProvider {
             res.end();
         });
         app.get("/jwt", (req: any, res: any, next: any): void => {
-            // logger.debug("/jwt " + !(req.user == null));
-            res.setHeader("Content-Type", "application/json");
-            if (req.user) {
-                const user: TokenUser = TokenUser.From(req.user);
-                res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.shorttoken_expires_in), user: user }));
-            } else {
-                res.end(JSON.stringify({ jwt: "" }));
+            const span: Span = otel.startSpan("LoginProvider.jwtlong");
+            try {
+                res.setHeader("Content-Type", "application/json");
+                if (req.user) {
+                    const user: TokenUser = TokenUser.From(req.user);
+                    span.setAttribute("username", user.username);
+                    res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.shorttoken_expires_in), user: user }));
+                } else {
+                    res.end(JSON.stringify({ jwt: "" }));
+                }
+                res.end();
+            } catch (error) {
+                span.recordException(error);
+                console.error(error.message ? error.message : error);
+                return res.status(500).send({ message: error.message ? error.message : error });
+            } finally {
+                otel.endSpan(span);
             }
-            res.end();
         });
         app.get("/jwtlong", (req: any, res: any, next: any): void => {
-            // logger.debug("/jwtlong " + !(req.user == null));
-            res.setHeader("Content-Type", "application/json");
-            if (req.user) {
-                const user: TokenUser = TokenUser.From(req.user);
-                if (!(user.validated == true) && Config.validate_user_form != "") {
-                    res.end(JSON.stringify({ jwt: "" }));
+            const span: Span = otel.startSpan("LoginProvider.jwtlong");
+            try {
+                res.setHeader("Content-Type", "application/json");
+                if (req.user) {
+                    const user: TokenUser = TokenUser.From(req.user);
+                    span.setAttribute("username", user.username);
+                    if (!(user.validated == true) && Config.validate_user_form != "") {
+                        res.end(JSON.stringify({ jwt: "" }));
+                    } else {
+                        res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.longtoken_expires_in), user: user }));
+                    }
                 } else {
-                    res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.longtoken_expires_in), user: user }));
+                    res.end(JSON.stringify({ jwt: "" }));
                 }
-            } else {
-                res.end(JSON.stringify({ jwt: "" }));
+                res.end();
+            } catch (error) {
+                span.recordException(error);
+                console.error(error.message ? error.message : error);
+                return res.status(500).send({ message: error.message ? error.message : error });
+            } finally {
+                otel.endSpan(span);
             }
-            res.end();
         });
         app.post("/jwt", async (req: any, res: any, next: any): Promise<void> => {
+            const span: Span = otel.startSpan("LoginProvider.jwt");
             // logger.debug("/jwt " + !(req.user == null));
             try {
                 const rawAssertion = req.body.token;
-                const user: User = await LoginProvider.validateToken(rawAssertion);
+                const user: User = await LoginProvider.validateToken(rawAssertion, span);
                 const tuser: TokenUser = TokenUser.From(user);
+                span.setAttribute("username", user.username);
                 res.setHeader("Content-Type", "application/json");
                 res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, Config.shorttoken_expires_in) }));
             } catch (error) {
+                span.recordException(error);
                 console.error(error.message ? error.message : error);
                 return res.status(500).send({ message: error.message ? error.message : error });
+            } finally {
+                otel.endSpan(span);
             }
         });
         app.get("/config", (req: any, res: any, next: any): void => {
-            let _url = Config.basewsurl();
-            if (!NoderedUtil.IsNullEmpty(Config.api_ws_url)) _url = Config.api_ws_url;
-            if (!_url.endsWith("/")) _url += "/";
-            const res2 = {
-                wshost: _url,
-                wsurl: _url,
-                domain: Config.domain,
-                allow_user_registration: Config.allow_user_registration,
-                allow_personal_nodered: Config.allow_personal_nodered,
-                auto_create_personal_nodered_group: Config.auto_create_personal_nodered_group,
-                namespace: Config.namespace,
-                nodered_domain_schema: Config.nodered_domain_schema,
-                websocket_package_size: Config.websocket_package_size,
-                version: Config.version,
-                stripe_api_key: Config.stripe_api_key,
-                getting_started_url: Config.getting_started_url,
-                validate_user_form: Config.validate_user_form,
-                supports_watch: Config.supports_watch
+            const span: Span = otel.startSpan("LoginProvider.config");
+            try {
+                let _url = Config.basewsurl();
+                if (!NoderedUtil.IsNullEmpty(Config.api_ws_url)) _url = Config.api_ws_url;
+                if (!_url.endsWith("/")) _url += "/";
+                if (req.user) {
+                    const user: TokenUser = TokenUser.From(req.user);
+                    span.setAttribute("username", user.username);
+                }
+                const res2 = {
+                    wshost: _url,
+                    wsurl: _url,
+                    domain: Config.domain,
+                    allow_user_registration: Config.allow_user_registration,
+                    allow_personal_nodered: Config.allow_personal_nodered,
+                    auto_create_personal_nodered_group: Config.auto_create_personal_nodered_group,
+                    namespace: Config.namespace,
+                    nodered_domain_schema: Config.nodered_domain_schema,
+                    websocket_package_size: Config.websocket_package_size,
+                    version: Config.version,
+                    stripe_api_key: Config.stripe_api_key,
+                    getting_started_url: Config.getting_started_url,
+                    validate_user_form: Config.validate_user_form,
+                    supports_watch: Config.supports_watch
+                }
+                res.end(JSON.stringify(res2));
+            } catch (error) {
+                span.recordException(error);
+            } finally {
+                otel.endSpan(span);
             }
-            res.end(JSON.stringify(res2));
         });
         app.get("/login", async (req: any, res: any, next: any): Promise<void> => {
             // logger.debug("/login " + !(req.user == null));
@@ -666,12 +712,12 @@ export class LoginProvider {
 
     static CreateLocalStrategy(app: express.Express, baseurl: string): passport.Strategy {
         const strategy: passport.Strategy = new LocalStrategy(async (username: string, password: string, done: any): Promise<void> => {
-            const span: Span = otel.startSpan("LocalLogin");
+            const span: Span = otel.startSpan("LoginProvider.LocalLogin");
             try {
                 if (username !== null && username != undefined) { username = username.toLowerCase(); }
                 let user: User = null;
                 if (LoginProvider.login_providers.length === 0) {
-                    user = await DBHelper.FindByUsername(username);
+                    user = await DBHelper.FindByUsername(username, null, span);
                     if (user == null) {
                         user = new User(); user.name = username; user.username = username;
                         await Crypt.SetPassword(user, password);
@@ -697,7 +743,7 @@ export class LoginProvider {
                     const tuser: TokenUser = TokenUser.From(user);
                     return done(null, tuser);
                 }
-                user = await DBHelper.FindByUsername(username);
+                user = await DBHelper.FindByUsername(username, null, span);
                 if (NoderedUtil.IsNullUndefinded(user)) {
                     if (!Config.allow_user_registration) {
                         return done(null, false);
@@ -792,7 +838,7 @@ export class LoginProvider {
         return strategy;
     }
     static async samlverify(profile: any, done: IVerifyFunction): Promise<void> {
-        const span: Span = otel.startSpan("samlverify");
+        const span: Span = otel.startSpan("LoginProvider.samlverify");
         try {
             let username: string = profile.username;
             if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
@@ -866,7 +912,7 @@ export class LoginProvider {
         otel.endSpan(span);
     }
     static async googleverify(token: string, tokenSecret: string, profile: any, done: IVerifyFunction): Promise<void> {
-        const span: Span = otel.startSpan("googleverify");
+        const span: Span = otel.startSpan("LoginProvider.googleverify");
         try {
             if (profile.emails) {
                 const email: any = profile.emails[0];

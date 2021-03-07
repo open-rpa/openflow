@@ -238,10 +238,13 @@ async function initDatabase(): Promise<boolean> {
         }
         await DBHelper.Save(filestore_users, jwt, span);
 
-        await Config.db.ensureindexes();
+        await Config.db.ensureindexes(span);
+        otel.endSpan(span);
 
         return true;
     } catch (error) {
+        span.recordException(error);
+        otel.endSpan(span);
         logger.error(error);
         return false;
     }

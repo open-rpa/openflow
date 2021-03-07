@@ -99,7 +99,7 @@ export class Message {
                     WebSocketServer.update_message_queue_count(cli);
                 }
                 if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
-                otel.endSpan(span);
+                // otel.endSpan(span);
                 return;
             }
             const ot_end = otel.startTimer();
@@ -112,7 +112,7 @@ export class Message {
                     await this.ListCollections(cli, span);
                     break;
                 case "dropcollection":
-                    await this.DropCollection(cli);
+                    await this.DropCollection(cli, span);
                     break;
                 case "query":
                     await this.Query(cli, span);
@@ -240,21 +240,17 @@ export class Message {
                     await this.PushMetrics(cli);
                     break;
                 default:
+                    span.recordException("Unknown command " + command);
                     this.UnknownCommand(cli);
                     break;
             }
             if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
         } catch (error) {
             cli._logger.error(error);
-            try {
-                if (!NoderedUtil.IsNullUndefinded(span)) {
-                    span.recordException(error);
-                }
-            } catch (error2) {
-                console.error(error2);
-            }
+            span.recordException(error);
+        } finally {
+            otel.endSpan(span);
         }
-        otel.endSpan(span);
     }
     async RegisterQueue(cli: WebSocketServerClient) {
         this.Reply();
@@ -417,6 +413,7 @@ export class Message {
                 msg.result = result;
             }
         } catch (error) {
+            span.recordException(error);
             cli._logger.error(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -424,20 +421,23 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
+            span.recordException(error);
             this.data = "";
             cli._logger.error(error);
         }
         otel.endSpan(span);
         this.Send(cli);
     }
-    private async DropCollection(cli: WebSocketServerClient): Promise<void> {
+    private async DropCollection(cli: WebSocketServerClient, parent: Span): Promise<void> {
+        const span: Span = otel.startSubSpan("message.DropCollection", parent);
         this.Reply();
         let msg: DropCollectionMessage
         try {
             msg = DropCollectionMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-            await Config.db.DropCollection(msg.collectionname, msg.jwt);
+            await Config.db.DropCollection(msg.collectionname, msg.jwt, span);
         } catch (error) {
+            span.recordException(error);
             cli._logger.error(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -445,9 +445,11 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
+            span.recordException(error);
             this.data = "";
             cli._logger.error(error);
         }
+        otel.endSpan(span);
         this.Send(cli);
     }
     private async Query(cli: WebSocketServerClient, parent: Span): Promise<void> {
@@ -779,7 +781,7 @@ export class Message {
             let type: string = "jwtsignin";
             if (!NoderedUtil.IsNullEmpty(rawAssertion)) {
                 type = "samltoken";
-                cli.user = await LoginProvider.validateToken(rawAssertion);
+                cli.user = await LoginProvider.validateToken(rawAssertion, span);
                 tuser = TokenUser.From(cli.user);
             } else if (!NoderedUtil.IsNullEmpty(cli.jwt)) {
                 tuser = Crypt.verityToken(cli.jwt);
@@ -829,7 +831,7 @@ export class Message {
                     if (tuser.impostor !== null && tuser.impostor !== undefined && tuser.impostor !== "") {
                         impostor = tuser.impostor;
                     }
-                    user = await DBHelper.FindByUsername(tuser.username);
+                    user = await DBHelper.FindByUsername(tuser.username, null, span);
                     if (user !== null && user !== undefined) {
                         // refresh, for roles and stuff
                         tuser = TokenUser.From(user);
@@ -868,13 +870,13 @@ export class Message {
                         if (user !== null && user != undefined) { tuser = TokenUser.From(user); }
                     } else {
                         type = "samltoken";
-                        user = await LoginProvider.validateToken(msg.rawAssertion);
+                        user = await LoginProvider.validateToken(msg.rawAssertion, span);
                         // refresh, for roles and stuff
                         if (user !== null && user != undefined) { tuser = TokenUser.From(user); }
                         msg.rawAssertion = "";
                     }
                 } else {
-                    user = await Auth.ValidateByPassword(msg.username, msg.password);
+                    user = await Auth.ValidateByPassword(msg.username, msg.password, span);
                     tuser = null;
                     // refresh, for roles and stuff
                     if (user != null) tuser = TokenUser.From(user);
@@ -1059,7 +1061,7 @@ export class Message {
             if (msg.name == null || msg.name == undefined || msg.name == "") { throw new Error("Name cannot be null"); }
             if (msg.username == null || msg.username == undefined || msg.username == "") { throw new Error("Username cannot be null"); }
             if (msg.password == null || msg.password == undefined || msg.password == "") { throw new Error("Password cannot be null"); }
-            user = await DBHelper.FindByUsername(msg.username);
+            user = await DBHelper.FindByUsername(msg.username, null, span);
             if (user !== null && user !== undefined) { throw new Error("Illegal username"); }
             user = await DBHelper.ensureUser(Crypt.rootToken(), msg.name, msg.username, null, msg.password);
             msg.user = TokenUser.From(user);
