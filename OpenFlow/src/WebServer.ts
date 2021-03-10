@@ -175,7 +175,6 @@ export class WebServer {
         const port = Config.port;
         server.listen(port).on('error', function (error) {
             WebServer._logger.error(error);
-            process.exit(404);
         });
         return server;
     }

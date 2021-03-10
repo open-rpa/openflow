@@ -38,23 +38,58 @@ if (_otel_require != null) {
         endTimer: () => undefined,
     }
 }
-const unhandledRejection = require("unhandled-rejection");
-let rejectionEmitter = unhandledRejection({
-    timeout: 20
-});
 
-rejectionEmitter.on("unhandledRejection", (error, promise) => {
-    console.error('Unhandled Rejection at: Promise', promise, 'reason:', error);
-    console.dir(error);
-    promise.catch(e => {
-        console.error(e);
-    });
+process.on('beforeExit', (code) => {
+    console.error('Process beforeExit event with code: ', code);
 });
+process.on('exit', (code) => {
+    console.error('Process exit event with code: ', code);
+});
+process.on('multipleResolves', (type, promise, reason) => {
+    console.error(type, promise, reason);
+    // setImmediate(() => process.exit(1));
+});
+const unhandledRejections = new Map();
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at: Promise', promise, 'reason:', reason);
+    unhandledRejections.set(promise, reason);
+});
+process.on('rejectionHandled', (promise) => {
+    unhandledRejections.delete(promise);
+});
+process.on('uncaughtException', (err, origin) => {
+    console.error(`Caught exception: ${err}\n` +
+        `Exception origin: ${origin}`
+    );
+});
+process.on('uncaughtExceptionMonitor', (err, origin) => {
+    console.error(`Caught exception: ${err}\n` +
+        `Exception origin: ${origin}`
+    );
+});
+process.on('warning', (warning) => {
+    console.warn(warning.name);    // Print the warning name
+    console.warn(warning.message); // Print the warning message
+    console.warn(warning.stack);   // Print the stack trace
+});
+function handle(signal) {
+    console.log(`Received ${signal}`);
+}
+process.on('SIGUSR1', handle);
+process.on('SIGTERM', handle);
+process.on('SIGINT', handle);
+process.on('SIGPIPE', handle);
+process.on('SIGHUP', handle);
+process.on('SIGTERM', handle);
+process.on('SIGBREAK', handle);
+process.on('SIGWINCH', handle);
+process.on('SIGKILL', handle);
+process.on('SIGSTOP', handle);
+process.on('SIGBUS', handle);
+process.on('SIGFPE', handle);
+process.on('SIGSEGV', handle);
+process.on('SIGILL', handle);
 
-rejectionEmitter.on("rejectionHandled", (error, promise) => {
-    console.error('Rejection handled at: Promise', promise, 'reason:', error);
-    console.dir(error);
-});
 let server: http.Server = null;
 (async function (): Promise<void> {
     try {

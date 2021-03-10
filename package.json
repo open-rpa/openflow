@@ -1,6 +1,6 @@
 {
   "name": "@openiap/openflow",
-  "version": "1.2.14",
+  "version": "1.2.18",
   "description": "Simple wrapper around NodeRed, RabbitMQ and MongoDB to support a more scaleable NodeRed implementation.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {
@@ -69,7 +69,6 @@
     "request": "^2.88.2",
     "saml20": "^0.1.14",
     "samlp": "^4.0.0",
-    "unhandled-rejection": "^1.0.0",
     "winston": "^3.3.3",
     "ws": "^7.4.2"
   },

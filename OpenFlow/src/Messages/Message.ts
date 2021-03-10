@@ -1323,7 +1323,6 @@ export class Message {
                                             { name: "enable_analytics", value: Config.enable_analytics.toString() },
                                             { name: "otel_trace_url", value: Config.otel_trace_url },
                                             { name: "otel_metric_url", value: Config.otel_metric_url },
-                                            { name: "otel_servicename", value: Config.otel_servicename },
                                             { name: "otel_trace_interval", value: Config.otel_trace_interval.toString() },
                                             { name: "otel_metric_interval", value: Config.otel_metric_interval.toString() },
 
