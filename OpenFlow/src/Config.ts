@@ -59,6 +59,7 @@ export class Config {
         Config.api_rate_limit_duration = parseInt(Config.getEnv("api_rate_limit_duration", "1"));
         Config.socket_rate_limit = Config.parseBoolean(Config.getEnv("socket_rate_limit", "true"));
         Config.socket_rate_limit_points = parseInt(Config.getEnv("socket_rate_limit_points", "30"));
+        Config.socket_rate_limit_points_disconnect = parseInt(Config.getEnv("socket_rate_limit_points_disconnect", "600"));
         Config.socket_rate_limit_duration = parseInt(Config.getEnv("socket_rate_limit_duration", "1"));
 
         Config.client_heartbeat_timeout = parseInt(Config.getEnv("client_heartbeat_timeout", "60"));
@@ -173,6 +174,7 @@ export class Config {
     public static api_rate_limit_duration: number = parseInt(Config.getEnv("api_rate_limit_duration", "1"));
     public static socket_rate_limit: boolean = Config.parseBoolean(Config.getEnv("socket_rate_limit", "true"));
     public static socket_rate_limit_points: number = parseInt(Config.getEnv("socket_rate_limit_points", "30"));
+    public static socket_rate_limit_points_disconnect: number = parseInt(Config.getEnv("socket_rate_limit_points_disconnect", "600"));
     public static socket_rate_limit_duration: number = parseInt(Config.getEnv("socket_rate_limit_duration", "1"));
 
     public static client_heartbeat_timeout: number = parseInt(Config.getEnv("client_heartbeat_timeout", "60"));

@@ -284,11 +284,31 @@ process.on('warning', (warning) => {
     console.warn(warning.message); // Print the warning message
     console.warn(warning.stack);   // Print the stack trace
 });
-function handle(signal) {
-    console.log(`Received ${signal}`);
+// The signals we want to handle
+// NOTE: although it is tempting, the SIGKILL signal (9) cannot be intercepted and handled
+var signals = {
+    'SIGHUP': 1,
+    'SIGINT': 2,
+    'SIGTERM': 15
+};
+function handle(signal, value) {
+    console.trace(`process received a ${signal} signal with value ${value}`);
+    try {
+        server.close((err) => {
+            console.log(`server stopped by ${signal} with value ${value}`);
+            console.error(err);
+            process.exit(128 + value);
+        })
+    } catch (error) {
+        console.error(error);
+        console.log(`server stopped by ${signal} with value ${value}`);
+        process.exit(128 + value);
+    }
 }
-process.on('SIGTERM', handle);
-process.on('SIGINT', handle);
+Object.keys(signals).forEach((signal) => process.on(signal, handle));
+
+// process.on('SIGTERM', handle);
+// process.on('SIGINT', handle);
 // process.on('SIGUSR1', handle);
 // process.on('SIGPIPE', handle);
 // process.on('SIGHUP', handle);
@@ -330,11 +350,12 @@ const originalStderrWrite = process.stderr.write.bind(process.stderr);
 // write(str: string, encoding?: string, cb?: (err?: Error | null) => void): boolean;
 
 // https://medium.com/kubernetes-tutorials/monitoring-your-kubernetes-deployments-with-prometheus-5665eda54045
+var server: http.Server = null;
 (async function (): Promise<void> {
     try {
         await initamqp();
         logger.info("VERSION: " + Config.version);
-        const server: http.Server = await WebServer.configure(logger, Config.baseurl(), _otel);
+        server = await WebServer.configure(logger, Config.baseurl(), _otel);
         if (GrafanaProxy != null) {
             const grafana = await GrafanaProxy.GrafanaProxy.configure(logger, WebServer.app, _otel);
         }
