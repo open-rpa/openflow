@@ -333,6 +333,7 @@ export class WebServer {
             return server;
         } catch (error) {
             this._logger.error(error);
+            this._logger.error("WEBSERVER ERROR");
             // process.exit(404);
         }
         return null;

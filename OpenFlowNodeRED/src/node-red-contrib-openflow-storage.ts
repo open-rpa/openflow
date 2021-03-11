@@ -867,7 +867,7 @@ export class noderedcontribopenflowstorage {
                     if (NoderedUtil.isDocker()) {
                         this._logger.info("noderedcontribopenflowstorage::onupdate: Running as docker, just quit process, kubernetes will start a new version");
                         this.RED.log.warn("noderedcontribopenflowstorage::onupdate: Running as docker, just quit process, kubernetes will start a new version");
-                        // process.exit(1);
+                        process.exit(1);
                     } else {
                         if (servicename != "service-name-not-set") {
                             var _servicename = path.basename(servicename)
@@ -947,7 +947,7 @@ export class noderedcontribopenflowstorage {
             if (exitprocess && Config.auto_restart_when_needed) {
                 if (NoderedUtil.isDocker()) {
                     this._logger.info("noderedcontribopenflowstorage::onupdate: Running as docker, just quit process, kubernetes will start a new version");
-                    // process.exit(1);
+                    process.exit(1);
                 } else {
                     if (servicename != "service-name-not-set") {
                         var _servicename = path.basename(servicename)

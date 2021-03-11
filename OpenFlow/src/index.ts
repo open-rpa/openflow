@@ -258,7 +258,7 @@ process.on('exit', (code) => {
     console.error('Process exit event with code: ', code);
 });
 process.on('multipleResolves', (type, promise, reason) => {
-    console.error(type, promise, reason);
+    // console.error(type, promise, reason);
     // setImmediate(() => process.exit(1));
 });
 const unhandledRejections = new Map();
