@@ -75,20 +75,19 @@ process.on('warning', (warning) => {
 function handle(signal) {
     console.log(`Received ${signal}`);
 }
-process.on('SIGUSR1', handle);
 process.on('SIGTERM', handle);
 process.on('SIGINT', handle);
-process.on('SIGPIPE', handle);
-process.on('SIGHUP', handle);
-process.on('SIGTERM', handle);
-process.on('SIGBREAK', handle);
-process.on('SIGWINCH', handle);
-process.on('SIGKILL', handle);
-process.on('SIGSTOP', handle);
-process.on('SIGBUS', handle);
-process.on('SIGFPE', handle);
-process.on('SIGSEGV', handle);
-process.on('SIGILL', handle);
+// process.on('SIGUSR1', handle);
+// process.on('SIGPIPE', handle);
+// process.on('SIGHUP', handle);
+// process.on('SIGBREAK', handle);
+// process.on('SIGKILL', handle);
+// process.on('SIGWINCH', handle);
+// process.on('SIGSTOP', handle);
+// process.on('SIGBUS', handle);
+// process.on('SIGFPE', handle);
+// process.on('SIGSEGV', handle);
+// process.on('SIGILL', handle);
 
 let server: http.Server = null;
 (async function (): Promise<void> {
