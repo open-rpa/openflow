@@ -179,7 +179,7 @@ export class WebServer {
                             const keys = Object.keys(msg.nodes);
                             for (let i = 0; i < keys.length; i++) {
                                 const nodemessage = msg.nodes[keys[i]];
-                                if (nodemessage.span) otel.endSpan(nodemessage.span);
+                                if (nodemessage.span) otel.endSpan(nodemessage.span, msg.timestamp);
                                 if (nodemessage.end) otel.endTimer(nodemessage.end, WebServer.openflow_nodered_node_duration, { nodetype: nodemessage.event });
                             }
                             if (msg.span) {
