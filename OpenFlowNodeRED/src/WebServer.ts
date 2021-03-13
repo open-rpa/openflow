@@ -24,23 +24,44 @@ import { otel } from "./otel";
 import { ValueRecorder, Counter, BaseObserver } from "@opentelemetry/api-metrics"
 import { HrTime, Span } from "@opentelemetry/api";
 import { hrTime } from "@opentelemetry/core";
+import * as RED from "node-red";
+import { Red } from "node-red";
 
 export class log_message_node {
     public span: Span;
     public end: HrTime;
     public event: string;
+    public node: Red;
+    public name: string;
+    constructor(public nodeid: string) {
+        this.node = RED.nodes.getNode(nodeid);
+        this.event = this.node.type;
+        this.name = this.node.name || this.node.type;
+    }
+    startspan(parentspan: Span, msgid) {
+        this.span = otel.startSubSpan(this.name, parentspan);
+        this.span.setAttributes(otel.defaultlabels);
+        this.span.setAttribute("msgid", msgid);
+        this.span.setAttribute("nodeid", this.nodeid);
+        // nodemessage.span = otel.startSpan2(msg.event, msg.msgid);
+        this.end = otel.startTimer();
+    }
 }
 export class log_message {
     public timestamp: Date;
     public hrtimestamp: HrTime;
     public span: Span;
     public nodes: { [key: string]: log_message_node; } = {};
+    public node: Red;
+    public name: string;
     // public nodes: object = {}
-    constructor(msgid, name) {
+    constructor(public msgid: string, public nodeid: string) {
+        this.node = RED.nodes.getNode(nodeid);
         this.timestamp = new Date();
+        this.name = this.node.name || this.node.type;
         this.hrtimestamp = hrTime();
         this.nodes = {};
-        this.span = otel.startSpan2(name, msgid);
+        this.span = otel.startSpan2(this.name, msgid);
     }
 }
 
@@ -190,7 +211,7 @@ export class WebServer {
                                 delete msg.span;
                             }
                             delete WebServer.log_messages[key];
-                            console.log("Ending " + key)
+                            // console.log("Ending " + key)
                         }
                     });
                 }, 1000)
@@ -203,34 +224,25 @@ export class WebServer {
                                 if (!NoderedUtil.IsNullEmpty(msg.msgid) && msg.event.startsWith("node.")) {
                                     msg.event = msg.event.substring(5);
                                     if (msg.event.endsWith(".receive")) {
-                                        msg.event = msg.event.substring(0, msg.event.length - 8);
                                         if (!NoderedUtil.IsNullUndefinded(WebServer.openflow_nodered_node_activations))
                                             WebServer.openflow_nodered_node_activations.bind({ ...otel.defaultlabels, nodetype: msg.event }).add(1);
 
-                                        if (WebServer.log_messages[msg.msgid] == undefined) WebServer.log_messages[msg.msgid] = new log_message(msg.msgid, msg.event);
+                                        if (WebServer.log_messages[msg.msgid] == undefined) WebServer.log_messages[msg.msgid] = new log_message(msg.msgid, msg.nodeid);
                                         const logmessage = WebServer.log_messages[msg.msgid];
-                                        if (!logmessage.nodes[msg.nodeid]) logmessage.nodes[msg.nodeid] = new log_message_node();
+                                        if (!logmessage.nodes[msg.nodeid]) logmessage.nodes[msg.nodeid] = new log_message_node(msg.nodeid);
                                         logmessage.timestamp = new Date();
                                         logmessage.hrtimestamp = hrTime();
 
                                         const nodemessage = logmessage.nodes[msg.nodeid];
-
-                                        // const span: Span = logmessage.span || otel.startSpan2(msg.event, msg.msgid);
-                                        // logmessage.span = span;
-
-                                        nodemessage.span = otel.startSubSpan(msg.event, logmessage.span);
-                                        nodemessage.span.setAttributes(otel.defaultlabels);
-                                        nodemessage.span.setAttribute("msgid", msg.msgid);
-                                        nodemessage.span.setAttribute("nodeid", msg.nodeid);
-                                        // nodemessage.span = otel.startSpan2(msg.event, msg.msgid);
+                                        nodemessage.startspan(logmessage.span, msg.msgid);
                                         nodemessage.end = otel.startTimer();
                                         nodemessage.event = msg.event;
                                     }
                                     if (msg.event.endsWith(".send")) {
                                         msg.event = msg.event.substring(0, msg.event.length - 5);
-                                        if (WebServer.log_messages[msg.msgid] == undefined) WebServer.log_messages[msg.msgid] = new log_message(msg.msgid, msg.event);
+                                        if (WebServer.log_messages[msg.msgid] == undefined) WebServer.log_messages[msg.msgid] = new log_message(msg.msgid, msg.nodeid);
                                         const logmessage = WebServer.log_messages[msg.msgid];
-                                        if (!logmessage.nodes[msg.nodeid]) logmessage.nodes[msg.nodeid] = new log_message_node();
+                                        if (!logmessage.nodes[msg.nodeid]) logmessage.nodes[msg.nodeid] = new log_message_node(msg.nodeid);
                                         logmessage.timestamp = new Date();
                                         logmessage.hrtimestamp = hrTime();
 
@@ -239,10 +251,7 @@ export class WebServer {
                                         if (nodemessage.span) {
                                             otel.endSpan(nodemessage.span); delete nodemessage.span;
                                         } else {
-                                            nodemessage.span = otel.startSubSpan(msg.event, logmessage.span);
-                                            nodemessage.span.setAttributes(otel.defaultlabels);
-                                            nodemessage.span.setAttribute("msgid", msg.msgid);
-                                            nodemessage.span.setAttribute("nodeid", msg.nodeid);
+                                            nodemessage.startspan(logmessage.span, msg.msgid);
                                             // Need to end it, since not all nodes trigger a "done" message :-/
                                             otel.endSpan(nodemessage.span);
                                             delete nodemessage.span;
@@ -253,6 +262,9 @@ export class WebServer {
                                             delete nodemessage.end;
                                         } else {
                                             nodemessage.end = otel.startTimer();
+                                            // Need to end it, since not all nodes trigger a "done" message :-/
+                                            otel.endTimer(nodemessage.end, WebServer.openflow_nodered_node_duration, { nodetype: nodemessage.event });
+                                            delete nodemessage.end;
                                         }
                                         nodemessage.event = msg.event;
                                     }

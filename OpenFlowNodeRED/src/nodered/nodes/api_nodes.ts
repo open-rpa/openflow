@@ -8,15 +8,17 @@ import * as path from "path";
 import { FileSystemCache } from "@openiap/openflow-api";
 
 export interface Iapi_credentials {
+    name: string;
 }
 export class api_credentials {
     public node: Red = null;
     public name: string = "";
     public username: string = "";
     public password: string = "";
-    constructor(public config: Iapi_get_jwt) {
+    constructor(public config: Iapi_credentials) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.name = config.name;
         this.node.status({});
         if (this.node.credentials && this.node.credentials.hasOwnProperty("username")) {
             this.username = this.node.credentials.username;
@@ -28,6 +30,7 @@ export class api_credentials {
 }
 export interface Iapi_get_jwt {
     config: any;
+    name: string;
 }
 export class api_get_jwt {
     public node: Red = null;
@@ -35,6 +38,7 @@ export class api_get_jwt {
     constructor(public config: Iapi_get_jwt) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.name = config.name;
         this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
@@ -110,13 +114,16 @@ export interface Iapi_get {
     orderby: any;
     top: number;
     skip: number;
+    name: string;
 }
 export class api_get {
     public node: Red = null;
+    public name: string;
 
     constructor(public config: Iapi_get) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.name = config.name;
         this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
@@ -136,7 +143,7 @@ export class api_get {
             let orderby: any = this.config.orderby;
             let top: number = this.config.top;
             let skip: number = this.config.skip;
-            let resultfield: string  = this.config.resultfield;
+            let resultfield: string = this.config.resultfield;
             if (!NoderedUtil.IsNullEmpty(msg.collection)) { collection = msg.collection; }
             if (!NoderedUtil.IsNullUndefinded(msg.query)) { query = msg.query; }
             if (!NoderedUtil.IsNullUndefinded(msg.projection)) { projection = msg.projection; }
@@ -222,13 +229,16 @@ export interface Iapi_add {
     resultfield: string;
     writeconcern: number;
     journal: boolean;
+    name: string;
 }
 export class api_add {
     public node: Red = null;
+    public name: string;
 
     constructor(public config: Iapi_add) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.name = config.name;
         this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
@@ -305,13 +315,16 @@ export interface Iapi_addmany {
     writeconcern: number;
     skipresults: boolean;
     journal: boolean;
+    name: string;
 }
 export class api_addmany {
     public node: Red = null;
+    public name: string;
 
     constructor(public config: Iapi_addmany) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.name = config.name;
         this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
@@ -380,13 +393,16 @@ export interface Iapi_update {
     resultfield: string;
     writeconcern: number;
     journal: boolean;
+    name: string;
 }
 export class api_update {
     public node: Red = null;
+    public name: string;
 
     constructor(public config: Iapi_update) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.name = config.name;
         this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
@@ -464,13 +480,16 @@ export interface Iapi_addorupdate {
     uniqeness: string;
     writeconcern: number;
     journal: boolean;
+    name: string;
 }
 export class api_addorupdate {
     public node: Red = null;
+    public name: string;
 
     constructor(public config: Iapi_addorupdate) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.name = config.name;
         this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
@@ -546,13 +565,16 @@ export class api_addorupdate {
 export interface Iapi_delete {
     collection: string;
     inputfield: string;
+    name: string;
 }
 export class api_delete {
     public node: Red = null;
+    public name: string;
 
     constructor(public config: Iapi_delete) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.name = config.name;
         this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
@@ -611,13 +633,16 @@ export interface Iapi_deletemany {
     collection: string;
     inputfield: string;
     query: string;
+    name: string;
 }
 export class api_deletemany {
     public node: Red = null;
+    public name: string;
 
     constructor(public config: Iapi_deletemany) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.name = config.name;
         this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
@@ -682,13 +707,16 @@ export interface Iapi_map_reduce {
     output: string;
     outcol: string;
     query: string;
+    name: string;
 }
 export class api_map_reduce {
     public node: Red = null;
+    public name: string;
 
     constructor(public config: Iapi_map_reduce) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.name = config.name;
         this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
@@ -702,8 +730,8 @@ export class api_map_reduce {
             let finalize = this.config.finalize;
             let _scope = this.config.scope;
             let query = this.config.query;
-            let output  = this.config.output;
-            let outcol  = this.config.outcol;
+            let output = this.config.output;
+            let outcol = this.config.outcol;
             if (!NoderedUtil.IsNullEmpty(msg.collection)) { collection = msg.collection; }
             if (!NoderedUtil.IsNullUndefinded(msg.map)) { map = msg.map; }
             if (!NoderedUtil.IsNullUndefinded(msg.reduce)) { reduce = msg.reduce; }
@@ -843,10 +871,11 @@ export interface Iapi_updatedocument {
 }
 export class api_updatedocument {
     public node: Red = null;
-
+    public name: string;
     constructor(public config: Iapi_updatedocument) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.name = config.name;
         this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
@@ -918,12 +947,15 @@ export interface Igrant_permission {
     targetid: string;
     entities: any;
     bits: any;
+    name: string;
 }
 export class grant_permission {
     public node: Red = null;
+    public name: string;
     constructor(public config: Igrant_permission) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.name = config.name;
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
     }
@@ -988,13 +1020,15 @@ export interface Irevoke_permission {
     targetid: string;
     entities: any;
     bits: any;
+    name: string;
 }
 export class revoke_permission {
     public node: Red = null;
-
+    public name: string;
     constructor(public config: Irevoke_permission) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.name = config.name;
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
     }
@@ -1061,10 +1095,11 @@ export interface Idownload_file {
 }
 export class download_file {
     public node: Red = null;
-
+    public name: string;
     constructor(public config: Idownload_file) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.name = config.name;
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
     }
@@ -1103,13 +1138,15 @@ export class download_file {
 export interface Iuploadload_file {
     filename: string;
     mimeType: string;
+    name: string;
 }
 export class upload_file {
     public node: Red = null;
-
+    public name: string;
     constructor(public config: Iuploadload_file) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.name = config.name;
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
     }
@@ -1150,13 +1187,15 @@ export class upload_file {
 export interface Iapi_aggregate {
     collection: string;
     aggregates: object[];
+    name: string;
 }
 export class api_aggregate {
     public node: Red = null;
-
+    public name: string;
     constructor(public config: Iapi_aggregate) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.name = config.name;
         this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
@@ -1189,15 +1228,18 @@ export class api_aggregate {
 export interface Iapi_watch {
     collection: string;
     aggregates: object[];
+    name: string;
 }
 export class api_watch {
     public node: Red = null;
+    public name: string;
     public watchid: string = "";
     private _onsignedin: any = null;
     private _onsocketclose: any = null;
     constructor(public config: Iapi_watch) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.name = config.name;
         this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);

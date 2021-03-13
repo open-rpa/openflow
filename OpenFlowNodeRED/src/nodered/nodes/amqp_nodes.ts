@@ -30,6 +30,7 @@ export class amqp_connection {
             this.password = this.node.credentials.password;
         }
         this.host = this.config.host;
+        this.name = config.name || this.host;
         if (!NoderedUtil.IsNullUndefinded(this.host)) {
             this.webcli = new WebSocketClient(WebSocketClient.instance._logger, this.host);
             this.webcli.agent = "remotenodered";
@@ -71,6 +72,7 @@ export class amqp_connection {
 export interface Iamqp_consumer_node {
     config: any;
     queue: string;
+    name: string;
 }
 export class amqp_consumer_node {
     public node: Red = null;
@@ -84,6 +86,7 @@ export class amqp_consumer_node {
         RED.nodes.createNode(this, config);
         try {
             this.node = this;
+            this.name = config.name;
             // this.node.status({});
             this.node.status({ fill: "blue", shape: "dot", text: "Offline" });
             this.node.on("close", this.onclose);
@@ -165,6 +168,7 @@ export interface Iamqp_publisher_node {
     config: any;
     queue: string;
     localqueue: string;
+    name: string;
 }
 export class amqp_publisher_node {
     public node: Red = null;
@@ -178,6 +182,7 @@ export class amqp_publisher_node {
         RED.nodes.createNode(this, config);
         try {
             this.node = this;
+            this.name = config.name;
             this.node.status({});
             this.node.on("input", this.oninput);
             this.node.on("close", this.onclose);
@@ -276,6 +281,7 @@ export class amqp_publisher_node {
 
 
 export interface Iamqp_acknowledgment_node {
+    name: string;
 }
 export class amqp_acknowledgment_node {
     public node: Red = null;
@@ -283,6 +289,7 @@ export class amqp_acknowledgment_node {
     constructor(public config: Iamqp_acknowledgment_node) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.name = config.name;
         this.node.status({});
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);

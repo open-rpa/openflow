@@ -6,6 +6,7 @@ import { Logger } from "../../Logger";
 
 export interface Irpa_detector_node {
     queue: string;
+    name: string;
 }
 export class rpa_detector_node {
     public node: Red = null;
@@ -18,6 +19,7 @@ export class rpa_detector_node {
         RED.nodes.createNode(this, config);
         try {
             this.node = this;
+            this.name = config.name;
             this.node.status({});
             this.node.on("close", this.onclose);
             this.host = Config.amqp_url;
@@ -92,6 +94,7 @@ export interface Irpa_workflow_node {
     queue: string;
     workflow: string;
     localqueue: string;
+    name: string;
 }
 export class rpa_workflow_node {
     public node: Red = null;
@@ -106,6 +109,7 @@ export class rpa_workflow_node {
         try {
             this.node = this;
             this.node.status({});
+            this.name = config.name;
             this.node.on("input", this.oninput);
             this.node.on("close", this.onclose);
             this.host = Config.amqp_url;

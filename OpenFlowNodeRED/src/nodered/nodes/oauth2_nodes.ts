@@ -61,6 +61,7 @@ export class oauth2 {
             config.client_id = config.client_id || "";
             config.client_secret = config.client_secret || "";
             config.scope = config.scope || "";
+            this.name = config.name;
 
             this.node.on("input", this.oninput);
             this.node.on("close", this.onclose);
