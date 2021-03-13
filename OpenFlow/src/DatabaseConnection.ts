@@ -373,7 +373,12 @@ export class DatabaseConnection {
                             mysort = neworderby;
                         }
                     } catch (error) {
-                        console.error(error, orderby);
+                        span.addEvent("Parsing order by failed");
+                        span.recordException(error);
+                        span.setAttribute("failedorderby", orderby as string);
+                        console.error("Failed parsing orderby:")
+                        console.error(orderby)
+                        console.error(error);
                     }
                     if (neworderby == null) mysort[(orderby as string)] = 1;
                 } else {
@@ -392,6 +397,9 @@ export class DatabaseConnection {
                             myhint = newhint;
                         }
                     } catch (error) {
+                        span.addEvent("Parsing hint by failed");
+                        span.recordException(error);
+                        span.setAttribute("failedhint", hint as string);
                         console.error(error, hint);
                     }
                     if (newhint == null) myhint[(hint as string)] = 1;

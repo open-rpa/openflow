@@ -63,7 +63,7 @@ export class Config {
         Config.tls_passphrase = Config.getEnv("tls_passphrase", "");
 
         Config.amqp_message_ttl = parseInt(Config.getEnv("amqp_message_ttl", "20000"));
-        Config.prometheus_max_node_time_seconds = parseInt(Config.getEnv("prometheus_max_node_time_seconds", "300"));
+        Config.otel_trace_max_node_time_seconds = parseInt(Config.getEnv("otel_trace_max_node_time_seconds", "300"));
         Config.prometheus_measure_nodeid = Config.parseBoolean(Config.getEnv("prometheus_measure_nodeid", "false"));
         Config.prometheus_measure_queued_messages = Config.parseBoolean(Config.getEnv("prometheus_measure_queued_messages", "false"));
         Config.max_message_queue_time_seconds = parseInt(Config.getEnv("max_message_queue_time_seconds", "3600"));
@@ -133,7 +133,7 @@ export class Config {
     // public static amqp_dlrk_prefix: string = Config.getEnv("amqp_dlrk_prefix", "dlx.");
     // public static amqp_dlq_prefix: string = Config.getEnv("amqp_dlq_prefix", "dlq.");
     public static amqp_message_ttl: number = parseInt(Config.getEnv("amqp_message_ttl", "20000"));
-    public static prometheus_max_node_time_seconds: number = parseInt(Config.getEnv("prometheus_max_node_time_seconds", "300"));
+    public static otel_trace_max_node_time_seconds: number = parseInt(Config.getEnv("otel_trace_max_node_time_seconds", "300"));
 
     public static prometheus_measure_nodeid: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_nodeid", "false"));
     public static prometheus_measure_queued_messages: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_queued_messages", "false"));

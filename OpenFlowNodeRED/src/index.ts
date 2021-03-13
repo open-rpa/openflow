@@ -58,14 +58,21 @@ process.on('rejectionHandled', (promise) => {
     unhandledRejections.delete(promise);
 });
 process.on('uncaughtException', (err, origin) => {
-    console.error(`Caught exception: ${err}\n` +
-        `Exception origin: ${origin}`
-    );
+    // console.error(`Caught exception: ${err}\n` +
+    //     `Exception origin: ${origin}`
+    // );
 });
-process.on('uncaughtExceptionMonitor', (err, origin) => {
-    console.error(`Caught exception: ${err}\n` +
-        `Exception origin: ${origin}`
-    );
+process.on('uncaughtExceptionMonitor', (err: Error, origin) => {
+    if (err.message && err.stack) {
+        console.error(`Caught exception: ${err.message}\n` +
+            `Exception origin: ${origin}\n` + err.stack
+        );
+    } else {
+        console.error(`Caught exception: ${err}\n` +
+            `Exception origin: ${origin}`
+        );
+
+    }
 });
 process.on('warning', (warning) => {
     console.warn(warning.name);    // Print the warning name
@@ -156,7 +163,7 @@ let server: http.Server = null;
                 WebSocketClient.instance.jwt = result.jwt;
                 if (!NoderedUtil.IsNullEmpty(result.openflow_uniqueid)) {
                     Config.openflow_uniqueid = result.openflow_uniqueid;
-                    otel.defaultlabels["ofid"] = result.openflow_uniqueid;
+                    otel.setdefaultlabels();
                 }
                 if (!NoderedUtil.IsNullEmpty(result.otel_trace_url)) Config.otel_trace_url = result.otel_trace_url;
                 if (!NoderedUtil.IsNullEmpty(result.otel_metric_url)) Config.otel_metric_url = result.otel_metric_url;

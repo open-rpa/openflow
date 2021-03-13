@@ -174,6 +174,7 @@ export class rpa_workflow_node {
                 if (data.user != null) result.user = data.user;
                 if (result.payload == null || result.payload == undefined) { result.payload = {}; }
                 this.node.status({ fill: "green", shape: "dot", text: command + "  " + this.localqueue });
+                result.id = correlationId;
                 this.node.send(result);
             }
             else if (command == "invokefailed" || command == "invokeaborted" || command == "error" || command == "timeout") {
@@ -188,12 +189,14 @@ export class rpa_workflow_node {
                 if (data.user != null) result.user = data.user;
                 if (result.payload == null || result.payload == undefined) { result.payload = {}; }
                 this.node.status({ fill: "red", shape: "dot", text: command + "  " + this.localqueue });
+                result.id = correlationId;
                 this.node.send([null, null, result]);
             }
             else {
                 result.payload = data.payload;
                 if (data.user != null) result.user = data.user;
                 if (result.payload == null || result.payload == undefined) { result.payload = {}; }
+                result.id = correlationId;
                 this.node.send([null, result]);
             }
             ack();
@@ -208,7 +211,7 @@ export class rpa_workflow_node {
             this.node.status({});
             let targetid = NoderedUtil.IsNullEmpty(this.config.queue) || this.config.queue === 'none' ? msg.targetid : this.config.queue;
             let workflowid = NoderedUtil.IsNullEmpty(this.config.workflow) ? msg.workflowid : this.config.workflow;
-            const correlationId = Math.random().toString(36).substr(2, 9);
+            const correlationId = msg.id || Math.random().toString(36).substr(2, 9);
             this.messages[correlationId] = msg;
             if (msg.payload == null || typeof msg.payload == "string" || typeof msg.payload == "number") {
                 msg.payload = { "data": msg.payload };
