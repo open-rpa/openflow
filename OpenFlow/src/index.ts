@@ -49,7 +49,7 @@ async function initamqp() {
     amqpwrapper.SetInstance(amqp);
     await amqp.connect();
     // Must also consume messages in the dead letter queue, to catch messages that have timed out
-    await amqp.AddExchangeConsumer(Config.amqp_dlx, "fanout", "", null, null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+    await amqp.AddExchangeConsumer(Config.amqp_dlx, "fanout", "", null, null, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
         if (typeof msg === "string" || msg instanceof String) {
             try {
                 msg = JSON.parse((msg as any));
@@ -61,8 +61,10 @@ async function initamqp() {
             // Resend message, this time to the reply queue for the correct node (replyTo)
             // this.SendMessage(JSON.stringify(data), msg.properties.replyTo, msg.properties.correlationId, false);
             logger.info("[DLX][" + options.exchange + "] Send timeout to " + options.replyTo)
-            amqpwrapper.Instance().sendWithReply("", options.replyTo, msg, 20000, options.correlationId);
+            await amqpwrapper.Instance().sendWithReply("", options.replyTo, msg, 20000, options.correlationId);
         } catch (error) {
+            console.error("Failed sending deadletter message to " + options.replyTo);
+            console.error(error);
         }
         ack();
         done();
@@ -280,9 +282,11 @@ process.on('uncaughtExceptionMonitor', (err, origin) => {
     );
 });
 process.on('warning', (warning) => {
-    console.warn(warning.name);    // Print the warning name
-    console.warn(warning.message); // Print the warning message
-    console.warn(warning.stack);   // Print the stack trace
+    try {
+        console.warn(warning.name + ": " + warning.message);
+        console.warn(warning.stack);
+    } catch (error) {
+    }
 });
 // The signals we want to handle
 // NOTE: although it is tempting, the SIGKILL signal (9) cannot be intercepted and handled
