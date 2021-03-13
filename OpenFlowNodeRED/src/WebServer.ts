@@ -23,6 +23,7 @@ import { WebSocketClient, NoderedUtil, Message } from "@openiap/openflow-api";
 import { otel } from "./otel";
 import { ValueRecorder, Counter, BaseObserver } from "@opentelemetry/api-metrics"
 import { HrTime, Span } from "@opentelemetry/api";
+import { hrTime } from "@opentelemetry/core";
 
 export class log_message_node {
     public span: Span;
@@ -31,11 +32,13 @@ export class log_message_node {
 }
 export class log_message {
     public timestamp: Date;
+    public hrtimestamp: HrTime;
     public span: Span;
     public nodes: { [key: string]: log_message_node; } = {};
     // public nodes: object = {}
     constructor(msgid, name) {
         this.timestamp = new Date();
+        this.hrtimestamp = hrTime();
         this.nodes = {};
         this.span = otel.startSpan2(name, msgid);
     }
@@ -179,11 +182,11 @@ export class WebServer {
                             const keys = Object.keys(msg.nodes);
                             for (let i = 0; i < keys.length; i++) {
                                 const nodemessage = msg.nodes[keys[i]];
-                                if (nodemessage.span) otel.endSpan(nodemessage.span, msg.timestamp);
+                                if (nodemessage.span) otel.endSpan(nodemessage.span, msg.hrtimestamp);
                                 if (nodemessage.end) otel.endTimer(nodemessage.end, WebServer.openflow_nodered_node_duration, { nodetype: nodemessage.event });
                             }
                             if (msg.span) {
-                                otel.endSpan(msg.span, msg.timestamp);
+                                otel.endSpan(msg.span, msg.hrtimestamp);
                                 delete msg.span;
                             }
                             delete WebServer.log_messages[key];
@@ -208,6 +211,7 @@ export class WebServer {
                                         const logmessage = WebServer.log_messages[msg.msgid];
                                         if (!logmessage.nodes[msg.nodeid]) logmessage.nodes[msg.nodeid] = new log_message_node();
                                         logmessage.timestamp = new Date();
+                                        logmessage.hrtimestamp = hrTime();
 
                                         const nodemessage = logmessage.nodes[msg.nodeid];
 
@@ -216,6 +220,8 @@ export class WebServer {
 
                                         nodemessage.span = otel.startSubSpan(msg.event, logmessage.span);
                                         nodemessage.span.setAttributes(otel.defaultlabels);
+                                        nodemessage.span.setAttribute("msgid", msg.msgid);
+                                        nodemessage.span.setAttribute("nodeid", msg.nodeid);
                                         // nodemessage.span = otel.startSpan2(msg.event, msg.msgid);
                                         nodemessage.end = otel.startTimer();
                                         nodemessage.event = msg.event;
@@ -226,6 +232,7 @@ export class WebServer {
                                         const logmessage = WebServer.log_messages[msg.msgid];
                                         if (!logmessage.nodes[msg.nodeid]) logmessage.nodes[msg.nodeid] = new log_message_node();
                                         logmessage.timestamp = new Date();
+                                        logmessage.hrtimestamp = hrTime();
 
                                         const nodemessage = logmessage.nodes[msg.nodeid];
 
@@ -234,6 +241,11 @@ export class WebServer {
                                         } else {
                                             nodemessage.span = otel.startSubSpan(msg.event, logmessage.span);
                                             nodemessage.span.setAttributes(otel.defaultlabels);
+                                            nodemessage.span.setAttribute("msgid", msg.msgid);
+                                            nodemessage.span.setAttribute("nodeid", msg.nodeid);
+                                            // Need to end it, since not all nodes trigger a "done" message :-/
+                                            otel.endSpan(nodemessage.span);
+                                            delete nodemessage.span;
                                             // nodemessage.span = otel.startSpan2(msg.event, msg.msgid);
                                         }
                                         if (nodemessage.end) {
@@ -245,16 +257,15 @@ export class WebServer {
                                         nodemessage.event = msg.event;
                                     }
                                     if (msg.event.endsWith(".done")) {
-                                        msg.event = msg.event.substring(0, msg.event.length - 5);
                                         if (WebServer.log_messages[msg.msgid] == undefined) return;
                                         const logmessage = WebServer.log_messages[msg.msgid];
                                         if (!logmessage.nodes[msg.nodeid]) return;
                                         logmessage.timestamp = new Date();
+                                        logmessage.hrtimestamp = hrTime();
 
                                         const nodemessage = logmessage.nodes[msg.nodeid];
                                         if (nodemessage.span) { otel.endSpan(nodemessage.span); delete nodemessage.span; }
                                         if (nodemessage.end) { otel.endTimer(nodemessage.end, WebServer.openflow_nodered_node_duration, { nodetype: nodemessage.event }); delete nodemessage.end; }
-                                        nodemessage.event = msg.event;
                                     }
                                 }
                             } catch (error) {
