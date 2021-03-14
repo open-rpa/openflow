@@ -90,6 +90,10 @@ export class Message {
                 span.setAttribute("command", command);
                 span.setAttribute("id", this.id);
                 span.setAttribute("replyto", this.replyto);
+                if (!NoderedUtil.IsNullEmpty(cli.clientversion)) span.setAttribute("clientversion", cli.clientversion);
+                if (!NoderedUtil.IsNullEmpty(cli.clientagent)) span.setAttribute("clientagent", cli.clientagent);
+                if (!NoderedUtil.IsNullEmpty(cli.remoteip)) span.setAttribute("remoteip", cli.remoteip);
+                if (!NoderedUtil.IsNullUndefinded(cli.user) && !NoderedUtil.IsNullEmpty(cli.user.username)) span.setAttribute("username", cli.user.username);
                 const ot_end = otel.startTimer();
                 const qmsg: QueuedMessage = cli.messageQueue[this.replyto];
                 if (!NoderedUtil.IsNullUndefinded(qmsg)) {
@@ -112,6 +116,7 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(cli.clientversion)) span.setAttribute("clientversion", cli.clientversion);
             if (!NoderedUtil.IsNullEmpty(cli.clientagent)) span.setAttribute("clientagent", cli.clientagent);
             if (!NoderedUtil.IsNullEmpty(cli.remoteip)) span.setAttribute("remoteip", cli.remoteip);
+            if (!NoderedUtil.IsNullUndefinded(cli.user) && !NoderedUtil.IsNullEmpty(cli.user.username)) span.setAttribute("username", cli.user.username);
             span.setAttribute("command", command);
             span.setAttribute("id", this.id);
             switch (command) {
