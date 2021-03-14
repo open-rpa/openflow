@@ -140,10 +140,18 @@ export class amqpwrapper {
             this.timeout = setTimeout(this.connect.bind(this), 1000);
         }
     }
-    async RemoveQueueConsumer(queue: amqpqueue): Promise<void> {
-        if (queue != null) {
-            this._logger.info("[AMQP] Remove queue consumer " + queue.queue + "/" + queue.consumerTag);
-            if (this.channel != null) await this.channel.cancel(queue.consumerTag);
+    async RemoveQueueConsumer(queue: amqpqueue, parent: Span): Promise<void> {
+        const span: Span = otel.startSubSpan("amqpwrapper.validateToken", parent);
+        try {
+            if (queue != null) {
+                this._logger.info("[AMQP] Remove queue consumer " + queue.queue + "/" + queue.consumerTag);
+                if (this.channel != null) await this.channel.cancel(queue.consumerTag);
+            }
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            otel.endSpan(span);
         }
     }
     async AddQueueConsumer(queuename: string, QueueOptions: any, jwt: string, callback: QueueOnMessage, parent: Span): Promise<amqpqueue> {
@@ -252,7 +260,7 @@ export class amqpwrapper {
             }
             const q: amqpexchange = new amqpexchange();
             if (!NoderedUtil.IsNullEmpty(q.queue)) {
-                this.RemoveQueueConsumer(q.queue);
+                this.RemoveQueueConsumer(q.queue, span);
             }
             // q.ExchangeOptions = new Object((ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));
             q.ExchangeOptions = Object.assign({}, (ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));

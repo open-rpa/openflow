@@ -101,27 +101,29 @@ export class WebSocketServerClient {
         }
         return false;
     }
-    public ping(): void {
+    public ping(parent: Span): void {
+        const span: Span = otel.startSubSpan("WebSocketServerClient.ping", parent);
         try {
             let msg: SocketMessage = SocketMessage.fromcommand("ping");
             if (this._socketObject == null) {
                 if (this.queuecount() > 0) {
-                    this.CloseConsumers();
+                    this.CloseConsumers(span);
                 }
                 if (this.streamcount() > 0) {
-                    this.CloseConsumers();
+                    this.CloseConsumers(span);
                 }
                 return;
             }
             if (this._socketObject.readyState === this._socketObject.CLOSED || this._socketObject.readyState === this._socketObject.CLOSING) {
                 if (this.queuecount() > 0) {
-                    this.CloseConsumers();
+                    this.CloseConsumers(span);
                 }
                 return;
             }
             this._socketObject.send(msg.tojson());
         } catch (error) {
             this._logger.error(error);
+            span.recordException(error);
             this._receiveQueue = [];
             this._sendQueue = [];
             try {
@@ -130,6 +132,8 @@ export class WebSocketServerClient {
                 }
             } catch (error) {
             }
+        } finally {
+            otel.endSpan(span);
         }
     }
     private _message(message: string): void {
@@ -150,12 +154,12 @@ export class WebSocketServerClient {
             this._socketObject.send(JSON.stringify(errormessage));
         }
     }
-    public async CloseConsumers(): Promise<void> {
+    public async CloseConsumers(parent: Span): Promise<void> {
         await semaphore.down();
         for (let i = this._queues.length - 1; i >= 0; i--) {
             try {
                 // await this.CloseConsumer(this._queues[i]);
-                await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i]);
+                await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i], undefined);
                 this._queues.splice(i, 1);
             } catch (error) {
                 this._logger.error("WebSocketclient::closeconsumers " + error);
@@ -165,34 +169,42 @@ export class WebSocketServerClient {
         semaphore.up();
     }
     public async Close(): Promise<void> {
-        await this.CloseConsumers();
-        await this.CloseStreams();
-        if (this._socketObject != null) {
-            try {
-                this._socketObject.removeListener("open", (e: Event): void => this.open(e));
-                this._socketObject.removeListener("message", (e: string): void => (this.message(e) as any)); // e: MessageEvent
-                this._socketObject.removeListener("error", (e: Event): void => this.error(e));
-                this._socketObject.removeListener("close", (e: CloseEvent): void => this.close(e));
-            } catch (error) {
-                this._logger.error("WebSocketclient::Close::removeListener " + error);
+        const span: Span = otel.startSpan("WebSocketServerClient.Close");
+        try {
+            await this.CloseConsumers(span);
+            await this.CloseStreams();
+            if (this._socketObject != null) {
+                try {
+                    this._socketObject.removeListener("open", (e: Event): void => this.open(e));
+                    this._socketObject.removeListener("message", (e: string): void => (this.message(e) as any)); // e: MessageEvent
+                    this._socketObject.removeListener("error", (e: Event): void => this.error(e));
+                    this._socketObject.removeListener("close", (e: CloseEvent): void => this.close(e));
+                } catch (error) {
+                    this._logger.error("WebSocketclient::Close::removeListener " + error);
+                }
+                try {
+                    this._socketObject.close();
+                } catch (error) {
+                    this._logger.error("WebSocketclient::Close " + error);
+                }
             }
-            try {
-                this._socketObject.close();
-            } catch (error) {
-                this._logger.error("WebSocketclient::Close " + error);
-            }
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            WebSocketServer.update_mongodb_watch_count(this);
+            otel.endSpan(span);
         }
-        WebSocketServer.update_mongodb_watch_count(this);
     }
     public async CloseConsumer(queuename: string, parent: Span): Promise<void> {
-        const span: Span = otel.startSubSpan("WebSocketServerClient.CreateConsumer", parent);
+        const span: Span = otel.startSubSpan("WebSocketServerClient.CloseConsumer", parent);
         try {
             var old = this._queues.length;
             for (let i = this._queues.length - 1; i >= 0; i--) {
                 const q = this._queues[i];
                 if (q && (q.queue == queuename || q.queuename == queuename)) {
                     try {
-                        await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i]);
+                        await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i], span);
                         this._queues.splice(i, 1);
                         if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...otel.defaultlabels, clientid: this.id }).update(this._queues.length);
                     } catch (error) {
