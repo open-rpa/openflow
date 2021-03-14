@@ -178,7 +178,7 @@ export class Message {
                     await this.QueueMessage(cli);
                     break;
                 case "closequeue":
-                    await this.CloseQueue(cli);
+                    await this.CloseQueue(cli, span);
                     break;
                 case "ensurenoderedinstance":
                     await this.EnsureNoderedInstance(cli, span);
@@ -343,12 +343,12 @@ export class Message {
         }
         this.Send(cli);
     }
-    async CloseQueue(cli: WebSocketServerClient) {
+    async CloseQueue(cli: WebSocketServerClient, parent: Span) {
         this.Reply();
         let msg: CloseQueueMessage
         try {
             msg = CloseQueueMessage.assign(this.data);
-            await cli.CloseConsumer(msg.queuename);
+            await cli.CloseConsumer(msg.queuename, parent);
         } catch (error) {
             cli._logger.error(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }

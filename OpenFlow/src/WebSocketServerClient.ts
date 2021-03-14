@@ -184,23 +184,31 @@ export class WebSocketServerClient {
         }
         WebSocketServer.update_mongodb_watch_count(this);
     }
-    public async CloseConsumer(queuename: string): Promise<void> {
-        var old = this._queues.length;
-        for (let i = this._queues.length - 1; i >= 0; i--) {
-            const q = this._queues[i];
-            if (q && (q.queue == queuename || q.queuename == queuename)) {
-                try {
-                    await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i]);
-                    this._queues.splice(i, 1);
-                    if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...otel.defaultlabels, clientid: this.id }).update(this._queues.length);
-                } catch (error) {
-                    this._logger.error("WebSocketclient::CloseConsumer " + error);
+    public async CloseConsumer(queuename: string, parent: Span): Promise<void> {
+        const span: Span = otel.startSubSpan("WebSocketServerClient.CreateConsumer", parent);
+        try {
+            var old = this._queues.length;
+            for (let i = this._queues.length - 1; i >= 0; i--) {
+                const q = this._queues[i];
+                if (q && (q.queue == queuename || q.queuename == queuename)) {
+                    try {
+                        await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i]);
+                        this._queues.splice(i, 1);
+                        if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...otel.defaultlabels, clientid: this.id }).update(this._queues.length);
+                    } catch (error) {
+                        this._logger.error("WebSocketclient::CloseConsumer " + error);
+                    }
                 }
             }
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            otel.endSpan(span);
         }
     }
     public async CreateConsumer(queuename: string, parent: Span): Promise<string> {
-        const span: Span = otel.startSubSpan("dbhelper.EnsureRole", parent);
+        const span: Span = otel.startSubSpan("WebSocketServerClient.CreateConsumer", parent);
         try {
             let autoDelete: boolean = false; // Should we keep the queue around ? for robots and roles
             let qname = queuename;
@@ -220,7 +228,7 @@ export class WebSocketServerClient {
                 }
             }
             await semaphore.down();
-            this.CloseConsumer(qname);
+            this.CloseConsumer(qname, span);
             let queue: amqpqueue = null;
             try {
                 const AssertQueueOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertQueueOptions));
