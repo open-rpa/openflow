@@ -150,7 +150,7 @@ export class DatabaseConnection {
         return result;
     }
     async DropCollection(collectionname: string, jwt: string, parent: Span): Promise<void> {
-        const span: Span = otel.startSubSpan("message.CleanACL", parent);
+        const span: Span = otel.startSubSpan("db.DropCollection", parent);
         try {
             const user: TokenUser = Crypt.verityToken(jwt);
             span.setAttribute("collection", collectionname);
@@ -550,7 +550,7 @@ export class DatabaseConnection {
      * @returns Promise
      */
     async aggregate<T extends Base>(aggregates: object[], collectionname: string, jwt: string, hint: Object | string = null, parent: Span = undefined): Promise<T[]> {
-        const span: Span = otel.startSubSpan("message.Aggregate", parent);
+        const span: Span = otel.startSubSpan("db.Aggregate", parent);
         await this.connect(span);
         let json: any = aggregates;
         if (typeof json !== 'string' && !(json instanceof String)) {
