@@ -892,7 +892,7 @@ export class Message {
                     if (msg !== null && msg !== undefined) msg.error = "Unknown username or password";
                     Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
                     cli._logger.debug(tuser.username + " failed logging in using " + type);
-                } else if (user.disabled) {
+                } else if (user.disabled && (msg.impersonate != "-1" && msg.impersonate != "false")) {
                     if (msg !== null && msg !== undefined) msg.error = "Disabled users cannot signin";
                     Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
                     cli._logger.debug("Disabled user " + tuser.username + " failed logging in using " + type);

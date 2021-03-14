@@ -100,10 +100,14 @@ export class WebSocketClientService {
         });
     }
     async impersonate(userid: string) {
-        const result = await NoderedUtil.SigninWithToken(this.jwt, null, userid);
-        this.user = result.user;
-        this.jwt = result.jwt;
-        this.$rootScope.$broadcast("signin", result.user);
+        try {
+            const result = await NoderedUtil.SigninWithToken(this.jwt, null, userid);
+            this.user = result.user;
+            this.jwt = result.jwt;
+            this.$rootScope.$broadcast("signin", result.user);
+        } catch (error) {
+            console.error(error);
+        }
     }
     setCookie(cname, cvalue, exdays) {
         const d = new Date();
