@@ -30,12 +30,12 @@ import { Red } from "node-red";
 export class log_message_node {
     public span: Span;
     public end: HrTime;
-    public event: string;
+    public nodetype: string;
     public node: Red;
     public name: string;
     constructor(public nodeid: string) {
         this.node = RED.nodes.getNode(nodeid);
-        this.event = this.node.type;
+        this.nodetype = this.node.type;
         this.name = this.node.name || this.node.type;
     }
     startspan(parentspan: Span, msgid) {
@@ -43,6 +43,8 @@ export class log_message_node {
         this.span.setAttributes(otel.defaultlabels);
         this.span.setAttribute("msgid", msgid);
         this.span.setAttribute("nodeid", this.nodeid);
+        this.span.setAttribute("nodetype", this.nodetype)
+        this.span.setAttribute("name", this.name)
         // nodemessage.span = otel.startSpan2(msg.event, msg.msgid);
         this.end = otel.startTimer();
     }
@@ -62,6 +64,10 @@ export class log_message {
         this.hrtimestamp = hrTime();
         this.nodes = {};
         this.span = otel.startSpan2(this.name, msgid);
+        this.span.setAttribute("msgid", msgid);
+        this.span.setAttribute("nodeid", this.nodeid);
+        this.span.setAttribute("nodetype", this.node.type)
+        this.span.setAttribute("name", this.name)
     }
 }
 
@@ -204,7 +210,7 @@ export class WebServer {
                             for (let i = 0; i < keys.length; i++) {
                                 const nodemessage = msg.nodes[keys[i]];
                                 if (nodemessage.span) otel.endSpan(nodemessage.span, msg.hrtimestamp);
-                                if (nodemessage.end) otel.endTimer(nodemessage.end, WebServer.openflow_nodered_node_duration, { nodetype: nodemessage.event });
+                                if (nodemessage.end) otel.endTimer(nodemessage.end, WebServer.openflow_nodered_node_duration, { nodetype: nodemessage.nodetype });
                             }
                             if (msg.span) {
                                 otel.endSpan(msg.span, msg.hrtimestamp);
@@ -236,7 +242,6 @@ export class WebServer {
                                         const nodemessage = logmessage.nodes[msg.nodeid];
                                         nodemessage.startspan(logmessage.span, msg.msgid);
                                         nodemessage.end = otel.startTimer();
-                                        nodemessage.event = msg.event;
                                     }
                                     if (msg.event.endsWith(".send")) {
                                         msg.event = msg.event.substring(0, msg.event.length - 5);
@@ -258,15 +263,14 @@ export class WebServer {
                                             // nodemessage.span = otel.startSpan2(msg.event, msg.msgid);
                                         }
                                         if (nodemessage.end) {
-                                            otel.endTimer(nodemessage.end, WebServer.openflow_nodered_node_duration, { nodetype: nodemessage.event });
+                                            otel.endTimer(nodemessage.end, WebServer.openflow_nodered_node_duration, { nodetype: nodemessage.nodetype });
                                             delete nodemessage.end;
                                         } else {
                                             nodemessage.end = otel.startTimer();
                                             // Need to end it, since not all nodes trigger a "done" message :-/
-                                            otel.endTimer(nodemessage.end, WebServer.openflow_nodered_node_duration, { nodetype: nodemessage.event });
+                                            otel.endTimer(nodemessage.end, WebServer.openflow_nodered_node_duration, { nodetype: nodemessage.nodetype });
                                             delete nodemessage.end;
                                         }
-                                        nodemessage.event = msg.event;
                                     }
                                     if (msg.event.endsWith(".done")) {
                                         if (WebServer.log_messages[msg.msgid] == undefined) return;
@@ -277,7 +281,7 @@ export class WebServer {
 
                                         const nodemessage = logmessage.nodes[msg.nodeid];
                                         if (nodemessage.span) { otel.endSpan(nodemessage.span); delete nodemessage.span; }
-                                        if (nodemessage.end) { otel.endTimer(nodemessage.end, WebServer.openflow_nodered_node_duration, { nodetype: nodemessage.event }); delete nodemessage.end; }
+                                        if (nodemessage.end) { otel.endTimer(nodemessage.end, WebServer.openflow_nodered_node_duration, { nodetype: nodemessage.nodetype }); delete nodemessage.end; }
                                     }
                                 }
                             } catch (error) {
