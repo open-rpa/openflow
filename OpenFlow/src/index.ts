@@ -110,9 +110,9 @@ async function initDatabase(): Promise<boolean> {
     const span: Span = otel.startSpan("initDatabase");
     try {
         const jwt: string = Crypt.rootToken();
-        const admins: Role = await DBHelper.EnsureRole(jwt, "admins", WellknownIds.admins);
-        const users: Role = await DBHelper.EnsureRole(jwt, "users", WellknownIds.users);
-        const root: User = await DBHelper.ensureUser(jwt, "root", "root", WellknownIds.root, null);
+        const admins: Role = await DBHelper.EnsureRole(jwt, "admins", WellknownIds.admins, span);
+        const users: Role = await DBHelper.EnsureRole(jwt, "users", WellknownIds.users, span);
+        const root: User = await DBHelper.ensureUser(jwt, "root", "root", WellknownIds.root, null, span);
 
         Base.addRight(root, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(root, WellknownIds.admins, [Rights.delete]);
@@ -120,7 +120,7 @@ async function initDatabase(): Promise<boolean> {
         Base.removeRight(root, WellknownIds.root, [Rights.delete]);
         await DBHelper.Save(root, jwt, span);
 
-        const robot_agent_users: Role = await DBHelper.EnsureRole(jwt, "robot agent users", WellknownIds.robot_agent_users);
+        const robot_agent_users: Role = await DBHelper.EnsureRole(jwt, "robot agent users", WellknownIds.robot_agent_users, span);
         Base.addRight(robot_agent_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(robot_agent_users, WellknownIds.admins, [Rights.delete]);
         Base.addRight(robot_agent_users, WellknownIds.root, "root", [Rights.full_control]);
@@ -149,7 +149,7 @@ async function initDatabase(): Promise<boolean> {
         await DBHelper.Save(users, jwt, span);
 
 
-        const personal_nodered_users: Role = await DBHelper.EnsureRole(jwt, "personal nodered users", WellknownIds.personal_nodered_users);
+        const personal_nodered_users: Role = await DBHelper.EnsureRole(jwt, "personal nodered users", WellknownIds.personal_nodered_users, span);
         personal_nodered_users.AddMember(admins);
         Base.addRight(personal_nodered_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(personal_nodered_users, WellknownIds.admins, [Rights.delete]);
@@ -161,12 +161,12 @@ async function initDatabase(): Promise<boolean> {
             Base.addRight(personal_nodered_users, personal_nodered_users._id, "personal nodered users", [Rights.read]);
         }
         await DBHelper.Save(personal_nodered_users, jwt, span);
-        const nodered_admins: Role = await DBHelper.EnsureRole(jwt, "nodered admins", WellknownIds.nodered_admins);
+        const nodered_admins: Role = await DBHelper.EnsureRole(jwt, "nodered admins", WellknownIds.nodered_admins, span);
         nodered_admins.AddMember(admins);
         Base.addRight(nodered_admins, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(nodered_admins, WellknownIds.admins, [Rights.delete]);
         await DBHelper.Save(nodered_admins, jwt, span);
-        const nodered_users: Role = await DBHelper.EnsureRole(jwt, "nodered users", WellknownIds.nodered_users);
+        const nodered_users: Role = await DBHelper.EnsureRole(jwt, "nodered users", WellknownIds.nodered_users, span);
         nodered_users.AddMember(admins);
         Base.addRight(nodered_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(nodered_users, WellknownIds.admins, [Rights.delete]);
@@ -178,7 +178,7 @@ async function initDatabase(): Promise<boolean> {
             Base.addRight(nodered_users, nodered_users._id, "nodered users", [Rights.read]);
         }
         await DBHelper.Save(nodered_users, jwt, span);
-        const nodered_api_users: Role = await DBHelper.EnsureRole(jwt, "nodered api users", WellknownIds.nodered_api_users);
+        const nodered_api_users: Role = await DBHelper.EnsureRole(jwt, "nodered api users", WellknownIds.nodered_api_users, span);
         nodered_api_users.AddMember(admins);
         Base.addRight(nodered_api_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(nodered_api_users, WellknownIds.admins, [Rights.delete]);
@@ -191,12 +191,12 @@ async function initDatabase(): Promise<boolean> {
         }
         await DBHelper.Save(nodered_api_users, jwt, span);
 
-        const robot_admins: Role = await DBHelper.EnsureRole(jwt, "robot admins", WellknownIds.robot_admins);
+        const robot_admins: Role = await DBHelper.EnsureRole(jwt, "robot admins", WellknownIds.robot_admins, span);
         robot_admins.AddMember(admins);
         Base.addRight(robot_admins, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(robot_admins, WellknownIds.admins, [Rights.delete]);
         await DBHelper.Save(robot_admins, jwt, span);
-        const robot_users: Role = await DBHelper.EnsureRole(jwt, "robot users", WellknownIds.robot_users);
+        const robot_users: Role = await DBHelper.EnsureRole(jwt, "robot users", WellknownIds.robot_users, span);
         robot_users.AddMember(admins);
         robot_users.AddMember(users);
         Base.addRight(robot_users, WellknownIds.admins, "admins", [Rights.full_control]);
@@ -215,7 +215,7 @@ async function initDatabase(): Promise<boolean> {
             await DBHelper.Save(admins, jwt, span);
         }
 
-        const filestore_admins: Role = await DBHelper.EnsureRole(jwt, "filestore admins", WellknownIds.filestore_admins);
+        const filestore_admins: Role = await DBHelper.EnsureRole(jwt, "filestore admins", WellknownIds.filestore_admins, span);
         filestore_admins.AddMember(admins);
         Base.addRight(filestore_admins, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(filestore_admins, WellknownIds.admins, [Rights.delete]);
@@ -224,7 +224,7 @@ async function initDatabase(): Promise<boolean> {
             Base.removeRight(filestore_admins, filestore_admins._id, [Rights.full_control]);
         }
         await DBHelper.Save(filestore_admins, jwt, span);
-        const filestore_users: Role = await DBHelper.EnsureRole(jwt, "filestore users", WellknownIds.filestore_users);
+        const filestore_users: Role = await DBHelper.EnsureRole(jwt, "filestore users", WellknownIds.filestore_users, span);
         filestore_users.AddMember(admins);
         if (!Config.multi_tenant) {
             filestore_users.AddMember(users);

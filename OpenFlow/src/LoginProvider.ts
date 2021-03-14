@@ -789,7 +789,7 @@ export class LoginProvider {
                     if (!Config.allow_user_registration) {
                         return done(null, false);
                     }
-                    user = await DBHelper.ensureUser(Crypt.rootToken(), username, username, null, password);
+                    user = await DBHelper.ensureUser(Crypt.rootToken(), username, username, null, password, span);
                 } else {
                     if (user.disabled) {
                         Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown", span);
@@ -905,7 +905,7 @@ export class LoginProvider {
                     if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty, please add displayname to claims", null); return; }
                     // _user = await Config.db.InsertOne(_user, "users", 0, false, Crypt.rootToken());
                     const jwt: string = Crypt.rootToken();
-                    _user = await DBHelper.ensureUser(jwt, _user.name, _user.username, null, null);
+                    _user = await DBHelper.ensureUser(jwt, _user.name, _user.username, null, null, span);
                 }
             } else {
                 if (!NoderedUtil.IsNullUndefinded(_user)) {
@@ -974,7 +974,7 @@ export class LoginProvider {
                     _user.username = username;
                     (_user as any).mobile = profile.mobile;
                     if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty.", null); return; }
-                    _user = await DBHelper.ensureUser(jwt, _user.name, _user.username, null, null);
+                    _user = await DBHelper.ensureUser(jwt, _user.name, _user.username, null, null, span);
                 }
             }
             if (NoderedUtil.IsNullUndefinded(_user)) {

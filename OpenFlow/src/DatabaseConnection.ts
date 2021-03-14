@@ -563,7 +563,7 @@ export class DatabaseConnection {
      * @param  {string} jwt
      * @returns Promise
      */
-    async aggregate<T extends Base>(aggregates: object[], collectionname: string, jwt: string, hint: Object | string = null, parent: Span = undefined): Promise<T[]> {
+    async aggregate<T extends Base>(aggregates: object[], collectionname: string, jwt: string, hint: Object | string = null, parent: Span): Promise<T[]> {
         const span: Span = otel.startSubSpan("db.Aggregate", parent);
         await this.connect(span);
         let json: any = aggregates;
@@ -876,7 +876,7 @@ export class DatabaseConnection {
                     name = name.toLowerCase();
 
                     span.addEvent("EnsureRole");
-                    const noderedadmins = await DBHelper.EnsureRole(jwt, name + "noderedadmins", null);
+                    const noderedadmins = await DBHelper.EnsureRole(jwt, name + "noderedadmins", null, span);
                     Base.addRight(noderedadmins, user2._id, user2.username, [Rights.full_control]);
                     Base.removeRight(noderedadmins, user2._id, [Rights.delete]);
                     noderedadmins.AddMember(item);
@@ -1301,7 +1301,7 @@ export class DatabaseConnection {
     * @param  {string} jwt JWT of user who is doing the update, ensuring rights
     * @returns Promise<T>
     */
-    async InsertOrUpdateOne<T extends Base>(q: InsertOrUpdateOneMessage, parent: Span = undefined): Promise<InsertOrUpdateOneMessage> {
+    async InsertOrUpdateOne<T extends Base>(q: InsertOrUpdateOneMessage, parent: Span): Promise<InsertOrUpdateOneMessage> {
         const span: Span = otel.startSubSpan("db.InsertOrUpdateOne", parent);
         let query: any = null;
         if (q.uniqeness !== null && q.uniqeness !== undefined && q.uniqeness !== "") {

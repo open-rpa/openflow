@@ -186,7 +186,7 @@ export class DBHelper {
 
 
 
-    public static async EnsureRole(jwt: string, name: string, id: string, parent: Span = undefined): Promise<Role> {
+    public static async EnsureRole(jwt: string, name: string, id: string, parent: Span): Promise<Role> {
         const span: Span = otel.startSubSpan("dbhelper.EnsureRole", parent);
         try {
             let role: Role = await this.FindRoleByNameOrId(name, id, span);
@@ -207,7 +207,7 @@ export class DBHelper {
             otel.endSpan(span);
         }
     }
-    public static async ensureUser(jwt: string, name: string, username: string, id: string, password: string, parent: Span = undefined): Promise<User> {
+    public static async ensureUser(jwt: string, name: string, username: string, id: string, password: string, parent: Span): Promise<User> {
         const span: Span = otel.startSubSpan("dbhelper.ensureUser", parent);
         try {
             let user: User = await this.FindByUsernameOrId(username, id, span);
@@ -233,7 +233,7 @@ export class DBHelper {
                 name = name.split("@").join("").split(".").join("");
                 name = name.toLowerCase();
 
-                const noderedadmins = await this.EnsureRole(jwt, name + "noderedadmins", null);
+                const noderedadmins = await this.EnsureRole(jwt, name + "noderedadmins", null, span);
                 Base.addRight(noderedadmins, user._id, user.username, [Rights.full_control]);
                 Base.removeRight(noderedadmins, user._id, [Rights.delete]);
                 noderedadmins.AddMember(user);

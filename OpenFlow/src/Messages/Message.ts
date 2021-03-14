@@ -149,7 +149,7 @@ export class Message {
                     await this.UpdateMany(cli);
                     break;
                 case "insertorupdateone":
-                    await this.InsertOrUpdateOne(cli);
+                    await this.InsertOrUpdateOne(cli, span);
                     break;
                 case "deleteone":
                     await this.DeleteOne(cli);
@@ -704,7 +704,7 @@ export class Message {
         this.Send(cli);
     }
 
-    private async InsertOrUpdateOne(cli: WebSocketServerClient): Promise<void> {
+    private async InsertOrUpdateOne(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
         let msg: InsertOrUpdateOneMessage
         try {
@@ -712,7 +712,7 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
             if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
-            msg = await Config.db.InsertOrUpdateOne(msg);
+            msg = await Config.db.InsertOrUpdateOne(msg, parent);
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -850,7 +850,7 @@ export class Message {
                     } else { // Autocreate user .... safe ?? we use this for autocreating nodered service accounts
                         if (Config.auto_create_users == true) {
                             const jwt: string = Crypt.rootToken();
-                            user = await DBHelper.ensureUser(jwt, tuser.name, tuser.username, null, msg.password);
+                            user = await DBHelper.ensureUser(jwt, tuser.name, tuser.username, null, msg.password, span);
                             if (user != null) tuser = TokenUser.From(user);
                             if (user == null) {
                                 tuser = new TokenUser();
@@ -1071,7 +1071,7 @@ export class Message {
             if (msg.password == null || msg.password == undefined || msg.password == "") { throw new Error("Password cannot be null"); }
             user = await DBHelper.FindByUsername(msg.username, null, span);
             if (user !== null && user !== undefined) { throw new Error("Illegal username"); }
-            user = await DBHelper.ensureUser(Crypt.rootToken(), msg.name, msg.username, null, msg.password);
+            user = await DBHelper.ensureUser(Crypt.rootToken(), msg.name, msg.username, null, msg.password, span);
             msg.user = TokenUser.From(user);
 
             const jwt: string = Crypt.createToken(msg.user, Config.shorttoken_expires_in);
@@ -1080,7 +1080,7 @@ export class Message {
             name = name.toLowerCase();
 
             cli._logger.debug("[" + user.username + "] ensure nodered role " + name + "noderedadmins");
-            const noderedadmins = await DBHelper.EnsureRole(jwt, name + "noderedadmins", null);
+            const noderedadmins = await DBHelper.EnsureRole(jwt, name + "noderedadmins", null, span);
             Base.addRight(noderedadmins, user._id, user.username, [Rights.full_control]);
             Base.removeRight(noderedadmins, user._id, [Rights.delete]);
             noderedadmins.AddMember(user);
@@ -1170,7 +1170,7 @@ export class Message {
             const nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
 
             cli._logger.debug("[" + cli.user.username + "] ensure nodered role " + name + "noderedadmins");
-            const noderedadmins = await DBHelper.EnsureRole(cli.jwt, name + "noderedadmins", null);
+            const noderedadmins = await DBHelper.EnsureRole(cli.jwt, name + "noderedadmins", null, span);
             Base.addRight(noderedadmins, nodereduser._id, nodereduser.username, [Rights.full_control]);
             Base.removeRight(noderedadmins, nodereduser._id, [Rights.delete]);
             Base.addRight(noderedadmins, cli.user._id, cli.user.username, [Rights.full_control]);
