@@ -170,7 +170,7 @@ export class Config {
     public static oauth_refresh_token_lifetime: number = parseInt(Config.getEnv("oauth_refresh_token_lifetime", "604800"));
     public static oidc_cookie_key: string = Config.getEnv("oidc_cookie_key", "Y6SPiXCxDhAJbN7cbydMw5eX1wIrdy8PiWApqEcguss=");
     public static api_rate_limit: boolean = Config.parseBoolean(Config.getEnv("api_rate_limit", "true"));
-    public static api_rate_limit_points: number = parseInt(Config.getEnv("api_rate_limit_points", "60"));
+    public static api_rate_limit_points: number = parseInt(Config.getEnv("api_rate_limit_points", "20"));
     public static api_rate_limit_duration: number = parseInt(Config.getEnv("api_rate_limit_duration", "1"));
     public static socket_rate_limit: boolean = Config.parseBoolean(Config.getEnv("socket_rate_limit", "true"));
     public static socket_rate_limit_points: number = parseInt(Config.getEnv("socket_rate_limit_points", "30"));
