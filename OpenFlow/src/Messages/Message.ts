@@ -111,7 +111,7 @@ export class Message {
             span.setAttribute("clientid", cli.id);
             if (!NoderedUtil.IsNullEmpty(cli.clientversion)) span.setAttribute("clientversion", cli.clientversion);
             if (!NoderedUtil.IsNullEmpty(cli.clientagent)) span.setAttribute("clientagent", cli.clientagent);
-            if (!NoderedUtil.IsNullEmpty(cli.remoteip)) span.setAttribute("clientagent", cli.remoteip);
+            if (!NoderedUtil.IsNullEmpty(cli.remoteip)) span.setAttribute("remoteip", cli.remoteip);
             span.setAttribute("command", command);
             span.setAttribute("id", this.id);
             switch (command) {
