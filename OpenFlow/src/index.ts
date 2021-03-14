@@ -68,7 +68,7 @@ async function initamqp() {
         }
         ack();
         done();
-    });
+    }, undefined);
 
     // await amqp.AddExchangeConsumer("testexchange", "fanout", "", null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
     //     console.info("testexchange: " + msg);

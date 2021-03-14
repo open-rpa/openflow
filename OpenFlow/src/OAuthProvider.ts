@@ -8,6 +8,7 @@ const fs = require("fs");
 import { Provider, KoaContextWithOIDC } from "oidc-provider";
 import { MongoAdapter } from "./MongoAdapter";
 import { DBHelper } from "./DBHelper";
+import { Span } from "@opentelemetry/api";
 import { otel } from "./otel";
 // import * as Provider from "oidc-provider";
 const Request = OAuthServer.Request;
@@ -80,9 +81,9 @@ export class OAuthProvider {
     }
     public static async LoadClients() {
         const instance = OAuthProvider.instance;
-        const span = otel.startSpan("saveToken");
+        const span = otel.startSpan("OAuthProvider.LoadClients");
         try {
-            const jwksresults = await Config.db.query<Base>({ _type: "jwks" }, null, 10, 0, null, "config", Crypt.rootToken());
+            const jwksresults = await Config.db.query<Base>({ _type: "jwks" }, null, 10, 0, null, "config", Crypt.rootToken(), undefined, undefined, span);
             let jwks = null;
             if (jwksresults.length == 0) {
                 jwks = await this.generatekeys();
@@ -91,7 +92,7 @@ export class OAuthProvider {
             } else {
                 jwks = jwksresults[0];
             }
-            const result = await Config.db.query<Base>({ _type: "oauthclient" }, null, 10, 0, null, "config", Crypt.rootToken());
+            const result = await Config.db.query<Base>({ _type: "oauthclient" }, null, 10, 0, null, "config", Crypt.rootToken(), undefined, undefined, span);
             instance.clients = result;
             instance.clients.forEach(cli => {
                 cli.client_id = cli.clientId;
@@ -330,41 +331,49 @@ export class OAuthProvider {
             (app as any).oauth = instance.oauthServer;
             app.all('/oauth/token', instance.obtainToken.bind(instance));
             app.get('/oauth/login', async (req, res) => {
-                if (NoderedUtil.IsNullUndefinded(instance.clients)) {
-                    instance.clients = await Config.db.query<Base>({ _type: "oauthclient" }, null, 10, 0, null, "config", Crypt.rootToken());
-                    if (instance.clients == null || instance.clients.length == 0) return res.status(500).json({ message: 'OAuth not configured' });
-                }
-                let state = (req.params.state ? req.params.state : req.params["amp;state"]);
-                if (state == null) state = encodeURIComponent((req.query.state ? req.query.state : req.query["amp;state"]) as any);
-                const access_type = (req.query.access_type ? req.query.access_type : req.query["amp;access_type"]);
-                const client_id = (req.query.client_id ? req.query.client_id : req.query["amp;client_id"]);
-                const redirect_uri = (req.query.redirect_uri ? req.query.redirect_uri : req.query["amp;redirect_uri"]) as string;
-                const response_type = (req.query.response_type ? req.query.response_type : req.query["amp;response_type"]);
-                const scope = (req.query.scope ? req.query.scope : req.query["amp;scope"]);
-                let client = instance.getClientById(client_id);
-                if (NoderedUtil.IsNullUndefinded(client)) {
-                    instance.clients = await Config.db.query<Base>({ _type: "oauthclient" }, null, 10, 0, null, "config", Crypt.rootToken());
-                    if (instance.clients == null || instance.clients.length == 0) return res.status(500).json({ message: 'OAuth not configured' });
-                }
-                if (req.user) {
-                    if (!NoderedUtil.IsNullUndefinded(client) && !Array.isArray(client.redirectUris)) {
-                        client.redirectUris = [];
+                const span = otel.startSpan("OAuthProvider.oauth.login");
+                try {
+                    if (NoderedUtil.IsNullUndefinded(instance.clients)) {
+                        instance.clients = await Config.db.query<Base>({ _type: "oauthclient" }, null, 10, 0, null, "config", Crypt.rootToken(), undefined, undefined, span);
+                        if (instance.clients == null || instance.clients.length == 0) return res.status(500).json({ message: 'OAuth not configured' });
                     }
-                    if (!NoderedUtil.IsNullUndefinded(client) && client.redirectUris.length > 0) {
-                        if (client.redirectUris.indexOf(redirect_uri) == -1) {
-                            return res.status(500).json({ message: 'illegal redirect_uri ' + redirect_uri });
-                            // client.redirectUris.push(redirect_uri);
+                    let state = (req.params.state ? req.params.state : req.params["amp;state"]);
+                    if (state == null) state = encodeURIComponent((req.query.state ? req.query.state : req.query["amp;state"]) as any);
+                    const access_type = (req.query.access_type ? req.query.access_type : req.query["amp;access_type"]);
+                    const client_id = (req.query.client_id ? req.query.client_id : req.query["amp;client_id"]);
+                    const redirect_uri = (req.query.redirect_uri ? req.query.redirect_uri : req.query["amp;redirect_uri"]) as string;
+                    const response_type = (req.query.response_type ? req.query.response_type : req.query["amp;response_type"]);
+                    const scope = (req.query.scope ? req.query.scope : req.query["amp;scope"]);
+                    let client = instance.getClientById(client_id);
+                    if (NoderedUtil.IsNullUndefinded(client)) {
+                        instance.clients = await Config.db.query<Base>({ _type: "oauthclient" }, null, 10, 0, null, "config", Crypt.rootToken(), undefined, undefined, span);
+                        if (instance.clients == null || instance.clients.length == 0) return res.status(500).json({ message: 'OAuth not configured' });
+                    }
+                    if (req.user) {
+                        if (!NoderedUtil.IsNullUndefinded(client) && !Array.isArray(client.redirectUris)) {
+                            client.redirectUris = [];
                         }
-                    }
-                    const code = Math.random().toString(36).substr(2, 9);
+                        if (!NoderedUtil.IsNullUndefinded(client) && client.redirectUris.length > 0) {
+                            if (client.redirectUris.indexOf(redirect_uri) == -1) {
+                                return res.status(500).json({ message: 'illegal redirect_uri ' + redirect_uri });
+                                // client.redirectUris.push(redirect_uri);
+                            }
+                        }
+                        const code = Math.random().toString(36).substr(2, 9);
 
-                    instance._logger.info("[OAuth][" + (req.user as any).username + "] /oauth/login " + state);
-                    instance.saveAuthorizationCode(code, client, req.user, redirect_uri);
-                    res.redirect(`${redirect_uri}?state=${state}&code=${code}`);
-                } else {
-                    instance._logger.info("[OAuth][anon] /oauth/login " + state);
-                    res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
-                    res.redirect("/login");
+                        instance._logger.info("[OAuth][" + (req.user as any).username + "] /oauth/login " + state);
+                        instance.saveAuthorizationCode(code, client, req.user, redirect_uri);
+                        res.redirect(`${redirect_uri}?state=${state}&code=${code}`);
+                    } else {
+                        instance._logger.info("[OAuth][anon] /oauth/login " + state);
+                        res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
+                        res.redirect("/login");
+                    }
+                } catch (error) {
+                    span.recordException(error);
+                    throw error;
+                } finally {
+                    otel.endSpan(span);
                 }
             });
             // app.get('/oauth/authorize', instance.authorize.bind(instance));
@@ -429,24 +438,40 @@ export class OAuthProvider {
             });
     }
     public async getAccessToken(accessToken) {
-        this._logger.info("[OAuth] getAccessToken " + accessToken);
-        let token = await OAuthProvider.getCachedAccessToken(accessToken);
-        if (token != null) return token;
-        const tokens = await Config.db.query<Base>({ _type: "token", "accessToken": accessToken }, null, 10, 0, null, "oauthtokens", Crypt.rootToken());
-        token = tokens.length ? tokens[0] as any : null;
-        await OAuthProvider.addToken(token);
-        if (token == null) return false;
-        return token;
+        const span: Span = otel.startSpan("OAuthProvider.getAccessToken");
+        try {
+            this._logger.info("[OAuth] getAccessToken " + accessToken);
+            let token = await OAuthProvider.getCachedAccessToken(accessToken);
+            if (token != null) return token;
+            const tokens = await Config.db.query<Base>({ _type: "token", "accessToken": accessToken }, null, 10, 0, null, "oauthtokens", Crypt.rootToken(), undefined, undefined, span);
+            token = tokens.length ? tokens[0] as any : null;
+            await OAuthProvider.addToken(token);
+            if (token == null) return false;
+            return token;
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            otel.endSpan(span);
+        }
     }
     public async getRefreshToken(refreshToken) {
-        this._logger.info("[OAuth] getRefreshToken " + refreshToken);
-        let token = await OAuthProvider.getCachedAccessToken(refreshToken);
-        if (token != null) return token;
-        const tokens = await Config.db.query<Base>({ _type: "token", "refreshToken": refreshToken }, null, 10, 0, null, "oauthtokens", Crypt.rootToken());
-        token = tokens.length ? tokens[0] as any : null;
-        await OAuthProvider.addToken(token);
-        if (token == null) return false;
-        return token;
+        const span: Span = otel.startSpan("OAuthProvider.getRefreshToken");
+        try {
+            this._logger.info("[OAuth] getRefreshToken " + refreshToken);
+            let token = await OAuthProvider.getCachedAccessToken(refreshToken);
+            if (token != null) return token;
+            const tokens = await Config.db.query<Base>({ _type: "token", "refreshToken": refreshToken }, null, 10, 0, null, "oauthtokens", Crypt.rootToken(), undefined, undefined, span);
+            token = tokens.length ? tokens[0] as any : null;
+            await OAuthProvider.addToken(token);
+            if (token == null) return false;
+            return token;
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            otel.endSpan(span);
+        }
     }
     public getClient(clientId, clientSecret) {
         this._logger.info("[OAuth] getClient " + clientId);
@@ -464,7 +489,7 @@ export class OAuthProvider {
     }
 
     public async saveToken(token, client, user) {
-        const span = otel.startSpan("saveToken");
+        const span = otel.startSpan("OAuthProvider.saveToken");
         this._logger.info("[OAuth] saveToken for " + user.name + " in " + client.clientId);
         const result: any = {
             name: "Token for " + user.name,
@@ -486,7 +511,7 @@ export class OAuthProvider {
         return result;
     }
     public async saveAuthorizationCode(code: string, client: any, user: any, redirect_uri: string) {
-        const span = otel.startSpan("saveAuthorizationCode");
+        const span = otel.startSpan("OAuthProvider.saveAuthorizationCode");
         this._logger.info("[OAuth] saveAuthorizationCode " + code);
         const codeobject = Object.assign({}, user);
         delete codeobject._id;
@@ -533,66 +558,74 @@ export class OAuthProvider {
     }
 
     public async getAuthorizationCode(code) {
-        this._logger.info("[OAuth] getAuthorizationCode " + code);
-        let user: any = this.codes[code];
-        if (user == null) {
-            let users = await Config.db.query<Base>({ _type: "code", "code": code }, null, 10, 0, null, "oauthtokens", Crypt.rootToken());
-            user = users.length ? users[0] as any : null;
+        const span: Span = otel.startSpan("OAuthProvider.validateToken");
+        try {
+            this._logger.info("[OAuth] getAuthorizationCode " + code);
+            let user: any = this.codes[code];
             if (user == null) {
-                await this.sleep(1000);
-                users = await Config.db.query<Base>({ _type: "code", "code": code }, null, 10, 0, null, "oauthtokens", Crypt.rootToken());
+                let users = await Config.db.query<Base>({ _type: "code", "code": code }, null, 10, 0, null, "oauthtokens", Crypt.rootToken(), undefined, undefined, span);
                 user = users.length ? users[0] as any : null;
+                if (user == null) {
+                    await this.sleep(1000);
+                    users = await Config.db.query<Base>({ _type: "code", "code": code }, null, 10, 0, null, "oauthtokens", Crypt.rootToken(), undefined, undefined, span);
+                    user = users.length ? users[0] as any : null;
+                }
+                if (user == null) {
+                    await this.sleep(1000);
+                    users = await Config.db.query<Base>({ _type: "code", "code": code }, null, 10, 0, null, "oauthtokens", Crypt.rootToken(), undefined, undefined, span);
+                    user = users.length ? users[0] as any : null;
+                }
+                if (user == null) {
+                    this._logger.error("[OAuth] getAuthorizationCode, unkown code '" + code + "'");
+                    return null;
+                }
+                if (user != null) { this.codes[code] = user; }
             }
-            if (user == null) {
-                await this.sleep(1000);
-                users = await Config.db.query<Base>({ _type: "code", "code": code }, null, 10, 0, null, "oauthtokens", Crypt.rootToken());
-                user = users.length ? users[0] as any : null;
-            }
-            if (user == null) {
-                this._logger.error("[OAuth] getAuthorizationCode, unkown code '" + code + "'");
-                return null;
-            }
-            if (user != null) { this.codes[code] = user; }
-        }
-        const client_id: string = this.codes[code].client_id;
-        if (user == null) return null;
-        this.revokeAuthorizationCode(code);
-        const redirect_uri = (user as any).redirect_uri;
-        const expiresAt = new Date((new Date).getTime() + (1000 * Config.oauth_access_token_lifetime));
-        var tuser = TokenUser.From(user);
-        let client = this.getClientById(client_id);
-        if (NoderedUtil.IsNullUndefinded(client)) return null;
+            const client_id: string = this.codes[code].client_id;
+            if (user == null) return null;
+            this.revokeAuthorizationCode(code);
+            const redirect_uri = (user as any).redirect_uri;
+            const expiresAt = new Date((new Date).getTime() + (1000 * Config.oauth_access_token_lifetime));
+            var tuser = TokenUser.From(user);
+            let client = this.getClientById(client_id);
+            if (NoderedUtil.IsNullUndefinded(client)) return null;
 
-        let role = client.defaultrole;
-        const keys: string[] = Object.keys(client.rolemappings);
-        for (let i = 0; i < keys.length; i++) {
-            if (tuser.HasRoleName(keys[i])) role = client.rolemappings[keys[i]];
+            let role = client.defaultrole;
+            const keys: string[] = Object.keys(client.rolemappings);
+            for (let i = 0; i < keys.length; i++) {
+                if (tuser.HasRoleName(keys[i])) role = client.rolemappings[keys[i]];
+            }
+            const result = {
+                code: code,
+                client: this.clients[0],
+                user: {
+                    id: user.id,
+                    _id: user.id,
+                    name: user.fullname,
+                    username: user.username,
+                    email: user.username,
+                    role: role
+                },
+                expiresAt: expiresAt,
+                redirectUri: redirect_uri
+            }
+            // node-bb username hack
+            if (result.user.name == result.user.email && result.user.email.indexOf("@") > -1) {
+                result.user.name = result.user.email.substr(0, result.user.email.indexOf("@") - 1);
+            }
+            if (result.user.name == result.user.email && result.user.email.indexOf("@") == -1) {
+                result.user.email = result.user.email + "@unknown.local"
+            }
+            if (result.user.name == result.user.email) {
+                result.user.name = "user " + result.user.email;
+            }
+            return result;
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            otel.endSpan(span);
         }
-        const result = {
-            code: code,
-            client: this.clients[0],
-            user: {
-                id: user.id,
-                _id: user.id,
-                name: user.fullname,
-                username: user.username,
-                email: user.username,
-                role: role
-            },
-            expiresAt: expiresAt,
-            redirectUri: redirect_uri
-        }
-        // node-bb username hack
-        if (result.user.name == result.user.email && result.user.email.indexOf("@") > -1) {
-            result.user.name = result.user.email.substr(0, result.user.email.indexOf("@") - 1);
-        }
-        if (result.user.name == result.user.email && result.user.email.indexOf("@") == -1) {
-            result.user.email = result.user.email + "@unknown.local"
-        }
-        if (result.user.name == result.user.email) {
-            result.user.name = "user " + result.user.email;
-        }
-        return result;
     }
     public async revokeAuthorizationCode(code) {
         if (typeof code !== "string") { code = code.code; }

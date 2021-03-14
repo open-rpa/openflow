@@ -127,20 +127,28 @@ export class LoginProvider {
         });
     }
 
-    static async getProviders(): Promise<any[]> {
-        LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", Crypt.rootToken());
-        const result: any[] = [];
-        LoginProvider.login_providers.forEach(provider => {
-            const item: any = { name: provider.name, id: provider.id, provider: provider.provider, logo: "fa-question-circle" };
-            if (provider.provider === "google") { item.logo = "fa-google"; }
-            if (provider.provider === "saml") { item.logo = "fa-windows"; }
-            result.push(item);
-        });
-        if (result.length === 0) {
-            const item: any = { name: "Local", id: "local", provider: "local", logo: "fa-question-circle" };
-            result.push(item);
+    static async getProviders(parent: Span): Promise<any[]> {
+        const span: Span = otel.startSubSpan("LoginProvider.getProviders", parent);
+        try {
+            LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", Crypt.rootToken(), undefined, undefined, span);
+            const result: any[] = [];
+            LoginProvider.login_providers.forEach(provider => {
+                const item: any = { name: provider.name, id: provider.id, provider: provider.provider, logo: "fa-question-circle" };
+                if (provider.provider === "google") { item.logo = "fa-google"; }
+                if (provider.provider === "saml") { item.logo = "fa-windows"; }
+                result.push(item);
+            });
+            if (result.length === 0) {
+                const item: any = { name: "Local", id: "local", provider: "local", logo: "fa-question-circle" };
+                result.push(item);
+            }
+            return result;
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            otel.endSpan(span);
         }
-        return result;
     }
     static async configure(logger: winston.Logger, app: express.Express, baseurl: string): Promise<void> {
         LoginProvider._logger = logger;
@@ -158,7 +166,6 @@ export class LoginProvider {
         });
 
         app.use(function (req, res, next) {
-            logger.debug(req.originalUrl);
             const origin: string = (req.headers.origin as any);
             if (NoderedUtil.IsNullEmpty(origin)) {
                 res.header('Access-Control-Allow-Origin', '*');
@@ -230,7 +237,7 @@ export class LoginProvider {
             }
         });
         app.get("/jwt", (req: any, res: any, next: any): void => {
-            const span: Span = otel.startSpan("LoginProvider.jwtlong");
+            const span: Span = otel.startSpan("LoginProvider.jwt");
             try {
                 res.setHeader("Content-Type", "application/json");
                 if (req.user) {
@@ -367,27 +374,31 @@ export class LoginProvider {
             otel.endSpan(span);
         });
         app.get("/validateuserform", async (req: any, res: any, next: any): Promise<void> => {
+            const span: Span = otel.startSpan("LoginProvider.validateuserform");
             // logger.debug("/validateuserform " + !(req.user == null));
             res.setHeader("Content-Type", "application/json");
             if (NoderedUtil.IsNullEmpty(Config.validate_user_form)) {
                 res.end(JSON.stringify({}));
                 res.end();
+                otel.endSpan(span);
                 return;
             }
-            var forms = await Config.db.query<Base>({ _id: Config.validate_user_form, _type: "form" }, null, 1, 0, null, "forms", Crypt.rootToken());
+            var forms = await Config.db.query<Base>({ _id: Config.validate_user_form, _type: "form" }, null, 1, 0, null, "forms", Crypt.rootToken(), undefined, undefined, span);
             if (forms.length == 1) {
                 res.end(JSON.stringify(forms[0]));
                 res.end();
+                otel.endSpan(span);
                 return;
             }
             LoginProvider._logger.error("validate_user_form " + Config.validate_user_form + " does not exists!");
             Config.validate_user_form = "";
             res.end(JSON.stringify({}));
             res.end();
+            otel.endSpan(span);
             return;
         });
         app.post("/validateuserform", async (req: any, res) => {
-            const span: Span = otel.startSpan("LoginProvider.validateuserform");
+            const span: Span = otel.startSpan("LoginProvider.postvalidateuserform");
             // logger.debug("/validateuserform " + !(req.user == null));
             res.setHeader("Content-Type", "application/json");
             try {
@@ -439,21 +450,29 @@ export class LoginProvider {
         });
 
         app.get("/loginproviders", async (req: any, res: any, next: any): Promise<void> => {
+            const span: Span = otel.startSpan("LoginProvider.loginproviders");
             try {
-                const result: any[] = await this.getProviders();
+                const result: any[] = await this.getProviders(span);
                 res.setHeader("Content-Type", "application/json");
                 res.end(JSON.stringify(result));
                 res.end();
             } catch (error) {
+                span.recordException(error);
                 console.error(error.message ? error.message : error);
+                otel.endSpan(span);
                 return res.status(500).send({ message: error.message ? error.message : error });
             }
             try {
                 LoginProvider.RegisterProviders(app, baseurl);
             } catch (error) {
+                span.recordException(error);
+            } finally {
+                otel.endSpan(span);
             }
+
         });
         app.get("/download/:id", async (req, res) => {
+            const span: Span = otel.startSpan("LoginProvider.download");
             try {
                 let user: TokenUser = null;
                 let jwt: string = null;
@@ -471,7 +490,7 @@ export class LoginProvider {
                 }
 
                 const id = req.params.id;
-                const rows = await Config.db.query({ _id: safeObjectID(id) }, null, 1, 0, null, "files", jwt);
+                const rows = await Config.db.query({ _id: safeObjectID(id) }, null, 1, 0, null, "files", jwt, undefined, undefined, span);
                 if (rows == null || rows.length != 1) { return res.status(404).send({ message: 'id ' + id + ' Not found.' }); }
                 const file = rows[0] as any;
 
@@ -485,7 +504,10 @@ export class LoginProvider {
                 });
                 downloadStream.pipe(res);
             } catch (error) {
+                span.recordException(error);
                 return res.status(500).send({ message: error.message ? error.message : error });
+            } finally {
+                otel.endSpan(span);
             }
         });
         try {
@@ -576,35 +598,43 @@ export class LoginProvider {
 
     }
     static async RegisterProviders(app: express.Express, baseurl: string) {
-        if (LoginProvider.login_providers.length === 0) {
-            const _jwt = Crypt.rootToken();
-            LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", _jwt);
-        }
-        let hasLocal: boolean = false;
-        if (LoginProvider.login_providers.length === 0) { hasLocal = true; }
-        LoginProvider.login_providers.forEach(async (provider) => {
-            try {
-                if (NoderedUtil.IsNullUndefinded(LoginProvider._providers[provider.id])) {
-                    if (provider.provider === "saml") {
-                        const metadata: any = await Config.parse_federation_metadata(provider.saml_federation_metadata);
-                        LoginProvider._providers[provider.id] =
-                            LoginProvider.CreateSAMLStrategy(app, provider.id, metadata.cert,
-                                metadata.identityProviderUrl, provider.issuer, baseurl);
+        const span: Span = otel.startSpan("LoginProvider.RegisterProviders");
+        try {
+            if (LoginProvider.login_providers.length === 0) {
+                const _jwt = Crypt.rootToken();
+                LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", _jwt, undefined, undefined, span);
+            }
+            let hasLocal: boolean = false;
+            if (LoginProvider.login_providers.length === 0) { hasLocal = true; }
+            LoginProvider.login_providers.forEach(async (provider) => {
+                try {
+                    if (NoderedUtil.IsNullUndefinded(LoginProvider._providers[provider.id])) {
+                        if (provider.provider === "saml") {
+                            const metadata: any = await Config.parse_federation_metadata(provider.saml_federation_metadata);
+                            LoginProvider._providers[provider.id] =
+                                LoginProvider.CreateSAMLStrategy(app, provider.id, metadata.cert,
+                                    metadata.identityProviderUrl, provider.issuer, baseurl);
+                        }
+                        if (provider.provider === "google") {
+                            LoginProvider._providers[provider.id] =
+                                LoginProvider.CreateGoogleStrategy(app, provider.id, provider.consumerKey, provider.consumerSecret, baseurl);
+                        }
                     }
-                    if (provider.provider === "google") {
-                        LoginProvider._providers[provider.id] =
-                            LoginProvider.CreateGoogleStrategy(app, provider.id, provider.consumerKey, provider.consumerSecret, baseurl);
-                    }
+                    if (provider.provider === "local") { hasLocal = true; }
+                } catch (error) {
+                    console.error(error.message ? error.message : error);
                 }
-                if (provider.provider === "local") { hasLocal = true; }
-            } catch (error) {
-                console.error(error.message ? error.message : error);
+            });
+            if (hasLocal === true) {
+                if (NoderedUtil.IsNullUndefinded(LoginProvider._providers.local)) {
+                    LoginProvider._providers.local = LoginProvider.CreateLocalStrategy(app, baseurl);
+                }
             }
-        });
-        if (hasLocal === true) {
-            if (NoderedUtil.IsNullUndefinded(LoginProvider._providers.local)) {
-                LoginProvider._providers.local = LoginProvider.CreateLocalStrategy(app, baseurl);
-            }
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            otel.endSpan(span);
         }
     }
     static CreateGoogleStrategy(app: express.Express, key: string, consumerKey: string, consumerSecret: string, baseurl: string): any {
@@ -723,7 +753,7 @@ export class LoginProvider {
 
     static CreateLocalStrategy(app: express.Express, baseurl: string): passport.Strategy {
         const strategy: passport.Strategy = new LocalStrategy(async (username: string, password: string, done: any): Promise<void> => {
-            const span: Span = otel.startSpan("LoginProvider.LocalLogin");
+            const span: Span = otel.startSpan("LoginProvider.CreateLocalStrategy");
             try {
                 if (username !== null && username != undefined) { username = username.toLowerCase(); }
                 let user: User = null;

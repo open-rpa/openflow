@@ -358,7 +358,7 @@ export class DatabaseConnection {
      * @returns Promise<T[]> Array of results
      */
     // tslint:disable-next-line: max-line-length
-    async query<T extends Base>(query: any, projection: Object, top: number, skip: number, orderby: Object | string, collectionname: string, jwt: string, queryas: string = null, hint: Object | string = null, parent: Span = undefined): Promise<T[]> {
+    async query<T extends Base>(query: any, projection: Object, top: number, skip: number, orderby: Object | string, collectionname: string, jwt: string, queryas: string = null, hint: Object | string = null, parent: Span): Promise<T[]> {
         const span: Span = otel.startSubSpan("db.query", parent);
         try {
             await this.connect(span);
@@ -501,32 +501,38 @@ export class DatabaseConnection {
             otel.endSpan(span);
         }
     }
-    async GetDocumentVersion<T extends Base>(collectionname: string, id: string, version: number, jwt: string): Promise<T> {
+    async GetDocumentVersion<T extends Base>(collectionname: string, id: string, version: number, jwt: string, parent: Span): Promise<T> {
         const roundDown = function (num, precision): number {
             num = parseFloat(num);
             if (!precision) return num;
             return (Math.floor(num / precision) * precision);
         };
+        const span: Span = otel.startSubSpan("db.GetDocumentVersion", parent);
+        try {
 
-        let result: T = await this.getbyid<T>(id, collectionname, jwt);
-        if (result == null) return result;
-        if (result._version > version) {
-            const rootjwt = Crypt.rootToken()
-            // const baseversion = roundDown(version, Config.history_delta_count);
-            const basehist = await this.query<any>({ id: id, item: { $exists: true, $ne: null }, "_version": { $lte: version } }, null, 1, 0, { _version: -1 }, collectionname + "_hist", rootjwt);
-            result = basehist[0].item;
-            const baseversion = basehist[0]._version;
-
-            const history = await this.query<T>({ id: id, "_version": { $gt: baseversion, $lte: version } }, null, Config.history_delta_count, 0, { _version: 1 }, collectionname + "_hist", rootjwt);
-
-            for (let i = 0; i < history.length; i++) {
-                const delta = (history[i] as any).delta;
-                if (delta != null) {
-                    result = jsondiffpatch.patch(result, delta);
+            let result: T = await this.getbyid<T>(id, collectionname, jwt, span);
+            if (result == null) return result;
+            if (result._version > version) {
+                const rootjwt = Crypt.rootToken()
+                // const baseversion = roundDown(version, Config.history_delta_count);
+                const basehist = await this.query<any>({ id: id, item: { $exists: true, $ne: null }, "_version": { $lte: version } }, null, 1, 0, { _version: -1 }, collectionname + "_hist", rootjwt, undefined, undefined, span);
+                result = basehist[0].item;
+                const baseversion = basehist[0]._version;
+                const history = await this.query<T>({ id: id, "_version": { $gt: baseversion, $lte: version } }, null, Config.history_delta_count, 0, { _version: 1 }, collectionname + "_hist", rootjwt, undefined, undefined, span);
+                for (let i = 0; i < history.length; i++) {
+                    const delta = (history[i] as any).delta;
+                    if (delta != null) {
+                        result = jsondiffpatch.patch(result, delta);
+                    }
                 }
             }
+            return result;
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            otel.endSpan(span);
         }
-        return result;
     }
 
     /**
@@ -536,11 +542,19 @@ export class DatabaseConnection {
      * @param  {string} jwt JWT of user who is making the query, to limit results based on permissions
      * @returns Promise<T>
      */
-    async getbyid<T extends Base>(id: string, collectionname: string, jwt: string): Promise<T> {
-        if (id === null || id === undefined) { throw Error("Id cannot be null"); }
-        const arr: T[] = await this.query<T>({ _id: id }, null, 1, 0, null, collectionname, jwt);
-        if (arr === null || arr.length === 0) { return null; }
-        return arr[0];
+    async getbyid<T extends Base>(id: string, collectionname: string, jwt: string, parent: Span): Promise<T> {
+        const span: Span = otel.startSubSpan("db.getbyid", parent);
+        try {
+            if (id === null || id === undefined) { throw Error("Id cannot be null"); }
+            const arr: T[] = await this.query<T>({ _id: id }, null, 1, 0, null, collectionname, jwt, undefined, undefined, span);
+            if (arr === null || arr.length === 0) { return null; }
+            return arr[0];
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            otel.endSpan(span);
+        }
     }
     /**
      * Do MongoDB aggregation
@@ -967,8 +981,7 @@ export class DatabaseConnection {
                 let name = q.item.name;
                 if (NoderedUtil.IsNullEmpty(name)) name = (q.item as any)._name;
                 if (NoderedUtil.IsNullEmpty(name)) name = "Unknown";
-
-                original = await this.getbyid<T>(q.item._id, q.collectionname, q.jwt);
+                original = await this.getbyid<T>(q.item._id, q.collectionname, q.jwt, span);
                 if (!original) { throw Error("item not found!"); }
                 if (!this.hasAuthorization(user, original, Rights.update)) {
                     const again = this.hasAuthorization(user, original, Rights.update);
@@ -1309,7 +1322,7 @@ export class DatabaseConnection {
         let exists: Base[] = [];
         if (query != null) {
             // exists = await this.query(query, { name: 1 }, 2, 0, null, q.collectionname, q.jwt);
-            exists = await this.query(query, null, 2, 0, null, q.collectionname, q.jwt);
+            exists = await this.query(query, null, 2, 0, null, q.collectionname, q.jwt, undefined, undefined, span);
         }
         if (exists.length == 1) {
             q.item._id = exists[0]._id;
@@ -1790,9 +1803,15 @@ export class DatabaseConnection {
             }
             const ot_end = otel.startTimer();
             const mongodbspan: Span = otel.startSubSpan("mongodb.insertOne", span);
-            await this.db.collection(q.collectionname + '_hist').insertOne(updatehist);
-            otel.endSpan(mongodbspan);
-            otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: q.collectionname + '_hist' });
+            // await this.db.collection(q.collectionname + '_hist').insertOne(updatehist);
+            this.db.collection(q.collectionname + '_hist').insertOne(updatehist).then(() => {
+                otel.endSpan(mongodbspan);
+                otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: q.collectionname + '_hist' });
+            }).catch(err => {
+                mongodbspan.recordException(err);
+                otel.endSpan(mongodbspan);
+                otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: q.collectionname + '_hist' });
+            });
         } catch (error) {
             span.recordException(error);
             this._logger.error(error);
@@ -1888,9 +1907,15 @@ export class DatabaseConnection {
                     }
                     const ot_end = otel.startTimer();
                     const mongodbspan: Span = otel.startSubSpan("mongodb.insertOne", span);
-                    await this.db.collection(collectionname + '_hist').insertOne(deltahist);
-                    otel.endSpan(mongodbspan);
-                    otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname + '_hist' });
+                    // await this.db.collection(collectionname + '_hist').insertOne(deltahist);
+                    this.db.collection(collectionname + '_hist').insertOne(deltahist).then(() => {
+                        otel.endSpan(mongodbspan);
+                        otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname + '_hist' });
+                    }).catch(err => {
+                        mongodbspan.recordException(err);
+                        otel.endSpan(mongodbspan);
+                        otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname + '_hist' });
+                    });
                 }
             } else {
                 const fullhist = {
@@ -1910,9 +1935,15 @@ export class DatabaseConnection {
                 }
                 const ot_end = otel.startTimer();
                 const mongodbspan: Span = otel.startSubSpan("mongodb.insertOne", span);
-                await this.db.collection(collectionname + '_hist').insertOne(fullhist);
-                otel.endSpan(mongodbspan);
-                otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname + '_hist' });
+                // await this.db.collection(collectionname + '_hist').insertOne(fullhist);
+                this.db.collection(collectionname + '_hist').insertOne(fullhist).then(() => {
+                    otel.endSpan(mongodbspan);
+                    otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname + '_hist' });
+                }).catch(err => {
+                    mongodbspan.recordException(err);
+                    otel.endSpan(mongodbspan);
+                    otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname + '_hist' });
+                });
             }
             item._modifiedby = _modifiedby;
             item._modifiedbyid = _modifiedbyid;

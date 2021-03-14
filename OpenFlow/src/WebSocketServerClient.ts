@@ -7,6 +7,7 @@ import { amqpwrapper, QueueMessageOptions, amqpqueue } from "./amqpwrapper";
 import { NoderedUtil, Base, InsertOneMessage, QueueMessage, MapReduceMessage, QueryMessage, UpdateOneMessage, UpdateManyMessage, DeleteOneMessage, User, mapFunc, reduceFunc, finalizeFunc, QueuedMessage, QueuedMessageCallback, WatchEventMessage } from "@openiap/openflow-api";
 import { ChangeStream } from "mongodb";
 import { WebSocketServer } from "./WebSocketServer";
+import { Span } from "@opentelemetry/api";
 import { otel } from "./otel";
 interface IHashTable<T> {
     [key: string]: T;
@@ -198,56 +199,64 @@ export class WebSocketServerClient {
             }
         }
     }
-    public async CreateConsumer(queuename: string): Promise<string> {
-        let autoDelete: boolean = false; // Should we keep the queue around ? for robots and roles
-        let qname = queuename;
-        if (NoderedUtil.IsNullEmpty(qname)) {
-            if (this.clientagent == "nodered") {
-                qname = "nodered." + Math.random().toString(36).substr(2, 9); autoDelete = true;
-            } else if (this.clientagent == "webapp") {
-                qname = "webapp." + Math.random().toString(36).substr(2, 9); autoDelete = true;
-            } else if (this.clientagent == "web") {
-                qname = "web." + Math.random().toString(36).substr(2, 9); autoDelete = true;
-            } else if (this.clientagent == "openrpa") {
-                qname = "openrpa." + Math.random().toString(36).substr(2, 9); autoDelete = true;
-            } else if (this.clientagent == "powershell") {
-                qname = "powershell." + Math.random().toString(36).substr(2, 9); autoDelete = true;
-            } else {
-                qname = "unknown." + Math.random().toString(36).substr(2, 9); autoDelete = true;
-            }
-        }
-        await semaphore.down();
-        this.CloseConsumer(qname);
-        let queue: amqpqueue = null;
+    public async CreateConsumer(queuename: string, parent: Span): Promise<string> {
+        const span: Span = otel.startSubSpan("dbhelper.EnsureRole", parent);
         try {
-            const AssertQueueOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertQueueOptions));
-            AssertQueueOptions.autoDelete = autoDelete;
-            queue = await amqpwrapper.Instance().AddQueueConsumer(qname, AssertQueueOptions, this.jwt, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
-                const _data = msg;
-                try {
-                    const result = await this.Queue(msg, qname, options);
-                    ack();
-                    done(result);
-                } catch (error) {
-                    setTimeout(() => {
-                        ack(false);
-                        // ack(); // just eat the error 
-                        done(_data);
-                        console.error(qname + " failed message queue message, nack and re queue message: ", (error.message ? error.message : error));
-                    }, Config.amqp_requeue_time);
+            let autoDelete: boolean = false; // Should we keep the queue around ? for robots and roles
+            let qname = queuename;
+            if (NoderedUtil.IsNullEmpty(qname)) {
+                if (this.clientagent == "nodered") {
+                    qname = "nodered." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+                } else if (this.clientagent == "webapp") {
+                    qname = "webapp." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+                } else if (this.clientagent == "web") {
+                    qname = "web." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+                } else if (this.clientagent == "openrpa") {
+                    qname = "openrpa." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+                } else if (this.clientagent == "powershell") {
+                    qname = "powershell." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+                } else {
+                    qname = "unknown." + Math.random().toString(36).substr(2, 9); autoDelete = true;
                 }
-            });
-            if (queue) {
-                qname = queue.queue;
-                this._queues.push(queue);
             }
-            if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...otel.defaultlabels, clientid: this.id }).update(this._queues.length);
+            await semaphore.down();
+            this.CloseConsumer(qname);
+            let queue: amqpqueue = null;
+            try {
+                const AssertQueueOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertQueueOptions));
+                AssertQueueOptions.autoDelete = autoDelete;
+                queue = await amqpwrapper.Instance().AddQueueConsumer(qname, AssertQueueOptions, this.jwt, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+                    const _data = msg;
+                    try {
+                        const result = await this.Queue(msg, qname, options);
+                        ack();
+                        done(result);
+                    } catch (error) {
+                        setTimeout(() => {
+                            ack(false);
+                            // ack(); // just eat the error 
+                            done(_data);
+                            console.error(qname + " failed message queue message, nack and re queue message: ", (error.message ? error.message : error));
+                        }, Config.amqp_requeue_time);
+                    }
+                }, span);
+                if (queue) {
+                    qname = queue.queue;
+                    this._queues.push(queue);
+                }
+                if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...otel.defaultlabels, clientid: this.id }).update(this._queues.length);
+            } catch (error) {
+                this._logger.error("WebSocketclient::CreateConsumer " + error);
+            }
+            semaphore.up();
+            if (queue != null) return queue.queue;
+            return null;
         } catch (error) {
-            this._logger.error("WebSocketclient::CreateConsumer " + error);
+            span.recordException(error);
+            throw error;
+        } finally {
+            otel.endSpan(span);
         }
-        semaphore.up();
-        if (queue != null) return queue.queue;
-        return null;
     }
     sleep(ms) {
         return new Promise(resolve => {

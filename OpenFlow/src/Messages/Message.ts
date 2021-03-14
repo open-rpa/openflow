@@ -125,7 +125,7 @@ export class Message {
                     await this.Query(cli, span);
                     break;
                 case "getdocumentversion":
-                    await this.GetDocumentVersion(cli);
+                    await this.GetDocumentVersion(cli, span);
                     break;
                 case "aggregate":
                     await this.Aggregate(cli, span);
@@ -172,7 +172,7 @@ export class Message {
                     // this.Ping(cli);
                     break;
                 case "registerqueue":
-                    await this.RegisterQueue(cli);
+                    await this.RegisterQueue(cli, span);
                     break;
                 case "queuemessage":
                     await this.QueueMessage(cli);
@@ -211,7 +211,7 @@ export class Message {
                     await this.SaveFile(cli);
                     break;
                 case "getfile":
-                    await this.GetFile(cli);
+                    await this.GetFile(cli, span);
                     break;
                 case "updatefile":
                     await this.UpdateFile(cli);
@@ -220,10 +220,10 @@ export class Message {
                     await this.CreateWorkflowInstance(cli, span);
                     break;
                 case "stripeaddplan":
-                    await this.StripeAddPlan(cli);
+                    await this.StripeAddPlan(cli, span);
                     break;
                 case "stripecancelplan":
-                    await this.StripeCancelPlan(cli);
+                    await this.StripeCancelPlan(cli, span);
                     break;
                 case "ensurestripecustomer":
                     await this.EnsureStripeCustomer(cli, span);
@@ -259,12 +259,12 @@ export class Message {
             otel.endSpan(span);
         }
     }
-    async RegisterQueue(cli: WebSocketServerClient) {
+    async RegisterQueue(cli: WebSocketServerClient, parent: Span) {
         this.Reply();
         let msg: RegisterQueueMessage;
         try {
             msg = RegisterQueueMessage.assign(this.data);
-            msg.queuename = await cli.CreateConsumer(msg.queuename);
+            msg.queuename = await cli.CreateConsumer(msg.queuename, parent);
         } catch (error) {
             cli._logger.error(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -482,12 +482,14 @@ export class Message {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
+            span.recordException(error)
             cli._logger.error(error);
         }
         otel.endSpan(span);
         this.Send(cli);
     }
-    private async GetDocumentVersion(cli: WebSocketServerClient): Promise<void> {
+    private async GetDocumentVersion(cli: WebSocketServerClient, parent: Span): Promise<void> {
+        const span: Span = otel.startSubSpan("message.GetDocumentVersion", parent);
         this.Reply();
         let msg: GetDocumentVersionMessage
         try {
@@ -496,10 +498,11 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) {
                 msg.error = "Access denied, not signed in";
             } else {
-                msg.result = await Config.db.GetDocumentVersion(msg.collectionname, msg._id, msg.version, msg.jwt);
+                msg.result = await Config.db.GetDocumentVersion(msg.collectionname, msg._id, msg.version, msg.jwt, span);
             }
         } catch (error) {
             cli._logger.error(error);
+            span.recordException(error)
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
@@ -507,8 +510,10 @@ export class Message {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
+            span.recordException(error)
             cli._logger.error(error);
         }
+        otel.endSpan(span);
         this.Send(cli);
     }
 
@@ -922,7 +927,7 @@ export class Message {
                     }
                     msg.user = tuser;
                     if (!NoderedUtil.IsNullEmpty(user.impersonating) && NoderedUtil.IsNullEmpty(msg.impersonate)) {
-                        const items = await Config.db.query({ _id: user.impersonating }, null, 1, 0, null, "users", msg.jwt);
+                        const items = await Config.db.query({ _id: user.impersonating }, null, 1, 0, null, "users", msg.jwt, undefined, undefined, span);
                         if (items.length == 0) {
                             msg.impersonate = null;
                         } else {
@@ -930,9 +935,9 @@ export class Message {
                         }
                     }
                     if (msg.impersonate !== undefined && msg.impersonate !== null && msg.impersonate !== "" && tuser._id != msg.impersonate) {
-                        const items = await Config.db.query({ _id: msg.impersonate }, null, 1, 0, null, "users", msg.jwt);
+                        const items = await Config.db.query({ _id: msg.impersonate }, null, 1, 0, null, "users", msg.jwt, undefined, undefined, span);
                         if (items.length == 0) {
-                            const impostors = await Config.db.query<User>({ _id: msg.impersonate }, null, 1, 0, null, "users", Crypt.rootToken());
+                            const impostors = await Config.db.query<User>({ _id: msg.impersonate }, null, 1, 0, null, "users", Crypt.rootToken(), undefined, undefined, span);
                             const impb: User = new User(); impb.name = "unknown"; impb._id = msg.impersonate;
                             let imp: TokenUser = TokenUser.From(impb);
                             if (impostors.length == 1) {
@@ -951,7 +956,7 @@ export class Message {
                                 await Config.db._UpdateOne({ _id: tuserimpostor._id }, { "$set": { "impersonating": user._id } } as any, "users", 1, false, msg.jwt, span);
                             }
                         } catch (error) {
-                            const impostors = await Config.db.query<User>({ _id: msg.impersonate }, null, 1, 0, null, "users", Crypt.rootToken());
+                            const impostors = await Config.db.query<User>({ _id: msg.impersonate }, null, 1, 0, null, "users", Crypt.rootToken(), undefined, undefined, span);
                             const impb: User = new User(); impb.name = "unknown"; impb._id = msg.impersonate;
                             let imp: TokenUser = TokenUser.From(impb);
                             if (impostors.length == 1) {
@@ -1104,7 +1109,7 @@ export class Message {
         if (_id !== null && _id !== undefined && _id !== "" && _id != myid) {
             var qs: any[] = [{ _id: _id }];
             qs.push(Config.db.getbasequery(jwt, "_acl", [Rights.update]))
-            const res = await Config.db.query<User>({ "$and": qs }, null, 1, 0, null, "users", jwt);
+            const res = await Config.db.query<User>({ "$and": qs }, null, 1, 0, null, "users", jwt, undefined, undefined, span);
             if (res.length == 0) {
                 throw new Error("Unknown userid " + _id + " or permission denied");
             }
@@ -1150,7 +1155,7 @@ export class Message {
             if (_id === null || _id === undefined || _id === "") _id = cli.user._id;
             const name = await this.GetInstanceName(_id, cli.user._id, cli.user.username, cli.jwt, span);
 
-            const users = await Config.db.query<NoderedUser>({ _id: _id }, null, 1, 0, null, "users", cli.jwt);
+            const users = await Config.db.query<NoderedUser>({ _id: _id }, null, 1, 0, null, "users", cli.jwt, undefined, undefined, span);
             if (users.length == 0) {
                 throw new Error("Unknown userid " + _id);
             }
@@ -1205,7 +1210,7 @@ export class Message {
                         resources.requests.cpu = user.nodered.resources.requests.cpu;
                     }
                 } else {
-                    const billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
+                    const billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt, undefined, undefined, span);
                     if (billings.length > 0) {
                         const billing: Billing = billings[0];
                         if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.limits.memory = billing.memory;
@@ -1221,7 +1226,7 @@ export class Message {
                 }
             } else {
                 if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
-                    const billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
+                    const billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt, undefined, undefined, span);
                     if (billings.length > 0) {
                         const billing: Billing = billings[0];
                         if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.limits.memory = billing.memory;
@@ -1974,19 +1979,20 @@ export class Message {
             }
         });
     }
-    private async GetFile(cli: WebSocketServerClient): Promise<void> {
+    private async GetFile(cli: WebSocketServerClient, parent: Span): Promise<void> {
+        const span: Span = otel.startSubSpan("message.GetFile", parent);
         this.Reply();
         let msg: GetFileMessage
         try {
             msg = SaveFileMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (!NoderedUtil.IsNullEmpty(msg.id)) {
-                const rows = await Config.db.query({ _id: safeObjectID(msg.id) }, null, 1, 0, null, "files", msg.jwt);
+                const rows = await Config.db.query({ _id: safeObjectID(msg.id) }, null, 1, 0, null, "files", msg.jwt, undefined, undefined, span);
                 if (rows.length == 0) { throw new Error("Not found"); }
                 msg.metadata = (rows[0] as any).metadata
                 msg.mimeType = (rows[0] as any).contentType;
             } else if (!NoderedUtil.IsNullEmpty(msg.filename)) {
-                const rows = await Config.db.query({ "filename": msg.filename }, null, 1, 0, { uploadDate: -1 }, "fs.files", msg.jwt);
+                const rows = await Config.db.query({ "filename": msg.filename }, null, 1, 0, { uploadDate: -1 }, "fs.files", msg.jwt, undefined, undefined, span);
                 if (rows.length == 0) { throw new Error("Not found"); }
                 msg.id = rows[0]._id;
                 msg.metadata = (rows[0] as any).metadata
@@ -1996,6 +2002,7 @@ export class Message {
             }
             msg.file = await this._GetFile(msg.id);
         } catch (error) {
+            span.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             cli._logger.error(error);
@@ -2003,9 +2010,11 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
+            span.recordException(error);
             this.data = "";
             cli._logger.error(error);
         }
+        otel.endSpan(span);
         this.Send(cli);
     }
     private async filescount(files: Cursor<any>): Promise<number> {
@@ -2092,7 +2101,7 @@ export class Message {
             let workflow: any = null;
             if (NoderedUtil.IsNullEmpty(msg.queue)) {
                 const user: any = null;
-                const res = await Config.db.query({ "_id": msg.workflowid }, null, 1, 0, null, "workflow", msg.jwt);
+                const res = await Config.db.query({ "_id": msg.workflowid }, null, 1, 0, null, "workflow", msg.jwt, undefined, undefined, span);
                 if (res.length != 1) throw new Error("Unknown workflow id " + msg.workflowid);
                 workflow = res[0];
                 msg.queue = workflow.queue;
@@ -2104,7 +2113,7 @@ export class Message {
                 throw new Error("Cannot reply to self queuename:" + msg.queue + " correlationId:" + msg.resultqueue);
             }
 
-            const res = await Config.db.query({ "_id": msg.targetid }, null, 1, 0, null, "users", msg.jwt);
+            const res = await Config.db.query({ "_id": msg.targetid }, null, 1, 0, null, "users", msg.jwt, undefined, undefined, span);
             if (res.length != 1) throw new Error("Unknown target id " + msg.targetid);
             workflow = res[0];
             msg.state = "new";
@@ -2193,7 +2202,8 @@ export class Message {
         step(data, undefined);
         return result;
     }
-    async StripeCancelPlan(cli: WebSocketServerClient) {
+    async StripeCancelPlan(cli: WebSocketServerClient, parent: Span) {
+        const span: Span = otel.startSubSpan("message.StripeCancelPlan", parent);
         this.Reply();
         let msg: StripeCancelPlanMessage;
         const rootjwt = Crypt.rootToken();
@@ -2202,7 +2212,7 @@ export class Message {
             if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
             if (NoderedUtil.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
 
-            const billings = await Config.db.query<Billing>({ userid: msg.userid, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
+            const billings = await Config.db.query<Billing>({ userid: msg.userid, _type: "billing" }, null, 1, 0, null, "users", rootjwt, undefined, undefined, span);
             if (billings.length == 0) throw new Error("Need billing info and a stripe customer in order to cancel plan");
             const billing: Billing = billings[0];
             if (NoderedUtil.IsNullEmpty(billing.stripeid)) throw new Error("Need a stripe customer in order to cancel plan");
@@ -2232,6 +2242,7 @@ export class Message {
             msg.customer = customer;
         } catch (error) {
             if (error == null) new Error("Unknown error");
+            span.recordException(error);
             cli._logger.error(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
@@ -2245,12 +2256,15 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
+            span.recordException(error);
             this.data = "";
             cli._logger.error(error);
         }
+        otel.endSpan(span);
         this.Send(cli);
     }
-    async StripeAddPlan(cli: WebSocketServerClient) {
+    async StripeAddPlan(cli: WebSocketServerClient, parent: Span) {
+        const span: Span = otel.startSubSpan("message.StripeAddPlan", parent);
         this.Reply();
         let msg: StripeAddPlanMessage;
         const rootjwt = Crypt.rootToken();
@@ -2259,7 +2273,7 @@ export class Message {
             if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
             if (NoderedUtil.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
 
-            const billings = await Config.db.query<Billing>({ userid: msg.userid, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
+            const billings = await Config.db.query<Billing>({ userid: msg.userid, _type: "billing" }, null, 1, 0, null, "users", rootjwt, undefined, undefined, span);
             if (billings.length == 0) throw new Error("Need billing info and a stripe customer in order to add plan");
             const billing: Billing = billings[0];
             if (NoderedUtil.IsNullEmpty(billing.stripeid)) throw new Error("Need a stripe customer in order to add plan");
@@ -2330,6 +2344,7 @@ export class Message {
             msg.customer = customer;
         } catch (error) {
             if (error == null) new Error("Unknown error");
+            span.recordException(error);
             cli._logger.error(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
@@ -2343,9 +2358,11 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
+            span.recordException(error);
             this.data = "";
             cli._logger.error(error);
         }
+        otel.endSpan(span);
         this.Send(cli);
     }
     async EnsureStripeCustomer(cli: WebSocketServerClient, parent: Span) {
@@ -2357,13 +2374,13 @@ export class Message {
             msg = EnsureStripeCustomerMessage.assign(this.data);
             if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
             if (NoderedUtil.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
-            const users = await Config.db.query({ _id: msg.userid, _type: "user" }, null, 1, 0, null, "users", msg.jwt);
+            const users = await Config.db.query({ _id: msg.userid, _type: "user" }, null, 1, 0, null, "users", msg.jwt, undefined, undefined, span);
             if (users.length == 0) throw new Error("Unknown userid");
             const user: User = users[0] as any;
             let dirty: boolean = false;
             let hasbilling: boolean = false;
 
-            const billings = await Config.db.query<Billing>({ userid: msg.userid, _type: "billing" }, null, 1, 0, null, "users", rootjwt);
+            const billings = await Config.db.query<Billing>({ userid: msg.userid, _type: "billing" }, null, 1, 0, null, "users", rootjwt, undefined, undefined, span);
             let billing: Billing;
             if (billings.length == 0) {
                 const tax_rates = await this.Stripe<stripe_list<stripe_base>>("GET", "tax_rates", null, null, null);
@@ -2530,8 +2547,8 @@ export class Message {
             msg.customer = customer;
 
         } catch (error) {
-            span.recordException(error);
             if (error == null) new Error("Unknown error");
+            span.recordException(error);
             cli._logger.error(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
@@ -2663,7 +2680,7 @@ export class Message {
         const span: Span = otel.startSubSpan("message.DumpClients", parent);
         try {
             const jwt = Crypt.rootToken();
-            const known = await Config.db.query({ _type: "socketclient" }, null, 5000, 0, null, "configclients", jwt);
+            const known = await Config.db.query({ _type: "socketclient" }, null, 5000, 0, null, "configclients", jwt, undefined, undefined, span);
             for (let i = 0; i < WebSocketServer._clients.length; i++) {
                 let client = WebSocketServer._clients[i];
                 let id = client.id;
@@ -2707,7 +2724,7 @@ export class Message {
         try {
             const kickstartapi = amqpwrapper.getvhosts(Config.amqp_url);
             const jwt = Crypt.rootToken();
-            const known = await Config.db.query({ _type: "queue" }, null, 5000, 0, null, "configclients", jwt);
+            const known = await Config.db.query({ _type: "queue" }, null, 5000, 0, null, "configclients", jwt, undefined, undefined, span);
             const queues = await amqpwrapper.getqueues(Config.amqp_url);
             for (let i = 0; i < queues.length; i++) {
                 let queue = queues[i];

@@ -28,7 +28,7 @@ export class DBHelper {
         const span: Span = otel.startSubSpan("dbhelper.FindById", parent);
         try {
             if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
-            const items: User[] = await Config.db.query<User>({ _id: _id }, null, 1, 0, null, "users", jwt);
+            const items: User[] = await Config.db.query<User>({ _id: _id }, null, 1, 0, null, "users", jwt, undefined, undefined, span);
             if (items === null || items === undefined || items.length === 0) { return null; }
             const result: User = User.assign(items[0]);
             await this.DecorateWithRoles(result, span);
