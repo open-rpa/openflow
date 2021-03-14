@@ -724,7 +724,7 @@ export class Account {
     static async findAccount(ctx: KoaContextWithOIDC, id) {
         let acc = accountStorage.get(`Account:${id}`);
         if (!acc) {
-            const user = await DBHelper.FindById(id);
+            const user = await DBHelper.FindById(id, undefined, undefined);
             acc = new Account(id, TokenUser.From(user));
         }
         return acc;

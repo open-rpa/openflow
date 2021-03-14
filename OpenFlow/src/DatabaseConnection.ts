@@ -458,14 +458,14 @@ export class DatabaseConnection {
             if (collectionname === "files") { collectionname = "fs.files"; }
             if (collectionname === "fs.files") {
                 if (!NoderedUtil.IsNullEmpty(queryas)) {
-                    _query = { $and: [query, this.getbasequery(jwt, "metadata._acl", [Rights.read]), await this.getbasequeryuserid(queryas, "metadata._acl", [Rights.read])] };
+                    _query = { $and: [query, this.getbasequery(jwt, "metadata._acl", [Rights.read]), await this.getbasequeryuserid(queryas, "metadata._acl", [Rights.read], span)] };
                 } else {
                     _query = { $and: [query, this.getbasequery(jwt, "metadata._acl", [Rights.read])] };
                 }
                 projection = null;
             } else {
                 if (!NoderedUtil.IsNullEmpty(queryas)) {
-                    _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read]), await this.getbasequeryuserid(queryas, "_acl", [Rights.read])] };
+                    _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read]), await this.getbasequeryuserid(queryas, "_acl", [Rights.read], span)] };
                 } else {
                     _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
                 }
@@ -822,7 +822,7 @@ export class DatabaseConnection {
                 const r: Role = (item as any);
                 if (r.name == null || r.name == "") { throw new Error("Name is mandatory"); }
                 span.addEvent("FindByUsername");
-                const exists2 = await DBHelper.FindRoleByName(r.name);
+                const exists2 = await DBHelper.FindRoleByName(r.name, span);
                 if (exists2 != null) { throw new Error("Access denied, role '" + r.name + "' already exists"); }
             }
 
@@ -849,7 +849,7 @@ export class DatabaseConnection {
             if (collectionname === "users" && item._type === "user") {
                 Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
                 span.addEvent("FindRoleByNameOrId");
-                const users: Role = await DBHelper.FindRoleByNameOrId("users", jwt);
+                const users: Role = await DBHelper.FindRoleByNameOrId("users", jwt, span);
                 users.AddMember(item);
                 span.addEvent("CleanACL");
                 item = await this.CleanACL(item, user, span);
@@ -1582,8 +1582,8 @@ export class DatabaseConnection {
         }
         return { $or: finalor.concat() };
     }
-    private async getbasequeryuserid(userid: string, field: string, bits: number[]): Promise<Object> {
-        const user = await DBHelper.FindByUsernameOrId(null, userid);
+    private async getbasequeryuserid(userid: string, field: string, bits: number[], parent: Span): Promise<Object> {
+        const user = await DBHelper.FindByUsernameOrId(null, userid, parent);
         const jwt = Crypt.createToken(user, Config.shorttoken_expires_in);
         return this.getbasequery(jwt, field, bits);
     }

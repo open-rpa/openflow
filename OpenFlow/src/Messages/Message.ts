@@ -790,7 +790,7 @@ export class Message {
             } else if (!NoderedUtil.IsNullEmpty(cli.jwt)) {
                 tuser = Crypt.verityToken(cli.jwt);
                 const impostor: string = tuser.impostor;
-                cli.user = await DBHelper.FindById(cli.user._id);
+                cli.user = await DBHelper.FindById(cli.user._id, undefined, span);
                 tuser = TokenUser.From(cli.user);
                 tuser.impostor = impostor;
             }
@@ -898,7 +898,7 @@ export class Message {
                     cli._logger.debug("Disabled user " + tuser.username + " failed logging in using " + type);
                 } else {
                     if (msg.impersonate == "-1" || msg.impersonate == "false") {
-                        user = await DBHelper.FindById(impostor, Crypt.rootToken());
+                        user = await DBHelper.FindById(impostor, Crypt.rootToken(), span);
                         if (Config.persist_user_impersonation) UpdateDoc.$unset = { "impersonating": "" };
                         user.impersonating = undefined;
                         if (!NoderedUtil.IsNullEmpty(tuser.impostor)) {
@@ -940,7 +940,7 @@ export class Message {
                         }
                         const tuserimpostor = tuser;
                         user = User.assign(items[0] as User);
-                        await DBHelper.DecorateWithRoles(user);
+                        await DBHelper.DecorateWithRoles(user, span);
                         // Check we have update rights
                         try {
                             await DBHelper.Save(user, msg.jwt, span);
@@ -1157,7 +1157,7 @@ export class Message {
             const namespace = Config.namespace;
             const hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
 
-            const nodereduser = await DBHelper.FindById(_id, cli.jwt);
+            const nodereduser = await DBHelper.FindById(_id, cli.jwt, span);
             const tuser: TokenUser = TokenUser.From(nodereduser);
             const nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
 

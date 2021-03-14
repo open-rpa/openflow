@@ -6,124 +6,174 @@ import { Span } from "@opentelemetry/api";
 
 export class DBHelper {
     public static async FindByUsername(username: string, jwt: string = null, parent: Span): Promise<User> {
-        const span: Span = otel.startSubSpan("dbhelper.EnsureRole", parent);
-        const byuser = { username: new RegExp(["^", username, "$"].join(""), "i") };
-        const byid = { federationids: new RegExp(["^", username, "$"].join(""), "i") }
-        const q = { $or: [byuser, byid] };
-        if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
-        const items: User[] = await Config.db.query<User>(q, null, 1, 0, null, "users", jwt);
-        if (items === null || items === undefined || items.length === 0) { return null; }
-        const result: User = User.assign(items[0]);
-        await this.DecorateWithRoles(result);
-        return result;
+        const span: Span = otel.startSubSpan("dbhelper.FindByUsername", parent);
+        try {
+            const byuser = { username: new RegExp(["^", username, "$"].join(""), "i") };
+            const byid = { federationids: new RegExp(["^", username, "$"].join(""), "i") }
+            const q = { $or: [byuser, byid] };
+            if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
+            const items: User[] = await Config.db.query<User>(q, null, 1, 0, null, "users", jwt, undefined, undefined, span);
+            if (items === null || items === undefined || items.length === 0) { return null; }
+            const result: User = User.assign(items[0]);
+            await this.DecorateWithRoles(result, span);
+            return result;
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            otel.endSpan(span);
+        }
     }
-    public static async FindById(_id: string, jwt: string = null): Promise<User> {
-        if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
-        const items: User[] = await Config.db.query<User>({ _id: _id }, null, 1, 0, null, "users", jwt);
-        if (items === null || items === undefined || items.length === 0) { return null; }
-        const result: User = User.assign(items[0]);
-        await this.DecorateWithRoles(result);
-        return result;
+    public static async FindById(_id: string, jwt: string = null, parent: Span): Promise<User> {
+        const span: Span = otel.startSubSpan("dbhelper.FindById", parent);
+        try {
+            if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
+            const items: User[] = await Config.db.query<User>({ _id: _id }, null, 1, 0, null, "users", jwt);
+            if (items === null || items === undefined || items.length === 0) { return null; }
+            const result: User = User.assign(items[0]);
+            await this.DecorateWithRoles(result, span);
+            return result;
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            otel.endSpan(span);
+        }
     }
-    public static async FindByUsernameOrId(username: string, id: string): Promise<User> {
-        const items: User[] = await Config.db.query<User>({ $or: [{ username: new RegExp(["^", username, "$"].join(""), "i") }, { _id: id }] },
-            null, 1, 0, null, "users", Crypt.rootToken());
-        if (items === null || items === undefined || items.length === 0) { return null; }
-        const result: User = User.assign(items[0]);
-        await this.DecorateWithRoles(result);
-        return result;
+    public static async FindByUsernameOrId(username: string, id: string, parent: Span): Promise<User> {
+        const span: Span = otel.startSubSpan("dbhelper.FindByUsernameOrId", parent);
+        try {
+            const items: User[] = await Config.db.query<User>({ $or: [{ username: new RegExp(["^", username, "$"].join(""), "i") }, { _id: id }] },
+                null, 1, 0, null, "users", Crypt.rootToken(), undefined, undefined, span);
+            if (items === null || items === undefined || items.length === 0) { return null; }
+            const result: User = User.assign(items[0]);
+            await this.DecorateWithRoles(result, span);
+            return result;
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            otel.endSpan(span);
+        }
     }
-    public static async FindByUsernameOrFederationid(username: string): Promise<User> {
-        const byuser = { username: new RegExp(["^", username, "$"].join(""), "i") };
-        const byid = { federationids: new RegExp(["^", username, "$"].join(""), "i") }
-        const q = { $or: [byuser, byid] };
-        const items: User[] = await Config.db.query<User>(q, null, 1, 0, null, "users", Crypt.rootToken());
-        if (items === null || items === undefined || items.length === 0) { return null; }
-        const result: User = User.assign(items[0]);
-        await this.DecorateWithRoles(result);
-        return result;
+    public static async FindByUsernameOrFederationid(username: string, parent: Span): Promise<User> {
+        const span: Span = otel.startSubSpan("dbhelper.FindByUsernameOrFederationid", parent);
+        try {
+            const byuser = { username: new RegExp(["^", username, "$"].join(""), "i") };
+            const byid = { federationids: new RegExp(["^", username, "$"].join(""), "i") }
+            const q = { $or: [byuser, byid] };
+            const items: User[] = await Config.db.query<User>(q, null, 1, 0, null, "users", Crypt.rootToken(), undefined, undefined, span);
+            if (items === null || items === undefined || items.length === 0) { return null; }
+            const result: User = User.assign(items[0]);
+            await this.DecorateWithRoles(result, span);
+            return result;
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            otel.endSpan(span);
+        }
     }
-    public static async GetRoles(_id: string, ident: number): Promise<Role[]> {
-        if (ident > Config.max_recursive_group_depth) return [];
-        const result: Role[] = [];
-        const query: any = { "members": { "$elemMatch": { _id: _id } } };
-        const ids: string[] = [];
-        const _roles: Role[] = await Config.db.query<Role>(query, null, Config.expected_max_roles, 0, null, "users", Crypt.rootToken());
-        for (let i = 0; i < _roles.length; i++) {
-            const role = _roles[i];
-            if (ids.indexOf(role._id) == -1) {
-                ids.push(role._id);
-                result.push(role);
-                const _subroles: Role[] = await this.GetRoles(role._id, ident + 1);
-                for (let y = 0; y < _subroles.length; y++) {
-                    const subrole = _subroles[y];
-                    if (ids.indexOf(subrole._id) == -1) {
-                        ids.push(subrole._id);
-                        result.push(subrole);
+    public static async GetRoles(_id: string, ident: number, parent: Span): Promise<Role[]> {
+        const span: Span = otel.startSubSpan("dbhelper.GetRoles", parent);
+        span.setAttribute("_id", _id);
+        span.setAttribute("ident", ident);
+        try {
+            if (ident > Config.max_recursive_group_depth) return [];
+            const result: Role[] = [];
+            const query: any = { "members": { "$elemMatch": { _id: _id } } };
+            const ids: string[] = [];
+            const _roles: Role[] = await Config.db.query<Role>(query, null, Config.expected_max_roles, 0, null, "users", Crypt.rootToken(), undefined, undefined, span);
+            for (let i = 0; i < _roles.length; i++) {
+                const role = _roles[i];
+                if (ids.indexOf(role._id) == -1) {
+                    ids.push(role._id);
+                    result.push(role);
+                    const _subroles: Role[] = await this.GetRoles(role._id, ident + 1, span);
+                    for (let y = 0; y < _subroles.length; y++) {
+                        const subrole = _subroles[y];
+                        if (ids.indexOf(subrole._id) == -1) {
+                            ids.push(subrole._id);
+                            result.push(subrole);
+                        }
                     }
                 }
             }
+            return result;
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            otel.endSpan(span);
         }
-        return result;
     }
     public static cached_roles: Role[] = [];
     public static cached_at: Date = new Date();
-    public static async DecorateWithRoles(user: User): Promise<void> {
-        if (!Config.decorate_roles_fetching_all_roles) {
-            const roles: Role[] = await this.GetRoles(user._id, 0);
-            user.roles = [];
-            roles.forEach(role => {
-                user.roles.push(new Rolemember(role.name, role._id));
-            });
-        } else {
-            var end: number = new Date().getTime();
-            var seconds = Math.round((end - this.cached_at.getTime()) / 1000);
-            if (seconds > Config.roles_cached_in_seconds || Config.roles_cached_in_seconds <= 0) {
-                this.cached_roles = [];
-            }
-            if (this.cached_roles.length == 0) {
-                let query: any = { _type: "role" };
-                this.cached_roles = await Config.db.query<Role>(query, { "name": 1, "members": 1 }, Config.expected_max_roles, 0, null, "users", Crypt.rootToken());
-                this.cached_at = new Date();
-            }
-            if (this.cached_roles.length === 0 && user.username !== "root") {
-                throw new Error("System has no roles !!!!!!");
-            }
-            user.roles = [];
-            this.cached_roles.forEach(role => {
-                let isMember: number = -1;
-                if (role.members !== undefined) { isMember = role.members.map(function (e: Rolemember): string { return e._id; }).indexOf(user._id); }
-                const beenAdded: number = user.roles.map(function (e: Rolemember): string { return e._id; }).indexOf(user._id);
-                if (isMember > -1 && beenAdded === -1) {
+    public static async DecorateWithRoles(user: User, parent: Span): Promise<void> {
+        const span: Span = otel.startSubSpan("dbhelper.DecorateWithRoles", parent);
+        try {
+            if (!Config.decorate_roles_fetching_all_roles) {
+                const roles: Role[] = await this.GetRoles(user._id, 0, span);
+                user.roles = [];
+                roles.forEach(role => {
                     user.roles.push(new Rolemember(role.name, role._id));
-                }
-            });
-            let foundone: boolean = true;
-            while (foundone) {
-                foundone = false;
-                user.roles.forEach(userrole => {
-                    this.cached_roles.forEach(role => {
-                        let isMember: number = -1;
-                        if (role.members !== undefined) { isMember = role.members.map(function (e: Rolemember): string { return e._id; }).indexOf(userrole._id); }
-                        const beenAdded: number = user.roles.map(function (e: Rolemember): string { return e._id; }).indexOf(role._id);
-                        if (isMember > -1 && beenAdded === -1) {
-                            user.roles.push(new Rolemember(role.name, role._id));
-                            foundone = true;
-                        }
-                    });
                 });
+            } else {
+                var end: number = new Date().getTime();
+                var seconds = Math.round((end - this.cached_at.getTime()) / 1000);
+                if (seconds > Config.roles_cached_in_seconds || Config.roles_cached_in_seconds <= 0) {
+                    this.cached_roles = [];
+                }
+                if (this.cached_roles.length == 0) {
+                    let query: any = { _type: "role" };
+                    this.cached_roles = await Config.db.query<Role>(query, { "name": 1, "members": 1 }, Config.expected_max_roles, 0, null, "users", Crypt.rootToken(),
+                        undefined, undefined, span);
+                    this.cached_at = new Date();
+                }
+                if (this.cached_roles.length === 0 && user.username !== "root") {
+                    throw new Error("System has no roles !!!!!!");
+                }
+                user.roles = [];
+                this.cached_roles.forEach(role => {
+                    let isMember: number = -1;
+                    if (role.members !== undefined) { isMember = role.members.map(function (e: Rolemember): string { return e._id; }).indexOf(user._id); }
+                    const beenAdded: number = user.roles.map(function (e: Rolemember): string { return e._id; }).indexOf(user._id);
+                    if (isMember > -1 && beenAdded === -1) {
+                        user.roles.push(new Rolemember(role.name, role._id));
+                    }
+                });
+                let foundone: boolean = true;
+                while (foundone) {
+                    foundone = false;
+                    user.roles.forEach(userrole => {
+                        this.cached_roles.forEach(role => {
+                            let isMember: number = -1;
+                            if (role.members !== undefined) { isMember = role.members.map(function (e: Rolemember): string { return e._id; }).indexOf(userrole._id); }
+                            const beenAdded: number = user.roles.map(function (e: Rolemember): string { return e._id; }).indexOf(role._id);
+                            if (isMember > -1 && beenAdded === -1) {
+                                user.roles.push(new Rolemember(role.name, role._id));
+                                foundone = true;
+                            }
+                        });
+                    });
+                }
             }
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            otel.endSpan(span);
         }
     }
-    public static async FindRoleByName(name: string): Promise<Role> {
-        const items: Role[] = await Config.db.query<Role>({ name: name }, null, 1, 0, null, "users", Crypt.rootToken());
+    public static async FindRoleByName(name: string, parent: Span): Promise<Role> {
+        const items: Role[] = await Config.db.query<Role>({ name: name }, null, 1, 0, null, "users", Crypt.rootToken(), undefined, undefined, parent);
         if (items === null || items === undefined || items.length === 0) { return null; }
         const result: Role = Role.assign(items[0]);
         return result;
     }
-    public static async FindRoleByNameOrId(name: string, id: string): Promise<Role> {
+    public static async FindRoleByNameOrId(name: string, id: string, parent: Span): Promise<Role> {
         const jwt = Crypt.rootToken();
-        const items: Role[] = await Config.db.query<Role>({ $or: [{ name: name }, { _id: id }] }, null, 1, 0, null, "users", jwt);
+        const items: Role[] = await Config.db.query<Role>({ $or: [{ name: name }, { _id: id }] }, null, 1, 0, null, "users", jwt, undefined, undefined, parent);
         if (items === null || items === undefined || items.length === 0) { return null; }
         const result: Role = Role.assign(items[0]);
         return result;
@@ -139,7 +189,7 @@ export class DBHelper {
     public static async EnsureRole(jwt: string, name: string, id: string, parent: Span = undefined): Promise<Role> {
         const span: Span = otel.startSubSpan("dbhelper.EnsureRole", parent);
         try {
-            let role: Role = await this.FindRoleByNameOrId(name, id);
+            let role: Role = await this.FindRoleByNameOrId(name, id, span);
             if (role !== null && (role._id === id || id === null)) { return role; }
             if (role !== null && !NoderedUtil.IsNullEmpty(role._id)) { await Config.db.DeleteOne(role._id, "users", jwt); }
             role = new Role(); role.name = name; role._id = id;
@@ -152,6 +202,7 @@ export class DBHelper {
             return Role.assign(role);
         } catch (error) {
             span.recordException(error);
+            throw error;
         } finally {
             otel.endSpan(span);
         }
@@ -159,7 +210,7 @@ export class DBHelper {
     public static async ensureUser(jwt: string, name: string, username: string, id: string, password: string, parent: Span = undefined): Promise<User> {
         const span: Span = otel.startSubSpan("dbhelper.ensureUser", parent);
         try {
-            let user: User = await this.FindByUsernameOrId(username, id);
+            let user: User = await this.FindByUsernameOrId(username, id, span);
             if (user !== null && (user._id === id || id === null)) { return user; }
             if (user !== null && id !== null) { await Config.db.DeleteOne(user._id, "users", jwt); }
             user = new User(); user._id = id; user.name = name; user.username = username;
@@ -174,7 +225,7 @@ export class DBHelper {
             Base.addRight(user, user._id, user.name, [Rights.full_control]);
             Base.removeRight(user, user._id, [Rights.delete]);
             await this.Save(user, jwt, span);
-            const users: Role = await this.FindRoleByName("users");
+            const users: Role = await this.FindRoleByName("users", span);
             users.AddMember(user);
 
             if (Config.auto_create_personal_nodered_group) {
@@ -190,10 +241,11 @@ export class DBHelper {
             }
 
             await this.Save(users, jwt, span)
-            await this.DecorateWithRoles(user);
+            await this.DecorateWithRoles(user, span);
             return user;
         } catch (error) {
             span.recordException(error);
+            throw error;
         } finally {
             otel.endSpan(span);
         }
