@@ -12,7 +12,7 @@ export class Auth {
             if (password === null || password === undefined || password === "") { throw Error("Password cannot be null"); }
             const user: User = await DBHelper.FindByUsername(username, null, span);
             if (user === null || user === undefined) { return null; }
-            if ((await Crypt.compare(password, user.passwordhash)) !== true) { return null; }
+            if ((await Crypt.compare(password, user.passwordhash, span)) !== true) { return null; }
             return user;
         } catch (error) {
             span.recordException(error);

@@ -731,7 +731,7 @@ export class LoginProvider {
                     user = await DBHelper.FindByUsername(username, null, span);
                     if (user == null) {
                         user = new User(); user.name = username; user.username = username;
-                        await Crypt.SetPassword(user, password);
+                        await Crypt.SetPassword(user, password, span);
                         user = await Config.db.InsertOne(user, "users", 0, false, Crypt.rootToken(), span);
                         const admins: Role = await DBHelper.FindRoleByName("admins", span);
                         admins.AddMember(user);
@@ -742,7 +742,7 @@ export class LoginProvider {
                             done("Disabled user " + username, null);
                             return;
                         }
-                        if (!(await Crypt.ValidatePassword(user, password))) {
+                        if (!(await Crypt.ValidatePassword(user, password, span))) {
                             Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown", span);
                             return done(null, false);
                         }
@@ -766,7 +766,7 @@ export class LoginProvider {
                         done("Disabled user " + username, null);
                         return;
                     }
-                    if (!(await Crypt.ValidatePassword(user, password))) {
+                    if (!(await Crypt.ValidatePassword(user, password, span))) {
                         Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown", span);
                         return done(null, false);
                     }

@@ -215,9 +215,9 @@ export class DBHelper {
             if (user !== null && id !== null) { await Config.db.DeleteOne(user._id, "users", jwt); }
             user = new User(); user._id = id; user.name = name; user.username = username;
             if (password !== null && password !== undefined && password !== "") {
-                await Crypt.SetPassword(user, password);
+                await Crypt.SetPassword(user, password, span);
             } else {
-                await Crypt.SetPassword(user, Math.random().toString(36).substr(2, 9));
+                await Crypt.SetPassword(user, Math.random().toString(36).substr(2, 9), span);
             }
             user = await Config.db.InsertOne(user, "users", 0, false, jwt, span);
             user = User.assign(user);
