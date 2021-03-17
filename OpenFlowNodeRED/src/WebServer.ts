@@ -75,7 +75,7 @@ export class WebServer {
     private static _logger: winston.Logger;
     private static app: express.Express = null;
 
-    public static openflow_nodered_node_activations: Counter;
+    // public static openflow_nodered_node_activations: Counter;
     public static openflow_nodered_node_duration: ValueRecorder;
     public static message_queue_count: BaseObserver;
 
@@ -98,9 +98,9 @@ export class WebServer {
         if (this.app !== null) { return; }
 
         if (!NoderedUtil.IsNullUndefinded(_otel)) {
-            this.openflow_nodered_node_activations = _otel.meter.createCounter("openflow_nodered_node_activations", {
-                description: 'Total number of node type activations calls'
-            }) // "nodetype"
+            // this.openflow_nodered_node_activations = _otel.meter.createCounter("openflow_nodered_node_activations", {
+            //     description: 'Total number of node type activations calls'
+            // }) // "nodetype"
 
             this.openflow_nodered_node_duration = _otel.meter.createValueRecorder('openflow_nodered_node_duration', {
                 description: 'Duration of each node type call',
@@ -230,8 +230,8 @@ export class WebServer {
                                 if (!NoderedUtil.IsNullEmpty(msg.msgid) && msg.event.startsWith("node.")) {
                                     msg.event = msg.event.substring(5);
                                     if (msg.event.endsWith(".receive")) {
-                                        if (!NoderedUtil.IsNullUndefinded(WebServer.openflow_nodered_node_activations))
-                                            WebServer.openflow_nodered_node_activations.bind({ ...otel.defaultlabels, nodetype: msg.event }).add(1);
+                                        // if (!NoderedUtil.IsNullUndefinded(WebServer.openflow_nodered_node_activations))
+                                        //     WebServer.openflow_nodered_node_activations.bind({ ...otel.defaultlabels, nodetype: msg.event }).add(1);
 
                                         if (WebServer.log_messages[msg.msgid] == undefined) WebServer.log_messages[msg.msgid] = new log_message(msg.msgid, msg.nodeid);
                                         const logmessage = WebServer.log_messages[msg.msgid];
