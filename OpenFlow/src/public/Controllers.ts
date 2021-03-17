@@ -2119,6 +2119,11 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
     traversecomponentsAddCustomValidate(components: any[]) {
         for (let y = 0; y < components.length; y++) {
             const item = components[y];
+            if (item.type == "file") {
+                item.storage = "url";
+                item.url = "/upload"
+            }
+            console.log(item);
             // if (item.validate == null) item.validate = {};
             // item.validateOn = "blur";
             // item.validate.custom = "console.log(arguments)";
@@ -2270,7 +2275,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             this.formioRender.on('submit', async submission => {
                 this.Save();
             });
-            this.formioRender.url = "/formio";
             // wizard
             // https://formio.github.io/formio.js/app/examples/datagrid.html
 
