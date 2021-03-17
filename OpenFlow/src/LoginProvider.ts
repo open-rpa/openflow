@@ -327,6 +327,7 @@ export class LoginProvider {
                 res.end(JSON.stringify(res2));
             } catch (error) {
                 span.recordException(error);
+                return res.status(500).send({ message: error.message ? error.message : error });
             } finally {
                 otel.endSpan(span);
             }
@@ -466,6 +467,7 @@ export class LoginProvider {
                 LoginProvider.RegisterProviders(app, baseurl);
             } catch (error) {
                 span.recordException(error);
+                return res.status(500).send({ message: error.message ? error.message : error });
             } finally {
                 otel.endSpan(span);
             }
@@ -536,10 +538,15 @@ export class LoginProvider {
                                 user = TokenUser.From(req.user);
                                 jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
                             }
+                            const { query, headers } = req;
 
-                            fileInfo.metadata.name = file.originalname;
-                            (fileInfo.metadata as any).filename = file.originalname;
+                            fileInfo.metadata.name = filename;
+                            (fileInfo.metadata as any).filename = filename;
                             (fileInfo.metadata as any).path = "";
+                            (fileInfo.metadata as any).uniquename = query.uniquename;
+                            (fileInfo.metadata as any).form = query.form;
+                            (fileInfo.metadata as any).project = query.project;
+                            (fileInfo.metadata as any).baseurl = query.baseUrl;
                             fileInfo.metadata._acl = [];
                             fileInfo.metadata._createdby = user.name;
                             fileInfo.metadata._createdbyid = user._id;
@@ -547,6 +554,11 @@ export class LoginProvider {
                             fileInfo.metadata._modifiedby = user.name;
                             fileInfo.metadata._modifiedbyid = user._id;
                             fileInfo.metadata._modified = fileInfo.metadata._created;
+
+                            const keys = Object.keys(query);
+                            for (let i = 0; i < keys.length; i++) {
+                                fileInfo.metadata[keys[i]] = query[keys[i]];
+                            }
                             Base.addRight(fileInfo.metadata, user._id, user.name, [Rights.full_control]);
                             Base.addRight(fileInfo.metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
                             Base.addRight(fileInfo.metadata, WellknownIds.filestore_users, "filestore users", [Rights.read]);
@@ -556,8 +568,6 @@ export class LoginProvider {
                                     fileInfo.metadata._acl[index].rights = (new Binary(Buffer.from(a.rights, "base64"), 0) as any);
                                 }
                             });
-
-
                             resolve(fileInfo);
                         });
                     });
@@ -567,6 +577,112 @@ export class LoginProvider {
                 storage: storage
             }).any();
 
+            // app.get("/upload", async (req: any, res: any, next: any): Promise<void> => {
+            //     const query = req.query;
+            // });
+            app.delete("/upload", async (req: any, res: any, next: any): Promise<void> => {
+                const span: Span = otel.startSpan("LoginProvider.upload");
+                try {
+                    let user: TokenUser = null;
+                    let jwt: string = null;
+                    const authHeader = req.headers.authorization;
+                    if (authHeader) {
+                        user = Crypt.verityToken(authHeader);
+                        jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
+                    }
+                    else if (req.user) {
+                        user = TokenUser.From(req.user as any);
+                        jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
+                    }
+                    if (user == null) {
+                        return res.status(404).send({ message: 'Route ' + req.url + ' Not found.' });
+                    }
+                    const query = req.query;
+                    console.log("baseUrl: " + query.baseUrl);
+                    console.log("form: " + query.form);
+                    console.log("project: " + query.project);
+                    console.log("uniquename: " + query.uniquename);
+                    let uniquename: string = query.uniquename;
+                    if (uniquename.indexOf('/') > -1) uniquename = uniquename.substr(0, uniquename.indexOf('/'));
+                    let q: any = {};
+                    if (!NoderedUtil.IsNullEmpty(uniquename)) {
+                        q = { "metadata.uniquename": uniquename };
+                    }
+
+                    const arr = await Config.db.query(q, undefined, 1, 0, { "uploadDate": -1 }, "files", jwt, undefined, undefined, span);
+                    if (arr.length > 0) {
+                        await Config.db.DeleteOne(arr[0]._id, "files", jwt);
+                    }
+                    res.send({
+                        status: "success",
+                        display_status: "Success",
+                        message: uniquename + " deleted"
+                    });
+                } catch (error) {
+                    span.recordException(error);
+                    console.error(error);
+                    return res.status(500).send({ message: error.message ? error.message : error });
+                } finally {
+                    otel.endSpan(span);
+                }
+
+            });
+            // app.get("/upload/:fileId", async (req: any, res: any, next: any): Promise<void> => {
+            app.get("/upload", async (req: any, res: any, next: any): Promise<void> => {
+                const span: Span = otel.startSpan("LoginProvider.upload");
+                try {
+                    let user: TokenUser = null;
+                    let jwt: string = null;
+                    const authHeader = req.headers.authorization;
+                    if (authHeader) {
+                        user = Crypt.verityToken(authHeader);
+                        jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
+                    }
+                    else if (req.user) {
+                        user = TokenUser.From(req.user as any);
+                        jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
+                    }
+                    if (user == null) {
+                        return res.status(404).send({ message: 'Route ' + req.url + ' Not found.' });
+                    }
+                    const query = req.query;
+                    console.log("baseUrl: " + query.baseUrl);
+                    console.log("form: " + query.form);
+                    console.log("project: " + query.project);
+                    console.log("uniquename: " + query.uniquename);
+                    let uniquename: string = query.uniquename;
+                    if (uniquename.indexOf('/') > -1) uniquename = uniquename.substr(0, uniquename.indexOf('/'));
+                    let q: any = {};
+                    if (!NoderedUtil.IsNullEmpty(uniquename)) {
+                        q = { "metadata.uniquename": uniquename };
+                    }
+
+                    const arr = await Config.db.query(q, undefined, 1, 0, { "uploadDate": -1 }, "files", jwt, undefined, undefined, span);
+
+                    const id = arr[0]._id;
+                    const rows = await Config.db.query({ _id: safeObjectID(id) }, null, 1, 0, null, "files", jwt, undefined, undefined, span);
+                    if (rows == null || rows.length != 1) { return res.status(404).send({ message: 'id ' + id + ' Not found.' }); }
+                    const file = rows[0] as any;
+
+                    console.log("id: " + id);
+
+                    const bucket = new GridFSBucket(Config.db.db);
+                    let downloadStream = bucket.openDownloadStream(safeObjectID(id));
+                    res.set('Content-Type', file.contentType);
+                    res.set('Content-Disposition', 'attachment; filename="' + file.filename + '"');
+                    res.set('Content-Length', file.length);
+                    downloadStream.on("error", function (err) {
+                        res.end();
+                    });
+                    downloadStream.pipe(res);
+                    return;
+                } catch (error) {
+                    span.recordException(error);
+                    return res.status(500).send({ message: error.message ? error.message : error });
+                } finally {
+                    otel.endSpan(span);
+                }
+            });
             app.post("/upload", async (req, res) => {
                 let user: TokenUser = null;
                 let jwt: string = null;

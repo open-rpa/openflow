@@ -65,6 +65,23 @@ export class WebServer {
         //     if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(webserver_rate_limit);
         // }
 
+        // this.app.get("/form", async (req: any, res: any, next: any): Promise<void> => {
+        //     res.send({
+        //         status: "success",
+        //         display_status: "Success",
+        //         message: "All system are go"
+        //     });
+        //     return;
+        // });
+        // this.app.get("/formio", async (req: any, res: any, next: any): Promise<void> => {
+        //     res.send({
+        //         status: "success",
+        //         display_status: "Success",
+        //         message: "All system are go"
+        //     });
+        //     return;
+        // });
+
         this.app.get("/metrics", async (req: any, res: any, next: any): Promise<void> => {
             let result: string = ""
             // if (!NoderedUtil.IsNullUndefinded(register)) {

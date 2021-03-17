@@ -63,7 +63,7 @@ export class log_message {
         this.name = this.node.name || this.node.type;
         this.hrtimestamp = hrTime();
         this.nodes = {};
-        this.span = otel.startSpan2(this.name, msgid);
+        this.span = otel.startSpan(this.name);
         this.span.setAttribute("msgid", msgid);
         this.span.setAttribute("nodeid", this.nodeid);
         this.span.setAttribute("nodetype", this.node.type)

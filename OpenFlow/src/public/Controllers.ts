@@ -3,6 +3,7 @@ import { TokenUser, QueueMessage, SigninMessage, Ace, NoderedUser, Billing, stri
 import { RPAWorkflow, Provider, Form, WorkflowInstance, Workflow, unattendedclient } from "./Entities";
 import { WebSocketClientService } from "./WebSocketClientService";
 import * as jsondiffpatch from "jsondiffpatch";
+import * as ofurl from "./formsio_of_provider";
 
 function treatAsUTC(date): number {
     const result = new Date(date);
@@ -1709,6 +1710,18 @@ export class EditFormCtrl extends entityCtrl<Form> {
             } catch (error) {
                 await jsutil.loadScript("formio.full.min.js");
             }
+            try {
+                const storage = "url";
+                const Providers = Formio.Providers
+                const p = Providers.getProviders('storage');
+                Providers.providers['storage'] = { "url": ofurl.default };
+
+                const Provider = Providers.getProvider('storage', storage);
+                const provider = new Provider(this);
+                // console.log(provider);
+            } catch (error) {
+                console.error(error);
+            }
             if (this.model.formData == null || this.model.formData == undefined) { this.model.formData = {}; }
             // "https://examples.form.io/wizard"
             if (this.model.wizard == true) {
@@ -1722,11 +1735,48 @@ export class EditFormCtrl extends entityCtrl<Form> {
                     breadcrumbSettings: { clickable: false },
                     buttonSettings: { showCancel: false },
                     builder: {
-                        data: false,
-                        premium: false
+                        resource: false,
+                        // data: false,
+                        // premium: false
+                        premium: false,
+                        basic: false,
+                        customBasic: {
+                            title: 'Basic',
+                            default: true,
+                            weight: 0,
+                            components: {
+                                file: true,
+                                textfield: true,
+                                textarea: true,
+                                number: true,
+                                password: true,
+                                checkbox: true,
+                                selectboxes: true,
+                                select: true,
+                                radio: true,
+                                button: true,
+                            }
+
+                        }
+                    },
+                    hooks: {
+                        customValidation: function (submission, next) {
+                            console.log("customValidation");
+                            console.log(submission);
+                        }
                     }
+
                 });
+            // this.Formiobuilder.hook('customValidation', { ...submission, component: options.component }, (err) => {
+            this.Formiobuilder.options.hooks.beforeSubmit = (submission, callback) => {
+                console.log("beforeSubmit");
+                console.log(submission);
+
+            };
+
+            this.Formiobuilder.url = "/formio";
             this.Formiobuilder.on('change', form => {
+                console.log("change");
                 this.model.schema = form;
             })
             this.Formiobuilder.on('submit', submission => {
@@ -1948,7 +1998,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             console.error(this.errormessage);
         }
-        this.loadData();
+        // this.loadData();
     }
     traversecomponentsPostProcess(components: any[], data: any) {
         for (let i = 0; i < components.length; i++) {
@@ -2065,8 +2115,15 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 }
             }
         }
-
-        // rows
+    }
+    traversecomponentsAddCustomValidate(components: any[]) {
+        for (let y = 0; y < components.length; y++) {
+            const item = components[y];
+            // if (item.validate == null) item.validate = {};
+            // item.validateOn = "blur";
+            // item.validate.custom = "console.log(arguments)";
+            // console.log(item);
+        }
     }
     sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
@@ -2075,6 +2132,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         next();
     }
     async renderform() {
+        console.log('renderform');
         if (this.form.fbeditor == null || this.form.fbeditor == undefined) this.form.fbeditor = true;
         if ((this.form.fbeditor as any) == "true") this.form.fbeditor = true;
         if ((this.form.fbeditor as any) == "false") this.form.fbeditor = false;
@@ -2165,7 +2223,21 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             } catch (error) {
                 await jsutil.loadScript("formio.full.min.js");
             }
+            try {
+                const storage = "url";
+                const Providers = Formio.Providers
+                const p = Providers.getProviders('storage');
+                Providers.providers['storage'] = { "url": ofurl.default };
+
+                const Provider = Providers.getProvider('storage', storage);
+                const provider = new Provider(this);
+                // console.log(provider);
+            } catch (error) {
+                console.error(error);
+            }
+
             this.traversecomponentsMakeDefaults(this.form.schema.components);
+            this.traversecomponentsAddCustomValidate(this.form.schema.components);
 
             if (this.form.wizard == true) {
                 this.form.schema.display = "wizard";
@@ -2178,37 +2250,33 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                     breadcrumbSettings: { clickable: true },
                     buttonSettings: { showCancel: false },
                     hooks: {
-                        beforeSubmit: this.beforeSubmit.bind(this)
+                        beforeSubmit: this.beforeSubmit.bind(this),
+                        customValidation: async (submission, next) => {
+                            console.log("customValidation");
+                            console.log(submission);
+                            $(".alert-success").hide();
+                            setTimeout(() => {
+                                // just to be safe
+                                $(".alert-success").hide();
+                            }, 200);
+                            this.model.submission = submission;
+                            this.model.userData = submission;
+                            this.model.payload = submission.data;
+                            this.traversecomponentsPostProcess(this.form.schema.components, submission.data);
+                            next();
+                        }
                     }
                 });
+            this.formioRender.on('submit', async submission => {
+                this.Save();
+            });
+            this.formioRender.url = "/formio";
             // wizard
-            this.formioRender.on('change', form => {
-                //console.debug('change', form);
-                // setTimeout(() => {
-                //     this.formioRender.submit();
-                // }, 200);
-
-                // this.model.schema = form;
-                // if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            })
             // https://formio.github.io/formio.js/app/examples/datagrid.html
 
             if (this.model.payload != null && this.model.payload != undefined) {
                 this.formioRender.submission = { data: this.model.payload };
             }
-            this.formioRender.on('submit', async submission => {
-                console.debug('onsubmit', submission);
-                $(".alert-success").hide();
-                setTimeout(() => {
-                    // just to be safe
-                    $(".alert-success").hide();
-                }, 200);
-                this.model.submission = submission;
-                this.model.userData = submission;
-                this.model.payload = submission.data;
-                this.traversecomponentsPostProcess(this.form.schema.components, submission.data);
-                this.Save();
-            })
             this.formioRender.on('error', (errors) => {
                 this.errormessage = errors;
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
