@@ -57,6 +57,7 @@ export class Message {
         this.id = crypto.randomBytes(16).toString("hex");
     }
     public async Process(cli: WebSocketServerClient): Promise<void> {
+        if (cli.devnull) return;
         let span: Span = undefined;
         try {
             let username: string = "Unknown";
@@ -77,6 +78,7 @@ export class Message {
                     if ((error.consumedPoints % 100) == 0) cli._logger.debug("[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
                     if (error.consumedPoints >= Config.socket_rate_limit_points_disconnect) {
                         cli._logger.debug("[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT: Disconnecing client ! consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
+                        cli.devnull = true;
                         cli.Close();
                     }
                     setTimeout(() => { this.Process(cli); }, 250);

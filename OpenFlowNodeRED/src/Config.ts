@@ -70,6 +70,7 @@ export class Config {
         Config.prometheus_expose_metric = Config.parseBoolean(Config.getEnv("prometheus_expose_metric", "false"));
         Config.enable_analytics = Config.parseBoolean(Config.getEnv("enable_analytics", "true"));
         Config.openflow_uniqueid = Config.getEnv("openflow_uniqueid", "");
+        Config.otel_debug_log = Config.parseBoolean(Config.getEnv("otel_debug_log", "false"));
         Config.otel_trace_url = Config.getEnv("otel_trace_url", "");
         Config.otel_metric_url = Config.getEnv("otel_metric_url", "");
         Config.otel_servicename = Config.getEnv("otel_servicename", "nodered");
@@ -141,6 +142,7 @@ export class Config {
     public static prometheus_expose_metric: boolean = Config.parseBoolean(Config.getEnv("prometheus_expose_metric", "false"));
     public static enable_analytics: boolean = Config.parseBoolean(Config.getEnv("enable_analytics", "true"));
     public static openflow_uniqueid: string = Config.getEnv("openflow_uniqueid", "");
+    public static otel_debug_log: boolean = Config.parseBoolean(Config.getEnv("otel_debug_log", "false"));
     public static otel_trace_url: string = Config.getEnv("otel_trace_url", "");
     public static otel_metric_url: string = Config.getEnv("otel_metric_url", "");
     public static otel_servicename: string = Config.getEnv("otel_servicename", "nodered");

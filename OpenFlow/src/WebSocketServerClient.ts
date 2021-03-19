@@ -51,6 +51,7 @@ export class WebSocketServerClient {
     public id: string = "";
     user: User;
     public _queues: amqpqueue[] = [];
+    public devnull: boolean = false;
     constructor(logger: winston.Logger, socketObject: WebSocket, req: any) {
         this._logger = logger;
         this.id = Math.random().toString(36).substr(2, 9);
@@ -284,6 +285,11 @@ export class WebSocketServerClient {
         })
     }
     private ProcessQueue(): void {
+        if (this.devnull) {
+            this._receiveQueue = [];
+            this._sendQueue = [];
+            return;
+        }
         let username: string = "Unknown";
         if (!NoderedUtil.IsNullUndefinded(this.user)) { username = this.user.username; }
         let ids: string[] = [];

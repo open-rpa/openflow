@@ -120,6 +120,7 @@ export class Config {
         Config.prometheus_measure__mongodb_watch = Config.parseBoolean(Config.getEnv("prometheus_measure__mongodb_watch", "false"));
         Config.prometheus_measure_onlineuser = Config.parseBoolean(Config.getEnv("prometheus_measure_onlineuser", "false"));
         Config.enable_analytics = Config.parseBoolean(Config.getEnv("enable_analytics", "true"));
+        Config.otel_debug_log = Config.parseBoolean(Config.getEnv("otel_debug_log", "false"));
         Config.otel_trace_url = Config.getEnv("otel_trace_url", "");
         Config.otel_metric_url = Config.getEnv("otel_metric_url", "");
         Config.otel_servicename = Config.getEnv("otel_servicename", "openflow");
@@ -240,6 +241,7 @@ export class Config {
     public static prometheus_measure__mongodb_watch: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure__mongodb_watch", "false"));
     public static prometheus_measure_onlineuser: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_onlineuser", "false"));
     public static enable_analytics: boolean = Config.parseBoolean(Config.getEnv("enable_analytics", "true"));
+    public static otel_debug_log: boolean = Config.parseBoolean(Config.getEnv("otel_debug_log", "false"));
     public static otel_trace_url: string = Config.getEnv("otel_trace_url", "");
     public static otel_metric_url: string = Config.getEnv("otel_metric_url", "");
     public static otel_servicename: string = Config.getEnv("otel_servicename", "openflow");
