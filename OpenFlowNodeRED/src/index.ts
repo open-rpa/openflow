@@ -25,8 +25,14 @@ if (_otel_require != null) {
     _otel = _otel_require.otel.configure(logger);
 } else {
     const fakespan = {
-        addEvent: () => undefined,
+        context: () => undefined,
         setAttribute: () => undefined,
+        setAttributes: () => undefined,
+        addEvent: () => undefined,
+        setStatus: () => undefined,
+        updateName: () => undefined,
+        end: () => undefined,
+        isRecording: () => undefined,
         recordException: () => undefined,
     };
     (_otel as any) =
