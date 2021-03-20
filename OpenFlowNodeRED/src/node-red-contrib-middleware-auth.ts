@@ -34,14 +34,44 @@ export class noderedcontribmiddlewareauth {
         if (Config.api_allow_anonymous) {
             return next();
         }
-        let cacheduser: CachedUser = this.getUser(req.headers.authorization);
+        const authorization: string = req.headers.authorization;
+        let cacheduser: CachedUser = this.getUser(authorization);
         if (cacheduser != null) {
             req.user = cacheduser.user;
             (req.user as any).jwt = cacheduser.jwt;
             return next();
         }
+        if (!NoderedUtil.IsNullEmpty(authorization) && authorization.indexOf(" ") > 1 &&
+            (authorization.toLocaleLowerCase().startsWith("bearer") || authorization.toLocaleLowerCase().startsWith("jwt"))) {
+            const token = authorization.split(" ")[1];
+            try {
+                let result = await NoderedUtil.SigninWithToken(token, null, null, false, true);
+                if (result == null || result.user == null) result = await NoderedUtil.SigninWithToken(null, token, null, false, true);
+                if (result.user != null) {
+                    const user: TokenUser = TokenUser.assign(result.user);
+                    const allowed = user.roles.filter(x => x.name == "nodered api users" || x.name == Config.noderedadmins);
+                    if (allowed.length > 0) {
+                        cacheduser = new CachedUser(result.user, result.jwt);
+                        this.authorizationCache[authorization] = cacheduser;
+                        Logger.instanse.info("noderedcontribmiddlewareauth: Authorized " + user.username + " for " + req.url);
+                        req.user = cacheduser.user;
+                        (req.user as any).jwt = cacheduser.jwt;
+                        return next();
+                    } else {
+                        console.warn("noderedcontribmiddlewareauth: " + user.username + " is not member of 'nodered api users' for " + req.url);
+                    }
+                }
+            } catch (error) {
+                console.error(error);
+                return;
+            }
+            res.statusCode = 401;
+            res.end('Unauthorized');
+            return;
+        }
+
         // parse login and password from headers
-        const b64auth = (req.headers.authorization || '').split(' ')[1] || ''
+        const b64auth = (authorization || '').split(' ')[1] || ''
         // const [login, password] = new Buffer(b64auth, 'base64').toString().split(':')
         const [login, password] = Buffer.from(b64auth, "base64").toString().split(':')
         if (login && password) {
@@ -50,9 +80,9 @@ export class noderedcontribmiddlewareauth {
                 if (result.user != null) {
                     const user: TokenUser = TokenUser.assign(result.user);
                     const allowed = user.roles.filter(x => x.name == "nodered api users" || x.name == Config.noderedadmins);
-                    if (allowed.length === 1) {
+                    if (allowed.length > 0) {
                         cacheduser = new CachedUser(result.user, result.jwt);
-                        this.authorizationCache[req.headers.authorization] = cacheduser;
+                        this.authorizationCache[authorization] = cacheduser;
                         Logger.instanse.info("noderedcontribmiddlewareauth: Authorized " + user.username + " for " + req.url);
                         req.user = cacheduser.user;
                         (req.user as any).jwt = cacheduser.jwt;
