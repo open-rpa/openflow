@@ -20,8 +20,9 @@ export class WebSocketServer {
 
     public static p_all: BaseObserver;
     public static websocket_queue_count: BaseObserver;
-    public static websocket_queue_message_count: Counter;
-    public static websocket_rate_limit: Counter;
+    public static websocket_queue_message_count: BaseObserver;
+    public static websocket_rate_limit: BaseObserver;
+    public static websocket_errors: BaseObserver;
     public static websocket_messages: ValueRecorder;
     public static message_queue_count: BaseObserver;
     public static mongodb_watch_count: BaseObserver;
@@ -58,23 +59,26 @@ export class WebSocketServer {
             WebSocketServer.p_all = _otel.meter.createUpDownSumObserver("openflow_websocket_online_clients", {
                 description: 'Total number of online websocket clients'
             }) // "agent", "version"
-            WebSocketServer.websocket_queue_count = _otel.meter.createUpDownSumObserver("openflow_websocket_queue_count", {
+            WebSocketServer.websocket_queue_count = _otel.meter.createUpDownSumObserver("openflow_websocket_queue", {
                 description: 'Total number of registered queues'
             }) // "clientid"
-            WebSocketServer.websocket_queue_message_count = _otel.meter.createCounter("openflow_websocket_queue_message_count", {
+            WebSocketServer.websocket_queue_message_count = _otel.meter.createUpDownSumObserver("openflow_websocket_queue_message", {
                 description: 'Total number of queues messages'
             }) // "queuename"
-            WebSocketServer.websocket_rate_limit = _otel.meter.createCounter("openflow_websocket_rate_limit_count", {
+            WebSocketServer.websocket_rate_limit = _otel.meter.createUpDownSumObserver("openflow_websocket_rate_limit", {
                 description: 'Total number of rate limited messages'
             }) // "command"
+            WebSocketServer.websocket_errors = _otel.meter.createUpDownSumObserver("openflow_websocket_errors", {
+                description: 'Total number of websocket errors'
+            }) // 
             WebSocketServer.websocket_messages = _otel.meter.createValueRecorder('openflow_websocket_messages_duration_seconds', {
                 description: 'Duration for handling websocket requests',
                 boundaries: otel.default_boundaries
             }); // "command"
-            WebSocketServer.message_queue_count = _otel.meter.createUpDownSumObserver("openflow_message_queue_count", {
+            WebSocketServer.message_queue_count = _otel.meter.createUpDownSumObserver("openflow_message_queue", {
                 description: 'Total number messages waiting on reply from client'
             }) // "clientid"
-            WebSocketServer.mongodb_watch_count = _otel.meter.createUpDownSumObserver("mongodb_watch_count", {
+            WebSocketServer.mongodb_watch_count = _otel.meter.createUpDownSumObserver("mongodb_watch", {
                 description: 'Total number af steams  watching for changes'
             }) // "agent", "clientid"
         }

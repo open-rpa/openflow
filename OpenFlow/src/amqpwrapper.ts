@@ -85,6 +85,15 @@ export class amqpwrapper {
         }
     }
     private timeout: NodeJS.Timeout = null;
+    public queuemessagecounter: object = {};
+    public incqueuemessagecounter(queuename: string): number {
+        let result: number = 0;
+        if (!NoderedUtil.IsNullUndefinded(this.queuemessagecounter[queuename])) result = this.queuemessagecounter[queuename];
+        result++;
+        this.queuemessagecounter[queuename] = result;
+        return result;
+    }
+
     async connect(): Promise<void> {
         try {
             if (this.timeout != null) {
@@ -109,7 +118,8 @@ export class amqpwrapper {
             this.channel = await this.conn.createConfirmChannel();
             this.replyqueue = await this.AddQueueConsumer("", null, null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
                 if (this.replyqueue) {
-                    if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_message_count)) WebSocketServer.websocket_queue_message_count.bind({ ...otel.defaultlabels, queuename: this.replyqueue.queue }).add(1);
+                    if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_message_count)) WebSocketServer.websocket_queue_message_count.
+                        bind({ ...otel.defaultlabels, queuename: this.replyqueue.queue }).update(this.incqueuemessagecounter(this.replyqueue.queue));
                     if (!NoderedUtil.IsNullUndefinded(this.activecalls[options.correlationId])) {
                         this.activecalls[options.correlationId].resolve(msg);
                         this.activecalls[options.correlationId] = null;
@@ -374,7 +384,8 @@ export class amqpwrapper {
             })) {
                 throw new Error("No consumer listening at " + queue);
             }
-            if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_message_count)) WebSocketServer.websocket_queue_message_count.bind({ ...otel.defaultlabels, queuename: queue }).add(1);
+            if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_message_count)) WebSocketServer.websocket_queue_message_count.
+                bind({ ...otel.defaultlabels, queuename: queue }).update(this.incqueuemessagecounter(queue));
         } else {
             this.channel.publish(exchange, "", Buffer.from(data), options);
         }
@@ -401,7 +412,8 @@ export class amqpwrapper {
             })) {
                 throw new Error("No consumer listening at " + queue);
             }
-            if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_message_count)) WebSocketServer.websocket_queue_message_count.bind({ ...otel.defaultlabels, queuename: queue }).add(1);
+            if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_message_count)) WebSocketServer.websocket_queue_message_count.
+                bind({ ...otel.defaultlabels, queuename: queue }).update(this.incqueuemessagecounter(queue));
         } else {
             this.channel.publish(exchange, "", Buffer.from(data), options);
         }

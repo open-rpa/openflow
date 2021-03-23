@@ -2,8 +2,6 @@ import * as crypto from "crypto";
 import * as url from "url";
 import * as winston from "winston";
 import * as express from "express";
-import * as cookieSession from "cookie-session";
-import * as bodyParser from "body-parser";
 import * as path from "path";
 
 // import * as SAMLStrategy from "passport-saml";
@@ -152,10 +150,6 @@ export class LoginProvider {
     }
     static async configure(logger: winston.Logger, app: express.Express, baseurl: string): Promise<void> {
         LoginProvider._logger = logger;
-        app.use(cookieSession({
-            name: "session", secret: Config.cookie_secret
-        }));
-
         app.use(passport.initialize());
         app.use(passport.session());
         passport.serializeUser(async function (user: any, done: any): Promise<void> {
@@ -764,7 +758,7 @@ export class LoginProvider {
         strategy.name = key;
         LoginProvider._logger.info(options.callbackURL);
         app.use("/" + key,
-            bodyParser.urlencoded({ extended: false }),
+            express.urlencoded({ extended: false }),
             passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),
             function (req: any, res: any): void {
                 const originalUrl: any = req.cookies.originalUrl;
@@ -850,7 +844,7 @@ export class LoginProvider {
             `);
             });
         app.use("/" + key,
-            bodyParser.urlencoded({ extended: false }),
+            express.urlencoded({ extended: false }),
             passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),
             function (req: any, res: any): void {
                 const originalUrl: any = req.cookies.originalUrl;
@@ -930,7 +924,7 @@ export class LoginProvider {
         });
         passport.use("local", strategy);
         app.use("/local",
-            bodyParser.urlencoded({ extended: false }),
+            express.urlencoded({ extended: false }),
             function (req: any, res: any, next: any): void {
                 LoginProvider._logger.debug("passport.authenticate local");
                 passport.authenticate("local", function (err, user, info) {

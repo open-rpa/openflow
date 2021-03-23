@@ -499,6 +499,7 @@ export class DatabaseConnection {
         } catch (error) {
             span.recordException(error);
             otel.endSpan(span);
+            throw error;
         }
     }
     async GetDocumentVersion<T extends Base>(collectionname: string, id: string, version: number, jwt: string, parent: Span): Promise<T> {

@@ -4,7 +4,6 @@ import * as http from "http";
 import * as https from "https";
 import * as express from "express";
 import * as compression from "compression";
-import * as bodyParser from "body-parser";
 import * as cookieParser from "cookie-parser";
 import * as nodered from "node-red";
 import * as morgan from "morgan";
@@ -133,8 +132,8 @@ export class WebServer {
                 this._logger.debug("WebServer.configure::setup express middleware");
                 this.app.use(morgan('combined', { stream: loggerstream }));
                 this.app.use(compression());
-                this.app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }))
-                this.app.use(bodyParser.json({ limit: '10mb' }))
+                this.app.use(express.urlencoded({ limit: '10mb', extended: true }))
+                this.app.use(express.json({ limit: '10mb' }))
                 this.app.use(cookieParser());
                 this.app.use("/", express.static(path.join(__dirname, "/public")));
 
@@ -331,20 +330,11 @@ export class WebServer {
                 // this.settings.ui.middleware = new dashboardAuth();
                 this.settings.ui.middleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
                     noderedcontribmiddlewareauth.process(socket, req, res, next);
-                    // if (req.isAuthenticated()) {
-                    //     next();
-                    // } else {
-                    //     passport.authenticate("uisaml", {
-                    //         successRedirect: '/ui/',
-                    //         failureRedirect: '/uisaml/',
-                    //         failureFlash: false
-                    //     })(req, res, next);
-                    // }
                 };
 
-
+                this.app.set('trust proxy', 1)
                 this.app.use(cookieSession({
-                    name: 'session', secret: Config.cookie_secret
+                    name: 'session', secret: Config.cookie_secret, httpOnly: true
                 }))
 
                 this._logger.debug("WebServer.configure::init nodered");

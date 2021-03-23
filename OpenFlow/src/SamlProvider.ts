@@ -103,7 +103,6 @@ export class SamlProvider {
         };
 
         app.get("/issue/", (req: any, res: any, next: any): void => {
-            // passport.authenticate("session");
             if (req.query.SAMLRequest !== undefined && req.query.SAMLRequest !== null) {
                 if ((req.user === undefined || req.user === null)) {
                     try {

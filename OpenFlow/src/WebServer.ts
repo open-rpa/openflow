@@ -4,7 +4,6 @@ import * as http from "http";
 import * as https from "https";
 import * as express from "express";
 import * as compression from "compression";
-import * as bodyParser from "body-parser";
 import * as cookieParser from "cookie-parser";
 import * as cookieSession from "cookie-session";
 import * as crypto from "crypto";
@@ -130,11 +129,12 @@ export class WebServer {
         this.app.use("/", express.static(path.join(__dirname, "/public")));
         this.app.use(morgan('combined', { stream: loggerstream }));
         this.app.use(compression());
-        this.app.use(bodyParser.urlencoded({ extended: true }));
-        this.app.use(bodyParser.json());
+        this.app.use(express.urlencoded({ extended: true }));
+        this.app.use(express.json());
         this.app.use(cookieParser());
+        this.app.set('trust proxy', 1)
         this.app.use(cookieSession({
-            name: "session", secret: Config.cookie_secret
+            name: "session", secret: Config.cookie_secret, httpOnly: true
         }));
         this.app.use(flash());
         if (Config.api_rate_limit) this.app.use(rateLimiter);

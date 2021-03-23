@@ -52,6 +52,14 @@ export class WebSocketServerClient {
     user: User;
     public _queues: amqpqueue[] = [];
     public devnull: boolean = false;
+    public commandcounter: object = {};
+    public inccommandcounter(command: string): number {
+        let result: number = 0;
+        if (!NoderedUtil.IsNullUndefinded(this.commandcounter[command])) result = this.commandcounter[command];
+        result++;
+        this.commandcounter[command] = result;
+        return result;
+    }
     constructor(logger: winston.Logger, socketObject: WebSocket, req: any) {
         this._logger = logger;
         this.id = Math.random().toString(36).substr(2, 9);
