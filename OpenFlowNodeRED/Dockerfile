@@ -1,4 +1,4 @@
-FROM node:latest
+FROM node:lts
 EXPOSE 80
 EXPOSE 5859
 WORKDIR /data
