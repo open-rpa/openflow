@@ -295,6 +295,12 @@ export class OAuthProvider {
                         );
                     }
                 } catch (error) {
+                    span.recordException(error);
+                    if (error.name == "SessionNotFound") {
+                        res.redirect(`/`);
+                        res.end();
+                        return;
+                    }
                     res.json(error)
 
                 }
