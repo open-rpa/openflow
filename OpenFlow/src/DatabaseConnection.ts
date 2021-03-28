@@ -1225,6 +1225,16 @@ export class DatabaseConnection {
             json = JSON.stringify(json);
         }
         q.item = JSON.parse(json, (key, value) => {
+            if (key == "_acl") {
+                if (Array.isArray(value)) {
+                    for (let i = 0; i < value.length; i++) {
+                        const a = value[i];
+                        if (typeof a.rights === "string") {
+                            a.rights = (new Binary(Buffer.from(a.rights, "base64"), 0) as any);
+                        }
+                    }
+                }
+            }
             if (typeof value === 'string' && value.match(isoDatePattern)) {
                 return new Date(value); // isostring, so cast to js date
             } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") == 0) {
