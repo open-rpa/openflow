@@ -108,19 +108,7 @@ function handle(signal, value) {
     }
 }
 Object.keys(signals).forEach((signal) => process.on(signal, handle));
-// process.on('SIGTERM', handle);
-// process.on('SIGINT', handle);
-// process.on('SIGUSR1', handle);
-// process.on('SIGPIPE', handle);
-// process.on('SIGHUP', handle);
-// process.on('SIGBREAK', handle);
-// process.on('SIGKILL', handle);
-// process.on('SIGWINCH', handle);
-// process.on('SIGSTOP', handle);
-// process.on('SIGBUS', handle);
-// process.on('SIGFPE', handle);
-// process.on('SIGSEGV', handle);
-// process.on('SIGILL', handle);
+
 
 let server: http.Server = null;
 (async function (): Promise<void> {
@@ -146,8 +134,6 @@ let server: http.Server = null;
         });
         socket.events.on("onopen", async () => {
             try {
-                // q.clientagent = "nodered";
-                // q.clientversion = Config.version;
                 let jwt: string = "";
                 if (Config.jwt !== "") {
                     jwt = Config.jwt;

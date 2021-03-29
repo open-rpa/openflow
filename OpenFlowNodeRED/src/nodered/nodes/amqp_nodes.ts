@@ -178,6 +178,7 @@ export class amqp_publisher_node {
     private connection: amqp_connection;
     private _onsignedin: any = null;
     private _onsocketclose: any = null;
+    private payloads: any = {};
     constructor(public config: Iamqp_publisher_node) {
         RED.nodes.createNode(this, config);
         try {
@@ -232,7 +233,11 @@ export class amqp_publisher_node {
         try {
             const result: any = {};
             result.amqpacknowledgment = ack;
-            const data = msg.data;
+            let data = msg.data;
+            if (!NoderedUtil.IsNullEmpty(data._msgid)) {
+                data = Object.assign(this.payloads[data._msgid], data);
+                delete this.payloads[data._msgid];
+            }
             result.payload = data.payload;
             result.jwt = data.jwt;
             if (data.command == "timeout") {
@@ -253,11 +258,13 @@ export class amqp_publisher_node {
             data.payload = msg.payload;
             data.jwt = msg.jwt;
             data._id = msg._id;
+            data._msgid = msg._msgid;
             const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_message_ttl);
             const queue = this.config.queue;
             this.node.status({ fill: "blue", shape: "dot", text: "Sending message ..." });
             try {
                 await NoderedUtil.QueueMessage(this.websocket(), queue, this.localqueue, data, null, expiration);
+                this.payloads[msg._msgid] = msg;
             } catch (error) {
                 data.error = error;
                 this.node.send([null, data]);
