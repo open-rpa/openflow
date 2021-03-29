@@ -176,6 +176,7 @@ export class workflow_in_node {
                     return;
                 }
                 const orgmsg = res[0];
+                delete orgmsg._msgid; // Keep each run seperate
                 if (orgmsg.payload === null || orgmsg.payload === undefined) {
                     orgmsg.payload = data;
                     data = orgmsg;

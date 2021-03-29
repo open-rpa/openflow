@@ -231,11 +231,10 @@ export class amqp_publisher_node {
     }
     async OnMessage(msg: any, ack: any) {
         try {
-            const result: any = {};
-            result.amqpacknowledgment = ack;
+            let result: any = {};
             let data = msg.data;
             if (!NoderedUtil.IsNullEmpty(data._msgid)) {
-                data = Object.assign(this.payloads[data._msgid], data);
+                result = Object.assign(this.payloads[data._msgid], data);
                 delete this.payloads[data._msgid];
             }
             result.payload = data.payload;
