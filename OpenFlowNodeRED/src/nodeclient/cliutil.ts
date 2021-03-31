@@ -9,7 +9,6 @@ const envfile = require('envfile')
 export const envfilename = ".env";
 export const envfilepathname = "";
 export var servicename = "service-name-not-set";
-const service = require("os-service");
 
 export function isWin() {
     return process.platform === "win32";
@@ -22,85 +21,6 @@ export function isOpenFlow() {
     const check2 = path.join(__dirname, "..", "DatabaseConnection.js");
     if (fs.existsSync(check1) || fs.existsSync(check2)) return true;
     return false;
-}
-export function StartService(servicename: string) {
-    try {
-        if (isWin()) {
-            cp.execSync(`net start ${servicename}`);
-        } else if (isMac()) {
-            // https://medium.com/craftsmenltd/building-a-cross-platform-background-service-in-node-js-791cfcd3be60
-            // cp.execSync(`sudo launchctl load ${LAUNCHD_PLIST_PATH}`);
-        } else {
-            cp.execSync(`service ${servicename} start`);
-        }
-    } catch (error) {
-        logger.info(error.message ? error.message : error);
-    }
-}
-export function StopService(servicename: string) {
-    try {
-        if (isWin()) {
-            cp.execSync(`net stop ${servicename}`);
-        } else if (isMac()) {
-            // https://medium.com/craftsmenltd/building-a-cross-platform-background-service-in-node-js-791cfcd3be60
-            // cp.execSync(`sudo launchctl unload ${LAUNCHD_PLIST_PATH}`);
-        } else {
-            cp.execSync(`service ${servicename} stop`);
-        }
-    } catch (error) {
-        logger.info(error.message ? error.message : error);
-    }
-}
-export function RestartService(servicename: string) {
-    try {
-        if (isWin()) {
-            // cp.execSync(`start "restart" "cmd.exe" "/c net stop ${servicename} & net start ${servicename}"`);
-            // cp.exec(`start "restart" "cmd.exe" "/c net stop ${servicename} & net start ${servicename}"`);
-            // var child = spawn("powershell.exe", ["-Command", `Restart-Service ${servicename}`, "-NoExit"], {
-            var child = spawn("cmd", [`start "restart" "cmd.exe" "/c net stop ${servicename} & net start ${servicename}"`], {
-                shell: true, detached: true,
-                stdio: ['ignore', 'ignore', 'ignore']
-            });
-            child.unref();
-        } else if (isMac()) {
-            // https://medium.com/craftsmenltd/building-a-cross-platform-background-service-in-node-js-791cfcd3be60
-            // cp.execSync(`sudo launchctl unload ${LAUNCHD_PLIST_PATH}`);
-        } else {
-            // cp.execSync(`service ${servicename} restart`);
-            // var child = spawn(`service ${servicename} restart`, [], {
-            var child = spawn("service", [`${servicename} restart`], {
-                shell: true, detached: true,
-                stdio: ['ignore', 'ignore', 'ignore']
-            });
-            child.unref();
-
-        }
-    } catch (error) {
-        logger.info(error.message ? error.message : error);
-    }
-}
-export function RemoveService(servicename: string) {
-    StopService(servicename);
-    logger.info("Uninstalling service" + servicename);
-    service.remove(servicename, function (error) {
-        if (error) { logger.info(error.message ? error.message : error); return }
-        logger.info("Service" + servicename + " uninstalled");
-    });
-}
-export function InstallService(servicename: string, configfile: string) {
-    logger.info("Installing service" + servicename);
-    service.add(servicename, { programArgs: [servicename, "--run", "--config", configfile] }, function (error) {
-        if (error) { logger.info(error.message ? error.message : error); return }
-        logger.info("Service" + servicename + " installed");
-        StartService(servicename);
-    });
-}
-export function RunService(callback: any) {
-    service.run(function () {
-        logger.info("Service" + servicename + " stopping");
-        if (callback != null) callback();
-        service.stop(0);
-    });
 }
 // use and copy current env file, unless we have a /config folder in root
 export function getlocaldir(): string {
@@ -136,22 +56,6 @@ export function hassourceenv(): boolean {
     const sourceenv = path.join(getsourcedir(), envfilename);
     return fs.existsSync(sourceenv);
 }
-
-// export function copyenv() {
-//     const source = getsourcedir();
-//     const local = getlocaldir();
-
-
-//     const localenv = path.join(local, envfilename);
-//     const sourceenv = path.join(source, envfilename);
-//     if (localenv != sourceenv && fs.existsSync(localenv)) {
-//         logger.info("localenv : " + localenv);
-//         logger.info("sourceenv: " + sourceenv);
-//         logger.info("copy local " + envfilename + " file to " + source);
-//         fs.copyFileSync(localenv, sourceenv);
-//     }
-//     loadenv();
-// }
 export function loadenv() {
     logger.info("NodeJS version " + process.version + " Config " + envfilepathname);
     let parsedFile = envfile.parse(fs.readFileSync(envfilepathname));

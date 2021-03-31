@@ -7,28 +7,110 @@ or check out the [community forum](https://nn.openiap.io/)
 
 Build to run on docker, how to setup docker is not supported on GitHub/slack
 
-#### Quick start running openflow using npm
+#### Quick start running openflow using npm on windows
 
-For now only Linux (tested on ubuntu 18LTS) and windows is supported
-Install NodeJS version 12 (google how to do that, if in doubt, hint, use nvm if you got the wrong version installed)
-Also you need to have an installation of  [mongoDB](https://www.mongodb.com/download-center/community) and [RabbitMQ](https://www.rabbitmq.com/download.html)
-Importantent! You need to [enable management console](https://www.rabbitmq.com/management.html) in RabbitMQ 
+[Install Chocolatey](https://chocolatey.org/install) 
 
-On window, run from a command prompt with admin rights
+open a command prompt as admin
 
-On windows this will require build tools to be present, install using
+Install rabbitmq
 
-`npm install --global windows-build-tools`
+```bash
+choco install rabbitmq
+```
 
-On linux this will require build tools to be present. On ubuntu you can install using
+install mongodb
 
-`sudo apt-get install gcc g++ make`
+```
+choco install mongodb
+```
 
-Then to install and run OpenFlow, install the @openiap/openflow package 
+install nodejs LTS 14
+
+```
+choco install nodejs-lts
+```
+
+install openflow command line
 
 `npm i @openiap/openflow -g`
 
-On Linux run with sudo
+Go to the folder where you want to keep your config files,
+
+```bash
+mkdir c:\openflow
+cd \openflow
+```
+
+install [pm2-windows-service](https://www.npmjs.com/package/pm2-windows-service)
+
+```bash
+npm i -g pm2-windows-service
+pm2-service-install
+```
+
+then create a template configuration file using 
+`openflow-cli --init`
+
+open and edit openflow.env, if needed, then install the service using
+
+`openflow-cli --install openflow`
+
+then open a browser and visit [localhost.openiap.io](http://localhost.openiap.io) 
+
+#### Quick start running openflow nodered using npm on windows
+
+This require you to have openflow installed somewhere, or you can use our public openflow at [app.openiap.io](https://app.openiap.io) (noderedremote.env)
+
+Create a user for the nodered in openflow, you will need the username and password for this user in the last step
+
+[Install Chocolatey](https://chocolatey.org/install) 
+
+open a command prompt as admin
+
+install nodejs LTS 14
+
+```
+choco install nodejs-lts
+```
+
+install openflow-nodered command line
+`npm i @openiap/nodered -g`
+
+Go to the folder where you want to keep your config files,
+
+```bash
+mkdir c:\openflow
+cd \openflow
+```
+
+install [pm2-windows-service](https://www.npmjs.com/package/pm2-windows-service)
+
+```bash
+npm i -g pm2-windows-service
+pm2-service-install
+```
+
+then create a template configuration file using 
+`openflow-nodered-cli --init`
+
+this will create 2 environment files with an example of how to connect to a locally installed openflow or how to connect to [app.openiap.io](https://app.openiap.io)
+So lets assume you want to run a remote openflow connected to [app.openiap.io](https://app.openiap.io) 
+
+`openflow-nodered-cli --install noderedremote`
+
+this will prompt you for a pre-created username and password, and then install a local service with the name noderedremote and start it
+
+then open a browser and visit [localhost.openiap.io:1880](http://localhost.openiap.io:1880) 
+
+#### Quick start running openflow using npm on linux
+
+For now only tested on ubuntu 18LTS
+Install NodeJS version 14 
+Also you need to have an installation of  [mongoDB](https://www.mongodb.com/download-center/community) and [RabbitMQ](https://www.rabbitmq.com/download.html)
+Importantent! You need to [enable management console](https://www.rabbitmq.com/management.html) in RabbitMQ 
+
+Then to install and run OpenFlow, install the @openiap/openflow package 
 
 `sudo npm i @openiap/openflow -g`
 
@@ -37,37 +119,19 @@ then create a template configuration file using
 
 open and edit openflow.env, if needed, then install the service using
 
-on windows
-
-`openflow-cli --install openflow`
-
-and on Linux remember to use sudo
-
 `sudo openflow-cli --install openflow`
 
 then open a browser and visit [localhost.openiap.io](http://localhost.openiap.io) 
 
-#### Quick start running openflow nodered using npm
+#### Quick start running openflow nodered using npm on linux
 
-For now only Linux (tested on ubuntu 18LTS) and windows is supported
-Install NodeJS version 12 (google how to do that, if in doubt, hint, use nvm if you got the wrong version installed)
+For now only tested on ubuntu 18LTS
+Install NodeJS version 14
 This require you to have openflow installed somewhere, or you can use our public openflow at [app.openiap.io](https://app.openiap.io) (noderedremote.env)
 
-On window, run from a command prompt with admin rights
+Create a user for the nodered in openflow, you will need the username and password for this user in the last step
 
-On windows this will require build tools to be present, install using
-
-`npm install --global windows-build-tools`
-
-On linux this will require build tools to be present. On ubuntu you can install using
-
-`sudo apt-get install gcc g++ make`
-
-Then to install and run OpenFlow Nodered, install the @openiap/nodered package 
-`npm i @openiap/nodered -g`
-
-On Linux run with sudo
-
+Then install and run OpenFlow Nodered, install the @openiap/nodered package 
 `sudo npm i @openiap/nodered -g`
 
 then create a template configuration file using 
@@ -76,15 +140,9 @@ then create a template configuration file using
 this will create 2 environment files with an example of how to connect to a locally installed openflow or how to connect to [app.openiap.io](https://app.openiap.io)
 So lets assume you want to run a remote openflow connected to [app.openiap.io](https://app.openiap.io) 
 
-on windows
-
-`openflow-nodered-cli --install noderedremote`
-
-and on Linux remember to use sudo
-
 `sudo openflow-nodered-cli --install noderedremote`
 
-this will prompt for a pre-created username and password, and then install a local service with the name noderedremote and start it
+this will prompt for the pre-created username and password, and then install a local service with the name noderedremote and start it
 
 then open a browser and visit [localhost.openiap.io:1880](http://localhost.openiap.io:1880) 
 

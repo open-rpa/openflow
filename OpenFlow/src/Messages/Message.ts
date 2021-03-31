@@ -837,18 +837,22 @@ export class Message {
             if (!NoderedUtil.IsNullUndefinded(cli.user)) {
                 if (!(cli.user.validated == true) && Config.validate_user_form != "") {
                     if (cli.clientagent != "nodered" && NoderedUtil.IsNullEmpty(tuser.impostor)) {
+                        cli._logger.error(tuser.username + " failed logging in, not validated");
                         Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
                         tuser = null;
                     }
                 }
             }
             if (tuser != null && cli.user != null && cli.user.disabled) {
+                cli._logger.error(tuser.username + " failed logging in, user is disabled");
                 Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
                 tuser = null;
             } else if (tuser != null) {
+                cli._logger.info(tuser.username + " successfully signed in");
                 Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
             }
         } catch (error) {
+            cli._logger.error(error);
             span.recordException(error);
         }
         return tuser;
@@ -929,11 +933,11 @@ export class Message {
                 if (user === null || user === undefined || tuser === null || tuser === undefined) {
                     if (msg !== null && msg !== undefined) msg.error = "Unknown username or password";
                     Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
-                    cli._logger.debug(tuser.username + " failed logging in using " + type);
+                    cli._logger.error(tuser.username + " failed logging in using " + type);
                 } else if (user.disabled && (msg.impersonate != "-1" && msg.impersonate != "false")) {
                     if (msg !== null && msg !== undefined) msg.error = "Disabled users cannot signin";
                     Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
-                    cli._logger.debug("Disabled user " + tuser.username + " failed logging in using " + type);
+                    cli._logger.error("Disabled user " + tuser.username + " failed logging in using " + type);
                 } else {
                     if (msg.impersonate == "-1" || msg.impersonate == "false") {
                         user = await DBHelper.FindById(impostor, Crypt.rootToken(), span);
@@ -948,6 +952,7 @@ export class Message {
                         msg.impersonate = undefined;
                         impostor = undefined;
                     }
+                    cli._logger.info(tuser.username + " successfully signed in");
                     Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
                     const userid: string = user._id;
                     if (msg.longtoken) {
@@ -973,6 +978,7 @@ export class Message {
                             if (impostors.length == 1) {
                                 imp = TokenUser.From(impostors[0]);
                             }
+                            cli._logger.error(tuser.name + " failed to impersonate " + msg.impersonate);
                             Audit.ImpersonateFailed(imp, tuser, cli.clientagent, cli.clientversion, span);
                             throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " view and impersonating " + msg.impersonate);
                         }
@@ -994,6 +1000,7 @@ export class Message {
                             }
 
                             Audit.ImpersonateFailed(imp, tuser, cli.clientagent, cli.clientversion, span);
+                            cli._logger.error(tuser.name + " failed to impersonate " + msg.impersonate);
                             throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " updating and impersonating " + msg.impersonate);
                         }
                         tuser.impostor = tuserimpostor._id;
@@ -1006,6 +1013,7 @@ export class Message {
                             msg.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
                         }
                         msg.user = tuser;
+                        cli._logger.info(tuser.username + " successfully impersonated");
                         Audit.ImpersonateSuccess(tuser, tuserimpostor, cli.clientagent, cli.clientversion, span);
                     }
                     if (msg.firebasetoken != null && msg.firebasetoken != undefined && msg.firebasetoken != "") {
@@ -1064,6 +1072,7 @@ export class Message {
                 if (!(msg.user.validated == true) && Config.validate_user_form != "") {
                     if (cli.clientagent != "nodered" && NoderedUtil.IsNullEmpty(msg.user.impostor)) {
                         Audit.LoginFailed(msg.user.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
+                        cli._logger.error(msg.user.username + " not validated");
                         msg.error = "User not validated, please login again";
                         msg.jwt = undefined;
                     }

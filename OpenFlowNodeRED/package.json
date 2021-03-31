@@ -44,9 +44,9 @@
     "jsonwebtoken": "^8.5.1",
     "morgan": "^1.10.0",
     "node-red": "^1.2.9",
-    "os-service": "^2.2.0",
     "passport-saml": "^2.1.0",
     "passport-saml-metadata": "^2.4.1",
+    "pm2": "^4.5.5",
     "readline-sync": "^1.4.10",
     "smtp-server": "^3.8.0",
     "winston": "^3.3.3"

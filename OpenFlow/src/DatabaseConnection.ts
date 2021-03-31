@@ -1991,6 +1991,27 @@ export class DatabaseConnection {
             }
         });
     }
+    async deleteIndex(collectionname: string, name: string, parent: Span) {
+        const span: Span = otel.startSubSpan("db.deleteIndex", parent);
+        return new Promise((resolve, reject) => {
+            try {
+                this._logger.info("Dropping index " + name + " in " + collectionname);
+                this.db.collection(collectionname).dropIndex(name, (err, name) => {
+                    if (err) {
+                        span.recordException(err);
+                        otel.endSpan(span);
+                        reject(err);
+                        return;
+                    }
+                    otel.endSpan(span);
+                    resolve(name);
+                })
+            } catch (error) {
+                span.recordException(error);
+                otel.endSpan(span);
+            }
+        });
+    }
     async ensureindexes(parent: Span) {
         const span: Span = otel.startSubSpan("db.ensureindexes", parent);
         try {
@@ -2034,6 +2055,7 @@ export class DatabaseConnection {
                                 if (indexnames.indexOf("_type_1") == -1) {
                                     await this.createIndex(collection.name, "_type_1", { "_type": 1 }, span)
                                 }
+                                // name_1__type_1
                                 if (indexnames.indexOf("_created_1") == -1) {
                                     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, span)
                                 }
