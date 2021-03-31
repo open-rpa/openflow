@@ -70,7 +70,7 @@ export class noderedcontribauthsaml {
                 require('https').globalAgent.options.ca = rootCas;
             }
         } catch (error) {
-            console.log(error);
+            console.error(error);
         }
         // if anything throws, we retry
         const metadata: any = await retry(async bail => {
@@ -88,7 +88,7 @@ export class noderedcontribauthsaml {
         }, {
             retries: 50,
             onRetry: function (error: Error, count: number): void {
-                console.log("retry " + count + " error " + error.message + " getting " + url);
+                console.error("retry " + count + " error " + error.message + " getting " + url);
             }
         });
         return metadata;

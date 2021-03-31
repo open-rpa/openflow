@@ -4,7 +4,6 @@ import * as http from "http";
 import * as https from "https";
 import * as express from "express";
 import * as compression from "compression";
-import * as bodyParser from "body-parser";
 import * as cookieParser from "cookie-parser";
 import * as cookieSession from "cookie-session";
 import * as crypto from "crypto";
@@ -17,13 +16,13 @@ import { LoginProvider } from "./LoginProvider";
 import { DatabaseConnection } from "./DatabaseConnection";
 import { Config } from "./Config";
 
-import * as promBundle from "express-prom-bundle";
-import * as client from "prom-client";
 import { NoderedUtil } from "@openiap/openflow-api";
 const { RateLimiterMemory } = require('rate-limiter-flexible')
 import * as url from "url";
 import { WebSocketServer } from "./WebSocketServer";
 import { WebSocketServerClient } from "./WebSocketServerClient";
+import { Counter } from "@opentelemetry/api-metrics"
+import { otel } from "./otel";
 
 const BaseRateLimiter = new RateLimiterMemory({
     points: Config.api_rate_limit_points,
@@ -34,30 +33,30 @@ const rateLimiter = (req: express.Request, res: express.Response, next: express.
     BaseRateLimiter
         .consume(req.ip)
         .then((e) => {
-            // console.log("API_O_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints);
+            // console.info("API_O_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints);
             next();
         })
         .catch((e) => {
             const route = url.parse(req.url).pathname;
-            webserver_rate_limit.inc();
-            webserver_rate_limit.labels(route).inc();
-            console.log("API_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints + " msBeforeNext: " + e.msBeforeNext);
+            if (!NoderedUtil.IsNullUndefinded(websocket_rate_limit)) websocket_rate_limit.bind({ ...otel.defaultlabels, route: route }).add(1);
+            console.warn("API_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints + " msBeforeNext: " + e.msBeforeNext);
             res.status(429).json({ response: 'RATE_LIMIT' });
         });
 };
-const webserver_rate_limit = new client.Counter({
-    name: 'openflow_webserver_rate_limit_count',
-    help: 'Total number of rate limited web request',
-    labelNames: ["route"]
-})
 
+let websocket_rate_limit: Counter = null;
 export class WebServer {
     private static _logger: winston.Logger;
     public static app: express.Express;
 
-    static async configure(logger: winston.Logger, baseurl: string, register: client.Registry): Promise<http.Server> {
-        this._logger = logger;
 
+    static async configure(logger: winston.Logger, baseurl: string, _otel: otel): Promise<http.Server> {
+        this._logger = logger;
+        if (!NoderedUtil.IsNullUndefinded(_otel)) {
+            websocket_rate_limit = _otel.meter.createCounter("openflow_webserver_rate_limit_count", {
+                description: 'Total number of rate limited web request'
+            }) // "route"
+        }
         this.app = express();
         // if (!NoderedUtil.IsNullUndefinded(register)) {
         //     const metricsMiddleware = promBundle({ includeMethod: true, includePath: true, promRegistry: register, autoregister: true });
@@ -65,11 +64,28 @@ export class WebServer {
         //     if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(webserver_rate_limit);
         // }
 
+        // this.app.get("/form", async (req: any, res: any, next: any): Promise<void> => {
+        //     res.send({
+        //         status: "success",
+        //         display_status: "Success",
+        //         message: "All system are go"
+        //     });
+        //     return;
+        // });
+        // this.app.get("/formio", async (req: any, res: any, next: any): Promise<void> => {
+        //     res.send({
+        //         status: "success",
+        //         display_status: "Success",
+        //         message: "All system are go"
+        //     });
+        //     return;
+        // });
+
         this.app.get("/metrics", async (req: any, res: any, next: any): Promise<void> => {
             let result: string = ""
-            if (!NoderedUtil.IsNullUndefinded(register)) {
-                result += await register.metrics() + '\n';
-            }
+            // if (!NoderedUtil.IsNullUndefinded(register)) {
+            //     result += await register.metrics() + '\n';
+            // }
 
             for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
                 const cli: WebSocketServerClient = WebSocketServer._clients[i];
@@ -110,13 +126,15 @@ export class WebServer {
                 logger.silly(message);
             }
         };
+        this.app.use("/", express.static(path.join(__dirname, "/public")));
         this.app.use(morgan('combined', { stream: loggerstream }));
         this.app.use(compression());
-        this.app.use(bodyParser.urlencoded({ extended: true }));
-        this.app.use(bodyParser.json());
+        this.app.use(express.urlencoded({ extended: true }));
+        this.app.use(express.json());
         this.app.use(cookieParser());
+        this.app.set('trust proxy', 1)
         this.app.use(cookieSession({
-            name: "session", secret: Config.cookie_secret
+            name: "session", secret: Config.cookie_secret, httpOnly: true
         }));
         this.app.use(flash());
         if (Config.api_rate_limit) this.app.use(rateLimiter);
@@ -141,7 +159,6 @@ export class WebServer {
             // Pass to next layer of middleware
             next();
         });
-        this.app.use("/", express.static(path.join(__dirname, "/public")));
         await LoginProvider.configure(this._logger, this.app, baseurl);
         await SamlProvider.configure(this._logger, this.app, baseurl);
         let server: http.Server = null;
@@ -175,7 +192,6 @@ export class WebServer {
         const port = Config.port;
         server.listen(port).on('error', function (error) {
             WebServer._logger.error(error);
-            process.exit(404);
         });
         return server;
     }

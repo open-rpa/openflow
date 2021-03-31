@@ -6,6 +6,8 @@ import { Crypt } from "./Crypt";
 import * as url from "url";
 import { NoderedUtil } from "@openiap/openflow-api";
 import { WebSocketServer } from "./WebSocketServer";
+import { otel } from "./otel";
+import { Span } from "@opentelemetry/api";
 const got = require("got");
 type QueueOnMessage = (msg: string, options: QueueMessageOptions, ack: any, done: any) => void;
 interface IHashTable<T> {
@@ -83,6 +85,15 @@ export class amqpwrapper {
         }
     }
     private timeout: NodeJS.Timeout = null;
+    public queuemessagecounter: object = {};
+    public incqueuemessagecounter(queuename: string): number {
+        let result: number = 0;
+        if (!NoderedUtil.IsNullUndefinded(this.queuemessagecounter[queuename])) result = this.queuemessagecounter[queuename];
+        result++;
+        this.queuemessagecounter[queuename] = result;
+        return result;
+    }
+
     async connect(): Promise<void> {
         try {
             if (this.timeout != null) {
@@ -107,8 +118,8 @@ export class amqpwrapper {
             this.channel = await this.conn.createConfirmChannel();
             this.replyqueue = await this.AddQueueConsumer("", null, null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
                 if (this.replyqueue) {
-                    WebSocketServer.websocket_queue_message_count.inc();
-                    WebSocketServer.websocket_queue_message_count.labels(this.replyqueue.queue).inc();
+                    if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_message_count)) WebSocketServer.websocket_queue_message_count.
+                        bind({ ...otel.defaultlabels, queuename: this.replyqueue.queue }).update(this.incqueuemessagecounter(this.replyqueue.queue));
                     if (!NoderedUtil.IsNullUndefinded(this.activecalls[options.correlationId])) {
                         this.activecalls[options.correlationId].resolve(msg);
                         this.activecalls[options.correlationId] = null;
@@ -117,7 +128,7 @@ export class amqpwrapper {
                 }
                 ack();
                 done();
-            });
+            }, undefined);
             this.channel.on('close', (e) => {
                 try {
                     if (this.conn != null) this.conn.close();
@@ -139,126 +150,150 @@ export class amqpwrapper {
             this.timeout = setTimeout(this.connect.bind(this), 1000);
         }
     }
-    async RemoveQueueConsumer(queue: amqpqueue): Promise<void> {
-        if (queue != null) {
-            this._logger.info("[AMQP] Remove queue consumer " + queue.queue + "/" + queue.consumerTag);
-            if (this.channel != null) await this.channel.cancel(queue.consumerTag);
+    async RemoveQueueConsumer(queue: amqpqueue, parent: Span): Promise<void> {
+        const span: Span = otel.startSubSpan("amqpwrapper.validateToken", parent);
+        try {
+            if (queue != null) {
+                this._logger.info("[AMQP] Remove queue consumer " + queue.queue + "/" + queue.consumerTag);
+                if (this.channel != null) await this.channel.cancel(queue.consumerTag);
+            }
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            otel.endSpan(span);
         }
     }
-    async AddQueueConsumer(queuename: string, QueueOptions: any, jwt: string, callback: QueueOnMessage): Promise<amqpqueue> {
-        if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Queue Consumer, not connected to rabbitmq");
-        let queue: string = (NoderedUtil.IsNullEmpty(queuename) ? "" : queuename);
-        if (Config.amqp_force_queue_prefix && !NoderedUtil.IsNullEmpty(jwt) && !NoderedUtil.IsNullEmpty(queue)) {
-            // assume queue names if 24 letters is an mongodb is, should proberly do a real test here
-            if (queue.length == 24) {
-                const tuser = Crypt.verityToken(jwt);
-                let name = tuser.username.split("@").join("").split(".").join("");
-                name = name.toLowerCase();
-                let skip: boolean = false;
-                if (tuser._id == queue) {
-                    // Queue is for me
-                    skip = false;
-                } else if (tuser.roles != null) {
-                    // Queue ss for a group i am a member of.
-                    const isrole = tuser.roles.filter(x => x._id == queue);
-                    if (isrole.length > 0) skip = false;
-                }
-                if (skip) {
-                    // Do i have permission to listen on a queue with this id ?
-                    const arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "users", jwt);
-                    if (arr.length == 0) skip = true;
-                    if (!skip) {
-                        const arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "openrpa", jwt);
-                        if (arr.length == 0) skip = true;
+    async AddQueueConsumer(queuename: string, QueueOptions: any, jwt: string, callback: QueueOnMessage, parent: Span): Promise<amqpqueue> {
+        const span: Span = otel.startSubSpan("amqpwrapper.validateToken", parent);
+        try {
+            if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Queue Consumer, not connected to rabbitmq");
+            let queue: string = (NoderedUtil.IsNullEmpty(queuename) ? "" : queuename);
+            if (Config.amqp_force_queue_prefix && !NoderedUtil.IsNullEmpty(jwt) && !NoderedUtil.IsNullEmpty(queue)) {
+                // assume queue names if 24 letters is an mongodb is, should proberly do a real test here
+                if (queue.length == 24) {
+                    const tuser = Crypt.verityToken(jwt);
+                    let name = tuser.username.split("@").join("").split(".").join("");
+                    name = name.toLowerCase();
+                    let skip: boolean = false;
+                    if (tuser._id == queue) {
+                        // Queue is for me
+                        skip = false;
+                    } else if (tuser.roles != null) {
+                        // Queue ss for a group i am a member of.
+                        const isrole = tuser.roles.filter(x => x._id == queue);
+                        if (isrole.length > 0) skip = false;
                     }
-                    if (!skip) {
-                        const arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "workflow", jwt);
+                    if (skip) {
+                        // Do i have permission to listen on a queue with this id ?
+                        const arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "users", jwt, undefined, undefined, span);
                         if (arr.length == 0) skip = true;
-                    }
-                    if (!skip) {
-                        queue = name + queue;
+                        if (!skip) {
+                            const arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "openrpa", jwt, undefined, undefined, span);
+                            if (arr.length == 0) skip = true;
+                        }
+                        if (!skip) {
+                            const arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "workflow", jwt, undefined, undefined, span);
+                            if (arr.length == 0) skip = true;
+                        }
+                        if (!skip) {
+                            queue = name + queue;
+                        } else {
+                            this._logger.info("[SKIP] skipped force prefix for " + queue);
+                        }
                     } else {
                         this._logger.info("[SKIP] skipped force prefix for " + queue);
                     }
                 } else {
-                    this._logger.info("[SKIP] skipped force prefix for " + queue);
+                    const tuser = Crypt.verityToken(jwt);
+                    let name = tuser.username.split("@").join("").split(".").join("");
+                    name = name.toLowerCase();
+                    queue = name + queue;
                 }
-            } else {
+            } else if (queue.length == 24) {
+                if (NoderedUtil.IsNullEmpty(jwt)) {
+                    const tuser = Crypt.verityToken(jwt);
+
+                    const isrole = tuser.roles.filter(x => x._id == queue);
+                    if (isrole.length == 0 && tuser._id != queue) {
+                        let skip: boolean = false;
+                        const arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "users", jwt, undefined, undefined, span);
+                        if (arr.length == 0) skip = true;
+                        if (!skip) {
+                            const arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "openrpa", jwt, undefined, undefined, span);
+                            if (arr.length == 0) skip = true;
+                        }
+                        if (!skip) {
+                            const arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "workflow", jwt, undefined, undefined, span);
+                            if (arr.length == 0) skip = true;
+                        }
+                        if (!skip) {
+                            throw new Error("Access denied creating consumer for " + queue);
+                        }
+                    }
+
+                }
+            }
+            const q: amqpqueue = new amqpqueue();
+            q.callback = callback;
+            q.QueueOptions = Object.assign({}, (QueueOptions != null ? QueueOptions : this.AssertQueueOptions));
+            if (NoderedUtil.IsNullEmpty(queue)) queue = "";
+            if (queue.startsWith("amq.")) queue = "";
+            if (NoderedUtil.IsNullEmpty(queue)) q.QueueOptions.autoDelete = true;
+            q.ok = await this.channel.assertQueue(queue, q.QueueOptions);
+            if (q && q.ok) {
+                q.queue = q.ok.queue;
+                q.queuename = queuename;
+                const consumeresult = await this.channel.consume(q.ok.queue, (msg) => {
+                    this.OnMessage(q, msg, q.callback);
+                }, { noAck: false });
+                q.consumerTag = consumeresult.consumerTag;
+                this._logger.info("[AMQP] Added queue consumer " + q.queue + "/" + q.consumerTag);
+            }
+            return q;
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            otel.endSpan(span);
+        }
+    }
+    async AddExchangeConsumer(exchange: string, algorithm: string, routingkey: string, ExchangeOptions: any, jwt: string, callback: QueueOnMessage, parent: Span): Promise<amqpexchange> {
+        const span: Span = otel.startSubSpan("amqpwrapper.validateToken", parent);
+        try {
+            if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Exchange Consumer, not connected to rabbitmq");
+            if (Config.amqp_force_exchange_prefix && !NoderedUtil.IsNullEmpty(jwt)) {
                 const tuser = Crypt.verityToken(jwt);
                 let name = tuser.username.split("@").join("").split(".").join("");
                 name = name.toLowerCase();
-                queue = name + queue;
+                exchange = name + exchange;
             }
-        } else if (queue.length == 24) {
-            if (NoderedUtil.IsNullEmpty(jwt)) {
-                const tuser = Crypt.verityToken(jwt);
-
-                const isrole = tuser.roles.filter(x => x._id == queue);
-                if (isrole.length == 0 && tuser._id != queue) {
-                    let skip: boolean = false;
-                    const arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "users", jwt);
-                    if (arr.length == 0) skip = true;
-                    if (!skip) {
-                        const arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "openrpa", jwt);
-                        if (arr.length == 0) skip = true;
-                    }
-                    if (!skip) {
-                        const arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "workflow", jwt);
-                        if (arr.length == 0) skip = true;
-                    }
-                    if (!skip) {
-                        throw new Error("Access denied creating consumer for " + queue);
-                    }
-                }
-
+            const q: amqpexchange = new amqpexchange();
+            if (!NoderedUtil.IsNullEmpty(q.queue)) {
+                this.RemoveQueueConsumer(q.queue, span);
             }
+            // q.ExchangeOptions = new Object((ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));
+            q.ExchangeOptions = Object.assign({}, (ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));
+            q.exchange = exchange; q.algorithm = algorithm; q.routingkey = routingkey; q.callback = callback;
+            const _ok = await this.channel.assertExchange(q.exchange, q.algorithm, q.ExchangeOptions);
+            let AssertQueueOptions = null;
+            if (!NoderedUtil.IsNullEmpty(Config.amqp_dlx) && exchange == Config.amqp_dlx) {
+                AssertQueueOptions = Object.create(this.AssertQueueOptions);
+                delete AssertQueueOptions.arguments;
+            }
+            q.queue = await this.AddQueueConsumer("", AssertQueueOptions, jwt, q.callback, span);
+            if (q.queue) {
+                this.channel.bindQueue(q.queue.queue, q.exchange, q.routingkey);
+                this._logger.info("[AMQP] Added exchange consumer " + q.exchange + ' to queue ' + q.queue.queue);
+            }
+            this.exchanges.push(q);
+            return q;
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            otel.endSpan(span);
         }
-        const q: amqpqueue = new amqpqueue();
-        q.callback = callback;
-        q.QueueOptions = Object.assign({}, (QueueOptions != null ? QueueOptions : this.AssertQueueOptions));
-        if (NoderedUtil.IsNullEmpty(queue)) queue = "";
-        if (queue.startsWith("amq.")) queue = "";
-        if (NoderedUtil.IsNullEmpty(queue)) q.QueueOptions.autoDelete = true;
-        q.ok = await this.channel.assertQueue(queue, q.QueueOptions);
-        if (q && q.ok) {
-            q.queue = q.ok.queue;
-            q.queuename = queuename;
-            const consumeresult = await this.channel.consume(q.ok.queue, (msg) => {
-                this.OnMessage(q, msg, q.callback);
-            }, { noAck: false });
-            q.consumerTag = consumeresult.consumerTag;
-            this._logger.info("[AMQP] Added queue consumer " + q.queue + "/" + q.consumerTag);
-        }
-        return q;
-    }
-    async AddExchangeConsumer(exchange: string, algorithm: string, routingkey: string, ExchangeOptions: any, jwt: string, callback: QueueOnMessage): Promise<amqpexchange> {
-        if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Exchange Consumer, not connected to rabbitmq");
-        if (Config.amqp_force_exchange_prefix && !NoderedUtil.IsNullEmpty(jwt)) {
-            const tuser = Crypt.verityToken(jwt);
-            let name = tuser.username.split("@").join("").split(".").join("");
-            name = name.toLowerCase();
-            exchange = name + exchange;
-        }
-        const q: amqpexchange = new amqpexchange();
-        if (!NoderedUtil.IsNullEmpty(q.queue)) {
-            this.RemoveQueueConsumer(q.queue);
-        }
-        // q.ExchangeOptions = new Object((ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));
-        q.ExchangeOptions = Object.assign({}, (ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));
-        q.exchange = exchange; q.algorithm = algorithm; q.routingkey = routingkey; q.callback = callback;
-        const _ok = await this.channel.assertExchange(q.exchange, q.algorithm, q.ExchangeOptions);
-        let AssertQueueOptions = null;
-        if (!NoderedUtil.IsNullEmpty(Config.amqp_dlx) && exchange == Config.amqp_dlx) {
-            AssertQueueOptions = Object.create(this.AssertQueueOptions);
-            delete AssertQueueOptions.arguments;
-        }
-        q.queue = await this.AddQueueConsumer("", AssertQueueOptions, jwt, q.callback);
-        if (q.queue) {
-            this.channel.bindQueue(q.queue.queue, q.exchange, q.routingkey);
-            this._logger.info("[AMQP] Added exchange consumer " + q.exchange + ' to queue ' + q.queue.queue);
-        }
-        this.exchanges.push(q);
-        return q;
     }
     OnMessage(sender: amqpqueue, msg: amqplib.ConsumeMessage, callback: QueueOnMessage): void {
         // sender._logger.info("OnMessage " + msg.content.toString());
@@ -295,7 +330,6 @@ export class amqpwrapper {
             callback(data, options, (nack: boolean) => {
                 try {
                     if (nack == false) {
-                        console.log("nack message");
                         this.channel.nack(msg);
                         // this.channel.nack(msg, false, true);
                         msg = null;
@@ -347,15 +381,11 @@ export class amqpwrapper {
                 throw new Error("No consumer listening at " + queue);
             }
             if (!this.channel.sendToQueue(queue, Buffer.from(data), options, (err, ok) => {
-                // console.log(err ? 'nacked' : 'acked');
-                // console.log(err);
-                // console.log(ok);
-
             })) {
                 throw new Error("No consumer listening at " + queue);
             }
-            WebSocketServer.websocket_queue_message_count.inc();
-            WebSocketServer.websocket_queue_message_count.labels(queue).inc();
+            if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_message_count)) WebSocketServer.websocket_queue_message_count.
+                bind({ ...otel.defaultlabels, queuename: queue }).update(this.incqueuemessagecounter(queue));
         } else {
             this.channel.publish(exchange, "", Buffer.from(data), options);
         }
@@ -379,15 +409,11 @@ export class amqpwrapper {
                 throw new Error("No consumer listening at " + queue);
             }
             if (!this.channel.sendToQueue(queue, Buffer.from(data), options, (err, ok) => {
-                // console.log(err ? 'nacked' : 'acked');
-                // console.log(err);
-                // console.log(ok);
-
             })) {
                 throw new Error("No consumer listening at " + queue);
             }
-            WebSocketServer.websocket_queue_message_count.inc();
-            WebSocketServer.websocket_queue_message_count.labels(queue).inc();
+            if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_message_count)) WebSocketServer.websocket_queue_message_count.
+                bind({ ...otel.defaultlabels, queuename: queue }).update(this.incqueuemessagecounter(queue));
         } else {
             this.channel.publish(exchange, "", Buffer.from(data), options);
         }
@@ -444,7 +470,6 @@ export class amqpwrapper {
                 }
                 if (!hasConsumers) {
                     if (queue.consumer_details != null && queue.consumer_details.length > 0) {
-                        // console.log(queue.consumer_details[0]);
                         hasConsumers = true;
                     } else {
                         hasConsumers = false;
@@ -462,7 +487,7 @@ export class amqpwrapper {
                 maxTimeout: 500,
                 onRetry: function (error: Error, count: number): void {
                     result = false;
-                    console.log("retry " + count + " error " + error.message + " getting " + url);
+                    console.warn("retry " + count + " error " + error.message + " getting " + url);
                 }
             });
         } catch (error) {

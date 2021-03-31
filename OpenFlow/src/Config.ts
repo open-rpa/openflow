@@ -23,6 +23,8 @@ export class Config {
         Config.log_inserts = Config.parseBoolean(Config.getEnv("log_inserts", "false"));
         Config.log_updates = Config.parseBoolean(Config.getEnv("log_updates", "false"));
         Config.log_deletes = Config.parseBoolean(Config.getEnv("log_deletes", "false"));
+        Config.log_otel_times = Config.parseBoolean(Config.getEnv("log_otel_times", "false"));
+        Config.openflow_uniqueid = Config.getEnv("openflow_uniqueid", "");
 
         Config.getting_started_url = Config.getEnv("getting_started_url", "");
 
@@ -32,10 +34,12 @@ export class Config {
         Config.stripe_api_secret = Config.getEnv("stripe_api_secret", "");
 
         Config.supports_watch = Config.parseBoolean(Config.getEnv("supports_watch", "false"));
+        Config.ensure_indexes = Config.parseBoolean(Config.getEnv("ensure_indexes", "true"));
 
         Config.auto_create_users = Config.parseBoolean(Config.getEnv("auto_create_users", "false"));
         Config.auto_create_domains = Config.parseArray(Config.getEnv("auto_create_domains", ""));
         Config.allow_user_registration = Config.parseBoolean(Config.getEnv("allow_user_registration", "false"));
+        Config.persist_user_impersonation = Config.parseBoolean(Config.getEnv("persist_user_impersonation", "true"));
         Config.allow_personal_nodered = Config.parseBoolean(Config.getEnv("allow_personal_nodered", "false"));
         Config.auto_create_personal_nodered_group = Config.parseBoolean(Config.getEnv("auto_create_personal_nodered_group", "false"));
         Config.force_add_admins = Config.parseBoolean(Config.getEnv("force_add_admins", "true"));
@@ -55,7 +59,10 @@ export class Config {
         Config.api_rate_limit_duration = parseInt(Config.getEnv("api_rate_limit_duration", "1"));
         Config.socket_rate_limit = Config.parseBoolean(Config.getEnv("socket_rate_limit", "true"));
         Config.socket_rate_limit_points = parseInt(Config.getEnv("socket_rate_limit_points", "30"));
+        Config.socket_rate_limit_points_disconnect = parseInt(Config.getEnv("socket_rate_limit_points_disconnect", "600"));
         Config.socket_rate_limit_duration = parseInt(Config.getEnv("socket_rate_limit_duration", "1"));
+        Config.socket_error_rate_limit_points = parseInt(Config.getEnv("socket_error_rate_limit_points", "16"));
+        Config.socket_error_rate_limit_duration = parseInt(Config.getEnv("socket_error_rate_limit_duration", "2"));
 
         Config.client_heartbeat_timeout = parseInt(Config.getEnv("client_heartbeat_timeout", "60"));
 
@@ -83,6 +90,7 @@ export class Config {
 
         Config.mongodb_url = Config.getEnv("mongodb_url", "mongodb://localhost:27017");
         Config.mongodb_db = Config.getEnv("mongodb_db", "openflow");
+        Config.mongodb_minpoolsize = parseInt(Config.getEnv("mongodb_minpoolsize", "25"));
 
         Config.skip_history_collections = Config.getEnv("skip_history_collections", "");
         Config.history_delta_count = parseInt(Config.getEnv("history_delta_count", "1000"));
@@ -111,6 +119,15 @@ export class Config {
         Config.nodered_limits_cpu = Config.getEnv("nodered_limits_cpu", ""); // 1000m = 1vCPU
         Config.prometheus_measure_nodeid = Config.parseBoolean(Config.getEnv("prometheus_measure_nodeid", "false"));
         Config.prometheus_measure_queued_messages = Config.parseBoolean(Config.getEnv("prometheus_measure_queued_messages", "false"));
+        Config.prometheus_measure__mongodb_watch = Config.parseBoolean(Config.getEnv("prometheus_measure__mongodb_watch", "false"));
+        Config.prometheus_measure_onlineuser = Config.parseBoolean(Config.getEnv("prometheus_measure_onlineuser", "false"));
+        Config.enable_analytics = Config.parseBoolean(Config.getEnv("enable_analytics", "true"));
+        Config.otel_debug_log = Config.parseBoolean(Config.getEnv("otel_debug_log", "false"));
+        Config.otel_trace_url = Config.getEnv("otel_trace_url", "");
+        Config.otel_metric_url = Config.getEnv("otel_metric_url", "");
+        Config.otel_servicename = Config.getEnv("otel_servicename", "openflow");
+        Config.otel_trace_interval = parseInt(Config.getEnv("otel_trace_interval", "5000"));
+        Config.otel_metric_interval = parseInt(Config.getEnv("otel_metric_interval", "5000"));
         Config.validate_user_form = Config.getEnv("validate_user_form", "");
     }
     public static db: DatabaseConnection = null;
@@ -122,6 +139,9 @@ export class Config {
     public static log_inserts: boolean = Config.parseBoolean(Config.getEnv("log_inserts", "false"));
     public static log_updates: boolean = Config.parseBoolean(Config.getEnv("log_updates", "false"));
     public static log_deletes: boolean = Config.parseBoolean(Config.getEnv("log_deletes", "false"));
+    public static log_otel_times: boolean = Config.parseBoolean(Config.getEnv("log_otel_times", "false"));
+    public static openflow_uniqueid: string = Config.getEnv("openflow_uniqueid", "");
+
 
     public static getting_started_url: string = Config.getEnv("getting_started_url", "");
 
@@ -131,10 +151,12 @@ export class Config {
     public static stripe_api_secret: string = Config.getEnv("stripe_api_secret", "");
 
     public static supports_watch: boolean = Config.parseBoolean(Config.getEnv("supports_watch", "false"));
+    public static ensure_indexes: boolean = Config.parseBoolean(Config.getEnv("ensure_indexes", "true"));
 
     public static auto_create_users: boolean = Config.parseBoolean(Config.getEnv("auto_create_users", "false"));
     public static auto_create_domains: string[] = Config.parseArray(Config.getEnv("auto_create_domains", ""));
     public static allow_user_registration: boolean = Config.parseBoolean(Config.getEnv("allow_user_registration", "false"));
+    public static persist_user_impersonation: boolean = Config.parseBoolean(Config.getEnv("persist_user_impersonation", "true"));
     public static allow_personal_nodered: boolean = Config.parseBoolean(Config.getEnv("allow_personal_nodered", "false"));
     public static use_ingress_beta1_syntax: boolean = Config.parseBoolean(Config.getEnv("use_ingress_beta1_syntax", "true"));
     public static auto_create_personal_nodered_group: boolean = Config.parseBoolean(Config.getEnv("auto_create_personal_nodered_group", "false"));
@@ -149,12 +171,16 @@ export class Config {
     public static oauth_token_cache_seconds: number = parseInt(Config.getEnv("oauth_token_cache_seconds", "60000"));
     public static oauth_access_token_lifetime: number = parseInt(Config.getEnv("oauth_access_token_lifetime", "604800"));
     public static oauth_refresh_token_lifetime: number = parseInt(Config.getEnv("oauth_refresh_token_lifetime", "604800"));
+    public static oidc_cookie_key: string = Config.getEnv("oidc_cookie_key", "Y6SPiXCxDhAJbN7cbydMw5eX1wIrdy8PiWApqEcguss=");
     public static api_rate_limit: boolean = Config.parseBoolean(Config.getEnv("api_rate_limit", "true"));
-    public static api_rate_limit_points: number = parseInt(Config.getEnv("api_rate_limit_points", "60"));
+    public static api_rate_limit_points: number = parseInt(Config.getEnv("api_rate_limit_points", "20"));
     public static api_rate_limit_duration: number = parseInt(Config.getEnv("api_rate_limit_duration", "1"));
     public static socket_rate_limit: boolean = Config.parseBoolean(Config.getEnv("socket_rate_limit", "true"));
     public static socket_rate_limit_points: number = parseInt(Config.getEnv("socket_rate_limit_points", "30"));
+    public static socket_rate_limit_points_disconnect: number = parseInt(Config.getEnv("socket_rate_limit_points_disconnect", "600"));
     public static socket_rate_limit_duration: number = parseInt(Config.getEnv("socket_rate_limit_duration", "1"));
+    public static socket_error_rate_limit_points: number = parseInt(Config.getEnv("socket_error_rate_limit_points", "30"));
+    public static socket_error_rate_limit_duration: number = parseInt(Config.getEnv("socket_error_rate_limit_duration", "1"));
 
     public static client_heartbeat_timeout: number = parseInt(Config.getEnv("client_heartbeat_timeout", "60"));
 
@@ -185,9 +211,10 @@ export class Config {
 
     public static mongodb_url: string = Config.getEnv("mongodb_url", "mongodb://localhost:27017");
     public static mongodb_db: string = Config.getEnv("mongodb_db", "openflow");
+    public static mongodb_minpoolsize: number = parseInt(Config.getEnv("mongodb_minpoolsize", "25"));
 
     public static skip_history_collections: string = Config.getEnv("skip_history_collections", "");
-    public static history_delta_count = parseInt(Config.getEnv("history_delta_count", "1000"));
+    public static history_delta_count: number = parseInt(Config.getEnv("history_delta_count", "1000"));
     public static allow_skiphistory: boolean = Config.parseBoolean(Config.getEnv("allow_skiphistory", "true"));
 
     public static saml_issuer: string = Config.getEnv("saml_issuer", "the-issuer"); // define uri of STS, also sent to personal nodereds
@@ -211,8 +238,20 @@ export class Config {
     public static nodered_requests_cpu: string = Config.getEnv("nodered_requests_cpu", ""); // 1000m = 1vCPU
     public static nodered_limits_memory: string = Config.getEnv("nodered_limits_memory", "");
     public static nodered_limits_cpu: string = Config.getEnv("nodered_limits_cpu", ""); // 1000m = 1vCPU
+    public static nodered_liveness_failurethreshold: string = Config.getEnv("nodered_liveness_failurethreshold", "5"); // 1000m = 1vCPU
+
     public static prometheus_measure_nodeid: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_nodeid", "false"));
     public static prometheus_measure_queued_messages: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_queued_messages", "false"));
+    public static prometheus_measure__mongodb_watch: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure__mongodb_watch", "false"));
+    public static prometheus_measure_onlineuser: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_onlineuser", "false"));
+    public static enable_analytics: boolean = Config.parseBoolean(Config.getEnv("enable_analytics", "true"));
+    public static otel_debug_log: boolean = Config.parseBoolean(Config.getEnv("otel_debug_log", "false"));
+    public static otel_trace_url: string = Config.getEnv("otel_trace_url", "");
+    public static otel_metric_url: string = Config.getEnv("otel_metric_url", "");
+    public static otel_servicename: string = Config.getEnv("otel_servicename", "openflow");
+    public static otel_trace_interval: number = parseInt(Config.getEnv("otel_trace_interval", "5000"));
+    public static otel_metric_interval: number = parseInt(Config.getEnv("otel_metric_interval", "5000"));
+
     public static validate_user_form: string = Config.getEnv("validate_user_form", "");
 
     public static baseurl(): string {

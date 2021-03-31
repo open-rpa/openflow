@@ -7,6 +7,8 @@ import { amqpwrapper, QueueMessageOptions, amqpqueue } from "./amqpwrapper";
 import { NoderedUtil, Base, InsertOneMessage, QueueMessage, MapReduceMessage, QueryMessage, UpdateOneMessage, UpdateManyMessage, DeleteOneMessage, User, mapFunc, reduceFunc, finalizeFunc, QueuedMessage, QueuedMessageCallback, WatchEventMessage } from "@openiap/openflow-api";
 import { ChangeStream } from "mongodb";
 import { WebSocketServer } from "./WebSocketServer";
+import { Span } from "@opentelemetry/api";
+import { otel } from "./otel";
 interface IHashTable<T> {
     [key: string]: T;
 }
@@ -49,6 +51,15 @@ export class WebSocketServerClient {
     public id: string = "";
     user: User;
     public _queues: amqpqueue[] = [];
+    public devnull: boolean = false;
+    public commandcounter: object = {};
+    public inccommandcounter(command: string): number {
+        let result: number = 0;
+        if (!NoderedUtil.IsNullUndefinded(this.commandcounter[command])) result = this.commandcounter[command];
+        result++;
+        this.commandcounter[command] = result;
+        return result;
+    }
     constructor(logger: winston.Logger, socketObject: WebSocket, req: any) {
         this._logger = logger;
         this.id = Math.random().toString(36).substr(2, 9);
@@ -99,27 +110,29 @@ export class WebSocketServerClient {
         }
         return false;
     }
-    public ping(): void {
+    public ping(parent: Span): void {
+        const span: Span = otel.startSubSpan("WebSocketServerClient.ping", parent);
         try {
             let msg: SocketMessage = SocketMessage.fromcommand("ping");
             if (this._socketObject == null) {
                 if (this.queuecount() > 0) {
-                    this.CloseConsumers();
+                    this.CloseConsumers(span);
                 }
                 if (this.streamcount() > 0) {
-                    this.CloseConsumers();
+                    this.CloseConsumers(span);
                 }
                 return;
             }
             if (this._socketObject.readyState === this._socketObject.CLOSED || this._socketObject.readyState === this._socketObject.CLOSING) {
                 if (this.queuecount() > 0) {
-                    this.CloseConsumers();
+                    this.CloseConsumers(span);
                 }
                 return;
             }
             this._socketObject.send(msg.tojson());
         } catch (error) {
             this._logger.error(error);
+            span.recordException(error);
             this._receiveQueue = [];
             this._sendQueue = [];
             try {
@@ -128,6 +141,8 @@ export class WebSocketServerClient {
                 }
             } catch (error) {
             }
+        } finally {
+            otel.endSpan(span);
         }
     }
     private _message(message: string): void {
@@ -148,104 +163,129 @@ export class WebSocketServerClient {
             this._socketObject.send(JSON.stringify(errormessage));
         }
     }
-    public async CloseConsumers(): Promise<void> {
+    public async CloseConsumers(parent: Span): Promise<void> {
         await semaphore.down();
         for (let i = this._queues.length - 1; i >= 0; i--) {
             try {
                 // await this.CloseConsumer(this._queues[i]);
-                await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i]);
+                await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i], undefined);
                 this._queues.splice(i, 1);
             } catch (error) {
                 this._logger.error("WebSocketclient::closeconsumers " + error);
             }
         }
-        WebSocketServer.websocket_queue_count.labels(this.id).set(this._queues.length);
+        if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...otel.defaultlabels, clientid: this.id }).update(this._queues.length);
         semaphore.up();
     }
     public async Close(): Promise<void> {
-        await this.CloseConsumers();
-        await this.CloseStreams();
-        if (this._socketObject != null) {
-            try {
-                this._socketObject.removeListener("open", (e: Event): void => this.open(e));
-                this._socketObject.removeListener("message", (e: string): void => (this.message(e) as any)); // e: MessageEvent
-                this._socketObject.removeListener("error", (e: Event): void => this.error(e));
-                this._socketObject.removeListener("close", (e: CloseEvent): void => this.close(e));
-            } catch (error) {
-                this._logger.error("WebSocketclient::Close::removeListener " + error);
-            }
-            try {
-                this._socketObject.close();
-            } catch (error) {
-                this._logger.error("WebSocketclient::Close " + error);
-            }
-        }
-    }
-    public async CloseConsumer(queuename: string): Promise<void> {
-        var old = this._queues.length;
-        for (let i = this._queues.length - 1; i >= 0; i--) {
-            const q = this._queues[i];
-            if (q && (q.queue == queuename || q.queuename == queuename)) {
-                try {
-                    await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i]);
-                    this._queues.splice(i, 1);
-                    WebSocketServer.websocket_queue_count.labels(this.id).set(this._queues.length);
-                } catch (error) {
-                    this._logger.error("WebSocketclient::CloseConsumer " + error);
-                }
-            }
-        }
-    }
-    public async CreateConsumer(queuename: string): Promise<string> {
-        let autoDelete: boolean = false; // Should we keep the queue around ? for robots and roles
-        let qname = queuename;
-        if (NoderedUtil.IsNullEmpty(qname)) {
-            if (this.clientagent == "nodered") {
-                qname = "nodered." + Math.random().toString(36).substr(2, 9); autoDelete = true;
-            } else if (this.clientagent == "webapp") {
-                qname = "webapp." + Math.random().toString(36).substr(2, 9); autoDelete = true;
-            } else if (this.clientagent == "web") {
-                qname = "web." + Math.random().toString(36).substr(2, 9); autoDelete = true;
-            } else if (this.clientagent == "openrpa") {
-                qname = "openrpa." + Math.random().toString(36).substr(2, 9); autoDelete = true;
-            } else if (this.clientagent == "powershell") {
-                qname = "powershell." + Math.random().toString(36).substr(2, 9); autoDelete = true;
-            } else {
-                qname = "unknown." + Math.random().toString(36).substr(2, 9); autoDelete = true;
-            }
-        }
-        await semaphore.down();
-        this.CloseConsumer(qname);
-        let queue: amqpqueue = null;
+        const span: Span = otel.startSpan("WebSocketServerClient.Close");
         try {
-            const AssertQueueOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertQueueOptions));
-            AssertQueueOptions.autoDelete = autoDelete;
-            queue = await amqpwrapper.Instance().AddQueueConsumer(qname, AssertQueueOptions, this.jwt, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
-                const _data = msg;
+            await this.CloseConsumers(span);
+            await this.CloseStreams();
+            if (this._socketObject != null) {
                 try {
-                    const result = await this.Queue(msg, qname, options);
-                    ack();
-                    done(result);
+                    this._socketObject.removeListener("open", (e: Event): void => this.open(e));
+                    this._socketObject.removeListener("message", (e: string): void => (this.message(e) as any)); // e: MessageEvent
+                    this._socketObject.removeListener("error", (e: Event): void => this.error(e));
+                    this._socketObject.removeListener("close", (e: CloseEvent): void => this.close(e));
                 } catch (error) {
-                    setTimeout(() => {
-                        ack(false);
-                        // ack(); // just eat the error 
-                        done(_data);
-                        console.log(qname + " failed message queue message, nack and re queue message: ", (error.message ? error.message : error));
-                    }, Config.amqp_requeue_time);
+                    this._logger.error("WebSocketclient::Close::removeListener " + error);
                 }
-            });
-            if (queue) {
-                qname = queue.queue;
-                this._queues.push(queue);
+                try {
+                    this._socketObject.close();
+                } catch (error) {
+                    this._logger.error("WebSocketclient::Close " + error);
+                }
             }
-            WebSocketServer.websocket_queue_count.labels(this.id).set(this._queues.length);
         } catch (error) {
-            this._logger.error("WebSocketclient::CreateConsumer " + error);
+            span.recordException(error);
+            throw error;
+        } finally {
+            WebSocketServer.update_mongodb_watch_count(this);
+            otel.endSpan(span);
         }
-        semaphore.up();
-        if (queue != null) return queue.queue;
-        return null;
+    }
+    public async CloseConsumer(queuename: string, parent: Span): Promise<void> {
+        const span: Span = otel.startSubSpan("WebSocketServerClient.CloseConsumer", parent);
+        try {
+            var old = this._queues.length;
+            for (let i = this._queues.length - 1; i >= 0; i--) {
+                const q = this._queues[i];
+                if (q && (q.queue == queuename || q.queuename == queuename)) {
+                    try {
+                        await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i], span);
+                        this._queues.splice(i, 1);
+                        if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...otel.defaultlabels, clientid: this.id }).update(this._queues.length);
+                    } catch (error) {
+                        this._logger.error("WebSocketclient::CloseConsumer " + error);
+                    }
+                }
+            }
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            otel.endSpan(span);
+        }
+    }
+    public async CreateConsumer(queuename: string, parent: Span): Promise<string> {
+        const span: Span = otel.startSubSpan("WebSocketServerClient.CreateConsumer", parent);
+        try {
+            let autoDelete: boolean = false; // Should we keep the queue around ? for robots and roles
+            let qname = queuename;
+            if (NoderedUtil.IsNullEmpty(qname)) {
+                if (this.clientagent == "nodered") {
+                    qname = "nodered." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+                } else if (this.clientagent == "webapp") {
+                    qname = "webapp." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+                } else if (this.clientagent == "web") {
+                    qname = "web." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+                } else if (this.clientagent == "openrpa") {
+                    qname = "openrpa." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+                } else if (this.clientagent == "powershell") {
+                    qname = "powershell." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+                } else {
+                    qname = "unknown." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+                }
+            }
+            await semaphore.down();
+            this.CloseConsumer(qname, span);
+            let queue: amqpqueue = null;
+            try {
+                const AssertQueueOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertQueueOptions));
+                AssertQueueOptions.autoDelete = autoDelete;
+                queue = await amqpwrapper.Instance().AddQueueConsumer(qname, AssertQueueOptions, this.jwt, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+                    const _data = msg;
+                    try {
+                        const result = await this.Queue(msg, qname, options);
+                        ack();
+                        done(result);
+                    } catch (error) {
+                        setTimeout(() => {
+                            ack(false);
+                            // ack(); // just eat the error 
+                            done(_data);
+                            console.error(qname + " failed message queue message, nack and re queue message: ", (error.message ? error.message : error));
+                        }, Config.amqp_requeue_time);
+                    }
+                }, span);
+                if (queue) {
+                    qname = queue.queue;
+                    this._queues.push(queue);
+                }
+                if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...otel.defaultlabels, clientid: this.id }).update(this._queues.length);
+            } catch (error) {
+                this._logger.error("WebSocketclient::CreateConsumer " + error);
+            }
+            semaphore.up();
+            if (queue != null) return queue.queue;
+            return null;
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            otel.endSpan(span);
+        }
     }
     sleep(ms) {
         return new Promise(resolve => {
@@ -253,6 +293,11 @@ export class WebSocketServerClient {
         })
     }
     private ProcessQueue(): void {
+        if (this.devnull) {
+            this._receiveQueue = [];
+            this._sendQueue = [];
+            return;
+        }
         let username: string = "Unknown";
         if (!NoderedUtil.IsNullUndefinded(this.user)) { username = this.user.username; }
         let ids: string[] = [];
@@ -276,8 +321,6 @@ export class WebSocketServerClient {
                 if (msgs.length === 1) {
                     this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
                     const singleresult: Message = Message.frommessage(first, first.data);
-                    WebSocketServer.websocket_incomming_stats.inc();
-                    WebSocketServer.websocket_incomming_stats.labels(singleresult.command).inc();
                     singleresult.Process(this);
                 } else {
                     let buffer: string = "";
@@ -286,8 +329,6 @@ export class WebSocketServerClient {
                     });
                     this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
                     const result: Message = Message.frommessage(first, buffer);
-                    WebSocketServer.websocket_incomming_stats.inc();
-                    WebSocketServer.websocket_incomming_stats.labels(result.command).inc();
                     result.Process(this);
                 }
             } else {
@@ -444,6 +485,7 @@ export class WebSocketServerClient {
                 }
             }
         }
+        WebSocketServer.update_mongodb_watch_count(this);
     }
     async UnWatch(id: string, jwt: string): Promise<void> {
         this.CloseStream(id);
@@ -458,7 +500,7 @@ export class WebSocketServerClient {
         const me = this;
         try {
             (stream.stream as any).on("error", err => {
-                console.log(err);
+                console.error(err);
             });
             (stream.stream as any).on("change", next => {
                 try {
@@ -474,6 +516,7 @@ export class WebSocketServerClient {
                     this._logger.error("WebSocketclient::Watch::changeListener " + error + " " + this.id + "/" + this.clientagent);
                 }
             }, options);
+            WebSocketServer.update_mongodb_watch_count(this);
             return stream.id;
         } catch (error) {
             this._logger.error("WebSocketclient::Watch " + error + " " + this.id + "/" + this.clientagent);

@@ -158,7 +158,7 @@ export class translate implements ng.IDirective {
                 if (result == "%%KEY_NOT_FOUND%%" || result == "") {
                     if (global_translate_notfound.indexOf(lib + "." + value) === -1) {
                         global_translate_notfound.push(lib + "." + value);
-                        console.log("KEY_NOT_FOUND " + lib + "." + value);
+                        console.debug("KEY_NOT_FOUND " + lib + "." + value);
                     }
                     result = value;
                 }
@@ -336,10 +336,8 @@ export class entitiesCtrl<T> {
                 const end = errIdx + context >= txt.length
                     ? txt.length
                     : errIdx + context
-                e.message += ` while parsing near "${
-                    start === 0 ? "" : "..."
-                    }${txt.slice(start, end)}${
-                    end === txt.length ? "" : "..."
+                e.message += ` while parsing near "${start === 0 ? "" : "..."
+                    }${txt.slice(start, end)}${end === txt.length ? "" : "..."
                     }"`
             } else {
                 e.message += ` while parsing "${txt.slice(0, context * 2)}"`
@@ -349,7 +347,7 @@ export class entitiesCtrl<T> {
     }
     async loadData(): Promise<void> {
         try {
-            if (this.loading == true) { console.log("allready loading data, exit"); return; }
+            if (this.loading == true) { console.debug("allready loading data, exit"); return; }
             this.errormessage = "";
             this.loading = true;
             if (this.preloadData != null) {
@@ -496,7 +494,7 @@ export class entityCtrl<T> {
     }
     async loadData(): Promise<void> {
         try {
-            if (this.loading == true) { console.log("allready loading data, exit"); return; }
+            if (this.loading == true) { console.debug("allready loading data, exit"); return; }
             this.errormessage = "";
             let updated: boolean = false;
             this.loading = true;

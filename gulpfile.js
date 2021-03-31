@@ -134,7 +134,7 @@ gulp.task("browserify", function () {
 
     bfi.on('update', bundle);
     bfi.on('error', function (error) {
-        console.error(error.message);
+        console.error(error.message ? error.message : error);
         this.emit('end');
     });
     bfi.on('time', function (time) {
@@ -148,7 +148,7 @@ gulp.task("browserify", function () {
         console.log('browserify bundle::begin()');
         const result = bfi.bundle()
             .on('error', function (error) {
-                console.log(error.message);
+                console.log(error.message ? error.message : error);
                 this.emit('end');
             })
             .pipe(exorcist(mapfile))
@@ -229,6 +229,7 @@ gulp.task("bumpconfigmap", function () {
 
 gulp.task("bumpaiotfrontend", function () {
     let version = "0.0.1";
+    if (!fs.existsSync('../aiot-frontend')) return gulp.src('.');
     version = fs.readFileSync("../aiot-frontend/VERSION", "utf8");
     console.log('openiap/aiot-frontend:' + version);
     return gulp.src(["config/**/controllers.yml"])

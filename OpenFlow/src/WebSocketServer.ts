@@ -7,7 +7,9 @@ import { Crypt } from "./Crypt";
 import { Message } from "./Messages/Message";
 import { Config } from "./Config";
 import { SigninMessage, NoderedUtil, TokenUser } from "@openiap/openflow-api";
-import * as client from "prom-client";
+import { Span } from "@opentelemetry/api";
+import { otel } from "./otel";
+import { ValueRecorder, Counter, BaseObserver } from "@opentelemetry/api-metrics"
 
 export class WebSocketServer {
     private static _logger: winston.Logger;
@@ -16,67 +18,33 @@ export class WebSocketServer {
     public static _clients: WebSocketServerClient[];
     private static _db: DatabaseConnection;
 
-    private static p_all = new client.Gauge({
-        name: 'openflow_websocket_online_clients',
-        help: 'Total number of online websocket clients',
-        labelNames: ["agent", "version"]
-    })
-
-    public static websocket_incomming_stats = new client.Counter({
-        name: 'openflow_websocket_incomming_packages',
-        help: 'Total number of websocket packages',
-        labelNames: ["command"]
-    })
-    public static websocket_queue_count = new client.Gauge({
-        name: 'openflow_websocket_queue_count',
-        help: 'Total number of registered queues',
-        labelNames: ["clientid"]
-    })
-    public static websocket_queue_message_count = new client.Counter({
-        name: 'openflow_websocket_queue_message_count',
-        help: 'Total number of queues messages',
-        labelNames: ["queuename"]
-    })
-    public static websocket_rate_limit = new client.Counter({
-        name: 'openflow_websocket_rate_limit_count',
-        help: 'Total number of rate limited messages',
-        labelNames: ["command"]
-    })
-    public static websocket_messages = new client.Histogram({
-        name: 'openflow_websocket_messages_duration_seconds',
-        help: 'Duration for handling websocket requests in microseconds',
-        labelNames: ['command'],
-        buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10]
-    })
-    public static message_queue_count = new client.Gauge({
-        name: 'openflow_message_queue_count',
-        help: 'Total number messages waiting on reply from client',
-        labelNames: ["clientid"]
-    })
+    public static p_all: BaseObserver;
+    public static websocket_queue_count: BaseObserver;
+    public static websocket_queue_message_count: BaseObserver;
+    public static websocket_rate_limit: BaseObserver;
+    public static websocket_errors: BaseObserver;
+    public static websocket_messages: ValueRecorder;
+    public static message_queue_count: BaseObserver;
+    public static mongodb_watch_count: BaseObserver;
     public static update_message_queue_count(cli: WebSocketServerClient) {
         if (!Config.prometheus_measure_queued_messages) return;
-        const result: any = {};
+        if (NoderedUtil.IsNullUndefinded(WebSocketServer.message_queue_count)) return;
+        // const result: any = {};
         const keys = Object.keys(cli.messageQueue);
-        keys.forEach(key => {
-            try {
-                const qmsg = cli.messageQueue[key];
-                var o = qmsg.message;
-                if (typeof o === "string") o = JSON.parse(o);
-                const msg: Message = o;
-                if (result[msg.command] == null) result[msg.command] = 0;
-                result[msg.command]++;
-            } catch (error) {
-                WebSocketServer._logger.error(error);
-            }
-        });
-        const keys2 = Object.keys(result);
-        WebSocketServer.message_queue_count.reset();
-        WebSocketServer.message_queue_count.labels(cli.id).set(keys.length);
-        keys2.forEach(key => {
-            WebSocketServer.message_queue_count.labels(cli.id, key).set(result[key]);
-        });
+        WebSocketServer.message_queue_count.bind({ ...otel.defaultlabels, clientid: cli.id }).update(keys.length);
     }
-    static configure(logger: winston.Logger, server: http.Server, register: client.Registry): void {
+    public static update_mongodb_watch_count(cli: WebSocketServerClient) {
+        if (!Config.prometheus_measure__mongodb_watch) return;
+        if (NoderedUtil.IsNullUndefinded(WebSocketServer.mongodb_watch_count)) return;
+        const result: any = {};
+        let total: number = 0;
+        WebSocketServer.mongodb_watch_count.clear();
+        for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
+            const cli: WebSocketServerClient = WebSocketServer._clients[i];
+            WebSocketServer.mongodb_watch_count.bind({ ...otel.defaultlabels, clientid: cli.id, agent: cli.clientagent }).update(cli.streamcount());
+        }
+    }
+    static configure(logger: winston.Logger, server: http.Server, _otel: otel): void {
         this._clients = [];
         this._logger = logger;
         this._server = server;
@@ -87,125 +55,159 @@ export class WebSocketServer {
         this._socketserver.on("error", (error: Error): void => {
             this._logger.error(error);
         });
-        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebSocketServer.p_all);
-        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebSocketServer.websocket_incomming_stats);
-        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebSocketServer.websocket_queue_count);
-        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebSocketServer.websocket_queue_message_count);
-        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebSocketServer.websocket_rate_limit);
-        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebSocketServer.websocket_messages);
-        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebSocketServer.message_queue_count);
-        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(DatabaseConnection.mongodb_query);
-        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(DatabaseConnection.mongodb_query_count);
-        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(DatabaseConnection.mongodb_aggregate);
-        if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(DatabaseConnection.mongodb_aggregate_count);
-
-
+        if (!NoderedUtil.IsNullUndefinded(_otel)) {
+            WebSocketServer.p_all = _otel.meter.createUpDownSumObserver("openflow_websocket_online_clients", {
+                description: 'Total number of online websocket clients'
+            }) // "agent", "version"
+            WebSocketServer.websocket_queue_count = _otel.meter.createUpDownSumObserver("openflow_websocket_queue", {
+                description: 'Total number of registered queues'
+            }) // "clientid"
+            WebSocketServer.websocket_queue_message_count = _otel.meter.createUpDownSumObserver("openflow_websocket_queue_message", {
+                description: 'Total number of queues messages'
+            }) // "queuename"
+            WebSocketServer.websocket_rate_limit = _otel.meter.createUpDownSumObserver("openflow_websocket_rate_limit", {
+                description: 'Total number of rate limited messages'
+            }) // "command"
+            WebSocketServer.websocket_errors = _otel.meter.createUpDownSumObserver("openflow_websocket_errors", {
+                description: 'Total number of websocket errors'
+            }) // 
+            WebSocketServer.websocket_messages = _otel.meter.createValueRecorder('openflow_websocket_messages_duration_seconds', {
+                description: 'Duration for handling websocket requests',
+                boundaries: otel.default_boundaries
+            }); // "command"
+            WebSocketServer.message_queue_count = _otel.meter.createUpDownSumObserver("openflow_message_queue", {
+                description: 'Total number messages waiting on reply from client'
+            }) // "clientid"
+            WebSocketServer.mongodb_watch_count = _otel.meter.createUpDownSumObserver("mongodb_watch", {
+                description: 'Total number af steams  watching for changes'
+            }) // "agent", "clientid"
+        }
         setInterval(this.pingClients, 10000);
     }
     private static async pingClients(): Promise<void> {
-        let count: number = WebSocketServer._clients.length;
-        WebSocketServer.p_all.reset();
-        WebSocketServer.p_all.set(count);
-        for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
-            const cli: WebSocketServerClient = WebSocketServer._clients[i];
-            try {
-                if (!NoderedUtil.IsNullEmpty(cli.jwt)) {
-                    const payload = Crypt.decryptToken(cli.jwt);
-                    const clockTimestamp = Math.floor(Date.now() / 1000);
-                    if ((payload.exp - clockTimestamp) < 60) {
-                        WebSocketServer._logger.debug("Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " expires in less than 1 minute, send new jwt to client");
-                        const tuser: TokenUser = await Message.DoSignin(cli, null);
-                        if (tuser != null) {
-                            const l: SigninMessage = new SigninMessage();
-                            cli.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
-                            l.jwt = cli.jwt;
-                            l.user = tuser;
-                            const m: Message = new Message(); m.command = "refreshtoken";
-                            m.data = JSON.stringify(l);
-                            cli.Send(m);
-                        } else {
-                            cli.Close();
+        const span: Span = otel.startSpan("WebSocketServer.pingClients");
+        try {
+            let count: number = WebSocketServer._clients.length;
+            for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
+                const cli: WebSocketServerClient = WebSocketServer._clients[i];
+                try {
+                    if (!NoderedUtil.IsNullEmpty(cli.jwt)) {
+                        const payload = Crypt.decryptToken(cli.jwt);
+                        const clockTimestamp = Math.floor(Date.now() / 1000);
+                        if ((payload.exp - clockTimestamp) < 60) {
+                            WebSocketServer._logger.debug("Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " expires in less than 1 minute, send new jwt to client");
+                            const tuser: TokenUser = await Message.DoSignin(cli, null);
+                            if (tuser != null) {
+                                span.addEvent("Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " expires in less than 1 minute, send new jwt to client");
+                                const l: SigninMessage = new SigninMessage();
+                                cli.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
+                                l.jwt = cli.jwt;
+                                l.user = tuser;
+                                const m: Message = new Message(); m.command = "refreshtoken";
+                                m.data = JSON.stringify(l);
+                                cli.Send(m);
+                            } else {
+                                cli.Close();
+                            }
                         }
                     }
+                } catch (error) {
+                    span.recordException(error);
+                    console.error(error);
+                    cli.Close();
                 }
-            } catch (error) {
-                console.error(error);
-                cli.Close();
-            }
-            const now = new Date();
-            const seconds = (now.getTime() - cli.lastheartbeat.getTime()) / 1000;
-            if (seconds >= Config.client_heartbeat_timeout) {
-                if (cli.user != null) {
-                    WebSocketServer._logger.info("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " timeout, close down");
-                } else {
-                    WebSocketServer._logger.info("client not signed/" + cli.id + "/" + cli.clientagent + " timeout, close down");
-                }
-                cli.Close();
-            }
-            cli.ping();
-            if (!cli.connected() && cli.queuecount() == 0 && cli.streamcount() == 0) {
-                if (cli.user != null) {
-                    WebSocketServer._logger.info("removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent);
-                } else {
-                    WebSocketServer._logger.info("removing disconnected client " + cli.id + "/" + cli.clientagent + " timeout, close down");
-                }
-                WebSocketServer._clients.splice(i, 1);
-            }
-        }
-        if (count !== WebSocketServer._clients.length) {
-            WebSocketServer._logger.info("new client count: " + WebSocketServer._clients.length);
-        }
-        // let openrpa: number = 0;
-        // this.p_online_clients.labels("openrpa").set(count);
-        for (let i = 0; i < WebSocketServer._clients.length; i++) {
-            try {
-                const cli = WebSocketServer._clients[i];
-                if (cli.user != null) {
-                    if (!NoderedUtil.IsNullEmpty(cli.clientagent)) {
-                        WebSocketServer.p_all.labels(cli.clientagent, cli.clientversion).inc();
+                const now = new Date();
+                const seconds = (now.getTime() - cli.lastheartbeat.getTime()) / 1000;
+                if (seconds >= Config.client_heartbeat_timeout) {
+                    if (cli.user != null) {
+                        span.addEvent("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " timeout, close down");
+                        WebSocketServer._logger.info("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " timeout, close down");
+                    } else {
+                        span.addEvent("client not signed/" + cli.id + "/" + cli.clientagent + " timeout, close down");
+                        WebSocketServer._logger.info("client not signed/" + cli.id + "/" + cli.clientagent + " timeout, close down");
                     }
-                    // Lets assume only robots register queues ( not true )
-                    if (cli.clientagent == "openrpa") {
+                    cli.Close();
+                }
+                cli.ping(span);
+                if (!cli.connected() && cli.queuecount() == 0 && cli.streamcount() == 0) {
+                    if (cli.user != null) {
+                        WebSocketServer._logger.info("removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent);
+                        span.addEvent("removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent);
+                    } else {
+                        WebSocketServer._logger.info("removing disconnected client " + cli.id + "/" + cli.clientagent + " timeout, close down");
+                        span.addEvent("removing disconnected client " + cli.id + "/" + cli.clientagent + " timeout, close down");
+                    }
+                    WebSocketServer._clients.splice(i, 1);
+                }
+            }
+            if (count !== WebSocketServer._clients.length) {
+                WebSocketServer._logger.info("new client count: " + WebSocketServer._clients.length);
+                span.setAttribute("clientcount", WebSocketServer._clients.length)
+            }
+            // let openrpa: number = 0;
+            // this.p_online_clients.labels("openrpa").set(count);
+            const p_all = {};
+            for (let i = 0; i < WebSocketServer._clients.length; i++) {
+                try {
+                    const cli = WebSocketServer._clients[i];
+                    if (cli.user != null) {
+                        if (!NoderedUtil.IsNullEmpty(cli.clientagent)) {
+                            if (!NoderedUtil.IsNullUndefinded(WebSocketServer.p_all)) {
+                                if (NoderedUtil.IsNullUndefinded(p_all[cli.clientagent])) p_all[cli.clientagent] = 0;
+                                p_all[cli.clientagent] += 1;
+                            }
+                        }
+                        // Lets assume only robots register queues ( not true )
+                        if (cli.clientagent == "openrpa") {
+                            Config.db.synRawUpdateOne("users", { _id: cli.user._id },
+                                { $set: { _rpaheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } },
+                                Config.prometheus_measure_onlineuser, null);
+                        }
+                        if (cli.clientagent == "nodered") {
+                            Config.db.synRawUpdateOne("users", { _id: cli.user._id },
+                                { $set: { _noderedheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } },
+                                Config.prometheus_measure_onlineuser, null);
+                        }
+                        if (cli.clientagent == "webapp" || cli.clientagent == "aiotwebapp") {
+                            Config.db.synRawUpdateOne("users", { _id: cli.user._id },
+                                { $set: { _webheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } },
+                                Config.prometheus_measure_onlineuser, null);
+                        }
+                        if (cli.clientagent == "powershell") {
+                            Config.db.synRawUpdateOne("users", { _id: cli.user._id },
+                                { $set: { _powershellheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } },
+                                Config.prometheus_measure_onlineuser, null);
+                        }
+                        if (cli.clientagent == "mobileapp" || cli.clientagent == "aiotmobileapp") {
+                            Config.db.synRawUpdateOne("users", { _id: cli.user._id },
+                                { $set: { _webheartbeat: new Date(new Date().toISOString()), _mobilheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } },
+                                Config.prometheus_measure_onlineuser, null);
+                        }
+                        else {
+                            // Should proberly turn this a little down, so we dont update all online users every 10th second
+                            Config.db.synRawUpdateOne("users", { _id: cli.user._id },
+                                { $set: { _heartbeat: new Date(new Date().toISOString()) } },
+                                Config.prometheus_measure_onlineuser, null);
+                        }
+                    }
+                } catch (error) {
+                    span.recordException(error);
+                    console.error(error);
+                }
+            }
 
-                        Config.db.db.collection("users").updateOne({ _id: cli.user._id },
-                            { $set: { _rpaheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
-                                console.error(err);
-                            });
-                    }
-                    if (cli.clientagent == "nodered") {
-                        Config.db.db.collection("users").updateOne({ _id: cli.user._id },
-                            { $set: { _noderedheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
-                                console.error(err);
-                            });
-                    }
-                    if (cli.clientagent == "webapp" || cli.clientagent == "aiotwebapp") {
-                        Config.db.db.collection("users").updateOne({ _id: cli.user._id },
-                            { $set: { _webheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
-                                console.error(err);
-                            });
-                    }
-                    if (cli.clientagent == "powershell") {
-                        Config.db.db.collection("users").updateOne({ _id: cli.user._id },
-                            { $set: { _powershellheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
-                                console.error(err);
-                            });
-                    }
-                    if (cli.clientagent == "mobileapp" || cli.clientagent == "aiotmobileapp") {
-                        Config.db.db.collection("users").updateOne({ _id: cli.user._id },
-                            { $set: { _webheartbeat: new Date(new Date().toISOString()), _mobilheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
-                                console.error(err);
-                            });
-                    }
-                    else {
-                        // Should proberly turn this a little down, so we dont update all online users every 10th second
-                        Config.db.db.collection("users").updateOne({ _id: cli.user._id }, { $set: { _heartbeat: new Date(new Date().toISOString()) } }).catch((err) => {
-                            console.error(err);
-                        });
-                    }
-                }
-            } catch (error) {
-                console.error(error);
+            if (!NoderedUtil.IsNullUndefinded(WebSocketServer.p_all)) {
+                WebSocketServer.p_all.clear();
+                const keys = Object.keys(p_all);
+                keys.forEach(key => {
+                    WebSocketServer.p_all.bind({ ...otel.defaultlabels, agent: key }).update(p_all[key]);
+                });
             }
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            otel.endSpan(span);
         }
     }
 }

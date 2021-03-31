@@ -111,14 +111,12 @@
     };
     this.jwt = function (error, data) {
       if (this.user) {
-        console.log('validated', this.user.validated)
         if (this.validate_user_form != "" && this.user.validated != true) {
           delete this.user.roles;
           if (!this.user.email && this.user.username) {
             if (this.user.username.indexOf("@") > -1) this.user.email = this.user.username;
           }
           loadScript("formio.full.min.js", () => {
-            console.log('validated', this.user.validated)
             if (this.validate_user_form != "" && this.user.validated != true) {
               getJSON("/validateuserform", async (err, data) => {
                 this.form = data;
@@ -128,7 +126,6 @@
                     buttonSettings: { showCancel: false }
                   });
                 this.formioRender.submission = { data: this.user };
-                console.log('submission', this.formioRender.submission);
                 this.formioRender.on('submit', async submission => {
                   console.debug('onsubmit', submission);
                   // $(".alert-success").hide();
@@ -139,8 +136,6 @@
                   postJSON("/validateuserform", submission, (err, data) => {
                     location.reload();
                     // location.reload(true);
-                    // console.log(data);
-                    // console.log(err);
                   })
                 });
                 if (!$scope.$$phase) { $scope.$apply(); }
@@ -160,8 +155,7 @@
     };
 
     getJSON("/user", async (err, data) => {
-      console.log(err);
-      console.log(data);
+      if (err) console.error(err);
       if (data._id) {
         this.user = data;
         this.jwt.bind(this)(null, null);

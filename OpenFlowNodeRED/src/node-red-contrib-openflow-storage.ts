@@ -140,9 +140,6 @@ export class noderedcontribopenflowstorage {
         const globaldir = await this.getGlobalModulesDir();
         let currentmodules = this.scanDirForNodesModules(path.resolve('.'));
         currentmodules = currentmodules.concat(this.scanDirForNodesModules(globaldir));
-        // currentmodules.forEach(pck => {
-        //     console.log(pck.name + "@" + pck.version);
-        // });
         const keys = Object.keys(settings.nodes);
         let modules = "";
         for (let i = 0; i < keys.length; i++) {
@@ -877,7 +874,6 @@ export class noderedcontribopenflowstorage {
                             this._logger.info("noderedcontribopenflowstorage::onupdate: Restarting service " + _servicename);
                             this.RED.log.warn("noderedcontribopenflowstorage::onupdate: Restarting service " + _servicename);
                             RestartService(_servicename);
-                            // process.exit(1);
                         } else {
                             this.RED.log.error("noderedcontribopenflowstorage::onupdate: Not running in docker, nor started as a service, please restart Node-Red manually");
                             this._logger.info("noderedcontribopenflowstorage::onupdate: Not running in docker, nor started as a service, please restart Node-Red manually");
@@ -957,7 +953,6 @@ export class noderedcontribopenflowstorage {
                         var _servicename = path.basename(servicename)
                         this._logger.info("noderedcontribopenflowstorage::onupdate: Restarting service " + _servicename);
                         RestartService(_servicename);
-                        // process.exit(1);
                     } else {
                         this._logger.info("noderedcontribopenflowstorage::onupdate: Not running in docker, nor started as a service, please restart Node-Red manually");
                     }

@@ -5,6 +5,7 @@ import * as request from "request";
 import { NoderedUtil } from "@openiap/openflow-api";
 
 export interface Ionesignal_credentials {
+    name: string;
 }
 export class onesignal_credentials {
     public node: Red = null;
@@ -14,6 +15,7 @@ export class onesignal_credentials {
     constructor(public config: Ionesignal_credentials) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.name = config.name;
         this.node.status({});
         if (this.node.credentials && this.node.credentials.hasOwnProperty("restKey")) {
             this.restKey = this.node.credentials.restKey;
@@ -32,6 +34,7 @@ export interface Icreate_notification {
     included_segments: string | string[];
     excluded_segments: string | string[];
     include_player_ids: string | string[];
+    name: string;
 }
 export class create_notification {
     public node: Red = null;
@@ -42,6 +45,7 @@ export class create_notification {
         RED.nodes.createNode(this, config);
         try {
             this.node = this;
+            this.name = config.name;
             this.node.status({});
             const _config: onesignal_credentials = RED.nodes.getNode(this.config.config);
             if (!NoderedUtil.IsNullUndefinded(_config) && !NoderedUtil.IsNullEmpty(_config.restKey)) {

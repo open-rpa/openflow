@@ -6,7 +6,7 @@ module.exports = function (RED) {
 
     RED.nodes.registerType("smtpserver in", function (n) {
         RED.nodes.createNode(this, n);
-        this.name = n.name;
+        this.name = n.name || n.email;
         this.email = n.email;
         this.port = n.port;
         const node = this;

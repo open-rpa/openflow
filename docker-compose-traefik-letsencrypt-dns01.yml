@@ -8,7 +8,7 @@ services:
     volumes:
       - mongodb_data:/data/db
   traefik:
-    image: "traefik:v2.0.0-rc3"
+    image: "traefik"
     container_name: "traefik"
     labels:
       - "traefik.enable=true"
@@ -28,16 +28,23 @@ services:
       - "--entrypoints.websecure.address=:443"
       - "--entrypoints.web.address=:80"
 
-      - "--entrypoints.websecure.http.tls.certresolver=myresolver"
-      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
-      - "--certificatesresolvers.myresolver.acme.email=my@email.domain"
-      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
-      # middleware redirect
+      - --entrypoints.websecure.http.tls.certresolver=myresolver
+      - --certificatesresolvers.myresolver.acme.dnschallenge.provider=gcloud
+      - --certificatesresolvers.myresolver.acme.email=my@email.domain
+      - --certificatesresolvers.myresolver.acme.dnschallenge.resolvers=1.1.1.1
+      - --certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json
+      # # middleware redirect
       - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
-      # global redirect to https
+      # # global redirect to https
       - "traefik.http.routers.redirs.rule=hostregexp(`{host:.+}`)"
       - "traefik.http.routers.redirs.entrypoints=web"
       - "traefik.http.routers.redirs.middlewares=redirect-to-https"
+    environment:
+      - GCE_PROJECT=apiproject-237214
+      - GCE_SERVICE_ACCOUNT_FILE=/letsencrypt/account.json
+      - DO_POLLING_INTERVAL=5
+      - DO_PROPAGATION_TIMEOUT=120
+      - DO_TTL=30
     ports:
       - "80:80"
       - "443:443"
@@ -49,7 +56,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.rabbitmq.rule=Host(`mq.localhost.openiap.io`)"
-      - "traefik.http.routers.rabbitmq.entrypoints=web,websecure"
+      - "traefik.http.routers.rabbitmq.entrypoints=web"
       - "traefik.http.services.rabbitmq.loadbalancer.server.port=15672"
     image: "rabbitmq:3-management"
     container_name: "rabbitmq"

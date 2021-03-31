@@ -8,11 +8,12 @@ export interface Iget_pods {
 }
 export class get_pods {
     public node: Red = null;
-
+    public name: string;
     constructor(public config: Iget_pods) {
         RED.nodes.createNode(this, config);
         this.node = this;
         this.node.status({});
+        this.name = config.name;
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
     }

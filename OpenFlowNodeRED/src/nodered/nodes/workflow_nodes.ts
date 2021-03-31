@@ -22,6 +22,7 @@ export class workflow_in_node {
         RED.nodes.createNode(this, config);
         try {
             this.node = this;
+            this.name = config.name;
             this.node.on("close", this.onclose);
             this.host = Config.amqp_url;
             this._onsignedin = this.onsignedin.bind(this);
@@ -175,6 +176,7 @@ export class workflow_in_node {
                     return;
                 }
                 const orgmsg = res[0];
+                delete orgmsg._msgid; // Keep each run seperate
                 if (orgmsg.payload === null || orgmsg.payload === undefined) {
                     orgmsg.payload = data;
                     data = orgmsg;
@@ -288,6 +290,7 @@ export interface Iworkflow_out_node {
     state: string;
     form: string;
     removestate: boolean;
+    name: string;
 }
 export class workflow_out_node {
     public node: Red = null;
@@ -295,6 +298,7 @@ export class workflow_out_node {
     public host: string = "";
     constructor(public config: Iworkflow_out_node) {
         RED.nodes.createNode(this, config);
+        this.name = config.name;
         this.node = this;
         this.host = Config.amqp_url;
         this.node.status({});
@@ -388,7 +392,6 @@ export class workflow_out_node {
                 // Don't wait for ack(), we don't care if the receiver is there, right ?
                 this.node.status({ fill: "blue", shape: "dot", text: "Queue message for " + msg._replyTo });
                 await NoderedUtil.QueueMessage(WebSocketClient.instance, msg._replyTo, null, data, msg.correlationId, Config.amqp_workflow_out_expiration);
-                // console.log("Send reply data to " + msg._replyTo, data);
             }
         } catch (error) {
             NoderedUtil.HandleError(this, error, msg);
@@ -461,6 +464,7 @@ export class assign_workflow_node {
     constructor(public config: Iassign_workflow_node) {
         RED.nodes.createNode(this, config);
         this.node = this;
+        this.name = config.name;
         this.node.status({});
         Logger.instanse.info("track::assign workflow in::constructor");
         if (this.config == null || this.config.queue == null || this.config.queue == "") {

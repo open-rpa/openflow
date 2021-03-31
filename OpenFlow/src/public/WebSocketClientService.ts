@@ -3,6 +3,7 @@ import { WebSocketClient, TokenUser, NoderedUtil } from "@openiap/openflow-api";
 interface IHashTable<T> {
     [key: string]: T;
 }
+declare type onSignedinCallback = (user: TokenUser) => void;
 export class WebSocketClientService {
     static $inject = ["$rootScope", "$location", "$window"];
     constructor(
@@ -64,7 +65,6 @@ export class WebSocketClientService {
                 if (this.$location.path() !== "/Login" && this.$location.path() !== "/Signup") {
                     // const _url = this.$location.absUrl();
                     // this.setCookie("weburl", _url, 365);
-                    console.log('weburl', this.$location.path());
                     this.setCookie("weburl", this.$location.path(), 365);
                     this.$location.path("/Login");
                     this.$rootScope.$apply();
@@ -78,20 +78,18 @@ export class WebSocketClientService {
                 this.$rootScope.$broadcast("signin", result.user);
                 const redirecturl = this.getCookie("weburl");
                 if (!NoderedUtil.IsNullEmpty(redirecturl)) {
-                    console.log('redirecturl', redirecturl);
                     this.deleteCookie("weburl");
                     this.$location.path(redirecturl);
                 }
             } catch (error) {
                 if (error == "User not validated, please login again") {
-                    console.log('validateurl', this.$location.path());
                     this.setCookie("validateurl", this.$location.path(), 365);
                     setTimeout(() => {
                         top.location.href = '/login';
                         document.write('<script>top.location = "/login";</script>')
                     }, 500);
                 }
-                console.log(error);
+                console.error(error);
                 try {
                     document.write(error);
                     document.write("<br/><a href=\"/Signout\">Signout</a>");
@@ -102,10 +100,14 @@ export class WebSocketClientService {
         });
     }
     async impersonate(userid: string) {
-        const result = await NoderedUtil.SigninWithToken(this.jwt, null, userid);
-        this.user = result.user;
-        this.jwt = result.jwt;
-        this.$rootScope.$broadcast("signin", result.user);
+        try {
+            const result = await NoderedUtil.SigninWithToken(this.jwt, null, userid);
+            this.user = result.user;
+            this.jwt = result.jwt;
+            this.$rootScope.$broadcast("signin", result.user);
+        } catch (error) {
+            console.error(error);
+        }
     }
     setCookie(cname, cvalue, exdays) {
         const d = new Date();
@@ -168,8 +170,7 @@ export class WebSocketClientService {
         };
         xhr.send();
     }
-
-    onSignedin(callback) {
+    public onSignedin(callback: onSignedinCallback) {
         if (this.user !== null) {
             callback(this.user);
             return;

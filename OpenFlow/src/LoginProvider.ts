@@ -2,8 +2,6 @@ import * as crypto from "crypto";
 import * as url from "url";
 import * as winston from "winston";
 import * as express from "express";
-import * as cookieSession from "cookie-session";
-import * as bodyParser from "body-parser";
 import * as path from "path";
 
 // import * as SAMLStrategy from "passport-saml";
@@ -23,6 +21,8 @@ const GridFsStorage = require('multer-gridfs-storage');
 import { GridFSBucket, ObjectID, Db, Cursor, Binary } from "mongodb";
 import { Base, User, NoderedUtil, TokenUser, WellknownIds, Rights, Role } from "@openiap/openflow-api";
 import { DBHelper } from "./DBHelper";
+import { otel } from "./otel";
+import { Span } from "@opentelemetry/api";
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 
 interface IVerifyFunction { (error: any, profile: any): void; }
@@ -87,53 +87,69 @@ export class LoginProvider {
     }
 
 
-    static async validateToken(rawAssertion: string): Promise<User> {
+    static async validateToken(rawAssertion: string, parent: Span): Promise<User> {
+        const span: Span = otel.startSubSpan("LoginProvider.validateToken", parent);
         return new Promise<User>((resolve, reject) => {
-            const options = {
-                publicKey: Buffer.from(Config.signing_crt, "base64").toString("ascii")
-            }
-            saml.validate(rawAssertion, options, async (err, profile) => {
-                try {
-                    if (err) { return reject(err); }
-                    const claims = profile.claims; // Array of user attributes;
-                    const username = claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] ||
-                        claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] ||
-                        claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"];
-
-                    const user = await DBHelper.FindByUsername(username);
-                    if (user) {
-                        resolve(user);
-                    } else {
-                        reject("Unknown user");
-                    }
-                } catch (error) {
-                    reject(error);
+            try {
+                const options = {
+                    publicKey: Buffer.from(Config.signing_crt, "base64").toString("ascii")
                 }
-            });
+                saml.validate(rawAssertion, options, async (err, profile) => {
+                    try {
+                        if (err) { span.recordException(err); return reject(err); }
+                        const claims = profile.claims; // Array of user attributes;
+                        const username = claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] ||
+                            claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] ||
+                            claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"];
+
+                        const user = await DBHelper.FindByUsername(username, null, span);
+                        if (user) {
+                            resolve(user);
+                        } else {
+                            span.recordException("Unknown user");
+                            reject("Unknown user");
+                        }
+                    } catch (error) {
+                        span.recordException(error);
+                        reject(error);
+                    } finally {
+                        otel.endSpan(span);
+                    }
+
+                });
+            } catch (error) {
+                span.recordException(error);
+            } finally {
+                otel.endSpan(span);
+            }
         });
     }
 
-    static async getProviders(): Promise<any[]> {
-        LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", Crypt.rootToken());
-        const result: any[] = [];
-        LoginProvider.login_providers.forEach(provider => {
-            const item: any = { name: provider.name, id: provider.id, provider: provider.provider, logo: "fa-question-circle" };
-            if (provider.provider === "google") { item.logo = "fa-google"; }
-            if (provider.provider === "saml") { item.logo = "fa-windows"; }
-            result.push(item);
-        });
-        if (result.length === 0) {
-            const item: any = { name: "Local", id: "local", provider: "local", logo: "fa-question-circle" };
-            result.push(item);
+    static async getProviders(parent: Span): Promise<any[]> {
+        const span: Span = otel.startSubSpan("LoginProvider.getProviders", parent);
+        try {
+            LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", Crypt.rootToken(), undefined, undefined, span);
+            const result: any[] = [];
+            LoginProvider.login_providers.forEach(provider => {
+                const item: any = { name: provider.name, id: provider.id, provider: provider.provider, logo: "fa-question-circle" };
+                if (provider.provider === "google") { item.logo = "fa-google"; }
+                if (provider.provider === "saml") { item.logo = "fa-windows"; }
+                result.push(item);
+            });
+            if (result.length === 0) {
+                const item: any = { name: "Local", id: "local", provider: "local", logo: "fa-question-circle" };
+                result.push(item);
+            }
+            return result;
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            otel.endSpan(span);
         }
-        return result;
     }
     static async configure(logger: winston.Logger, app: express.Express, baseurl: string): Promise<void> {
         LoginProvider._logger = logger;
-        app.use(cookieSession({
-            name: "session", secret: Config.cookie_secret
-        }));
-
         app.use(passport.initialize());
         app.use(passport.session());
         passport.serializeUser(async function (user: any, done: any): Promise<void> {
@@ -144,12 +160,22 @@ export class LoginProvider {
         });
 
         app.use(function (req, res, next) {
-            res.header('Access-Control-Allow-Origin', (req.headers.origin as any));
-            res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+            const origin: string = (req.headers.origin as any);
+            if (NoderedUtil.IsNullEmpty(origin)) {
+                res.header('Access-Control-Allow-Origin', '*');
+            } else {
+                res.header('Access-Control-Allow-Origin', origin);
+            }
+            res.header("Access-Control-Allow-Methods", "DELETE, POST, PUT, GET, OPTIONS");
+            res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Access-Control-Allow-Headers, Authorization");
             res.header('Cache-Control', 'private, no-cache, no-store, must-revalidate');
             res.header('Expires', '-1');
             res.header('Pragma', 'no-cache');
-            next();
+            if (req.originalUrl == "/oidc/me" && req.method == "OPTIONS") {
+                res.send("ok");
+            } else {
+                next();
+            }
         });
         app.get("/Signout", (req: any, res: any, next: any): void => {
             // const providerid: string = req.cookies.provider;
@@ -187,86 +213,131 @@ export class LoginProvider {
         });
         await LoginProvider.RegisterProviders(app, baseurl);
         app.get("/user", async (req: any, res: any, next: any): Promise<void> => {
-            // console.log("/user " + !(req.user == null));
-            res.setHeader("Content-Type", "application/json");
-            if (req.user) {
-                const user: User = await DBHelper.FindById(req.user._id);
-                res.end(JSON.stringify(user));
-            } else {
-                res.end(JSON.stringify({}));
+            const span: Span = otel.startSpan("LoginProvider.user");
+            try {
+                res.setHeader("Content-Type", "application/json");
+                if (req.user) {
+                    const user: User = await DBHelper.FindById(req.user._id, undefined, span);
+                    res.end(JSON.stringify(user));
+                } else {
+                    res.end(JSON.stringify({}));
+                }
+                res.end();
+            } catch (error) {
+                span.recordException(error);
+                throw error;
+            } finally {
+                otel.endSpan(span);
             }
-            res.end();
         });
         app.get("/jwt", (req: any, res: any, next: any): void => {
-            // console.log("/jwt " + !(req.user == null));
-            res.setHeader("Content-Type", "application/json");
-            if (req.user) {
-                const user: TokenUser = TokenUser.From(req.user);
-                res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.shorttoken_expires_in), user: user }));
-            } else {
-                res.end(JSON.stringify({ jwt: "" }));
+            const span: Span = otel.startSpan("LoginProvider.jwt");
+            try {
+                res.setHeader("Content-Type", "application/json");
+                if (req.user) {
+                    const user: TokenUser = TokenUser.From(req.user);
+                    span.setAttribute("username", user.username);
+                    res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.shorttoken_expires_in), user: user }));
+                } else {
+                    res.end(JSON.stringify({ jwt: "" }));
+                }
+                res.end();
+            } catch (error) {
+                span.recordException(error);
+                console.error(error.message ? error.message : error);
+                return res.status(500).send({ message: error.message ? error.message : error });
+            } finally {
+                otel.endSpan(span);
             }
-            res.end();
         });
         app.get("/jwtlong", (req: any, res: any, next: any): void => {
-            // console.log("/jwtlong " + !(req.user == null));
-            res.setHeader("Content-Type", "application/json");
-            if (req.user) {
-                const user: TokenUser = TokenUser.From(req.user);
-                if (!(user.validated == true) && Config.validate_user_form != "") {
-                    res.end(JSON.stringify({ jwt: "" }));
+            const span: Span = otel.startSpan("LoginProvider.jwtlong");
+            try {
+                res.setHeader("Content-Type", "application/json");
+                if (req.user) {
+                    const user: TokenUser = TokenUser.From(req.user);
+                    span.setAttribute("username", user.username);
+                    if (!(user.validated == true) && Config.validate_user_form != "") {
+                        res.end(JSON.stringify({ jwt: "" }));
+                    } else {
+                        res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.longtoken_expires_in), user: user }));
+                    }
                 } else {
-                    res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.longtoken_expires_in), user: user }));
+                    res.end(JSON.stringify({ jwt: "" }));
                 }
-            } else {
-                res.end(JSON.stringify({ jwt: "" }));
+                res.end();
+            } catch (error) {
+                span.recordException(error);
+                console.error(error.message ? error.message : error);
+                return res.status(500).send({ message: error.message ? error.message : error });
+            } finally {
+                otel.endSpan(span);
             }
-            res.end();
         });
         app.post("/jwt", async (req: any, res: any, next: any): Promise<void> => {
-            // console.log("/jwt " + !(req.user == null));
+            const span: Span = otel.startSpan("LoginProvider.jwt");
+            // logger.debug("/jwt " + !(req.user == null));
             try {
                 const rawAssertion = req.body.token;
-                const user: User = await LoginProvider.validateToken(rawAssertion);
+                const user: User = await LoginProvider.validateToken(rawAssertion, span);
                 const tuser: TokenUser = TokenUser.From(user);
+                span.setAttribute("username", user.username);
                 res.setHeader("Content-Type", "application/json");
                 res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, Config.shorttoken_expires_in) }));
             } catch (error) {
+                span.recordException(error);
                 console.error(error.message ? error.message : error);
                 return res.status(500).send({ message: error.message ? error.message : error });
+            } finally {
+                otel.endSpan(span);
             }
         });
         app.get("/config", (req: any, res: any, next: any): void => {
-            let _url = Config.basewsurl();
-            if (!NoderedUtil.IsNullEmpty(Config.api_ws_url)) _url = Config.api_ws_url;
-            if (!_url.endsWith("/")) _url += "/";
-            const res2 = {
-                wshost: _url,
-                wsurl: _url,
-                domain: Config.domain,
-                allow_user_registration: Config.allow_user_registration,
-                allow_personal_nodered: Config.allow_personal_nodered,
-                auto_create_personal_nodered_group: Config.auto_create_personal_nodered_group,
-                namespace: Config.namespace,
-                nodered_domain_schema: Config.nodered_domain_schema,
-                websocket_package_size: Config.websocket_package_size,
-                version: Config.version,
-                stripe_api_key: Config.stripe_api_key,
-                getting_started_url: Config.getting_started_url,
-                validate_user_form: Config.validate_user_form
+            const span: Span = otel.startSpan("LoginProvider.config");
+            try {
+                let _url = Config.basewsurl();
+                if (!NoderedUtil.IsNullEmpty(Config.api_ws_url)) _url = Config.api_ws_url;
+                if (!_url.endsWith("/")) _url += "/";
+                if (req.user) {
+                    const user: TokenUser = TokenUser.From(req.user);
+                    span.setAttribute("username", user.username);
+                }
+                const res2 = {
+                    wshost: _url,
+                    wsurl: _url,
+                    domain: Config.domain,
+                    allow_user_registration: Config.allow_user_registration,
+                    allow_personal_nodered: Config.allow_personal_nodered,
+                    auto_create_personal_nodered_group: Config.auto_create_personal_nodered_group,
+                    namespace: Config.namespace,
+                    nodered_domain_schema: Config.nodered_domain_schema,
+                    websocket_package_size: Config.websocket_package_size,
+                    version: Config.version,
+                    stripe_api_key: Config.stripe_api_key,
+                    getting_started_url: Config.getting_started_url,
+                    validate_user_form: Config.validate_user_form,
+                    supports_watch: Config.supports_watch
+                }
+                res.end(JSON.stringify(res2));
+            } catch (error) {
+                span.recordException(error);
+                return res.status(500).send({ message: error.message ? error.message : error });
+            } finally {
+                otel.endSpan(span);
             }
-            res.end(JSON.stringify(res2));
         });
         app.get("/login", async (req: any, res: any, next: any): Promise<void> => {
-            // console.log("/login " + !(req.user == null));
+            const span: Span = otel.startSpan("LoginProvider.login");
             try {
                 const originalUrl: any = req.cookies.originalUrl;
                 const validateurl: any = req.cookies.validateurl;
-                if (NoderedUtil.IsNullEmpty(originalUrl)) res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
+                if (NoderedUtil.IsNullEmpty(originalUrl) && !req.originalUrl.startsWith("/login")) {
+                    res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
+                }
                 if (!NoderedUtil.IsNullEmpty(validateurl)) {
-                    // console.log("validateurl: " + validateurl);
+                    // logger.debug("validateurl: " + validateurl);
                     if (req.user) {
-                        const user: User = await DBHelper.FindById(req.user._id);
+                        const user: User = await DBHelper.FindById(req.user._id, undefined, span);
                         const tuser: TokenUser = TokenUser.From(user);
                         req.session.passport.user.validated = tuser.validated;
                         if (!(tuser.validated == true) && Config.validate_user_form != "") {
@@ -285,36 +356,45 @@ export class LoginProvider {
                 // res.end(JSON.stringify(result));
                 // res.end();
             } catch (error) {
+                span.recordException(error);
                 console.error(error.message ? error.message : error);
                 return res.status(500).send({ message: error.message ? error.message : error });
             }
             try {
+                span.addEvent("RegisterProviders");
                 LoginProvider.RegisterProviders(app, baseurl);
             } catch (error) {
+                span.recordException(error);
             }
+            otel.endSpan(span);
         });
         app.get("/validateuserform", async (req: any, res: any, next: any): Promise<void> => {
-            // console.log("/validateuserform " + !(req.user == null));
+            const span: Span = otel.startSpan("LoginProvider.validateuserform");
+            // logger.debug("/validateuserform " + !(req.user == null));
             res.setHeader("Content-Type", "application/json");
             if (NoderedUtil.IsNullEmpty(Config.validate_user_form)) {
                 res.end(JSON.stringify({}));
                 res.end();
+                otel.endSpan(span);
                 return;
             }
-            var forms = await Config.db.query<Base>({ _id: Config.validate_user_form, _type: "form" }, null, 1, 0, null, "forms", Crypt.rootToken());
+            var forms = await Config.db.query<Base>({ _id: Config.validate_user_form, _type: "form" }, null, 1, 0, null, "forms", Crypt.rootToken(), undefined, undefined, span);
             if (forms.length == 1) {
                 res.end(JSON.stringify(forms[0]));
                 res.end();
+                otel.endSpan(span);
                 return;
             }
             LoginProvider._logger.error("validate_user_form " + Config.validate_user_form + " does not exists!");
             Config.validate_user_form = "";
             res.end(JSON.stringify({}));
             res.end();
+            otel.endSpan(span);
             return;
         });
         app.post("/validateuserform", async (req: any, res) => {
-            // console.log("/validateuserform " + !(req.user == null));
+            const span: Span = otel.startSpan("LoginProvider.postvalidateuserform");
+            // logger.debug("/validateuserform " + !(req.user == null));
             res.setHeader("Content-Type", "application/json");
             try {
                 if (req.user) {
@@ -341,7 +421,7 @@ export class LoginProvider {
                                 UpdateDoc.$set[key] = req.body.data[key];
                             }
                         });
-                        var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, false, Crypt.rootToken());
+                        var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), span);
                         const user: TokenUser = Object.assign(tuser, req.body.data);
                         req.session.passport.user.validated = true;
 
@@ -356,29 +436,39 @@ export class LoginProvider {
                     res.end(JSON.stringify({ jwt: "" }));
                 }
             } catch (error) {
+                span.recordException(error);
                 console.error(error);
                 return res.status(500).send({ message: error.message ? error.message : error });
             }
-
+            otel.endSpan(span);
             res.end();
         });
 
         app.get("/loginproviders", async (req: any, res: any, next: any): Promise<void> => {
+            const span: Span = otel.startSpan("LoginProvider.loginproviders");
             try {
-                const result: any[] = await this.getProviders();
+                const result: any[] = await this.getProviders(span);
                 res.setHeader("Content-Type", "application/json");
                 res.end(JSON.stringify(result));
                 res.end();
             } catch (error) {
+                span.recordException(error);
                 console.error(error.message ? error.message : error);
+                otel.endSpan(span);
                 return res.status(500).send({ message: error.message ? error.message : error });
             }
             try {
                 LoginProvider.RegisterProviders(app, baseurl);
             } catch (error) {
+                span.recordException(error);
+                return res.status(500).send({ message: error.message ? error.message : error });
+            } finally {
+                otel.endSpan(span);
             }
+
         });
         app.get("/download/:id", async (req, res) => {
+            const span: Span = otel.startSpan("LoginProvider.download");
             try {
                 let user: TokenUser = null;
                 let jwt: string = null;
@@ -396,7 +486,7 @@ export class LoginProvider {
                 }
 
                 const id = req.params.id;
-                const rows = await Config.db.query({ _id: safeObjectID(id) }, null, 1, 0, null, "files", jwt);
+                const rows = await Config.db.query({ _id: safeObjectID(id) }, null, 1, 0, null, "files", jwt, undefined, undefined, span);
                 if (rows == null || rows.length != 1) { return res.status(404).send({ message: 'id ' + id + ' Not found.' }); }
                 const file = rows[0] as any;
 
@@ -410,7 +500,10 @@ export class LoginProvider {
                 });
                 downloadStream.pipe(res);
             } catch (error) {
+                span.recordException(error);
                 return res.status(500).send({ message: error.message ? error.message : error });
+            } finally {
+                otel.endSpan(span);
             }
         });
         try {
@@ -439,10 +532,15 @@ export class LoginProvider {
                                 user = TokenUser.From(req.user);
                                 jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
                             }
+                            const { query, headers } = req;
 
-                            fileInfo.metadata.name = file.originalname;
-                            (fileInfo.metadata as any).filename = file.originalname;
+                            fileInfo.metadata.name = filename;
+                            (fileInfo.metadata as any).filename = filename;
                             (fileInfo.metadata as any).path = "";
+                            (fileInfo.metadata as any).uniquename = query.uniquename;
+                            (fileInfo.metadata as any).form = query.form;
+                            (fileInfo.metadata as any).project = query.project;
+                            (fileInfo.metadata as any).baseurl = query.baseUrl;
                             fileInfo.metadata._acl = [];
                             fileInfo.metadata._createdby = user.name;
                             fileInfo.metadata._createdbyid = user._id;
@@ -450,6 +548,11 @@ export class LoginProvider {
                             fileInfo.metadata._modifiedby = user.name;
                             fileInfo.metadata._modifiedbyid = user._id;
                             fileInfo.metadata._modified = fileInfo.metadata._created;
+
+                            const keys = Object.keys(query);
+                            for (let i = 0; i < keys.length; i++) {
+                                fileInfo.metadata[keys[i]] = query[keys[i]];
+                            }
                             Base.addRight(fileInfo.metadata, user._id, user.name, [Rights.full_control]);
                             Base.addRight(fileInfo.metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
                             Base.addRight(fileInfo.metadata, WellknownIds.filestore_users, "filestore users", [Rights.read]);
@@ -459,8 +562,6 @@ export class LoginProvider {
                                     fileInfo.metadata._acl[index].rights = (new Binary(Buffer.from(a.rights, "base64"), 0) as any);
                                 }
                             });
-
-
                             resolve(fileInfo);
                         });
                     });
@@ -470,6 +571,112 @@ export class LoginProvider {
                 storage: storage
             }).any();
 
+            // app.get("/upload", async (req: any, res: any, next: any): Promise<void> => {
+            //     const query = req.query;
+            // });
+            app.delete("/upload", async (req: any, res: any, next: any): Promise<void> => {
+                const span: Span = otel.startSpan("LoginProvider.upload");
+                try {
+                    let user: TokenUser = null;
+                    let jwt: string = null;
+                    const authHeader = req.headers.authorization;
+                    if (authHeader) {
+                        user = Crypt.verityToken(authHeader);
+                        jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
+                    }
+                    else if (req.user) {
+                        user = TokenUser.From(req.user as any);
+                        jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
+                    }
+                    if (user == null) {
+                        return res.status(404).send({ message: 'Route ' + req.url + ' Not found.' });
+                    }
+                    const query = req.query;
+                    console.log("baseUrl: " + query.baseUrl);
+                    console.log("form: " + query.form);
+                    console.log("project: " + query.project);
+                    console.log("uniquename: " + query.uniquename);
+                    let uniquename: string = query.uniquename;
+                    if (uniquename.indexOf('/') > -1) uniquename = uniquename.substr(0, uniquename.indexOf('/'));
+                    let q: any = {};
+                    if (!NoderedUtil.IsNullEmpty(uniquename)) {
+                        q = { "metadata.uniquename": uniquename };
+                    }
+
+                    const arr = await Config.db.query(q, undefined, 1, 0, { "uploadDate": -1 }, "files", jwt, undefined, undefined, span);
+                    if (arr.length > 0) {
+                        await Config.db.DeleteOne(arr[0]._id, "files", jwt);
+                    }
+                    res.send({
+                        status: "success",
+                        display_status: "Success",
+                        message: uniquename + " deleted"
+                    });
+                } catch (error) {
+                    span.recordException(error);
+                    console.error(error);
+                    return res.status(500).send({ message: error.message ? error.message : error });
+                } finally {
+                    otel.endSpan(span);
+                }
+
+            });
+            // app.get("/upload/:fileId", async (req: any, res: any, next: any): Promise<void> => {
+            app.get("/upload", async (req: any, res: any, next: any): Promise<void> => {
+                const span: Span = otel.startSpan("LoginProvider.upload");
+                try {
+                    let user: TokenUser = null;
+                    let jwt: string = null;
+                    const authHeader = req.headers.authorization;
+                    if (authHeader) {
+                        user = Crypt.verityToken(authHeader);
+                        jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
+                    }
+                    else if (req.user) {
+                        user = TokenUser.From(req.user as any);
+                        jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
+                    }
+                    if (user == null) {
+                        return res.status(404).send({ message: 'Route ' + req.url + ' Not found.' });
+                    }
+                    const query = req.query;
+                    console.log("baseUrl: " + query.baseUrl);
+                    console.log("form: " + query.form);
+                    console.log("project: " + query.project);
+                    console.log("uniquename: " + query.uniquename);
+                    let uniquename: string = query.uniquename;
+                    if (uniquename.indexOf('/') > -1) uniquename = uniquename.substr(0, uniquename.indexOf('/'));
+                    let q: any = {};
+                    if (!NoderedUtil.IsNullEmpty(uniquename)) {
+                        q = { "metadata.uniquename": uniquename };
+                    }
+
+                    const arr = await Config.db.query(q, undefined, 1, 0, { "uploadDate": -1 }, "files", jwt, undefined, undefined, span);
+
+                    const id = arr[0]._id;
+                    const rows = await Config.db.query({ _id: safeObjectID(id) }, null, 1, 0, null, "files", jwt, undefined, undefined, span);
+                    if (rows == null || rows.length != 1) { return res.status(404).send({ message: 'id ' + id + ' Not found.' }); }
+                    const file = rows[0] as any;
+
+                    console.log("id: " + id);
+
+                    const bucket = new GridFSBucket(Config.db.db);
+                    let downloadStream = bucket.openDownloadStream(safeObjectID(id));
+                    res.set('Content-Type', file.contentType);
+                    res.set('Content-Disposition', 'attachment; filename="' + file.filename + '"');
+                    res.set('Content-Length', file.length);
+                    downloadStream.on("error", function (err) {
+                        res.end();
+                    });
+                    downloadStream.pipe(res);
+                    return;
+                } catch (error) {
+                    span.recordException(error);
+                    return res.status(500).send({ message: error.message ? error.message : error });
+                } finally {
+                    otel.endSpan(span);
+                }
+            });
             app.post("/upload", async (req, res) => {
                 let user: TokenUser = null;
                 let jwt: string = null;
@@ -501,35 +708,43 @@ export class LoginProvider {
 
     }
     static async RegisterProviders(app: express.Express, baseurl: string) {
-        if (LoginProvider.login_providers.length === 0) {
-            const _jwt = Crypt.rootToken();
-            LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", _jwt);
-        }
-        let hasLocal: boolean = false;
-        if (LoginProvider.login_providers.length === 0) { hasLocal = true; }
-        LoginProvider.login_providers.forEach(async (provider) => {
-            try {
-                if (NoderedUtil.IsNullUndefinded(LoginProvider._providers[provider.id])) {
-                    if (provider.provider === "saml") {
-                        const metadata: any = await Config.parse_federation_metadata(provider.saml_federation_metadata);
-                        LoginProvider._providers[provider.id] =
-                            LoginProvider.CreateSAMLStrategy(app, provider.id, metadata.cert,
-                                metadata.identityProviderUrl, provider.issuer, baseurl);
+        const span: Span = otel.startSpan("LoginProvider.RegisterProviders");
+        try {
+            if (LoginProvider.login_providers.length === 0) {
+                const _jwt = Crypt.rootToken();
+                LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", _jwt, undefined, undefined, span);
+            }
+            let hasLocal: boolean = false;
+            if (LoginProvider.login_providers.length === 0) { hasLocal = true; }
+            LoginProvider.login_providers.forEach(async (provider) => {
+                try {
+                    if (NoderedUtil.IsNullUndefinded(LoginProvider._providers[provider.id])) {
+                        if (provider.provider === "saml") {
+                            const metadata: any = await Config.parse_federation_metadata(provider.saml_federation_metadata);
+                            LoginProvider._providers[provider.id] =
+                                LoginProvider.CreateSAMLStrategy(app, provider.id, metadata.cert,
+                                    metadata.identityProviderUrl, provider.issuer, baseurl);
+                        }
+                        if (provider.provider === "google") {
+                            LoginProvider._providers[provider.id] =
+                                LoginProvider.CreateGoogleStrategy(app, provider.id, provider.consumerKey, provider.consumerSecret, baseurl);
+                        }
                     }
-                    if (provider.provider === "google") {
-                        LoginProvider._providers[provider.id] =
-                            LoginProvider.CreateGoogleStrategy(app, provider.id, provider.consumerKey, provider.consumerSecret, baseurl);
-                    }
+                    if (provider.provider === "local") { hasLocal = true; }
+                } catch (error) {
+                    console.error(error.message ? error.message : error);
                 }
-                if (provider.provider === "local") { hasLocal = true; }
-            } catch (error) {
-                console.error(error.message ? error.message : error);
+            });
+            if (hasLocal === true) {
+                if (NoderedUtil.IsNullUndefinded(LoginProvider._providers.local)) {
+                    LoginProvider._providers.local = LoginProvider.CreateLocalStrategy(app, baseurl);
+                }
             }
-        });
-        if (hasLocal === true) {
-            if (NoderedUtil.IsNullUndefinded(LoginProvider._providers.local)) {
-                LoginProvider._providers.local = LoginProvider.CreateLocalStrategy(app, baseurl);
-            }
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            otel.endSpan(span);
         }
     }
     static CreateGoogleStrategy(app: express.Express, key: string, consumerKey: string, consumerSecret: string, baseurl: string): any {
@@ -543,7 +758,7 @@ export class LoginProvider {
         strategy.name = key;
         LoginProvider._logger.info(options.callbackURL);
         app.use("/" + key,
-            bodyParser.urlencoded({ extended: false }),
+            express.urlencoded({ extended: false }),
             passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),
             function (req: any, res: any): void {
                 const originalUrl: any = req.cookies.originalUrl;
@@ -629,7 +844,7 @@ export class LoginProvider {
             `);
             });
         app.use("/" + key,
-            bodyParser.urlencoded({ extended: false }),
+            express.urlencoded({ extended: false }),
             passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),
             function (req: any, res: any): void {
                 const originalUrl: any = req.cookies.originalUrl;
@@ -648,64 +863,68 @@ export class LoginProvider {
 
     static CreateLocalStrategy(app: express.Express, baseurl: string): passport.Strategy {
         const strategy: passport.Strategy = new LocalStrategy(async (username: string, password: string, done: any): Promise<void> => {
+            const span: Span = otel.startSpan("LoginProvider.CreateLocalStrategy");
             try {
                 if (username !== null && username != undefined) { username = username.toLowerCase(); }
                 let user: User = null;
                 if (LoginProvider.login_providers.length === 0) {
-                    user = await DBHelper.FindByUsername(username);
+                    user = await DBHelper.FindByUsername(username, null, span);
                     if (user == null) {
                         user = new User(); user.name = username; user.username = username;
-                        await Crypt.SetPassword(user, password);
-                        user = await Config.db.InsertOne(user, "users", 0, false, Crypt.rootToken());
-                        const admins: Role = await DBHelper.FindRoleByName("admins");
+                        await Crypt.SetPassword(user, password, span);
+                        user = await Config.db.InsertOne(user, "users", 0, false, Crypt.rootToken(), span);
+                        const admins: Role = await DBHelper.FindRoleByName("admins", span);
                         admins.AddMember(user);
-                        await DBHelper.Save(admins, Crypt.rootToken())
+                        await DBHelper.Save(admins, Crypt.rootToken(), span)
                     } else {
                         if (user.disabled) {
-                            Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown");
+                            Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown", span);
                             done("Disabled user " + username, null);
                             return;
                         }
-                        if (!(await Crypt.ValidatePassword(user, password))) {
-                            Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown");
+                        if (!(await Crypt.ValidatePassword(user, password, span))) {
+                            Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown", span);
                             return done(null, false);
                         }
                     }
-                    Audit.LoginSuccess(TokenUser.From(user), "weblogin", "local", "", "browser", "unknown");
+                    Audit.LoginSuccess(TokenUser.From(user), "weblogin", "local", "", "browser", "unknown", span);
                     const provider: Provider = new Provider(); provider.provider = "local"; provider.name = "Local";
-                    const result = await Config.db.InsertOne(provider, "config", 0, false, Crypt.rootToken());
+                    const result = await Config.db.InsertOne(provider, "config", 0, false, Crypt.rootToken(), span);
                     LoginProvider.login_providers.push(result);
                     const tuser: TokenUser = TokenUser.From(user);
                     return done(null, tuser);
                 }
-                user = await DBHelper.FindByUsername(username);
+                user = await DBHelper.FindByUsername(username, null, span);
                 if (NoderedUtil.IsNullUndefinded(user)) {
                     if (!Config.allow_user_registration) {
                         return done(null, false);
                     }
-                    user = await DBHelper.ensureUser(Crypt.rootToken(), username, username, null, password);
+                    user = await DBHelper.ensureUser(Crypt.rootToken(), username, username, null, password, span);
                 } else {
                     if (user.disabled) {
-                        Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown");
+                        Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown", span);
                         done("Disabled user " + username, null);
                         return;
                     }
-                    if (!(await Crypt.ValidatePassword(user, password))) {
-                        Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown");
+                    if (!(await Crypt.ValidatePassword(user, password, span))) {
+                        Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown", span);
                         return done(null, false);
                     }
                 }
                 const tuser: TokenUser = TokenUser.From(user);
-                Audit.LoginSuccess(tuser, "weblogin", "local", "", "browser", "unknown");
+                Audit.LoginSuccess(tuser, "weblogin", "local", "", "browser", "unknown", span);
+                otel.endSpan(span);
                 return done(null, tuser);
             } catch (error) {
+                span.recordException(error);
+                otel.endSpan(span);
                 console.error(error.message ? error.message : error);
                 done(error.message ? error.message : error);
             }
         });
         passport.use("local", strategy);
         app.use("/local",
-            bodyParser.urlencoded({ extended: false }),
+            express.urlencoded({ extended: false }),
             function (req: any, res: any, next: any): void {
                 LoginProvider._logger.debug("passport.authenticate local");
                 passport.authenticate("local", function (err, user, info) {
@@ -770,107 +989,120 @@ export class LoginProvider {
         return strategy;
     }
     static async samlverify(profile: any, done: IVerifyFunction): Promise<void> {
-        let username: string = profile.username;
-        if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
-        if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
-        LoginProvider._logger.debug("verify: " + username);
-        let _user: User = await DBHelper.FindByUsernameOrFederationid(username);
+        const span: Span = otel.startSpan("LoginProvider.samlverify");
+        try {
+            let username: string = profile.username;
+            if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
+            if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
+            LoginProvider._logger.debug("verify: " + username);
+            let _user: User = await DBHelper.FindByUsernameOrFederationid(username, span);
 
-        if (NoderedUtil.IsNullUndefinded(_user)) {
-            let createUser: boolean = Config.auto_create_users;
-            if (Config.auto_create_domains.map(x => username.endsWith(x)).length == -1) { createUser = false; }
-            if (createUser) {
-                _user = new User(); _user.name = profile.name;
-                if (!NoderedUtil.IsNullEmpty(profile["http://schemas.microsoft.com/identity/claims/displayname"])) {
-                    _user.name = profile["http://schemas.microsoft.com/identity/claims/displayname"];
-                }
-                if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"])) {
-                    _user.name = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"];
-                }
-                _user.username = username;
-                if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
-                    (_user as any).mobile = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"];
-                }
-                if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty, please add displayname to claims", null); return; }
-                // _user = await Config.db.InsertOne(_user, "users", 0, false, Crypt.rootToken());
-                const jwt: string = Crypt.rootToken();
-                _user = await DBHelper.ensureUser(jwt, _user.name, _user.username, null, null);
-            }
-        } else {
-            if (!NoderedUtil.IsNullUndefinded(_user)) {
-                if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
-                    (_user as any).mobile = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"];
-                }
-                const jwt: string = Crypt.rootToken();
-                await DBHelper.Save(_user, jwt);
-            }
-        }
-
-        if (!NoderedUtil.IsNullUndefinded(_user)) {
-            if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/claims/Group"])) {
-                const jwt: string = Crypt.rootToken();
-                const strroles: string[] = profile["http://schemas.xmlsoap.org/claims/Group"];
-                for (let i = 0; i < strroles.length; i++) {
-                    const role: Role = await DBHelper.FindRoleByName(strroles[i]);
-                    if (!NoderedUtil.IsNullUndefinded(role)) {
-                        role.AddMember(_user);
-                        await DBHelper.Save(role, jwt);
+            if (NoderedUtil.IsNullUndefinded(_user)) {
+                let createUser: boolean = Config.auto_create_users;
+                if (Config.auto_create_domains.map(x => username.endsWith(x)).length == -1) { createUser = false; }
+                if (createUser) {
+                    _user = new User(); _user.name = profile.name;
+                    if (!NoderedUtil.IsNullEmpty(profile["http://schemas.microsoft.com/identity/claims/displayname"])) {
+                        _user.name = profile["http://schemas.microsoft.com/identity/claims/displayname"];
                     }
+                    if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"])) {
+                        _user.name = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"];
+                    }
+                    _user.username = username;
+                    if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
+                        (_user as any).mobile = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"];
+                    }
+                    if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty, please add displayname to claims", null); return; }
+                    // _user = await Config.db.InsertOne(_user, "users", 0, false, Crypt.rootToken());
+                    const jwt: string = Crypt.rootToken();
+                    _user = await DBHelper.ensureUser(jwt, _user.name, _user.username, null, null, span);
                 }
-                await DBHelper.DecorateWithRoles(_user);
+            } else {
+                if (!NoderedUtil.IsNullUndefinded(_user)) {
+                    if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
+                        (_user as any).mobile = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"];
+                    }
+                    const jwt: string = Crypt.rootToken();
+                    await DBHelper.Save(_user, jwt, span);
+                }
             }
-        }
 
-        if (NoderedUtil.IsNullUndefinded(_user)) {
-            Audit.LoginFailed(username, "weblogin", "saml", "", "samlverify", "unknown");
-            done("unknown user " + username, null);
-            return;
-        }
-        if (_user.disabled) {
-            Audit.LoginFailed(username, "weblogin", "saml", "", "samlverify", "unknown");
-            done("Disabled user " + username, null);
-            return;
-        }
+            if (!NoderedUtil.IsNullUndefinded(_user)) {
+                if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/claims/Group"])) {
+                    const jwt: string = Crypt.rootToken();
+                    const strroles: string[] = profile["http://schemas.xmlsoap.org/claims/Group"];
+                    for (let i = 0; i < strroles.length; i++) {
+                        const role: Role = await DBHelper.FindRoleByName(strroles[i], span);
+                        if (!NoderedUtil.IsNullUndefinded(role)) {
+                            role.AddMember(_user);
+                            await DBHelper.Save(role, jwt, span);
+                        }
+                    }
+                    await DBHelper.DecorateWithRoles(_user, span);
+                }
+            }
 
-        const tuser: TokenUser = TokenUser.From(_user);
-        Audit.LoginSuccess(tuser, "weblogin", "saml", "", "samlverify", "unknown");
-        done(null, tuser);
+            if (NoderedUtil.IsNullUndefinded(_user)) {
+                Audit.LoginFailed(username, "weblogin", "saml", "", "samlverify", "unknown", span);
+                done("unknown user " + username, null);
+                return;
+            }
+            if (_user.disabled) {
+                Audit.LoginFailed(username, "weblogin", "saml", "", "samlverify", "unknown", span);
+                done("Disabled user " + username, null);
+                return;
+            }
+
+            const tuser: TokenUser = TokenUser.From(_user);
+            Audit.LoginSuccess(tuser, "weblogin", "saml", "", "samlverify", "unknown", span);
+            otel.endSpan(span);
+            done(null, tuser);
+        } catch (error) {
+            span.recordException(error);
+        }
+        otel.endSpan(span);
     }
     static async googleverify(token: string, tokenSecret: string, profile: any, done: IVerifyFunction): Promise<void> {
-        if (profile.emails) {
-            const email: any = profile.emails[0];
-            profile.username = email.value;
-        }
-        let username: string = profile.username;
-        if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
-        if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
-        LoginProvider._logger.debug("verify: " + username);
-        let _user: User = await DBHelper.FindByUsernameOrFederationid(username);
-        if (NoderedUtil.IsNullUndefinded(_user)) {
-            let createUser: boolean = Config.auto_create_users;
-            if (Config.auto_create_domains.map(x => username.endsWith(x)).length == -1) { createUser = false; }
-            if (createUser) {
-                const jwt: string = Crypt.rootToken();
-                _user = new User(); _user.name = profile.name;
-                if (!NoderedUtil.IsNullEmpty(profile.displayName)) { _user.name = profile.displayName; }
-                _user.username = username;
-                (_user as any).mobile = profile.mobile;
-                if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty.", null); return; }
-                _user = await DBHelper.ensureUser(jwt, _user.name, _user.username, null, null);
+        const span: Span = otel.startSpan("LoginProvider.googleverify");
+        try {
+            if (profile.emails) {
+                const email: any = profile.emails[0];
+                profile.username = email.value;
             }
+            let username: string = profile.username;
+            if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
+            if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
+            LoginProvider._logger.debug("verify: " + username);
+            let _user: User = await DBHelper.FindByUsernameOrFederationid(username, span);
+            if (NoderedUtil.IsNullUndefinded(_user)) {
+                let createUser: boolean = Config.auto_create_users;
+                if (Config.auto_create_domains.map(x => username.endsWith(x)).length == -1) { createUser = false; }
+                if (createUser) {
+                    const jwt: string = Crypt.rootToken();
+                    _user = new User(); _user.name = profile.name;
+                    if (!NoderedUtil.IsNullEmpty(profile.displayName)) { _user.name = profile.displayName; }
+                    _user.username = username;
+                    (_user as any).mobile = profile.mobile;
+                    if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty.", null); return; }
+                    _user = await DBHelper.ensureUser(jwt, _user.name, _user.username, null, null, span);
+                }
+            }
+            if (NoderedUtil.IsNullUndefinded(_user)) {
+                Audit.LoginFailed(username, "weblogin", "google", "", "googleverify", "unknown", span);
+                done("unknown user " + username, null); return;
+            }
+            if (_user.disabled) {
+                Audit.LoginFailed(username, "weblogin", "google", "", "googleverify", "unknown", span);
+                done("Disabled user " + username, null);
+                return;
+            }
+            const tuser: TokenUser = TokenUser.From(_user);
+            Audit.LoginSuccess(tuser, "weblogin", "google", "", "googleverify", "unknown", span);
+            done(null, tuser);
+        } catch (error) {
+            span.recordException(error);
         }
-        if (NoderedUtil.IsNullUndefinded(_user)) {
-            Audit.LoginFailed(username, "weblogin", "google", "", "googleverify", "unknown");
-            done("unknown user " + username, null); return;
-        }
-        if (_user.disabled) {
-            Audit.LoginFailed(username, "weblogin", "google", "", "googleverify", "unknown");
-            done("Disabled user " + username, null);
-            return;
-        }
-        const tuser: TokenUser = TokenUser.From(_user);
-        Audit.LoginSuccess(tuser, "weblogin", "google", "", "googleverify", "unknown");
-        done(null, tuser);
+        otel.endSpan(span);
     }
 
 

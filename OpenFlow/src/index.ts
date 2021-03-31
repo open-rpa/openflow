@@ -10,9 +10,44 @@ import { Config } from "./Config";
 import { amqpwrapper, QueueMessageOptions } from "./amqpwrapper";
 import { WellknownIds, Role, Rights, User, Base } from "@openiap/openflow-api";
 import { DBHelper } from "./DBHelper";
+import { OAuthProvider } from "./OAuthProvider";
+import { otel } from "./otel";
+import { Span } from "@opentelemetry/api";
 
 const logger: winston.Logger = Logger.configure();
-Config.db = new DatabaseConnection(logger, Config.mongodb_url, Config.mongodb_db);
+
+let _otel_require: any = null;
+let _otel: otel = null;
+try {
+    _otel_require = require("./otel");
+} catch (error) {
+
+}
+if (_otel_require != null) {
+    _otel = _otel_require.otel.configure(logger);
+} else {
+    const fakespan = {
+        context: () => undefined,
+        setAttribute: () => undefined,
+        setAttributes: () => undefined,
+        addEvent: () => undefined,
+        setStatus: () => undefined,
+        updateName: () => undefined,
+        end: () => undefined,
+        isRecording: () => undefined,
+        recordException: () => undefined,
+    };
+    (_otel as any) =
+    {
+        startSpan: () => fakespan,
+        startSubSpan: () => fakespan,
+        endSpan: () => undefined,
+        startTimer: () => undefined,
+        endTimer: () => undefined,
+    }
+}
+
+Config.db = new DatabaseConnection(logger, Config.mongodb_url, Config.mongodb_db, _otel);
 
 
 async function initamqp() {
@@ -20,7 +55,7 @@ async function initamqp() {
     amqpwrapper.SetInstance(amqp);
     await amqp.connect();
     // Must also consume messages in the dead letter queue, to catch messages that have timed out
-    await amqp.AddExchangeConsumer(Config.amqp_dlx, "fanout", "", null, null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+    await amqp.AddExchangeConsumer(Config.amqp_dlx, "fanout", "", null, null, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
         if (typeof msg === "string" || msg instanceof String) {
             try {
                 msg = JSON.parse((msg as any));
@@ -31,26 +66,28 @@ async function initamqp() {
             msg.command = "timeout";
             // Resend message, this time to the reply queue for the correct node (replyTo)
             // this.SendMessage(JSON.stringify(data), msg.properties.replyTo, msg.properties.correlationId, false);
-            console.log("[DLX][" + options.exchange + "] Send timeout to " + options.replyTo)
-            amqpwrapper.Instance().sendWithReply("", options.replyTo, msg, 20000, options.correlationId);
+            logger.info("[DLX][" + options.exchange + "] Send timeout to " + options.replyTo)
+            await amqpwrapper.Instance().sendWithReply("", options.replyTo, msg, 20000, options.correlationId);
         } catch (error) {
+            console.error("Failed sending deadletter message to " + options.replyTo);
+            console.error(error);
         }
         ack();
         done();
-    });
+    }, undefined);
 
     // await amqp.AddExchangeConsumer("testexchange", "fanout", "", null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
-    //     console.log("testexchange: " + msg);
+    //     console.info("testexchange: " + msg);
     //     ack();
     //     done(msg + " hi from testexchange");
     // });
     // await amqp.AddQueueConsumer("testqueue", null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
-    //     console.log("testqueue: " + msg);
+    //     console.info("testqueue: " + msg);
     //     ack();
     //     done(msg + " hi from testqueue.1");
     // });
     // await amqp.AddQueueConsumer("testqueue", null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
-    //     console.log("tempqueue: " + msg);
+    //     console.info("tempqueue: " + msg);
     //     ack();
     //     done(msg + " hi from testqueue.2");
     // });
@@ -61,13 +98,13 @@ async function initamqp() {
 //     try {
 //         flipper = !flipper;
 //         if (flipper) {
-//             console.log(await amqpwrapper.Instance().sendWithReply("", "testqueue", "Hi mom", 20000, ""));
+//             console.info(await amqpwrapper.Instance().sendWithReply("", "testqueue", "Hi mom", 20000, ""));
 //         } else {
-//             // console.log(await amqpwrapper.Instance().sendWithReply("", "testqueue2", "Hi mom", 2000));
-//             console.log(await amqpwrapper.Instance().sendWithReply("testexchange", "", "Hi mom", 20000, ""));
+//             // console.info(await amqpwrapper.Instance().sendWithReply("", "testqueue2", "Hi mom", 2000));
+//             console.info(await amqpwrapper.Instance().sendWithReply("testexchange", "", "Hi mom", 20000, ""));
 //         }
 //     } catch (error) {
-//         console.log(error);
+//         console.error(error);
 //     }
 //     setTimeout(() => {
 //         doitagain()
@@ -76,19 +113,20 @@ async function initamqp() {
 
 
 async function initDatabase(): Promise<boolean> {
+    const span: Span = otel.startSpan("initDatabase");
     try {
         const jwt: string = Crypt.rootToken();
-        const admins: Role = await DBHelper.EnsureRole(jwt, "admins", WellknownIds.admins);
-        const users: Role = await DBHelper.EnsureRole(jwt, "users", WellknownIds.users);
-        const root: User = await DBHelper.ensureUser(jwt, "root", "root", WellknownIds.root, null);
+        const admins: Role = await DBHelper.EnsureRole(jwt, "admins", WellknownIds.admins, span);
+        const users: Role = await DBHelper.EnsureRole(jwt, "users", WellknownIds.users, span);
+        const root: User = await DBHelper.ensureUser(jwt, "root", "root", WellknownIds.root, null, span);
 
         Base.addRight(root, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(root, WellknownIds.admins, [Rights.delete]);
         Base.addRight(root, WellknownIds.root, "root", [Rights.full_control]);
         Base.removeRight(root, WellknownIds.root, [Rights.delete]);
-        await DBHelper.Save(root, jwt);
+        await DBHelper.Save(root, jwt, span);
 
-        const robot_agent_users: Role = await DBHelper.EnsureRole(jwt, "robot agent users", WellknownIds.robot_agent_users);
+        const robot_agent_users: Role = await DBHelper.EnsureRole(jwt, "robot agent users", WellknownIds.robot_agent_users, span);
         Base.addRight(robot_agent_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(robot_agent_users, WellknownIds.admins, [Rights.delete]);
         Base.addRight(robot_agent_users, WellknownIds.root, "root", [Rights.full_control]);
@@ -99,11 +137,11 @@ async function initDatabase(): Promise<boolean> {
             Base.removeRight(robot_agent_users, robot_agent_users._id, [Rights.full_control]);
             Base.addRight(robot_agent_users, robot_agent_users._id, "robot agent users", [Rights.read]);
         }
-        await DBHelper.Save(robot_agent_users, jwt);
+        await DBHelper.Save(robot_agent_users, jwt, span);
 
         Base.addRight(admins, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(admins, WellknownIds.admins, [Rights.delete]);
-        await DBHelper.Save(admins, jwt);
+        await DBHelper.Save(admins, jwt, span);
 
         Base.addRight(users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(users, WellknownIds.admins, [Rights.delete]);
@@ -114,10 +152,10 @@ async function initDatabase(): Promise<boolean> {
             Base.removeRight(users, users._id, [Rights.full_control]);
             Base.addRight(users, users._id, "users", [Rights.read]);
         }
-        await DBHelper.Save(users, jwt);
+        await DBHelper.Save(users, jwt, span);
 
 
-        const personal_nodered_users: Role = await DBHelper.EnsureRole(jwt, "personal nodered users", WellknownIds.personal_nodered_users);
+        const personal_nodered_users: Role = await DBHelper.EnsureRole(jwt, "personal nodered users", WellknownIds.personal_nodered_users, span);
         personal_nodered_users.AddMember(admins);
         Base.addRight(personal_nodered_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(personal_nodered_users, WellknownIds.admins, [Rights.delete]);
@@ -128,13 +166,13 @@ async function initDatabase(): Promise<boolean> {
             Base.removeRight(personal_nodered_users, personal_nodered_users._id, [Rights.full_control]);
             Base.addRight(personal_nodered_users, personal_nodered_users._id, "personal nodered users", [Rights.read]);
         }
-        await DBHelper.Save(personal_nodered_users, jwt);
-        const nodered_admins: Role = await DBHelper.EnsureRole(jwt, "nodered admins", WellknownIds.nodered_admins);
+        await DBHelper.Save(personal_nodered_users, jwt, span);
+        const nodered_admins: Role = await DBHelper.EnsureRole(jwt, "nodered admins", WellknownIds.nodered_admins, span);
         nodered_admins.AddMember(admins);
         Base.addRight(nodered_admins, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(nodered_admins, WellknownIds.admins, [Rights.delete]);
-        await DBHelper.Save(nodered_admins, jwt);
-        const nodered_users: Role = await DBHelper.EnsureRole(jwt, "nodered users", WellknownIds.nodered_users);
+        await DBHelper.Save(nodered_admins, jwt, span);
+        const nodered_users: Role = await DBHelper.EnsureRole(jwt, "nodered users", WellknownIds.nodered_users, span);
         nodered_users.AddMember(admins);
         Base.addRight(nodered_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(nodered_users, WellknownIds.admins, [Rights.delete]);
@@ -145,8 +183,8 @@ async function initDatabase(): Promise<boolean> {
             Base.removeRight(nodered_users, nodered_users._id, [Rights.full_control]);
             Base.addRight(nodered_users, nodered_users._id, "nodered users", [Rights.read]);
         }
-        await DBHelper.Save(nodered_users, jwt);
-        const nodered_api_users: Role = await DBHelper.EnsureRole(jwt, "nodered api users", WellknownIds.nodered_api_users);
+        await DBHelper.Save(nodered_users, jwt, span);
+        const nodered_api_users: Role = await DBHelper.EnsureRole(jwt, "nodered api users", WellknownIds.nodered_api_users, span);
         nodered_api_users.AddMember(admins);
         Base.addRight(nodered_api_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(nodered_api_users, WellknownIds.admins, [Rights.delete]);
@@ -157,14 +195,14 @@ async function initDatabase(): Promise<boolean> {
             Base.removeRight(nodered_api_users, nodered_api_users._id, [Rights.full_control]);
             Base.addRight(nodered_api_users, nodered_api_users._id, "nodered api users", [Rights.read]);
         }
-        await DBHelper.Save(nodered_api_users, jwt);
+        await DBHelper.Save(nodered_api_users, jwt, span);
 
-        const robot_admins: Role = await DBHelper.EnsureRole(jwt, "robot admins", WellknownIds.robot_admins);
+        const robot_admins: Role = await DBHelper.EnsureRole(jwt, "robot admins", WellknownIds.robot_admins, span);
         robot_admins.AddMember(admins);
         Base.addRight(robot_admins, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(robot_admins, WellknownIds.admins, [Rights.delete]);
-        await DBHelper.Save(robot_admins, jwt);
-        const robot_users: Role = await DBHelper.EnsureRole(jwt, "robot users", WellknownIds.robot_users);
+        await DBHelper.Save(robot_admins, jwt, span);
+        const robot_users: Role = await DBHelper.EnsureRole(jwt, "robot users", WellknownIds.robot_users, span);
         robot_users.AddMember(admins);
         robot_users.AddMember(users);
         Base.addRight(robot_users, WellknownIds.admins, "admins", [Rights.full_control]);
@@ -176,14 +214,14 @@ async function initDatabase(): Promise<boolean> {
             Base.removeRight(robot_users, robot_users._id, [Rights.full_control]);
             Base.addRight(robot_users, robot_users._id, "robot users", [Rights.read]);
         }
-        await DBHelper.Save(robot_users, jwt);
+        await DBHelper.Save(robot_users, jwt, span);
 
         if (!admins.IsMember(root._id)) {
             admins.AddMember(root);
-            await DBHelper.Save(admins, jwt);
+            await DBHelper.Save(admins, jwt, span);
         }
 
-        const filestore_admins: Role = await DBHelper.EnsureRole(jwt, "filestore admins", WellknownIds.filestore_admins);
+        const filestore_admins: Role = await DBHelper.EnsureRole(jwt, "filestore admins", WellknownIds.filestore_admins, span);
         filestore_admins.AddMember(admins);
         Base.addRight(filestore_admins, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(filestore_admins, WellknownIds.admins, [Rights.delete]);
@@ -191,8 +229,8 @@ async function initDatabase(): Promise<boolean> {
             logger.debug("[root][users] Running in multi tenant mode, remove " + filestore_admins.name + " from self");
             Base.removeRight(filestore_admins, filestore_admins._id, [Rights.full_control]);
         }
-        await DBHelper.Save(filestore_admins, jwt);
-        const filestore_users: Role = await DBHelper.EnsureRole(jwt, "filestore users", WellknownIds.filestore_users);
+        await DBHelper.Save(filestore_admins, jwt, span);
+        const filestore_users: Role = await DBHelper.EnsureRole(jwt, "filestore users", WellknownIds.filestore_users, span);
         filestore_users.AddMember(admins);
         if (!Config.multi_tenant) {
             filestore_users.AddMember(users);
@@ -206,32 +244,94 @@ async function initDatabase(): Promise<boolean> {
             Base.removeRight(filestore_users, filestore_users._id, [Rights.full_control]);
             Base.addRight(filestore_users, filestore_users._id, "filestore users", [Rights.read]);
         }
-        await DBHelper.Save(filestore_users, jwt);
+        await DBHelper.Save(filestore_users, jwt, span);
+
+        await Config.db.ensureindexes(span);
+        otel.endSpan(span);
+
         return true;
     } catch (error) {
+        span.recordException(error);
+        otel.endSpan(span);
         logger.error(error);
         return false;
     }
 }
 
 
-
-const unhandledRejection = require("unhandled-rejection");
-let rejectionEmitter = unhandledRejection({
-    timeout: 20
+process.on('beforeExit', (code) => {
+    console.error('Process beforeExit event with code: ', code);
 });
-
-rejectionEmitter.on("unhandledRejection", (error, promise) => {
-    console.log('Unhandled Rejection at: Promise', promise, 'reason:', error);
-    console.dir(error.stack);
+process.on('exit', (code) => {
+    console.error('Process exit event with code: ', code);
 });
-
-rejectionEmitter.on("rejectionHandled", (error, promise) => {
-    console.log('Rejection handled at: Promise', promise, 'reason:', error);
-    console.dir(error.stack);
+process.on('multipleResolves', (type, promise, reason) => {
+    // console.error(type, promise, reason);
+    // setImmediate(() => process.exit(1));
 });
-import * as client from "prom-client";
-import { OAuthProvider } from "./OAuthProvider";
+const unhandledRejections = new Map();
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at: Promise', promise, 'reason:', reason);
+    unhandledRejections.set(promise, reason);
+});
+process.on('rejectionHandled', (promise) => {
+    unhandledRejections.delete(promise);
+});
+process.on('uncaughtException', (err, origin) => {
+    console.error(`Caught exception: ${err}\n` +
+        `Exception origin: ${origin}`
+    );
+});
+process.on('uncaughtExceptionMonitor', (err, origin) => {
+    console.error(`Caught exception Monitor: ${err}\n` +
+        `Exception origin: ${origin}`
+    );
+});
+process.on('warning', (warning) => {
+    try {
+        console.warn(warning.name + ": " + warning.message);
+        console.warn(warning.stack);
+    } catch (error) {
+    }
+});
+// The signals we want to handle
+// NOTE: although it is tempting, the SIGKILL signal (9) cannot be intercepted and handled
+var signals = {
+    'SIGHUP': 1,
+    'SIGINT': 2,
+    'SIGTERM': 15
+};
+function handle(signal, value) {
+    console.trace(`process received a ${signal} signal with value ${value}`);
+    try {
+        server.close((err) => {
+            console.log(`server stopped by ${signal} with value ${value}`);
+            console.error(err);
+            process.exit(128 + value);
+        })
+    } catch (error) {
+        console.error(error);
+        console.log(`server stopped by ${signal} with value ${value}`);
+        process.exit(128 + value);
+    }
+}
+Object.keys(signals).forEach((signal) => process.on(signal, handle));
+
+// process.on('SIGTERM', handle);
+// process.on('SIGINT', handle);
+// process.on('SIGUSR1', handle);
+// process.on('SIGPIPE', handle);
+// process.on('SIGHUP', handle);
+// process.on('SIGBREAK', handle);
+// process.on('SIGKILL', handle);
+// process.on('SIGWINCH', handle);
+// process.on('SIGSTOP', handle);
+// process.on('SIGBUS', handle);
+// process.on('SIGFPE', handle);
+// process.on('SIGSEGV', handle);
+// process.on('SIGILL', handle);
+
+
 let GrafanaProxy: any = null;
 try {
     GrafanaProxy = require("./grafana-proxy");
@@ -239,7 +339,6 @@ try {
 
 }
 let Prometheus: any = null;
-let register: client.Registry = null;
 try {
     Prometheus = require("./Prometheus");
 } catch (error) {
@@ -251,15 +350,9 @@ try {
 const originalStdoutWrite = process.stdout.write.bind(process.stdout);
 const originalStderrWrite = process.stderr.write.bind(process.stderr);
 (process.stdout.write as any) = (chunk: string, encoding?: string, callback?: (err?: Error | null) => void): boolean => {
-    if (chunk.indexOf("Failed locating user with") > -1) {
-        console.log("bump");
-    }
     return originalStdoutWrite(chunk, encoding, callback);
 };
 (process.stderr.write as any) = (chunk: string, encoding?: string, callback?: (err?: Error | null) => void): boolean => {
-    if (chunk.indexOf("Failed locating user with") > -1) {
-        console.log("bump");
-    }
     return originalStderrWrite(chunk, encoding, callback);
 };
 
@@ -267,19 +360,18 @@ const originalStderrWrite = process.stderr.write.bind(process.stderr);
 // write(str: string, encoding?: string, cb?: (err?: Error | null) => void): boolean;
 
 // https://medium.com/kubernetes-tutorials/monitoring-your-kubernetes-deployments-with-prometheus-5665eda54045
+var server: http.Server = null;
 (async function (): Promise<void> {
     try {
         await initamqp();
         logger.info("VERSION: " + Config.version);
-        if (Prometheus != null) {
-            register = Prometheus.Prometheus.configure(logger);
-        }
-        const server: http.Server = await WebServer.configure(logger, Config.baseurl(), register);
+        server = await WebServer.configure(logger, Config.baseurl(), _otel);
         if (GrafanaProxy != null) {
-            const grafana = await GrafanaProxy.GrafanaProxy.configure(logger, WebServer.app, register);
+            const grafana = await GrafanaProxy.GrafanaProxy.configure(logger, WebServer.app, _otel);
         }
+
         OAuthProvider.configure(logger, WebServer.app);
-        WebSocketServer.configure(logger, server, register);
+        WebSocketServer.configure(logger, server, _otel);
         logger.info("listening on " + Config.baseurl());
         logger.info("namespace: " + Config.namespace);
         if (!await initDatabase()) {

@@ -9,27 +9,107 @@ import { Config } from "./Config";
 import { Crypt } from "./nodeclient/Crypt";
 import { FileSystemCache } from "@openiap/openflow-api";
 import { RestartService } from "./nodeclient/cliutil";
+import { otel } from "./otel";
 
 const logger: winston.Logger = Logger.configure();
 logger.info("starting openflow nodered");
 
-const unhandledRejection = require("unhandled-rejection");
-let rejectionEmitter = unhandledRejection({
-    timeout: 20
+let _otel_require: any = null;
+let _otel: otel = null;
+try {
+    _otel_require = require("./otel");
+} catch (error) {
+
+}
+if (_otel_require != null) {
+    _otel = _otel_require.otel.configure(logger);
+} else {
+    const fakespan = {
+        context: () => undefined,
+        setAttribute: () => undefined,
+        setAttributes: () => undefined,
+        addEvent: () => undefined,
+        setStatus: () => undefined,
+        updateName: () => undefined,
+        end: () => undefined,
+        isRecording: () => undefined,
+        recordException: () => undefined,
+    };
+    (_otel as any) =
+    {
+        startSpan: () => fakespan,
+        startSubSpan: () => fakespan,
+        endSpan: () => undefined,
+        startTimer: () => undefined,
+        endTimer: () => undefined,
+    }
+}
+
+process.on('beforeExit', (code) => {
+    console.error('Process beforeExit event with code: ', code);
+});
+process.on('exit', (code) => {
+    console.error('Process exit event with code: ', code);
+});
+process.on('multipleResolves', (type, promise, reason) => {
+    // console.error(type, promise, reason);
+    // setImmediate(() => process.exit(1));
+});
+const unhandledRejections = new Map();
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at: Promise', promise, 'reason:', reason);
+    unhandledRejections.set(promise, reason);
+});
+process.on('rejectionHandled', (promise) => {
+    unhandledRejections.delete(promise);
+});
+process.on('uncaughtException', (err, origin) => {
+    // console.error(`Caught exception: ${err}\n` +
+    //     `Exception origin: ${origin}`
+    // );
+});
+process.on('uncaughtExceptionMonitor', (err: Error, origin) => {
+    if (err.message && err.stack) {
+        console.error(`Caught exception: ${err.message}\n` +
+            `Exception origin: ${origin}\n` + err.stack
+        );
+    } else {
+        console.error(`Caught exception: ${err}\n` +
+            `Exception origin: ${origin}`
+        );
+
+    }
+});
+process.on('warning', (warning) => {
+    console.warn(warning.name);    // Print the warning name
+    console.warn(warning.message); // Print the warning message
+    console.warn(warning.stack);   // Print the stack trace
 });
 
-rejectionEmitter.on("unhandledRejection", (error, promise) => {
-    console.log('Unhandled Rejection at: Promise', promise, 'reason:', error);
-    console.dir(error);
-    promise.catch(e => {
-        console.error(e);
-    });
-});
+// The signals we want to handle
+// NOTE: although it is tempting, the SIGKILL signal (9) cannot be intercepted and handled
+var signals = {
+    'SIGHUP': 1,
+    'SIGINT': 2,
+    'SIGTERM': 15
+};
+function handle(signal, value) {
+    console.trace(`process received a ${signal} signal with value ${value}`);
+    try {
+        server.close((err) => {
+            console.log(`server stopped by ${signal} with value ${value}`);
+            console.error(err);
+            process.exit(128 + value);
+        })
+    } catch (error) {
+        console.error(error);
+        console.log(`server stopped by ${signal} with value ${value}`);
+        process.exit(128 + value);
+    }
+}
+Object.keys(signals).forEach((signal) => process.on(signal, handle));
 
-rejectionEmitter.on("rejectionHandled", (error, promise) => {
-    console.log('Rejection handled at: Promise', promise, 'reason:', error);
-    console.dir(error);
-});
+
 let server: http.Server = null;
 (async function (): Promise<void> {
     try {
@@ -38,7 +118,7 @@ let server: http.Server = null;
         const json = await backupStore.get(filename, null);
         const socket: WebSocketClient = new WebSocketClient(logger, Config.api_ws_url);
         if (!NoderedUtil.IsNullEmpty(json) && Config.allow_start_from_cache) {
-            server = await WebServer.configure(logger, socket);
+            server = await WebServer.configure(logger, socket, _otel);
             const baseurl = (!NoderedUtil.IsNullEmpty(Config.saml_baseurl) ? Config.saml_baseurl : Config.baseurl());
             logger.info("listening on " + baseurl);
         }
@@ -54,8 +134,6 @@ let server: http.Server = null;
         });
         socket.events.on("onopen", async () => {
             try {
-                // q.clientagent = "nodered";
-                // q.clientversion = Config.version;
                 let jwt: string = "";
                 if (Config.jwt !== "") {
                     jwt = Config.jwt;
@@ -75,9 +153,22 @@ let server: http.Server = null;
                 logger.info("signed in as " + result.user.name + " with id " + result.user._id);
                 WebSocketClient.instance.user = result.user;
                 WebSocketClient.instance.jwt = result.jwt;
-
+                if (!NoderedUtil.IsNullEmpty(result.openflow_uniqueid)) {
+                    Config.openflow_uniqueid = result.openflow_uniqueid;
+                    otel.setdefaultlabels();
+                }
+                if (!NoderedUtil.IsNullEmpty(result.otel_trace_url)) Config.otel_trace_url = result.otel_trace_url;
+                if (!NoderedUtil.IsNullEmpty(result.otel_metric_url)) Config.otel_metric_url = result.otel_metric_url;
+                if (result.otel_trace_interval > 0) Config.otel_trace_interval = result.otel_trace_interval;
+                if (result.otel_metric_interval > 0) Config.otel_metric_interval = result.otel_metric_interval;
+                if (!NoderedUtil.IsNullEmpty(result.openflow_uniqueid) || !NoderedUtil.IsNullEmpty(result.otel_metric_url)) {
+                    if (!NoderedUtil.IsNullUndefinded(_otel_require)) {
+                        Config.enable_analytics = result.enable_analytics;
+                        _otel = _otel_require.otel.configure(logger);
+                    }
+                }
                 if (server == null) {
-                    server = await WebServer.configure(logger, socket);
+                    server = await WebServer.configure(logger, socket, _otel);
                     const baseurl = (!NoderedUtil.IsNullEmpty(Config.saml_baseurl) ? Config.saml_baseurl : Config.baseurl());
                     logger.info("listening on " + baseurl);
                 }

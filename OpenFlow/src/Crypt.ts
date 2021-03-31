@@ -3,6 +3,9 @@ import * as bcrypt from "bcryptjs";
 import * as jsonwebtoken from "jsonwebtoken";
 import { Config } from "./Config";
 import { NoderedUtil, TokenUser, WellknownIds, Rolemember, User } from "@openiap/openflow-api";
+import { Exception } from "handlebars";
+import { otel } from "./otel";
+import { Span } from "@opentelemetry/api";
 export class Crypt {
     static encryption_key: string = Config.aes_secret.substr(0, 32); // must be 256 bytes (32 characters)
     static iv_length: number = 16; // for AES, this is always 16
@@ -16,12 +19,28 @@ export class Crypt {
     static rootToken(): string {
         return Crypt.createToken(this.rootUser(), Config.shorttoken_expires_in);
     }
-    public static async SetPassword(user: User, password: string): Promise<void> {
-        user.passwordhash = await Crypt.hash(password);
-        if (!(this.ValidatePassword(user, password))) { throw new Error("Failed validating password after hasing"); }
+    public static async SetPassword(user: User, password: string, parent: Span): Promise<void> {
+        const span: Span = otel.startSubSpan("Crypt.SetPassword", parent);
+        try {
+            user.passwordhash = await Crypt.hash(password);
+            if (!(this.ValidatePassword(user, password, span))) { throw new Error("Failed validating password after hasing"); }
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            otel.endSpan(span);
+        }
     }
-    public static async ValidatePassword(user: User, password: string): Promise<boolean> {
-        return await Crypt.compare(password, user.passwordhash);
+    public static async ValidatePassword(user: User, password: string, parent: Span): Promise<boolean> {
+        const span: Span = otel.startSubSpan("Crypt.ValidatePassword", parent);
+        try {
+            return await Crypt.compare(password, user.passwordhash, span);
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            otel.endSpan(span);
+        }
     }
     static encrypt(text: string): string {
         let iv: Buffer = crypto.randomBytes(Crypt.iv_length);
@@ -51,17 +70,21 @@ export class Crypt {
             }
         });
     }
-    static async compare(password: string, passwordhash: string): Promise<boolean> {
+    static async compare(password: string, passwordhash: string, parent: Span): Promise<boolean> {
+        const span: Span = otel.startSubSpan("Crypt.compare", parent);
         return new Promise<boolean>(async (resolve, reject) => {
             try {
-                if (NoderedUtil.IsNullEmpty(password)) { return reject("Password cannot be empty"); }
-                if (NoderedUtil.IsNullEmpty(passwordhash)) { return reject("Passwordhash cannot be empty"); }
+                if (NoderedUtil.IsNullEmpty(password)) { span.recordException("Password cannot be empty"); return reject("Password cannot be empty"); }
+                if (NoderedUtil.IsNullEmpty(passwordhash)) { span.recordException("Passwordhash cannot be empty"); return reject("Passwordhash cannot be empty"); }
                 bcrypt.compare(password, passwordhash, async (error, res) => {
-                    if (error) { return reject(error); }
+                    if (error) { span.recordException(error); otel.endSpan(span); return reject(error); }
+                    otel.endSpan(span);
                     resolve(res);
                 });
             } catch (error) {
+                span.recordException(error);
                 reject(error);
+                otel.endSpan(span);
             }
         });
     }
@@ -75,6 +98,8 @@ export class Crypt {
         user.roles = item.roles;
 
         const key = Crypt.encryption_key;
+        if (NoderedUtil.IsNullEmpty(Config.aes_secret)) throw new Exception("Config missing aes_secret");
+        if (NoderedUtil.IsNullEmpty(key)) throw new Exception("Config missing aes_secret");
         const token: string = jsonwebtoken.sign({ data: user }, key,
             { expiresIn: expiresIn }); // 60 (seconds), "2 days", "10h", "7d"
         return token;

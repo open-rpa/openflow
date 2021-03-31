@@ -4,7 +4,6 @@ import * as http from "http";
 import * as https from "https";
 import * as express from "express";
 import * as compression from "compression";
-import * as bodyParser from "body-parser";
 import * as cookieParser from "cookie-parser";
 import * as nodered from "node-red";
 import * as morgan from "morgan";
@@ -20,66 +19,76 @@ import { noderedcontribmiddlewareauth } from "./node-red-contrib-middleware-auth
 import * as passport from "passport";
 import { noderedcontribauthsaml } from "./node-red-contrib-auth-saml";
 import { WebSocketClient, NoderedUtil, Message } from "@openiap/openflow-api";
-import * as client from "prom-client";
-import * as promBundle from "express-prom-bundle";
+import { otel } from "./otel";
+import { ValueRecorder, Counter, BaseObserver } from "@opentelemetry/api-metrics"
+import { HrTime, Span } from "@opentelemetry/api";
+import { hrTime } from "@opentelemetry/core";
+import * as RED from "node-red";
+import { Red } from "node-red";
+
+export class log_message_node {
+    public span: Span;
+    public end: HrTime;
+    public nodetype: string;
+    public node: Red;
+    public name: string;
+    constructor(public nodeid: string) {
+        this.node = RED.nodes.getNode(nodeid);
+        this.nodetype = this.node.type;
+        this.name = this.node.name || this.node.type;
+    }
+    startspan(parentspan: Span, msgid) {
+        this.span = otel.startSubSpan(this.name, parentspan);
+        this.span.setAttributes(otel.defaultlabels);
+        this.span.setAttribute("msgid", msgid);
+        this.span.setAttribute("nodeid", this.nodeid);
+        this.span.setAttribute("nodetype", this.nodetype)
+        this.span.setAttribute("name", this.name)
+        // nodemessage.span = otel.startSpan2(msg.event, msg.msgid);
+        this.end = otel.startTimer();
+    }
+}
+export class log_message {
+    public timestamp: Date;
+    public hrtimestamp: HrTime;
+    public span: Span;
+    public nodes: { [key: string]: log_message_node; } = {};
+    public node: Red;
+    public name: string;
+    // public nodes: object = {}
+    constructor(public msgid: string, public nodeid: string) {
+        this.node = RED.nodes.getNode(nodeid);
+        this.timestamp = new Date();
+        this.name = this.node.name || this.node.type;
+        this.hrtimestamp = hrTime();
+        this.nodes = {};
+        this.span = otel.startSpan(this.name);
+        this.span.setAttribute("msgid", msgid);
+        this.span.setAttribute("nodeid", this.nodeid);
+        this.span.setAttribute("nodetype", this.node.type)
+        this.span.setAttribute("name", this.name)
+    }
+}
 
 export class WebServer {
     private static _logger: winston.Logger;
     private static app: express.Express = null;
 
-    public static openflow_nodered_node_count = new client.Counter({
-        name: 'openflow_nodered_node_count',
-        help: 'Total number of node calls',
-        labelNames: ["nodetype"]
-    })
-    public static openflow_nodered_node_duration = new client.Histogram({
-        name: 'openflow_nodered_node_duration',
-        help: 'Duration of each node call',
-        labelNames: ["nodetype"],
-        buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10]
-    })
-    public static openflow_nodered_nodeid_count = new client.Counter({
-        name: 'openflow_nodered_nodeid_count',
-        help: 'Total number of node calls',
-        labelNames: ["nodetype", "nodeid"]
-    })
-    public static openflow_nodered_nodeid_duration = new client.Histogram({
-        name: 'openflow_nodered_nodeid_duration',
-        help: 'Duration of each node call',
-        labelNames: ["nodetype", "nodeid"],
-        buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10]
-    })
-    public static message_queue_count = new client.Gauge({
-        name: 'openflow_message_queue_count',
-        help: 'Total number messages waiting on reply from client',
-        labelNames: ["command"]
-    })
-    public static update_message_queue_count(cli: WebSocketClient) {
-        if (!Config.prometheus_measure_queued_messages) return;
-        const result: any = {};
-        const keys = Object.keys(cli.messageQueue);
-        keys.forEach(key => {
-            try {
-                const qmsg = cli.messageQueue[key];
-                var o = qmsg.message;
-                if (typeof o === "string") o = JSON.parse(o);
-                const msg: Message = o;
-                if (result[msg.command] == null) result[msg.command] = 0;
-                result[msg.command]++;
-            } catch (error) {
-                WebServer._logger.error(error);
-            }
-        });
-        const keys2 = Object.keys(result);
-        WebServer.message_queue_count.reset();
-        WebServer.message_queue_count.set(keys.length);
-        keys2.forEach(key => {
-            WebServer.message_queue_count.labels(key).set(result[key]);
-        });
-    }
-    public static log_messages: any = {};
+    // public static openflow_nodered_node_activations: Counter;
+    public static openflow_nodered_node_duration: ValueRecorder;
+    public static message_queue_count: BaseObserver;
+
+    // public static openflow_nodered_nodeid_duration = new client.Histogram({
+    //     name: 'openflow_nodered_nodeid_duration',
+    //     help: 'Duration of each node call',
+    //     labelNames: ["nodetype", "nodeid"]
+    // })
+
+    public static log_messages: { [key: string]: log_message; } = {};
+    // public static log_messages: Record<string, log_message> = {};
+    // public static spans: any = {};
     private static settings: nodered_settings = null;
-    static async configure(logger: winston.Logger, socket: WebSocketClient): Promise<http.Server> {
+    static async configure(logger: winston.Logger, socket: WebSocketClient, _otel: otel): Promise<http.Server> {
         this._logger = logger;
 
         const options: any = null;
@@ -87,13 +96,27 @@ export class WebServer {
 
         if (this.app !== null) { return; }
 
+        if (!NoderedUtil.IsNullUndefinded(_otel)) {
+            // this.openflow_nodered_node_activations = _otel.meter.createCounter("openflow_nodered_node_activations", {
+            //     description: 'Total number of node type activations calls'
+            // }) // "nodetype"
+
+            this.openflow_nodered_node_duration = _otel.meter.createValueRecorder('openflow_nodered_node_duration', {
+                description: 'Duration of each node type call',
+                boundaries: otel.default_boundaries
+            }); // "nodetype"
+            this.message_queue_count = _otel.meter.createUpDownSumObserver("openflow_message_queue_count", {
+                description: 'Total number messages waiting on reply from client'
+            }) // "command"
+
+        }
+
         try {
             this._logger.debug("WebServer.configure::begin");
             let server: http.Server = null;
             if (this.app === null) {
                 this.app = express();
 
-                const register = new client.Registry()
                 const hostname = Config.getEnv("HOSTNAME", null);
                 const defaultLabels: any = {};
                 if (!NoderedUtil.IsNullEmpty(hostname)) defaultLabels["hostname"] = hostname;
@@ -101,33 +124,6 @@ export class WebServer {
                 if (!NoderedUtil.IsNullEmpty(name)) defaultLabels["name"] = name;
                 if (NoderedUtil.IsNullEmpty(name)) defaultLabels["name"] = hostname;
                 this._logger.debug("WebServer.configure::configure register");
-                register.setDefaultLabels(defaultLabels);
-                client.collectDefaultMetrics({ register })
-
-                this._logger.debug("WebServer.configure::registerMetrics");
-                if (!NoderedUtil.IsNullUndefinded(register) && Config.prometheus_measure_nodeid) {
-                    register.registerMetric(WebServer.openflow_nodered_nodeid_count);
-                    register.registerMetric(WebServer.openflow_nodered_nodeid_duration);
-                }
-                if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebServer.openflow_nodered_node_count);
-                if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebServer.openflow_nodered_node_duration);
-                if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(WebServer.message_queue_count);
-
-
-                if (Config.prometheus_expose_metric) {
-                    this._logger.debug("WebServer.configure::promBundle");
-                    const metricsMiddleware = promBundle({ includeMethod: true, includePath: true, promRegistry: register, autoregister: true });
-                    this.app.use(metricsMiddleware);
-                    this.app.use(morgan('combined', { stream: (winston.stream as any).write }));
-                } else {
-                    setInterval(async () => {
-                        try {
-                            NoderedUtil.PushMetrics(await register.metrics(), null);
-                        } catch (error) {
-                            // console.error(error);
-                        }
-                    }, 5000);
-                }
                 const loggerstream = {
                     write: function (message, encoding) {
                         logger.silly(message);
@@ -136,8 +132,8 @@ export class WebServer {
                 this._logger.debug("WebServer.configure::setup express middleware");
                 this.app.use(morgan('combined', { stream: loggerstream }));
                 this.app.use(compression());
-                this.app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }))
-                this.app.use(bodyParser.json({ limit: '10mb' }))
+                this.app.use(express.urlencoded({ limit: '10mb', extended: true }))
+                this.app.use(express.json({ limit: '10mb' }))
                 this.app.use(cookieParser());
                 this.app.use("/", express.static(path.join(__dirname, "/public")));
 
@@ -190,7 +186,6 @@ export class WebServer {
                 }
                 server.on("error", (error) => {
                     this._logger.error(error);
-                    process.exit(404);
                 });
 
                 this._logger.debug("WebServer.configure::configure nodered settings");
@@ -202,69 +197,107 @@ export class WebServer {
                 else {
                     this.settings.uiPort = Config.port;
                 }
+                setInterval(() => {
+                    const keys = Object.keys(WebServer.log_messages);
+                    keys.forEach(key => {
+                        const msg = WebServer.log_messages[key];
+                        var from = new Date(msg.timestamp);
+                        const now = new Date();
+                        const seconds = (now.getTime() - from.getTime()) / 1000;
+                        if (seconds > Config.otel_trace_max_node_time_seconds) {
+                            const keys = Object.keys(msg.nodes);
+                            for (let i = 0; i < keys.length; i++) {
+                                const nodemessage = msg.nodes[keys[i]];
+                                if (nodemessage.span) otel.endSpan(nodemessage.span, msg.hrtimestamp);
+                                if (nodemessage.end) otel.endTimer(nodemessage.end, WebServer.openflow_nodered_node_duration, { nodetype: nodemessage.nodetype });
+                            }
+                            if (msg.span) {
+                                otel.endSpan(msg.span, msg.hrtimestamp);
+                                delete msg.span;
+                            }
+                            delete WebServer.log_messages[key];
+                            // console.log("Ending " + key)
+                        }
+                    });
+                }, 1000)
                 this.settings.logging.customLogger = {
                     level: 'debug',
                     metrics: true,
                     handler: function (settings) {
-                        // 
-                        // Return the logging function
-                        // return function (msg) {
-                        //     console.log(msg.timestamp, msg.event);
-                        // }
                         return function (msg) {
-                            if (!NoderedUtil.IsNullEmpty(msg.msgid) && msg.event.startsWith("node.")) {
-                                msg.event = msg.event.substring(5);
-                                if (msg.event.endsWith(".receive")) {
-                                    msg.event = msg.event.substring(0, msg.event.length - 8);
-                                    msg.end = WebServer.openflow_nodered_node_duration.startTimer();
-                                    if (Config.prometheus_measure_nodeid) {
-                                        msg.end2 = WebServer.openflow_nodered_nodeid_duration.startTimer();
+                            try {
+                                if (!NoderedUtil.IsNullEmpty(msg.msgid) && msg.event.startsWith("node.")) {
+                                    msg.event = msg.event.substring(5);
+                                    if (msg.event.endsWith(".receive")) {
+                                        // if (!NoderedUtil.IsNullUndefinded(WebServer.openflow_nodered_node_activations))
+                                        //     WebServer.openflow_nodered_node_activations.bind({ ...otel.defaultlabels, nodetype: msg.event }).add(1);
+
+                                        if (WebServer.log_messages[msg.msgid] == undefined) WebServer.log_messages[msg.msgid] = new log_message(msg.msgid, msg.nodeid);
+                                        const logmessage = WebServer.log_messages[msg.msgid];
+                                        if (!logmessage.nodes[msg.nodeid]) logmessage.nodes[msg.nodeid] = new log_message_node(msg.nodeid);
+                                        logmessage.timestamp = new Date();
+                                        logmessage.hrtimestamp = hrTime();
+
+                                        const nodemessage = logmessage.nodes[msg.nodeid];
+                                        nodemessage.startspan(logmessage.span, msg.msgid);
+                                        nodemessage.end = otel.startTimer();
                                     }
-                                    WebServer.openflow_nodered_node_count.labels(msg.event).inc();
-                                    if (Config.prometheus_measure_nodeid) WebServer.openflow_nodered_nodeid_count.labels(msg.event, msg.nodeid).inc();
-                                    WebServer.log_messages[msg.msgid] = msg;
-                                }
-                                if (msg.event.endsWith(".send")) {
-                                    msg.event = msg.event.substring(0, msg.event.length - 5);
-                                    const startmessage = WebServer.log_messages[msg.msgid];
-                                    if (!NoderedUtil.IsNullUndefinded(startmessage)) {
-                                        startmessage.end({ nodetype: startmessage.event });
-                                        if (Config.prometheus_measure_nodeid && startmessage.end2) {
-                                            startmessage.end2({ nodetype: startmessage.event, nodeid: msg.nodeid });
+                                    if (msg.event.endsWith(".send")) {
+                                        msg.event = msg.event.substring(0, msg.event.length - 5);
+                                        if (WebServer.log_messages[msg.msgid] == undefined) WebServer.log_messages[msg.msgid] = new log_message(msg.msgid, msg.nodeid);
+                                        const logmessage = WebServer.log_messages[msg.msgid];
+                                        if (!logmessage.nodes[msg.nodeid]) logmessage.nodes[msg.nodeid] = new log_message_node(msg.nodeid);
+                                        logmessage.timestamp = new Date();
+                                        logmessage.hrtimestamp = hrTime();
+
+                                        const nodemessage = logmessage.nodes[msg.nodeid];
+
+                                        if (nodemessage.span) {
+                                            otel.endSpan(nodemessage.span); delete nodemessage.span;
+                                        } else {
+                                            nodemessage.startspan(logmessage.span, msg.msgid);
+                                            // Need to end it, since not all nodes trigger a "done" message :-/
+                                            otel.endSpan(nodemessage.span);
+                                            delete nodemessage.span;
+                                            // nodemessage.span = otel.startSpan2(msg.event, msg.msgid);
                                         }
-                                        delete WebServer.log_messages[msg.msgid];
+                                        if (nodemessage.end) {
+                                            otel.endTimer(nodemessage.end, WebServer.openflow_nodered_node_duration, { nodetype: nodemessage.nodetype });
+                                            delete nodemessage.end;
+                                        } else {
+                                            nodemessage.end = otel.startTimer();
+                                            // Need to end it, since not all nodes trigger a "done" message :-/
+                                            otel.endTimer(nodemessage.end, WebServer.openflow_nodered_node_duration, { nodetype: nodemessage.nodetype });
+                                            delete nodemessage.end;
+                                        }
+                                    }
+                                    if (msg.event.endsWith(".done")) {
+                                        if (WebServer.log_messages[msg.msgid] == undefined) return;
+                                        const logmessage = WebServer.log_messages[msg.msgid];
+                                        if (!logmessage.nodes[msg.nodeid]) return;
+                                        logmessage.timestamp = new Date();
+                                        logmessage.hrtimestamp = hrTime();
+
+                                        const nodemessage = logmessage.nodes[msg.nodeid];
+                                        if (nodemessage.span) { otel.endSpan(nodemessage.span); delete nodemessage.span; }
+                                        if (nodemessage.end) { otel.endTimer(nodemessage.end, WebServer.openflow_nodered_node_duration, { nodetype: nodemessage.nodetype }); delete nodemessage.end; }
                                     }
                                 }
-                                const keys = Object.keys(WebServer.log_messages);
-                                keys.forEach(key => {
-                                    const meg = WebServer.log_messages[key];
-                                    var from = new Date(msg.timestamp);
-                                    const now = new Date();
-                                    const seconds = (now.getTime() - from.getTime()) / 1000;
-                                    if (seconds > Config.prometheus_max_node_time_seconds) {
-                                        console.log("Deleting message " + key + " that is more " + seconds + " seconds old");
-                                        delete WebServer.log_messages[key];
-                                    }
-                                });
-                                // } else {
-                                //     console.log(msg);
+                            } catch (error) {
+                                console.trace(error);
+                                console.error(error);
+                                WebServer._logger.error(error);
                             }
-                            // console.log(msg.timestamp, msg.event);
+
                         }
                     }
                 }
 
 
 
-                // this.settings.userDir = path.join(__dirname, "./nodered");
                 this.settings.userDir = path.join(Config.logpath, '.nodered-' + Config.nodered_id)
                 this.settings.nodesDir = path.join(__dirname, "./nodered");
 
-                // this.settings.adminAuth = new googleauth.noderedcontribauthgoogle(Config.baseurl(), Config.consumer_key, Config.consumer_secret, 
-                // (profile:string | any, done:any)=> {
-                //     profile.permissions = "*";
-                //     done(profile);
-                // });
                 const baseurl = (!NoderedUtil.IsNullEmpty(Config.saml_baseurl) ? Config.saml_baseurl : Config.baseurl());
                 this.settings.adminAuth = await noderedcontribauthsaml.configure(baseurl, Config.saml_federation_metadata, Config.saml_issuer,
                     (profile: string | any, done: any) => {
@@ -280,10 +313,6 @@ export class WebServer {
                         // profile.permissions = "*";
                         done(profile);
                     }, "", Config.saml_entrypoint, null);
-                // this.settings.adminAuth = await noderedcontribauthsaml.configure(this._logger, Config.baseurl());clear
-
-                // settings.adminAuth = new noderedcontribauthopenid(this._logger, Config.baseurl());
-
                 this.settings.httpNodeMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
                     noderedcontribmiddlewareauth.process(socket, req, res, next);
                 };
@@ -301,20 +330,11 @@ export class WebServer {
                 // this.settings.ui.middleware = new dashboardAuth();
                 this.settings.ui.middleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
                     noderedcontribmiddlewareauth.process(socket, req, res, next);
-                    // if (req.isAuthenticated()) {
-                    //     next();
-                    // } else {
-                    //     passport.authenticate("uisaml", {
-                    //         successRedirect: '/ui/',
-                    //         failureRedirect: '/uisaml/',
-                    //         failureFlash: false
-                    //     })(req, res, next);
-                    // }
                 };
 
-
+                this.app.set('trust proxy', 1)
                 this.app.use(cookieSession({
-                    name: 'session', secret: Config.cookie_secret
+                    name: 'session', secret: Config.cookie_secret, httpOnly: true
                 }))
 
                 this._logger.debug("WebServer.configure::init nodered");
@@ -336,14 +356,12 @@ export class WebServer {
                     this._logger.debug("WebServer.configure::server.listen on port " + Config.nodered_port);
                     server.listen(Config.nodered_port).on('error', function (error) {
                         WebServer._logger.error(error);
-                        process.exit(404);
                     });
                 }
                 else {
                     this._logger.debug("WebServer.configure::server.listen on port " + Config.port);
                     server.listen(Config.port).on('error', function (error) {
                         WebServer._logger.error(error);
-                        process.exit(404);
                     });
                 }
 
@@ -381,8 +399,32 @@ export class WebServer {
             return server;
         } catch (error) {
             this._logger.error(error);
-            process.exit(404);
+            this._logger.error("WEBSERVER ERROR");
+            // process.exit(404);
         }
         return null;
+    }
+    public static update_message_queue_count(cli: WebSocketClient) {
+        if (!Config.prometheus_measure_queued_messages) return;
+        if (!WebServer.message_queue_count) return;
+        const result: any = {};
+        const keys = Object.keys(cli.messageQueue);
+        keys.forEach(key => {
+            try {
+                const qmsg = cli.messageQueue[key];
+                var o = qmsg.message;
+                if (typeof o === "string") o = JSON.parse(o);
+                const msg: Message = o;
+                if (result[msg.command] == null) result[msg.command] = 0;
+                result[msg.command]++;
+            } catch (error) {
+                WebServer._logger.error(error);
+            }
+        });
+        const keys2 = Object.keys(result);
+        WebServer.message_queue_count.clear();
+        keys2.forEach(key => {
+            WebServer.message_queue_count.bind({ ...otel.defaultlabels, command: key }).update(result[key]);
+        });
     }
 }

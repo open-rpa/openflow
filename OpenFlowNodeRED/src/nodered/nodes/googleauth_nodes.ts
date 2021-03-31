@@ -206,6 +206,7 @@ export class googleauth_request {
         try {
             RED.nodes.createNode(this, config);
             this.node = this;
+            this.name = config.name;
             this.node.status({ fill: "blue", shape: "dot", text: "Initializing" });
             this._config = RED.nodes.getNode(this.config.config);
             this.method = this.config.method;

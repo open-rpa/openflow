@@ -5,6 +5,8 @@ import { Config } from "./Config";
 import { Audit } from "./Audit";
 import { LoginProvider } from "./LoginProvider";
 import { NoderedUtil, TokenUser } from "@openiap/openflow-api";
+import { otel } from "./otel";
+import { Span } from "@opentelemetry/api";
 
 export class SamlProvider {
     private static _logger: winston.Logger;
@@ -75,19 +77,25 @@ export class SamlProvider {
 
             },
             getUserFromRequest: (req: any) => {
-                const tuser: TokenUser = TokenUser.From(req.user);
-                let remoteip = "";
-                if (!NoderedUtil.IsNullUndefinded(req)) {
-                    if (!NoderedUtil.IsNullUndefinded(req.connection) && !NoderedUtil.IsNullEmpty(req.connection.remoteAddress)) remoteip = req.connection.remoteAddress;
-                    if (!NoderedUtil.IsNullUndefinded(req.headers)) {
-                        if (req.headers["X-Forwarded-For"] != null) remoteip = req.headers["X-Forwarded-For"];
-                        if (req.headers["X-real-IP"] != null) remoteip = req.headers["X-real-IP"];
-                        if (req.headers["x-forwarded-for"] != null) remoteip = req.headers["x-forwarded-for"];
-                        if (req.headers["x-real-ip"] != null) remoteip = req.headers["x-real-ip"];
+                const span: Span = otel.startSpan("SAML.getUserFromRequest");
+                try {
+                    const tuser: TokenUser = TokenUser.From(req.user);
+                    let remoteip = "";
+                    if (!NoderedUtil.IsNullUndefinded(req)) {
+                        if (!NoderedUtil.IsNullUndefinded(req.connection) && !NoderedUtil.IsNullEmpty(req.connection.remoteAddress)) remoteip = req.connection.remoteAddress;
+                        if (!NoderedUtil.IsNullUndefinded(req.headers)) {
+                            if (req.headers["X-Forwarded-For"] != null) remoteip = req.headers["X-Forwarded-For"];
+                            if (req.headers["X-real-IP"] != null) remoteip = req.headers["X-real-IP"];
+                            if (req.headers["x-forwarded-for"] != null) remoteip = req.headers["x-forwarded-for"];
+                            if (req.headers["x-real-ip"] != null) remoteip = req.headers["x-real-ip"];
+                        }
                     }
+                    // if (req.connection) { remoteip = req.connection.remoteAddress; }
+                    Audit.LoginSuccess(tuser, "tokenissued", "saml", remoteip, "getUserFromRequest", "unknown", span);
+                } catch (error) {
+                    span.recordException(error);
                 }
-                // if (req.connection) { remoteip = req.connection.remoteAddress; }
-                Audit.LoginSuccess(tuser, "tokenissued", "saml", remoteip, "getUserFromRequest", "unknown");
+                otel.endSpan(span);
                 return req.user;
             },
             profileMapper: SamlProvider.profileMapper,
@@ -95,7 +103,6 @@ export class SamlProvider {
         };
 
         app.get("/issue/", (req: any, res: any, next: any): void => {
-            // passport.authenticate("session");
             if (req.query.SAMLRequest !== undefined && req.query.SAMLRequest !== null) {
                 if ((req.user === undefined || req.user === null)) {
                     try {
