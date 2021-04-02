@@ -1970,12 +1970,35 @@ export class DatabaseConnection {
         }
         return _version;
     }
-    async createIndex(collectionname: string, name: string, keypath: any, parent: Span) {
+    async createIndex(collectionname: string, name: string, keypath: any, options: any, parent: Span) {
         const span: Span = otel.startSubSpan("db.createIndex", parent);
         return new Promise((resolve, reject) => {
             try {
                 this._logger.info("Adding index " + name + " to " + collectionname);
-                this.db.collection(collectionname).createIndex(keypath, (err, name) => {
+                if (NoderedUtil.IsNullUndefinded(options)) options = {};
+                options["name"] = name;
+                this.db.collection(collectionname).createIndex(keypath, options, (err, name) => {
+                    if (err) {
+                        span.recordException(err);
+                        otel.endSpan(span);
+                        reject(err);
+                        return;
+                    }
+                    otel.endSpan(span);
+                    resolve(name);
+                })
+            } catch (error) {
+                span.recordException(error);
+                otel.endSpan(span);
+            }
+        });
+    }
+    async deleteIndex(collectionname: string, name: string, parent: Span) {
+        const span: Span = otel.startSubSpan("db.deleteIndex", parent);
+        return new Promise((resolve, reject) => {
+            try {
+                this._logger.info("Dropping index " + name + " in " + collectionname);
+                this.db.collection(collectionname).dropIndex(name, (err, name) => {
                     if (err) {
                         span.recordException(err);
                         otel.endSpan(span);
@@ -2005,45 +2028,77 @@ export class DatabaseConnection {
                     const indexnames = indexes.map(x => x.name);
                     if (collection.name.endsWith("_hist")) {
                         if (indexnames.indexOf("id_1__version_-1") == -1) {
-                            await this.createIndex(collection.name, "id_1__version_-1", { "id": 1, "_version": -1 }, span)
+                            await this.createIndex(collection.name, "id_1__version_-1", { "id": 1, "_version": -1 }, null, span)
                         }
                     } else {
                         switch (collection.name) {
                             case "fs.files":
                                 if (indexnames.indexOf("metadata.workflow_1") == -1) {
-                                    await this.createIndex(collection.name, "metadata.workflow_1", { "metadata.workflow": 1 }, span)
+                                    await this.createIndex(collection.name, "metadata.workflow_1", { "metadata.workflow": 1 }, null, span)
                                 }
                                 break;
                             case "fs.chunks":
                                 break;
                             case "workflow":
                                 if (indexnames.indexOf("queue_1") == -1) {
-                                    await this.createIndex(collection.name, "queue_1", { "queue": 1 }, span)
+                                    await this.createIndex(collection.name, "queue_1", { "queue": 1 }, null, span)
+                                }
+                                break;
+                            case "openrpa_instances":
+                                if (indexnames.indexOf("_created_1") == -1) {
+                                    await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
+                                }
+                                if (indexnames.indexOf("WorkflowId_1") == -1) {
+                                    await this.createIndex(collection.name, "WorkflowId_1", { "WorkflowId": 1 }, null, span)
+                                }
+                                if (indexnames.indexOf("state_1") == -1) {
+                                    await this.createIndex(collection.name, "state_1", { "state": 1 }, null, span)
+                                }
+                                if (indexnames.indexOf("fqdn_1") == -1) {
+                                    await this.createIndex(collection.name, "fqdn_1", { "fqdn": 1 }, null, span)
+                                }
+                                break;
+                            case "audit":
+                                if (indexnames.indexOf("_type_1") == -1) {
+                                    await this.createIndex(collection.name, "_type_1", { "_type": 1 }, null, span)
+                                }
+                                if (indexnames.indexOf("_created_1") == -1) {
+                                    await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
+                                }
+                                if (indexnames.indexOf("remoteip_1") == -1) {
+                                    await this.createIndex(collection.name, "remoteip_1", { "remoteip": 1 }, null, span)
+                                }
+                                if (indexnames.indexOf("username_1") == -1) {
+                                    await this.createIndex(collection.name, "username_1", { "username": 1 }, null, span)
                                 }
                                 break;
                             case "users":
                                 if (indexnames.indexOf("workflowid_1") == -1) {
-                                    await this.createIndex(collection.name, "workflowid_1", { "workflowid": 1 }, span)
+                                    await this.createIndex(collection.name, "workflowid_1", { "workflowid": 1 }, null, span)
                                 }
                                 if (indexnames.indexOf("_rpaheartbeat_1") == -1) {
-                                    await this.createIndex(collection.name, "_rpaheartbeat_1", { "_rpaheartbeat": 1 }, span)
+                                    await this.createIndex(collection.name, "_rpaheartbeat_1", { "_rpaheartbeat": 1 }, null, span)
                                 }
                                 if (indexnames.indexOf("name_1") == -1) {
-                                    await this.createIndex(collection.name, "name_1", { "name": 1 }, span)
+                                    await this.createIndex(collection.name, "name_1", { "name": 1 }, null, span)
                                 }
                                 if (indexnames.indexOf("_type_1") == -1) {
-                                    await this.createIndex(collection.name, "_type_1", { "_type": 1 }, span)
+                                    await this.createIndex(collection.name, "_type_1", { "_type": 1 }, null, span)
                                 }
                                 if (indexnames.indexOf("_created_1") == -1) {
-                                    await this.createIndex(collection.name, "_created_1", { "_created": 1 }, span)
+                                    await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
+                                }
+                                if (indexnames.indexOf("unique_username_1") == -1) {
+                                    await this.createIndex(collection.name, "unique_username_1", { "username": 1 },
+                                        { "unique": true, "name": "unique_username_1", "partialFilterExpression": { "_type": "user" } }, span)
                                 }
                                 break;
                             default:
                                 if (indexnames.indexOf("_type_1") == -1) {
-                                    await this.createIndex(collection.name, "_type_1", { "_type": 1 }, span)
+                                    await this.createIndex(collection.name, "_type_1", { "_type": 1 }, null, span)
                                 }
                                 if (indexnames.indexOf("_created_1") == -1) {
-                                    await this.createIndex(collection.name, "_created_1", { "_created": 1 }, span)
+                                    await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
                                 }
                                 break;
                         }

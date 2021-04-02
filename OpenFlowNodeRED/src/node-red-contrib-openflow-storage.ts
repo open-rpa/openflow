@@ -7,7 +7,8 @@ import { Config } from "./Config";
 import { WebSocketClient, NoderedUtil, Base } from "@openiap/openflow-api";
 import * as nodered from "node-red";
 import { FileSystemCache } from "@openiap/openflow-api";
-import { RestartService, servicename } from "./nodeclient/cliutil";
+import { servicename } from "./nodeclient/cliutil";
+import { pm2restart } from "./nodeclient/pm2util";
 const child_process = require("child_process");
 export class noderednpmrc {
     public _id: string;
@@ -873,7 +874,7 @@ export class noderedcontribopenflowstorage {
                             var _servicename = path.basename(servicename)
                             this._logger.info("noderedcontribopenflowstorage::onupdate: Restarting service " + _servicename);
                             this.RED.log.warn("noderedcontribopenflowstorage::onupdate: Restarting service " + _servicename);
-                            RestartService(_servicename);
+                            await pm2restart(_servicename);
                         } else {
                             this.RED.log.error("noderedcontribopenflowstorage::onupdate: Not running in docker, nor started as a service, please restart Node-Red manually");
                             this._logger.info("noderedcontribopenflowstorage::onupdate: Not running in docker, nor started as a service, please restart Node-Red manually");
@@ -952,7 +953,7 @@ export class noderedcontribopenflowstorage {
                     if (servicename != "service-name-not-set") {
                         var _servicename = path.basename(servicename)
                         this._logger.info("noderedcontribopenflowstorage::onupdate: Restarting service " + _servicename);
-                        RestartService(_servicename);
+                        await pm2restart(_servicename);
                     } else {
                         this._logger.info("noderedcontribopenflowstorage::onupdate: Not running in docker, nor started as a service, please restart Node-Red manually");
                     }

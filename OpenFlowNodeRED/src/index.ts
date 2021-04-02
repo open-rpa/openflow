@@ -8,7 +8,6 @@ import { WebServer } from "./WebServer";
 import { Config } from "./Config";
 import { Crypt } from "./nodeclient/Crypt";
 import { FileSystemCache } from "@openiap/openflow-api";
-import { RestartService } from "./nodeclient/cliutil";
 import { otel } from "./otel";
 
 const logger: winston.Logger = Logger.configure();
