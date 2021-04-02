@@ -2044,6 +2044,20 @@ export class DatabaseConnection {
                                     await this.createIndex(collection.name, "queue_1", { "queue": 1 }, null, span)
                                 }
                                 break;
+                            case "openrpa_instances":
+                                if (indexnames.indexOf("_created_1") == -1) {
+                                    await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
+                                }
+                                if (indexnames.indexOf("WorkflowId_1") == -1) {
+                                    await this.createIndex(collection.name, "WorkflowId_1", { "WorkflowId": 1 }, null, span)
+                                }
+                                if (indexnames.indexOf("state_1") == -1) {
+                                    await this.createIndex(collection.name, "state_1", { "state": 1 }, null, span)
+                                }
+                                if (indexnames.indexOf("fqdn_1") == -1) {
+                                    await this.createIndex(collection.name, "fqdn_1", { "fqdn": 1 }, null, span)
+                                }
+                                break;
                             case "audit":
                                 if (indexnames.indexOf("_type_1") == -1) {
                                     await this.createIndex(collection.name, "_type_1", { "_type": 1 }, null, span)
