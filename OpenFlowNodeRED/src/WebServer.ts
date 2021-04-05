@@ -356,12 +356,14 @@ export class WebServer {
                     this._logger.debug("WebServer.configure::server.listen on port " + Config.nodered_port);
                     server.listen(Config.nodered_port).on('error', function (error) {
                         WebServer._logger.error(error);
+                        process.exit(404);
                     });
                 }
                 else {
                     this._logger.debug("WebServer.configure::server.listen on port " + Config.port);
                     server.listen(Config.port).on('error', function (error) {
                         WebServer._logger.error(error);
+                        process.exit(404);
                     });
                 }
 
