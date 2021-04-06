@@ -30,8 +30,13 @@ const BaseRateLimiter = new RateLimiterMemory({
 });
 
 const rateLimiter = (req: express.Request, res: express.Response, next: express.NextFunction): void => {
+    let remoteip: string = req.connection.remoteAddress;
+    if (req.headers["X-Forwarded-For"] != null) remoteip = req.headers["X-Forwarded-For"] as string;
+    if (req.headers["X-real-IP"] != null) remoteip = req.headers["X-real-IP"] as string;
+    if (req.headers["x-forwarded-for"] != null) remoteip = req.headers["x-forwarded-for"] as string;
+    if (req.headers["x-real-ip"] != null) remoteip = req.headers["x-real-ip"] as string;
     BaseRateLimiter
-        .consume(req.ip)
+        .consume(remoteip)
         .then((e) => {
             // console.info("API_O_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints);
             next();

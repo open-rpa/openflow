@@ -180,7 +180,30 @@ export class LoginProvider {
         });
         app.get("/dashboardauth", async (req: any, res: any, next: any) => {
             const span: Span = Logger.otel.startSpan("LoginProvider.user");
+            let remoteip: string = req.connection.remoteAddress;
+            if (req.headers["X-Forwarded-For"] != null) remoteip = req.headers["X-Forwarded-For"];
+            if (req.headers["X-real-IP"] != null) remoteip = req.headers["X-real-IP"];
+            if (req.headers["x-forwarded-for"] != null) remoteip = req.headers["x-forwarded-for"];
+            if (req.headers["x-real-ip"] != null) remoteip = req.headers["x-real-ip"];
+            if (!NoderedUtil.IsNullEmpty(remoteip)) span.setAttribute("remoteip", remoteip);
             try {
+                if (req.user) {
+                    const user: TokenUser = TokenUser.From(req.user);
+                    span.setAttribute("username", user.username);
+                    if (user != null) {
+                        const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
+                        if (allowed.length > 0) {
+                            Logger.instanse.info("dashboardauth: Authorized " + user.username + " for " + req.url);
+                            return res.send({
+                                status: "success",
+                                display_status: "Success",
+                                message: "Connection OK"
+                            });
+                        } else {
+                            console.warn("dashboardauth: " + user.username + " is not member of 'dashboardusers' for " + req.url);
+                        }
+                    }
+                }
                 const authorization: string = req.headers.authorization;
                 if (!NoderedUtil.IsNullEmpty(authorization) && authorization.indexOf(" ") > 1 &&
                     (authorization.toLocaleLowerCase().startsWith("bearer") || authorization.toLocaleLowerCase().startsWith("jwt"))) {
@@ -222,6 +245,7 @@ export class LoginProvider {
                 // const [login, password] = new Buffer(b64auth, 'base64').toString().split(':')
                 const [login, password] = Buffer.from(b64auth, "base64").toString().split(':')
                 if (login && password) {
+                    span.setAttribute("username", login);
                     const user = await Auth.ValidateByPassword(login, password, span);
                     if (user != null) {
                         const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
