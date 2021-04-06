@@ -9,7 +9,7 @@ import { Provider, KoaContextWithOIDC } from "oidc-provider";
 import { MongoAdapter } from "./MongoAdapter";
 import { DBHelper } from "./DBHelper";
 import { Span } from "@opentelemetry/api";
-import { otel } from "./otel";
+import { Logger } from "./Logger";
 // import * as Provider from "oidc-provider";
 const Request = OAuthServer.Request;
 const Response = OAuthServer.Response;
@@ -81,7 +81,7 @@ export class OAuthProvider {
     }
     public static async LoadClients() {
         const instance = OAuthProvider.instance;
-        const span = otel.startSpan("OAuthProvider.LoadClients");
+        const span = Logger.otel.startSpan("OAuthProvider.LoadClients");
         try {
             const jwksresults = await Config.db.query<Base>({ _type: "jwks" }, null, 10, 0, null, "config", Crypt.rootToken(), undefined, undefined, span);
             let jwks = null;
@@ -309,7 +309,7 @@ export class OAuthProvider {
             span.recordException(error);
             instance._logger.error(error);
         }
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
     }
     static configure(logger: winston.Logger, app: express.Express): OAuthProvider {
         const instance = new OAuthProvider();
@@ -337,7 +337,7 @@ export class OAuthProvider {
             (app as any).oauth = instance.oauthServer;
             app.all('/oauth/token', instance.obtainToken.bind(instance));
             app.get('/oauth/login', async (req, res) => {
-                const span = otel.startSpan("OAuthProvider.oauth.login");
+                const span = Logger.otel.startSpan("OAuthProvider.oauth.login");
                 try {
                     if (NoderedUtil.IsNullUndefinded(instance.clients)) {
                         instance.clients = await Config.db.query<Base>({ _type: "oauthclient" }, null, 10, 0, null, "config", Crypt.rootToken(), undefined, undefined, span);
@@ -379,7 +379,7 @@ export class OAuthProvider {
                     span.recordException(error);
                     throw error;
                 } finally {
-                    otel.endSpan(span);
+                    Logger.otel.endSpan(span);
                 }
             });
             // app.get('/oauth/authorize', instance.authorize.bind(instance));
@@ -444,7 +444,7 @@ export class OAuthProvider {
             });
     }
     public async getAccessToken(accessToken) {
-        const span: Span = otel.startSpan("OAuthProvider.getAccessToken");
+        const span: Span = Logger.otel.startSpan("OAuthProvider.getAccessToken");
         try {
             this._logger.info("[OAuth] getAccessToken " + accessToken);
             let token = await OAuthProvider.getCachedAccessToken(accessToken);
@@ -458,11 +458,11 @@ export class OAuthProvider {
             span.recordException(error);
             throw error;
         } finally {
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
         }
     }
     public async getRefreshToken(refreshToken) {
-        const span: Span = otel.startSpan("OAuthProvider.getRefreshToken");
+        const span: Span = Logger.otel.startSpan("OAuthProvider.getRefreshToken");
         try {
             this._logger.info("[OAuth] getRefreshToken " + refreshToken);
             let token = await OAuthProvider.getCachedAccessToken(refreshToken);
@@ -476,7 +476,7 @@ export class OAuthProvider {
             span.recordException(error);
             throw error;
         } finally {
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
         }
     }
     public getClient(clientId, clientSecret) {
@@ -495,7 +495,7 @@ export class OAuthProvider {
     }
 
     public async saveToken(token, client, user) {
-        const span = otel.startSpan("OAuthProvider.saveToken");
+        const span = Logger.otel.startSpan("OAuthProvider.saveToken");
         this._logger.info("[OAuth] saveToken for " + user.name + " in " + client.clientId);
         const result: any = {
             name: "Token for " + user.name,
@@ -513,11 +513,11 @@ export class OAuthProvider {
         };
         await OAuthProvider.addToken(result);
         await Config.db.InsertOne(result, "oauthtokens", 0, false, Crypt.rootToken(), span);
-        otel.endSpan(span)
+        Logger.otel.endSpan(span)
         return result;
     }
     public async saveAuthorizationCode(code: string, client: any, user: any, redirect_uri: string) {
-        const span = otel.startSpan("OAuthProvider.saveAuthorizationCode");
+        const span = Logger.otel.startSpan("OAuthProvider.saveAuthorizationCode");
         this._logger.info("[OAuth] saveAuthorizationCode " + code);
         const codeobject = Object.assign({}, user);
         delete codeobject._id;
@@ -554,7 +554,7 @@ export class OAuthProvider {
         //     'client': client.id,
         //     'user': user.username
         // });
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
         return codeobject;
     }
     sleep(ms) {
@@ -564,7 +564,7 @@ export class OAuthProvider {
     }
 
     public async getAuthorizationCode(code) {
-        const span: Span = otel.startSpan("OAuthProvider.validateToken");
+        const span: Span = Logger.otel.startSpan("OAuthProvider.validateToken");
         try {
             this._logger.info("[OAuth] getAuthorizationCode " + code);
             let user: any = this.codes[code];
@@ -630,7 +630,7 @@ export class OAuthProvider {
             span.recordException(error);
             throw error;
         } finally {
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
         }
     }
     public async revokeAuthorizationCode(code) {

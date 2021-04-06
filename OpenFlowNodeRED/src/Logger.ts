@@ -2,7 +2,9 @@ import * as winston from "winston";
 import { Config } from "./Config";
 const path = require('path');
 import { createLogger, format, transports } from 'winston';
+import { otel } from "./otelspec";
 export class Logger {
+    public static otel: otel;
     static configure(): winston.Logger {
         const filename = path.join(Config.logpath, "nodered" + Config.nodered_id + ".log");
         const options: any = {

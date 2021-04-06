@@ -5,8 +5,8 @@ import { Config } from "./Config";
 import { Audit } from "./Audit";
 import { LoginProvider } from "./LoginProvider";
 import { NoderedUtil, TokenUser } from "@openiap/openflow-api";
-import { otel } from "./otel";
 import { Span } from "@opentelemetry/api";
+import { Logger } from "./Logger";
 
 export class SamlProvider {
     private static _logger: winston.Logger;
@@ -77,7 +77,7 @@ export class SamlProvider {
 
             },
             getUserFromRequest: (req: any) => {
-                const span: Span = otel.startSpan("SAML.getUserFromRequest");
+                const span: Span = Logger.otel.startSpan("SAML.getUserFromRequest");
                 try {
                     const tuser: TokenUser = TokenUser.From(req.user);
                     let remoteip = "";
@@ -95,7 +95,7 @@ export class SamlProvider {
                 } catch (error) {
                     span.recordException(error);
                 }
-                otel.endSpan(span);
+                Logger.otel.endSpan(span);
                 return req.user;
             },
             profileMapper: SamlProvider.profileMapper,

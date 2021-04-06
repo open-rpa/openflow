@@ -11,20 +11,18 @@ import { amqpwrapper, QueueMessageOptions } from "./amqpwrapper";
 import { WellknownIds, Role, Rights, User, Base } from "@openiap/openflow-api";
 import { DBHelper } from "./DBHelper";
 import { OAuthProvider } from "./OAuthProvider";
-import { otel } from "./otel";
 import { Span } from "@opentelemetry/api";
 
 const logger: winston.Logger = Logger.configure();
 
 let _otel_require: any = null;
-let _otel: otel = null;
 try {
     _otel_require = require("./otel");
 } catch (error) {
 
 }
 if (_otel_require != null) {
-    _otel = _otel_require.otel.configure(logger);
+    Logger.otel = _otel_require.otel.configure(logger);
 } else {
     const fakespan = {
         context: () => undefined,
@@ -37,17 +35,23 @@ if (_otel_require != null) {
         isRecording: () => undefined,
         recordException: () => undefined,
     };
-    (_otel as any) =
-    {
-        startSpan: () => fakespan,
-        startSubSpan: () => fakespan,
-        endSpan: () => undefined,
-        startTimer: () => undefined,
-        endTimer: () => undefined,
-    }
+    Logger.otel =
+        {
+            startSpan: () => fakespan,
+            startSubSpan: () => fakespan,
+            endSpan: () => undefined,
+            startTimer: () => undefined,
+            endTimer: () => undefined,
+            setdefaultlabels: () => undefined,
+            meter: {
+                createValueRecorder: () => undefined,
+                createCounter: () => undefined,
+                createUpDownSumObserver: () => undefined,
+            }
+        } as any;
 }
 
-Config.db = new DatabaseConnection(logger, Config.mongodb_url, Config.mongodb_db, _otel);
+Config.db = new DatabaseConnection(logger, Config.mongodb_url, Config.mongodb_db);
 
 
 async function initamqp() {
@@ -113,7 +117,7 @@ async function initamqp() {
 
 
 async function initDatabase(): Promise<boolean> {
-    const span: Span = otel.startSpan("initDatabase");
+    const span: Span = Logger.otel.startSpan("initDatabase");
     try {
         const jwt: string = Crypt.rootToken();
         const admins: Role = await DBHelper.EnsureRole(jwt, "admins", WellknownIds.admins, span);
@@ -247,12 +251,12 @@ async function initDatabase(): Promise<boolean> {
         await DBHelper.Save(filestore_users, jwt, span);
 
         await Config.db.ensureindexes(span);
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
 
         return true;
     } catch (error) {
         span.recordException(error);
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
         logger.error(error);
         return false;
     }
@@ -365,13 +369,13 @@ var server: http.Server = null;
     try {
         await initamqp();
         logger.info("VERSION: " + Config.version);
-        server = await WebServer.configure(logger, Config.baseurl(), _otel);
+        server = await WebServer.configure(logger, Config.baseurl());
         if (GrafanaProxy != null) {
-            const grafana = await GrafanaProxy.GrafanaProxy.configure(logger, WebServer.app, _otel);
+            const grafana = await GrafanaProxy.GrafanaProxy.configure(logger, WebServer.app);
         }
 
         OAuthProvider.configure(logger, WebServer.app);
-        WebSocketServer.configure(logger, server, _otel);
+        WebSocketServer.configure(logger, server);
         logger.info("listening on " + Config.baseurl());
         logger.info("namespace: " + Config.namespace);
         if (!await initDatabase()) {

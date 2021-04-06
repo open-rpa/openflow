@@ -1,11 +1,11 @@
 import { Crypt } from "./Crypt";
 import { User } from "@openiap/openflow-api";
 import { DBHelper } from "./DBHelper";
-import { otel } from "./otel";
 import { Span } from "@opentelemetry/api";
+import { Logger } from "./Logger";
 export class Auth {
     public static async ValidateByPassword(username: string, password: string, parent: Span): Promise<User> {
-        const span: Span = otel.startSubSpan("Auth.ValidateByPassword", parent);
+        const span: Span = Logger.otel.startSubSpan("Auth.ValidateByPassword", parent);
         try {
             if (username === null || username === undefined || username === "") { throw Error("Username cannot be null"); }
             span.setAttribute("username", username);
@@ -18,7 +18,7 @@ export class Auth {
             span.recordException(error);
             throw error;
         } finally {
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
         }
     }
 }

@@ -6,8 +6,8 @@ import { Crypt } from "./Crypt";
 import * as url from "url";
 import { NoderedUtil } from "@openiap/openflow-api";
 import { WebSocketServer } from "./WebSocketServer";
-import { otel } from "./otel";
 import { Span } from "@opentelemetry/api";
+import { Logger } from "./Logger";
 const got = require("got");
 type QueueOnMessage = (msg: string, options: QueueMessageOptions, ack: any, done: any) => void;
 interface IHashTable<T> {
@@ -119,7 +119,7 @@ export class amqpwrapper {
             this.replyqueue = await this.AddQueueConsumer("", null, null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
                 if (this.replyqueue) {
                     if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_message_count)) WebSocketServer.websocket_queue_message_count.
-                        bind({ ...otel.defaultlabels, queuename: this.replyqueue.queue }).update(this.incqueuemessagecounter(this.replyqueue.queue));
+                        bind({ ...Logger.otel.defaultlabels, queuename: this.replyqueue.queue }).update(this.incqueuemessagecounter(this.replyqueue.queue));
                     if (!NoderedUtil.IsNullUndefinded(this.activecalls[options.correlationId])) {
                         this.activecalls[options.correlationId].resolve(msg);
                         this.activecalls[options.correlationId] = null;
@@ -151,7 +151,7 @@ export class amqpwrapper {
         }
     }
     async RemoveQueueConsumer(queue: amqpqueue, parent: Span): Promise<void> {
-        const span: Span = otel.startSubSpan("amqpwrapper.validateToken", parent);
+        const span: Span = Logger.otel.startSubSpan("amqpwrapper.validateToken", parent);
         try {
             if (queue != null) {
                 this._logger.info("[AMQP] Remove queue consumer " + queue.queue + "/" + queue.consumerTag);
@@ -161,11 +161,11 @@ export class amqpwrapper {
             span.recordException(error);
             throw error;
         } finally {
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
         }
     }
     async AddQueueConsumer(queuename: string, QueueOptions: any, jwt: string, callback: QueueOnMessage, parent: Span): Promise<amqpqueue> {
-        const span: Span = otel.startSubSpan("amqpwrapper.validateToken", parent);
+        const span: Span = Logger.otel.startSubSpan("amqpwrapper.validateToken", parent);
         try {
             if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Queue Consumer, not connected to rabbitmq");
             let queue: string = (NoderedUtil.IsNullEmpty(queuename) ? "" : queuename);
@@ -255,11 +255,11 @@ export class amqpwrapper {
             span.recordException(error);
             throw error;
         } finally {
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
         }
     }
     async AddExchangeConsumer(exchange: string, algorithm: string, routingkey: string, ExchangeOptions: any, jwt: string, callback: QueueOnMessage, parent: Span): Promise<amqpexchange> {
-        const span: Span = otel.startSubSpan("amqpwrapper.validateToken", parent);
+        const span: Span = Logger.otel.startSubSpan("amqpwrapper.validateToken", parent);
         try {
             if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Exchange Consumer, not connected to rabbitmq");
             if (Config.amqp_force_exchange_prefix && !NoderedUtil.IsNullEmpty(jwt)) {
@@ -292,7 +292,7 @@ export class amqpwrapper {
             span.recordException(error);
             throw error;
         } finally {
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
         }
     }
     OnMessage(sender: amqpqueue, msg: amqplib.ConsumeMessage, callback: QueueOnMessage): void {
@@ -385,7 +385,7 @@ export class amqpwrapper {
                 throw new Error("No consumer listening at " + queue);
             }
             if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_message_count)) WebSocketServer.websocket_queue_message_count.
-                bind({ ...otel.defaultlabels, queuename: queue }).update(this.incqueuemessagecounter(queue));
+                bind({ ...Logger.otel.defaultlabels, queuename: queue }).update(this.incqueuemessagecounter(queue));
         } else {
             this.channel.publish(exchange, "", Buffer.from(data), options);
         }
@@ -413,7 +413,7 @@ export class amqpwrapper {
                 throw new Error("No consumer listening at " + queue);
             }
             if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_message_count)) WebSocketServer.websocket_queue_message_count.
-                bind({ ...otel.defaultlabels, queuename: queue }).update(this.incqueuemessagecounter(queue));
+                bind({ ...Logger.otel.defaultlabels, queuename: queue }).update(this.incqueuemessagecounter(queue));
         } else {
             this.channel.publish(exchange, "", Buffer.from(data), options);
         }

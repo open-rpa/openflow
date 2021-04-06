@@ -1,8 +1,10 @@
 import * as winston from "winston";
 import { Config } from "./Config";
+import { otel } from "./otelspec";
 const path = require('path');
 
 export class Logger {
+    public static otel: otel;
     static configure(): winston.Logger {
         const filename = path.join(Config.logpath, "openflow.log");
         const options: any = {

@@ -71,6 +71,14 @@ export class rpa_detector_node {
                 }
             } catch (error) {
             }
+            if (!NoderedUtil.IsNullUndefinded(msg.__user)) {
+                msg.user = msg.__user;
+                delete msg.__user;
+            }
+            if (!NoderedUtil.IsNullUndefinded(msg.__jwt)) {
+                msg.jwt = msg.__jwt;
+                delete msg.__jwt;
+            }
             this.node.send(msg);
             ack();
         } catch (error) {
@@ -94,6 +102,7 @@ export interface Irpa_workflow_node {
     queue: string;
     workflow: string;
     localqueue: string;
+    killexisting: boolean;
     name: string;
 }
 export class rpa_workflow_node {
@@ -163,6 +172,14 @@ export class rpa_workflow_node {
                 delete msg.data;
             }
             const data = msg;
+            if (!NoderedUtil.IsNullUndefinded(data.__user)) {
+                data.user = data.__user;
+                delete data.__user;
+            }
+            if (!NoderedUtil.IsNullUndefinded(data.__jwt)) {
+                data.jwt = data.__jwt;
+                delete data.__jwt;
+            }
             let command = data.command;
             if (command == undefined && data.data != null && data.data.command != null) { command = data.data.command; }
             if (correlationId != null && this.messages[correlationId] != null) {
@@ -173,15 +190,18 @@ export class rpa_workflow_node {
             } else {
                 result.jwt = data.jwt;
             }
-            if (command == "invokecompleted") {
+            if (!NoderedUtil.IsNullEmpty(command) && command.indexOf("invoke") > -1) command = command.substring(6);
+            result.command = command;
+            if (command == "completed") {
                 result.payload = data.payload;
                 if (data.user != null) result.user = data.user;
+                if (data.jwt != null) result.jwt = data.jwt;
                 if (result.payload == null || result.payload == undefined) { result.payload = {}; }
                 this.node.status({ fill: "green", shape: "dot", text: command + "  " + this.localqueue });
                 result.id = correlationId;
-                this.node.send(result);
+                this.node.send([result, result]);
             }
-            else if (command == "invokefailed" || command == "invokeaborted" || command == "error" || command == "timeout") {
+            else if (command == "failed" || command == "aborted" || command == "error" || command == "timeout") {
                 result.payload = data.payload;
                 result.error = data.payload;
                 if (command == "timeout") {
@@ -191,14 +211,17 @@ export class rpa_workflow_node {
                     result.error = result.error.Message;
                 }
                 if (data.user != null) result.user = data.user;
+                if (data.jwt != null) result.jwt = data.jwt;
                 if (result.payload == null || result.payload == undefined) { result.payload = {}; }
                 this.node.status({ fill: "red", shape: "dot", text: command + "  " + this.localqueue });
                 result.id = correlationId;
-                this.node.send([null, null, result]);
+                this.node.send([null, result, result]);
             }
             else {
+                this.node.status({ fill: "blue", shape: "dot", text: command + "  " + this.localqueue });
                 result.payload = data.payload;
                 if (data.user != null) result.user = data.user;
+                if (data.jwt != null) result.jwt = data.jwt;
                 if (result.payload == null || result.payload == undefined) { result.payload = {}; }
                 result.id = correlationId;
                 this.node.send([null, result]);
@@ -213,14 +236,22 @@ export class rpa_workflow_node {
     async oninput(msg: any) {
         try {
             this.node.status({});
-            let targetid = NoderedUtil.IsNullEmpty(this.config.queue) || this.config.queue === 'none' ? msg.targetid : this.config.queue;
-            let workflowid = NoderedUtil.IsNullEmpty(this.config.workflow) ? msg.workflowid : this.config.workflow;
+
+            let queue = this.config.queue;
+            let workflowid = this.config.workflow;
+            let killexisting = this.config.killexisting;
+            if (!NoderedUtil.IsNullEmpty(msg.queue)) { queue = msg.queue; }
+            if (!NoderedUtil.IsNullEmpty(msg.targetid)) { queue = msg.targetid; }
+            if (queue == "none") queue = "";
+            if (!NoderedUtil.IsNullEmpty(msg.workflowid)) { workflowid = msg.workflowid; }
+            if (!NoderedUtil.IsNullEmpty(msg.killexisting)) { killexisting = msg.killexisting; }
+
             const correlationId = msg.id || Math.random().toString(36).substr(2, 9);
             this.messages[correlationId] = msg;
             if (msg.payload == null || typeof msg.payload == "string" || typeof msg.payload == "number") {
                 msg.payload = { "data": msg.payload };
             }
-            if (NoderedUtil.IsNullEmpty(targetid)) {
+            if (NoderedUtil.IsNullEmpty(queue)) {
                 this.node.status({ fill: "red", shape: "dot", text: "robot is mandatory" });
                 return;
             }
@@ -231,6 +262,7 @@ export class rpa_workflow_node {
             const rpacommand = {
                 command: "invoke",
                 workflowid: workflowid,
+                killexisting: killexisting,
                 jwt: msg.jwt,
                 // Adding expiry to the rpacommand as a timestamp for when the RPA message is expected to timeout from the message queue
                 // Currently set to 20 seconds into the future
@@ -238,8 +270,8 @@ export class rpa_workflow_node {
                 data: { payload: msg.payload }
             }
             const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_workflow_out_expiration);
-            await NoderedUtil.QueueMessage(WebSocketClient.instance, targetid, this.localqueue, rpacommand, correlationId, expiration);
-            this.node.status({ fill: "blue", shape: "dot", text: "Robot running " + this.localqueue });
+            await NoderedUtil.QueueMessage(WebSocketClient.instance, queue, this.localqueue, rpacommand, correlationId, expiration);
+            this.node.status({ fill: "yellow", shape: "dot", text: "Pending " + this.localqueue });
         } catch (error) {
             // NoderedUtil.HandleError(this, error);
             try {

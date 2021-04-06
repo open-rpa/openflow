@@ -1,12 +1,12 @@
 import { Crypt } from "./Crypt";
 import { User, Role, Rolemember, WellknownIds, Rights, NoderedUtil, Base, TokenUser } from "@openiap/openflow-api";
 import { Config } from "./Config";
-import { otel } from "./otel";
 import { Span } from "@opentelemetry/api";
+import { Logger } from "./Logger";
 
 export class DBHelper {
     public static async FindByUsername(username: string, jwt: string = null, parent: Span): Promise<User> {
-        const span: Span = otel.startSubSpan("dbhelper.FindByUsername", parent);
+        const span: Span = Logger.otel.startSubSpan("dbhelper.FindByUsername", parent);
         try {
             const byuser = { username: new RegExp(["^", username, "$"].join(""), "i") };
             const byid = { federationids: new RegExp(["^", username, "$"].join(""), "i") }
@@ -21,11 +21,11 @@ export class DBHelper {
             span.recordException(error);
             throw error;
         } finally {
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
         }
     }
     public static async FindById(_id: string, jwt: string = null, parent: Span): Promise<User> {
-        const span: Span = otel.startSubSpan("dbhelper.FindById", parent);
+        const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
             if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
             const items: User[] = await Config.db.query<User>({ _id: _id }, null, 1, 0, null, "users", jwt, undefined, undefined, span);
@@ -37,11 +37,11 @@ export class DBHelper {
             span.recordException(error);
             throw error;
         } finally {
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
         }
     }
     public static async FindByUsernameOrId(username: string, id: string, parent: Span): Promise<User> {
-        const span: Span = otel.startSubSpan("dbhelper.FindByUsernameOrId", parent);
+        const span: Span = Logger.otel.startSubSpan("dbhelper.FindByUsernameOrId", parent);
         try {
             const items: User[] = await Config.db.query<User>({ $or: [{ username: new RegExp(["^", username, "$"].join(""), "i") }, { _id: id }] },
                 null, 1, 0, null, "users", Crypt.rootToken(), undefined, undefined, span);
@@ -53,11 +53,11 @@ export class DBHelper {
             span.recordException(error);
             throw error;
         } finally {
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
         }
     }
     public static async FindByUsernameOrFederationid(username: string, parent: Span): Promise<User> {
-        const span: Span = otel.startSubSpan("dbhelper.FindByUsernameOrFederationid", parent);
+        const span: Span = Logger.otel.startSubSpan("dbhelper.FindByUsernameOrFederationid", parent);
         try {
             const byuser = { username: new RegExp(["^", username, "$"].join(""), "i") };
             const byid = { federationids: new RegExp(["^", username, "$"].join(""), "i") }
@@ -71,11 +71,11 @@ export class DBHelper {
             span.recordException(error);
             throw error;
         } finally {
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
         }
     }
     public static async GetRoles(_id: string, ident: number, parent: Span): Promise<Role[]> {
-        const span: Span = otel.startSubSpan("dbhelper.GetRoles", parent);
+        const span: Span = Logger.otel.startSubSpan("dbhelper.GetRoles", parent);
         span.setAttribute("_id", _id);
         span.setAttribute("ident", ident);
         try {
@@ -104,13 +104,13 @@ export class DBHelper {
             span.recordException(error);
             throw error;
         } finally {
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
         }
     }
     public static cached_roles: Role[] = [];
     public static cached_at: Date = new Date();
     public static async DecorateWithRoles(user: User, parent: Span): Promise<void> {
-        const span: Span = otel.startSubSpan("dbhelper.DecorateWithRoles", parent);
+        const span: Span = Logger.otel.startSubSpan("dbhelper.DecorateWithRoles", parent);
         try {
             if (!Config.decorate_roles_fetching_all_roles) {
                 const roles: Role[] = await this.GetRoles(user._id, 0, span);
@@ -162,7 +162,7 @@ export class DBHelper {
             span.recordException(error);
             throw error;
         } finally {
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
         }
     }
     public static async FindRoleByName(name: string, parent: Span): Promise<Role> {
@@ -187,7 +187,7 @@ export class DBHelper {
 
 
     public static async EnsureRole(jwt: string, name: string, id: string, parent: Span): Promise<Role> {
-        const span: Span = otel.startSubSpan("dbhelper.EnsureRole", parent);
+        const span: Span = Logger.otel.startSubSpan("dbhelper.EnsureRole", parent);
         try {
             let role: Role = await this.FindRoleByNameOrId(name, id, span);
             if (role !== null && (role._id === id || id === null)) { return role; }
@@ -204,11 +204,11 @@ export class DBHelper {
             span.recordException(error);
             throw error;
         } finally {
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
         }
     }
     public static async ensureUser(jwt: string, name: string, username: string, id: string, password: string, parent: Span): Promise<User> {
-        const span: Span = otel.startSubSpan("dbhelper.ensureUser", parent);
+        const span: Span = Logger.otel.startSubSpan("dbhelper.ensureUser", parent);
         try {
             let user: User = await this.FindByUsernameOrId(username, id, span);
             if (user !== null && (user._id === id || id === null)) { return user; }
@@ -247,7 +247,7 @@ export class DBHelper {
             span.recordException(error);
             throw error;
         } finally {
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
         }
     }
 

@@ -20,8 +20,8 @@ import { WebSocketServerClient } from "../WebSocketServerClient";
 import { DBHelper } from "../DBHelper";
 import { WebSocketServer } from "../WebSocketServer";
 import { OAuthProvider } from "../OAuthProvider";
-import { otel } from "../otel";
 import { Span } from "@opentelemetry/api";
+import { Logger } from "../Logger";
 const request = require("request");
 const got = require("got");
 const { RateLimiterMemory } = require('rate-limiter-flexible')
@@ -38,7 +38,7 @@ let errorcounter: number = 0;
 async function handleError(cli: WebSocketServerClient, error: Error) {
     try {
         errorcounter++;
-        if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_errors)) WebSocketServer.websocket_errors.bind({ ...otel.defaultlabels }).update(errorcounter);
+        if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_errors)) WebSocketServer.websocket_errors.bind({ ...Logger.otel.defaultlabels }).update(errorcounter);
         if (Config.socket_rate_limit) await ErrorRateLimiter.consume(cli.id);
         cli._logger.error(error);
     } catch (error) {
@@ -97,7 +97,7 @@ export class Message {
                 if (Config.socket_rate_limit) await BaseRateLimiter.consume(cli.id);
             } catch (error) {
                 if (error.consumedPoints) {
-                    if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_rate_limit)) WebSocketServer.websocket_rate_limit.bind({ ...otel.defaultlabels, command: command }).update(cli.inccommandcounter(command));
+                    if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_rate_limit)) WebSocketServer.websocket_rate_limit.bind({ ...Logger.otel.defaultlabels, command: command }).update(cli.inccommandcounter(command));
                     if ((error.consumedPoints % 100) == 0) cli._logger.debug("[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
                     if (error.consumedPoints >= Config.socket_rate_limit_points_disconnect) {
                         cli._logger.debug("[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT: Disconnecing client ! consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
@@ -110,7 +110,7 @@ export class Message {
             }
 
             if (!NoderedUtil.IsNullEmpty(this.replyto)) {
-                span = otel.startSpan("ProcessMessageReply " + command);
+                span = Logger.otel.startSpan("ProcessMessageReply " + command);
                 span.setAttribute("clientid", cli.id);
                 span.setAttribute("command", command);
                 span.setAttribute("id", this.id);
@@ -119,7 +119,7 @@ export class Message {
                 if (!NoderedUtil.IsNullEmpty(cli.clientagent)) span.setAttribute("clientagent", cli.clientagent);
                 if (!NoderedUtil.IsNullEmpty(cli.remoteip)) span.setAttribute("remoteip", cli.remoteip);
                 if (!NoderedUtil.IsNullUndefinded(cli.user) && !NoderedUtil.IsNullEmpty(cli.user.username)) span.setAttribute("username", cli.user.username);
-                const ot_end = otel.startTimer();
+                const ot_end = Logger.otel.startTimer();
                 const qmsg: QueuedMessage = cli.messageQueue[this.replyto];
                 if (!NoderedUtil.IsNullUndefinded(qmsg)) {
                     try {
@@ -131,12 +131,12 @@ export class Message {
                     delete cli.messageQueue[this.replyto];
                     WebSocketServer.update_message_queue_count(cli);
                 }
-                if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
-                // otel.endSpan(span);
+                if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
+                // Logger.otel.endSpan(span);
                 return;
             }
-            const ot_end = otel.startTimer();
-            span = otel.startSpan("ProcessMessage " + command);
+            const ot_end = Logger.otel.startTimer();
+            span = Logger.otel.startSpan("ProcessMessage " + command);
             span.setAttribute("clientid", cli.id);
             if (!NoderedUtil.IsNullEmpty(cli.clientversion)) span.setAttribute("clientversion", cli.clientversion);
             if (!NoderedUtil.IsNullEmpty(cli.clientagent)) span.setAttribute("clientagent", cli.clientagent);
@@ -281,12 +281,12 @@ export class Message {
                     this.UnknownCommand(cli);
                     break;
             }
-            if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
+            if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
         } catch (error) {
             cli._logger.error(error);
             span.recordException(error);
         } finally {
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
         }
     }
     async RegisterQueue(cli: WebSocketServerClient, parent: Span) {
@@ -409,7 +409,7 @@ export class Message {
     private static collectionCachetime: Date = new Date();
     private async ListCollections(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
-        const span: Span = otel.startSubSpan("message.ListCollections", parent);
+        const span: Span = Logger.otel.startSubSpan("message.ListCollections", parent);
         let msg: ListCollectionsMessage
         try {
             msg = ListCollectionsMessage.assign(this.data);
@@ -462,11 +462,11 @@ export class Message {
             this.data = "";
             handleError(cli, error);
         }
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
         this.Send(cli);
     }
     private async DropCollection(cli: WebSocketServerClient, parent: Span): Promise<void> {
-        const span: Span = otel.startSubSpan("message.DropCollection", parent);
+        const span: Span = Logger.otel.startSubSpan("message.DropCollection", parent);
         this.Reply();
         let msg: DropCollectionMessage
         try {
@@ -486,11 +486,11 @@ export class Message {
             this.data = "";
             handleError(cli, error);
         }
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
         this.Send(cli);
     }
     private async Query(cli: WebSocketServerClient, parent: Span): Promise<void> {
-        const span: Span = otel.startSubSpan("message.Query", parent);
+        const span: Span = Logger.otel.startSubSpan("message.Query", parent);
         this.Reply();
         let msg: QueryMessage
         try {
@@ -515,11 +515,11 @@ export class Message {
             span.recordException(error)
             handleError(cli, error);
         }
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
         this.Send(cli);
     }
     private async GetDocumentVersion(cli: WebSocketServerClient, parent: Span): Promise<void> {
-        const span: Span = otel.startSubSpan("message.GetDocumentVersion", parent);
+        const span: Span = Logger.otel.startSubSpan("message.GetDocumentVersion", parent);
         this.Reply();
         let msg: GetDocumentVersionMessage
         try {
@@ -543,12 +543,12 @@ export class Message {
             span.recordException(error)
             handleError(cli, error);
         }
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
         this.Send(cli);
     }
 
     private async Aggregate(cli: WebSocketServerClient, parent: Span): Promise<void> {
-        const span: Span = otel.startSubSpan("message.Aggregate", parent);
+        const span: Span = Logger.otel.startSubSpan("message.Aggregate", parent);
         this.Reply();
         let msg: AggregateMessage
         try {
@@ -566,7 +566,7 @@ export class Message {
             this.data = "";
             handleError(cli, error);
         }
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
         this.Send(cli);
     }
     private async UnWatch(cli: WebSocketServerClient): Promise<void> {
@@ -622,7 +622,7 @@ export class Message {
     }
     private async InsertOne(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
-        const span: Span = otel.startSubSpan("message.InsertOne", parent);
+        const span: Span = Logger.otel.startSubSpan("message.InsertOne", parent);
         let msg: InsertOneMessage
         try {
             msg = InsertOneMessage.assign(this.data);
@@ -646,12 +646,12 @@ export class Message {
             span.recordException(error);
             handleError(cli, error);
         }
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
         this.Send(cli);
     }
     private async InsertMany(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
-        const span: Span = otel.startSubSpan("message.InsertOne", parent);
+        const span: Span = Logger.otel.startSubSpan("message.InsertOne", parent);
         let msg: InsertManyMessage
         try {
             msg = InsertManyMessage.assign(this.data);
@@ -680,12 +680,12 @@ export class Message {
             this.data = "";
             handleError(cli, error);
         }
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
         this.Send(cli);
     }
     private async UpdateOne(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
-        const span: Span = otel.startSubSpan("message.UpdateOne", parent);
+        const span: Span = Logger.otel.startSubSpan("message.UpdateOne", parent);
         let msg: UpdateOneMessage
         try {
             msg = UpdateOneMessage.assign(this.data);
@@ -707,7 +707,7 @@ export class Message {
             this.data = "";
             handleError(cli, error);
         }
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
         this.Send(cli);
     }
     private async UpdateMany(cli: WebSocketServerClient): Promise<void> {
@@ -817,7 +817,7 @@ export class Message {
         this.Send(cli);
     }
     public static async DoSignin(cli: WebSocketServerClient, rawAssertion: string): Promise<TokenUser> {
-        const span: Span = otel.startSpan("message.DoSignin");
+        const span: Span = Logger.otel.startSpan("message.DoSignin");
         let tuser: TokenUser;
         try {
             let type: string = "jwtsignin";
@@ -859,7 +859,7 @@ export class Message {
     }
     private async Signin(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
-        const span: Span = otel.startSubSpan("message.Signin", parent);
+        const span: Span = Logger.otel.startSubSpan("message.Signin", parent);
         try {
             const hrstart = process.hrtime()
             let hrend = process.hrtime(hrstart)
@@ -1095,12 +1095,12 @@ export class Message {
         } catch (error) {
             span.recordException(error);
         }
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
         this.Send(cli);
     }
     private async RegisterUser(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
-        const span: Span = otel.startSubSpan("message.RegisterUser", parent);
+        const span: Span = Logger.otel.startSubSpan("message.RegisterUser", parent);
         let msg: RegisterUserMessage;
         let user: User;
         try {
@@ -1139,11 +1139,11 @@ export class Message {
             this.data = "";
             handleError(cli, error);
         }
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
         this.Send(cli);
     }
     private async GetInstanceName(_id: string, myid: string, myusername: string, jwt: string, parent: Span): Promise<string> {
-        const span: Span = otel.startSubSpan("message.GetInstanceName", parent);
+        const span: Span = Logger.otel.startSubSpan("message.GetInstanceName", parent);
         let name: string = "";
         if (_id !== null && _id !== undefined && _id !== "" && _id != myid) {
             var qs: any[] = [{ _id: _id }];
@@ -1159,12 +1159,12 @@ export class Message {
         name = name.split("@").join("").split(".").join("");
         name = name.toLowerCase();
         span.setAttribute("instancename", name)
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
         return name;
     }
     private async EnsureNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
-        const span: Span = otel.startSubSpan("message.EnsureNoderedInstance", parent);
+        const span: Span = Logger.otel.startSubSpan("message.EnsureNoderedInstance", parent);
         let msg: EnsureNoderedInstanceMessage;
         try {
             msg = EnsureNoderedInstanceMessage.assign(this.data);
@@ -1183,12 +1183,12 @@ export class Message {
             this.data = "";
             handleError(cli, error);
         }
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
         this.Send(cli);
     }
     private async _EnsureNoderedInstance(cli: WebSocketServerClient, _id: string, skipcreate: boolean, parent: Span): Promise<void> {
         let user: NoderedUser;
-        const span: Span = otel.startSubSpan("message._EnsureNoderedInstance", parent);
+        const span: Span = Logger.otel.startSubSpan("message._EnsureNoderedInstance", parent);
         try {
             cli._logger.debug("[" + cli.user.username + "] EnsureNoderedInstance");
             if (_id === null || _id === undefined || _id === "") _id = cli.user._id;
@@ -1520,13 +1520,13 @@ export class Message {
             }
         } catch (error) {
             span.recordException(error);
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
             throw error;
         }
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
     }
     private async _DeleteNoderedInstance(_id: string, myuserid: string, myusername: string, jwt: string, parent: Span): Promise<void> {
-        const span: Span = otel.startSubSpan("message._DeleteNoderedInstance", parent);
+        const span: Span = Logger.otel.startSubSpan("message._DeleteNoderedInstance", parent);
         try {
             const name = await this.GetInstanceName(_id, myuserid, myusername, jwt, span);
             const user = Crypt.verityToken(jwt);
@@ -1575,13 +1575,13 @@ export class Message {
             }
         } catch (error) {
             span.recordException(error);
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
             throw error;
         }
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
     }
     private async DeleteNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
-        const span: Span = otel.startSubSpan("message.DeleteNoderedInstance", parent);
+        const span: Span = Logger.otel.startSubSpan("message.DeleteNoderedInstance", parent);
         try {
             this.Reply();
             let msg: DeleteNoderedInstanceMessage;
@@ -1605,15 +1605,15 @@ export class Message {
             }
         } catch (error) {
             span.recordException(error);
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
             throw error;
         }
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
         this.Send(cli);
     }
     private async DeleteNoderedPod(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
-        const span: Span = otel.startSubSpan("message.DeleteNoderedPod", parent);
+        const span: Span = Logger.otel.startSubSpan("message.DeleteNoderedPod", parent);
         let msg: DeleteNoderedPodMessage;
         let user: User;
         try {
@@ -1663,12 +1663,12 @@ export class Message {
             this.data = "";
             handleError(cli, error);
         }
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
         this.Send(cli);
     }
     private async RestartNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
-        const span: Span = otel.startSubSpan("message.RestartNoderedInstance", parent);
+        const span: Span = Logger.otel.startSubSpan("message.RestartNoderedInstance", parent);
         let msg: RestartNoderedInstanceMessage;
         try {
             cli._logger.debug("[" + cli.user.username + "] RestartNoderedInstance");
@@ -1707,7 +1707,7 @@ export class Message {
             this.data = "";
             handleError(cli, error);
         }
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
         this.Send(cli);
     }
     private async GetKubeNodeLabels(cli: WebSocketServerClient): Promise<void> {
@@ -1751,7 +1751,7 @@ export class Message {
     private async GetNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
         let msg: GetNoderedInstanceMessage;
-        const span: Span = otel.startSubSpan("message.GetNoderedInstance", parent);
+        const span: Span = Logger.otel.startSubSpan("message.GetNoderedInstance", parent);
         try {
             cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance");
             msg = GetNoderedInstanceMessage.assign(this.data);
@@ -1833,13 +1833,13 @@ export class Message {
             this.data = "";
             handleError(cli, error);
         }
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
         this.Send(cli);
     }
     private async GetNoderedInstanceLog(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
         let msg: GetNoderedInstanceLogMessage;
-        const span: Span = otel.startSubSpan("message.GetNoderedInstanceLog", parent);
+        const span: Span = Logger.otel.startSubSpan("message.GetNoderedInstanceLog", parent);
         try {
             cli._logger.debug("[" + cli.user.username + "] GetNoderedInstanceLog");
             msg = GetNoderedInstanceLogMessage.assign(this.data);
@@ -1890,21 +1890,21 @@ export class Message {
             this.data = "";
             handleError(cli, error);
         }
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
         this.Send(cli);
     }
     private async StartNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
-        const span: Span = otel.startSubSpan("message.StartNoderedInstance", parent);
+        const span: Span = Logger.otel.startSubSpan("message.StartNoderedInstance", parent);
         Audit.NoderedAction(TokenUser.From(cli.user), true, null, "startdeployment", null, null, span);
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
         this.Send(cli);
     }
     private async StopNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
-        const span: Span = otel.startSubSpan("message.StopNoderedInstance", parent);
+        const span: Span = Logger.otel.startSubSpan("message.StopNoderedInstance", parent);
         Audit.NoderedAction(TokenUser.From(cli.user), true, null, "stopdeployment", null, null, span);
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
         this.Send(cli);
     }
     private async _SaveFile(stream: Stream, filename: string, contentType: string, metadata: Base): Promise<string> {
@@ -2019,7 +2019,7 @@ export class Message {
         });
     }
     private async GetFile(cli: WebSocketServerClient, parent: Span): Promise<void> {
-        const span: Span = otel.startSubSpan("message.GetFile", parent);
+        const span: Span = Logger.otel.startSubSpan("message.GetFile", parent);
         this.Reply();
         let msg: GetFileMessage
         try {
@@ -2053,7 +2053,7 @@ export class Message {
             this.data = "";
             handleError(cli, error);
         }
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
         this.Send(cli);
     }
     private async filescount(files: Cursor<any>): Promise<number> {
@@ -2127,7 +2127,7 @@ export class Message {
 
     async CreateWorkflowInstance(cli: WebSocketServerClient, parent: Span) {
         this.Reply();
-        const span: Span = otel.startSubSpan("message.StartNoderedInstance", parent);
+        const span: Span = Logger.otel.startSubSpan("message.StartNoderedInstance", parent);
         let msg: CreateWorkflowInstanceMessage
         try {
             msg = CreateWorkflowInstanceMessage.assign(this.data);
@@ -2190,7 +2190,7 @@ export class Message {
             this.data = "";
             handleError(cli, error);
         }
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
         this.Send(cli);
     }
 
@@ -2241,7 +2241,7 @@ export class Message {
         return result;
     }
     async StripeCancelPlan(cli: WebSocketServerClient, parent: Span) {
-        const span: Span = otel.startSubSpan("message.StripeCancelPlan", parent);
+        const span: Span = Logger.otel.startSubSpan("message.StripeCancelPlan", parent);
         this.Reply();
         let msg: StripeCancelPlanMessage;
         const rootjwt = Crypt.rootToken();
@@ -2297,11 +2297,11 @@ export class Message {
             this.data = "";
             handleError(cli, error);
         }
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
         this.Send(cli);
     }
     async StripeAddPlan(cli: WebSocketServerClient, parent: Span) {
-        const span: Span = otel.startSubSpan("message.StripeAddPlan", parent);
+        const span: Span = Logger.otel.startSubSpan("message.StripeAddPlan", parent);
         this.Reply();
         let msg: StripeAddPlanMessage;
         const rootjwt = Crypt.rootToken();
@@ -2398,12 +2398,12 @@ export class Message {
             this.data = "";
             handleError(cli, error);
         }
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
         this.Send(cli);
     }
     async EnsureStripeCustomer(cli: WebSocketServerClient, parent: Span) {
         this.Reply();
-        const span: Span = otel.startSubSpan("message.StartNoderedInstance", parent);
+        const span: Span = Logger.otel.startSubSpan("message.StartNoderedInstance", parent);
         let msg: EnsureStripeCustomerMessage;
         const rootjwt = Crypt.rootToken();
         try {
@@ -2601,7 +2601,7 @@ export class Message {
             this.data = "";
             handleError(cli, error);
         }
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
         this.Send(cli);
     }
     async Stripe<T>(method: string, object: string, id: string, payload: any, customerid: string): Promise<T> {
@@ -2711,7 +2711,7 @@ export class Message {
     }
     async DumpClients(cli: WebSocketServerClient, parent: Span) {
         this.Reply();
-        const span: Span = otel.startSubSpan("message.DumpClients", parent);
+        const span: Span = Logger.otel.startSubSpan("message.DumpClients", parent);
         try {
             const jwt = Crypt.rootToken();
             const known = await Config.db.query({ _type: "socketclient" }, null, 5000, 0, null, "configclients", jwt, undefined, undefined, span);
@@ -2749,12 +2749,12 @@ export class Message {
             this.data = "";
             handleError(cli, error);
         }
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
         this.Send(cli);
     }
     async DumpRabbitmq(cli: WebSocketServerClient, parent: Span) {
         this.Reply();
-        const span: Span = otel.startSubSpan("message.DumpRabbitmq", parent);
+        const span: Span = Logger.otel.startSubSpan("message.DumpRabbitmq", parent);
         try {
             const kickstartapi = amqpwrapper.getvhosts(Config.amqp_url);
             const jwt = Crypt.rootToken();
@@ -2808,7 +2808,7 @@ export class Message {
             this.data = "";
             handleError(cli, error);
         }
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
         this.Send(cli);
     }
     async GetRabbitmqQueue(cli: WebSocketServerClient) {
