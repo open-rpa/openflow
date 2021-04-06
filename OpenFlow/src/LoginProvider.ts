@@ -23,6 +23,7 @@ import { Base, User, NoderedUtil, TokenUser, WellknownIds, Rights, Role } from "
 import { DBHelper } from "./DBHelper";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
+import { Auth } from "./Auth";
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 
 interface IVerifyFunction { (error: any, profile: any): void; }
@@ -175,6 +176,77 @@ export class LoginProvider {
                 res.send("ok");
             } else {
                 next();
+            }
+        });
+        app.get("/dashboardauth", async (req: any, res: any, next: any) => {
+            const span: Span = Logger.otel.startSpan("LoginProvider.user");
+            try {
+                const authorization: string = req.headers.authorization;
+                if (!NoderedUtil.IsNullEmpty(authorization) && authorization.indexOf(" ") > 1 &&
+                    (authorization.toLocaleLowerCase().startsWith("bearer") || authorization.toLocaleLowerCase().startsWith("jwt"))) {
+                    const token = authorization.split(" ")[1];
+                    let user: User;
+                    let tuser: TokenUser;
+                    try {
+                        user = await LoginProvider.validateToken(token, span);
+                        tuser = TokenUser.From(user);
+                    } catch (error) {
+                    }
+                    if (user == null) {
+                        try {
+                            tuser = Crypt.verityToken(token);
+                            user = await DBHelper.FindById(user._id, undefined, span);
+                        } catch (error) {
+                        }
+                    }
+                    if (user != null) {
+                        const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
+                        if (allowed.length > 0) {
+                            Logger.instanse.info("dashboardauth: Authorized " + user.username + " for " + req.url);
+                            return res.send({
+                                status: "success",
+                                display_status: "Success",
+                                message: "Connection OK"
+                            });
+                        } else {
+                            console.warn("dashboardauth: " + user.username + " is not member of 'dashboardusers' for " + req.url);
+                        }
+                    }
+                    res.statusCode = 401;
+                    res.end('Unauthorized');
+                    return;
+                }
+
+                // parse login and password from headers
+                const b64auth = (authorization || '').split(' ')[1] || ''
+                // const [login, password] = new Buffer(b64auth, 'base64').toString().split(':')
+                const [login, password] = Buffer.from(b64auth, "base64").toString().split(':')
+                if (login && password) {
+                    const user = await Auth.ValidateByPassword(login, password, span);
+                    if (user != null) {
+                        const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
+                        if (allowed.length > 0) {
+                            Logger.instanse.info("dashboardauth: Authorized " + user.username + " for " + req.url);
+                            return res.send({
+                                status: "success",
+                                display_status: "Success",
+                                message: "Connection OK"
+                            });
+                        } else {
+                            console.warn("dashboardauth: " + user.username + " is not member of 'dashboardusers' for " + req.url);
+                        }
+                    }
+                } else {
+                    Logger.instanse.warn("dashboardauth: Unauthorized, no username/password for " + req.url);
+                }
+                res.statusCode = 401;
+                res.setHeader('WWW-Authenticate', 'Basic realm="OpenFlow"');
+                res.end('Unauthorized');
+            } catch (error) {
+                span.recordException(error);
+                throw error;
+            } finally {
+                Logger.otel.endSpan(span);
             }
         });
         app.get("/Signout", (req: any, res: any, next: any): void => {
