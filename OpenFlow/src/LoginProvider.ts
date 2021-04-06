@@ -1,6 +1,5 @@
 import * as crypto from "crypto";
 import * as url from "url";
-import * as winston from "winston";
 import * as express from "express";
 import * as path from "path";
 
@@ -62,7 +61,6 @@ export class samlauthstrategyoptions {
     public verify: any;
 }
 export class LoginProvider {
-    public static _logger: winston.Logger;
     public static _providers: any = {};
     public static login_providers: Provider[] = [];
 
@@ -149,8 +147,7 @@ export class LoginProvider {
             Logger.otel.endSpan(span);
         }
     }
-    static async configure(logger: winston.Logger, app: express.Express, baseurl: string): Promise<void> {
-        LoginProvider._logger = logger;
+    static async configure(app: express.Express, baseurl: string): Promise<void> {
         app.use(passport.initialize());
         app.use(passport.session());
         passport.serializeUser(async function (user: any, done: any): Promise<void> {
@@ -208,12 +205,14 @@ export class LoginProvider {
                 if (!NoderedUtil.IsNullEmpty(authorization) && authorization.indexOf(" ") > 1 &&
                     (authorization.toLocaleLowerCase().startsWith("bearer") || authorization.toLocaleLowerCase().startsWith("jwt"))) {
                     const token = authorization.split(" ")[1];
-                    let user: User;
+                    let user: User = Auth.getUser(token);
                     let tuser: TokenUser;
-                    try {
-                        user = await LoginProvider.validateToken(token, span);
-                        tuser = TokenUser.From(user);
-                    } catch (error) {
+                    if (user == null) {
+                        try {
+                            user = await LoginProvider.validateToken(token, span);
+                            tuser = TokenUser.From(user);
+                        } catch (error) {
+                        }
                     }
                     if (user == null) {
                         try {
@@ -225,6 +224,7 @@ export class LoginProvider {
                     if (user != null) {
                         const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
                         if (allowed.length > 0) {
+                            await Auth.AddUser(user, token);
                             Logger.instanse.info("dashboardauth: Authorized " + user.username + " for " + req.url);
                             return res.send({
                                 status: "success",
@@ -246,11 +246,13 @@ export class LoginProvider {
                 const [login, password] = Buffer.from(b64auth, "base64").toString().split(':')
                 if (login && password) {
                     span.setAttribute("username", login);
-                    const user = await Auth.ValidateByPassword(login, password, span);
+                    let user: User = Auth.getUser(login + ":" + password);
+                    if (user == null) user = await Auth.ValidateByPassword(login, password, span);
                     if (user != null) {
                         const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
                         if (allowed.length > 0) {
                             Logger.instanse.info("dashboardauth: Authorized " + user.username + " for " + req.url);
+                            Auth.AddUser(user, login + ":" + password);
                             return res.send({
                                 status: "success",
                                 display_status: "Success",
@@ -481,7 +483,7 @@ export class LoginProvider {
                 Logger.otel.endSpan(span);
                 return;
             }
-            LoginProvider._logger.error("validate_user_form " + Config.validate_user_form + " does not exists!");
+            Logger.instanse.error("validate_user_form " + Config.validate_user_form + " does not exists!");
             Config.validate_user_form = "";
             res.end(JSON.stringify({}));
             res.end();
@@ -852,7 +854,7 @@ export class LoginProvider {
         const strategy: passport.Strategy = new GoogleStrategy.Strategy(options, options.verify);
         passport.use(key, strategy);
         strategy.name = key;
-        LoginProvider._logger.info(options.callbackURL);
+        Logger.instanse.info(options.callbackURL);
         app.use("/" + key,
             express.urlencoded({ extended: false }),
             passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),
@@ -882,7 +884,7 @@ export class LoginProvider {
         const strategy: passport.Strategy = new SamlStrategy(options, options.verify);
         passport.use(key, strategy);
         strategy.name = key;
-        LoginProvider._logger.info(options.callbackUrl);
+        Logger.instanse.info(options.callbackUrl);
 
         // app.get("/" + key + "/FederationMetadata/2007-06/FederationMetadata.xml",
         //     wsfed.metadata({
@@ -1022,33 +1024,33 @@ export class LoginProvider {
         app.use("/local",
             express.urlencoded({ extended: false }),
             function (req: any, res: any, next: any): void {
-                LoginProvider._logger.debug("passport.authenticate local");
+                Logger.instanse.debug("passport.authenticate local");
                 passport.authenticate("local", function (err, user, info) {
                     let originalUrl: any = req.cookies.originalUrl;
-                    LoginProvider._logger.debug("originalUrl: " + originalUrl);
+                    Logger.instanse.debug("originalUrl: " + originalUrl);
                     if (err) {
-                        LoginProvider._logger.error(err);
+                        Logger.instanse.error(err);
                     }
                     if (!err && user) {
-                        LoginProvider._logger.info(user);
+                        Logger.instanse.info(user);
                         req.logIn(user, function (err: any) {
                             if (err) {
-                                LoginProvider._logger.info("req.logIn failed");
-                                LoginProvider._logger.error(err);
+                                Logger.instanse.info("req.logIn failed");
+                                Logger.instanse.error(err);
                                 return next(err);
                             }
-                            LoginProvider._logger.info("req.logIn success");
+                            Logger.instanse.info("req.logIn success");
                             if (!NoderedUtil.IsNullEmpty(originalUrl)) {
                                 try {
                                     res.cookie("originalUrl", "", { expires: new Date(0) });
                                     LoginProvider.redirect(res, originalUrl);
-                                    LoginProvider._logger.debug("redirect: " + originalUrl);
+                                    Logger.instanse.debug("redirect: " + originalUrl);
                                     return;
                                 } catch (error) {
                                     console.error(error.message ? error.message : error);
                                 }
                             } else {
-                                LoginProvider._logger.debug("redirect: to /");
+                                Logger.instanse.debug("redirect: to /");
                                 res.redirect("/");
                                 return next();
                             }
@@ -1062,16 +1064,16 @@ export class LoginProvider {
                             originalUrl = originalUrl + "&error=1"
                         }
                         try {
-                            LoginProvider._logger.debug("remove originalUrl");
+                            Logger.instanse.debug("remove originalUrl");
                             res.cookie("originalUrl", "", { expires: new Date(0) });
-                            LoginProvider._logger.debug("redirect: " + originalUrl);
+                            Logger.instanse.debug("redirect: " + originalUrl);
                             LoginProvider.redirect(res, originalUrl);
                         } catch (error) {
                             console.error(error.message ? error.message : error);
                         }
                     } else {
                         try {
-                            LoginProvider._logger.debug("redirect: to /");
+                            Logger.instanse.debug("redirect: to /");
                             res.redirect("/");
                             return next();
                         } catch (error) {
@@ -1090,7 +1092,7 @@ export class LoginProvider {
             let username: string = profile.username;
             if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
             if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
-            LoginProvider._logger.debug("verify: " + username);
+            Logger.instanse.debug("verify: " + username);
             let _user: User = await DBHelper.FindByUsernameOrFederationid(username, span);
 
             if (NoderedUtil.IsNullUndefinded(_user)) {
@@ -1168,7 +1170,7 @@ export class LoginProvider {
             let username: string = profile.username;
             if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
             if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
-            LoginProvider._logger.debug("verify: " + username);
+            Logger.instanse.debug("verify: " + username);
             let _user: User = await DBHelper.FindByUsernameOrFederationid(username, span);
             if (NoderedUtil.IsNullUndefinded(_user)) {
                 let createUser: boolean = Config.auto_create_users;

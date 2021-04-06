@@ -1,8 +1,9 @@
 import { Crypt } from "./Crypt";
-import { User } from "@openiap/openflow-api";
+import { NoderedUtil, User } from "@openiap/openflow-api";
 import { DBHelper } from "./DBHelper";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
+import { Config } from "./Config";
 export class Auth {
     public static async ValidateByPassword(username: string, password: string, parent: Span): Promise<User> {
         const span: Span = Logger.otel.startSubSpan("Auth.ValidateByPassword", parent);
@@ -21,4 +22,65 @@ export class Auth {
             Logger.otel.endSpan(span);
         }
     }
+
+    public static authorizationCache: HashTable<CachedUser> = {};
+    public static getUser(key: string): User {
+        var res: CachedUser = this.authorizationCache[key];
+        if (res === null || res === undefined) return null;
+        var begin: number = res.firstsignin.getTime();
+        var end: number = new Date().getTime();
+        var seconds = Math.round((end - begin) / 1000);
+        if (seconds < Config.api_credential_cache_seconds) {
+            Logger.instanse.info("Return user " + res.user.username + " from cache");
+            return res.user;
+        }
+        this.RemoveUser(key);
+        return null;
+    }
+    public static async RemoveUser(key: string): Promise<void> {
+        await semaphore.down();
+        if (!NoderedUtil.IsNullUndefinded(this.authorizationCache[key])) {
+            Logger.instanse.info("Delete user with key " + key + " from cache");
+            delete this.authorizationCache[key];
+        }
+        semaphore.up();
+    }
+    public static async AddUser(user: User, key: string): Promise<void> {
+        await semaphore.down();
+        if (NoderedUtil.IsNullUndefinded(this.authorizationCache[key])) {
+            Logger.instanse.info("Adding user " + user.username + " to cache with key " + key);
+            var cuser: CachedUser = new CachedUser(user, user._id);
+            this.authorizationCache[key] = cuser;
+        }
+        semaphore.up();
+    }
 }
+export class CachedUser {
+    public firstsignin: Date;
+    constructor(
+        public user: User,
+        public _id: string
+    ) {
+        this.firstsignin = new Date();
+    }
+}
+interface HashTable<T> {
+    [key: string]: T;
+}
+const Semaphore = (n) => ({
+    n,
+    async down() {
+        while (this.n <= 0) await this.wait();
+        this.n--;
+    },
+    up() {
+        this.n++;
+    },
+    async wait() {
+        if (this.n <= 0) return await new Promise((res, req) => {
+            setImmediate(async () => res(await this.wait()))
+        });
+        return;
+    },
+});
+const semaphore = Semaphore(1);
