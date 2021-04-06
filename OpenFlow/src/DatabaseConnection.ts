@@ -2,7 +2,6 @@ import {
     ObjectID, Db, Binary, InsertOneWriteOpResult, DeleteWriteOpResultObject, ObjectId, MapReduceOptions, CollectionInsertOneOptions, UpdateWriteOpResult, WriteOpResult, GridFSBucket, ReadPreference, ChangeStream, CollectionAggregationOptions, MongoClientOptions
 } from "mongodb";
 import { MongoClient } from "mongodb";
-import winston = require("winston");
 import { Crypt } from "./Crypt";
 import { Config } from "./Config";
 import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User } from "@openiap/openflow-api";
@@ -43,7 +42,6 @@ export class DatabaseConnection {
     private mongodburl: string;
     private cli: MongoClient;
     public db: Db;
-    private _logger: winston.Logger;
     private _dbname: string;
     // public static ot_mongodb_query_count: Counter;
     public static mongodb_query: ValueRecorder;
@@ -53,8 +51,7 @@ export class DatabaseConnection {
     public static mongodb_replace: ValueRecorder;
     public static mongodb_delete: ValueRecorder;
     public static mongodb_deletemany: ValueRecorder;
-    constructor(logger: winston.Logger, mongodburl: string, dbname: string) {
-        this._logger = logger;
+    constructor(mongodburl: string, dbname: string) {
         this._dbname = dbname;
         this.mongodburl = mongodburl;
 
@@ -127,11 +124,11 @@ export class DatabaseConnection {
                 reject(reason);
             });
         });
-        this._logger.info(`Really connected to mongodb`);
+        Logger.instanse.info(`Really connected to mongodb`);
         // this.cli = await MongoClient.connect(this.mongodburl, { autoReconnect: false, useNewUrlParser: true });
         const errEvent = (error) => {
             this.isConnected = false;
-            this._logger.error(error);
+            Logger.instanse.error(error);
         }
         this.cli
             .on('error', errEvent)
@@ -257,17 +254,17 @@ export class DatabaseConnection {
                             ace.name = arr[0].name;
                             if (Config.multi_tenant && multi_tenant_skip.indexOf(item._id) > -1) {
                                 // when multi tenant don't allow members of common user groups to see each other
-                                this._logger.info("Running in multi tenant mode, skip adding permissions for " + item.name);
+                                Logger.instanse.info("Running in multi tenant mode, skip adding permissions for " + item.name);
                             } else if (arr[0]._type == "user") {
                                 const u: User = User.assign(arr[0]);
                                 if (!Base.hasRight(u, item._id, Rights.read)) {
-                                    this._logger.debug("Assigning " + item.name + " read permission to " + u.name);
+                                    Logger.instanse.debug("Assigning " + item.name + " read permission to " + u.name);
                                     Base.addRight(u, item._id, item.name, [Rights.read], false);
                                     const ot_end = Logger.otel.startTimer();
                                     await this.db.collection("users").updateOne({ _id: u._id }, { $set: { _acl: u._acl } });
                                     Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: "users" });
                                 } else if (u._id != item._id) {
-                                    this._logger.debug(item.name + " allready exists on " + u.name);
+                                    Logger.instanse.debug(item.name + " allready exists on " + u.name);
                                 }
                             } else if (arr[0]._type == "role") {
                                 const r: Role = Role.assign(arr[0]);
@@ -276,13 +273,13 @@ export class DatabaseConnection {
                                     if (r.name == "admins") {
                                         const b = true;
                                     }
-                                    this._logger.debug("Assigning " + item.name + " read permission to " + r.name);
+                                    Logger.instanse.debug("Assigning " + item.name + " read permission to " + r.name);
                                     Base.addRight(r, item._id, item.name, [Rights.read], false);
                                     const ot_end = Logger.otel.startTimer();
                                     await this.db.collection("users").updateOne({ _id: r._id }, { $set: { _acl: r._acl } });
                                     Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: "users" });
                                 } else if (r._id != item._id) {
-                                    this._logger.debug(item.name + " allready exists on " + r.name);
+                                    Logger.instanse.debug(item.name + " allready exists on " + r.name);
                                 }
 
                             }
@@ -301,7 +298,7 @@ export class DatabaseConnection {
                 if (arr.length == 1 && item._id != WellknownIds.admins && item._id != WellknownIds.root) {
                     if (Config.multi_tenant && multi_tenant_skip.indexOf(item._id) > -1) {
                         // when multi tenant don't allow members of common user groups to see each other
-                        this._logger.info("Running in multi tenant mode, skip removing permissions for " + item.name);
+                        Logger.instanse.info("Running in multi tenant mode, skip removing permissions for " + item.name);
                     } else if (arr[0]._type == "user") {
                         const u: User = User.assign(arr[0]);
                         if (Base.hasRight(u, item._id, Rights.read)) {
@@ -310,14 +307,14 @@ export class DatabaseConnection {
                             // was read the only right ? then remove it
                             const right = Base.getRight(u, item._id, false);
                             if (right == null) {
-                                this._logger.debug("Removing " + item.name + " read permissions from " + u.name);
+                                Logger.instanse.debug("Removing " + item.name + " read permissions from " + u.name);
                                 const ot_end = Logger.otel.startTimer();
                                 await this.db.collection("users").updateOne({ _id: u._id }, { $set: { _acl: u._acl } });
                                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: "users" });
                             }
 
                         } else {
-                            this._logger.debug("No need to remove " + item.name + " read permissions from " + u.name);
+                            Logger.instanse.debug("No need to remove " + item.name + " read permissions from " + u.name);
                         }
                     } else if (arr[0]._type == "role") {
                         const r: Role = Role.assign(arr[0]);
@@ -327,14 +324,14 @@ export class DatabaseConnection {
                             // was read the only right ? then remove it
                             const right = Base.getRight(r, item._id, false);
                             if (right == null) {
-                                this._logger.debug("Removing " + item.name + " read permissions from " + r.name);
+                                Logger.instanse.debug("Removing " + item.name + " read permissions from " + r.name);
                                 const ot_end = Logger.otel.startTimer();
                                 await this.db.collection("users").updateOne({ _id: r._id }, { $set: { _acl: r._acl } });
                                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: "users" });
                             }
 
                         } else {
-                            this._logger.debug("No need to remove " + item.name + " read permissions from " + r.name);
+                            Logger.instanse.debug("No need to remove " + item.name + " read permissions from " + r.name);
                         }
                     }
 
@@ -491,7 +488,7 @@ export class DatabaseConnection {
             Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: collectionname });
             for (let i: number = 0; i < arr.length; i++) { arr[i] = this.decryptentity(arr[i]); }
             DatabaseConnection.traversejsondecode(arr);
-            if (Config.log_queries) this._logger.debug("[" + user.username + "][" + collectionname + "] query gave " + arr.length + " results ");
+            if (Config.log_queries) Logger.instanse.debug("[" + user.username + "][" + collectionname + "] query gave " + arr.length + " results ");
             Logger.otel.endSpan(span);
             return arr;
         } catch (error) {
@@ -626,13 +623,13 @@ export class DatabaseConnection {
             Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_aggregate, { collection: collectionname });
             DatabaseConnection.traversejsondecode(items);
             if (Config.log_aggregates) {
-                if (Config.log_aggregates) this._logger.debug("[" + user.username + "][" + collectionname + "] aggregate gave " + items.length + " results ");
-                if (Config.log_aggregates) this._logger.debug(aggregatesjson);
+                if (Config.log_aggregates) Logger.instanse.debug("[" + user.username + "][" + collectionname + "] aggregate gave " + items.length + " results ");
+                if (Config.log_aggregates) Logger.instanse.debug(aggregatesjson);
             }
             Logger.otel.endSpan(span);
             return items;
         } catch (error) {
-            if (Config.log_aggregates) this._logger.debug(aggregatesjson);
+            if (Config.log_aggregates) Logger.instanse.debug(aggregatesjson);
             span.recordException(error);
             Logger.otel.endSpan(span);
             throw error;
@@ -795,7 +792,7 @@ export class DatabaseConnection {
             if ((hasUser === null || hasUser === undefined)) {
                 Base.addRight(item, user._id, user.name, [Rights.full_control]);
             }
-            if (collectionname != "audit") { this._logger.silly("[" + user.username + "][" + collectionname + "] Adding " + item._type + " " + name + " to database"); }
+            if (collectionname != "audit") { Logger.instanse.silly("[" + user.username + "][" + collectionname + "] Adding " + item._type + " " + name + " to database"); }
             if (!this.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
 
             span.addEvent("encryptentity");
@@ -901,7 +898,7 @@ export class DatabaseConnection {
             }
             span.addEvent("traversejsondecode");
             DatabaseConnection.traversejsondecode(item);
-            if (Config.log_inserts) this._logger.debug("[" + user.username + "][" + collectionname + "] inserted " + item.name);
+            if (Config.log_inserts) Logger.instanse.debug("[" + user.username + "][" + collectionname + "] inserted " + item.name);
         } catch (error) {
             span.recordException(error);
         }
@@ -1109,7 +1106,7 @@ export class DatabaseConnection {
                     setTimeout(() => OAuthProvider.LoadClients(), 1000);
                 }
             }
-            this._logger.silly("[" + user.username + "][" + q.collectionname + "] Updating " + (q.item.name || q.item._name) + " in database");
+            Logger.instanse.silly("[" + user.username + "][" + q.collectionname + "] Updating " + (q.item.name || q.item._name) + " in database");
 
             if (q.query === null || q.query === undefined) {
                 const id: string = q.item._id;
@@ -1189,7 +1186,7 @@ export class DatabaseConnection {
             } catch (error) {
                 throw error;
             }
-            if (Config.log_updates) this._logger.debug("[" + user.username + "][" + q.collectionname + "] updated " + q.item.name);
+            if (Config.log_updates) Logger.instanse.debug("[" + user.username + "][" + q.collectionname + "] updated " + q.item.name);
             Logger.otel.endSpan(span);
             return q;
         } catch (error) {
@@ -1270,7 +1267,7 @@ export class DatabaseConnection {
         (q.item["$set"])._modified = new Date(new Date().toISOString());
 
 
-        this._logger.silly("[" + user.username + "][" + q.collectionname + "] UpdateMany " + (q.item.name || q.item._name) + " in database");
+        Logger.instanse.silly("[" + user.username + "][" + q.collectionname + "] UpdateMany " + (q.item.name || q.item._name) + " in database");
 
         q.j = ((q.j as any) === 'true' || q.j === true);
         if ((q.w as any) !== "majority") q.w = parseInt((q.w as any));
@@ -1292,7 +1289,7 @@ export class DatabaseConnection {
             // } else {
             //     throw Error("UpdateOne failed!!!");
             // }
-            if (Config.log_updates && q.opresult) this._logger.debug("[" + user.username + "][" + q.collectionname + "] updated " + q.opresult.modifiedCount + " items");
+            if (Config.log_updates && q.opresult) Logger.instanse.debug("[" + user.username + "][" + q.collectionname + "] updated " + q.opresult.modifiedCount + " items");
             return q;
         } catch (error) {
             throw error;
@@ -1342,7 +1339,7 @@ export class DatabaseConnection {
         if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to InsertOrUpdateOne"); }
         // if (q.item._id !== null && q.item._id !== undefined && q.item._id !== "") {
         if (exists.length == 1) {
-            if (Config.log_updates) this._logger.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Updating found one in database");
+            if (Config.log_updates) Logger.instanse.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Updating found one in database");
             const uq = new UpdateOneMessage();
             // uq.query = query; 
             uq.item = q.item; uq.collectionname = q.collectionname; uq.w = q.w; uq.j; uq.jwt = q.jwt;
@@ -1357,7 +1354,7 @@ export class DatabaseConnection {
             q.opresult = uqres.opresult;
             q.result = uqres.result;
         } else {
-            if (Config.log_updates) this._logger.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Inserting as new in database");
+            if (Config.log_updates) Logger.instanse.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Inserting as new in database");
             const ot_end = Logger.otel.startTimer();
             q.result = await this.InsertOne(q.item, q.collectionname, q.w, q.j, q.jwt, span);
             Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: q.collectionname });
@@ -1415,7 +1412,7 @@ export class DatabaseConnection {
                 throw Error("item not found!");
             }
         }
-        if (Config.log_deletes) this._logger.verbose("[" + user.username + "][" + collectionname + "] Deleting " + id + " in database");
+        if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] Deleting " + id + " in database");
         const ot_end = Logger.otel.startTimer();
         const res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne(_query);
         Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, { collection: collectionname });
@@ -1471,19 +1468,19 @@ export class DatabaseConnection {
             const ot_end = Logger.otel.startTimer();
             const arr = await this.db.collection(collectionname).find(_query).toArray();
             Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: collectionname });
-            this._logger.debug("[" + user.username + "][" + collectionname + "] Deleting " + arr.length + " files in database");
+            Logger.instanse.debug("[" + user.username + "][" + collectionname + "] Deleting " + arr.length + " files in database");
             for (let i = 0; i < arr.length; i++) {
                 const ot_end = Logger.otel.startTimer();
                 await this._DeleteFile(arr[i]._id);
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });
             }
-            if (Config.log_deletes) this._logger.verbose("[" + user.username + "][" + collectionname + "] deleted " + arr.length + " items in database");
+            if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] deleted " + arr.length + " items in database");
             return arr.length;
         } else {
             const ot_end = Logger.otel.startTimer();
             const res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteMany(_query);
             Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });
-            if (Config.log_deletes) this._logger.verbose("[" + user.username + "][" + collectionname + "] deleted " + res.deletedCount + " items in database");
+            if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] deleted " + res.deletedCount + " items in database");
             return res.deletedCount;
         }
     }
@@ -1522,7 +1519,7 @@ export class DatabaseConnection {
                     newObj[key] = value;
                 }
             } catch (error) {
-                me._logger.error(error);
+                Logger.instanse.error(error);
                 newObj[key] = value;
             }
             return newObj;
@@ -1552,7 +1549,7 @@ export class DatabaseConnection {
                     newObj[key] = value;
                 }
             } catch (error) {
-                me._logger.error(error);
+                Logger.instanse.error(error);
                 newObj[key] = value;
             }
             return newObj;
@@ -1665,7 +1662,7 @@ export class DatabaseConnection {
         if ((item as any).userid === user.username || (item as any).userid === user._id || (item as any).user === user.username) {
             return true;
         } else if (item._id === user._id) {
-            if (action === Rights.delete) { this._logger.error("[" + user.username + "] hasAuthorization, cannot delete self!"); return false; }
+            if (action === Rights.delete) { Logger.instanse.error("[" + user.username + "] hasAuthorization, cannot delete self!"); return false; }
             return true;
         }
 
@@ -1823,7 +1820,7 @@ export class DatabaseConnection {
             });
         } catch (error) {
             span.recordException(error);
-            this._logger.error(error);
+            Logger.instanse.error(error);
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -1962,7 +1959,7 @@ export class DatabaseConnection {
             }
         } catch (error) {
             span.recordException(error);
-            this._logger.error(error);
+            Logger.instanse.error(error);
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -1972,7 +1969,7 @@ export class DatabaseConnection {
         const span: Span = Logger.otel.startSubSpan("db.createIndex", parent);
         return new Promise((resolve, reject) => {
             try {
-                this._logger.info("Adding index " + name + " to " + collectionname);
+                Logger.instanse.info("Adding index " + name + " to " + collectionname);
                 if (NoderedUtil.IsNullUndefinded(options)) options = {};
                 options["name"] = name;
                 this.db.collection(collectionname).createIndex(keypath, options, (err, name) => {
@@ -1995,7 +1992,7 @@ export class DatabaseConnection {
         const span: Span = Logger.otel.startSubSpan("db.deleteIndex", parent);
         return new Promise((resolve, reject) => {
             try {
-                this._logger.info("Dropping index " + name + " in " + collectionname);
+                Logger.instanse.info("Dropping index " + name + " in " + collectionname);
                 this.db.collection(collectionname).dropIndex(name, (err, name) => {
                     if (err) {
                         span.recordException(err);
@@ -2103,7 +2100,7 @@ export class DatabaseConnection {
                     }
                 } catch (error) {
                     span.recordException(error);
-                    this._logger.error(error);
+                    Logger.instanse.error(error);
                 }
             }
         } catch (error) {

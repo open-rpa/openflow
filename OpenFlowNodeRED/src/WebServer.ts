@@ -1,5 +1,4 @@
 import * as path from "path";
-import * as winston from "winston";
 import * as http from "http";
 import * as https from "https";
 import * as express from "express";
@@ -71,7 +70,6 @@ export class log_message {
 }
 
 export class WebServer {
-    private static _logger: winston.Logger;
     private static app: express.Express = null;
 
     // public static openflow_nodered_node_activations: Counter;
@@ -88,9 +86,7 @@ export class WebServer {
     // public static log_messages: Record<string, log_message> = {};
     // public static spans: any = {};
     private static settings: nodered_settings = null;
-    static async configure(logger: winston.Logger, socket: WebSocketClient): Promise<http.Server> {
-        this._logger = logger;
-
+    static async configure(socket: WebSocketClient): Promise<http.Server> {
         const options: any = null;
         const RED: nodered.Red = nodered;
 
@@ -112,7 +108,7 @@ export class WebServer {
         }
 
         try {
-            this._logger.debug("WebServer.configure::begin");
+            Logger.instanse.debug("WebServer.configure::begin");
             let server: http.Server = null;
             if (this.app === null) {
                 this.app = express();
@@ -123,13 +119,13 @@ export class WebServer {
                 const name = Config.getEnv("nodered_id", null);
                 if (!NoderedUtil.IsNullEmpty(name)) defaultLabels["name"] = name;
                 if (NoderedUtil.IsNullEmpty(name)) defaultLabels["name"] = hostname;
-                this._logger.debug("WebServer.configure::configure register");
+                Logger.instanse.debug("WebServer.configure::configure register");
                 const loggerstream = {
                     write: function (message, encoding) {
-                        logger.silly(message);
+                        Logger.instanse.silly(message);
                     }
                 };
-                this._logger.debug("WebServer.configure::setup express middleware");
+                Logger.instanse.debug("WebServer.configure::setup express middleware");
                 this.app.use(morgan('combined', { stream: loggerstream }));
                 this.app.use(compression());
                 this.app.use(express.urlencoded({ limit: '10mb', extended: true }))
@@ -146,7 +142,7 @@ export class WebServer {
                     done(null, user);
                 });
                 if (Config.tls_crt != '' && Config.tls_key != '') {
-                    this._logger.debug("WebServer.configure::configure ssl");
+                    Logger.instanse.debug("WebServer.configure::configure ssl");
                     let options: any = {
                         cert: Config.tls_crt,
                         key: Config.tls_key
@@ -170,7 +166,7 @@ export class WebServer {
                     if (Config.tls_passphrase !== "") {
                         options.passphrase = Config.tls_passphrase;
                     }
-                    this._logger.debug("WebServer.configure::create https server");
+                    Logger.instanse.debug("WebServer.configure::create https server");
                     server = https.createServer(options, this.app);
 
                     const redirapp = express();
@@ -181,14 +177,14 @@ export class WebServer {
                     })
                     // _http.listen(80);
                 } else {
-                    this._logger.debug("WebServer.configure::create http server");
+                    Logger.instanse.debug("WebServer.configure::create http server");
                     server = http.createServer(this.app);
                 }
                 server.on("error", (error) => {
-                    this._logger.error(error);
+                    Logger.instanse.error(error);
                 });
 
-                this._logger.debug("WebServer.configure::configure nodered settings");
+                Logger.instanse.debug("WebServer.configure::configure nodered settings");
                 this.settings = new nodered_settings();
                 const c = Config;
                 if (Config.nodered_port > 0) {
@@ -286,7 +282,7 @@ export class WebServer {
                             } catch (error) {
                                 console.trace(error);
                                 console.error(error);
-                                WebServer._logger.error(error);
+                                Logger.instanse.error(error);
                             }
 
                         }
@@ -317,8 +313,8 @@ export class WebServer {
                     noderedcontribmiddlewareauth.process(socket, req, res, next);
                 };
 
-                this._logger.debug("WebServer.configure::configure nodered storageModule");
-                this.settings.storageModule = new noderedcontribopenflowstorage(logger, socket);
+                Logger.instanse.debug("WebServer.configure::configure nodered storageModule");
+                this.settings.storageModule = new noderedcontribopenflowstorage(socket);
                 const n: noderednpmrc = await this.settings.storageModule._getnpmrc();
                 if (!NoderedUtil.IsNullUndefinded(n) && !NoderedUtil.IsNullUndefinded(n.catalogues)) {
                     this.settings.editorTheme.palette.catalogues = n.catalogues;
@@ -337,7 +333,7 @@ export class WebServer {
                     name: 'session', secret: Config.cookie_secret, httpOnly: true
                 }))
 
-                this._logger.debug("WebServer.configure::init nodered");
+                Logger.instanse.debug("WebServer.configure::init nodered");
                 // initialise the runtime with a server and settings
                 await (RED as any).init(server, this.settings);
 
@@ -353,16 +349,16 @@ export class WebServer {
                 });
 
                 if (Config.nodered_port > 0) {
-                    this._logger.debug("WebServer.configure::server.listen on port " + Config.nodered_port);
+                    Logger.instanse.debug("WebServer.configure::server.listen on port " + Config.nodered_port);
                     server.listen(Config.nodered_port).on('error', function (error) {
-                        WebServer._logger.error(error);
+                        Logger.instanse.error(error);
                         process.exit(404);
                     });
                 }
                 else {
-                    this._logger.debug("WebServer.configure::server.listen on port " + Config.port);
+                    Logger.instanse.debug("WebServer.configure::server.listen on port " + Config.port);
                     server.listen(Config.port).on('error', function (error) {
-                        WebServer._logger.error(error);
+                        Logger.instanse.error(error);
                         process.exit(404);
                     });
                 }
@@ -382,14 +378,14 @@ export class WebServer {
             let hasErrors: boolean = true, errorCounter: number = 0, err: any;
             while (hasErrors) {
                 try {
-                    this._logger.debug("WebServer.configure::restarting nodered ...");
+                    Logger.instanse.debug("WebServer.configure::restarting nodered ...");
                     RED.start();
                     hasErrors = false;
                 } catch (error) {
                     err = error;
                     errorCounter++;
                     hasErrors = true;
-                    this._logger.error(error);
+                    Logger.instanse.error(error);
                 }
                 if (errorCounter == 10) {
                     throw err;
@@ -400,8 +396,8 @@ export class WebServer {
             }
             return server;
         } catch (error) {
-            this._logger.error(error);
-            this._logger.error("WEBSERVER ERROR");
+            Logger.instanse.error(error);
+            Logger.instanse.error("WEBSERVER ERROR");
             // process.exit(404);
         }
         return null;
@@ -420,7 +416,7 @@ export class WebServer {
                 if (result[msg.command] == null) result[msg.command] = 0;
                 result[msg.command]++;
             } catch (error) {
-                WebServer._logger.error(error);
+                Logger.instanse.error(error);
             }
         });
         const keys2 = Object.keys(result);

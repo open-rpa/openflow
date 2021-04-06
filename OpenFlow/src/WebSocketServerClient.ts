@@ -1,4 +1,3 @@
-import * as winston from "winston";
 import * as WebSocket from "ws";
 import { SocketMessage } from "./SocketMessage";
 import { Message, JSONfn } from "./Messages/Message";
@@ -38,7 +37,6 @@ export class clsstream {
 
 export class WebSocketServerClient {
     public jwt: string;
-    public _logger: winston.Logger;
     private _socketObject: WebSocket;
     private _receiveQueue: SocketMessage[];
     private _sendQueue: SocketMessage[];
@@ -60,8 +58,7 @@ export class WebSocketServerClient {
         this.commandcounter[command] = result;
         return result;
     }
-    constructor(logger: winston.Logger, socketObject: WebSocket, req: any) {
-        this._logger = logger;
+    constructor(socketObject: WebSocket, req: any) {
         this.id = Math.random().toString(36).substr(2, 9);
         this._socketObject = socketObject;
         this._receiveQueue = [];
@@ -80,21 +77,21 @@ export class WebSocketServerClient {
                 if (req.headers["x-real-ip"] != null) this.remoteip = req.headers["x-real-ip"];
             }
         }
-        logger.info("new client " + this.id + " from " + this.remoteip);
+        Logger.instanse.info("new client " + this.id + " from " + this.remoteip);
         socketObject.on("open", (e: Event): void => this.open(e));
         socketObject.on("message", (e: string): void => (this.message(e) as any)); // e: MessageEvent
         socketObject.on("error", (e: Event): void => this.error(e));
         socketObject.on("close", (e: CloseEvent): void => this.close(e));
     }
     private open(e: Event): void {
-        this._logger.info("WebSocket connection opened " + e + " " + this.id);
+        Logger.instanse.info("WebSocket connection opened " + e + " " + this.id);
     }
     private close(e: CloseEvent): void {
-        this._logger.info("WebSocket connection closed " + e + " " + this.id + "/" + this.clientagent);
+        Logger.instanse.info("WebSocket connection closed " + e + " " + this.id + "/" + this.clientagent);
         this.Close();
     }
     private error(e: Event): void {
-        this._logger.error("WebSocket error encountered " + e + " " + this.id + "/" + this.clientagent);
+        Logger.instanse.error("WebSocket error encountered " + e + " " + this.id + "/" + this.clientagent);
     }
     public queuecount(): number {
         if (this._queues == null) return 0;
@@ -131,7 +128,7 @@ export class WebSocketServerClient {
             }
             this._socketObject.send(msg.tojson());
         } catch (error) {
-            this._logger.error(error);
+            Logger.instanse.error(error);
             span.recordException(error);
             this._receiveQueue = [];
             this._sendQueue = [];
@@ -146,9 +143,9 @@ export class WebSocketServerClient {
         }
     }
     private _message(message: string): void {
-        //this._logger.silly("WebSocket message received " + message);
+        //Logger.instanse.silly("WebSocket message received " + message);
         let msg: SocketMessage = SocketMessage.fromjson(message);
-        this._logger.silly("WebSocket message received id: " + msg.id + " index: " + msg.index + " count: " + msg.count);
+        Logger.instanse.silly("WebSocket message received id: " + msg.id + " index: " + msg.index + " count: " + msg.count);
         this._receiveQueue.push(msg);
         if ((msg.index + 1) >= msg.count) this.ProcessQueue();
     }
@@ -158,7 +155,7 @@ export class WebSocketServerClient {
             if (!NoderedUtil.IsNullUndefinded(this.user)) { username = this.user.username; }
             this._message(message);
         } catch (error) {
-            this._logger.error("[" + username + "/" + this.clientagent + "/" + this.id + "] WebSocket error encountered " + (error.message ? error.message : error));
+            Logger.instanse.error("[" + username + "/" + this.clientagent + "/" + this.id + "] WebSocket error encountered " + (error.message ? error.message : error));
             const errormessage: Message = new Message(); errormessage.command = "error"; errormessage.data = (error.message ? error.message : error);
             this._socketObject.send(JSON.stringify(errormessage));
         }
@@ -171,7 +168,7 @@ export class WebSocketServerClient {
                 await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i], undefined);
                 this._queues.splice(i, 1);
             } catch (error) {
-                this._logger.error("WebSocketclient::closeconsumers " + error);
+                Logger.instanse.error("WebSocketclient::closeconsumers " + error);
             }
         }
         if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...Logger.otel.defaultlabels, clientid: this.id }).update(this._queues.length);
@@ -189,12 +186,12 @@ export class WebSocketServerClient {
                     this._socketObject.removeListener("error", (e: Event): void => this.error(e));
                     this._socketObject.removeListener("close", (e: CloseEvent): void => this.close(e));
                 } catch (error) {
-                    this._logger.error("WebSocketclient::Close::removeListener " + error);
+                    Logger.instanse.error("WebSocketclient::Close::removeListener " + error);
                 }
                 try {
                     this._socketObject.close();
                 } catch (error) {
-                    this._logger.error("WebSocketclient::Close " + error);
+                    Logger.instanse.error("WebSocketclient::Close " + error);
                 }
             }
         } catch (error) {
@@ -217,7 +214,7 @@ export class WebSocketServerClient {
                         this._queues.splice(i, 1);
                         if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...Logger.otel.defaultlabels, clientid: this.id }).update(this._queues.length);
                     } catch (error) {
-                        this._logger.error("WebSocketclient::CloseConsumer " + error);
+                        Logger.instanse.error("WebSocketclient::CloseConsumer " + error);
                     }
                 }
             }
@@ -275,7 +272,7 @@ export class WebSocketServerClient {
                 }
                 if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...Logger.otel.defaultlabels, clientid: this.id }).update(this._queues.length);
             } catch (error) {
-                this._logger.error("WebSocketclient::CreateConsumer " + error);
+                Logger.instanse.error("WebSocketclient::CreateConsumer " + error);
             }
             semaphore.up();
             if (queue != null) return queue.queue;
@@ -308,10 +305,10 @@ export class WebSocketServerClient {
             const msgs: SocketMessage[] = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id === id; });
             if (this._receiveQueue.length > Config.websocket_max_package_count) {
                 if (Config.websocket_disconnect_out_of_sync) {
-                    this._logger.error("[" + username + "/" + this.clientagent + "/" + this.id + "] _receiveQueue containers more than " + Config.websocket_max_package_count + " messages for id '" + id + "', disconnecting");
+                    Logger.instanse.error("[" + username + "/" + this.clientagent + "/" + this.id + "] _receiveQueue containers more than " + Config.websocket_max_package_count + " messages for id '" + id + "', disconnecting");
                     this.Close();
                 } else {
-                    this._logger.error("[" + username + "/" + this.clientagent + "/" + this.id + "] _receiveQueue containers more than " + Config.websocket_max_package_count + " messages for id '" + id + "' so discarding all !!!!!!!");
+                    Logger.instanse.error("[" + username + "/" + this.clientagent + "/" + this.id + "] _receiveQueue containers more than " + Config.websocket_max_package_count + " messages for id '" + id + "' so discarding all !!!!!!!");
                     this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
                 }
             }
@@ -332,7 +329,7 @@ export class WebSocketServerClient {
                     result.Process(this);
                 }
             } else {
-                // this._logger.debug("[" + username + "] WebSocketclient::ProcessQueue receiveQueue: Cannot process i have " + msgs.length + " out of " + first.count + " for message " + first.id);
+                // Logger.instanse.debug("[" + username + "] WebSocketclient::ProcessQueue receiveQueue: Cannot process i have " + msgs.length + " out of " + first.count + " for message " + first.id);
             }
         });
         this._sendQueue.forEach(msg => {
@@ -340,12 +337,12 @@ export class WebSocketServerClient {
             try {
                 this._socketObject.send(JSON.stringify(msg));
             } catch (error) {
-                this._logger.error("WebSocket error encountered " + error);
+                Logger.instanse.error("WebSocket error encountered " + error);
             }
             this._sendQueue = this._sendQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
         });
         // if (this._receiveQueue.length > 25 || this._sendQueue.length > 25) {
-        //     this._logger.debug("[" + username + "] WebSocketclient::ProcessQueue receiveQueue: " + this._receiveQueue.length + " sendQueue: " + this._sendQueue.length);
+        //     Logger.instanse.debug("[" + username + "] WebSocketclient::ProcessQueue receiveQueue: " + this._receiveQueue.length + " sendQueue: " + this._sendQueue.length);
         // }
     }
     public async Send<T>(message: Message): Promise<T> {
@@ -467,7 +464,7 @@ export class WebSocketServerClient {
                     }
                     this.streams.splice(i, 1);
                 } catch (error) {
-                    this._logger.error("WebSocketclient::CloseStreams " + error + " " + this.id + "/" + this.clientagent);
+                    Logger.instanse.error("WebSocketclient::CloseStreams " + error + " " + this.id + "/" + this.clientagent);
                 }
             }
         }
@@ -481,7 +478,7 @@ export class WebSocketServerClient {
                         this.streams.splice(i, 1);
                     }
                 } catch (error) {
-                    this._logger.error("WebSocketclient::CloseStream " + error + " " + this.id + "/" + this.clientagent);
+                    Logger.instanse.error("WebSocketclient::CloseStream " + error + " " + this.id + "/" + this.clientagent);
                 }
             }
         }
@@ -504,8 +501,8 @@ export class WebSocketServerClient {
             });
             (stream.stream as any).on("change", next => {
                 try {
-                    // me._logger.info(JSON.stringify(next, null, 4));
-                    me._logger.info("Watch: " + JSON.stringify(next.documentKey));
+                    // Logger.instanse.info(JSON.stringify(next, null, 4));
+                    Logger.instanse.info("Watch: " + JSON.stringify(next.documentKey));
                     const msg: SocketMessage = SocketMessage.fromcommand("watchevent");
                     const q = new WatchEventMessage();
                     q.id = stream.id;
@@ -513,13 +510,13 @@ export class WebSocketServerClient {
                     msg.data = JSON.stringify(q);
                     me._socketObject.send(msg.tojson());
                 } catch (error) {
-                    this._logger.error("WebSocketclient::Watch::changeListener " + error + " " + this.id + "/" + this.clientagent);
+                    Logger.instanse.error("WebSocketclient::Watch::changeListener " + error + " " + this.id + "/" + this.clientagent);
                 }
             }, options);
             WebSocketServer.update_mongodb_watch_count(this);
             return stream.id;
         } catch (error) {
-            this._logger.error("WebSocketclient::Watch " + error + " " + this.id + "/" + this.clientagent);
+            Logger.instanse.error("WebSocketclient::Watch " + error + " " + this.id + "/" + this.clientagent);
             throw error;
         }
     }

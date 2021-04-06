@@ -1,4 +1,3 @@
-import * as winston from "winston";
 import * as http from "http";
 
 import { Logger } from "./Logger";
@@ -13,7 +12,7 @@ import { DBHelper } from "./DBHelper";
 import { OAuthProvider } from "./OAuthProvider";
 import { Span } from "@opentelemetry/api";
 
-const logger: winston.Logger = Logger.configure();
+Logger.configure();
 
 let _otel_require: any = null;
 try {
@@ -22,7 +21,7 @@ try {
 
 }
 if (_otel_require != null) {
-    Logger.otel = _otel_require.otel.configure(logger);
+    Logger.otel = _otel_require.otel.configure();
 } else {
     const fakespan = {
         context: () => undefined,
@@ -51,11 +50,11 @@ if (_otel_require != null) {
         } as any;
 }
 
-Config.db = new DatabaseConnection(logger, Config.mongodb_url, Config.mongodb_db);
+Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db);
 
 
 async function initamqp() {
-    const amqp: amqpwrapper = new amqpwrapper(logger, Config.amqp_url);
+    const amqp: amqpwrapper = new amqpwrapper(Config.amqp_url);
     amqpwrapper.SetInstance(amqp);
     await amqp.connect();
     // Must also consume messages in the dead letter queue, to catch messages that have timed out
@@ -70,7 +69,7 @@ async function initamqp() {
             msg.command = "timeout";
             // Resend message, this time to the reply queue for the correct node (replyTo)
             // this.SendMessage(JSON.stringify(data), msg.properties.replyTo, msg.properties.correlationId, false);
-            logger.info("[DLX][" + options.exchange + "] Send timeout to " + options.replyTo)
+            Logger.instanse.info("[DLX][" + options.exchange + "] Send timeout to " + options.replyTo)
             await amqpwrapper.Instance().sendWithReply("", options.replyTo, msg, 20000, options.correlationId);
         } catch (error) {
             console.error("Failed sending deadletter message to " + options.replyTo);
@@ -135,7 +134,7 @@ async function initDatabase(): Promise<boolean> {
         Base.removeRight(robot_agent_users, WellknownIds.admins, [Rights.delete]);
         Base.addRight(robot_agent_users, WellknownIds.root, "root", [Rights.full_control]);
         if (Config.multi_tenant) {
-            logger.debug("[root][users] Running in multi tenant mode, remove " + robot_agent_users.name + " from self");
+            Logger.instanse.debug("[root][users] Running in multi tenant mode, remove " + robot_agent_users.name + " from self");
             Base.removeRight(robot_agent_users, robot_agent_users._id, [Rights.full_control]);
         } else if (Config.update_acl_based_on_groups) {
             Base.removeRight(robot_agent_users, robot_agent_users._id, [Rights.full_control]);
@@ -164,7 +163,7 @@ async function initDatabase(): Promise<boolean> {
         Base.addRight(personal_nodered_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(personal_nodered_users, WellknownIds.admins, [Rights.delete]);
         if (Config.multi_tenant) {
-            logger.debug("[root][users] Running in multi tenant mode, remove " + personal_nodered_users.name + " from self");
+            Logger.instanse.debug("[root][users] Running in multi tenant mode, remove " + personal_nodered_users.name + " from self");
             Base.removeRight(personal_nodered_users, personal_nodered_users._id, [Rights.full_control]);
         } else if (Config.update_acl_based_on_groups) {
             Base.removeRight(personal_nodered_users, personal_nodered_users._id, [Rights.full_control]);
@@ -181,7 +180,7 @@ async function initDatabase(): Promise<boolean> {
         Base.addRight(nodered_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(nodered_users, WellknownIds.admins, [Rights.delete]);
         if (Config.multi_tenant) {
-            logger.debug("[root][users] Running in multi tenant mode, remove " + nodered_users.name + " from self");
+            Logger.instanse.debug("[root][users] Running in multi tenant mode, remove " + nodered_users.name + " from self");
             Base.removeRight(nodered_users, nodered_users._id, [Rights.full_control]);
         } else if (Config.update_acl_based_on_groups) {
             Base.removeRight(nodered_users, nodered_users._id, [Rights.full_control]);
@@ -193,7 +192,7 @@ async function initDatabase(): Promise<boolean> {
         Base.addRight(nodered_api_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(nodered_api_users, WellknownIds.admins, [Rights.delete]);
         if (Config.multi_tenant) {
-            logger.debug("[root][users] Running in multi tenant mode, remove " + nodered_api_users.name + " from self");
+            Logger.instanse.debug("[root][users] Running in multi tenant mode, remove " + nodered_api_users.name + " from self");
             Base.removeRight(nodered_api_users, nodered_api_users._id, [Rights.full_control]);
         } else if (Config.update_acl_based_on_groups) {
             Base.removeRight(nodered_api_users, nodered_api_users._id, [Rights.full_control]);
@@ -212,7 +211,7 @@ async function initDatabase(): Promise<boolean> {
         Base.addRight(robot_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(robot_users, WellknownIds.admins, [Rights.delete]);
         if (Config.multi_tenant) {
-            logger.debug("[root][users] Running in multi tenant mode, remove " + robot_users.name + " from self");
+            Logger.instanse.debug("[root][users] Running in multi tenant mode, remove " + robot_users.name + " from self");
             Base.removeRight(robot_users, robot_users._id, [Rights.full_control]);
         } else if (Config.update_acl_based_on_groups) {
             Base.removeRight(robot_users, robot_users._id, [Rights.full_control]);
@@ -230,7 +229,7 @@ async function initDatabase(): Promise<boolean> {
         Base.addRight(filestore_admins, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(filestore_admins, WellknownIds.admins, [Rights.delete]);
         if (Config.multi_tenant) {
-            logger.debug("[root][users] Running in multi tenant mode, remove " + filestore_admins.name + " from self");
+            Logger.instanse.debug("[root][users] Running in multi tenant mode, remove " + filestore_admins.name + " from self");
             Base.removeRight(filestore_admins, filestore_admins._id, [Rights.full_control]);
         }
         await DBHelper.Save(filestore_admins, jwt, span);
@@ -242,7 +241,7 @@ async function initDatabase(): Promise<boolean> {
         Base.addRight(filestore_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(filestore_users, WellknownIds.admins, [Rights.delete]);
         if (Config.multi_tenant) {
-            logger.debug("[root][users] Running in multi tenant mode, remove " + filestore_users.name + " from self");
+            Logger.instanse.debug("[root][users] Running in multi tenant mode, remove " + filestore_users.name + " from self");
             Base.removeRight(filestore_users, filestore_users._id, [Rights.full_control]);
         } else if (Config.update_acl_based_on_groups) {
             Base.removeRight(filestore_users, filestore_users._id, [Rights.full_control]);
@@ -257,7 +256,7 @@ async function initDatabase(): Promise<boolean> {
     } catch (error) {
         span.recordException(error);
         Logger.otel.endSpan(span);
-        logger.error(error);
+        Logger.instanse.error(error);
         return false;
     }
 }
@@ -368,21 +367,21 @@ var server: http.Server = null;
 (async function (): Promise<void> {
     try {
         await initamqp();
-        logger.info("VERSION: " + Config.version);
-        server = await WebServer.configure(logger, Config.baseurl());
+        Logger.instanse.info("VERSION: " + Config.version);
+        server = await WebServer.configure(Config.baseurl());
         if (GrafanaProxy != null) {
-            const grafana = await GrafanaProxy.GrafanaProxy.configure(logger, WebServer.app);
+            const grafana = await GrafanaProxy.GrafanaProxy.configure(WebServer.app);
         }
 
-        OAuthProvider.configure(logger, WebServer.app);
-        WebSocketServer.configure(logger, server);
-        logger.info("listening on " + Config.baseurl());
-        logger.info("namespace: " + Config.namespace);
+        OAuthProvider.configure(WebServer.app);
+        WebSocketServer.configure(server);
+        Logger.instanse.info("listening on " + Config.baseurl());
+        Logger.instanse.info("namespace: " + Config.namespace);
         if (!await initDatabase()) {
             process.exit(404);
         }
     } catch (error) {
-        logger.error(error);
+        Logger.instanse.error(error);
         process.exit(404);
     }
 })();

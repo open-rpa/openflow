@@ -1,4 +1,3 @@
-import * as winston from "winston";
 import * as express from "express";
 import * as samlp from "samlp";
 import { Config } from "./Config";
@@ -9,9 +8,6 @@ import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 
 export class SamlProvider {
-    private static _logger: winston.Logger;
-    // private static app:express.Express;
-
     public static profileMapper(pu: any): any {
         return {
             pu: pu,
@@ -58,8 +54,7 @@ export class SamlProvider {
         };
     }
 
-    static configure(logger: winston.Logger, app: express.Express, baseurl: string): void {
-        this._logger = logger;
+    static configure(app: express.Express, baseurl: string): void {
         const cert: string = Buffer.from(Config.signing_crt, "base64").toString("ascii");
         const key: string = Buffer.from(Config.singing_key, "base64").toString("ascii");
 

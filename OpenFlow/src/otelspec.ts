@@ -3,7 +3,6 @@ import { BasicTracerProvider } from "@opentelemetry/tracing";
 import { HrTime, Span, setSpan } from "@opentelemetry/api";
 import { ValueRecorder } from "@opentelemetry/api-metrics";
 import { Labels } from "@opentelemetry/api-metrics";
-import winston = require("winston");
 
 export declare class otel {
     default_boundaries: number[];
@@ -26,8 +25,7 @@ export declare class otel {
     private static nodejs_heap_size_used_bytes;
     private static nodejs_heap_size_total_bytes;
     private static perfTimeout;
-    private _logger;
-    static configure(logger: winston.Logger): otel;
+    static configure(): otel;
     startSpan(name: string): Span;
     startSubSpan(name: string, parent: Span): Span;
     endSpan(span: Span): void;

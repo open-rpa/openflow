@@ -1,5 +1,4 @@
 import * as retry from "async-retry";
-import * as winston from "winston";
 import * as amqplib from "amqplib";
 import { Config } from "./Config";
 import { Crypt } from "./Crypt";
@@ -59,7 +58,6 @@ export class amqpwrapper {
     private conn: amqplib.Connection;
     private channel: amqplib.ConfirmChannel; // amqplib.Channel  channel: amqplib.ConfirmChannel;
     // private confirmchannel: amqplib.ConfirmChannel; // channel: amqplib.ConfirmChannel;
-    private _logger: winston.Logger;
     private connectionstring: string;
     public AssertExchangeOptions: any = { durable: false, confirm: true };
     public AssertQueueOptions: amqplib.any = { durable: true };
@@ -76,8 +74,7 @@ export class amqpwrapper {
     public static SetInstance(instance: amqpwrapper): void {
         this._instance = instance;
     }
-    constructor(logger: winston.Logger, connectionstring: string) {
-        this._logger = logger;
+    constructor(connectionstring: string) {
         this.connectionstring = connectionstring;
         if (!NoderedUtil.IsNullEmpty(Config.amqp_dlx)) {
             this.AssertQueueOptions.arguments = {};
@@ -103,11 +100,11 @@ export class amqpwrapper {
                 this.conn = await amqplib.connect(this.connectionstring);
                 this.conn.on('error', (error) => {
                     if (error.code != 404) {
-                        this._logger.error(error);
+                        Logger.instanse.error(error);
                     }
                 });
                 this.conn.on("close", () => {
-                    this._logger.info("[AMQP] reconnecting");
+                    Logger.instanse.info("[AMQP] reconnecting");
                     this.conn = null;
                     if (this.timeout == null) {
                         this.timeout = setTimeout(this.connect.bind(this), 1000);
@@ -142,7 +139,7 @@ export class amqpwrapper {
             });
             this.channel.on('error', (error) => {
                 if (error.code != 404) {
-                    this._logger.error(error);
+                    Logger.instanse.error(error);
                 }
             });
         } catch (error) {
@@ -154,7 +151,7 @@ export class amqpwrapper {
         const span: Span = Logger.otel.startSubSpan("amqpwrapper.validateToken", parent);
         try {
             if (queue != null) {
-                this._logger.info("[AMQP] Remove queue consumer " + queue.queue + "/" + queue.consumerTag);
+                Logger.instanse.info("[AMQP] Remove queue consumer " + queue.queue + "/" + queue.consumerTag);
                 if (this.channel != null) await this.channel.cancel(queue.consumerTag);
             }
         } catch (error) {
@@ -199,10 +196,10 @@ export class amqpwrapper {
                         if (!skip) {
                             queue = name + queue;
                         } else {
-                            this._logger.info("[SKIP] skipped force prefix for " + queue);
+                            Logger.instanse.info("[SKIP] skipped force prefix for " + queue);
                         }
                     } else {
-                        this._logger.info("[SKIP] skipped force prefix for " + queue);
+                        Logger.instanse.info("[SKIP] skipped force prefix for " + queue);
                     }
                 } else {
                     const tuser = Crypt.verityToken(jwt);
@@ -248,7 +245,7 @@ export class amqpwrapper {
                     this.OnMessage(q, msg, q.callback);
                 }, { noAck: false });
                 q.consumerTag = consumeresult.consumerTag;
-                this._logger.info("[AMQP] Added queue consumer " + q.queue + "/" + q.consumerTag);
+                Logger.instanse.info("[AMQP] Added queue consumer " + q.queue + "/" + q.consumerTag);
             }
             return q;
         } catch (error) {
@@ -284,7 +281,7 @@ export class amqpwrapper {
             q.queue = await this.AddQueueConsumer("", AssertQueueOptions, jwt, q.callback, span);
             if (q.queue) {
                 this.channel.bindQueue(q.queue.queue, q.exchange, q.routingkey);
-                this._logger.info("[AMQP] Added exchange consumer " + q.exchange + ' to queue ' + q.queue.queue);
+                Logger.instanse.info("[AMQP] Added exchange consumer " + q.exchange + ' to queue ' + q.queue.queue);
             }
             this.exchanges.push(q);
             return q;
@@ -296,13 +293,13 @@ export class amqpwrapper {
         }
     }
     OnMessage(sender: amqpqueue, msg: amqplib.ConsumeMessage, callback: QueueOnMessage): void {
-        // sender._logger.info("OnMessage " + msg.content.toString());
+        // Logger.instanse.info("OnMessage " + msg.content.toString());
         try {
             const now = new Date();
             // const seconds = (now.getTime() - sender.cli.lastheartbeat.getTime()) / 1000;
             // if (seconds >= Config.client_heartbeat_timeout) {
             //     try {
-            //         sender.cli._logger.info("amqpwrapper.OnMessage: receive message for inactive client, nack message and try and close");
+            //         Logger.instanse.info("amqpwrapper.OnMessage: receive message for inactive client, nack message and try and close");
             //         this.channel.nack(msg);
             //         sender.cli.Close();
             //     } catch (error) {
@@ -369,7 +366,7 @@ export class amqpwrapper {
             data = JSON.stringify(data);
         }
 
-        this._logger.info("send to queue: " + queue + " exchange: " + exchange + " with reply to " + replyTo);
+        Logger.instanse.info("send to queue: " + queue + " exchange: " + exchange + " with reply to " + replyTo);
         const options: any = { mandatory: true };
         options.replyTo = replyTo;
         if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = this.generateUuid();
@@ -399,7 +396,7 @@ export class amqpwrapper {
         }
         if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = this.generateUuid();
 
-        this._logger.info("send to queue: " + queue + " exchange: " + exchange);
+        Logger.instanse.info("send to queue: " + queue + " exchange: " + exchange);
         const options: any = { mandatory: true };
         if (!NoderedUtil.IsNullEmpty(correlationId)) options.correlationId = correlationId;
         if (expiration < 1) expiration = Config.amqp_default_expiration;
@@ -491,7 +488,7 @@ export class amqpwrapper {
                 }
             });
         } catch (error) {
-            this._logger.debug(error.message ? error.message : error);
+            Logger.instanse.debug(error.message ? error.message : error);
         }
         if (result == true) {
             return result;

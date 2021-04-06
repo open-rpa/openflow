@@ -1,6 +1,5 @@
 import * as fs from "fs";
 import * as path from "path";
-import * as winston from "winston";
 import * as http from "http";
 import { WebSocketClient, NoderedUtil, TokenUser } from "@openiap/openflow-api";
 import { Logger } from "./Logger";
@@ -8,8 +7,8 @@ import { WebServer } from "./WebServer";
 import { Config } from "./Config";
 import { Crypt } from "./nodeclient/Crypt";
 import { FileSystemCache } from "@openiap/openflow-api";
-const logger: winston.Logger = Logger.configure();
-logger.info("starting openflow nodered");
+Logger.configure();
+Logger.instanse.info("starting openflow nodered");
 
 let _otel_require: any = null;
 try {
@@ -18,7 +17,7 @@ try {
 
 }
 if (_otel_require != null) {
-    Logger.otel = _otel_require.otel.configure(logger);
+    Logger.otel = _otel_require.otel.configure();
 } else {
     const fakespan = {
         context: () => undefined,
@@ -118,16 +117,16 @@ let server: http.Server = null;
         const backupStore = new FileSystemCache(path.join(Config.logpath, '.cache-' + Config.nodered_id));
         const filename: string = Config.nodered_id + "_flows.json";
         const json = await backupStore.get(filename, null);
-        const socket: WebSocketClient = new WebSocketClient(logger, Config.api_ws_url);
+        const socket: WebSocketClient = new WebSocketClient(Logger.instanse, Config.api_ws_url);
         if (!NoderedUtil.IsNullEmpty(json) && Config.allow_start_from_cache) {
-            server = await WebServer.configure(logger, socket);
+            server = await WebServer.configure(socket);
             const baseurl = (!NoderedUtil.IsNullEmpty(Config.saml_baseurl) ? Config.saml_baseurl : Config.baseurl());
-            logger.info("listening on " + baseurl);
+            Logger.instanse.info("listening on " + baseurl);
         }
         socket.setCacheFolder(Config.logpath);
         socket.agent = "nodered";
         socket.version = Config.version;
-        logger.info("VERSION: " + Config.version);
+        Logger.instanse.info("VERSION: " + Config.version);
         socket.update_message_queue_count = WebServer.update_message_queue_count;
         socket.max_message_queue_time_seconds = Config.max_message_queue_time_seconds;
         socket.events.on("onerror", async () => {
@@ -152,7 +151,7 @@ let server: http.Server = null;
                     throw new Error("missing encryption_key and jwt, signin not possible!");
                 }
                 const result = await NoderedUtil.SigninWithToken(jwt, null, null);
-                logger.info("signed in as " + result.user.name + " with id " + result.user._id);
+                Logger.instanse.info("signed in as " + result.user.name + " with id " + result.user._id);
                 WebSocketClient.instance.user = result.user;
                 WebSocketClient.instance.jwt = result.jwt;
                 if (!NoderedUtil.IsNullEmpty(result.openflow_uniqueid)) {
@@ -166,23 +165,23 @@ let server: http.Server = null;
                 if (!NoderedUtil.IsNullEmpty(result.openflow_uniqueid) || !NoderedUtil.IsNullEmpty(result.otel_metric_url)) {
                     if (!NoderedUtil.IsNullUndefinded(_otel_require)) {
                         Config.enable_analytics = result.enable_analytics;
-                        Logger.otel = _otel_require.otel.configure(logger);
+                        Logger.otel = _otel_require.otel.configure();
                     }
                 }
                 if (server == null) {
-                    server = await WebServer.configure(logger, socket);
+                    server = await WebServer.configure(socket);
                     const baseurl = (!NoderedUtil.IsNullEmpty(Config.saml_baseurl) ? Config.saml_baseurl : Config.baseurl());
-                    logger.info("listening on " + baseurl);
+                    Logger.instanse.info("listening on " + baseurl);
                 }
                 socket.events.emit("onsignedin", result.user);
             } catch (error) {
                 let closemsg: any = (error.message ? error.message : error);
-                logger.error(closemsg);
+                Logger.instanse.error(closemsg);
                 socket.close(1000, closemsg);
             }
         });
     } catch (error) {
-        logger.error(error.message ? error.message : error);
+        Logger.instanse.error(error.message ? error.message : error);
     }
 })();
 
