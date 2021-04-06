@@ -8,6 +8,7 @@ import { ChangeStream } from "mongodb";
 import { WebSocketServer } from "./WebSocketServer";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
+import { WebServer } from "./WebServer";
 interface IHashTable<T> {
     [key: string]: T;
 }
@@ -69,13 +70,7 @@ export class WebSocketServerClient {
         }
         //if (NoderedUtil.IsNullEmpty(this.remoteip) && !NoderedUtil.IsNullUndefinded(req) && !NoderedUtil.IsNullUndefinded(req.headers)) {
         if (!NoderedUtil.IsNullUndefinded(req)) {
-            if (!NoderedUtil.IsNullUndefinded(req.connection) && !NoderedUtil.IsNullEmpty(req.connection.remoteAddress)) this.remoteip = req.connection.remoteAddress;
-            if (!NoderedUtil.IsNullUndefinded(req.headers)) {
-                if (req.headers["X-Forwarded-For"] != null) this.remoteip = req.headers["X-Forwarded-For"];
-                if (req.headers["X-real-IP"] != null) this.remoteip = req.headers["X-real-IP"];
-                if (req.headers["x-forwarded-for"] != null) this.remoteip = req.headers["x-forwarded-for"];
-                if (req.headers["x-real-ip"] != null) this.remoteip = req.headers["x-real-ip"];
-            }
+            this.remoteip = WebServer.remoteip(req);
         }
         Logger.instanse.info("new client " + this.id + " from " + this.remoteip);
         socketObject.on("open", (e: Event): void => this.open(e));

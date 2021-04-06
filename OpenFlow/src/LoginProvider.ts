@@ -23,6 +23,7 @@ import { DBHelper } from "./DBHelper";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { Auth } from "./Auth";
+import { WebServer } from "./WebServer";
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 
 interface IVerifyFunction { (error: any, profile: any): void; }
@@ -177,13 +178,8 @@ export class LoginProvider {
         });
         app.get("/dashboardauth", async (req: any, res: any, next: any) => {
             const span: Span = Logger.otel.startSpan("LoginProvider.user");
-            let remoteip: string = req.connection.remoteAddress;
-            if (req.headers["X-Forwarded-For"] != null) remoteip = req.headers["X-Forwarded-For"];
-            if (req.headers["X-real-IP"] != null) remoteip = req.headers["X-real-IP"];
-            if (req.headers["x-forwarded-for"] != null) remoteip = req.headers["x-forwarded-for"];
-            if (req.headers["x-real-ip"] != null) remoteip = req.headers["x-real-ip"];
-            if (!NoderedUtil.IsNullEmpty(remoteip)) span.setAttribute("remoteip", remoteip);
             try {
+                span.setAttribute("remoteip", WebServer.remoteip(req));
                 if (req.user) {
                     const user: TokenUser = TokenUser.From(req.user);
                     span.setAttribute("username", user.username);
@@ -225,7 +221,7 @@ export class LoginProvider {
                         const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
                         if (allowed.length > 0) {
                             await Auth.AddUser(user, token);
-                            Logger.instanse.info("dashboardauth: Authorized " + user.username + " for " + req.url);
+                            // Logger.instanse.info("dashboardauth: Authorized " + user.username + " for " + req.url);
                             return res.send({
                                 status: "success",
                                 display_status: "Success",
@@ -251,7 +247,7 @@ export class LoginProvider {
                     if (user != null) {
                         const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
                         if (allowed.length > 0) {
-                            Logger.instanse.info("dashboardauth: Authorized " + user.username + " for " + req.url);
+                            // Logger.instanse.info("dashboardauth: Authorized " + user.username + " for " + req.url);
                             Auth.AddUser(user, login + ":" + password);
                             return res.send({
                                 status: "success",
@@ -313,6 +309,7 @@ export class LoginProvider {
         app.get("/user", async (req: any, res: any, next: any): Promise<void> => {
             const span: Span = Logger.otel.startSpan("LoginProvider.user");
             try {
+                span.setAttribute("remoteip", WebServer.remoteip(req));
                 res.setHeader("Content-Type", "application/json");
                 if (req.user) {
                     const user: User = await DBHelper.FindById(req.user._id, undefined, span);
@@ -331,6 +328,7 @@ export class LoginProvider {
         app.get("/jwt", (req: any, res: any, next: any): void => {
             const span: Span = Logger.otel.startSpan("LoginProvider.jwt");
             try {
+                span.setAttribute("remoteip", WebServer.remoteip(req));
                 res.setHeader("Content-Type", "application/json");
                 if (req.user) {
                     const user: TokenUser = TokenUser.From(req.user);
@@ -351,6 +349,7 @@ export class LoginProvider {
         app.get("/jwtlong", (req: any, res: any, next: any): void => {
             const span: Span = Logger.otel.startSpan("LoginProvider.jwtlong");
             try {
+                span.setAttribute("remoteip", WebServer.remoteip(req));
                 res.setHeader("Content-Type", "application/json");
                 if (req.user) {
                     const user: TokenUser = TokenUser.From(req.user);
@@ -376,6 +375,7 @@ export class LoginProvider {
             const span: Span = Logger.otel.startSpan("LoginProvider.jwt");
             // logger.debug("/jwt " + !(req.user == null));
             try {
+                span.setAttribute("remoteip", WebServer.remoteip(req));
                 const rawAssertion = req.body.token;
                 const user: User = await LoginProvider.validateToken(rawAssertion, span);
                 const tuser: TokenUser = TokenUser.From(user);
@@ -393,6 +393,7 @@ export class LoginProvider {
         app.get("/config", (req: any, res: any, next: any): void => {
             const span: Span = Logger.otel.startSpan("LoginProvider.config");
             try {
+                span.setAttribute("remoteip", WebServer.remoteip(req));
                 let _url = Config.basewsurl();
                 if (!NoderedUtil.IsNullEmpty(Config.api_ws_url)) _url = Config.api_ws_url;
                 if (!_url.endsWith("/")) _url += "/";
@@ -427,6 +428,7 @@ export class LoginProvider {
         app.get("/login", async (req: any, res: any, next: any): Promise<void> => {
             const span: Span = Logger.otel.startSpan("LoginProvider.login");
             try {
+                span.setAttribute("remoteip", WebServer.remoteip(req));
                 const originalUrl: any = req.cookies.originalUrl;
                 const validateurl: any = req.cookies.validateurl;
                 if (NoderedUtil.IsNullEmpty(originalUrl) && !req.originalUrl.startsWith("/login")) {
@@ -468,26 +470,32 @@ export class LoginProvider {
         });
         app.get("/validateuserform", async (req: any, res: any, next: any): Promise<void> => {
             const span: Span = Logger.otel.startSpan("LoginProvider.validateuserform");
-            // logger.debug("/validateuserform " + !(req.user == null));
-            res.setHeader("Content-Type", "application/json");
-            if (NoderedUtil.IsNullEmpty(Config.validate_user_form)) {
+            try {
+                span.setAttribute("remoteip", WebServer.remoteip(req));
+                res.setHeader("Content-Type", "application/json");
+                if (NoderedUtil.IsNullEmpty(Config.validate_user_form)) {
+                    res.end(JSON.stringify({}));
+                    res.end();
+                    Logger.otel.endSpan(span);
+                    return;
+                }
+                var forms = await Config.db.query<Base>({ _id: Config.validate_user_form, _type: "form" }, null, 1, 0, null, "forms", Crypt.rootToken(), undefined, undefined, span);
+                if (forms.length == 1) {
+                    res.end(JSON.stringify(forms[0]));
+                    res.end();
+                    Logger.otel.endSpan(span);
+                    return;
+                }
+                Logger.instanse.error("validate_user_form " + Config.validate_user_form + " does not exists!");
+                Config.validate_user_form = "";
                 res.end(JSON.stringify({}));
                 res.end();
+            } catch (error) {
+                span.recordException(error);
+                return res.status(500).send({ message: error.message ? error.message : error });
+            } finally {
                 Logger.otel.endSpan(span);
-                return;
             }
-            var forms = await Config.db.query<Base>({ _id: Config.validate_user_form, _type: "form" }, null, 1, 0, null, "forms", Crypt.rootToken(), undefined, undefined, span);
-            if (forms.length == 1) {
-                res.end(JSON.stringify(forms[0]));
-                res.end();
-                Logger.otel.endSpan(span);
-                return;
-            }
-            Logger.instanse.error("validate_user_form " + Config.validate_user_form + " does not exists!");
-            Config.validate_user_form = "";
-            res.end(JSON.stringify({}));
-            res.end();
-            Logger.otel.endSpan(span);
             return;
         });
         app.post("/validateuserform", async (req: any, res) => {
@@ -495,6 +503,7 @@ export class LoginProvider {
             // logger.debug("/validateuserform " + !(req.user == null));
             res.setHeader("Content-Type", "application/json");
             try {
+                span.setAttribute("remoteip", WebServer.remoteip(req));
                 if (req.user) {
                     if (req.body && req.body.data) {
                         const tuser: TokenUser = TokenUser.From(req.user);
@@ -545,6 +554,7 @@ export class LoginProvider {
         app.get("/loginproviders", async (req: any, res: any, next: any): Promise<void> => {
             const span: Span = Logger.otel.startSpan("LoginProvider.loginproviders");
             try {
+                span.setAttribute("remoteip", WebServer.remoteip(req));
                 const result: any[] = await this.getProviders(span);
                 res.setHeader("Content-Type", "application/json");
                 res.end(JSON.stringify(result));
@@ -568,6 +578,7 @@ export class LoginProvider {
         app.get("/download/:id", async (req, res) => {
             const span: Span = Logger.otel.startSpan("LoginProvider.download");
             try {
+                span.setAttribute("remoteip", WebServer.remoteip(req));
                 let user: TokenUser = null;
                 let jwt: string = null;
                 const authHeader = req.headers.authorization;
@@ -675,6 +686,7 @@ export class LoginProvider {
             app.delete("/upload", async (req: any, res: any, next: any): Promise<void> => {
                 const span: Span = Logger.otel.startSpan("LoginProvider.upload");
                 try {
+                    span.setAttribute("remoteip", WebServer.remoteip(req));
                     let user: TokenUser = null;
                     let jwt: string = null;
                     const authHeader = req.headers.authorization;
@@ -723,6 +735,7 @@ export class LoginProvider {
             app.get("/upload", async (req: any, res: any, next: any): Promise<void> => {
                 const span: Span = Logger.otel.startSpan("LoginProvider.upload");
                 try {
+                    span.setAttribute("remoteip", WebServer.remoteip(req));
                     let user: TokenUser = null;
                     let jwt: string = null;
                     const authHeader = req.headers.authorization;

@@ -29,13 +29,8 @@ const BaseRateLimiter = new RateLimiterMemory({
 });
 
 const rateLimiter = (req: express.Request, res: express.Response, next: express.NextFunction): void => {
-    let remoteip: string = req.connection.remoteAddress;
-    if (req.headers["X-Forwarded-For"] != null) remoteip = req.headers["X-Forwarded-For"] as string;
-    if (req.headers["X-real-IP"] != null) remoteip = req.headers["X-real-IP"] as string;
-    if (req.headers["x-forwarded-for"] != null) remoteip = req.headers["x-forwarded-for"] as string;
-    if (req.headers["x-real-ip"] != null) remoteip = req.headers["x-real-ip"] as string;
     BaseRateLimiter
-        .consume(remoteip)
+        .consume(WebServer.remoteip(req))
         .then((e) => {
             // console.info("API_O_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints);
             next();
@@ -50,6 +45,14 @@ const rateLimiter = (req: express.Request, res: express.Response, next: express.
 
 let websocket_rate_limit: Counter = null;
 export class WebServer {
+    public static remoteip(req: express.Request) {
+        let remoteip: string = req.socket.remoteAddress;
+        if (req.headers["X-Forwarded-For"] != null) remoteip = req.headers["X-Forwarded-For"] as string;
+        if (req.headers["X-real-IP"] != null) remoteip = req.headers["X-real-IP"] as string;
+        if (req.headers["x-forwarded-for"] != null) remoteip = req.headers["x-forwarded-for"] as string;
+        if (req.headers["x-real-ip"] != null) remoteip = req.headers["x-real-ip"] as string;
+        return remoteip;
+    }
     public static app: express.Express;
     static async configure(baseurl: string): Promise<http.Server> {
         if (!NoderedUtil.IsNullUndefinded(Logger.otel)) {

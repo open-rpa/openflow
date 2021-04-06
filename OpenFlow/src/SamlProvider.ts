@@ -6,6 +6,7 @@ import { LoginProvider } from "./LoginProvider";
 import { NoderedUtil, TokenUser } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
+import { WebServer } from "./WebServer";
 
 export class SamlProvider {
     public static profileMapper(pu: any): any {
@@ -75,17 +76,8 @@ export class SamlProvider {
                 const span: Span = Logger.otel.startSpan("SAML.getUserFromRequest");
                 try {
                     const tuser: TokenUser = TokenUser.From(req.user);
-                    let remoteip = "";
-                    if (!NoderedUtil.IsNullUndefinded(req)) {
-                        if (!NoderedUtil.IsNullUndefinded(req.connection) && !NoderedUtil.IsNullEmpty(req.connection.remoteAddress)) remoteip = req.connection.remoteAddress;
-                        if (!NoderedUtil.IsNullUndefinded(req.headers)) {
-                            if (req.headers["X-Forwarded-For"] != null) remoteip = req.headers["X-Forwarded-For"];
-                            if (req.headers["X-real-IP"] != null) remoteip = req.headers["X-real-IP"];
-                            if (req.headers["x-forwarded-for"] != null) remoteip = req.headers["x-forwarded-for"];
-                            if (req.headers["x-real-ip"] != null) remoteip = req.headers["x-real-ip"];
-                        }
-                    }
-                    // if (req.connection) { remoteip = req.connection.remoteAddress; }
+                    const remoteip = WebServer.remoteip(req);
+                    span.setAttribute("remoteip", remoteip);
                     Audit.LoginSuccess(tuser, "tokenissued", "saml", remoteip, "getUserFromRequest", "unknown", span);
                 } catch (error) {
                     span.recordException(error);

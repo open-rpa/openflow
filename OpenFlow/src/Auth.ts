@@ -31,7 +31,7 @@ export class Auth {
         var end: number = new Date().getTime();
         var seconds = Math.round((end - begin) / 1000);
         if (seconds < Config.api_credential_cache_seconds) {
-            Logger.instanse.info("Return user " + res.user.username + " from cache");
+            // Logger.instanse.info("Return user " + res.user.username + " from cache");
             return res.user;
         }
         this.RemoveUser(key);
