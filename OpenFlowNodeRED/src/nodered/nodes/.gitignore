@@ -3,5 +3,5 @@ node_modules
 logs
 dist
 .env
-*otel.ts*
+*otel*
 *license*

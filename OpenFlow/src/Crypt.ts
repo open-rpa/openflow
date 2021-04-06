@@ -4,8 +4,8 @@ import * as jsonwebtoken from "jsonwebtoken";
 import { Config } from "./Config";
 import { NoderedUtil, TokenUser, WellknownIds, Rolemember, User } from "@openiap/openflow-api";
 import { Exception } from "handlebars";
-import { otel } from "./otel";
 import { Span } from "@opentelemetry/api";
+import { Logger } from "./Logger";
 export class Crypt {
     static encryption_key: string = Config.aes_secret.substr(0, 32); // must be 256 bytes (32 characters)
     static iv_length: number = 16; // for AES, this is always 16
@@ -20,7 +20,7 @@ export class Crypt {
         return Crypt.createToken(this.rootUser(), Config.shorttoken_expires_in);
     }
     public static async SetPassword(user: User, password: string, parent: Span): Promise<void> {
-        const span: Span = otel.startSubSpan("Crypt.SetPassword", parent);
+        const span: Span = Logger.otel.startSubSpan("Crypt.SetPassword", parent);
         try {
             user.passwordhash = await Crypt.hash(password);
             if (!(this.ValidatePassword(user, password, span))) { throw new Error("Failed validating password after hasing"); }
@@ -28,18 +28,18 @@ export class Crypt {
             span.recordException(error);
             throw error;
         } finally {
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
         }
     }
     public static async ValidatePassword(user: User, password: string, parent: Span): Promise<boolean> {
-        const span: Span = otel.startSubSpan("Crypt.ValidatePassword", parent);
+        const span: Span = Logger.otel.startSubSpan("Crypt.ValidatePassword", parent);
         try {
             return await Crypt.compare(password, user.passwordhash, span);
         } catch (error) {
             span.recordException(error);
             throw error;
         } finally {
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
         }
     }
     static encrypt(text: string): string {
@@ -71,20 +71,20 @@ export class Crypt {
         });
     }
     static async compare(password: string, passwordhash: string, parent: Span): Promise<boolean> {
-        const span: Span = otel.startSubSpan("Crypt.compare", parent);
+        const span: Span = Logger.otel.startSubSpan("Crypt.compare", parent);
         return new Promise<boolean>(async (resolve, reject) => {
             try {
                 if (NoderedUtil.IsNullEmpty(password)) { span.recordException("Password cannot be empty"); return reject("Password cannot be empty"); }
                 if (NoderedUtil.IsNullEmpty(passwordhash)) { span.recordException("Passwordhash cannot be empty"); return reject("Passwordhash cannot be empty"); }
                 bcrypt.compare(password, passwordhash, async (error, res) => {
-                    if (error) { span.recordException(error); otel.endSpan(span); return reject(error); }
-                    otel.endSpan(span);
+                    if (error) { span.recordException(error); Logger.otel.endSpan(span); return reject(error); }
+                    Logger.otel.endSpan(span);
                     resolve(res);
                 });
             } catch (error) {
                 span.recordException(error);
                 reject(error);
-                otel.endSpan(span);
+                Logger.otel.endSpan(span);
             }
         });
     }

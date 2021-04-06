@@ -22,7 +22,7 @@ import * as url from "url";
 import { WebSocketServer } from "./WebSocketServer";
 import { WebSocketServerClient } from "./WebSocketServerClient";
 import { Counter } from "@opentelemetry/api-metrics"
-import { otel } from "./otel";
+import { Logger } from "./Logger";
 
 const BaseRateLimiter = new RateLimiterMemory({
     points: Config.api_rate_limit_points,
@@ -38,7 +38,7 @@ const rateLimiter = (req: express.Request, res: express.Response, next: express.
         })
         .catch((e) => {
             const route = url.parse(req.url).pathname;
-            if (!NoderedUtil.IsNullUndefinded(websocket_rate_limit)) websocket_rate_limit.bind({ ...otel.defaultlabels, route: route }).add(1);
+            if (!NoderedUtil.IsNullUndefinded(websocket_rate_limit)) websocket_rate_limit.bind({ ...Logger.otel.defaultlabels, route: route }).add(1);
             console.warn("API_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints + " msBeforeNext: " + e.msBeforeNext);
             res.status(429).json({ response: 'RATE_LIMIT' });
         });
@@ -50,10 +50,10 @@ export class WebServer {
     public static app: express.Express;
 
 
-    static async configure(logger: winston.Logger, baseurl: string, _otel: otel): Promise<http.Server> {
+    static async configure(logger: winston.Logger, baseurl: string): Promise<http.Server> {
         this._logger = logger;
-        if (!NoderedUtil.IsNullUndefinded(_otel)) {
-            websocket_rate_limit = _otel.meter.createCounter("openflow_webserver_rate_limit_count", {
+        if (!NoderedUtil.IsNullUndefinded(Logger.otel)) {
+            websocket_rate_limit = Logger.otel.meter.createCounter("openflow_webserver_rate_limit_count", {
                 description: 'Total number of rate limited web request'
             }) // "route"
         }

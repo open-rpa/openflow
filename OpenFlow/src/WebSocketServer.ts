@@ -8,8 +8,8 @@ import { Message } from "./Messages/Message";
 import { Config } from "./Config";
 import { SigninMessage, NoderedUtil, TokenUser } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
-import { otel } from "./otel";
 import { ValueRecorder, Counter, BaseObserver } from "@opentelemetry/api-metrics"
+import { Logger } from "./Logger";
 
 export class WebSocketServer {
     private static _logger: winston.Logger;
@@ -31,7 +31,7 @@ export class WebSocketServer {
         if (NoderedUtil.IsNullUndefinded(WebSocketServer.message_queue_count)) return;
         // const result: any = {};
         const keys = Object.keys(cli.messageQueue);
-        WebSocketServer.message_queue_count.bind({ ...otel.defaultlabels, clientid: cli.id }).update(keys.length);
+        WebSocketServer.message_queue_count.bind({ ...Logger.otel.defaultlabels, clientid: cli.id }).update(keys.length);
     }
     public static update_mongodb_watch_count(cli: WebSocketServerClient) {
         if (!Config.prometheus_measure__mongodb_watch) return;
@@ -41,10 +41,10 @@ export class WebSocketServer {
         WebSocketServer.mongodb_watch_count.clear();
         for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
             const cli: WebSocketServerClient = WebSocketServer._clients[i];
-            WebSocketServer.mongodb_watch_count.bind({ ...otel.defaultlabels, clientid: cli.id, agent: cli.clientagent }).update(cli.streamcount());
+            WebSocketServer.mongodb_watch_count.bind({ ...Logger.otel.defaultlabels, clientid: cli.id, agent: cli.clientagent }).update(cli.streamcount());
         }
     }
-    static configure(logger: winston.Logger, server: http.Server, _otel: otel): void {
+    static configure(logger: winston.Logger, server: http.Server): void {
         this._clients = [];
         this._logger = logger;
         this._server = server;
@@ -55,37 +55,37 @@ export class WebSocketServer {
         this._socketserver.on("error", (error: Error): void => {
             this._logger.error(error);
         });
-        if (!NoderedUtil.IsNullUndefinded(_otel)) {
-            WebSocketServer.p_all = _otel.meter.createUpDownSumObserver("openflow_websocket_online_clients", {
+        if (!NoderedUtil.IsNullUndefinded(Logger.otel)) {
+            WebSocketServer.p_all = Logger.otel.meter.createUpDownSumObserver("openflow_websocket_online_clients", {
                 description: 'Total number of online websocket clients'
             }) // "agent", "version"
-            WebSocketServer.websocket_queue_count = _otel.meter.createUpDownSumObserver("openflow_websocket_queue", {
+            WebSocketServer.websocket_queue_count = Logger.otel.meter.createUpDownSumObserver("openflow_websocket_queue", {
                 description: 'Total number of registered queues'
             }) // "clientid"
-            WebSocketServer.websocket_queue_message_count = _otel.meter.createUpDownSumObserver("openflow_websocket_queue_message", {
+            WebSocketServer.websocket_queue_message_count = Logger.otel.meter.createUpDownSumObserver("openflow_websocket_queue_message", {
                 description: 'Total number of queues messages'
             }) // "queuename"
-            WebSocketServer.websocket_rate_limit = _otel.meter.createUpDownSumObserver("openflow_websocket_rate_limit", {
+            WebSocketServer.websocket_rate_limit = Logger.otel.meter.createUpDownSumObserver("openflow_websocket_rate_limit", {
                 description: 'Total number of rate limited messages'
             }) // "command"
-            WebSocketServer.websocket_errors = _otel.meter.createUpDownSumObserver("openflow_websocket_errors", {
+            WebSocketServer.websocket_errors = Logger.otel.meter.createUpDownSumObserver("openflow_websocket_errors", {
                 description: 'Total number of websocket errors'
             }) // 
-            WebSocketServer.websocket_messages = _otel.meter.createValueRecorder('openflow_websocket_messages_duration_seconds', {
+            WebSocketServer.websocket_messages = Logger.otel.meter.createValueRecorder('openflow_websocket_messages_duration_seconds', {
                 description: 'Duration for handling websocket requests',
-                boundaries: otel.default_boundaries
+                boundaries: Logger.otel.default_boundaries
             }); // "command"
-            WebSocketServer.message_queue_count = _otel.meter.createUpDownSumObserver("openflow_message_queue", {
+            WebSocketServer.message_queue_count = Logger.otel.meter.createUpDownSumObserver("openflow_message_queue", {
                 description: 'Total number messages waiting on reply from client'
             }) // "clientid"
-            WebSocketServer.mongodb_watch_count = _otel.meter.createUpDownSumObserver("mongodb_watch", {
+            WebSocketServer.mongodb_watch_count = Logger.otel.meter.createUpDownSumObserver("mongodb_watch", {
                 description: 'Total number af steams  watching for changes'
             }) // "agent", "clientid"
         }
         setInterval(this.pingClients, 10000);
     }
     private static async pingClients(): Promise<void> {
-        const span: Span = otel.startSpan("WebSocketServer.pingClients");
+        const span: Span = Logger.otel.startSpan("WebSocketServer.pingClients");
         try {
             let count: number = WebSocketServer._clients.length;
             for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
@@ -200,14 +200,14 @@ export class WebSocketServer {
                 WebSocketServer.p_all.clear();
                 const keys = Object.keys(p_all);
                 keys.forEach(key => {
-                    WebSocketServer.p_all.bind({ ...otel.defaultlabels, agent: key }).update(p_all[key]);
+                    WebSocketServer.p_all.bind({ ...Logger.otel.defaultlabels, agent: key }).update(p_all[key]);
                 });
             }
         } catch (error) {
             span.recordException(error);
             throw error;
         } finally {
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
         }
     }
 }

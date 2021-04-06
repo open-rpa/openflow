@@ -8,7 +8,7 @@ import { NoderedUtil, Base, InsertOneMessage, QueueMessage, MapReduceMessage, Qu
 import { ChangeStream } from "mongodb";
 import { WebSocketServer } from "./WebSocketServer";
 import { Span } from "@opentelemetry/api";
-import { otel } from "./otel";
+import { Logger } from "./Logger";
 interface IHashTable<T> {
     [key: string]: T;
 }
@@ -111,7 +111,7 @@ export class WebSocketServerClient {
         return false;
     }
     public ping(parent: Span): void {
-        const span: Span = otel.startSubSpan("WebSocketServerClient.ping", parent);
+        const span: Span = Logger.otel.startSubSpan("WebSocketServerClient.ping", parent);
         try {
             let msg: SocketMessage = SocketMessage.fromcommand("ping");
             if (this._socketObject == null) {
@@ -142,7 +142,7 @@ export class WebSocketServerClient {
             } catch (error) {
             }
         } finally {
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
         }
     }
     private _message(message: string): void {
@@ -174,11 +174,11 @@ export class WebSocketServerClient {
                 this._logger.error("WebSocketclient::closeconsumers " + error);
             }
         }
-        if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...otel.defaultlabels, clientid: this.id }).update(this._queues.length);
+        if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...Logger.otel.defaultlabels, clientid: this.id }).update(this._queues.length);
         semaphore.up();
     }
     public async Close(): Promise<void> {
-        const span: Span = otel.startSpan("WebSocketServerClient.Close");
+        const span: Span = Logger.otel.startSpan("WebSocketServerClient.Close");
         try {
             await this.CloseConsumers(span);
             await this.CloseStreams();
@@ -202,11 +202,11 @@ export class WebSocketServerClient {
             throw error;
         } finally {
             WebSocketServer.update_mongodb_watch_count(this);
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
         }
     }
     public async CloseConsumer(queuename: string, parent: Span): Promise<void> {
-        const span: Span = otel.startSubSpan("WebSocketServerClient.CloseConsumer", parent);
+        const span: Span = Logger.otel.startSubSpan("WebSocketServerClient.CloseConsumer", parent);
         try {
             var old = this._queues.length;
             for (let i = this._queues.length - 1; i >= 0; i--) {
@@ -215,7 +215,7 @@ export class WebSocketServerClient {
                     try {
                         await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i], span);
                         this._queues.splice(i, 1);
-                        if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...otel.defaultlabels, clientid: this.id }).update(this._queues.length);
+                        if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...Logger.otel.defaultlabels, clientid: this.id }).update(this._queues.length);
                     } catch (error) {
                         this._logger.error("WebSocketclient::CloseConsumer " + error);
                     }
@@ -225,11 +225,11 @@ export class WebSocketServerClient {
             span.recordException(error);
             throw error;
         } finally {
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
         }
     }
     public async CreateConsumer(queuename: string, parent: Span): Promise<string> {
-        const span: Span = otel.startSubSpan("WebSocketServerClient.CreateConsumer", parent);
+        const span: Span = Logger.otel.startSubSpan("WebSocketServerClient.CreateConsumer", parent);
         try {
             let autoDelete: boolean = false; // Should we keep the queue around ? for robots and roles
             let qname = queuename;
@@ -273,7 +273,7 @@ export class WebSocketServerClient {
                     qname = queue.queue;
                     this._queues.push(queue);
                 }
-                if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...otel.defaultlabels, clientid: this.id }).update(this._queues.length);
+                if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...Logger.otel.defaultlabels, clientid: this.id }).update(this._queues.length);
             } catch (error) {
                 this._logger.error("WebSocketclient::CreateConsumer " + error);
             }
@@ -284,7 +284,7 @@ export class WebSocketServerClient {
             span.recordException(error);
             throw error;
         } finally {
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
         }
     }
     sleep(ms) {

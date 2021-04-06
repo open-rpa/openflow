@@ -21,8 +21,8 @@ const GridFsStorage = require('multer-gridfs-storage');
 import { GridFSBucket, ObjectID, Db, Cursor, Binary } from "mongodb";
 import { Base, User, NoderedUtil, TokenUser, WellknownIds, Rights, Role } from "@openiap/openflow-api";
 import { DBHelper } from "./DBHelper";
-import { otel } from "./otel";
 import { Span } from "@opentelemetry/api";
+import { Logger } from "./Logger";
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 
 interface IVerifyFunction { (error: any, profile: any): void; }
@@ -88,7 +88,7 @@ export class LoginProvider {
 
 
     static async validateToken(rawAssertion: string, parent: Span): Promise<User> {
-        const span: Span = otel.startSubSpan("LoginProvider.validateToken", parent);
+        const span: Span = Logger.otel.startSubSpan("LoginProvider.validateToken", parent);
         return new Promise<User>((resolve, reject) => {
             try {
                 const options = {
@@ -113,20 +113,20 @@ export class LoginProvider {
                         span.recordException(error);
                         reject(error);
                     } finally {
-                        otel.endSpan(span);
+                        Logger.otel.endSpan(span);
                     }
 
                 });
             } catch (error) {
                 span.recordException(error);
             } finally {
-                otel.endSpan(span);
+                Logger.otel.endSpan(span);
             }
         });
     }
 
     static async getProviders(parent: Span): Promise<any[]> {
-        const span: Span = otel.startSubSpan("LoginProvider.getProviders", parent);
+        const span: Span = Logger.otel.startSubSpan("LoginProvider.getProviders", parent);
         try {
             LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", Crypt.rootToken(), undefined, undefined, span);
             const result: any[] = [];
@@ -145,7 +145,7 @@ export class LoginProvider {
             span.recordException(error);
             throw error;
         } finally {
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
         }
     }
     static async configure(logger: winston.Logger, app: express.Express, baseurl: string): Promise<void> {
@@ -213,7 +213,7 @@ export class LoginProvider {
         });
         await LoginProvider.RegisterProviders(app, baseurl);
         app.get("/user", async (req: any, res: any, next: any): Promise<void> => {
-            const span: Span = otel.startSpan("LoginProvider.user");
+            const span: Span = Logger.otel.startSpan("LoginProvider.user");
             try {
                 res.setHeader("Content-Type", "application/json");
                 if (req.user) {
@@ -227,11 +227,11 @@ export class LoginProvider {
                 span.recordException(error);
                 throw error;
             } finally {
-                otel.endSpan(span);
+                Logger.otel.endSpan(span);
             }
         });
         app.get("/jwt", (req: any, res: any, next: any): void => {
-            const span: Span = otel.startSpan("LoginProvider.jwt");
+            const span: Span = Logger.otel.startSpan("LoginProvider.jwt");
             try {
                 res.setHeader("Content-Type", "application/json");
                 if (req.user) {
@@ -247,11 +247,11 @@ export class LoginProvider {
                 console.error(error.message ? error.message : error);
                 return res.status(500).send({ message: error.message ? error.message : error });
             } finally {
-                otel.endSpan(span);
+                Logger.otel.endSpan(span);
             }
         });
         app.get("/jwtlong", (req: any, res: any, next: any): void => {
-            const span: Span = otel.startSpan("LoginProvider.jwtlong");
+            const span: Span = Logger.otel.startSpan("LoginProvider.jwtlong");
             try {
                 res.setHeader("Content-Type", "application/json");
                 if (req.user) {
@@ -271,11 +271,11 @@ export class LoginProvider {
                 console.error(error.message ? error.message : error);
                 return res.status(500).send({ message: error.message ? error.message : error });
             } finally {
-                otel.endSpan(span);
+                Logger.otel.endSpan(span);
             }
         });
         app.post("/jwt", async (req: any, res: any, next: any): Promise<void> => {
-            const span: Span = otel.startSpan("LoginProvider.jwt");
+            const span: Span = Logger.otel.startSpan("LoginProvider.jwt");
             // logger.debug("/jwt " + !(req.user == null));
             try {
                 const rawAssertion = req.body.token;
@@ -289,11 +289,11 @@ export class LoginProvider {
                 console.error(error.message ? error.message : error);
                 return res.status(500).send({ message: error.message ? error.message : error });
             } finally {
-                otel.endSpan(span);
+                Logger.otel.endSpan(span);
             }
         });
         app.get("/config", (req: any, res: any, next: any): void => {
-            const span: Span = otel.startSpan("LoginProvider.config");
+            const span: Span = Logger.otel.startSpan("LoginProvider.config");
             try {
                 let _url = Config.basewsurl();
                 if (!NoderedUtil.IsNullEmpty(Config.api_ws_url)) _url = Config.api_ws_url;
@@ -323,11 +323,11 @@ export class LoginProvider {
                 span.recordException(error);
                 return res.status(500).send({ message: error.message ? error.message : error });
             } finally {
-                otel.endSpan(span);
+                Logger.otel.endSpan(span);
             }
         });
         app.get("/login", async (req: any, res: any, next: any): Promise<void> => {
-            const span: Span = otel.startSpan("LoginProvider.login");
+            const span: Span = Logger.otel.startSpan("LoginProvider.login");
             try {
                 const originalUrl: any = req.cookies.originalUrl;
                 const validateurl: any = req.cookies.validateurl;
@@ -366,34 +366,34 @@ export class LoginProvider {
             } catch (error) {
                 span.recordException(error);
             }
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
         });
         app.get("/validateuserform", async (req: any, res: any, next: any): Promise<void> => {
-            const span: Span = otel.startSpan("LoginProvider.validateuserform");
+            const span: Span = Logger.otel.startSpan("LoginProvider.validateuserform");
             // logger.debug("/validateuserform " + !(req.user == null));
             res.setHeader("Content-Type", "application/json");
             if (NoderedUtil.IsNullEmpty(Config.validate_user_form)) {
                 res.end(JSON.stringify({}));
                 res.end();
-                otel.endSpan(span);
+                Logger.otel.endSpan(span);
                 return;
             }
             var forms = await Config.db.query<Base>({ _id: Config.validate_user_form, _type: "form" }, null, 1, 0, null, "forms", Crypt.rootToken(), undefined, undefined, span);
             if (forms.length == 1) {
                 res.end(JSON.stringify(forms[0]));
                 res.end();
-                otel.endSpan(span);
+                Logger.otel.endSpan(span);
                 return;
             }
             LoginProvider._logger.error("validate_user_form " + Config.validate_user_form + " does not exists!");
             Config.validate_user_form = "";
             res.end(JSON.stringify({}));
             res.end();
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
             return;
         });
         app.post("/validateuserform", async (req: any, res) => {
-            const span: Span = otel.startSpan("LoginProvider.postvalidateuserform");
+            const span: Span = Logger.otel.startSpan("LoginProvider.postvalidateuserform");
             // logger.debug("/validateuserform " + !(req.user == null));
             res.setHeader("Content-Type", "application/json");
             try {
@@ -440,12 +440,12 @@ export class LoginProvider {
                 console.error(error);
                 return res.status(500).send({ message: error.message ? error.message : error });
             }
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
             res.end();
         });
 
         app.get("/loginproviders", async (req: any, res: any, next: any): Promise<void> => {
-            const span: Span = otel.startSpan("LoginProvider.loginproviders");
+            const span: Span = Logger.otel.startSpan("LoginProvider.loginproviders");
             try {
                 const result: any[] = await this.getProviders(span);
                 res.setHeader("Content-Type", "application/json");
@@ -454,7 +454,7 @@ export class LoginProvider {
             } catch (error) {
                 span.recordException(error);
                 console.error(error.message ? error.message : error);
-                otel.endSpan(span);
+                Logger.otel.endSpan(span);
                 return res.status(500).send({ message: error.message ? error.message : error });
             }
             try {
@@ -463,12 +463,12 @@ export class LoginProvider {
                 span.recordException(error);
                 return res.status(500).send({ message: error.message ? error.message : error });
             } finally {
-                otel.endSpan(span);
+                Logger.otel.endSpan(span);
             }
 
         });
         app.get("/download/:id", async (req, res) => {
-            const span: Span = otel.startSpan("LoginProvider.download");
+            const span: Span = Logger.otel.startSpan("LoginProvider.download");
             try {
                 let user: TokenUser = null;
                 let jwt: string = null;
@@ -503,7 +503,7 @@ export class LoginProvider {
                 span.recordException(error);
                 return res.status(500).send({ message: error.message ? error.message : error });
             } finally {
-                otel.endSpan(span);
+                Logger.otel.endSpan(span);
             }
         });
         try {
@@ -575,7 +575,7 @@ export class LoginProvider {
             //     const query = req.query;
             // });
             app.delete("/upload", async (req: any, res: any, next: any): Promise<void> => {
-                const span: Span = otel.startSpan("LoginProvider.upload");
+                const span: Span = Logger.otel.startSpan("LoginProvider.upload");
                 try {
                     let user: TokenUser = null;
                     let jwt: string = null;
@@ -617,13 +617,13 @@ export class LoginProvider {
                     console.error(error);
                     return res.status(500).send({ message: error.message ? error.message : error });
                 } finally {
-                    otel.endSpan(span);
+                    Logger.otel.endSpan(span);
                 }
 
             });
             // app.get("/upload/:fileId", async (req: any, res: any, next: any): Promise<void> => {
             app.get("/upload", async (req: any, res: any, next: any): Promise<void> => {
-                const span: Span = otel.startSpan("LoginProvider.upload");
+                const span: Span = Logger.otel.startSpan("LoginProvider.upload");
                 try {
                     let user: TokenUser = null;
                     let jwt: string = null;
@@ -674,7 +674,7 @@ export class LoginProvider {
                     span.recordException(error);
                     return res.status(500).send({ message: error.message ? error.message : error });
                 } finally {
-                    otel.endSpan(span);
+                    Logger.otel.endSpan(span);
                 }
             });
             app.post("/upload", async (req, res) => {
@@ -708,7 +708,7 @@ export class LoginProvider {
 
     }
     static async RegisterProviders(app: express.Express, baseurl: string) {
-        const span: Span = otel.startSpan("LoginProvider.RegisterProviders");
+        const span: Span = Logger.otel.startSpan("LoginProvider.RegisterProviders");
         try {
             if (LoginProvider.login_providers.length === 0) {
                 const _jwt = Crypt.rootToken();
@@ -744,7 +744,7 @@ export class LoginProvider {
             span.recordException(error);
             throw error;
         } finally {
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
         }
     }
     static CreateGoogleStrategy(app: express.Express, key: string, consumerKey: string, consumerSecret: string, baseurl: string): any {
@@ -863,7 +863,7 @@ export class LoginProvider {
 
     static CreateLocalStrategy(app: express.Express, baseurl: string): passport.Strategy {
         const strategy: passport.Strategy = new LocalStrategy(async (username: string, password: string, done: any): Promise<void> => {
-            const span: Span = otel.startSpan("LoginProvider.CreateLocalStrategy");
+            const span: Span = Logger.otel.startSpan("LoginProvider.CreateLocalStrategy");
             try {
                 if (username !== null && username != undefined) { username = username.toLowerCase(); }
                 let user: User = null;
@@ -913,11 +913,11 @@ export class LoginProvider {
                 }
                 const tuser: TokenUser = TokenUser.From(user);
                 Audit.LoginSuccess(tuser, "weblogin", "local", "", "browser", "unknown", span);
-                otel.endSpan(span);
+                Logger.otel.endSpan(span);
                 return done(null, tuser);
             } catch (error) {
                 span.recordException(error);
-                otel.endSpan(span);
+                Logger.otel.endSpan(span);
                 console.error(error.message ? error.message : error);
                 done(error.message ? error.message : error);
             }
@@ -989,7 +989,7 @@ export class LoginProvider {
         return strategy;
     }
     static async samlverify(profile: any, done: IVerifyFunction): Promise<void> {
-        const span: Span = otel.startSpan("LoginProvider.samlverify");
+        const span: Span = Logger.otel.startSpan("LoginProvider.samlverify");
         try {
             let username: string = profile.username;
             if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
@@ -1055,15 +1055,15 @@ export class LoginProvider {
 
             const tuser: TokenUser = TokenUser.From(_user);
             Audit.LoginSuccess(tuser, "weblogin", "saml", "", "samlverify", "unknown", span);
-            otel.endSpan(span);
+            Logger.otel.endSpan(span);
             done(null, tuser);
         } catch (error) {
             span.recordException(error);
         }
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
     }
     static async googleverify(token: string, tokenSecret: string, profile: any, done: IVerifyFunction): Promise<void> {
-        const span: Span = otel.startSpan("LoginProvider.googleverify");
+        const span: Span = Logger.otel.startSpan("LoginProvider.googleverify");
         try {
             if (profile.emails) {
                 const email: any = profile.emails[0];
@@ -1102,7 +1102,7 @@ export class LoginProvider {
         } catch (error) {
             span.recordException(error);
         }
-        otel.endSpan(span);
+        Logger.otel.endSpan(span);
     }
 
 
