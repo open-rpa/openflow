@@ -24,33 +24,62 @@ export class Auth {
     }
 
     public static authorizationCache: HashTable<CachedUser> = {};
-    public static getUser(key: string): User {
-        var res: CachedUser = this.authorizationCache[key];
+    private static cacheTimer: NodeJS.Timeout;
+    public static getUser(key: string, type: string): User {
+        if (NoderedUtil.IsNullUndefinded(this.cacheTimer)) this.cacheTimer = setInterval(this.cleanCache, 60000)
+        var res: CachedUser = this.authorizationCache[key + type];
         if (res === null || res === undefined) return null;
         var begin: number = res.firstsignin.getTime();
         var end: number = new Date().getTime();
         var seconds = Math.round((end - begin) / 1000);
-        if (seconds < Config.api_credential_cache_seconds) {
+        let cache_seconds: number = Config.api_credential_cache_seconds;
+        if (type == "grafana") cache_seconds = Config.grafana_credential_cache_seconds;
+        if (type == "dashboard") cache_seconds = Config.dashboard_credential_cache_seconds;
+        if (type == "cleanacl") cache_seconds = Config.cleanacl_credential_cache_seconds;
+        if (seconds < cache_seconds) {
             // Logger.instanse.info("Return user " + res.user.username + " from cache");
             return res.user;
         }
-        this.RemoveUser(key);
+        this.RemoveUser(key, type);
         return null;
     }
-    public static async RemoveUser(key: string): Promise<void> {
+    private static async cleanCache() {
+        try {
+            if (this.authorizationCache == null) return;
+            const keys: string[] = Object.keys(this.authorizationCache);
+            for (let i = keys.length - 1; i >= 0; i--) {
+                let key: string = keys[i];
+                var res: CachedUser = this.authorizationCache[key];
+                if (res === null || res === undefined) continue;
+                var begin: number = res.firstsignin.getTime();
+                var end: number = new Date().getTime();
+                var seconds = Math.round((end - begin) / 1000);
+                let cache_seconds: number = Config.api_credential_cache_seconds;
+                if (res.type == "grafana") cache_seconds = Config.grafana_credential_cache_seconds;
+                if (res.type == "dashboard") cache_seconds = Config.dashboard_credential_cache_seconds;
+                if (res.type == "cleanacl") cache_seconds = Config.cleanacl_credential_cache_seconds;
+                if (seconds >= cache_seconds) {
+                    this.RemoveUser(key, res.type);
+                }
+            }
+        } catch (error) {
+            Logger.instanse.error(error)
+        }
+    }
+    public static async RemoveUser(key: string, type: string): Promise<void> {
         await semaphore.down();
-        if (!NoderedUtil.IsNullUndefinded(this.authorizationCache[key])) {
+        if (!NoderedUtil.IsNullUndefinded(this.authorizationCache[key + type])) {
             Logger.instanse.info("Delete user with key " + key + " from cache");
-            delete this.authorizationCache[key];
+            delete this.authorizationCache[key + type];
         }
         semaphore.up();
     }
-    public static async AddUser(user: User, key: string): Promise<void> {
+    public static async AddUser(user: User, key: string, type: string): Promise<void> {
         await semaphore.down();
-        if (NoderedUtil.IsNullUndefinded(this.authorizationCache[key])) {
-            Logger.instanse.info("Adding user " + user.username + " to cache with key " + key);
-            var cuser: CachedUser = new CachedUser(user, user._id);
-            this.authorizationCache[key] = cuser;
+        if (NoderedUtil.IsNullUndefinded(this.authorizationCache[key + type])) {
+            Logger.instanse.info("Adding user " + user.name + " to cache with key " + key);
+            var cuser: CachedUser = new CachedUser(user, user._id, type);
+            this.authorizationCache[key + type] = cuser;
         }
         semaphore.up();
     }
@@ -59,7 +88,8 @@ export class CachedUser {
     public firstsignin: Date;
     constructor(
         public user: User,
-        public _id: string
+        public _id: string,
+        public type: string
     ) {
         this.firstsignin = new Date();
     }

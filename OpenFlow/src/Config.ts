@@ -168,6 +168,9 @@ export class Config {
     public static tls_passphrase: string = Config.getEnv("tls_passphrase", "");
 
     public static api_credential_cache_seconds: number = parseInt(Config.getEnv("api_credential_cache_seconds", "60000"));
+    public static dashboard_credential_cache_seconds: number = parseInt(Config.getEnv("dashboard_credential_cache_seconds", "60000"));
+    public static grafana_credential_cache_seconds: number = parseInt(Config.getEnv("grafana_credential_cache_seconds", "60000"));
+    public static cleanacl_credential_cache_seconds: number = parseInt(Config.getEnv("grafana_credential_cache_seconds", "60000"));
     public static oauth_token_cache_seconds: number = parseInt(Config.getEnv("oauth_token_cache_seconds", "60000"));
     public static oauth_access_token_lifetime: number = parseInt(Config.getEnv("oauth_access_token_lifetime", "604800"));
     public static oauth_refresh_token_lifetime: number = parseInt(Config.getEnv("oauth_refresh_token_lifetime", "604800"));

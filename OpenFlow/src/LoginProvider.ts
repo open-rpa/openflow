@@ -201,7 +201,7 @@ export class LoginProvider {
                 if (!NoderedUtil.IsNullEmpty(authorization) && authorization.indexOf(" ") > 1 &&
                     (authorization.toLocaleLowerCase().startsWith("bearer") || authorization.toLocaleLowerCase().startsWith("jwt"))) {
                     const token = authorization.split(" ")[1];
-                    let user: User = Auth.getUser(token);
+                    let user: User = Auth.getUser(token, "dashboard");
                     let tuser: TokenUser;
                     if (user == null) {
                         try {
@@ -220,7 +220,7 @@ export class LoginProvider {
                     if (user != null) {
                         const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
                         if (allowed.length > 0) {
-                            await Auth.AddUser(user, token);
+                            await Auth.AddUser(user, token, "dashboard");
                             // Logger.instanse.info("dashboardauth: Authorized " + user.username + " for " + req.url);
                             return res.send({
                                 status: "success",
@@ -242,13 +242,13 @@ export class LoginProvider {
                 const [login, password] = Buffer.from(b64auth, "base64").toString().split(':')
                 if (login && password) {
                     span.setAttribute("username", login);
-                    let user: User = Auth.getUser(login + ":" + password);
+                    let user: User = Auth.getUser(login + ":" + password, "dashboard");
                     if (user == null) user = await Auth.ValidateByPassword(login, password, span);
                     if (user != null) {
                         const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
                         if (allowed.length > 0) {
                             // Logger.instanse.info("dashboardauth: Authorized " + user.username + " for " + req.url);
-                            Auth.AddUser(user, login + ":" + password);
+                            Auth.AddUser(user, login + ":" + password, "dashboard");
                             return res.send({
                                 status: "success",
                                 display_status: "Success",

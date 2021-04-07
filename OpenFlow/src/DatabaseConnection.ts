@@ -10,6 +10,7 @@ import { OAuthProvider } from "./OAuthProvider";
 import { ValueRecorder, Counter } from "@opentelemetry/api-metrics"
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
+import { Auth } from "./Auth";
 // tslint:disable-next-line: typedef
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 const isoDatePattern = new RegExp(/\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z)/);
@@ -162,6 +163,21 @@ export class DatabaseConnection {
             Logger.otel.endSpan(span);
         }
     }
+    WellknownIdsArray: string[] = [
+        WellknownIds.root,
+        WellknownIds.admins,
+        WellknownIds.users,
+        WellknownIds.robots,
+        WellknownIds.nodered_users,
+        WellknownIds.nodered_admins,
+        WellknownIds.nodered_api_users,
+        WellknownIds.filestore_users,
+        WellknownIds.filestore_admins,
+        WellknownIds.robot_users,
+        WellknownIds.robot_admins,
+        WellknownIds.personal_nodered_users,
+        WellknownIds.robot_agent_users
+    ]
 
     async CleanACL<T extends Base>(item: T, user: TokenUser, parent: Span): Promise<T> {
         const span: Span = Logger.otel.startSubSpan("db.CleanACL", parent);
@@ -173,16 +189,26 @@ export class DatabaseConnection {
                         const b = new Binary(Buffer.from(ace.rights, "base64"), 0);
                         (ace.rights as any) = b;
                     }
-                    const ot_end = Logger.otel.startTimer();
-                    const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.find", span);
-                    mongodbspan.setAttribute("collection", "users");
-                    const arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1 }).limit(1).toArray();
-                    mongodbspan.setAttribute("results", arr.length);
-                    Logger.otel.endSpan(mongodbspan);
-                    Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: "users" });
-                    if (arr.length == 0) {
-                        item._acl.splice(i, 1);
-                    } else { ace.name = arr[0].name; }
+                    if (this.WellknownIdsArray.indexOf(ace._id) == -1) {
+                        let user = await Auth.getUser(ace._id, "cleanacl");
+                        if (user == null || user != null) {
+                            const ot_end = Logger.otel.startTimer();
+                            const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.find", span);
+                            mongodbspan.setAttribute("collection", "users");
+                            mongodbspan.setAttribute("query", JSON.stringify({ _id: ace._id }));
+                            const arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1 }).limit(1).toArray();
+                            mongodbspan.setAttribute("results", arr.length);
+                            Logger.otel.endSpan(mongodbspan);
+                            Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: "users" });
+                            if (arr.length > 0) {
+                                user = arr[0];
+                                await Auth.AddUser(user, ace._id, "cleanacl");
+                            }
+                        }
+                        if (user == null) {
+                            item._acl.splice(i, 1);
+                        } else { ace.name = user.name; }
+                    }
                 }
             }
             if (Config.force_add_admins) {
