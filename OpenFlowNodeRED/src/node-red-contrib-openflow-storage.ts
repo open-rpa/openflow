@@ -350,6 +350,7 @@ export class noderedcontribopenflowstorage {
             "license": "MPL-2.0",
             "description": "A OpenFlow Node-RED Project",
             "version": "0.0.1",
+            "dependencies": [],
             "repository": {
                 "type": "git",
                 "url": "git+https://github.com/open-rpa/openflow.git"
