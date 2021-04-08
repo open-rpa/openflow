@@ -27,10 +27,10 @@
     "@nodemailer/mailparser2": "^1.0.3",
     "@openiap/openflow-api": "^1.0.61",
     "@opentelemetry/api": "^0.18.1",
-    "@opentelemetry/core": "^0.18.0",
-    "@opentelemetry/exporter-collector-grpc": "^0.18.0",
-    "@opentelemetry/metrics": "^0.18.0",
-    "@opentelemetry/tracing": "^0.18.0",
+    "@opentelemetry/core": "^0.18.2",
+    "@opentelemetry/exporter-collector-grpc": "^0.18.2",
+    "@opentelemetry/metrics": "^0.18.2",
+    "@opentelemetry/tracing": "^0.18.2",
     "async-retry": "^1.3.1",
     "body-parser": "^1.19.0",
     "command-line-args": "^5.1.1",
@@ -40,19 +40,19 @@
     "envfile": "^6.14.0",
     "express": "^4.17.1",
     "global-npm": "^0.4.1",
-    "google-auth-library": "^7.0.3",
+    "google-auth-library": "^7.0.4",
     "jsonwebtoken": "^8.5.1",
     "morgan": "^1.10.0",
     "node-red": "^1.2.9",
     "passport-saml": "^2.1.0",
     "passport-saml-metadata": "^2.4.1",
-    "pm2": "^4.5.5",
+    "pm2": "^4.5.6",
     "readline-sync": "^1.4.10",
     "smtp-server": "^3.8.0",
     "winston": "^3.3.3"
   },
   "devDependencies": {
     "@types/compression": "1.7.0",
-    "@types/node": "^14.14.35"
+    "@types/node": "^14.14.37"
   }
 }
