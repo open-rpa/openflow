@@ -160,7 +160,10 @@ async function doit() {
                     script: __filename,
                     args: [servicename, "--run", "--config", envfilepathname]
                 });
-                if (process.platform != "win32") {
+                if (process.platform == "linux") {
+                    await pm2startup("systemd");
+                }
+                else if (process.platform != "win32") {
                     await pm2startup(process.platform as any);
                 }
                 await pm2dump();

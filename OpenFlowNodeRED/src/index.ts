@@ -165,6 +165,7 @@ let server: http.Server = null;
                 if (!NoderedUtil.IsNullEmpty(result.openflow_uniqueid) || !NoderedUtil.IsNullEmpty(result.otel_metric_url)) {
                     if (!NoderedUtil.IsNullUndefinded(_otel_require)) {
                         Config.enable_analytics = result.enable_analytics;
+                        Logger.instanse.info("reconfigure otel");
                         Logger.otel = _otel_require.otel.configure();
                     }
                 }
