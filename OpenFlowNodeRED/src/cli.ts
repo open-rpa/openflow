@@ -102,7 +102,6 @@ function getToken(): Promise<string> {
 
 async function doit() {
     try {
-        console.log("--- BEGIN!!!!");
         if (options.init) {
             console.log("init");
             const files = fs.readdirSync(path.join(__dirname, ".."))
@@ -161,10 +160,18 @@ async function doit() {
                     args: [servicename, "--run", "--config", envfilepathname]
                 });
                 if (process.platform == "linux") {
-                    await pm2startup("systemd");
+                    try {
+                        await pm2startup("systemd");
+                    } catch (error) {
+                        console.error(error.message ? error.message : error);
+                    }
                 }
                 else if (process.platform != "win32") {
-                    await pm2startup(process.platform as any);
+                    try {
+                        await pm2startup(process.platform as any);
+                    } catch (error) {
+                        console.error(error.message ? error.message : error);
+                    }
                 }
                 await pm2dump();
             } else {
