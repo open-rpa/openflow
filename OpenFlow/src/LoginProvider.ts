@@ -242,13 +242,13 @@ export class LoginProvider {
                 const [login, password] = Buffer.from(b64auth, "base64").toString().split(':')
                 if (login && password) {
                     span.setAttribute("username", login);
-                    let user: User = Auth.getUser(login + ":" + password, "dashboard");
+                    let user: User = Auth.getUser(b64auth, "dashboard");
                     if (user == null) user = await Auth.ValidateByPassword(login, password, span);
                     if (user != null) {
                         const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
                         if (allowed.length > 0) {
                             // Logger.instanse.info("dashboardauth: Authorized " + user.username + " for " + req.url);
-                            Auth.AddUser(user, login + ":" + password, "dashboard");
+                            Auth.AddUser(user, b64auth, "dashboard");
                             return res.send({
                                 status: "success",
                                 display_status: "Success",

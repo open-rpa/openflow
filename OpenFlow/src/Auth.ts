@@ -37,7 +37,7 @@ export class Auth {
         if (type == "dashboard") cache_seconds = Config.dashboard_credential_cache_seconds;
         if (type == "cleanacl") cache_seconds = Config.cleanacl_credential_cache_seconds;
         if (seconds < cache_seconds) {
-            // Logger.instanse.info("Return user " + res.user.username + " from cache");
+            Logger.instanse.silly("Return user " + res.user.username + " from cache");
             return res.user;
         }
         this.RemoveUser(key, type);
@@ -69,7 +69,7 @@ export class Auth {
     public static async RemoveUser(key: string, type: string): Promise<void> {
         await semaphore.down();
         if (!NoderedUtil.IsNullUndefinded(this.authorizationCache[key + type])) {
-            Logger.instanse.info("Delete user with key " + key + " from cache");
+            Logger.instanse.silly("Delete user with key " + key + " from cache");
             delete this.authorizationCache[key + type];
         }
         semaphore.up();
@@ -77,7 +77,7 @@ export class Auth {
     public static async AddUser(user: User, key: string, type: string): Promise<void> {
         await semaphore.down();
         if (NoderedUtil.IsNullUndefinded(this.authorizationCache[key + type])) {
-            Logger.instanse.info("Adding user " + user.name + " to cache with key " + key);
+            Logger.instanse.silly("Adding user " + user.name + " to cache with key " + key);
             var cuser: CachedUser = new CachedUser(user, user._id, type);
             this.authorizationCache[key + type] = cuser;
         }
