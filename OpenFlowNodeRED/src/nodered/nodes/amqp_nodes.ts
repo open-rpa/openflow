@@ -32,10 +32,10 @@ export class amqp_connection {
         this.host = this.config.host;
         this.name = config.name || this.host;
         if (!NoderedUtil.IsNullUndefinded(this.host)) {
-            this.webcli = new WebSocketClient(WebSocketClient.instance._logger, this.host);
+            this.webcli = new WebSocketClient(Logger.instanse, this.host);
             this.webcli.agent = "remotenodered";
             this.webcli.version = Config.version;
-            this.webcli._logger.info("amqp_config: connecting to " + this.host);
+            Logger.instanse.info("amqp_config: connecting to " + this.host);
             this.webcli.events.on("onopen", async () => {
                 try {
                     const q: SigninMessage = new SigninMessage();
@@ -44,20 +44,20 @@ export class amqp_connection {
                     q.username = this.username;
                     q.password = this.password;
                     const msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
-                    this.webcli._logger.info("amqp_config: signing into " + this.host + " as " + this.username);
+                    Logger.instanse.info("amqp_config: signing into " + this.host + " as " + this.username);
                     const result: SigninMessage = await this.webcli.Send<SigninMessage>(msg);
-                    this.webcli._logger.info("signed in to " + this.host + " as " + result.user.name + " with id " + result.user._id);
+                    Logger.instanse.info("signed in to " + this.host + " as " + result.user.name + " with id " + result.user._id);
                     this.webcli.user = result.user;
                     this.webcli.jwt = result.jwt;
                     this.webcli.events.emit("onsignedin", result.user);
                 } catch (error) {
-                    this.webcli._logger.error(error);
+                    Logger.instanse.error(error);
                     this.webcli.events.emit("onclose", (error.message ? error.message : error));
                     NoderedUtil.HandleError(this.node, error, null);
                 }
             });
             this.webcli.events.on("onsignedin", async (user) => {
-                this.webcli._logger.info("signed in to " + this.host + " as " + user.name + " with id " + user._id);
+                Logger.instanse.info("signed in to " + this.host + " as " + user.name + " with id " + user._id);
             });
         }
     }
@@ -125,7 +125,7 @@ export class amqp_consumer_node {
             this.localqueue = await NoderedUtil.RegisterQueue(this.websocket(), this.config.queue, (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
             });
-            this.websocket()._logger.info("registed amqp consumer as " + this.localqueue);
+            Logger.instanse.info("registed amqp consumer as " + this.localqueue);
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
         } catch (error) {
             NoderedUtil.HandleError(this, error, null);
@@ -222,7 +222,7 @@ export class amqp_publisher_node {
             this.localqueue = await NoderedUtil.RegisterQueue(this.websocket(), this.localqueue, (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
             });
-            this.websocket()._logger.info("registed amqp published return queue as " + this.localqueue);
+            Logger.instanse.info("registed amqp published return queue as " + this.localqueue);
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
 
         } catch (error) {

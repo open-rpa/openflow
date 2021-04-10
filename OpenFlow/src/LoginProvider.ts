@@ -1,6 +1,5 @@
 import * as crypto from "crypto";
 import * as url from "url";
-import * as winston from "winston";
 import * as express from "express";
 import * as path from "path";
 
@@ -23,6 +22,8 @@ import { Base, User, NoderedUtil, TokenUser, WellknownIds, Rights, Role } from "
 import { DBHelper } from "./DBHelper";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
+import { Auth } from "./Auth";
+import { WebServer } from "./WebServer";
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 
 interface IVerifyFunction { (error: any, profile: any): void; }
@@ -61,7 +62,6 @@ export class samlauthstrategyoptions {
     public verify: any;
 }
 export class LoginProvider {
-    public static _logger: winston.Logger;
     public static _providers: any = {};
     public static login_providers: Provider[] = [];
 
@@ -148,8 +148,7 @@ export class LoginProvider {
             Logger.otel.endSpan(span);
         }
     }
-    static async configure(logger: winston.Logger, app: express.Express, baseurl: string): Promise<void> {
-        LoginProvider._logger = logger;
+    static async configure(app: express.Express, baseurl: string): Promise<void> {
         app.use(passport.initialize());
         app.use(passport.session());
         passport.serializeUser(async function (user: any, done: any): Promise<void> {
@@ -175,6 +174,101 @@ export class LoginProvider {
                 res.send("ok");
             } else {
                 next();
+            }
+        });
+        app.get("/dashboardauth", async (req: any, res: any, next: any) => {
+            const span: Span = Logger.otel.startSpan("LoginProvider.user");
+            try {
+                span.setAttribute("remoteip", WebServer.remoteip(req));
+                if (req.user) {
+                    const user: TokenUser = TokenUser.From(req.user);
+                    span.setAttribute("username", user.username);
+                    if (user != null) {
+                        const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
+                        if (allowed.length > 0) {
+                            Logger.instanse.info("dashboardauth: Authorized " + user.username + " for " + req.url);
+                            return res.send({
+                                status: "success",
+                                display_status: "Success",
+                                message: "Connection OK"
+                            });
+                        } else {
+                            console.warn("dashboardauth: " + user.username + " is not member of 'dashboardusers' for " + req.url);
+                        }
+                    }
+                }
+                const authorization: string = req.headers.authorization;
+                if (!NoderedUtil.IsNullEmpty(authorization) && authorization.indexOf(" ") > 1 &&
+                    (authorization.toLocaleLowerCase().startsWith("bearer") || authorization.toLocaleLowerCase().startsWith("jwt"))) {
+                    const token = authorization.split(" ")[1];
+                    let user: User = Auth.getUser(token, "dashboard");
+                    let tuser: TokenUser;
+                    if (user == null) {
+                        try {
+                            user = await LoginProvider.validateToken(token, span);
+                            tuser = TokenUser.From(user);
+                        } catch (error) {
+                        }
+                    }
+                    if (user == null) {
+                        try {
+                            tuser = Crypt.verityToken(token);
+                            user = await DBHelper.FindById(user._id, undefined, span);
+                        } catch (error) {
+                        }
+                    }
+                    if (user != null) {
+                        const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
+                        if (allowed.length > 0) {
+                            await Auth.AddUser(user, token, "dashboard");
+                            // Logger.instanse.info("dashboardauth: Authorized " + user.username + " for " + req.url);
+                            return res.send({
+                                status: "success",
+                                display_status: "Success",
+                                message: "Connection OK"
+                            });
+                        } else {
+                            console.warn("dashboardauth: " + user.username + " is not member of 'dashboardusers' for " + req.url);
+                        }
+                    }
+                    res.statusCode = 401;
+                    res.end('Unauthorized');
+                    return;
+                }
+
+                // parse login and password from headers
+                const b64auth = (authorization || '').split(' ')[1] || ''
+                // const [login, password] = new Buffer(b64auth, 'base64').toString().split(':')
+                const [login, password] = Buffer.from(b64auth, "base64").toString().split(':')
+                if (login && password) {
+                    span.setAttribute("username", login);
+                    let user: User = Auth.getUser(b64auth, "dashboard");
+                    if (user == null) user = await Auth.ValidateByPassword(login, password, span);
+                    if (user != null) {
+                        const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
+                        if (allowed.length > 0) {
+                            // Logger.instanse.info("dashboardauth: Authorized " + user.username + " for " + req.url);
+                            Auth.AddUser(user, b64auth, "dashboard");
+                            return res.send({
+                                status: "success",
+                                display_status: "Success",
+                                message: "Connection OK"
+                            });
+                        } else {
+                            console.warn("dashboardauth: " + user.username + " is not member of 'dashboardusers' for " + req.url);
+                        }
+                    }
+                } else {
+                    Logger.instanse.warn("dashboardauth: Unauthorized, no username/password for " + req.url);
+                }
+                res.statusCode = 401;
+                res.setHeader('WWW-Authenticate', 'Basic realm="OpenFlow"');
+                res.end('Unauthorized');
+            } catch (error) {
+                span.recordException(error);
+                throw error;
+            } finally {
+                Logger.otel.endSpan(span);
             }
         });
         app.get("/Signout", (req: any, res: any, next: any): void => {
@@ -215,6 +309,7 @@ export class LoginProvider {
         app.get("/user", async (req: any, res: any, next: any): Promise<void> => {
             const span: Span = Logger.otel.startSpan("LoginProvider.user");
             try {
+                span.setAttribute("remoteip", WebServer.remoteip(req));
                 res.setHeader("Content-Type", "application/json");
                 if (req.user) {
                     const user: User = await DBHelper.FindById(req.user._id, undefined, span);
@@ -233,6 +328,7 @@ export class LoginProvider {
         app.get("/jwt", (req: any, res: any, next: any): void => {
             const span: Span = Logger.otel.startSpan("LoginProvider.jwt");
             try {
+                span.setAttribute("remoteip", WebServer.remoteip(req));
                 res.setHeader("Content-Type", "application/json");
                 if (req.user) {
                     const user: TokenUser = TokenUser.From(req.user);
@@ -253,6 +349,7 @@ export class LoginProvider {
         app.get("/jwtlong", (req: any, res: any, next: any): void => {
             const span: Span = Logger.otel.startSpan("LoginProvider.jwtlong");
             try {
+                span.setAttribute("remoteip", WebServer.remoteip(req));
                 res.setHeader("Content-Type", "application/json");
                 if (req.user) {
                     const user: TokenUser = TokenUser.From(req.user);
@@ -278,6 +375,7 @@ export class LoginProvider {
             const span: Span = Logger.otel.startSpan("LoginProvider.jwt");
             // logger.debug("/jwt " + !(req.user == null));
             try {
+                span.setAttribute("remoteip", WebServer.remoteip(req));
                 const rawAssertion = req.body.token;
                 const user: User = await LoginProvider.validateToken(rawAssertion, span);
                 const tuser: TokenUser = TokenUser.From(user);
@@ -295,6 +393,7 @@ export class LoginProvider {
         app.get("/config", (req: any, res: any, next: any): void => {
             const span: Span = Logger.otel.startSpan("LoginProvider.config");
             try {
+                span.setAttribute("remoteip", WebServer.remoteip(req));
                 let _url = Config.basewsurl();
                 if (!NoderedUtil.IsNullEmpty(Config.api_ws_url)) _url = Config.api_ws_url;
                 if (!_url.endsWith("/")) _url += "/";
@@ -329,6 +428,7 @@ export class LoginProvider {
         app.get("/login", async (req: any, res: any, next: any): Promise<void> => {
             const span: Span = Logger.otel.startSpan("LoginProvider.login");
             try {
+                span.setAttribute("remoteip", WebServer.remoteip(req));
                 const originalUrl: any = req.cookies.originalUrl;
                 const validateurl: any = req.cookies.validateurl;
                 if (NoderedUtil.IsNullEmpty(originalUrl) && !req.originalUrl.startsWith("/login")) {
@@ -370,26 +470,32 @@ export class LoginProvider {
         });
         app.get("/validateuserform", async (req: any, res: any, next: any): Promise<void> => {
             const span: Span = Logger.otel.startSpan("LoginProvider.validateuserform");
-            // logger.debug("/validateuserform " + !(req.user == null));
-            res.setHeader("Content-Type", "application/json");
-            if (NoderedUtil.IsNullEmpty(Config.validate_user_form)) {
+            try {
+                span.setAttribute("remoteip", WebServer.remoteip(req));
+                res.setHeader("Content-Type", "application/json");
+                if (NoderedUtil.IsNullEmpty(Config.validate_user_form)) {
+                    res.end(JSON.stringify({}));
+                    res.end();
+                    Logger.otel.endSpan(span);
+                    return;
+                }
+                var forms = await Config.db.query<Base>({ _id: Config.validate_user_form, _type: "form" }, null, 1, 0, null, "forms", Crypt.rootToken(), undefined, undefined, span);
+                if (forms.length == 1) {
+                    res.end(JSON.stringify(forms[0]));
+                    res.end();
+                    Logger.otel.endSpan(span);
+                    return;
+                }
+                Logger.instanse.error("validate_user_form " + Config.validate_user_form + " does not exists!");
+                Config.validate_user_form = "";
                 res.end(JSON.stringify({}));
                 res.end();
+            } catch (error) {
+                span.recordException(error);
+                return res.status(500).send({ message: error.message ? error.message : error });
+            } finally {
                 Logger.otel.endSpan(span);
-                return;
             }
-            var forms = await Config.db.query<Base>({ _id: Config.validate_user_form, _type: "form" }, null, 1, 0, null, "forms", Crypt.rootToken(), undefined, undefined, span);
-            if (forms.length == 1) {
-                res.end(JSON.stringify(forms[0]));
-                res.end();
-                Logger.otel.endSpan(span);
-                return;
-            }
-            LoginProvider._logger.error("validate_user_form " + Config.validate_user_form + " does not exists!");
-            Config.validate_user_form = "";
-            res.end(JSON.stringify({}));
-            res.end();
-            Logger.otel.endSpan(span);
             return;
         });
         app.post("/validateuserform", async (req: any, res) => {
@@ -397,6 +503,7 @@ export class LoginProvider {
             // logger.debug("/validateuserform " + !(req.user == null));
             res.setHeader("Content-Type", "application/json");
             try {
+                span.setAttribute("remoteip", WebServer.remoteip(req));
                 if (req.user) {
                     if (req.body && req.body.data) {
                         const tuser: TokenUser = TokenUser.From(req.user);
@@ -447,6 +554,7 @@ export class LoginProvider {
         app.get("/loginproviders", async (req: any, res: any, next: any): Promise<void> => {
             const span: Span = Logger.otel.startSpan("LoginProvider.loginproviders");
             try {
+                span.setAttribute("remoteip", WebServer.remoteip(req));
                 const result: any[] = await this.getProviders(span);
                 res.setHeader("Content-Type", "application/json");
                 res.end(JSON.stringify(result));
@@ -470,6 +578,7 @@ export class LoginProvider {
         app.get("/download/:id", async (req, res) => {
             const span: Span = Logger.otel.startSpan("LoginProvider.download");
             try {
+                span.setAttribute("remoteip", WebServer.remoteip(req));
                 let user: TokenUser = null;
                 let jwt: string = null;
                 const authHeader = req.headers.authorization;
@@ -577,6 +686,7 @@ export class LoginProvider {
             app.delete("/upload", async (req: any, res: any, next: any): Promise<void> => {
                 const span: Span = Logger.otel.startSpan("LoginProvider.upload");
                 try {
+                    span.setAttribute("remoteip", WebServer.remoteip(req));
                     let user: TokenUser = null;
                     let jwt: string = null;
                     const authHeader = req.headers.authorization;
@@ -625,6 +735,7 @@ export class LoginProvider {
             app.get("/upload", async (req: any, res: any, next: any): Promise<void> => {
                 const span: Span = Logger.otel.startSpan("LoginProvider.upload");
                 try {
+                    span.setAttribute("remoteip", WebServer.remoteip(req));
                     let user: TokenUser = null;
                     let jwt: string = null;
                     const authHeader = req.headers.authorization;
@@ -756,7 +867,7 @@ export class LoginProvider {
         const strategy: passport.Strategy = new GoogleStrategy.Strategy(options, options.verify);
         passport.use(key, strategy);
         strategy.name = key;
-        LoginProvider._logger.info(options.callbackURL);
+        Logger.instanse.info(options.callbackURL);
         app.use("/" + key,
             express.urlencoded({ extended: false }),
             passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),
@@ -786,7 +897,7 @@ export class LoginProvider {
         const strategy: passport.Strategy = new SamlStrategy(options, options.verify);
         passport.use(key, strategy);
         strategy.name = key;
-        LoginProvider._logger.info(options.callbackUrl);
+        Logger.instanse.info(options.callbackUrl);
 
         // app.get("/" + key + "/FederationMetadata/2007-06/FederationMetadata.xml",
         //     wsfed.metadata({
@@ -926,33 +1037,33 @@ export class LoginProvider {
         app.use("/local",
             express.urlencoded({ extended: false }),
             function (req: any, res: any, next: any): void {
-                LoginProvider._logger.debug("passport.authenticate local");
+                Logger.instanse.debug("passport.authenticate local");
                 passport.authenticate("local", function (err, user, info) {
                     let originalUrl: any = req.cookies.originalUrl;
-                    LoginProvider._logger.debug("originalUrl: " + originalUrl);
+                    Logger.instanse.debug("originalUrl: " + originalUrl);
                     if (err) {
-                        LoginProvider._logger.error(err);
+                        Logger.instanse.error(err);
                     }
                     if (!err && user) {
-                        LoginProvider._logger.info(user);
+                        Logger.instanse.info(user);
                         req.logIn(user, function (err: any) {
                             if (err) {
-                                LoginProvider._logger.info("req.logIn failed");
-                                LoginProvider._logger.error(err);
+                                Logger.instanse.info("req.logIn failed");
+                                Logger.instanse.error(err);
                                 return next(err);
                             }
-                            LoginProvider._logger.info("req.logIn success");
+                            Logger.instanse.info("req.logIn success");
                             if (!NoderedUtil.IsNullEmpty(originalUrl)) {
                                 try {
                                     res.cookie("originalUrl", "", { expires: new Date(0) });
                                     LoginProvider.redirect(res, originalUrl);
-                                    LoginProvider._logger.debug("redirect: " + originalUrl);
+                                    Logger.instanse.debug("redirect: " + originalUrl);
                                     return;
                                 } catch (error) {
                                     console.error(error.message ? error.message : error);
                                 }
                             } else {
-                                LoginProvider._logger.debug("redirect: to /");
+                                Logger.instanse.debug("redirect: to /");
                                 res.redirect("/");
                                 return next();
                             }
@@ -966,16 +1077,16 @@ export class LoginProvider {
                             originalUrl = originalUrl + "&error=1"
                         }
                         try {
-                            LoginProvider._logger.debug("remove originalUrl");
+                            Logger.instanse.debug("remove originalUrl");
                             res.cookie("originalUrl", "", { expires: new Date(0) });
-                            LoginProvider._logger.debug("redirect: " + originalUrl);
+                            Logger.instanse.debug("redirect: " + originalUrl);
                             LoginProvider.redirect(res, originalUrl);
                         } catch (error) {
                             console.error(error.message ? error.message : error);
                         }
                     } else {
                         try {
-                            LoginProvider._logger.debug("redirect: to /");
+                            Logger.instanse.debug("redirect: to /");
                             res.redirect("/");
                             return next();
                         } catch (error) {
@@ -994,7 +1105,7 @@ export class LoginProvider {
             let username: string = profile.username;
             if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
             if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
-            LoginProvider._logger.debug("verify: " + username);
+            Logger.instanse.debug("verify: " + username);
             let _user: User = await DBHelper.FindByUsernameOrFederationid(username, span);
 
             if (NoderedUtil.IsNullUndefinded(_user)) {
@@ -1072,7 +1183,7 @@ export class LoginProvider {
             let username: string = profile.username;
             if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
             if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
-            LoginProvider._logger.debug("verify: " + username);
+            Logger.instanse.debug("verify: " + username);
             let _user: User = await DBHelper.FindByUsernameOrFederationid(username, span);
             if (NoderedUtil.IsNullUndefinded(_user)) {
                 let createUser: boolean = Config.auto_create_users;

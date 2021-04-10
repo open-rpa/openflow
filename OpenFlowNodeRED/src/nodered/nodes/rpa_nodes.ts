@@ -240,7 +240,7 @@ export class rpa_workflow_node {
             let queue = this.config.queue;
             let workflowid = this.config.workflow;
             let killexisting = this.config.killexisting;
-            if (!NoderedUtil.IsNullEmpty(msg.queue)) { queue = msg.queue; }
+            // if (!NoderedUtil.IsNullEmpty(msg.queue)) { queue = msg.queue; }
             if (!NoderedUtil.IsNullEmpty(msg.targetid)) { queue = msg.targetid; }
             if (queue == "none") queue = "";
             if (!NoderedUtil.IsNullEmpty(msg.workflowid)) { workflowid = msg.workflowid; }

@@ -40,12 +40,12 @@ async function handleError(cli: WebSocketServerClient, error: Error) {
         errorcounter++;
         if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_errors)) WebSocketServer.websocket_errors.bind({ ...Logger.otel.defaultlabels }).update(errorcounter);
         if (Config.socket_rate_limit) await ErrorRateLimiter.consume(cli.id);
-        cli._logger.error(error);
+        Logger.instanse.error(error);
     } catch (error) {
         if (error.consumedPoints) {
             let username: string = "Unknown";
             if (!NoderedUtil.IsNullUndefinded(cli.user)) { username = cli.user.username; }
-            cli._logger.debug("[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_ERROR_RATE_LIMIT: Disconnecing client ! consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
+            Logger.instanse.debug("[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_ERROR_RATE_LIMIT: Disconnecing client ! consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
             cli.devnull = true;
             cli.Close();
         }
@@ -98,9 +98,9 @@ export class Message {
             } catch (error) {
                 if (error.consumedPoints) {
                     if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_rate_limit)) WebSocketServer.websocket_rate_limit.bind({ ...Logger.otel.defaultlabels, command: command }).update(cli.inccommandcounter(command));
-                    if ((error.consumedPoints % 100) == 0) cli._logger.debug("[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
+                    if ((error.consumedPoints % 100) == 0) Logger.instanse.debug("[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
                     if (error.consumedPoints >= Config.socket_rate_limit_points_disconnect) {
-                        cli._logger.debug("[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT: Disconnecing client ! consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
+                        Logger.instanse.debug("[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT: Disconnecing client ! consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
                         cli.devnull = true;
                         cli.Close();
                     }
@@ -283,7 +283,7 @@ export class Message {
             }
             if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
         } catch (error) {
-            cli._logger.error(error);
+            Logger.instanse.error(error);
             span.recordException(error);
         } finally {
             Logger.otel.endSpan(span);
@@ -398,7 +398,7 @@ export class Message {
     private UnknownCommand(cli: WebSocketServerClient): void {
         this.Reply("error");
         this.data = "Unknown command " + this.command;
-        cli._logger.error(new Error(this.data));
+        Logger.instanse.error(new Error(this.data));
         this.Send(cli);
     }
     private Ping(cli: WebSocketServerClient): void {
@@ -837,22 +837,22 @@ export class Message {
             if (!NoderedUtil.IsNullUndefinded(cli.user)) {
                 if (!(cli.user.validated == true) && Config.validate_user_form != "") {
                     if (cli.clientagent != "nodered" && NoderedUtil.IsNullEmpty(tuser.impostor)) {
-                        cli._logger.error(tuser.username + " failed logging in, not validated");
+                        Logger.instanse.error(tuser.username + " failed logging in, not validated");
                         Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
                         tuser = null;
                     }
                 }
             }
             if (tuser != null && cli.user != null && cli.user.disabled) {
-                cli._logger.error(tuser.username + " failed logging in, user is disabled");
+                Logger.instanse.error(tuser.username + " failed logging in, user is disabled");
                 Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
                 tuser = null;
             } else if (tuser != null) {
-                cli._logger.info(tuser.username + " successfully signed in");
+                Logger.instanse.info(tuser.username + " successfully signed in");
                 Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
             }
         } catch (error) {
-            cli._logger.error(error);
+            Logger.instanse.error(error);
             span.recordException(error);
         }
         return tuser;
@@ -933,11 +933,11 @@ export class Message {
                 if (user === null || user === undefined || tuser === null || tuser === undefined) {
                     if (msg !== null && msg !== undefined) msg.error = "Unknown username or password";
                     Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
-                    cli._logger.error(tuser.username + " failed logging in using " + type);
+                    Logger.instanse.error(tuser.username + " failed logging in using " + type);
                 } else if (user.disabled && (msg.impersonate != "-1" && msg.impersonate != "false")) {
                     if (msg !== null && msg !== undefined) msg.error = "Disabled users cannot signin";
                     Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
-                    cli._logger.error("Disabled user " + tuser.username + " failed logging in using " + type);
+                    Logger.instanse.error("Disabled user " + tuser.username + " failed logging in using " + type);
                 } else {
                     if (msg.impersonate == "-1" || msg.impersonate == "false") {
                         user = await DBHelper.FindById(impostor, Crypt.rootToken(), span);
@@ -952,7 +952,7 @@ export class Message {
                         msg.impersonate = undefined;
                         impostor = undefined;
                     }
-                    cli._logger.info(tuser.username + " successfully signed in");
+                    Logger.instanse.info(tuser.username + " successfully signed in");
                     Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
                     const userid: string = user._id;
                     if (msg.longtoken) {
@@ -978,7 +978,7 @@ export class Message {
                             if (impostors.length == 1) {
                                 imp = TokenUser.From(impostors[0]);
                             }
-                            cli._logger.error(tuser.name + " failed to impersonate " + msg.impersonate);
+                            Logger.instanse.error(tuser.name + " failed to impersonate " + msg.impersonate);
                             Audit.ImpersonateFailed(imp, tuser, cli.clientagent, cli.clientversion, span);
                             throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " view and impersonating " + msg.impersonate);
                         }
@@ -1000,7 +1000,7 @@ export class Message {
                             }
 
                             Audit.ImpersonateFailed(imp, tuser, cli.clientagent, cli.clientversion, span);
-                            cli._logger.error(tuser.name + " failed to impersonate " + msg.impersonate);
+                            Logger.instanse.error(tuser.name + " failed to impersonate " + msg.impersonate);
                             throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " updating and impersonating " + msg.impersonate);
                         }
                         tuser.impostor = tuserimpostor._id;
@@ -1013,7 +1013,7 @@ export class Message {
                             msg.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
                         }
                         msg.user = tuser;
-                        cli._logger.info(tuser.username + " successfully impersonated");
+                        Logger.instanse.info(tuser.username + " successfully impersonated");
                         Audit.ImpersonateSuccess(tuser, tuserimpostor, cli.clientagent, cli.clientversion, span);
                     }
                     if (msg.firebasetoken != null && msg.firebasetoken != undefined && msg.firebasetoken != "") {
@@ -1033,11 +1033,11 @@ export class Message {
                         user.device = msg.device;
                     }
                     if (msg.validate_only !== true) {
-                        cli._logger.debug(tuser.username + " signed in using " + type + " " + cli.id + "/" + cli.clientagent);
+                        Logger.instanse.debug(tuser.username + " signed in using " + type + " " + cli.id + "/" + cli.clientagent);
                         cli.jwt = msg.jwt;
                         cli.user = user;
                     } else {
-                        cli._logger.debug(tuser.username + " was validated in using " + type);
+                        Logger.instanse.debug(tuser.username + " was validated in using " + type);
                     }
                     if (msg.impersonate === undefined || msg.impersonate === null || msg.impersonate === "") {
                         user.lastseen = new Date(new Date().toISOString());
@@ -1072,7 +1072,7 @@ export class Message {
                 if (!(msg.user.validated == true) && Config.validate_user_form != "") {
                     if (cli.clientagent != "nodered" && NoderedUtil.IsNullEmpty(msg.user.impostor)) {
                         Audit.LoginFailed(msg.user.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
-                        cli._logger.error(msg.user.username + " not validated");
+                        Logger.instanse.error(msg.user.username + " not validated");
                         msg.error = "User not validated, please login again";
                         msg.jwt = undefined;
                     }
@@ -1118,12 +1118,12 @@ export class Message {
             name = name.split("@").join("").split(".").join("");
             name = name.toLowerCase();
 
-            cli._logger.debug("[" + user.username + "] ensure nodered role " + name + "noderedadmins");
+            Logger.instanse.debug("[" + user.username + "] ensure nodered role " + name + "noderedadmins");
             const noderedadmins = await DBHelper.EnsureRole(jwt, name + "noderedadmins", null, span);
             Base.addRight(noderedadmins, user._id, user.username, [Rights.full_control]);
             Base.removeRight(noderedadmins, user._id, [Rights.delete]);
             noderedadmins.AddMember(user);
-            cli._logger.debug("[" + user.username + "] update nodered role " + name + "noderedadmins");
+            Logger.instanse.debug("[" + user.username + "] update nodered role " + name + "noderedadmins");
             await DBHelper.Save(noderedadmins, jwt, span);
 
         } catch (error) {
@@ -1190,7 +1190,7 @@ export class Message {
         let user: NoderedUser;
         const span: Span = Logger.otel.startSubSpan("message._EnsureNoderedInstance", parent);
         try {
-            cli._logger.debug("[" + cli.user.username + "] EnsureNoderedInstance");
+            Logger.instanse.debug("[" + cli.user.username + "] EnsureNoderedInstance");
             if (_id === null || _id === undefined || _id === "") _id = cli.user._id;
             const name = await this.GetInstanceName(_id, cli.user._id, cli.user.username, cli.jwt, span);
 
@@ -1208,14 +1208,14 @@ export class Message {
             const tuser: TokenUser = TokenUser.From(nodereduser);
             const nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
 
-            cli._logger.debug("[" + cli.user.username + "] ensure nodered role " + name + "noderedadmins");
+            Logger.instanse.debug("[" + cli.user.username + "] ensure nodered role " + name + "noderedadmins");
             const noderedadmins = await DBHelper.EnsureRole(cli.jwt, name + "noderedadmins", null, span);
             Base.addRight(noderedadmins, nodereduser._id, nodereduser.username, [Rights.full_control]);
             Base.removeRight(noderedadmins, nodereduser._id, [Rights.delete]);
             Base.addRight(noderedadmins, cli.user._id, cli.user.username, [Rights.full_control]);
             Base.removeRight(noderedadmins, cli.user._id, [Rights.delete]);
             noderedadmins.AddMember(nodereduser);
-            cli._logger.debug("[" + cli.user.username + "] update nodered role " + name + "noderedadmins");
+            Logger.instanse.debug("[" + cli.user.username + "] update nodered role " + name + "noderedadmins");
             await DBHelper.Save(noderedadmins, cli.jwt, span);
 
             const resources = new V1ResourceRequirements();
@@ -1293,11 +1293,11 @@ export class Message {
                 livenessProbe = (user.nodered as any).livenessProbe;
             }
 
-            cli._logger.debug("[" + cli.user.username + "] GetDeployments");
+            Logger.instanse.debug("[" + cli.user.username + "] GetDeployments");
             const deployment: V1Deployment = await KubeUtil.instance().GetDeployment(namespace, name);
             if (deployment == null) {
                 if (skipcreate) return;
-                cli._logger.debug("[" + cli.user.username + "] Deployment " + name + " not found in " + namespace + " so creating it");
+                Logger.instanse.debug("[" + cli.user.username + "] Deployment " + name + " not found in " + namespace + " so creating it");
 
                 let api_ws_url = Config.basewsurl();
                 if (!NoderedUtil.IsNullEmpty(Config.api_ws_url)) api_ws_url = Config.api_ws_url;
@@ -1409,7 +1409,7 @@ export class Message {
                     Audit.NoderedAction(TokenUser.From(cli.user), true, name, "createdeployment", Config.nodered_image, null, span);
                 } catch (error) {
                     if (error.response && error.response.body && error.response.body.message) {
-                        cli._logger.error(new Error(error.response.body.message));
+                        Logger.instanse.error(new Error(error.response.body.message));
                         throw new Error(error.response.body.message);
                     }
                     handleError(cli, error);
@@ -1436,10 +1436,10 @@ export class Message {
                     await KubeUtil.instance().AppsV1Api.replaceNamespacedDeployment(name, namespace, (deployment as any));
                     Audit.NoderedAction(TokenUser.From(cli.user), true, name, "replacedeployment", image, null, span);
                 } catch (error) {
-                    cli._logger.error("[" + cli.user.username + "] failed updating noeredinstance");
-                    cli._logger.error("[" + cli.user.username + "] " + JSON.stringify(error));
+                    Logger.instanse.error("[" + cli.user.username + "] failed updating noeredinstance");
+                    Logger.instanse.error("[" + cli.user.username + "] " + JSON.stringify(error));
                     if (error.response && error.response.body && !NoderedUtil.IsNullEmpty(error.response.body.message)) {
-                        cli._logger.error(new Error(error.response.body.message));
+                        Logger.instanse.error(new Error(error.response.body.message));
                         throw new Error(error.response.body.message);
                     }
                     Audit.NoderedAction(TokenUser.From(cli.user), false, name, "replacedeployment", image, null, span);
@@ -1447,10 +1447,10 @@ export class Message {
                 }
             }
 
-            cli._logger.debug("[" + cli.user.username + "] GetService");
+            Logger.instanse.debug("[" + cli.user.username + "] GetService");
             const service = await KubeUtil.instance().GetService(namespace, name);
             if (service == null) {
-                cli._logger.debug("[" + cli.user.username + "] Service " + name + " not found in " + namespace + " creating it");
+                Logger.instanse.debug("[" + cli.user.username + "] Service " + name + " not found in " + namespace + " creating it");
                 const _service = {
                     metadata: { name: name, namespace: namespace },
                     spec: {
@@ -1464,7 +1464,7 @@ export class Message {
                 }
                 await KubeUtil.instance().CoreV1Api.createNamespacedService(namespace, _service);
             }
-            cli._logger.debug("[" + cli.user.username + "] GetIngress useringress");
+            Logger.instanse.debug("[" + cli.user.username + "] GetIngress useringress");
             const ingress = await KubeUtil.instance().GetIngressV1beta1(namespace, "useringress");
             if (ingress !== null) {
                 let rule = null;
@@ -1474,7 +1474,7 @@ export class Message {
                     }
                 }
                 if (rule == null) {
-                    cli._logger.debug("[" + cli.user.username + "] ingress " + hostname + " not found in useringress creating it");
+                    Logger.instanse.debug("[" + cli.user.username + "] ingress " + hostname + " not found in useringress creating it");
                     if (Config.use_ingress_beta1_syntax) {
                         rule = {
                             host: hostname,
@@ -1511,11 +1511,11 @@ export class Message {
                     }
                     delete ingress.metadata.creationTimestamp;
                     delete ingress.status;
-                    cli._logger.debug("[" + cli.user.username + "] replaceNamespacedIngress");
+                    Logger.instanse.debug("[" + cli.user.username + "] replaceNamespacedIngress");
                     await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("useringress", namespace, ingress);
                 }
             } else {
-                cli._logger.error("[" + cli.user.username + "] failed locating useringress");
+                Logger.instanse.error("[" + cli.user.username + "] failed locating useringress");
                 throw new Error("failed locating useringress");
             }
         } catch (error) {
@@ -1588,11 +1588,11 @@ export class Message {
             let user: User;
             try {
                 msg = DeleteNoderedInstanceMessage.assign(this.data);
-                cli._logger.debug("[" + cli.user.username + "] DeleteNoderedInstance");
+                Logger.instanse.debug("[" + cli.user.username + "] DeleteNoderedInstance");
                 await this._DeleteNoderedInstance(msg._id, cli.user._id, cli.user.username, cli.jwt, span);
 
             } catch (error) {
-                cli._logger.error("[" + cli.user.username + "] failed deleting Nodered Instance");
+                Logger.instanse.error("[" + cli.user.username + "] failed deleting Nodered Instance");
                 this.data = "";
                 handleError(cli, error);
                 if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -1617,7 +1617,7 @@ export class Message {
         let msg: DeleteNoderedPodMessage;
         let user: User;
         try {
-            cli._logger.debug("[" + cli.user.username + "] DeleteNoderedInstance");
+            Logger.instanse.debug("[" + cli.user.username + "] DeleteNoderedInstance");
             msg = DeleteNoderedPodMessage.assign(this.data);
             const namespace = Config.namespace;
             const list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
@@ -1647,7 +1647,7 @@ export class Message {
                     }
                 }
             } else {
-                cli._logger.warn("[" + cli.user.username + "] DeleteNoderedPod: found NO Namespaced Pods ???");
+                Logger.instanse.warn("[" + cli.user.username + "] DeleteNoderedPod: found NO Namespaced Pods ???");
                 Audit.NoderedAction(TokenUser.From(cli.user), false, null, "deletepod", image, msg.name, span);
             }
         } catch (error) {
@@ -1671,7 +1671,7 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.RestartNoderedInstance", parent);
         let msg: RestartNoderedInstanceMessage;
         try {
-            cli._logger.debug("[" + cli.user.username + "] RestartNoderedInstance");
+            Logger.instanse.debug("[" + cli.user.username + "] RestartNoderedInstance");
             msg = RestartNoderedInstanceMessage.assign(this.data);
             const name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt, span);
             const namespace = Config.namespace;
@@ -1714,7 +1714,7 @@ export class Message {
         this.Reply();
         let msg: GetKubeNodeLabels;
         try {
-            cli._logger.debug("[" + cli.user.username + "] GetKubeNodeLabels");
+            Logger.instanse.debug("[" + cli.user.username + "] GetKubeNodeLabels");
             msg = GetKubeNodeLabels.assign(this.data);
             if (Config.nodered_allow_nodeselector) {
                 const list = await KubeUtil.instance().CoreV1Api.listNode();
@@ -1753,7 +1753,7 @@ export class Message {
         let msg: GetNoderedInstanceMessage;
         const span: Span = Logger.otel.startSubSpan("message.GetNoderedInstance", parent);
         try {
-            cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance");
+            Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstance");
             msg = GetNoderedInstanceMessage.assign(this.data);
             const name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt, span);
             const namespace = Config.namespace;
@@ -1779,7 +1779,7 @@ export class Message {
                         if ((image.indexOf("openflownodered") > -1 || image.indexOf("openiap/nodered") > -1) && !NoderedUtil.IsNullEmpty(userid)) {
                             try {
                                 if (billed != "true" && diffhours > 24) {
-                                    cli._logger.debug("[" + cli.user.username + "] Remove un billed nodered instance " + itemname + " that has been running for " + diffhours + " hours");
+                                    Logger.instanse.debug("[" + cli.user.username + "] Remove un billed nodered instance " + itemname + " that has been running for " + diffhours + " hours");
                                     await this._DeleteNoderedInstance(userid, cli.user._id, cli.user.username, rootjwt, span);
                                 }
                             } catch (error) {
@@ -1805,7 +1805,7 @@ export class Message {
                         found = item;
                         if (item.status.phase != "Failed") {
                             msg.result = item;
-                            cli._logger.debug("[" + cli.user.username + "] GetNoderedInstance:" + name + " found one");
+                            Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstance:" + name + " found one");
                         }
                         var metrics: any = null;
                         try {
@@ -1818,7 +1818,7 @@ export class Message {
                 }
                 if (msg.result == null) msg.result = found;
             } else {
-                cli._logger.warn("[" + cli.user.username + "] GetNoderedInstance: found NO Namespaced Pods ???");
+                Logger.instanse.warn("[" + cli.user.username + "] GetNoderedInstance: found NO Namespaced Pods ???");
             }
         } catch (error) {
             span.recordException(error);
@@ -1841,7 +1841,7 @@ export class Message {
         let msg: GetNoderedInstanceLogMessage;
         const span: Span = Logger.otel.startSubSpan("message.GetNoderedInstanceLog", parent);
         try {
-            cli._logger.debug("[" + cli.user.username + "] GetNoderedInstanceLog");
+            Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstanceLog");
             msg = GetNoderedInstanceLogMessage.assign(this.data);
             const name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt, span);
             const namespace = Config.namespace;
@@ -1858,12 +1858,12 @@ export class Message {
 
                     }
                     if (!NoderedUtil.IsNullEmpty(msg.name) && item.metadata.name == msg.name && cli.user.HasRoleName("admins")) {
-                        cli._logger.debug("[" + cli.user.username + "] GetNoderedInstanceLog:" + name + " found one as " + item.metadata.name);
+                        Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstanceLog:" + name + " found one as " + item.metadata.name);
                         const obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
                         msg.result = obj.body;
                         Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name, span);
                     } else if (item.metadata.labels.app === name) {
-                        cli._logger.debug("[" + cli.user.username + "] GetNoderedInstanceLog:" + name + " found one as " + item.metadata.name);
+                        Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstanceLog:" + name + " found one as " + item.metadata.name);
                         const obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
                         msg.result = obj.body;
                         Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name, span);

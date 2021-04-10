@@ -125,7 +125,6 @@ export class Config {
         Config.otel_debug_log = Config.parseBoolean(Config.getEnv("otel_debug_log", "false"));
         Config.otel_trace_url = Config.getEnv("otel_trace_url", "");
         Config.otel_metric_url = Config.getEnv("otel_metric_url", "");
-        Config.otel_servicename = Config.getEnv("otel_servicename", "openflow");
         Config.otel_trace_interval = parseInt(Config.getEnv("otel_trace_interval", "5000"));
         Config.otel_metric_interval = parseInt(Config.getEnv("otel_metric_interval", "5000"));
         Config.validate_user_form = Config.getEnv("validate_user_form", "");
@@ -168,6 +167,9 @@ export class Config {
     public static tls_passphrase: string = Config.getEnv("tls_passphrase", "");
 
     public static api_credential_cache_seconds: number = parseInt(Config.getEnv("api_credential_cache_seconds", "60000"));
+    public static dashboard_credential_cache_seconds: number = parseInt(Config.getEnv("dashboard_credential_cache_seconds", "60000"));
+    public static grafana_credential_cache_seconds: number = parseInt(Config.getEnv("grafana_credential_cache_seconds", "60000"));
+    public static cleanacl_credential_cache_seconds: number = parseInt(Config.getEnv("grafana_credential_cache_seconds", "60000"));
     public static oauth_token_cache_seconds: number = parseInt(Config.getEnv("oauth_token_cache_seconds", "60000"));
     public static oauth_access_token_lifetime: number = parseInt(Config.getEnv("oauth_access_token_lifetime", "604800"));
     public static oauth_refresh_token_lifetime: number = parseInt(Config.getEnv("oauth_refresh_token_lifetime", "604800"));
@@ -248,7 +250,6 @@ export class Config {
     public static otel_debug_log: boolean = Config.parseBoolean(Config.getEnv("otel_debug_log", "false"));
     public static otel_trace_url: string = Config.getEnv("otel_trace_url", "");
     public static otel_metric_url: string = Config.getEnv("otel_metric_url", "");
-    public static otel_servicename: string = Config.getEnv("otel_servicename", "openflow");
     public static otel_trace_interval: number = parseInt(Config.getEnv("otel_trace_interval", "5000"));
     public static otel_metric_interval: number = parseInt(Config.getEnv("otel_metric_interval", "5000"));
 

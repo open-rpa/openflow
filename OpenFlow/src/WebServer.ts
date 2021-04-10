@@ -1,5 +1,4 @@
 import * as path from "path";
-import * as winston from "winston";
 import * as http from "http";
 import * as https from "https";
 import * as express from "express";
@@ -31,7 +30,7 @@ const BaseRateLimiter = new RateLimiterMemory({
 
 const rateLimiter = (req: express.Request, res: express.Response, next: express.NextFunction): void => {
     BaseRateLimiter
-        .consume(req.ip)
+        .consume(WebServer.remoteip(req))
         .then((e) => {
             // console.info("API_O_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints);
             next();
@@ -46,47 +45,24 @@ const rateLimiter = (req: express.Request, res: express.Response, next: express.
 
 let websocket_rate_limit: Counter = null;
 export class WebServer {
-    private static _logger: winston.Logger;
+    public static remoteip(req: express.Request) {
+        let remoteip: string = req.socket.remoteAddress;
+        if (req.headers["X-Forwarded-For"] != null) remoteip = req.headers["X-Forwarded-For"] as string;
+        if (req.headers["X-real-IP"] != null) remoteip = req.headers["X-real-IP"] as string;
+        if (req.headers["x-forwarded-for"] != null) remoteip = req.headers["x-forwarded-for"] as string;
+        if (req.headers["x-real-ip"] != null) remoteip = req.headers["x-real-ip"] as string;
+        return remoteip;
+    }
     public static app: express.Express;
-
-
-    static async configure(logger: winston.Logger, baseurl: string): Promise<http.Server> {
-        this._logger = logger;
+    static async configure(baseurl: string): Promise<http.Server> {
         if (!NoderedUtil.IsNullUndefinded(Logger.otel)) {
             websocket_rate_limit = Logger.otel.meter.createCounter("openflow_webserver_rate_limit_count", {
                 description: 'Total number of rate limited web request'
             }) // "route"
         }
         this.app = express();
-        // if (!NoderedUtil.IsNullUndefinded(register)) {
-        //     const metricsMiddleware = promBundle({ includeMethod: true, includePath: true, promRegistry: register, autoregister: true });
-        //     this.app.use(metricsMiddleware);
-        //     if (!NoderedUtil.IsNullUndefinded(register)) register.registerMetric(webserver_rate_limit);
-        // }
-
-        // this.app.get("/form", async (req: any, res: any, next: any): Promise<void> => {
-        //     res.send({
-        //         status: "success",
-        //         display_status: "Success",
-        //         message: "All system are go"
-        //     });
-        //     return;
-        // });
-        // this.app.get("/formio", async (req: any, res: any, next: any): Promise<void> => {
-        //     res.send({
-        //         status: "success",
-        //         display_status: "Success",
-        //         message: "All system are go"
-        //     });
-        //     return;
-        // });
-
         this.app.get("/metrics", async (req: any, res: any, next: any): Promise<void> => {
             let result: string = ""
-            // if (!NoderedUtil.IsNullUndefinded(register)) {
-            //     result += await register.metrics() + '\n';
-            // }
-
             for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
                 const cli: WebSocketServerClient = WebSocketServer._clients[i];
                 try {
@@ -123,7 +99,7 @@ export class WebServer {
 
         const loggerstream = {
             write: function (message, encoding) {
-                logger.silly(message);
+                Logger.instanse.silly(message);
             }
         };
         this.app.use("/", express.static(path.join(__dirname, "/public")));
@@ -159,8 +135,8 @@ export class WebServer {
             // Pass to next layer of middleware
             next();
         });
-        await LoginProvider.configure(this._logger, this.app, baseurl);
-        await SamlProvider.configure(this._logger, this.app, baseurl);
+        await LoginProvider.configure(this.app, baseurl);
+        await SamlProvider.configure(this.app, baseurl);
         let server: http.Server = null;
         if (Config.tls_crt != '' && Config.tls_key != '') {
             let options: any = {
@@ -191,7 +167,7 @@ export class WebServer {
 
         const port = Config.port;
         server.listen(port).on('error', function (error) {
-            WebServer._logger.error(error);
+            Logger.instanse.error(error);
             process.exit(404);
         });
         return server;

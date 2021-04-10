@@ -1,5 +1,4 @@
 import * as OAuthServer from "oauth2-server";
-import * as winston from "winston";
 import * as express from "express";
 import { TokenUser, Base, NoderedUtil, User } from "@openiap/openflow-api";
 import { Config } from "./Config";
@@ -14,7 +13,6 @@ import { Logger } from "./Logger";
 const Request = OAuthServer.Request;
 const Response = OAuthServer.Response;
 export class OAuthProvider {
-    private _logger: winston.Logger;
     private app: express.Express;
     public static instance: OAuthProvider = null;
     private clients = [];
@@ -307,17 +305,14 @@ export class OAuthProvider {
             });
         } catch (error) {
             span.recordException(error);
-            instance._logger.error(error);
+            Logger.instanse.error(error);
         }
         Logger.otel.endSpan(span);
     }
-    static configure(logger: winston.Logger, app: express.Express): OAuthProvider {
+    static configure(app: express.Express): OAuthProvider {
         const instance = new OAuthProvider();
         try {
-
-
             OAuthProvider.instance = instance;
-            instance._logger = logger;
             instance.app = app;
             instance.oauthServer = new OAuthServer({
                 model: instance,
@@ -329,11 +324,6 @@ export class OAuthProvider {
                 allowBearerTokensInQueryString: true
             });
             this.LoadClients();
-
-
-
-
-
             (app as any).oauth = instance.oauthServer;
             app.all('/oauth/token', instance.obtainToken.bind(instance));
             app.get('/oauth/login', async (req, res) => {
@@ -367,11 +357,11 @@ export class OAuthProvider {
                         }
                         const code = Math.random().toString(36).substr(2, 9);
 
-                        instance._logger.info("[OAuth][" + (req.user as any).username + "] /oauth/login " + state);
+                        Logger.instanse.info("[OAuth][" + (req.user as any).username + "] /oauth/login " + state);
                         instance.saveAuthorizationCode(code, client, req.user, redirect_uri);
                         res.redirect(`${redirect_uri}?state=${state}&code=${code}`);
                     } else {
-                        instance._logger.info("[OAuth][anon] /oauth/login " + state);
+                        Logger.instanse.info("[OAuth][anon] /oauth/login " + state);
                         res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
                         res.redirect("/login");
                     }
@@ -405,7 +395,7 @@ export class OAuthProvider {
         return instance;
     }
     authorize(req, res) {
-        this._logger.info("[OAuth] authorize");
+        Logger.instanse.info("[OAuth] authorize");
         const request = new Request(req);
         const response = new Response(res);
         return this.oauthServer.authorize(request, response)
@@ -430,15 +420,15 @@ export class OAuthProvider {
         };
     }
     obtainToken(req, res) {
-        this._logger.info("[OAuth] obtainToken");
+        Logger.instanse.info("[OAuth] obtainToken");
         const request = new Request(req);
         const response = new Response(res);
         return this.oauthServer.token(request, response)
             .then((token) => {
-                this._logger.info("[OAuth] obtainToken::success: token:");
+                Logger.instanse.info("[OAuth] obtainToken::success: token:");
                 res.json(token);
             }).catch((err) => {
-                this._logger.info("[OAuth] obtainToken::failed: token:");
+                Logger.instanse.info("[OAuth] obtainToken::failed: token:");
                 console.error(err);
                 res.status(err.code || 500).json(err);
             });
@@ -446,7 +436,7 @@ export class OAuthProvider {
     public async getAccessToken(accessToken) {
         const span: Span = Logger.otel.startSpan("OAuthProvider.getAccessToken");
         try {
-            this._logger.info("[OAuth] getAccessToken " + accessToken);
+            Logger.instanse.info("[OAuth] getAccessToken " + accessToken);
             let token = await OAuthProvider.getCachedAccessToken(accessToken);
             if (token != null) return token;
             const tokens = await Config.db.query<Base>({ _type: "token", "accessToken": accessToken }, null, 10, 0, null, "oauthtokens", Crypt.rootToken(), undefined, undefined, span);
@@ -464,7 +454,7 @@ export class OAuthProvider {
     public async getRefreshToken(refreshToken) {
         const span: Span = Logger.otel.startSpan("OAuthProvider.getRefreshToken");
         try {
-            this._logger.info("[OAuth] getRefreshToken " + refreshToken);
+            Logger.instanse.info("[OAuth] getRefreshToken " + refreshToken);
             let token = await OAuthProvider.getCachedAccessToken(refreshToken);
             if (token != null) return token;
             const tokens = await Config.db.query<Base>({ _type: "token", "refreshToken": refreshToken }, null, 10, 0, null, "oauthtokens", Crypt.rootToken(), undefined, undefined, span);
@@ -480,14 +470,14 @@ export class OAuthProvider {
         }
     }
     public getClient(clientId, clientSecret) {
-        this._logger.info("[OAuth] getClient " + clientId);
+        Logger.instanse.info("[OAuth] getClient " + clientId);
         const clients = this.clients.filter((client) => {
             return client.clientId === clientId && client.clientSecret === clientSecret;
         });
         return clients.length ? clients[0] : false;
     }
     public getClientById(clientId) {
-        this._logger.info("[OAuth] getClientById " + clientId);
+        Logger.instanse.info("[OAuth] getClientById " + clientId);
         const clients = this.clients.filter((client) => {
             return client.clientId === clientId;
         });
@@ -496,7 +486,7 @@ export class OAuthProvider {
 
     public async saveToken(token, client, user) {
         const span = Logger.otel.startSpan("OAuthProvider.saveToken");
-        this._logger.info("[OAuth] saveToken for " + user.name + " in " + client.clientId);
+        Logger.instanse.info("[OAuth] saveToken for " + user.name + " in " + client.clientId);
         const result: any = {
             name: "Token for " + user.name,
             accessToken: token.accessToken,
@@ -518,7 +508,7 @@ export class OAuthProvider {
     }
     public async saveAuthorizationCode(code: string, client: any, user: any, redirect_uri: string) {
         const span = Logger.otel.startSpan("OAuthProvider.saveAuthorizationCode");
-        this._logger.info("[OAuth] saveAuthorizationCode " + code);
+        Logger.instanse.info("[OAuth] saveAuthorizationCode " + code);
         const codeobject = Object.assign({}, user);
         delete codeobject._id;
         codeobject._type = 'code';
@@ -533,7 +523,7 @@ export class OAuthProvider {
         codeobject.name = "Code " + code + " for " + user.name
         this.codes[code] = codeobject;
         await Config.db.InsertOne(codeobject, "oauthtokens", 1, false, Crypt.rootToken(), span);
-        this._logger.info("[OAuth] saveAuthorizationCode " + code + " saved");
+        Logger.instanse.info("[OAuth] saveAuthorizationCode " + code + " saved");
         // instance.codes[code].client_id = client_id;
 
 
@@ -566,7 +556,7 @@ export class OAuthProvider {
     public async getAuthorizationCode(code) {
         const span: Span = Logger.otel.startSpan("OAuthProvider.validateToken");
         try {
-            this._logger.info("[OAuth] getAuthorizationCode " + code);
+            Logger.instanse.info("[OAuth] getAuthorizationCode " + code);
             let user: any = this.codes[code];
             if (user == null) {
                 let users = await Config.db.query<Base>({ _type: "code", "code": code }, null, 10, 0, null, "oauthtokens", Crypt.rootToken(), undefined, undefined, span);
@@ -582,7 +572,7 @@ export class OAuthProvider {
                     user = users.length ? users[0] as any : null;
                 }
                 if (user == null) {
-                    this._logger.error("[OAuth] getAuthorizationCode, unkown code '" + code + "'");
+                    Logger.instanse.error("[OAuth] getAuthorizationCode, unkown code '" + code + "'");
                     return null;
                 }
                 if (user != null) { this.codes[code] = user; }
@@ -635,7 +625,7 @@ export class OAuthProvider {
     }
     public async revokeAuthorizationCode(code) {
         if (typeof code !== "string") { code = code.code; }
-        this._logger.info("[OAuth] revokeAuthorizationCode " + code);
+        Logger.instanse.info("[OAuth] revokeAuthorizationCode " + code);
         delete this.codes[code];
         const refreshTokenExpiresAt = new Date((new Date).getTime() - (1000 * Config.oauth_refresh_token_lifetime)).toISOString();
         const accessTokenExpiresAt = new Date((new Date).getTime() - (1000 * Config.oauth_access_token_lifetime)).toISOString();

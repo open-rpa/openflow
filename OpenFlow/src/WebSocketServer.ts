@@ -1,4 +1,3 @@
-import * as winston from "winston";
 import * as http from "http";
 import * as WebSocket from "ws";
 import { WebSocketServerClient } from "./WebSocketServerClient";
@@ -12,7 +11,6 @@ import { ValueRecorder, Counter, BaseObserver } from "@opentelemetry/api-metrics
 import { Logger } from "./Logger";
 
 export class WebSocketServer {
-    private static _logger: winston.Logger;
     private static _socketserver: WebSocket.Server;
     private static _server: http.Server;
     public static _clients: WebSocketServerClient[];
@@ -44,16 +42,15 @@ export class WebSocketServer {
             WebSocketServer.mongodb_watch_count.bind({ ...Logger.otel.defaultlabels, clientid: cli.id, agent: cli.clientagent }).update(cli.streamcount());
         }
     }
-    static configure(logger: winston.Logger, server: http.Server): void {
+    static configure(server: http.Server): void {
         this._clients = [];
-        this._logger = logger;
         this._server = server;
         this._socketserver = new WebSocket.Server({ server: server });
         this._socketserver.on("connection", (socketObject: WebSocket, req: any): void => {
-            this._clients.push(new WebSocketServerClient(logger, socketObject, req));
+            this._clients.push(new WebSocketServerClient(socketObject, req));
         });
         this._socketserver.on("error", (error: Error): void => {
-            this._logger.error(error);
+            Logger.instanse.error(error);
         });
         if (!NoderedUtil.IsNullUndefinded(Logger.otel)) {
             WebSocketServer.p_all = Logger.otel.meter.createUpDownSumObserver("openflow_websocket_online_clients", {
@@ -95,7 +92,7 @@ export class WebSocketServer {
                         const payload = Crypt.decryptToken(cli.jwt);
                         const clockTimestamp = Math.floor(Date.now() / 1000);
                         if ((payload.exp - clockTimestamp) < 60) {
-                            WebSocketServer._logger.debug("Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " expires in less than 1 minute, send new jwt to client");
+                            Logger.instanse.debug("Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " expires in less than 1 minute, send new jwt to client");
                             const tuser: TokenUser = await Message.DoSignin(cli, null);
                             if (tuser != null) {
                                 span.addEvent("Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " expires in less than 1 minute, send new jwt to client");
@@ -121,27 +118,27 @@ export class WebSocketServer {
                 if (seconds >= Config.client_heartbeat_timeout) {
                     if (cli.user != null) {
                         span.addEvent("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " timeout, close down");
-                        WebSocketServer._logger.info("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " timeout, close down");
+                        Logger.instanse.info("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " timeout, close down");
                     } else {
                         span.addEvent("client not signed/" + cli.id + "/" + cli.clientagent + " timeout, close down");
-                        WebSocketServer._logger.info("client not signed/" + cli.id + "/" + cli.clientagent + " timeout, close down");
+                        Logger.instanse.info("client not signed/" + cli.id + "/" + cli.clientagent + " timeout, close down");
                     }
                     cli.Close();
                 }
                 cli.ping(span);
                 if (!cli.connected() && cli.queuecount() == 0 && cli.streamcount() == 0) {
                     if (cli.user != null) {
-                        WebSocketServer._logger.info("removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent);
+                        Logger.instanse.info("removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent);
                         span.addEvent("removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent);
                     } else {
-                        WebSocketServer._logger.info("removing disconnected client " + cli.id + "/" + cli.clientagent + " timeout, close down");
+                        Logger.instanse.info("removing disconnected client " + cli.id + "/" + cli.clientagent + " timeout, close down");
                         span.addEvent("removing disconnected client " + cli.id + "/" + cli.clientagent + " timeout, close down");
                     }
                     WebSocketServer._clients.splice(i, 1);
                 }
             }
             if (count !== WebSocketServer._clients.length) {
-                WebSocketServer._logger.info("new client count: " + WebSocketServer._clients.length);
+                Logger.instanse.info("new client count: " + WebSocketServer._clients.length);
                 span.setAttribute("clientcount", WebSocketServer._clients.length)
             }
             // let openrpa: number = 0;

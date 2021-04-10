@@ -1,4 +1,3 @@
-import * as winston from "winston";
 import * as express from "express";
 import * as samlp from "samlp";
 import { Config } from "./Config";
@@ -7,11 +6,9 @@ import { LoginProvider } from "./LoginProvider";
 import { NoderedUtil, TokenUser } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
+import { WebServer } from "./WebServer";
 
 export class SamlProvider {
-    private static _logger: winston.Logger;
-    // private static app:express.Express;
-
     public static profileMapper(pu: any): any {
         return {
             pu: pu,
@@ -58,8 +55,7 @@ export class SamlProvider {
         };
     }
 
-    static configure(logger: winston.Logger, app: express.Express, baseurl: string): void {
-        this._logger = logger;
+    static configure(app: express.Express, baseurl: string): void {
         const cert: string = Buffer.from(Config.signing_crt, "base64").toString("ascii");
         const key: string = Buffer.from(Config.singing_key, "base64").toString("ascii");
 
@@ -80,17 +76,8 @@ export class SamlProvider {
                 const span: Span = Logger.otel.startSpan("SAML.getUserFromRequest");
                 try {
                     const tuser: TokenUser = TokenUser.From(req.user);
-                    let remoteip = "";
-                    if (!NoderedUtil.IsNullUndefinded(req)) {
-                        if (!NoderedUtil.IsNullUndefinded(req.connection) && !NoderedUtil.IsNullEmpty(req.connection.remoteAddress)) remoteip = req.connection.remoteAddress;
-                        if (!NoderedUtil.IsNullUndefinded(req.headers)) {
-                            if (req.headers["X-Forwarded-For"] != null) remoteip = req.headers["X-Forwarded-For"];
-                            if (req.headers["X-real-IP"] != null) remoteip = req.headers["X-real-IP"];
-                            if (req.headers["x-forwarded-for"] != null) remoteip = req.headers["x-forwarded-for"];
-                            if (req.headers["x-real-ip"] != null) remoteip = req.headers["x-real-ip"];
-                        }
-                    }
-                    // if (req.connection) { remoteip = req.connection.remoteAddress; }
+                    const remoteip = WebServer.remoteip(req);
+                    span.setAttribute("remoteip", remoteip);
                     Audit.LoginSuccess(tuser, "tokenissued", "saml", remoteip, "getUserFromRequest", "unknown", span);
                 } catch (error) {
                     span.recordException(error);

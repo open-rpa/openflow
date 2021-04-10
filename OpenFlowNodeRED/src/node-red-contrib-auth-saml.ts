@@ -137,7 +137,6 @@ export class noderedcontribauthsaml {
     }
     async fn_users(username: string): Promise<any> {
         const user: any = this._users[username];
-        // this._logger.silly("users: looking up " + username);
         return user;
     }
 }
