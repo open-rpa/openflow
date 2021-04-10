@@ -13,23 +13,29 @@ Build to run on docker, how to setup docker is not supported on GitHub/slack
 
 open a command prompt as admin
 
-Install rabbitmq
+Install rabbitmq ( answer yes to run the script )
 
 ```bash
 choco install rabbitmq
 ```
 
-install mongodb
+Please ensure you can see rabbitmq as a service when you open the services.msc also make sure management got enabled ( a restart may help ). You can check this by going to [http://localhost:15672](http://localhost:15672)  ( if not, run `choco install rabbitmq --force` )
+
+install mongodb ( answer yes to run the script )
 
 ```
 choco install mongodb
 ```
+
+Again make sure it got installed and is running when you open the services.msc ( if not, run `choco install mongodb --force` ) or install it manually by downloading [mongodb community](https://www.mongodb.com/try/download/community) edition
 
 install nodejs LTS 14
 
 ```
 choco install nodejs-lts
 ```
+
+Make sure it works by running `node -v`  in a command prompt
 
 install openflow command line
 
