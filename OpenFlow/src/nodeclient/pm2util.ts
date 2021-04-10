@@ -62,7 +62,7 @@ export async function pm2startup(platform: Platform) {
 
 export async function pm2dump() {
     return new Promise<pm2.Proc>((resolve, reject) => {
-        pm2.dump((err, result) => {
+        (pm2 as any).dump(true, (err, result) => {
             if (err) return reject(err);
             resolve(result);
         });

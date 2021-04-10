@@ -183,6 +183,7 @@ async function doit() {
             if (await pm2exists(servicename)) {
                 await pm2stop(servicename);
                 await pm2delete(servicename);
+                await pm2dump();
             } else {
                 console.error(servicename + " not found")
             }
