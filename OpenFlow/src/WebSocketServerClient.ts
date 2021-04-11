@@ -502,7 +502,10 @@ export class WebSocketServerClient {
                     const msg: SocketMessage = SocketMessage.fromcommand("watchevent");
                     const q = new WatchEventMessage();
                     q.id = stream.id;
-                    q.result = Config.db.decryptentity(next);
+                    q.result = next;
+                    if (q.result && q.result.fullDocument) {
+                        q.result.fullDocument = Config.db.decryptentity(q.result.fullDocument);
+                    }
                     msg.data = JSON.stringify(q);
                     me._socketObject.send(msg.tojson());
                 } catch (error) {
