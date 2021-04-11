@@ -9,6 +9,7 @@ import { WebSocketServer } from "./WebSocketServer";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { WebServer } from "./WebServer";
+import { DatabaseConnection } from "./DatabaseConnection";
 interface IHashTable<T> {
     [key: string]: T;
 }
@@ -501,7 +502,7 @@ export class WebSocketServerClient {
                     const msg: SocketMessage = SocketMessage.fromcommand("watchevent");
                     const q = new WatchEventMessage();
                     q.id = stream.id;
-                    q.result = next;
+                    q.result = Config.db.decryptentity(next);
                     msg.data = JSON.stringify(q);
                     me._socketObject.send(msg.tojson());
                 } catch (error) {
