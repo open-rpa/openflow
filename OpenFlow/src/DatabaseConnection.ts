@@ -705,7 +705,7 @@ export class DatabaseConnection {
                 aggregates = [{ $match: base }, aggregates];
             }
         }
-        return await this.db.collection(collectionname).watch(aggregates);
+        return await this.db.collection(collectionname).watch(aggregates, { fullDocument: 'updateLookup' });
     }
     /**
      * Do MongoDB map reduce
