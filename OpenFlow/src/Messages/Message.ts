@@ -1278,6 +1278,7 @@ export class Message {
                     }
                 }
             }
+            // 
             let livenessProbe: any = {
                 httpGet: {
                     path: "/livenessprobe",
@@ -1286,8 +1287,8 @@ export class Message {
                 },
                 initialDelaySeconds: Config.nodered_initial_liveness_delay,
                 periodSeconds: 5,
-                failureThreshold: 5,
-                timeoutSeconds: 5
+                failureThreshold: Config.nodered_liveness_failurethreshold,
+                timeoutSeconds: Config.nodered_liveness_timeoutseconds
             }
             if (user.nodered && (user.nodered as any).livenessProbe) {
                 livenessProbe = (user.nodered as any).livenessProbe;
