@@ -253,6 +253,13 @@ export class amqp_publisher_node {
     async oninput(msg: any) {
         try {
             this.node.status({});
+            if (this.websocket() == null || !this.websocket().isConnected()) {
+                throw new Error("Not connected to openflow");
+            }
+            if (NoderedUtil.IsNullEmpty(this.localqueue)) {
+                throw new Error("Queue not registered yet");
+            }
+
             const data: any = {};
             data.payload = msg.payload;
             data.jwt = msg.jwt;

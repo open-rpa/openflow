@@ -103,6 +103,7 @@ export interface Irpa_workflow_node {
     workflow: string;
     localqueue: string;
     killexisting: boolean;
+    killallexisting: boolean;
     name: string;
 }
 export class rpa_workflow_node {
@@ -236,15 +237,23 @@ export class rpa_workflow_node {
     async oninput(msg: any) {
         try {
             this.node.status({});
-
+            if (WebSocketClient.instance == null || !WebSocketClient.instance.isConnected()) {
+                throw new Error("Not connected to openflow");
+            }
+            if (NoderedUtil.IsNullEmpty(this.localqueue)) {
+                throw new Error("Queue not registered yet");
+            }
             let queue = this.config.queue;
             let workflowid = this.config.workflow;
             let killexisting = this.config.killexisting;
+            let killallexisting = this.config.killallexisting;
+
             // if (!NoderedUtil.IsNullEmpty(msg.queue)) { queue = msg.queue; }
             if (!NoderedUtil.IsNullEmpty(msg.targetid)) { queue = msg.targetid; }
             if (queue == "none") queue = "";
             if (!NoderedUtil.IsNullEmpty(msg.workflowid)) { workflowid = msg.workflowid; }
             if (!NoderedUtil.IsNullEmpty(msg.killexisting)) { killexisting = msg.killexisting; }
+            if (!NoderedUtil.IsNullEmpty(msg.killallexisting)) { killallexisting = msg.killallexisting; }
 
             const correlationId = msg.id || Math.random().toString(36).substr(2, 9);
             this.messages[correlationId] = msg;
@@ -261,8 +270,9 @@ export class rpa_workflow_node {
             }
             const rpacommand = {
                 command: "invoke",
-                workflowid: workflowid,
-                killexisting: killexisting,
+                workflowid,
+                killexisting,
+                killallexisting,
                 jwt: msg.jwt,
                 // Adding expiry to the rpacommand as a timestamp for when the RPA message is expected to timeout from the message queue
                 // Currently set to 20 seconds into the future
@@ -293,6 +303,195 @@ export class rpa_workflow_node {
     }
 }
 
+
+
+
+export interface Irpa_killworkflows_node {
+    queue: string;
+    localqueue: string;
+    name: string;
+}
+export class rpa_killworkflows_node {
+    public node: Red = null;
+    public name: string = "";
+    public host: string = null;
+    private localqueue: string = "";
+    private _onsignedin: any = null;
+    private _onsocketclose: any = null;
+    private originallocalqueue: string = "";
+    constructor(public config: Irpa_killworkflows_node) {
+        RED.nodes.createNode(this, config);
+        try {
+            this.node = this;
+            this.node.status({});
+            this.name = config.name;
+            this.node.on("input", this.oninput);
+            this.node.on("close", this.onclose);
+            this.host = Config.amqp_url;
+            this._onsignedin = this.onsignedin.bind(this);
+            this._onsocketclose = this.onsocketclose.bind(this);
+            if (NoderedUtil.IsNullEmpty(this.config.localqueue)) this.config.localqueue = Math.random().toString(36).substr(2, 9);
+
+            WebSocketClient.instance.events.on("onsignedin", this._onsignedin);
+            WebSocketClient.instance.events.on("onclose", this._onsocketclose);
+            if (!NoderedUtil.IsNullEmpty(this.originallocalqueue) || this.originallocalqueue != this.config.localqueue) {
+                this.connect();
+            } else if (WebSocketClient.instance.isConnected && WebSocketClient.instance.user != null) {
+                this.connect();
+            }
+        } catch (error) {
+            NoderedUtil.HandleError(this, error, null);
+        }
+    }
+    onsignedin() {
+        this.connect();
+    }
+    onsocketclose(message) {
+        if (message == null) message = "";
+        if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
+    }
+    async connect() {
+        try {
+            this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
+            this.localqueue = this.config.localqueue;
+            this.localqueue = await NoderedUtil.RegisterQueue(WebSocketClient.instance, this.localqueue, (msg: QueueMessage, ack: any) => {
+                this.OnMessage(msg, ack);
+            });
+            this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
+
+        } catch (error) {
+            NoderedUtil.HandleError(this, error, null);
+        }
+    }
+    async OnMessage(msg: any, ack: any) {
+        try {
+            let result: any = {};
+
+            const correlationId = msg.correlationId;
+            if (msg.data && !msg.payload) {
+                msg.payload = msg.data;
+                delete msg.data;
+            }
+            if (msg.payload.data) {
+                msg = msg.payload;
+                msg.payload = msg.data;
+                delete msg.data;
+            }
+            const data = msg;
+            if (!NoderedUtil.IsNullUndefinded(data.__user)) {
+                data.user = data.__user;
+                delete data.__user;
+            }
+            if (!NoderedUtil.IsNullUndefinded(data.__jwt)) {
+                data.jwt = data.__jwt;
+                delete data.__jwt;
+            }
+            let command = data.command;
+            if (command == undefined && data.data != null && data.data.command != null) { command = data.data.command; }
+            if (correlationId != null && this.messages[correlationId] != null) {
+                result = Object.assign({}, this.messages[correlationId]);
+                if (command == "killallworkflowssuccess" || command == "error" || command == "timeout") {
+                    delete this.messages[correlationId];
+                }
+            } else {
+                result.jwt = data.jwt;
+            }
+            if (command == "killallworkflowssuccess") {
+                // result.payload = data.payload;
+                if (data.user != null) result.user = data.user;
+                if (data.jwt != null) result.jwt = data.jwt;
+                if (result.payload == null || result.payload == undefined) { result.payload = {}; }
+                this.node.status({ fill: "green", shape: "dot", text: "killed " + this.localqueue });
+                result.id = correlationId;
+                this.node.send([result, null]);
+            }
+            else if (command == "error" || command == "timeout") {
+                result.payload = data.payload;
+                result.error = data.payload;
+                if (command == "timeout") {
+                    result.error = "request timed out, no robot picked up the message in a timely fashion";
+                }
+                if (result.error != null && result.error.Message != null && result.error.Message != "") {
+                    result.error = result.error.Message;
+                }
+                if (data.user != null) result.user = data.user;
+                if (data.jwt != null) result.jwt = data.jwt;
+                if (result.payload == null || result.payload == undefined) { result.payload = {}; }
+                this.node.status({ fill: "red", shape: "dot", text: command + "  " + this.localqueue });
+                result.id = correlationId;
+                this.node.send([null, result]);
+            }
+            else {
+                this.node.status({ fill: "blue", shape: "dot", text: "Unknown command " + command + "  " + this.localqueue });
+                result.payload = data.payload;
+                if (data.user != null) result.user = data.user;
+                if (data.jwt != null) result.jwt = data.jwt;
+                if (result.payload == null || result.payload == undefined) { result.payload = {}; }
+                result.id = correlationId;
+                this.node.send([null, result]);
+            }
+            ack();
+        } catch (error) {
+            this.node.status({});
+            NoderedUtil.HandleError(this, error, msg);
+        }
+    }
+    messages: any[] = [];
+    async oninput(msg: any) {
+        try {
+            this.node.status({});
+            if (WebSocketClient.instance == null || !WebSocketClient.instance.isConnected()) {
+                throw new Error("Not connected to openflow");
+            }
+            if (NoderedUtil.IsNullEmpty(this.localqueue)) {
+                throw new Error("Queue not registered yet");
+            }
+            let queue = this.config.queue;
+
+            if (!NoderedUtil.IsNullEmpty(msg.targetid)) { queue = msg.targetid; }
+            if (queue == "none") queue = "";
+
+            const correlationId = msg.id || Math.random().toString(36).substr(2, 9);
+            this.messages[correlationId] = msg;
+            // if (msg.payload == null || typeof msg.payload == "string" || typeof msg.payload == "number") {
+            //     msg.payload = { "data": msg.payload };
+            // }
+            if (NoderedUtil.IsNullEmpty(queue)) {
+                this.node.status({ fill: "red", shape: "dot", text: "robot is mandatory" });
+                return;
+            }
+            const rpacommand = {
+                command: "killallworkflows",
+                jwt: msg.jwt,
+                // Adding expiry to the rpacommand as a timestamp for when the RPA message is expected to timeout from the message queue
+                // Currently set to 20 seconds into the future
+                expiry: Math.floor((new Date().getTime()) / 1000) + Config.amqp_message_ttl,
+                data: {}
+            }
+            const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_workflow_out_expiration);
+            await NoderedUtil.QueueMessage(WebSocketClient.instance, queue, this.localqueue, rpacommand, correlationId, expiration);
+            this.node.status({ fill: "yellow", shape: "dot", text: "Pending " + this.localqueue });
+        } catch (error) {
+            try {
+                this.node.status({ fill: "red", shape: "dot", text: error });
+                msg.error = error;
+                this.node.send([null, null, msg]);
+            } catch (error) {
+            }
+        }
+    }
+    async onclose(removed: boolean, done: any) {
+        if ((!NoderedUtil.IsNullEmpty(this.localqueue) && removed) || this.originallocalqueue != this.config.localqueue) {
+            NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
+            this.localqueue = "";
+        }
+        WebSocketClient.instance.events.removeListener("onsignedin", this._onsignedin);
+        WebSocketClient.instance.events.removeListener("onclose", this._onsocketclose);
+        if (done != null) done();
+    }
+}
+
+
 export async function get_rpa_detectors(req, res) {
     try {
         const rawAssertion = req.user.getAssertionXml();
@@ -304,11 +503,22 @@ export async function get_rpa_detectors(req, res) {
         res.status(500).json(error);
     }
 }
+export async function get_rpa_robots_roles(req, res) {
+    try {
+        const rawAssertion = req.user.getAssertionXml();
+        const token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
+        const result: any[] = await NoderedUtil.Query('users', { $or: [{ _type: "user", _rpaheartbeat: { "$exists": true } }, { _type: "role", rparole: true }] },
+            { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
+        res.json(result);
+    } catch (error) {
+        res.status(500).json(error);
+    }
+}
 export async function get_rpa_robots(req, res) {
     try {
         const rawAssertion = req.user.getAssertionXml();
         const token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
-        const result: any[] = await NoderedUtil.Query('users', { $or: [{ _type: "user" }, { _type: "role", rparole: true }] },
+        const result: any[] = await NoderedUtil.Query('users', { _type: "user", _rpaheartbeat: { "$exists": true } },
             { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
         res.json(result);
     } catch (error) {

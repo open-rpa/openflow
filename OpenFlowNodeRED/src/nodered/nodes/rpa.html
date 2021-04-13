@@ -81,6 +81,10 @@ Active everytime a trigger gets triggered on a robot.
         <input type="checkbox" id="node-input-killexisting" style="width: auto;">
     </div>
     <div class="form-row">
+        <label><i class="fa fa-tag"></i> Kill all running</label>
+        <input type="checkbox" id="node-input-killallexisting" style="width: auto;">
+    </div>
+    <div class="form-row">
         <label ><i class="fa fa-tag"></i> Name</label>
         <input type="text" id="node-input-name" placeholder="Node name">
     </div>
@@ -92,6 +96,7 @@ You can set Target using msg.targetid<br>
 You can set the timeout using msg.expiration<br>
 Expiration controls how long to wait for a robot to pickup the message, it does not effect how long the robot can run for.<br>
 Kill if running / msg.killexisting will tell a robot to kill the workflow if it is allready running.<br>
+killallexisting / msg.killallexisting will tell a robot to kill all running workflows before running workflow.<br>
 </script>
 <script type="text/javascript">
     RED.nodes.registerType('rpa workflow', {
@@ -104,6 +109,7 @@ Kill if running / msg.killexisting will tell a robot to kill the workflow if it 
             workflow: { value: "" },
             localqueue: { value: Math.random().toString(36).substr(2, 9) },
             killexisting: { value: false },
+            killallexisting: { value: false },
             name: { value: "" }
         },
         inputs: 1,
@@ -116,7 +122,7 @@ Kill if running / msg.killexisting will tell a robot to kill the workflow if it 
             return this.name ? "node_label_italic" : "";
         },
         oneditprepare: function () {
-            $.getJSON('rpa_robots', function (data) {
+            $.getJSON('rpa_robots_roles', function (data) {
                 $('#node-input-queue-select').empty();
                 $('#node-input-queue-select').append($('<option>', {
                     value: null,
@@ -173,5 +179,75 @@ Kill if running / msg.killexisting will tell a robot to kill the workflow if it 
             $('#node-input-workflow').val($('#node-input-workflow-select').val());
         }
 
+    });
+</script>
+
+
+<script type="text/x-red" data-template-name="rpa killworkflows">
+    <div class="form-row">
+        <label ><i class="fa fa-tag"></i> Robot</label>
+        <select id="node-input-queue-select">
+            <option>Loading...</option>
+        </select>
+        <input id="node-input-queue" type="hidden">
+    </div>
+    <div class="form-row">
+        <label ><i class="fa fa-tag"></i> Local queue name</label>
+        <input type="text" id="node-input-localqueue" placeholder="Queue name">
+    </div>
+    <div class="form-row">
+        <label ><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Node name">
+    </div>
+</script>
+<script type="text/x-red" data-help-name="rpa killworkflows">
+Active everytime a trigger gets triggered on a robot.
+</script>
+<script type="text/javascript">
+    RED.nodes.registerType('rpa killworkflows', {
+        category: 'rpa',
+        color: "#E9967A",
+        paletteLabel: 'killworkflows',
+        icon: "font-awesome/fa-times-circle",
+        defaults: {
+            queue: { value: "", required: true },
+            localqueue: { value: Math.random().toString(36).substr(2, 9) },
+            name: { value: "" }
+        },
+        inputs: 1,
+        outputs: 2,
+        label: function () {
+            return this.name || "rpa killworkflows";
+        },
+        labelStyle: function () {
+            return this.name ? "node_label_italic" : "";
+        },
+        oneditprepare: function () {
+            $.getJSON('rpa_robots', function (data) {
+                $('#node-input-queue-select').empty();
+                $('#node-input-queue-select').append($('<option>', {
+                    value: null,
+                    text: "none"
+                }));
+                $.each(data, function (i, ele) {
+                    $('#node-input-queue-select').append($('<option>', {
+                        value: ele._id,
+                        text: ele.name
+                    }));
+                });
+                $('#node-input-queue-select').val($('#node-input-queue').val());
+                reloadWorkflows(true);
+                $("#node-input-queue-select").change(function () {
+                    reloadWorkflows(false);
+                })
+            }).error(function (jqXHR, textStatus, errorThrown) {
+                console.error("error " + textStatus);
+                console.error("incoming Text " + jqXHR.responseText);
+                alert("error:" + jqXHR.responseText);
+            });
+        },
+        oneditsave: function () {
+            $('#node-input-queue').val($('#node-input-queue-select').val());
+        }
     });
 </script>
