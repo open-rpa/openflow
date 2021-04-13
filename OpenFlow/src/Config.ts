@@ -118,8 +118,8 @@ export class Config {
         Config.nodered_limits_memory = Config.getEnv("nodered_limits_memory", "");
         Config.nodered_limits_cpu = Config.getEnv("nodered_limits_cpu", ""); // 1000m = 1vCPU
 
-        Config.nodered_liveness_failurethreshold = Config.getEnv("nodered_liveness_failurethreshold", "5");
-        Config.nodered_liveness_timeoutseconds = Config.getEnv("nodered_liveness_timeoutseconds", "5");
+        Config.nodered_liveness_failurethreshold = parseInt(Config.getEnv("nodered_liveness_failurethreshold", "5"));
+        Config.nodered_liveness_timeoutseconds = parseInt(Config.getEnv("nodered_liveness_timeoutseconds", "5"));
 
         Config.prometheus_measure_nodeid = Config.parseBoolean(Config.getEnv("prometheus_measure_nodeid", "false"));
         Config.prometheus_measure_queued_messages = Config.parseBoolean(Config.getEnv("prometheus_measure_queued_messages", "false"));
@@ -244,8 +244,8 @@ export class Config {
     public static nodered_requests_cpu: string = Config.getEnv("nodered_requests_cpu", ""); // 1000m = 1vCPU
     public static nodered_limits_memory: string = Config.getEnv("nodered_limits_memory", "");
     public static nodered_limits_cpu: string = Config.getEnv("nodered_limits_cpu", ""); // 1000m = 1vCPU
-    public static nodered_liveness_failurethreshold: string = Config.getEnv("nodered_liveness_failurethreshold", "5");
-    public static nodered_liveness_timeoutseconds: string = Config.getEnv("nodered_liveness_timeoutseconds", "5");
+    public static nodered_liveness_failurethreshold: number = parseInt(Config.getEnv("nodered_liveness_failurethreshold", "5"));
+    public static nodered_liveness_timeoutseconds: number = parseInt(Config.getEnv("nodered_liveness_timeoutseconds", "5"));
 
     public static prometheus_measure_nodeid: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_nodeid", "false"));
     public static prometheus_measure_queued_messages: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_queued_messages", "false"));
