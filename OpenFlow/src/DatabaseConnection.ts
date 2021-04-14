@@ -115,7 +115,7 @@ export class DatabaseConnection {
         }
         const span: Span = Logger.otel.startSubSpan("db.connect", parent);
         this.cli = await (Promise as any).retry(100, (resolve, reject) => {
-            const options: MongoClientOptions = { minPoolSize: 50, autoReconnect: false, useNewUrlParser: true, useUnifiedTopology: true };
+            const options: MongoClientOptions = { minPoolSize: Config.mongodb_minpoolsize, autoReconnect: false, useNewUrlParser: true, useUnifiedTopology: true };
             MongoClient.connect(this.mongodburl, options).then((cli) => {
                 resolve(cli);
                 span.addEvent("Connected to mongodb");
