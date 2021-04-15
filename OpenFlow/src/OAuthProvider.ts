@@ -355,7 +355,7 @@ export class OAuthProvider {
                                 // client.redirectUris.push(redirect_uri);
                             }
                         }
-                        const code = Math.random().toString(36).substr(2, 9);
+                        const code = NoderedUtil.GetUniqueIdentifier();
 
                         Logger.instanse.info("[OAuth][" + (req.user as any).username + "] /oauth/login " + state);
                         instance.saveAuthorizationCode(code, client, req.user, redirect_uri);

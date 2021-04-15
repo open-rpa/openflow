@@ -61,7 +61,7 @@ export class WebSocketServerClient {
         return result;
     }
     constructor(socketObject: WebSocket, req: any) {
-        this.id = Math.random().toString(36).substr(2, 9);
+        this.id = NoderedUtil.GetUniqueIdentifier();
         this._socketObject = socketObject;
         this._receiveQueue = [];
         this._sendQueue = [];
@@ -228,17 +228,17 @@ export class WebSocketServerClient {
             let qname = queuename;
             if (NoderedUtil.IsNullEmpty(qname)) {
                 if (this.clientagent == "nodered") {
-                    qname = "nodered." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+                    qname = "nodered." + NoderedUtil.GetUniqueIdentifier(); autoDelete = true;
                 } else if (this.clientagent == "webapp") {
-                    qname = "webapp." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+                    qname = "webapp." + NoderedUtil.GetUniqueIdentifier(); autoDelete = true;
                 } else if (this.clientagent == "web") {
-                    qname = "web." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+                    qname = "web." + NoderedUtil.GetUniqueIdentifier(); autoDelete = true;
                 } else if (this.clientagent == "openrpa") {
-                    qname = "openrpa." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+                    qname = "openrpa." + NoderedUtil.GetUniqueIdentifier(); autoDelete = true;
                 } else if (this.clientagent == "powershell") {
-                    qname = "powershell." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+                    qname = "powershell." + NoderedUtil.GetUniqueIdentifier(); autoDelete = true;
                 } else {
-                    qname = "unknown." + Math.random().toString(36).substr(2, 9); autoDelete = true;
+                    qname = "unknown." + NoderedUtil.GetUniqueIdentifier(); autoDelete = true;
                 }
             }
             await semaphore.down();
@@ -360,7 +360,7 @@ export class WebSocketServerClient {
             this._sendQueue.push(singlemessage);
             return;
         }
-        if (NoderedUtil.IsNullEmpty(message.id)) { message.id = Math.random().toString(36).substr(2, 9); }
+        if (NoderedUtil.IsNullEmpty(message.id)) { message.id = NoderedUtil.GetUniqueIdentifier(); }
         for (let i: number = 0; i < messages.length; i++) {
             const _message: SocketMessage = SocketMessage.frommessage(message, messages[i], messages.length, i);
             this._sendQueue.push(_message);
@@ -485,7 +485,7 @@ export class WebSocketServerClient {
     }
     async Watch(aggregates: object[], collectionname: string, jwt: string): Promise<string> {
         const stream: clsstream = new clsstream();
-        stream.id = Math.random().toString(36).substr(2, 9);
+        stream.id = NoderedUtil.GetUniqueIdentifier();
         stream.stream = await Config.db.watch(aggregates, collectionname, jwt);
         this.streams.push(stream);
 

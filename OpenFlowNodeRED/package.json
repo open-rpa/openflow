@@ -25,7 +25,7 @@
   },
   "dependencies": {
     "@nodemailer/mailparser2": "^1.0.3",
-    "@openiap/openflow-api": "^1.0.61",
+    "@openiap/openflow-api": "^1.0.62",
     "@opentelemetry/api": "^0.18.1",
     "@opentelemetry/core": "^0.18.2",
     "@opentelemetry/exporter-collector-grpc": "^0.18.2",
