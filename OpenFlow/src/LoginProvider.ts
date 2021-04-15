@@ -994,7 +994,9 @@ export class LoginProvider {
                         }
                         user = new User(); user.name = username; user.username = username;
                         await Crypt.SetPassword(user, password, span);
-                        user = await Config.db.InsertOne(user, "users", 0, false, Crypt.rootToken(), span);
+                        const jwt: string = Crypt.rootToken();
+                        user = await DBHelper.ensureUser(jwt, user.name, user.username, null, null, span);
+
                         const admins: Role = await DBHelper.FindRoleByName("admins", span);
                         admins.AddMember(user);
                         await DBHelper.Save(admins, Crypt.rootToken(), span)
@@ -1141,7 +1143,6 @@ export class LoginProvider {
                         (_user as any).mobile = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"];
                     }
                     if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty, please add displayname to claims", null); return; }
-                    // _user = await Config.db.InsertOne(_user, "users", 0, false, Crypt.rootToken());
                     const jwt: string = Crypt.rootToken();
                     _user = await DBHelper.ensureUser(jwt, _user.name, _user.username, null, null, span);
                 }

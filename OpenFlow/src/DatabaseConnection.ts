@@ -862,14 +862,8 @@ export class DatabaseConnection {
                 if (exists2 != null) { throw new Error("Access denied, role '" + r.name + "' already exists"); }
             }
 
-
             span.setAttribute("collection", collectionname);
             span.setAttribute("username", user.username);
-
-
-            // const options:CollectionInsertOneOptions = {  writeConcern: { w: parseInt((w as any)), j: j } };
-            // const options: CollectionInsertOneOptions = { w: w, j: j };
-            //const options: CollectionInsertOneOptions = { w: "majority" };
             const options: CollectionInsertOneOptions = {};
             options.WriteConcern = {}; // new WriteConcern();
             options.WriteConcern.w = w;
@@ -1835,7 +1829,6 @@ export class DatabaseConnection {
             }
             const ot_end = Logger.otel.startTimer();
             const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.insertOne", span);
-            // await this.db.collection(q.collectionname + '_hist').insertOne(updatehist);
             this.db.collection(q.collectionname + '_hist').insertOne(updatehist).then(() => {
                 Logger.otel.endSpan(mongodbspan);
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: q.collectionname + '_hist' });
@@ -1939,7 +1932,6 @@ export class DatabaseConnection {
                     }
                     const ot_end = Logger.otel.startTimer();
                     const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.insertOne", span);
-                    // await this.db.collection(collectionname + '_hist').insertOne(deltahist);
                     this.db.collection(collectionname + '_hist').insertOne(deltahist).then(() => {
                         Logger.otel.endSpan(mongodbspan);
                         Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname + '_hist' });
@@ -1967,7 +1959,6 @@ export class DatabaseConnection {
                 }
                 const ot_end = Logger.otel.startTimer();
                 const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.insertOne", span);
-                // await this.db.collection(collectionname + '_hist').insertOne(fullhist);
                 this.db.collection(collectionname + '_hist').insertOne(fullhist).then(() => {
                     Logger.otel.endSpan(mongodbspan);
                     Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname + '_hist' });
