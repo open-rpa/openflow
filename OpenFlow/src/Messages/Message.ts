@@ -1104,6 +1104,9 @@ export class Message {
         let msg: RegisterUserMessage;
         let user: User;
         try {
+            if (!Config.auto_create_users) {
+                throw new Error("User registration not enabled for this openflow")
+            }
             msg = RegisterUserMessage.assign(this.data);
             if (msg.name == null || msg.name == undefined || msg.name == "") { throw new Error("Name cannot be null"); }
             if (msg.username == null || msg.username == undefined || msg.username == "") { throw new Error("Username cannot be null"); }
@@ -2161,7 +2164,7 @@ export class Message {
             (msg as any).workflow = msg.workflowid;
 
             if (NoderedUtil.IsNullEmpty(msg.correlationId)) {
-                msg.correlationId = Math.random().toString(36).substr(2, 9);
+                msg.correlationId = NoderedUtil.GetUniqueIdentifier();
             }
 
             const _data = Base.assign<Base>(msg as any);

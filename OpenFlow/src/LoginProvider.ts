@@ -405,7 +405,7 @@ export class LoginProvider {
                     wshost: _url,
                     wsurl: _url,
                     domain: Config.domain,
-                    allow_user_registration: Config.allow_user_registration,
+                    auto_create_users: Config.auto_create_users,
                     allow_personal_nodered: Config.allow_personal_nodered,
                     auto_create_personal_nodered_group: Config.auto_create_personal_nodered_group,
                     namespace: Config.namespace,
@@ -988,6 +988,10 @@ export class LoginProvider {
                 if (LoginProvider.login_providers.length === 0) {
                     user = await DBHelper.FindByUsername(username, null, span);
                     if (user == null) {
+                        let createUser: boolean = Config.auto_create_users;
+                        if (!createUser) {
+                            return done(null, false);
+                        }
                         user = new User(); user.name = username; user.username = username;
                         await Crypt.SetPassword(user, password, span);
                         user = await Config.db.InsertOne(user, "users", 0, false, Crypt.rootToken(), span);
@@ -1014,7 +1018,8 @@ export class LoginProvider {
                 }
                 user = await DBHelper.FindByUsername(username, null, span);
                 if (NoderedUtil.IsNullUndefinded(user)) {
-                    if (!Config.allow_user_registration) {
+                    let createUser: boolean = Config.auto_create_users;
+                    if (!createUser) {
                         return done(null, false);
                     }
                     user = await DBHelper.ensureUser(Crypt.rootToken(), username, username, null, password, span);
@@ -1122,7 +1127,7 @@ export class LoginProvider {
 
             if (NoderedUtil.IsNullUndefinded(_user)) {
                 let createUser: boolean = Config.auto_create_users;
-                if (Config.auto_create_domains.map(x => username.endsWith(x)).length == -1) { createUser = false; }
+                if (Config.auto_create_domains.map(x => username.endsWith(x)).length > 0) { createUser = true; }
                 if (createUser) {
                     _user = new User(); _user.name = profile.name;
                     if (!NoderedUtil.IsNullEmpty(profile["http://schemas.microsoft.com/identity/claims/displayname"])) {
@@ -1204,7 +1209,7 @@ export class LoginProvider {
             let _user: User = await DBHelper.FindByUsernameOrFederationid(username, span);
             if (NoderedUtil.IsNullUndefinded(_user)) {
                 let createUser: boolean = Config.auto_create_users;
-                if (Config.auto_create_domains.map(x => username.endsWith(x)).length == -1) { createUser = false; }
+                if (Config.auto_create_domains.map(x => username.endsWith(x)).length > 0) { createUser = true; }
                 if (createUser) {
                     const jwt: string = Crypt.rootToken();
                     _user = new User(); _user.name = profile.name;
