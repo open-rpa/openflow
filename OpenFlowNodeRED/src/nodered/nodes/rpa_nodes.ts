@@ -183,10 +183,11 @@ export class rpa_workflow_node {
             }
             let command = data.command;
             if (command == undefined && data.data != null && data.data.command != null) { command = data.data.command; }
-            if (correlationId != null && this.messages[correlationId] != null) {
-                result = Object.assign({}, this.messages[correlationId]);
+            if (correlationId != null && rpa_workflow_node.messages[correlationId] != null) {
+                // result = Object.assign({}, this.messages[correlationId]);
+                result = rpa_workflow_node.messages[correlationId];
                 if (command == "invokecompleted" || command == "invokefailed" || command == "invokeaborted" || command == "error" || command == "timeout") {
-                    delete this.messages[correlationId];
+                    delete rpa_workflow_node.messages[correlationId];
                 }
             } else {
                 result.jwt = data.jwt;
@@ -233,7 +234,7 @@ export class rpa_workflow_node {
             NoderedUtil.HandleError(this, error, msg);
         }
     }
-    messages: any[] = [];
+    static messages: any[] = [];
     async oninput(msg: any) {
         try {
             this.node.status({});
@@ -255,8 +256,8 @@ export class rpa_workflow_node {
             if (!NoderedUtil.IsNullEmpty(msg.killexisting)) { killexisting = msg.killexisting; }
             if (!NoderedUtil.IsNullEmpty(msg.killallexisting)) { killallexisting = msg.killallexisting; }
 
-            const correlationId = msg.id || Math.random().toString(36).substr(2, 9);
-            this.messages[correlationId] = msg;
+            const correlationId = msg._msgid || Math.random().toString(36).substr(2, 9);
+            rpa_workflow_node.messages[correlationId] = msg;
             if (msg.payload == null || typeof msg.payload == "string" || typeof msg.payload == "number") {
                 msg.payload = { "data": msg.payload };
             }
@@ -274,6 +275,7 @@ export class rpa_workflow_node {
                 killexisting,
                 killallexisting,
                 jwt: msg.jwt,
+                _msgid: msg._msgid,
                 // Adding expiry to the rpacommand as a timestamp for when the RPA message is expected to timeout from the message queue
                 // Currently set to 20 seconds into the future
                 expiry: Math.floor((new Date().getTime()) / 1000) + Config.amqp_message_ttl,
@@ -388,10 +390,11 @@ export class rpa_killworkflows_node {
             }
             let command = data.command;
             if (command == undefined && data.data != null && data.data.command != null) { command = data.data.command; }
-            if (correlationId != null && this.messages[correlationId] != null) {
-                result = Object.assign({}, this.messages[correlationId]);
+            if (correlationId != null && rpa_killworkflows_node.messages[correlationId] != null) {
+                // result = Object.assign({}, this.messages[correlationId]);
+                result = rpa_killworkflows_node.messages[correlationId];
                 if (command == "killallworkflowssuccess" || command == "error" || command == "timeout") {
-                    delete this.messages[correlationId];
+                    delete rpa_killworkflows_node.messages[correlationId];
                 }
             } else {
                 result.jwt = data.jwt;
@@ -436,7 +439,7 @@ export class rpa_killworkflows_node {
             NoderedUtil.HandleError(this, error, msg);
         }
     }
-    messages: any[] = [];
+    static messages: any[] = [];
     async oninput(msg: any) {
         try {
             this.node.status({});
@@ -451,8 +454,8 @@ export class rpa_killworkflows_node {
             if (!NoderedUtil.IsNullEmpty(msg.targetid)) { queue = msg.targetid; }
             if (queue == "none") queue = "";
 
-            const correlationId = msg.id || Math.random().toString(36).substr(2, 9);
-            this.messages[correlationId] = msg;
+            const correlationId = msg._msgid || Math.random().toString(36).substr(2, 9);
+            rpa_killworkflows_node.messages[correlationId] = msg;
             // if (msg.payload == null || typeof msg.payload == "string" || typeof msg.payload == "number") {
             //     msg.payload = { "data": msg.payload };
             // }
