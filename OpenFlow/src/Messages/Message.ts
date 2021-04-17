@@ -1104,6 +1104,9 @@ export class Message {
         let msg: RegisterUserMessage;
         let user: User;
         try {
+            if (!Config.auto_create_users) {
+                throw new Error("User registration not enabled for this openflow")
+            }
             msg = RegisterUserMessage.assign(this.data);
             if (msg.name == null || msg.name == undefined || msg.name == "") { throw new Error("Name cannot be null"); }
             if (msg.username == null || msg.username == undefined || msg.username == "") { throw new Error("Username cannot be null"); }
@@ -1278,6 +1281,7 @@ export class Message {
                     }
                 }
             }
+            // 
             let livenessProbe: any = {
                 httpGet: {
                     path: "/livenessprobe",
@@ -1286,8 +1290,8 @@ export class Message {
                 },
                 initialDelaySeconds: Config.nodered_initial_liveness_delay,
                 periodSeconds: 5,
-                failureThreshold: 5,
-                timeoutSeconds: 5
+                failureThreshold: Config.nodered_liveness_failurethreshold,
+                timeoutSeconds: Config.nodered_liveness_timeoutseconds
             }
             if (user.nodered && (user.nodered as any).livenessProbe) {
                 livenessProbe = (user.nodered as any).livenessProbe;
@@ -2160,7 +2164,7 @@ export class Message {
             (msg as any).workflow = msg.workflowid;
 
             if (NoderedUtil.IsNullEmpty(msg.correlationId)) {
-                msg.correlationId = Math.random().toString(36).substr(2, 9);
+                msg.correlationId = NoderedUtil.GetUniqueIdentifier();
             }
 
             const _data = Base.assign<Base>(msg as any);

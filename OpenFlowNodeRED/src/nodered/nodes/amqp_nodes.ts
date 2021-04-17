@@ -178,7 +178,7 @@ export class amqp_publisher_node {
     private connection: amqp_connection;
     private _onsignedin: any = null;
     private _onsocketclose: any = null;
-    private payloads: any = {};
+    static payloads: any = {};
     constructor(public config: Iamqp_publisher_node) {
         RED.nodes.createNode(this, config);
         try {
@@ -234,8 +234,8 @@ export class amqp_publisher_node {
             let result: any = {};
             let data = msg.data;
             if (!NoderedUtil.IsNullEmpty(data._msgid)) {
-                result = Object.assign(this.payloads[data._msgid], data);
-                delete this.payloads[data._msgid];
+                result = Object.assign(amqp_publisher_node.payloads[data._msgid], data);
+                delete amqp_publisher_node.payloads[data._msgid];
             }
             result.payload = data.payload;
             result.jwt = data.jwt;
@@ -253,6 +253,13 @@ export class amqp_publisher_node {
     async oninput(msg: any) {
         try {
             this.node.status({});
+            if (this.websocket() == null || !this.websocket().isConnected()) {
+                throw new Error("Not connected to openflow");
+            }
+            if (NoderedUtil.IsNullEmpty(this.localqueue)) {
+                throw new Error("Queue not registered yet");
+            }
+
             const data: any = {};
             data.payload = msg.payload;
             data.jwt = msg.jwt;
@@ -263,7 +270,7 @@ export class amqp_publisher_node {
             this.node.status({ fill: "blue", shape: "dot", text: "Sending message ..." });
             try {
                 await NoderedUtil.QueueMessage(this.websocket(), queue, this.localqueue, data, null, expiration);
-                this.payloads[msg._msgid] = msg;
+                amqp_publisher_node.payloads[msg._msgid] = msg;
             } catch (error) {
                 data.error = error;
                 this.node.send([null, data]);

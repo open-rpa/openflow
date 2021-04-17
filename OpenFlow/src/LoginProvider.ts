@@ -405,7 +405,7 @@ export class LoginProvider {
                     wshost: _url,
                     wsurl: _url,
                     domain: Config.domain,
-                    allow_user_registration: Config.allow_user_registration,
+                    auto_create_users: Config.auto_create_users,
                     allow_personal_nodered: Config.allow_personal_nodered,
                     auto_create_personal_nodered_group: Config.auto_create_personal_nodered_group,
                     namespace: Config.namespace,
@@ -863,6 +863,7 @@ export class LoginProvider {
         options.clientID = consumerKey;
         options.clientSecret = consumerSecret;
         options.callbackURL = url.parse(baseurl).protocol + "//" + url.parse(baseurl).host + "/" + key + "/";
+        (options as any).passReqToCallback = true;
         options.verify = (LoginProvider.googleverify).bind(this);
         const strategy: passport.Strategy = new GoogleStrategy.Strategy(options, options.verify);
         passport.use(key, strategy);
@@ -888,6 +889,7 @@ export class LoginProvider {
     // tslint:disable-next-line: max-line-length
     static CreateSAMLStrategy(app: express.Express, key: string, cert: string, singin_url: string, issuer: string, baseurl: string): passport.Strategy {
         const options: samlauthstrategyoptions = new samlauthstrategyoptions();
+        (options as any).passReqToCallback = true;
         options.entryPoint = singin_url;
         options.cert = cert;
         options.issuer = issuer;
@@ -973,32 +975,43 @@ export class LoginProvider {
     }
 
     static CreateLocalStrategy(app: express.Express, baseurl: string): passport.Strategy {
-        const strategy: passport.Strategy = new LocalStrategy(async (username: string, password: string, done: any): Promise<void> => {
+        const strategy: passport.Strategy = new LocalStrategy({ passReqToCallback: true }, async (req: any, username: string, password: string, done: any): Promise<void> => {
             const span: Span = Logger.otel.startSpan("LoginProvider.CreateLocalStrategy");
             try {
+                let remoteip: string = "";
+                if (!NoderedUtil.IsNullUndefinded(req)) {
+                    remoteip = WebServer.remoteip(req);
+                }
+                span.setAttribute("remoteip", remoteip);
                 if (username !== null && username != undefined) { username = username.toLowerCase(); }
                 let user: User = null;
                 if (LoginProvider.login_providers.length === 0) {
                     user = await DBHelper.FindByUsername(username, null, span);
                     if (user == null) {
+                        let createUser: boolean = Config.auto_create_users;
+                        if (!createUser) {
+                            return done(null, false);
+                        }
                         user = new User(); user.name = username; user.username = username;
                         await Crypt.SetPassword(user, password, span);
-                        user = await Config.db.InsertOne(user, "users", 0, false, Crypt.rootToken(), span);
+                        const jwt: string = Crypt.rootToken();
+                        user = await DBHelper.ensureUser(jwt, user.name, user.username, null, null, span);
+
                         const admins: Role = await DBHelper.FindRoleByName("admins", span);
                         admins.AddMember(user);
                         await DBHelper.Save(admins, Crypt.rootToken(), span)
                     } else {
                         if (user.disabled) {
-                            Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown", span);
+                            Audit.LoginFailed(username, "weblogin", "local", remoteip, "browser", "unknown", span);
                             done("Disabled user " + username, null);
                             return;
                         }
                         if (!(await Crypt.ValidatePassword(user, password, span))) {
-                            Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown", span);
+                            Audit.LoginFailed(username, "weblogin", "local", remoteip, "browser", "unknown", span);
                             return done(null, false);
                         }
                     }
-                    Audit.LoginSuccess(TokenUser.From(user), "weblogin", "local", "", "browser", "unknown", span);
+                    Audit.LoginSuccess(TokenUser.From(user), "weblogin", "local", remoteip, "browser", "unknown", span);
                     const provider: Provider = new Provider(); provider.provider = "local"; provider.name = "Local";
                     const result = await Config.db.InsertOne(provider, "config", 0, false, Crypt.rootToken(), span);
                     LoginProvider.login_providers.push(result);
@@ -1007,23 +1020,24 @@ export class LoginProvider {
                 }
                 user = await DBHelper.FindByUsername(username, null, span);
                 if (NoderedUtil.IsNullUndefinded(user)) {
-                    if (!Config.allow_user_registration) {
+                    let createUser: boolean = Config.auto_create_users;
+                    if (!createUser) {
                         return done(null, false);
                     }
                     user = await DBHelper.ensureUser(Crypt.rootToken(), username, username, null, password, span);
                 } else {
                     if (user.disabled) {
-                        Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown", span);
+                        Audit.LoginFailed(username, "weblogin", "local", remoteip, "browser", "unknown", span);
                         done("Disabled user " + username, null);
                         return;
                     }
                     if (!(await Crypt.ValidatePassword(user, password, span))) {
-                        Audit.LoginFailed(username, "weblogin", "local", "", "browser", "unknown", span);
+                        Audit.LoginFailed(username, "weblogin", "local", remoteip, "browser", "unknown", span);
                         return done(null, false);
                     }
                 }
                 const tuser: TokenUser = TokenUser.From(user);
-                Audit.LoginSuccess(tuser, "weblogin", "local", "", "browser", "unknown", span);
+                Audit.LoginSuccess(tuser, "weblogin", "local", remoteip, "browser", "unknown", span);
                 Logger.otel.endSpan(span);
                 return done(null, tuser);
             } catch (error) {
@@ -1099,7 +1113,7 @@ export class LoginProvider {
 
         return strategy;
     }
-    static async samlverify(profile: any, done: IVerifyFunction): Promise<void> {
+    static async samlverify(req: any, profile: any, done: IVerifyFunction): Promise<void> {
         const span: Span = Logger.otel.startSpan("LoginProvider.samlverify");
         try {
             let username: string = profile.username;
@@ -1107,10 +1121,15 @@ export class LoginProvider {
             if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
             Logger.instanse.debug("verify: " + username);
             let _user: User = await DBHelper.FindByUsernameOrFederationid(username, span);
+            let remoteip: string = "";
+            if (!NoderedUtil.IsNullUndefinded(req)) {
+                remoteip = WebServer.remoteip(req);
+            }
+            span.setAttribute("remoteip", remoteip);
 
             if (NoderedUtil.IsNullUndefinded(_user)) {
                 let createUser: boolean = Config.auto_create_users;
-                if (Config.auto_create_domains.map(x => username.endsWith(x)).length == -1) { createUser = false; }
+                if (Config.auto_create_domains.map(x => username.endsWith(x)).length > 0) { createUser = true; }
                 if (createUser) {
                     _user = new User(); _user.name = profile.name;
                     if (!NoderedUtil.IsNullEmpty(profile["http://schemas.microsoft.com/identity/claims/displayname"])) {
@@ -1124,7 +1143,6 @@ export class LoginProvider {
                         (_user as any).mobile = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"];
                     }
                     if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty, please add displayname to claims", null); return; }
-                    // _user = await Config.db.InsertOne(_user, "users", 0, false, Crypt.rootToken());
                     const jwt: string = Crypt.rootToken();
                     _user = await DBHelper.ensureUser(jwt, _user.name, _user.username, null, null, span);
                 }
@@ -1154,18 +1172,18 @@ export class LoginProvider {
             }
 
             if (NoderedUtil.IsNullUndefinded(_user)) {
-                Audit.LoginFailed(username, "weblogin", "saml", "", "samlverify", "unknown", span);
+                Audit.LoginFailed(username, "weblogin", "saml", remoteip, "samlverify", "unknown", span);
                 done("unknown user " + username, null);
                 return;
             }
             if (_user.disabled) {
-                Audit.LoginFailed(username, "weblogin", "saml", "", "samlverify", "unknown", span);
+                Audit.LoginFailed(username, "weblogin", "saml", remoteip, "samlverify", "unknown", span);
                 done("Disabled user " + username, null);
                 return;
             }
 
             const tuser: TokenUser = TokenUser.From(_user);
-            Audit.LoginSuccess(tuser, "weblogin", "saml", "", "samlverify", "unknown", span);
+            Audit.LoginSuccess(tuser, "weblogin", "saml", remoteip, "samlverify", "unknown", span);
             Logger.otel.endSpan(span);
             done(null, tuser);
         } catch (error) {
@@ -1173,13 +1191,18 @@ export class LoginProvider {
         }
         Logger.otel.endSpan(span);
     }
-    static async googleverify(token: string, tokenSecret: string, profile: any, done: IVerifyFunction): Promise<void> {
+    static async googleverify(req: any, token: string, tokenSecret: string, profile: any, done: IVerifyFunction): Promise<void> {
         const span: Span = Logger.otel.startSpan("LoginProvider.googleverify");
         try {
             if (profile.emails) {
                 const email: any = profile.emails[0];
                 profile.username = email.value;
             }
+            let remoteip: string = "";
+            if (!NoderedUtil.IsNullUndefinded(req)) {
+                remoteip = WebServer.remoteip(req);
+            }
+            span.setAttribute("remoteip", remoteip);
             let username: string = profile.username;
             if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
             if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
@@ -1187,7 +1210,7 @@ export class LoginProvider {
             let _user: User = await DBHelper.FindByUsernameOrFederationid(username, span);
             if (NoderedUtil.IsNullUndefinded(_user)) {
                 let createUser: boolean = Config.auto_create_users;
-                if (Config.auto_create_domains.map(x => username.endsWith(x)).length == -1) { createUser = false; }
+                if (Config.auto_create_domains.map(x => username.endsWith(x)).length > 0) { createUser = true; }
                 if (createUser) {
                     const jwt: string = Crypt.rootToken();
                     _user = new User(); _user.name = profile.name;
@@ -1199,16 +1222,16 @@ export class LoginProvider {
                 }
             }
             if (NoderedUtil.IsNullUndefinded(_user)) {
-                Audit.LoginFailed(username, "weblogin", "google", "", "googleverify", "unknown", span);
+                Audit.LoginFailed(username, "weblogin", "google", remoteip, "googleverify", "unknown", span);
                 done("unknown user " + username, null); return;
             }
             if (_user.disabled) {
-                Audit.LoginFailed(username, "weblogin", "google", "", "googleverify", "unknown", span);
+                Audit.LoginFailed(username, "weblogin", "google", remoteip, "googleverify", "unknown", span);
                 done("Disabled user " + username, null);
                 return;
             }
             const tuser: TokenUser = TokenUser.From(_user);
-            Audit.LoginSuccess(tuser, "weblogin", "google", "", "googleverify", "unknown", span);
+            Audit.LoginSuccess(tuser, "weblogin", "google", remoteip, "googleverify", "unknown", span);
             done(null, tuser);
         } catch (error) {
             span.recordException(error);

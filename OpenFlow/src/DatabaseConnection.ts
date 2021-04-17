@@ -115,7 +115,7 @@ export class DatabaseConnection {
         }
         const span: Span = Logger.otel.startSubSpan("db.connect", parent);
         this.cli = await (Promise as any).retry(100, (resolve, reject) => {
-            const options: MongoClientOptions = { minPoolSize: 50, autoReconnect: false, useNewUrlParser: true, useUnifiedTopology: true };
+            const options: MongoClientOptions = { minPoolSize: Config.mongodb_minpoolsize, autoReconnect: false, useNewUrlParser: true, useUnifiedTopology: true };
             MongoClient.connect(this.mongodburl, options).then((cli) => {
                 resolve(cli);
                 span.addEvent("Connected to mongodb");
@@ -705,7 +705,7 @@ export class DatabaseConnection {
                 aggregates = [{ $match: base }, aggregates];
             }
         }
-        return await this.db.collection(collectionname).watch(aggregates);
+        return await this.db.collection(collectionname).watch(aggregates, { fullDocument: 'updateLookup' });
     }
     /**
      * Do MongoDB map reduce
@@ -862,14 +862,8 @@ export class DatabaseConnection {
                 if (exists2 != null) { throw new Error("Access denied, role '" + r.name + "' already exists"); }
             }
 
-
             span.setAttribute("collection", collectionname);
             span.setAttribute("username", user.username);
-
-
-            // const options:CollectionInsertOneOptions = {  writeConcern: { w: parseInt((w as any)), j: j } };
-            // const options: CollectionInsertOneOptions = { w: w, j: j };
-            //const options: CollectionInsertOneOptions = { w: "majority" };
             const options: CollectionInsertOneOptions = {};
             options.WriteConcern = {}; // new WriteConcern();
             options.WriteConcern.w = w;
@@ -1835,7 +1829,6 @@ export class DatabaseConnection {
             }
             const ot_end = Logger.otel.startTimer();
             const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.insertOne", span);
-            // await this.db.collection(q.collectionname + '_hist').insertOne(updatehist);
             this.db.collection(q.collectionname + '_hist').insertOne(updatehist).then(() => {
                 Logger.otel.endSpan(mongodbspan);
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: q.collectionname + '_hist' });
@@ -1939,7 +1932,6 @@ export class DatabaseConnection {
                     }
                     const ot_end = Logger.otel.startTimer();
                     const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.insertOne", span);
-                    // await this.db.collection(collectionname + '_hist').insertOne(deltahist);
                     this.db.collection(collectionname + '_hist').insertOne(deltahist).then(() => {
                         Logger.otel.endSpan(mongodbspan);
                         Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname + '_hist' });
@@ -1967,7 +1959,6 @@ export class DatabaseConnection {
                 }
                 const ot_end = Logger.otel.startTimer();
                 const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.insertOne", span);
-                // await this.db.collection(collectionname + '_hist').insertOne(fullhist);
                 this.db.collection(collectionname + '_hist').insertOne(fullhist).then(() => {
                     Logger.otel.endSpan(mongodbspan);
                     Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname + '_hist' });

@@ -28,7 +28,7 @@ services:
       - "--entrypoints.websecure.address=:443"
       - "--entrypoints.web.address=:80"
 
-      - --entrypoints.websecure.http.tls.certresolver=myresolver
+      # - --entrypoints.websecure.http.tls.certresolver=myresolver
       - --certificatesresolvers.myresolver.acme.dnschallenge.provider=gcloud
       - --certificatesresolvers.myresolver.acme.email=my@email.domain
       - --certificatesresolvers.myresolver.acme.dnschallenge.resolvers=1.1.1.1

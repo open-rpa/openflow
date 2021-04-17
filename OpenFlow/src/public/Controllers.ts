@@ -675,7 +675,7 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
     async UpdateOne(model: any): Promise<any> {
         const index = this.models.indexOf(model);
         this.loading = true;
-        model.name = "Find me " + Math.random().toString(36).substr(2, 9);
+        model.name = "Find me " + NoderedUtil.GetUniqueIdentifier();
         const newmodel = await NoderedUtil.UpdateOne(this.collection, null, model, 1, false, null);
         this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
         this.models.splice(index, 0, newmodel);
