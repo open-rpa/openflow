@@ -4540,7 +4540,7 @@ export class DeletedCtrl extends entitiesCtrl<Base> {
         this.postloadData = this.processdata;
         if (this.userdata.data.DeletedCtrl) {
             this.basequery = this.userdata.data.DeletedCtrl.basequery;
-            this.collection = this.userdata.data.DeletedCtrl.collection;
+            if (this.collection == null) this.collection = this.userdata.data.DeletedCtrl.collection;
             this.baseprojection = this.userdata.data.DeletedCtrl.baseprojection;
             this.orderby = this.userdata.data.DeletedCtrl.orderby;
             this.searchstring = this.userdata.data.DeletedCtrl.searchstring;
