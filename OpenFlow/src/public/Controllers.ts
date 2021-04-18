@@ -3092,8 +3092,8 @@ export class hdrobotsCtrl extends entitiesCtrl<unattendedclient> {
     }
 }
 export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
-    public showall: boolean = true;
     public showinactive: boolean = false;
+    public show: string = "all";
     constructor(
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
@@ -3112,17 +3112,17 @@ export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
         this.preloadData = () => {
             const dt = new Date(new Date().toISOString());
             if (this.showinactive) {
-                if (this.showall) {
-                    this.basequery = { _heartbeat: { "$exists": true } };
-                } else {
-                    this.basequery = { _rpaheartbeat: { "$exists": true } };
-                }
-            } else if (this.showall) {
-                dt.setMinutes(dt.getMinutes() - 1);
-                this.basequery = { _heartbeat: { "$gte": dt } };
+                if (this.show == "openrpa") this.basequery = { "_rpaheartbeat": { "$exists": true } };
+                if (this.show == "nodered") this.basequery = { "_noderedheartbeat": { "$exists": true } };
+                if (this.show == "webapp") this.basequery = { "_webheartbeat": { "$exists": true } };
+                if (this.show == "all") this.basequery = { _heartbeat: { "$exists": true } };
             } else {
                 dt.setMinutes(dt.getMinutes() - 1);
-                this.basequery = { _rpaheartbeat: { "$gte": dt } };
+                this.basequery = { "$or": [] };
+                if (this.show == "openrpa") this.basequery = { "_rpaheartbeat": { "$gte": dt } };
+                if (this.show == "nodered") this.basequery = { "_noderedheartbeat": { "$gte": dt } };
+                if (this.show == "webapp") this.basequery = { "_webheartbeat": { "$gte": dt } };
+                if (this.show == "all") this.basequery = { _heartbeat: { "$gte": dt } };
             }
         };
         if (this.userdata.data.ClientsCtrl) {
@@ -3133,7 +3133,7 @@ export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
             this.searchstring = this.userdata.data.ClientsCtrl.searchstring;
             this.basequeryas = this.userdata.data.ClientsCtrl.basequeryas;
             this.showinactive = this.userdata.data.ClientsCtrl.showinactive;
-            this.showall = this.userdata.data.ClientsCtrl.showall;
+            this.show = this.userdata.data.ClientsCtrl.show;
         }
         WebSocketClientService.onSignedin((user: TokenUser) => {
             this.loadData();
@@ -3148,7 +3148,7 @@ export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
         this.userdata.data.ClientsCtrl.searchstring = this.searchstring;
         this.userdata.data.ClientsCtrl.basequeryas = this.basequeryas;
         this.userdata.data.ClientsCtrl.showinactive = this.showinactive;
-        this.userdata.data.ClientsCtrl.showall = this.showall;
+        this.userdata.data.ClientsCtrl.show = this.show;
 
         for (let i = 0; i < this.models.length; i++) {
             const model: any = this.models[i];

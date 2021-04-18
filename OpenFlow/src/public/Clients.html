@@ -19,8 +19,16 @@
     <!-- <a ng-href="#/Entity/{{ctrl.collection}}" class="btn btn-info" translate lib="web">addentity</a> -->
     <input type="checkbox" ng-model="ctrl.showinactive" ng-change="ctrl.loadData()"> <span translate
       lib="web">showinactive</span>
-    <input type="checkbox" ng-model="ctrl.showall" ng-change="ctrl.loadData()"> <span translate lib="web">showall</span>
+    <input type="radio" name="show" value="openrpa" ng-model="ctrl.show" ng-change="ctrl.loadData()"> <span translate
+      lib="web">openrpa</span>
+    <input type="radio" name="show" value="nodered" ng-model="ctrl.show" ng-change="ctrl.loadData()"> <span translate
+      lib="web">nodered</span>
+    <input type="radio" name="show" value="webapp" ng-model="ctrl.show" ng-change="ctrl.loadData()"> <span translate
+      lib="web">web</span>
+    <input type="radio" name="show" value="all" ng-model="ctrl.show" ng-change="ctrl.loadData()"> <span translate
+      lib="web">showall</span>
     <!-- <a ng-href="#/Entity/{{ctrl.collection}}" class="btn btn-info"><i class="az-add-lg"></i></a> -->
+    <br> {{ctrl.showall}} / {{ctrl.show}}
   </div>
 </div>
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
@@ -58,7 +66,12 @@
       <!-- <td>
         <timesince ng-model="model._heartbeat" />
       </td> -->
-      <td>{{model._lastopenrpaclientversion}}</td>
+      <td>
+        <div ng-show="ctrl.show == 'openrpa'">{{model._lastopenrpaclientversion}}</div>
+        <div ng-show="ctrl.show == 'nodered'">{{model._lastnoderedclientversion}}</div>
+        <div ng-show="ctrl.show == 'webapp'">{{model._lastwebappclientversion}}</div>
+        <div ng-show="ctrl.show == 'all'">{{model._lastclientversion}}</div>
+      </td>
       <td class="btn-cell">
         <a href ng-click="ctrl.ShowWorkflows(model)" class="table-btn">workflows</a>
       </td>

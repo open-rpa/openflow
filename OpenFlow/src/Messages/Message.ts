@@ -1052,6 +1052,10 @@ export class Message {
                         user._lastopenrpaclientversion = cli.clientversion;
                         UpdateDoc.$set["_lastopenrpaclientversion"] = cli.clientversion;
                     }
+                    if (cli.clientagent == "webapp") {
+                        user._lastopenrpaclientversion = cli.clientversion;
+                        UpdateDoc.$set["_lastwebappclientversion"] = cli.clientversion;
+                    }
                     if (cli.clientagent == "nodered") {
                         user._lastnoderedclientversion = cli.clientversion;
                         UpdateDoc.$set["_lastnoderedclientversion"] = cli.clientversion;
