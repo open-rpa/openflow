@@ -18,17 +18,12 @@
         <select ng-model="ctrl.collection" ng-options="item.name as item.name for item in ctrl.collections"
           ng-change="ctrl.SelectCollection()">
         </select>
-        <!-- <a href ng-click="ctrl.DropCollection()" class="btn btn-secondary" translate lib="web"
-          ng-show="ctrl.WebSocketClientService.user.username=='az'"" ng-disabled=" ctrl.loading==true">Drop</a>
-        <a href ng-click="ctrl.DeleteMany()" class="btn btn-secondary" translate lib="web"
-          ng-show="ctrl.WebSocketClientService.user.username=='az'"" ng-disabled=" ctrl.loading==true">empty</a> -->
       </div>
 
     </div>
   </div>
   <div class=" col-md-6 text-right">
     <!-- <a ng-href="#/Entity/{{ctrl.collection}}" class="btn btn-info" translate lib="web">addentity</a> -->
-    <a ng-href="#/Deleted/{{ctrl.collection}}" class="btn btn-info"><i class="fas fa-undo"></i></a>
     <a ng-href="#/Duplicates/{{ctrl.collection}}" class="btn btn-info"><i class="fas fa-clone"></i></a>
     <a ng-href="#/Entity/{{ctrl.collection}}" class="btn btn-info"><i class="az-add-lg"></i></a>
   </div>
@@ -45,8 +40,6 @@
       <th scope="col" ng-click="ctrl.ToggleOrder('_created')"><b translate lib="web">created</b></th>
       <th scope="col" ng-click="ctrl.ToggleOrder('_modified')"><b translate lib="web">updated</b></th>
       <th></th>
-      <th></th>
-      <th></th>
     </tr>
   </thead>
   <tbody>
@@ -61,14 +54,7 @@
         <timesince ng-model="model._modified" />
       </td>
       <td class="btn-cell">
-        <a ng-href="#/History/{{ctrl.collection}}/{{model._id}}" class="table-btn">Hist</a>
-      </td>
-      <td class="btn-cell">
-        <a ng-href="#/Entity/{{ctrl.collection}}/{{model._id}}" class="table-btn"><i class="az-edit"></i></a>
-      </td>
-      <td class="btn-cell">
-        <a href ng-click="ctrl.DeleteOne(model)" ng-disabled="ctrl.loading==true" class="table-btn"><i
-            class="az-trash"></i></a>
+        <a ng-href="#/History/{{ctrl.collection}}/{{model.id}}" class="table-btn"><i class="fas fa-search"></i></a>
       </td>
     </tr>
   </tbody>

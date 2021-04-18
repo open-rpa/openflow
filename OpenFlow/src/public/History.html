@@ -14,11 +14,19 @@
       </tr>
     </thead>
     <tbody>
-      <tr ng-repeat="model in ctrl.models">
-        <td>{{model.name}}</td>
+      <tr ng-repeat="model in ctrl.models" ng-style="model._deleted != null && {'color':'crimson'}">
+        <td>
+          {{model.name}}
+        </td>
         <td>{{model._createdby}}</td>
         <td>
-          <timesince ng-model="model._modified" />
+          <div ng-show="model._deleted != null">
+            <timesince ng-model="model._deleted" />
+          </div>
+          <div ng-show="model._deleted == null">
+            <timesince ng-model="model._modified" />
+          </div>
+
         </td>
         <td>{{model._version}}</td>
         <td class="btn-cell">

@@ -312,7 +312,7 @@ export class entitiesCtrl<T> {
             }
         }
     }
-    private static parseJson(txt, reviver, context) {
+    public static parseJson(txt, reviver, context) {
         context = context || 20
         try {
             return JSON.parse(txt, reviver)

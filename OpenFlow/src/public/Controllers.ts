@@ -2441,7 +2441,8 @@ export class EntityCtrl extends entityCtrl<Base> {
             }
         }
         try {
-            if (this.model._id) {
+            // if (this.model._id) {
+            if (this.id !== null && this.id !== undefined) {
                 await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null);
             } else {
                 await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null);
@@ -2694,15 +2695,18 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
             this.loadData();
         });
     }
+    public isNew: boolean = false;
     async ProcessData() {
-        this.model = this.models[0];
+        this.model = {} as any;
+        if (this.models.length > 0) { this.model = this.models[0]; } else { this.isNew = true; }
+
         const keys = Object.keys(this.model);
         keys.forEach(key => {
             if (key.startsWith("_")) {
                 delete this.model[key];
             }
         });
-        this.models = await NoderedUtil.Query(this.collection + "_hist", { id: this.id }, { name: 1, _createdby: 1, _modified: 1, _version: 1 }, this.orderby, 100, 0, null);
+        this.models = await NoderedUtil.Query(this.collection + "_hist", { id: this.id }, { name: 1, _createdby: 1, _modified: 1, _deleted: 1, _version: 1 }, this.orderby, 100, 0, null);
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     async CompareNow(model) {
@@ -2755,9 +2759,13 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
         }
         let result = window.confirm("Overwrite current version with version " + model._version + "?");
         if (result) {
-            jsondiffpatch.patch(model.item, model.delta);
-            model.item._id = this.id;
-            await NoderedUtil.UpdateOne(this.collection, null, model.item, 1, false, null);
+            if (this.isNew) {
+                await NoderedUtil.InsertOne(this.collection, model.item, 1, false, null);
+            } else {
+                jsondiffpatch.patch(model.item, model.delta);
+                model.item._id = this.id;
+                await NoderedUtil.UpdateOne(this.collection, null, model.item, 1, false, null);
+            }
             this.loadData();
         }
     }
@@ -4509,5 +4517,104 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         this.loadData();
+    }
+}
+
+export class DeletedCtrl extends entitiesCtrl<Base> {
+    public collections: any;
+    constructor(
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        console.debug("DeletedCtrl");
+        this.autorefresh = true;
+        this.basequery = {};
+        this.collection = $routeParams.collection;
+        this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
+        this.postloadData = this.processdata;
+        if (this.userdata.data.DeletedCtrl) {
+            this.basequery = this.userdata.data.DeletedCtrl.basequery;
+            this.collection = this.userdata.data.DeletedCtrl.collection;
+            this.baseprojection = this.userdata.data.DeletedCtrl.baseprojection;
+            this.orderby = this.userdata.data.DeletedCtrl.orderby;
+            this.searchstring = this.userdata.data.DeletedCtrl.searchstring;
+            this.basequeryas = this.userdata.data.DeletedCtrl.basequeryas;
+        } else {
+            if (NoderedUtil.IsNullEmpty(this.collection)) {
+                this.$location.path("/Deleted/entities");
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                return;
+            }
+        }
+        console.debug("path: " + this.$location.path());
+        if (NoderedUtil.IsNullEmpty(this.collection)) {
+            this.$location.path("/Deleted/entities");
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            return;
+        } else if (this.$location.path() != "/Deleted/" + this.collection) {
+            this.$location.path("/Deleted/" + this.collection);
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            return;
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            this.loadData();
+            this.collections = await NoderedUtil.ListCollections(null);
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        });
+    }
+    async loadData(): Promise<void> {
+
+        var query: any = { _deleted: { "$exists": true } };
+        if ((this.searchstring as string).indexOf("{") == 0) {
+            if ((this.searchstring as string).lastIndexOf("}") == ((this.searchstring as string).length - 1)) {
+                try {
+                    query = entitiesCtrl.parseJson(this.searchstring, null, null);
+                    query["_deleted"] = { "$exists": true };
+                } catch (error) {
+                    this.errormessage = error.message ? error.message : error;
+                }
+            }
+        } else {
+            const finalor = [];
+            for (let i = 0; i < this.searchfields.length; i++) {
+                const newq: any = {};
+                newq[this.searchfields[i]] = new RegExp(["^", this.searchstring, "$"].join(""), "i");
+                newq[this.searchfields[i]] = new RegExp([this.searchstring].join(""), "i");
+                finalor.push(newq);
+            }
+            if (Object.keys(query).length == 0) {
+                query = { $or: finalor.concat() };
+            } else {
+                query = { $and: [query, { $or: finalor.concat() }] };
+            }
+
+        }
+        this.models = await NoderedUtil.Query(this.collection + "_hist",
+            query, { name: 1, _type: 1, _createdby: 1, _created: 1, _modified: 1, _deleted: 1, _version: 1, id: 1 }, this.orderby, 100, 0, null);
+        this.processdata();
+    }
+    processdata() {
+        if (!this.userdata.data.DeletedCtrl) this.userdata.data.DeletedCtrl = {};
+        this.userdata.data.DeletedCtrl.basequery = this.basequery;
+        this.userdata.data.DeletedCtrl.collection = this.collection;
+        this.userdata.data.DeletedCtrl.baseprojection = this.baseprojection;
+        this.userdata.data.DeletedCtrl.orderby = this.orderby;
+        this.userdata.data.DeletedCtrl.searchstring = this.searchstring;
+        this.userdata.data.DeletedCtrl.basequeryas = this.basequeryas;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    SelectCollection() {
+        this.userdata.data.DeletedCtrl.collection = this.collection;
+        this.$location.path("/Deleted/" + this.collection);
+        //this.$location.hash("#/Deleted/" + this.collection);
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        // this.loadData();
     }
 }
