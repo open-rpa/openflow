@@ -1367,7 +1367,7 @@ export class DatabaseConnection {
             const arr = q.uniqeness.split(",");
             arr.forEach(field => {
                 if (field.trim() !== "") {
-                    query[field] = q.item[field];
+                    query[field.trim()] = q.item[field.trim()];
                 }
             });
         } else {
@@ -1407,6 +1407,7 @@ export class DatabaseConnection {
             q.result = uqres.result;
         } else {
             if (Config.log_updates) Logger.instanse.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Inserting as new in database");
+            delete q.item._id;
             const ot_end = Logger.otel.startTimer();
             q.result = await this.InsertOne(q.item, q.collectionname, q.w, q.j, q.jwt, span);
             Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: q.collectionname });
