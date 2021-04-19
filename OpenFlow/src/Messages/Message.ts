@@ -40,6 +40,7 @@ async function handleError(cli: WebSocketServerClient, error: Error) {
         errorcounter++;
         if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_errors)) WebSocketServer.websocket_errors.bind({ ...Logger.otel.defaultlabels }).update(errorcounter);
         if (Config.socket_rate_limit) await ErrorRateLimiter.consume(cli.id);
+        // Logger.instanse.error(error.message ? error.message : error);
         Logger.instanse.error(error);
     } catch (error) {
         if (error.consumedPoints) {
@@ -296,7 +297,7 @@ export class Message {
             msg = RegisterQueueMessage.assign(this.data);
             msg.queuename = await cli.CreateConsumer(msg.queuename, parent);
         } catch (error) {
-            handleError(cli, error);
+            await handleError(cli, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
@@ -304,7 +305,7 @@ export class Message {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         this.Send(cli);
     }
@@ -348,7 +349,7 @@ export class Message {
                     sendthis.__user = msg.user;
                 }
             } catch (error) {
-                handleError(cli, error);
+                await handleError(cli, error);
             }
             if (NoderedUtil.IsNullEmpty(msg.replyto)) {
                 const sendthis = msg.data;
@@ -361,7 +362,7 @@ export class Message {
                 const result = await amqpwrapper.Instance().sendWithReplyTo("", msg.queuename, msg.replyto, sendthis, expiration, msg.correlationId);
             }
         } catch (error) {
-            handleError(cli, error);
+            await handleError(cli, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
@@ -369,7 +370,7 @@ export class Message {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         this.Send(cli);
     }
@@ -380,7 +381,7 @@ export class Message {
             msg = CloseQueueMessage.assign(this.data);
             await cli.CloseConsumer(msg.queuename, parent);
         } catch (error) {
-            handleError(cli, error);
+            await handleError(cli, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
@@ -388,7 +389,7 @@ export class Message {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         this.Send(cli);
     }
@@ -451,7 +452,7 @@ export class Message {
             }
         } catch (error) {
             span.recordException(error);
-            handleError(cli, error);
+            await handleError(cli, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
@@ -460,7 +461,7 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         Logger.otel.endSpan(span);
         this.Send(cli);
@@ -475,7 +476,7 @@ export class Message {
             await Config.db.DropCollection(msg.collectionname, msg.jwt, span);
         } catch (error) {
             span.recordException(error);
-            handleError(cli, error);
+            await handleError(cli, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
@@ -484,7 +485,7 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         Logger.otel.endSpan(span);
         this.Send(cli);
@@ -503,7 +504,7 @@ export class Message {
                 msg.result = await Config.db.query(msg.query, msg.projection, msg.top, msg.skip, msg.orderby, msg.collectionname, msg.jwt, msg.queryas, msg.hint, span);
             }
         } catch (error) {
-            handleError(cli, error);
+            await handleError(cli, error);
             span.recordException(error)
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -513,7 +514,7 @@ export class Message {
         } catch (error) {
             this.data = "";
             span.recordException(error)
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         Logger.otel.endSpan(span);
         this.Send(cli);
@@ -531,7 +532,7 @@ export class Message {
                 msg.result = await Config.db.GetDocumentVersion(msg.collectionname, msg._id, msg.version, msg.jwt, span);
             }
         } catch (error) {
-            handleError(cli, error);
+            await handleError(cli, error);
             span.recordException(error)
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -541,7 +542,7 @@ export class Message {
         } catch (error) {
             this.data = "";
             span.recordException(error)
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         Logger.otel.endSpan(span);
         this.Send(cli);
@@ -558,13 +559,13 @@ export class Message {
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         Logger.otel.endSpan(span);
         this.Send(cli);
@@ -585,13 +586,13 @@ export class Message {
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         this.Send(cli);
     }
@@ -610,13 +611,13 @@ export class Message {
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         this.Send(cli);
     }
@@ -637,14 +638,14 @@ export class Message {
             span.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
             span.recordException(error);
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         Logger.otel.endSpan(span);
         this.Send(cli);
@@ -671,14 +672,14 @@ export class Message {
             span.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         Logger.otel.endSpan(span);
         this.Send(cli);
@@ -697,7 +698,7 @@ export class Message {
             span.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         try {
             delete msg.query;
@@ -705,7 +706,7 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         Logger.otel.endSpan(span);
         this.Send(cli);
@@ -722,14 +723,14 @@ export class Message {
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         try {
             delete msg.query;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         this.Send(cli);
     }
@@ -745,14 +746,15 @@ export class Message {
             msg = await Config.db.InsertOrUpdateOne(msg, parent);
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            handleError(cli, error);
+            if (error) if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
+            if (!error) msg.error = "Unknown error";
+            await handleError(cli, error);
         }
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         this.Send(cli);
     }
@@ -766,13 +768,13 @@ export class Message {
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         this.Send(cli);
     }
@@ -786,13 +788,13 @@ export class Message {
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         this.Send(cli);
     }
@@ -806,13 +808,13 @@ export class Message {
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         this.Send(cli);
     }
@@ -1070,7 +1072,7 @@ export class Message {
             } catch (error) {
                 if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
                 if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-                handleError(cli, error);
+                await handleError(cli, error);
             }
             if (!NoderedUtil.IsNullUndefinded(msg.user) && !NoderedUtil.IsNullEmpty(msg.jwt)) {
                 if (!(msg.user.validated == true) && Config.validate_user_form != "") {
@@ -1093,7 +1095,7 @@ export class Message {
                 this.data = JSON.stringify(msg);
             } catch (error) {
                 this.data = "";
-                handleError(cli, error);
+                await handleError(cli, error);
             }
             hrend = process.hrtime(hrstart)
         } catch (error) {
@@ -1137,14 +1139,14 @@ export class Message {
             span.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         Logger.otel.endSpan(span);
         this.Send(cli);
@@ -1179,7 +1181,7 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
             //msg.error = JSON.stringify(error, null, 2);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
@@ -1188,7 +1190,7 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         Logger.otel.endSpan(span);
         this.Send(cli);
@@ -1420,7 +1422,7 @@ export class Message {
                         Logger.instanse.error(new Error(error.response.body.message));
                         throw new Error(error.response.body.message);
                     }
-                    handleError(cli, error);
+                    await handleError(cli, error);
                     Audit.NoderedAction(TokenUser.From(cli.user), false, name, "createdeployment", Config.nodered_image, null, span);
                     throw error;
                 }
@@ -1602,14 +1604,14 @@ export class Message {
             } catch (error) {
                 Logger.instanse.error("[" + cli.user.username + "] failed deleting Nodered Instance");
                 this.data = "";
-                handleError(cli, error);
+                await handleError(cli, error);
                 if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             }
             try {
                 this.data = JSON.stringify(msg);
             } catch (error) {
                 this.data = "";
-                handleError(cli, error);
+                await handleError(cli, error);
             }
         } catch (error) {
             span.recordException(error);
@@ -1661,7 +1663,7 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
         try {
@@ -1669,7 +1671,7 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         Logger.otel.endSpan(span);
         this.Send(cli);
@@ -1705,7 +1707,7 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
         try {
@@ -1713,7 +1715,7 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         Logger.otel.endSpan(span);
         this.Send(cli);
@@ -1745,14 +1747,14 @@ export class Message {
             }
         } catch (error) {
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error
         }
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         this.Send(cli);
     }
@@ -1831,7 +1833,7 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error
         }
         try {
@@ -1839,7 +1841,7 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         Logger.otel.endSpan(span);
         this.Send(cli);
@@ -1884,7 +1886,7 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error
             if (error.response && error.response.body && !NoderedUtil.IsNullEmpty(error.response.body.message)) {
                 msg.error = error.response.body.message;
@@ -1896,7 +1898,7 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         Logger.otel.endSpan(span);
         this.Send(cli);
@@ -1994,13 +1996,13 @@ export class Message {
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         this.Send(cli);
     }
@@ -2052,14 +2054,14 @@ export class Message {
             span.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         Logger.otel.endSpan(span);
         this.Send(cli);
@@ -2122,13 +2124,13 @@ export class Message {
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         this.Send(cli);
     }
@@ -2189,14 +2191,14 @@ export class Message {
             span.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         Logger.otel.endSpan(span);
         this.Send(cli);
@@ -2289,7 +2291,7 @@ export class Message {
         } catch (error) {
             if (error == null) new Error("Unknown error");
             span.recordException(error);
-            handleError(cli, error);
+            await handleError(cli, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
                 msg.error = (error.message ? error.message : error);
@@ -2303,7 +2305,7 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         Logger.otel.endSpan(span);
         this.Send(cli);
@@ -2390,7 +2392,7 @@ export class Message {
         } catch (error) {
             if (error == null) new Error("Unknown error");
             span.recordException(error);
-            handleError(cli, error);
+            await handleError(cli, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
                 msg.error = (error.message ? error.message : error);
@@ -2404,7 +2406,7 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         Logger.otel.endSpan(span);
         this.Send(cli);
@@ -2593,7 +2595,7 @@ export class Message {
         } catch (error) {
             if (error == null) new Error("Unknown error");
             span.recordException(error);
-            handleError(cli, error);
+            await handleError(cli, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
                 msg.error = (error.message ? error.message : error);
@@ -2607,7 +2609,7 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         Logger.otel.endSpan(span);
         this.Send(cli);
@@ -2700,7 +2702,7 @@ export class Message {
             msg.payload = await this.Stripe(msg.method, msg.object, msg.id, msg.payload, msg.customerid);
         } catch (error) {
             if (error == null) new Error("Unknown error");
-            handleError(cli, error);
+            await handleError(cli, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
                 msg.error = (error.message ? error.message : error);
@@ -2713,7 +2715,7 @@ export class Message {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         this.Send(cli);
     }
@@ -2755,7 +2757,7 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         Logger.otel.endSpan(span);
         this.Send(cli);
@@ -2788,14 +2790,14 @@ export class Message {
                     try {
                         await Config.db.InsertOne(item, "configclients", 1, false, jwt, span);
                     } catch (error) {
-                        handleError(cli, error);
+                        await handleError(cli, error);
                     }
                 } else {
                     item._id = exists[0]._id;
                     try {
                         await Config.db._UpdateOne(null, item, "configclients", 1, false, jwt, span);
                     } catch (error) {
-                        handleError(cli, error);
+                        await handleError(cli, error);
                     }
                 }
             }
@@ -2807,14 +2809,14 @@ export class Message {
                     try {
                         await Config.db.DeleteOne(queue._id, "configclients", jwt);
                     } catch (error) {
-                        handleError(cli, error);
+                        await handleError(cli, error);
                     }
                 }
             }
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            handleError(cli, error);
+            await handleError(cli, error);
         }
         Logger.otel.endSpan(span);
         this.Send(cli);
@@ -2828,12 +2830,12 @@ export class Message {
                 msg.data = await amqpwrapper.getqueue(Config.amqp_url, '/', msg.name);
                 this.data = JSON.stringify(msg);
             } catch (error) {
-                handleError(cli, error);
+                await handleError(cli, error);
             }
         } catch (error) {
             this.command = "error";
             this.data = JSON.stringify(error);
-            handleError(cli, error);
+            await handleError(cli, error);
 
         }
         this.Send(cli);
@@ -2847,12 +2849,12 @@ export class Message {
                 msg.data = await amqpwrapper.deletequeue(Config.amqp_url, '/', msg.name);
                 this.data = JSON.stringify(msg);
             } catch (error) {
-                handleError(cli, error);
+                await handleError(cli, error);
             }
         } catch (error) {
             this.command = "error";
             this.data = JSON.stringify(error);
-            handleError(cli, error);
+            await handleError(cli, error);
 
         }
         this.Send(cli);
@@ -2866,7 +2868,7 @@ export class Message {
         //     if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
         // } catch (error) {
         //     if (error == null) new Error("Unknown error");
-        //     handleError(cli, error);
+        //     await handleError(cli, error);
         //     if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
         //     if (msg !== null && msg !== undefined) {
         //         msg.error = (error.message ? error.message : error);
@@ -2876,7 +2878,7 @@ export class Message {
         //     this.data = JSON.stringify(msg);
         // } catch (error) {
         //     this.data = "";
-        //     handleError(cli, error);
+        //     await handleError(cli, error);
         // }
         this.Send(cli);
     }
