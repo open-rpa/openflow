@@ -300,6 +300,7 @@ export class Message {
             await handleError(cli, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
+            this.command = "error";
         }
         try {
             this.data = JSON.stringify(msg);
@@ -365,6 +366,7 @@ export class Message {
             await handleError(cli, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
+            this.command = "error";
         }
         try {
             this.data = JSON.stringify(msg);
@@ -384,6 +386,7 @@ export class Message {
             await handleError(cli, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
+            this.command = "error";
         }
         try {
             this.data = JSON.stringify(msg);
@@ -455,6 +458,7 @@ export class Message {
             await handleError(cli, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
+            this.command = "error";
         }
         try {
             this.data = JSON.stringify(msg);
@@ -479,6 +483,7 @@ export class Message {
             await handleError(cli, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
+            this.command = "error";
         }
         try {
             this.data = JSON.stringify(msg);
@@ -508,6 +513,7 @@ export class Message {
             span.recordException(error)
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
+            this.command = "error";
         }
         try {
             this.data = JSON.stringify(msg);
@@ -536,6 +542,7 @@ export class Message {
             span.recordException(error)
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
+            this.command = "error";
         }
         try {
             this.data = JSON.stringify(msg);
@@ -560,6 +567,7 @@ export class Message {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             await handleError(cli, error);
+            this.command = "error";
         }
         try {
             this.data = JSON.stringify(msg);
@@ -587,6 +595,7 @@ export class Message {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             await handleError(cli, error);
+            this.command = "error";
         }
         try {
             this.data = JSON.stringify(msg);
@@ -612,6 +621,7 @@ export class Message {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             await handleError(cli, error);
+            this.command = "error";
         }
         try {
             this.data = JSON.stringify(msg);
@@ -639,6 +649,7 @@ export class Message {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             await handleError(cli, error);
+            this.command = "error";
         }
         try {
             this.data = JSON.stringify(msg);
@@ -673,6 +684,7 @@ export class Message {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             await handleError(cli, error);
+            this.command = "error";
         }
         try {
             this.data = JSON.stringify(msg);
@@ -699,6 +711,7 @@ export class Message {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             await handleError(cli, error);
+            this.command = "error";
         }
         try {
             delete msg.query;
@@ -724,6 +737,7 @@ export class Message {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             await handleError(cli, error);
+            this.command = "error";
         }
         try {
             delete msg.query;
@@ -749,6 +763,7 @@ export class Message {
             if (error) if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             if (!error) msg.error = "Unknown error";
             await handleError(cli, error);
+            this.command = "error";
         }
         try {
             this.data = JSON.stringify(msg);
@@ -769,6 +784,7 @@ export class Message {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             await handleError(cli, error);
+            this.command = "error";
         }
         try {
             this.data = JSON.stringify(msg);
@@ -789,6 +805,7 @@ export class Message {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             await handleError(cli, error);
+            this.command = "error";
         }
         try {
             this.data = JSON.stringify(msg);
@@ -809,6 +826,7 @@ export class Message {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             await handleError(cli, error);
+            this.command = "error";
         }
         try {
             this.data = JSON.stringify(msg);
@@ -1140,6 +1158,7 @@ export class Message {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             await handleError(cli, error);
+            this.command = "error";
         }
         try {
             this.data = JSON.stringify(msg);
@@ -1182,6 +1201,7 @@ export class Message {
             span.recordException(error);
             this.data = "";
             await handleError(cli, error);
+            this.command = "error";
             //msg.error = JSON.stringify(error, null, 2);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
@@ -1664,6 +1684,7 @@ export class Message {
             span.recordException(error);
             this.data = "";
             await handleError(cli, error);
+            this.command = "error";
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
         try {
@@ -1708,6 +1729,7 @@ export class Message {
             span.recordException(error);
             this.data = "";
             await handleError(cli, error);
+            this.command = "error";
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
         try {
@@ -1748,6 +1770,7 @@ export class Message {
         } catch (error) {
             this.data = "";
             await handleError(cli, error);
+            this.command = "error";
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error
         }
         try {
@@ -1834,6 +1857,7 @@ export class Message {
             span.recordException(error);
             this.data = "";
             await handleError(cli, error);
+            this.command = "error";
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error
         }
         try {
@@ -1887,6 +1911,7 @@ export class Message {
             span.recordException(error);
             this.data = "";
             await handleError(cli, error);
+            this.command = "error";
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error
             if (error.response && error.response.body && !NoderedUtil.IsNullEmpty(error.response.body.message)) {
                 msg.error = error.response.body.message;
@@ -1997,6 +2022,7 @@ export class Message {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             await handleError(cli, error);
+            this.command = "error";
         }
         try {
             this.data = JSON.stringify(msg);
@@ -2055,6 +2081,7 @@ export class Message {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             await handleError(cli, error);
+            this.command = "error";
         }
         try {
             this.data = JSON.stringify(msg);
@@ -2125,6 +2152,7 @@ export class Message {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             await handleError(cli, error);
+            this.command = "error";
         }
         try {
             this.data = JSON.stringify(msg);
@@ -2192,6 +2220,7 @@ export class Message {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             await handleError(cli, error);
+            this.command = "error";
         }
         try {
             this.data = JSON.stringify(msg);
@@ -2292,6 +2321,7 @@ export class Message {
             if (error == null) new Error("Unknown error");
             span.recordException(error);
             await handleError(cli, error);
+            this.command = "error";
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
                 msg.error = (error.message ? error.message : error);
@@ -2393,6 +2423,7 @@ export class Message {
             if (error == null) new Error("Unknown error");
             span.recordException(error);
             await handleError(cli, error);
+            this.command = "error";
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
                 msg.error = (error.message ? error.message : error);
@@ -2596,6 +2627,7 @@ export class Message {
             if (error == null) new Error("Unknown error");
             span.recordException(error);
             await handleError(cli, error);
+            this.command = "error";
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
                 msg.error = (error.message ? error.message : error);
@@ -2703,6 +2735,7 @@ export class Message {
         } catch (error) {
             if (error == null) new Error("Unknown error");
             await handleError(cli, error);
+            this.command = "error";
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
                 msg.error = (error.message ? error.message : error);
@@ -2816,6 +2849,7 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
+            this.command = "error";
             await handleError(cli, error);
         }
         Logger.otel.endSpan(span);
@@ -2833,8 +2867,8 @@ export class Message {
                 await handleError(cli, error);
             }
         } catch (error) {
-            this.command = "error";
             this.data = JSON.stringify(error);
+            this.command = "error";
             await handleError(cli, error);
 
         }

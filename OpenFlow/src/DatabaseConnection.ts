@@ -1360,6 +1360,71 @@ export class DatabaseConnection {
     * @returns Promise<T>
     */
     async InsertOrUpdateOne<T extends Base>(q: InsertOrUpdateOneMessage, parent: Span): Promise<InsertOrUpdateOneMessage> {
+        let query: any = null;
+        if (q.uniqeness !== null && q.uniqeness !== undefined && q.uniqeness !== "") {
+            query = {};
+            const arr = q.uniqeness.split(",");
+            arr.forEach(field => {
+                if (field.trim() !== "") {
+                    query[field.trim()] = q.item[field.trim()];
+                }
+            });
+        } else {
+            // has no id, and no uniqeness defined, so we assume its a new item we should insert
+            if (q.item._id != null) {
+                query = { _id: q.item._id };
+            }
+        }
+        const user: TokenUser = Crypt.verityToken(q.jwt);
+        var _query = query;
+        if (q.collectionname === "files") { q.collectionname = "fs.files"; }
+        if (q.collectionname === "fs.files") {
+            _query = { $and: [query, this.getbasequery(q.jwt, "metadata._acl", [Rights.read])] };
+        } else {
+            _query = { $and: [query, this.getbasequery(q.jwt, "_acl", [Rights.read])] };
+        }
+        if (q.collectionname == "openrpa_instances") {
+            q.item = this.ensureResource(q.item);
+            q.item = await this.Cleanmembers(q.item as any, null);
+            q.item = this.encryptentity(q.item) as T;
+
+            if (!q.item._createdby) {
+                q.item._created = new Date(new Date().toISOString());
+                q.item._createdby = user.name;
+                q.item._createdbyid = user._id;
+            }
+            q.item._modified = new Date(new Date().toISOString());
+            q.item._modifiedby = user.name;
+            q.item._modifiedbyid = user._id;
+            let roup: any = null;
+            try {
+                roup = await this.db.collection(q.collectionname).replaceOne(_query, q.item, { upsert: true });
+            } catch (error) {
+                console.error(error.message ? error.message : error)
+            }
+            if (roup == null) {
+                await new Promise(r => setTimeout(r, 1000));
+                roup = await this.db.collection(q.collectionname).replaceOne(_query, q.item, { upsert: true });
+            }
+            q.item = this.decryptentity(q.item);
+            DatabaseConnection.traversejsondecode(q.item);
+            q.opresult = roup;
+            q.result = roup.result;
+        } else {
+            return this.InsertOrUpdateOneOld(q, parent);
+        }
+    }
+    /**
+    * Insert or Update depending on document allready exists.
+    * @param  {T} item Item to insert or update
+    * @param  {string} collectionname Collection containing item
+    * @param  {string} uniqeness List of fields to combine for uniqeness
+    * @param  {number} w Write Concern ( 0:no acknowledgment, 1:Requests acknowledgment, 2: Requests acknowledgment from 2, 3:Requests acknowledgment from 3)
+    * @param  {boolean} j Ensure is written to the on-disk journal.
+    * @param  {string} jwt JWT of user who is doing the update, ensuring rights
+    * @returns Promise<T>
+    */
+    async InsertOrUpdateOneOld<T extends Base>(q: InsertOrUpdateOneMessage, parent: Span): Promise<InsertOrUpdateOneMessage> {
         const span: Span = Logger.otel.startSubSpan("db.InsertOrUpdateOne", parent);
         let query: any = null;
         if (q.uniqeness !== null && q.uniqeness !== undefined && q.uniqeness !== "") {
