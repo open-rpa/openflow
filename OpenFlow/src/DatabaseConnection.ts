@@ -515,12 +515,12 @@ export class DatabaseConnection {
             for (let i: number = 0; i < arr.length; i++) { arr[i] = this.decryptentity(arr[i]); }
             DatabaseConnection.traversejsondecode(arr);
             if (Config.log_queries) Logger.instanse.debug("[" + user.username + "][" + collectionname + "] query gave " + arr.length + " results ");
-            Logger.otel.endSpan(span);
             return arr;
         } catch (error) {
             span.recordException(error);
-            Logger.otel.endSpan(span);
             throw error;
+        } finally {
+            Logger.otel.endSpan(span);
         }
     }
     async GetDocumentVersion<T extends Base>(collectionname: string, id: string, version: number, jwt: string, parent: Span): Promise<T> {
@@ -657,13 +657,14 @@ export class DatabaseConnection {
                 if (Config.log_aggregates) Logger.instanse.debug("[" + user.username + "][" + collectionname + "] aggregate gave " + items.length + " results ");
                 if (Config.log_aggregates) Logger.instanse.debug(aggregatesjson);
             }
-            Logger.otel.endSpan(span);
             return items;
         } catch (error) {
             if (Config.log_aggregates) Logger.instanse.debug(aggregatesjson);
             span.recordException(error);
-            Logger.otel.endSpan(span);
             throw error;
+        }
+        finally {
+            Logger.otel.endSpan(span);
         }
     }
     /**
@@ -856,15 +857,15 @@ export class DatabaseConnection {
                         if (!item._modified) item._modified = new Date(new Date().toISOString());
                         if (!item._modifiedby) item._modifiedby = user.name;
                         if (!item._modifiedbyid) item._modifiedbyid = user._id;
-
-                        if (item.hasOwnProperty("_skiphistory")) {
-                            delete (item as any)._skiphistory;
-                            if (!Config.allow_skiphistory) {
-                                item._version = await this.SaveDiff(collectionname, org, item, span);
-                            }
-                        } else {
-                            item._version = await this.SaveDiff(collectionname, org, item, span);
-                        }
+                        if (!item._version) item._version = 0;
+                        // if (item.hasOwnProperty("_skiphistory")) {
+                        //     delete (item as any)._skiphistory;
+                        //     if (!Config.allow_skiphistory) {
+                        //         item._version = await this.SaveDiff(collectionname, org, item, span);
+                        //     }
+                        // } else {
+                        //     item._version = await this.SaveDiff(collectionname, org, item, span);
+                        // }
                     } else {
                         item._version++;
                     }
@@ -953,8 +954,11 @@ export class DatabaseConnection {
             if (Config.log_inserts) Logger.instanse.debug("[" + user.username + "][" + collectionname + "] inserted " + item.name);
         } catch (error) {
             span.recordException(error);
+            throw error;
         }
-        Logger.otel.endSpan(span);
+        finally {
+            Logger.otel.endSpan(span);
+        }
         return item;
     }
     synRawUpdateOne(collection: string, query: any, updatedoc: any, measure: boolean, cb: any) {
@@ -1239,12 +1243,13 @@ export class DatabaseConnection {
                 throw error;
             }
             if (Config.log_updates) Logger.instanse.debug("[" + user.username + "][" + q.collectionname + "] updated " + q.item.name);
-            Logger.otel.endSpan(span);
             return q;
         } catch (error) {
             span.recordException(error);
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
         }
-        Logger.otel.endSpan(span);
     }
     /**
     * Update multiple documents in database based on update document
@@ -1361,7 +1366,7 @@ export class DatabaseConnection {
     */
     async InsertOrUpdateOne<T extends Base>(q: InsertOrUpdateOneMessage, parent: Span): Promise<InsertOrUpdateOneMessage> {
         let query: any = null;
-        if (q.uniqeness !== null && q.uniqeness !== undefined && q.uniqeness !== "") {
+        if (!NoderedUtil.IsNullEmpty(q.uniqeness)) {
             query = {};
             const arr = q.uniqeness.split(",");
             arr.forEach(field => {
@@ -1397,19 +1402,45 @@ export class DatabaseConnection {
             q.item._modifiedby = user.name;
             q.item._modifiedbyid = user._id;
             let roup: any = null;
-            try {
-                roup = await this.db.collection(q.collectionname).replaceOne(_query, q.item, { upsert: true });
-            } catch (error) {
-                console.error(error.message ? error.message : error)
+            if (query != null) {
+                const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.replaceOne", parent);
+                mongodbspan.setAttribute("collection", q.collectionname);
+                mongodbspan.setAttribute("query", JSON.stringify(query));
+                const ot_end = Logger.otel.startTimer();
+                try {
+                    roup = await this.db.collection(q.collectionname).replaceOne(_query, q.item, { upsert: true });
+                    q.opresult = roup;
+                    q.result = roup.ops[0];
+                } catch (error) {
+                    console.error(error.message ? error.message : error)
+                    mongodbspan.recordException(error);
+                } finally {
+                    Logger.otel.endSpan(mongodbspan);
+                    Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_replace, { collection: q.collectionname });
+                }
+            } else {
+                const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.replaceOne", parent);
+                mongodbspan.setAttribute("collection", q.collectionname);
+                mongodbspan.setAttribute("query", JSON.stringify(query));
+                const ot_end = Logger.otel.startTimer();
+                try {
+                    roup = await this.db.collection(q.collectionname).insertOne(q.item, { upsert: true });
+                    q.opresult = roup;
+                    q.result = roup.ops[0];
+                } catch (error) {
+                    console.error(error.message ? error.message : error)
+                    mongodbspan.recordException(error);
+                } finally {
+                    Logger.otel.endSpan(mongodbspan);
+                    Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_replace, { collection: q.collectionname });
+                }
             }
-            if (roup == null) {
-                await new Promise(r => setTimeout(r, 1000));
-                roup = await this.db.collection(q.collectionname).replaceOne(_query, q.item, { upsert: true });
+            q.result = this.decryptentity(q.result);
+            DatabaseConnection.traversejsondecode(q.result);
+            if (query == null) {
+                this.SaveDiff(q.collectionname, null, q.result, parent);
             }
-            q.item = this.decryptentity(q.item);
-            DatabaseConnection.traversejsondecode(q.item);
-            q.opresult = roup;
-            q.result = roup.result;
+            return q;
         } else {
             return this.InsertOrUpdateOneOld(q, parent);
         }
@@ -1473,9 +1504,7 @@ export class DatabaseConnection {
         } else {
             if (Config.log_updates) Logger.instanse.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Inserting as new in database");
             delete q.item._id;
-            const ot_end = Logger.otel.startTimer();
             q.result = await this.InsertOne(q.item, q.collectionname, q.w, q.j, q.jwt, span);
-            Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: q.collectionname });
         }
         if (q.collectionname === "users" && q.item._type === "role") {
             DBHelper.cached_roles = [];
@@ -2032,6 +2061,15 @@ export class DatabaseConnection {
         };
         if (item._type == 'instance' && collectionname == 'workflows') return 0;
         if (item._type == 'instance' && collectionname == 'workflows') return 0;
+
+        if (!original && item._id) {
+            const rootjwt = Crypt.rootToken()
+            const current = await this.getbyid(item._id, collectionname, rootjwt, span);
+            if (current && current._version > 0) {
+                original = await this.GetDocumentVersion(collectionname, item._id, current._version - 1, rootjwt, span);
+            }
+        }
+
         delete item._skiphistory;
         const _modified = item._modified;
         const _modifiedby = item._modifiedby;
@@ -2168,6 +2206,7 @@ export class DatabaseConnection {
             } catch (error) {
                 span.recordException(error);
                 Logger.otel.endSpan(span);
+                reject(error);
             }
         });
     }
@@ -2189,6 +2228,7 @@ export class DatabaseConnection {
             } catch (error) {
                 span.recordException(error);
                 Logger.otel.endSpan(span);
+                reject(error);
             }
         });
     }
