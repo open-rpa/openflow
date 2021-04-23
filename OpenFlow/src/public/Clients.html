@@ -16,19 +16,16 @@
   <div class="col-md-6">
   </div>
   <div class=" col-md-6 text-right">
-    <!-- <a ng-href="#/Entity/{{ctrl.collection}}" class="btn btn-info" translate lib="web">addentity</a> -->
-    <input type="checkbox" ng-model="ctrl.showinactive" ng-change="ctrl.loadData()"> <span translate
-      lib="web">showinactive</span>
+    <input type="checkbox" ng-model="ctrl.showinactive" ng-change="ctrl.loadData()"> <span translate lib="web"
+      ng-click="ctrl.showinactive = !ctrl.showinactive; ctrl.loadData()">showinactive</span>
     <input type="radio" name="show" value="openrpa" ng-model="ctrl.show" ng-change="ctrl.loadData()"> <span translate
-      lib="web">openrpa</span>
+      lib="web" ng-click="ctrl.show = 'openrpa'; ctrl.loadData()">openrpa</span>
     <input type="radio" name="show" value="nodered" ng-model="ctrl.show" ng-change="ctrl.loadData()"> <span translate
-      lib="web">nodered</span>
+      lib="web" ng-click="ctrl.show = 'nodered'; ctrl.loadData()">nodered</span>
     <input type="radio" name="show" value="webapp" ng-model="ctrl.show" ng-change="ctrl.loadData()"> <span translate
-      lib="web">web</span>
+      lib="web" ng-click="ctrl.show = 'webapp'; ctrl.loadData()">web</span>
     <input type="radio" name="show" value="all" ng-model="ctrl.show" ng-change="ctrl.loadData()"> <span translate
-      lib="web">showall</span>
-    <!-- <a ng-href="#/Entity/{{ctrl.collection}}" class="btn btn-info"><i class="az-add-lg"></i></a> -->
-    <br> {{ctrl.showall}} / {{ctrl.show}}
+      lib="web" ng-click="ctrl.show = 'all'; ctrl.loadData()">showall</span>
   </div>
 </div>
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
@@ -39,7 +36,6 @@
       <th scope="col" ng-click="ctrl.ToggleOrder('_rpaheartbeat')"><b translate lib="web">robot</b></th>
       <th scope="col" ng-click="ctrl.ToggleOrder('_noderedheartbeat')"><b translate lib="web">nodered</b></th>
       <th scope="col" ng-click="ctrl.ToggleOrder('_webheartbeat')"><b translate lib="web">web</b></th>
-      <!-- <th scope="col" ng-click="ctrl.ToggleOrder('_heartbeat')"><b translate lib="web">heartbeat</b></th> -->
       <th scope="col" ng-click="ctrl.ToggleOrder('_lastopenrpaclientversion')"><b translate
           lib="web">lastclientversion</b>
       </th>
@@ -63,9 +59,6 @@
       <td>
         <timesince ng-model="model._webheartbeat" />
       </td>
-      <!-- <td>
-        <timesince ng-model="model._heartbeat" />
-      </td> -->
       <td>
         <div ng-show="ctrl.show == 'openrpa'">{{model._lastopenrpaclientversion}}</div>
         <div ng-show="ctrl.show == 'nodered'">{{model._lastnoderedclientversion}}</div>
