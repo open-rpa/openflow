@@ -22,6 +22,22 @@ const jsondiffpatch = require('jsondiffpatch').create({
 });
 
 
+const Semaphore = (n) => ({
+    n,
+    async down() {
+        while (this.n <= 0) await this.wait();
+        this.n--;
+    },
+    up() {
+        this.n++;
+    },
+    async wait() {
+        if (this.n <= 0) return await new Promise((res, req) => {
+            setImmediate(async () => res(await this.wait()))
+        });
+        return;
+    },
+});
 Object.defineProperty(Promise, 'retry', {
     configurable: true,
     writable: true,
@@ -1354,6 +1370,7 @@ export class DatabaseConnection {
         // this.traversejsondecode(item);
         // return item;
     }
+    private static InsertOrUpdateOneSemaphore = Semaphore(1);
     /**
     * Insert or Update depending on document allready exists.
     * @param  {T} item Item to insert or update
@@ -1365,152 +1382,68 @@ export class DatabaseConnection {
     * @returns Promise<T>
     */
     async InsertOrUpdateOne<T extends Base>(q: InsertOrUpdateOneMessage, parent: Span): Promise<InsertOrUpdateOneMessage> {
-        let query: any = null;
-        if (!NoderedUtil.IsNullEmpty(q.uniqeness)) {
-            query = {};
-            const arr = q.uniqeness.split(",");
-            arr.forEach(field => {
-                if (field.trim() !== "") {
-                    query[field.trim()] = q.item[field.trim()];
-                }
-            });
-        } else {
-            // has no id, and no uniqeness defined, so we assume its a new item we should insert
-            if (q.item._id != null) {
-                query = { _id: q.item._id };
-            }
-        }
-        const user: TokenUser = Crypt.verityToken(q.jwt);
-        var _query = query;
-        if (q.collectionname === "files") { q.collectionname = "fs.files"; }
-        if (q.collectionname === "fs.files") {
-            _query = { $and: [query, this.getbasequery(q.jwt, "metadata._acl", [Rights.read])] };
-        } else {
-            _query = { $and: [query, this.getbasequery(q.jwt, "_acl", [Rights.read])] };
-        }
-        if (q.collectionname == "openrpa_instances") {
-            q.item = this.ensureResource(q.item);
-            q.item = await this.Cleanmembers(q.item as any, null);
-            q.item = this.encryptentity(q.item) as T;
-
-            if (!q.item._createdby) {
-                q.item._created = new Date(new Date().toISOString());
-                q.item._createdby = user.name;
-                q.item._createdbyid = user._id;
-            }
-            q.item._modified = new Date(new Date().toISOString());
-            q.item._modifiedby = user.name;
-            q.item._modifiedbyid = user._id;
-            let roup: any = null;
-            if (query != null) {
-                const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.replaceOne", parent);
-                mongodbspan.setAttribute("collection", q.collectionname);
-                mongodbspan.setAttribute("query", JSON.stringify(query));
-                const ot_end = Logger.otel.startTimer();
-                try {
-                    roup = await this.db.collection(q.collectionname).replaceOne(_query, q.item, { upsert: true });
-                    q.opresult = roup;
-                    q.result = roup.ops[0];
-                } catch (error) {
-                    console.error(error.message ? error.message : error)
-                    mongodbspan.recordException(error);
-                } finally {
-                    Logger.otel.endSpan(mongodbspan);
-                    Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_replace, { collection: q.collectionname });
-                }
+        const span: Span = Logger.otel.startSubSpan("db.InsertOrUpdateOne", parent);
+        try {
+            await DatabaseConnection.InsertOrUpdateOneSemaphore.down();
+            let query: any = null;
+            if (q.uniqeness !== null && q.uniqeness !== undefined && q.uniqeness !== "") {
+                query = {};
+                const arr = q.uniqeness.split(",");
+                arr.forEach(field => {
+                    if (field.trim() !== "") {
+                        query[field.trim()] = q.item[field.trim()];
+                    }
+                });
             } else {
-                const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.replaceOne", parent);
-                mongodbspan.setAttribute("collection", q.collectionname);
-                mongodbspan.setAttribute("query", JSON.stringify(query));
-                const ot_end = Logger.otel.startTimer();
-                try {
-                    roup = await this.db.collection(q.collectionname).insertOne(q.item, { upsert: true });
-                    q.opresult = roup;
-                    q.result = roup.ops[0];
-                } catch (error) {
-                    console.error(error.message ? error.message : error)
-                    mongodbspan.recordException(error);
-                } finally {
-                    Logger.otel.endSpan(mongodbspan);
-                    Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_replace, { collection: q.collectionname });
+                // has no id, and no uniqeness defined, so we assume its a new item we should insert
+                if (q.item._id != null) {
+                    query = { _id: q.item._id };
                 }
             }
-            q.result = this.decryptentity(q.result);
-            DatabaseConnection.traversejsondecode(q.result);
-            if (query == null) {
-                this.SaveDiff(q.collectionname, null, q.result, parent);
+            const user: TokenUser = Crypt.verityToken(q.jwt);
+            let exists: Base[] = [];
+            if (query != null) {
+                // exists = await this.query(query, { name: 1 }, 2, 0, null, q.collectionname, q.jwt);
+                exists = await this.query(query, null, 2, 0, null, q.collectionname, q.jwt, undefined, undefined, span);
+            }
+            if (exists.length == 1) {
+                q.item._id = exists[0]._id;
+            }
+            else if (exists.length > 1) {
+                throw JSON.stringify(query) + " is not uniqe, more than 1 item in collection matches this";
+            }
+            if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to InsertOrUpdateOne"); }
+            if (exists.length == 1) {
+                if (Config.log_updates) Logger.instanse.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Updating found one in database");
+                const uq = new UpdateOneMessage();
+                // uq.query = query; 
+                uq.item = q.item; uq.collectionname = q.collectionname; uq.w = q.w; uq.j; uq.jwt = q.jwt;
+                const keys = Object.keys(exists[0]);
+                for (let i = 0; i < keys.length; i++) {
+                    let key = keys[i];
+                    if (key.startsWith("_")) {
+                        if (NoderedUtil.IsNullUndefinded(uq.item[key])) uq.item[key] = exists[0][key];
+                    }
+                }
+                const uqres = await this.UpdateOne(uq, span);
+                q.opresult = uqres.opresult;
+                q.result = uqres.result;
+            } else {
+                if (Config.log_updates) Logger.instanse.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Inserting as new in database");
+                delete q.item._id;
+                q.result = await this.InsertOne(q.item, q.collectionname, q.w, q.j, q.jwt, span);
+            }
+            if (q.collectionname === "users" && q.item._type === "role") {
+                DBHelper.cached_roles = [];
             }
             return q;
-        } else {
-            return this.InsertOrUpdateOneOld(q, parent);
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            DatabaseConnection.InsertOrUpdateOneSemaphore.up();
+            Logger.otel.endSpan(span);
         }
-    }
-    /**
-    * Insert or Update depending on document allready exists.
-    * @param  {T} item Item to insert or update
-    * @param  {string} collectionname Collection containing item
-    * @param  {string} uniqeness List of fields to combine for uniqeness
-    * @param  {number} w Write Concern ( 0:no acknowledgment, 1:Requests acknowledgment, 2: Requests acknowledgment from 2, 3:Requests acknowledgment from 3)
-    * @param  {boolean} j Ensure is written to the on-disk journal.
-    * @param  {string} jwt JWT of user who is doing the update, ensuring rights
-    * @returns Promise<T>
-    */
-    async InsertOrUpdateOneOld<T extends Base>(q: InsertOrUpdateOneMessage, parent: Span): Promise<InsertOrUpdateOneMessage> {
-        const span: Span = Logger.otel.startSubSpan("db.InsertOrUpdateOne", parent);
-        let query: any = null;
-        if (q.uniqeness !== null && q.uniqeness !== undefined && q.uniqeness !== "") {
-            query = {};
-            const arr = q.uniqeness.split(",");
-            arr.forEach(field => {
-                if (field.trim() !== "") {
-                    query[field.trim()] = q.item[field.trim()];
-                }
-            });
-        } else {
-            // has no id, and no uniqeness defined, so we assume its a new item we should insert
-            if (q.item._id != null) {
-                query = { _id: q.item._id };
-            }
-        }
-        const user: TokenUser = Crypt.verityToken(q.jwt);
-        let exists: Base[] = [];
-        if (query != null) {
-            // exists = await this.query(query, { name: 1 }, 2, 0, null, q.collectionname, q.jwt);
-            exists = await this.query(query, null, 2, 0, null, q.collectionname, q.jwt, undefined, undefined, span);
-        }
-        if (exists.length == 1) {
-            q.item._id = exists[0]._id;
-        }
-        else if (exists.length > 1) {
-            throw JSON.stringify(query) + " is not uniqe, more than 1 item in collection matches this";
-        }
-        if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to InsertOrUpdateOne"); }
-        // if (q.item._id !== null && q.item._id !== undefined && q.item._id !== "") {
-        if (exists.length == 1) {
-            if (Config.log_updates) Logger.instanse.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Updating found one in database");
-            const uq = new UpdateOneMessage();
-            // uq.query = query; 
-            uq.item = q.item; uq.collectionname = q.collectionname; uq.w = q.w; uq.j; uq.jwt = q.jwt;
-            const keys = Object.keys(exists[0]);
-            for (let i = 0; i < keys.length; i++) {
-                let key = keys[i];
-                if (key.startsWith("_")) {
-                    if (NoderedUtil.IsNullUndefinded(uq.item[key])) uq.item[key] = exists[0][key];
-                }
-            }
-            const uqres = await this.UpdateOne(uq, span);
-            q.opresult = uqres.opresult;
-            q.result = uqres.result;
-        } else {
-            if (Config.log_updates) Logger.instanse.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Inserting as new in database");
-            delete q.item._id;
-            q.result = await this.InsertOne(q.item, q.collectionname, q.w, q.j, q.jwt, span);
-        }
-        if (q.collectionname === "users" && q.item._type === "role") {
-            DBHelper.cached_roles = [];
-        }
-        Logger.otel.endSpan(span);
-        return q;
     }
     private async _DeleteFile(id: string): Promise<void> {
         return new Promise<void>(async (resolve, reject) => {
@@ -2333,3 +2266,4 @@ export class DatabaseConnection {
         }
     }
 }
+

@@ -748,7 +748,6 @@ export class Message {
         }
         this.Send(cli);
     }
-
     private async InsertOrUpdateOne(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
         let msg: InsertOrUpdateOneMessage
@@ -757,30 +756,32 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
             if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
-            msg = await Config.db.InsertOrUpdateOne(msg, parent);
-            if (NoderedUtil.IsNullUndefinded(this.data)) {
-                var b = true;
+            if (msg.collectionname == "openrpa_instances" && msg.item._type == "workflowinstance") {
+                // Force uniqeness for workflow instances in old versions of openrpa
+                const versionPadded = version => version.split('.').map((n, i) => n.padStart(3, '0')).join('');
+                var version: string = versionPadded(cli.clientversion);
+                if (cli.clientagent == "openrpa" && parseInt(version) <= parseInt("001002040000")) { // 001002040000
+                    msg.uniqeness = "InstanceId,WorkflowId";
+                }
+                let state: string = (msg.item as any).state;
+                // Force removing completed states, for old versions of openrpa
+                if (msg.item && ["aborted", "failed", "completed"].indexOf(state) > -1) {
+                    delete (msg.item as any).xml;
+                }
             }
+            msg = await Config.db.InsertOrUpdateOne(msg, parent);
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (error) if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             if (!error) msg.error = "Unknown error";
             await handleError(cli, error);
         }
-        if (NoderedUtil.IsNullUndefinded(this.data)) {
-            var b = true;
-        }
-
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
             await handleError(cli, error);
         }
-        if (NoderedUtil.IsNullUndefinded(this.data)) {
-            var b = true;
-        }
-
         this.Send(cli);
     }
     private async DeleteOne(cli: WebSocketServerClient): Promise<void> {
