@@ -7,13 +7,31 @@ import { DatabaseConnection } from "./DatabaseConnection";
 import { Crypt } from "./Crypt";
 import { Config } from "./Config";
 import { amqpwrapper, QueueMessageOptions } from "./amqpwrapper";
-import { WellknownIds, Role, Rights, User, Base } from "@openiap/openflow-api";
+import { WellknownIds, Role, Rights, User, Base, NoderedUtil } from "@openiap/openflow-api";
 import { DBHelper } from "./DBHelper";
 import { OAuthProvider } from "./OAuthProvider";
 import { Span } from "@opentelemetry/api";
 
 Logger.configure();
 
+let _lic_require: any = null;
+try {
+    _lic_require = require("./license-file");
+} catch (error) {
+}
+if (_lic_require != null) {
+    Logger.License = new _lic_require.LicenseFile();
+} else {
+    Logger.License = {} as any;
+    Logger.License.ofid = function () {
+        if (!NoderedUtil.IsNullEmpty(this._ofid)) return this._ofid;
+        var crypto = require('crypto');
+        const openflow_uniqueid = Config.openflow_uniqueid || crypto.createHash('md5').update(Config.domain).digest("hex");
+        Config.openflow_uniqueid = openflow_uniqueid;
+        this._ofid = openflow_uniqueid;
+        return openflow_uniqueid;
+    };
+}
 let _otel_require: any = null;
 try {
     _otel_require = require("./otel");
@@ -49,7 +67,6 @@ if (_otel_require != null) {
             }
         } as any;
 }
-
 Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db);
 
 
