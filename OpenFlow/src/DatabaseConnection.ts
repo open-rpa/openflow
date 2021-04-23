@@ -1430,7 +1430,11 @@ export class DatabaseConnection {
                 q.result = uqres.result;
             } else {
                 if (Config.log_updates) Logger.instanse.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Inserting as new in database");
-                delete q.item._id;
+                if (q.collectionname == "openrpa_instances" && q.item._type == "workflowinstance") {
+                    // Normally we need to remove _id to avoid unique constrains, but in this case we WANT to preserve the id
+                } else {
+                    delete q.item._id;
+                }
                 q.result = await this.InsertOne(q.item, q.collectionname, q.w, q.j, q.jwt, span);
             }
             if (q.collectionname === "users" && q.item._type === "role") {

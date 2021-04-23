@@ -403,6 +403,10 @@ export class Message {
         cli.Send(this);
     }
     private UnknownCommand(cli: WebSocketServerClient): void {
+        if (NoderedUtil.IsNullEmpty(this.command)) {
+            Logger.instanse.error(new Error("Received message with no command"));
+            return;
+        }
         this.Reply("error");
         this.data = "Unknown command " + this.command;
         Logger.instanse.error(new Error(this.data));
