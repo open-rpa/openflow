@@ -263,4 +263,4 @@ gulp.task("bumpprojectfiles", function () {
 gulp.task("bump", gulp.series("bumpyml1", "bumpyml2", "bumpflow", "bumpnodered", "bumpconfigmap", "bumpaiotfrontend", "bumpprojectfiles", "copyfiles1"));
 
 gulp.task("watch", gulp.series("setwatch", "browserify", "copyfiles1", "dowatch"));
-gulp.task("default", gulp.series("copyfiles1", "browserify"));
+gulp.task("default", gulp.series("copyfiles1", "browserify", "copyfiles1"));
