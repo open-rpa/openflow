@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import * as fs from "fs";
-import { LicenseFile, license_data } from "./license-file";
 import { Logger } from "./Logger";
+import { license_data } from "./otelspec";
 function printusage() {
     console.log("openflow-cli [--months 3][--email email] domain");
     console.log("   --months - Set number of months, default 3");
