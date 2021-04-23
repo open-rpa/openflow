@@ -93,6 +93,8 @@ You can set the timeout using msg.expiration<br>
 Expiration controls how long to wait for a robot to pickup the message, it does not effect how long the robot can run for.<br>
 Kill if running / msg.killexisting will tell a robot to kill the workflow if it is allready running.<br>
 killallexisting / msg.killallexisting will tell a robot to kill all running workflows before running workflow.<br>
+Kill if running is only aviable for robots version >=1.2.38<br>
+killallexisting is only aviable for robots version >=1.3.1<br>
 </script>
 <script type="text/javascript">
     RED.nodes.registerType('rpa workflow', {
