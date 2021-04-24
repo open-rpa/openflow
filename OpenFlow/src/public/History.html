@@ -29,10 +29,20 @@
 
         </td>
         <td>{{model._version}}</td>
-        <td class="btn-cell">
+        <td class="btn-cell" ng-show="!ctrl.isNew">
           <a href ng-click="ctrl.CompareNow(model)" translate lib="web">now</a>
           <a href ng-click="ctrl.CompareThen(model)" translate lib="web">then</a>
           <a href ng-click="ctrl.RevertTo(model)" translate lib="web">RevertTo</a>
+          <a href ng-click="ctrl.DownloadVersion(model)" translate lib="web">Download</a>
+          <a href ng-click="ctrl.DownloadVersion(model, true)" translate ng-show="model._type=='workflow'"
+            lib="web">XAML</a>
+        </td>
+        <td class="btn-cell" ng-show="ctrl.isNew">
+          <a href ng-click="ctrl.ShowVersion(model)" translate lib="web">show</a>
+          <a href ng-click="ctrl.RevertTo(model)" translate lib="web">Restore</a>
+          <a href ng-click="ctrl.DownloadVersion(model)" translate lib="web">Download</a>
+          <a href ng-click="ctrl.DownloadVersion(model, true)" translate ng-show="model._type=='workflow'"
+            lib="web">XAML</a>
         </td>
       </tr>
     </tbody>

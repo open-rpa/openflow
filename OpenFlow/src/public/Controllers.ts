@@ -2706,7 +2706,7 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
                 delete this.model[key];
             }
         });
-        this.models = await NoderedUtil.Query(this.collection + "_hist", { id: this.id }, { name: 1, _createdby: 1, _modified: 1, _deleted: 1, _version: 1 }, this.orderby, 100, 0, null);
+        this.models = await NoderedUtil.Query(this.collection + "_hist", { id: this.id }, { name: 1, _createdby: 1, _modified: 1, _deleted: 1, _version: 1, _type: 1 }, this.orderby, 100, 0, null);
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     async CompareNow(model) {
@@ -2734,6 +2734,61 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
         });
         const delta = jsondiffpatch.diff(model.item, this.model);
         document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(delta, this.model);
+    }
+    async ShowVersion(model) {
+        const modal: any = $("#exampleModal");
+        try {
+            modal.modal();
+        } catch (error) {
+            await jsutil.loadScript("bootstrap.js");
+            modal.modal();
+        }
+
+
+        if (model.item == null) {
+            const item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null);
+            if (item != null) model.item = item;
+        }
+        if (model.item == null) {
+            document.getElementById('visual').innerHTML = "Failed loading item version " + model._version;
+        }
+        const keys = Object.keys(model.item);
+        keys.forEach(key => {
+            if (key.startsWith("_")) {
+                delete model.item[key];
+            }
+        });
+        const delta = jsondiffpatch.diff(model.item, { ...model.item, _id: this.id });
+        document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(delta, model.item);
+        // document.getElementById('visual').innerText = JSON.stringify(model.item, null, 2);
+    }
+    download(filename, text) {
+        var element = document.createElement('a');
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+        element.setAttribute('download', filename);
+
+        element.style.display = 'none';
+        document.body.appendChild(element);
+
+        element.click();
+
+        document.body.removeChild(element);
+    }
+    async DownloadVersion(model, asXAML) {
+        if (model.item == null) {
+            const item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null);
+            if (item != null) model.item = item;
+        }
+        if (model.item == null) {
+            document.getElementById('visual').innerHTML = "Failed loading item version " + model._version;
+        }
+        console.log(model);
+        if (asXAML == true) {
+            var xaml = model.item.Xaml;
+            this.download(model.item.Filename, xaml);
+        } else {
+            this.download(this.id + ".json", JSON.stringify(model.item, null, 2));
+        }
     }
     async CompareThen(model) {
         if (model.delta == null) {
