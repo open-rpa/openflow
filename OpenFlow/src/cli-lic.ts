@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import * as fs from "fs";
-import { LicenseFile, license_data } from "./license-file";
+import { Logger } from "./Logger";
+import { license_data } from "./otelspec";
 function printusage() {
     console.log("openflow-cli [--months 3][--email email] domain");
     console.log("   --months - Set number of months, default 3");
@@ -32,18 +33,18 @@ try {
         process.exit();
     }
     const data: license_data = {} as any;
-    let template = LicenseFile.template_v1;
+    let template = Logger.License.template_v1;
     data.licenseVersion = 1;
     data.email = options.email;
     if (options.domain) {
-        template = LicenseFile.template_v2;
+        template = Logger.License.template_v2;
         data.licenseVersion = 2;
         data.domain = options.domain;
     }
     var dt = new Date(new Date().toISOString());
     dt.setMonth(dt.getMonth() + months);
     data.expirationDate = dt.toISOString() as any;
-    const licenseFileContent = LicenseFile.generate({
+    const licenseFileContent = Logger.License.generate({
         privateKeyPath: 'config/private_key.pem',
         template,
         data: data

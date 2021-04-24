@@ -22,6 +22,22 @@ const jsondiffpatch = require('jsondiffpatch').create({
 });
 
 
+const Semaphore = (n) => ({
+    n,
+    async down() {
+        while (this.n <= 0) await this.wait();
+        this.n--;
+    },
+    up() {
+        this.n++;
+    },
+    async wait() {
+        if (this.n <= 0) return await new Promise((res, req) => {
+            setImmediate(async () => res(await this.wait()))
+        });
+        return;
+    },
+});
 Object.defineProperty(Promise, 'retry', {
     configurable: true,
     writable: true,
@@ -515,12 +531,12 @@ export class DatabaseConnection {
             for (let i: number = 0; i < arr.length; i++) { arr[i] = this.decryptentity(arr[i]); }
             DatabaseConnection.traversejsondecode(arr);
             if (Config.log_queries) Logger.instanse.debug("[" + user.username + "][" + collectionname + "] query gave " + arr.length + " results ");
-            Logger.otel.endSpan(span);
             return arr;
         } catch (error) {
             span.recordException(error);
-            Logger.otel.endSpan(span);
             throw error;
+        } finally {
+            Logger.otel.endSpan(span);
         }
     }
     async GetDocumentVersion<T extends Base>(collectionname: string, id: string, version: number, jwt: string, parent: Span): Promise<T> {
@@ -533,7 +549,12 @@ export class DatabaseConnection {
         try {
 
             let result: T = await this.getbyid<T>(id, collectionname, jwt, span);
-            if (result == null) return result;
+            if (result == null) {
+                const subbasehist = await this.query<any>({ id: id, item: { $exists: true, $ne: null } }, null, 1, 0, { _version: -1 }, collectionname + "_hist", jwt, undefined, undefined, span);
+                if (subbasehist.length == 0) return null;
+                result = subbasehist[0];
+                result._version = version + 1;
+            }
             if (result._version > version) {
                 const rootjwt = Crypt.rootToken()
                 // const baseversion = roundDown(version, Config.history_delta_count);
@@ -652,13 +673,14 @@ export class DatabaseConnection {
                 if (Config.log_aggregates) Logger.instanse.debug("[" + user.username + "][" + collectionname + "] aggregate gave " + items.length + " results ");
                 if (Config.log_aggregates) Logger.instanse.debug(aggregatesjson);
             }
-            Logger.otel.endSpan(span);
             return items;
         } catch (error) {
             if (Config.log_aggregates) Logger.instanse.debug(aggregatesjson);
             span.recordException(error);
-            Logger.otel.endSpan(span);
             throw error;
+        }
+        finally {
+            Logger.otel.endSpan(span);
         }
     }
     /**
@@ -823,7 +845,6 @@ export class DatabaseConnection {
 
             span.addEvent("encryptentity");
             item = this.encryptentity(item) as T;
-            if (!item._id) { item._id = new ObjectID().toHexString(); }
 
             if (collectionname === "users" && item._type === "user" && item.hasOwnProperty("newpassword")) {
                 (item as any).passwordhash = await Crypt.hash((item as any).newpassword);
@@ -831,14 +852,42 @@ export class DatabaseConnection {
             }
             j = ((j as any) === 'true' || j === true);
             w = parseInt((w as any));
-
-            if (item.hasOwnProperty("_skiphistory")) {
-                delete (item as any)._skiphistory;
-                if (!Config.allow_skiphistory) {
-                    item._version = await this.SaveDiff(collectionname, null, item, span);
+            item._version = 0;
+            if (item._id != null) {
+                const basehist = await this.query<any>({ id: item._id }, { _version: 1 }, 1, 0, { _version: -1 }, collectionname + "_hist", Crypt.rootToken(), undefined, undefined, span);
+                if (basehist.length > 0) {
+                    item._version = basehist[0]._version;
+                }
+                if (basehist.length > 0) {
+                    const org = await this.GetDocumentVersion(collectionname, item._id, item._version, Crypt.rootToken(), span)
+                    if (org != null) {
+                        item._createdby = org._createdby;
+                        item._createdbyid = org._createdbyid;
+                        item._created = org._created;
+                        item._modifiedby = org._modifiedby;
+                        item._modifiedbyid = org._modifiedbyid;
+                        item._modified = org._modified;
+                        if (!item._created) item._created = new Date(new Date().toISOString());
+                        if (!item._createdby) item._createdby = user.name;
+                        if (!item._createdbyid) item._createdbyid = user._id;
+                        if (!item._modified) item._modified = new Date(new Date().toISOString());
+                        if (!item._modifiedby) item._modifiedby = user.name;
+                        if (!item._modifiedbyid) item._modifiedbyid = user._id;
+                        if (!item._version) item._version = 0;
+                        // if (item.hasOwnProperty("_skiphistory")) {
+                        //     delete (item as any)._skiphistory;
+                        //     if (!Config.allow_skiphistory) {
+                        //         item._version = await this.SaveDiff(collectionname, org, item, span);
+                        //     }
+                        // } else {
+                        //     item._version = await this.SaveDiff(collectionname, org, item, span);
+                        // }
+                    } else {
+                        item._version++;
+                    }
                 }
             } else {
-                item._version = await this.SaveDiff(collectionname, null, item, span);
+                item._id = new ObjectID().toHexString();
             }
             span.addEvent("CleanACL");
             item = await this.CleanACL(item, user, span);
@@ -921,8 +970,11 @@ export class DatabaseConnection {
             if (Config.log_inserts) Logger.instanse.debug("[" + user.username + "][" + collectionname + "] inserted " + item.name);
         } catch (error) {
             span.recordException(error);
+            throw error;
         }
-        Logger.otel.endSpan(span);
+        finally {
+            Logger.otel.endSpan(span);
+        }
         return item;
     }
     synRawUpdateOne(collection: string, query: any, updatedoc: any, measure: boolean, cb: any) {
@@ -1207,12 +1259,13 @@ export class DatabaseConnection {
                 throw error;
             }
             if (Config.log_updates) Logger.instanse.debug("[" + user.username + "][" + q.collectionname + "] updated " + q.item.name);
-            Logger.otel.endSpan(span);
             return q;
         } catch (error) {
             span.recordException(error);
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
         }
-        Logger.otel.endSpan(span);
     }
     /**
     * Update multiple documents in database based on update document
@@ -1317,6 +1370,7 @@ export class DatabaseConnection {
         // this.traversejsondecode(item);
         // return item;
     }
+    private static InsertOrUpdateOneSemaphore = Semaphore(1);
     /**
     * Insert or Update depending on document allready exists.
     * @param  {T} item Item to insert or update
@@ -1329,61 +1383,71 @@ export class DatabaseConnection {
     */
     async InsertOrUpdateOne<T extends Base>(q: InsertOrUpdateOneMessage, parent: Span): Promise<InsertOrUpdateOneMessage> {
         const span: Span = Logger.otel.startSubSpan("db.InsertOrUpdateOne", parent);
-        let query: any = null;
-        if (q.uniqeness !== null && q.uniqeness !== undefined && q.uniqeness !== "") {
-            query = {};
-            const arr = q.uniqeness.split(",");
-            arr.forEach(field => {
-                if (field.trim() !== "") {
-                    query[field] = q.item[field];
-                }
-            });
-        } else {
-            // has no id, and no uniqeness defined, so we assume its a new item we should insert
-            if (q.item._id != null) {
-                query = { _id: q.item._id };
-            }
-        }
-        const user: TokenUser = Crypt.verityToken(q.jwt);
-        let exists: Base[] = [];
-        if (query != null) {
-            // exists = await this.query(query, { name: 1 }, 2, 0, null, q.collectionname, q.jwt);
-            exists = await this.query(query, null, 2, 0, null, q.collectionname, q.jwt, undefined, undefined, span);
-        }
-        if (exists.length == 1) {
-            q.item._id = exists[0]._id;
-        }
-        else if (exists.length > 1) {
-            throw JSON.stringify(query) + " is not uniqe, more than 1 item in collection matches this";
-        }
-        if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to InsertOrUpdateOne"); }
-        // if (q.item._id !== null && q.item._id !== undefined && q.item._id !== "") {
-        if (exists.length == 1) {
-            if (Config.log_updates) Logger.instanse.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Updating found one in database");
-            const uq = new UpdateOneMessage();
-            // uq.query = query; 
-            uq.item = q.item; uq.collectionname = q.collectionname; uq.w = q.w; uq.j; uq.jwt = q.jwt;
-            const keys = Object.keys(exists[0]);
-            for (let i = 0; i < keys.length; i++) {
-                let key = keys[i];
-                if (key.startsWith("_")) {
-                    if (NoderedUtil.IsNullUndefinded(uq.item[key])) uq.item[key] = exists[0][key];
+        try {
+            await DatabaseConnection.InsertOrUpdateOneSemaphore.down();
+            let query: any = null;
+            if (q.uniqeness !== null && q.uniqeness !== undefined && q.uniqeness !== "") {
+                query = {};
+                const arr = q.uniqeness.split(",");
+                arr.forEach(field => {
+                    if (field.trim() !== "") {
+                        query[field.trim()] = q.item[field.trim()];
+                    }
+                });
+            } else {
+                // has no id, and no uniqeness defined, so we assume its a new item we should insert
+                if (q.item._id != null) {
+                    query = { _id: q.item._id };
                 }
             }
-            const uqres = await this.UpdateOne(uq, span);
-            q.opresult = uqres.opresult;
-            q.result = uqres.result;
-        } else {
-            if (Config.log_updates) Logger.instanse.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Inserting as new in database");
-            const ot_end = Logger.otel.startTimer();
-            q.result = await this.InsertOne(q.item, q.collectionname, q.w, q.j, q.jwt, span);
-            Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: q.collectionname });
+            const user: TokenUser = Crypt.verityToken(q.jwt);
+            let exists: Base[] = [];
+            if (query != null) {
+                // exists = await this.query(query, { name: 1 }, 2, 0, null, q.collectionname, q.jwt);
+                exists = await this.query(query, null, 2, 0, null, q.collectionname, q.jwt, undefined, undefined, span);
+            }
+            if (exists.length == 1) {
+                q.item._id = exists[0]._id;
+            }
+            else if (exists.length > 1) {
+                throw JSON.stringify(query) + " is not uniqe, more than 1 item in collection matches this";
+            }
+            if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to InsertOrUpdateOne"); }
+            if (exists.length == 1) {
+                if (Config.log_updates) Logger.instanse.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Updating found one in database");
+                const uq = new UpdateOneMessage();
+                // uq.query = query; 
+                uq.item = q.item; uq.collectionname = q.collectionname; uq.w = q.w; uq.j; uq.jwt = q.jwt;
+                const keys = Object.keys(exists[0]);
+                for (let i = 0; i < keys.length; i++) {
+                    let key = keys[i];
+                    if (key.startsWith("_")) {
+                        if (NoderedUtil.IsNullUndefinded(uq.item[key])) uq.item[key] = exists[0][key];
+                    }
+                }
+                const uqres = await this.UpdateOne(uq, span);
+                q.opresult = uqres.opresult;
+                q.result = uqres.result;
+            } else {
+                if (Config.log_updates) Logger.instanse.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Inserting as new in database");
+                if (q.collectionname == "openrpa_instances" && q.item._type == "workflowinstance") {
+                    // Normally we need to remove _id to avoid unique constrains, but in this case we WANT to preserve the id
+                } else {
+                    delete q.item._id;
+                }
+                q.result = await this.InsertOne(q.item, q.collectionname, q.w, q.j, q.jwt, span);
+            }
+            if (q.collectionname === "users" && q.item._type === "role") {
+                DBHelper.cached_roles = [];
+            }
+            return q;
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            DatabaseConnection.InsertOrUpdateOneSemaphore.up();
+            Logger.otel.endSpan(span);
         }
-        if (q.collectionname === "users" && q.item._type === "role") {
-            DBHelper.cached_roles = [];
-        }
-        Logger.otel.endSpan(span);
-        return q;
     }
     private async _DeleteFile(id: string): Promise<void> {
         return new Promise<void>(async (resolve, reject) => {
@@ -1432,10 +1496,39 @@ export class DatabaseConnection {
                 throw Error("item not found!");
             }
         }
-        if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] Deleting " + id + " in database");
-        const ot_end = Logger.otel.startTimer();
-        const res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne(_query);
-        Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, { collection: collectionname });
+        // if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] Deleting " + id + " in database");
+        // const ot_end = Logger.otel.startTimer();
+        // const res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne(_query);
+        // Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, { collection: collectionname });
+        var docs = await this.db.collection(collectionname).find(_query).toArray();
+        for (var i = 0; i < docs.length; i++) {
+            var doc = docs[i];
+            doc._deleted = new Date(new Date().toISOString());
+            doc._deletedby = user.name;
+            doc._deletedbyid = user._id;
+            const fullhist = {
+                _acl: doc._acl,
+                _type: doc._type,
+                _modified: doc._modified,
+                _modifiedby: doc._modifiedby,
+                _modifiedbyid: doc._modifiedbyid,
+                _created: doc._modified,
+                _createdby: doc._modifiedby,
+                _createdbyid: doc._modifiedbyid,
+                _deleted: doc._deleted,
+                _deletedby: doc._deletedby,
+                _deletedbyid: doc._deletedbyid,
+                name: doc.name,
+                id: doc._id,
+                item: doc,
+                _version: doc._version,
+                reason: doc.reason
+            }
+            const ot_end = Logger.otel.startTimer();
+            await this.db.collection(collectionname + '_hist').insertOne(fullhist);
+            await this.db.collection(collectionname).deleteOne({ _id: doc._id });
+            Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, { collection: collectionname });
+        }
     }
 
     /**
@@ -1497,11 +1590,55 @@ export class DatabaseConnection {
             if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] deleted " + arr.length + " items in database");
             return arr.length;
         } else {
+            // const ot_end = Logger.otel.startTimer();
+            // const res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteMany(_query);
+            // Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });
+            var bulkInsert = this.db.collection(collectionname + "_hist").initializeUnorderedBulkOp();
+            var bulkRemove = this.db.collection(collectionname).initializeUnorderedBulkOp()
+            var x = 1000
+            var counter = 0
+            var date = new Date()
+            date.setMonth(date.getMonth() - 1)
+
+            var docs = await this.db.collection(collectionname).find(_query).toArray();
+            for (var i = 0; i < docs.length; i++) {
+                var doc = docs[i];
+                const fullhist = {
+                    _acl: doc._acl,
+                    _type: doc._type,
+                    _modified: doc._modified,
+                    _modifiedby: doc._modifiedby,
+                    _modifiedbyid: doc._modifiedbyid,
+                    _created: doc._modified,
+                    _createdby: doc._modifiedby,
+                    _createdbyid: doc._modifiedbyid,
+                    _deleted: new Date(new Date().toISOString()),
+                    _deletedby: user.name,
+                    _deletedbyid: user._id,
+                    name: doc.name,
+                    id: doc._id,
+                    item: doc,
+                    _version: doc._version,
+                    reason: doc.reason
+                }
+                bulkInsert.insert(fullhist);
+                bulkRemove.find({ _id: doc._id }).removeOne();
+                counter++
+                if (counter % x == 0) {
+                    const ot_end = Logger.otel.startTimer();
+                    bulkInsert.execute()
+                    bulkRemove.execute()
+                    bulkInsert = this.db.collection(collectionname + "_hist").initializeUnorderedBulkOp()
+                    bulkRemove = this.db.collection(collectionname).initializeUnorderedBulkOp()
+                    Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });
+                }
+            }
             const ot_end = Logger.otel.startTimer();
-            const res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteMany(_query);
+            bulkInsert.execute()
+            bulkRemove.execute()
             Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });
-            if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] deleted " + res.deletedCount + " items in database");
-            return res.deletedCount;
+            if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] deleted " + counter + " items in database");
+            return counter;
         }
     }
     /**
@@ -1861,6 +1998,15 @@ export class DatabaseConnection {
         };
         if (item._type == 'instance' && collectionname == 'workflows') return 0;
         if (item._type == 'instance' && collectionname == 'workflows') return 0;
+
+        if (!original && item._id) {
+            const rootjwt = Crypt.rootToken()
+            const current = await this.getbyid(item._id, collectionname, rootjwt, span);
+            if (current && current._version > 0) {
+                original = await this.GetDocumentVersion(collectionname, item._id, current._version - 1, rootjwt, span);
+            }
+        }
+
         delete item._skiphistory;
         const _modified = item._modified;
         const _modifiedby = item._modifiedby;
@@ -1886,11 +2032,6 @@ export class DatabaseConnection {
                 }
             }
             let delta: any = null;
-            // for backward comp, we cannot assume all objects have an history
-            // we create diff from version 0
-            // const delta_collections = Config.history_delta_collections.split(',');
-            // const full_collections = Config.history_full_collections.split(',');
-            // if (delta_collections.indexOf(collectionname) == -1 && full_collections.indexOf(collectionname) == -1) return 0;
 
             item._version = _version;
             delete item._modifiedby;
@@ -1898,14 +2039,39 @@ export class DatabaseConnection {
             delete item._modified;
             delete item._updatereason;
             delete item.lastseen;
-
-            // if (original != null && _version > 0 && delta_collections.indexOf(collectionname) > -1) {
-            if (original != null && _version > 0) {
-                this.visit(item, (obj, k) => {
-                    if (typeof obj[k] === "function") {
-                        delete obj[k];
-                    }
+            this.visit(item, (obj, k) => {
+                if (typeof obj[k] === "function") {
+                    delete obj[k];
+                }
+            });
+            if (original != null && original._version == 0) {
+                const fullhist = {
+                    _acl: _acl,
+                    _type: _type,
+                    _modified: _modified,
+                    _modifiedby: _modifiedby,
+                    _modifiedbyid: _modifiedbyid,
+                    _created: _modified,
+                    _createdby: _modifiedby,
+                    _createdbyid: _modifiedbyid,
+                    name: original.name,
+                    id: original._id,
+                    item: original,
+                    _version: 0,
+                    reason: reason
+                }
+                const ot_end = Logger.otel.startTimer();
+                const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.insertOne", span);
+                this.db.collection(collectionname + '_hist').insertOne(fullhist).then(() => {
+                    Logger.otel.endSpan(mongodbspan);
+                    Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname + '_hist' });
+                }).catch(err => {
+                    mongodbspan.recordException(err);
+                    Logger.otel.endSpan(mongodbspan);
+                    Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname + '_hist' });
                 });
+            }
+            if (original != null && original._version > 0) {
                 delta = jsondiffpatch.diff(original, item);
                 if (delta == undefined || delta == null) return 0;
                 const keys = Object.keys(delta);
@@ -1941,33 +2107,8 @@ export class DatabaseConnection {
                         Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname + '_hist' });
                     });
                 }
-            } else {
-                const fullhist = {
-                    _acl: _acl,
-                    _type: _type,
-                    _modified: _modified,
-                    _modifiedby: _modifiedby,
-                    _modifiedbyid: _modifiedbyid,
-                    _created: _modified,
-                    _createdby: _modifiedby,
-                    _createdbyid: _modifiedbyid,
-                    name: item.name,
-                    id: item._id,
-                    item: item,
-                    _version: _version,
-                    reason: reason
-                }
-                const ot_end = Logger.otel.startTimer();
-                const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.insertOne", span);
-                this.db.collection(collectionname + '_hist').insertOne(fullhist).then(() => {
-                    Logger.otel.endSpan(mongodbspan);
-                    Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname + '_hist' });
-                }).catch(err => {
-                    mongodbspan.recordException(err);
-                    Logger.otel.endSpan(mongodbspan);
-                    Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname + '_hist' });
-                });
             }
+
             item._modifiedby = _modifiedby;
             item._modifiedbyid = _modifiedbyid;
             item._modified = _modified;
@@ -2002,6 +2143,7 @@ export class DatabaseConnection {
             } catch (error) {
                 span.recordException(error);
                 Logger.otel.endSpan(span);
+                reject(error);
             }
         });
     }
@@ -2023,6 +2165,7 @@ export class DatabaseConnection {
             } catch (error) {
                 span.recordException(error);
                 Logger.otel.endSpan(span);
+                reject(error);
             }
         });
     }
@@ -2127,3 +2270,4 @@ export class DatabaseConnection {
         }
     }
 }
+

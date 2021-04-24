@@ -177,7 +177,7 @@ export class LoginProvider {
             }
         });
         app.get("/dashboardauth", async (req: any, res: any, next: any) => {
-            const span: Span = Logger.otel.startSpan("LoginProvider.user");
+            const span: Span = Logger.otel.startSpan("LoginProvider.dashboardauth");
             try {
                 span.setAttribute("remoteip", WebServer.remoteip(req));
                 if (req.user) {
