@@ -53,6 +53,7 @@ export class Config {
 
         Config.api_credential_cache_seconds = parseInt(Config.getEnv("api_credential_cache_seconds", "300"));
         Config.api_allow_anonymous = Config.parseBoolean(Config.getEnv("api_allow_anonymous", "false"));
+        Config.function_external_modules = Config.parseBoolean(Config.getEnv("function_external_modules", "false"));
 
         Config.jwt = Config.getEnv("jwt", "");
 
@@ -117,6 +118,7 @@ export class Config {
 
     public static api_credential_cache_seconds: number = parseInt(Config.getEnv("api_credential_cache_seconds", "300"));
     public static api_allow_anonymous: boolean = Config.parseBoolean(Config.getEnv("api_allow_anonymous", "false"));
+    public static function_external_modules: boolean = Config.parseBoolean(Config.getEnv("function_external_modules", "false"));
 
     public static jwt: string = Config.getEnv("jwt", "");
 

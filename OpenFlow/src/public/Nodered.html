@@ -37,23 +37,24 @@
       </div>
       <label class="col-sm-1 control-label"><span translate lib="web">cpu</span>: </label>
       <div class="col-sm-1">
-        <span
-          ng-show="ctrl.instance!=null">{{ instance.metrics.cpu + "/" + instance.spec.containers[0].resources.limits.cpu }}</span>
+        <span ng-show="ctrl.instance!=null">{{ instance.metrics.cpu + "/" +
+          instance.spec.containers[0].resources.limits.cpu }}</span>
       </div>
       <label class="col-sm-1 control-label"><span translate lib="web">mem</span>: </label>
       <div class="col-sm-1">
-        <span
-          ng-show="ctrl.instance!=null">{{ instance.metrics.memory + "/" + instance.spec.containers[0].resources.limits.memory }}</span>
+        <span ng-show="ctrl.instance!=null">{{ instance.metrics.memory + "/" +
+          instance.spec.containers[0].resources.limits.memory }}</span>
       </div>
       <label class="col-sm-1 control-label"><span translate lib="web">status</span>: </label>
       <div class="col-sm-1">
-        <span
-          ng-show="ctrl.instance!=null">{{ (this.instance.metadata.deletionTimestamp != null ? " deleting" : instance.status.phase) }}</span>
+        <span ng-show="ctrl.instance!=null">{{ (this.instance.metadata.deletionTimestamp != null ? " deleting" :
+          instance.status.phase) }}</span>
       </div>
       <label class="col-sm-1 control-label"><span translate lib="web">created</span>: </label>
       <div class="col-sm-1">
         <span ng-show="ctrl.instance!=null">
-          <timesince ng-model="instance.metadata.creationTimestamp" /></span>
+          <timesince ng-model="instance.metadata.creationTimestamp" />
+        </span>
       </div>
     </div>
     <div class="row">
@@ -92,6 +93,22 @@
       <input type="checkbox" class='form-control' ng-model="ctrl.user.nodered.api_allow_anonymous"></input>
     </div>
   </div>
+  <div class="row">
+    <label class="col-sm-4 control-label"><span translate lib="web">function_external_modules</span>: </label>
+    <div class="col-sm-1">
+      <input type="checkbox" class='form-control' ng-model="ctrl.user.nodered.function_external_modules"></input>
+    </div>
+  </div>
+  <div class="row" ng-show="menuctrl.WebSocketClientService.nodered_images.length > 1">
+    <label class="col-sm-4 control-label"><span translate lib="web">nodered_image</span>: </label>
+    <div class="col-sm-1">
+      <select ng-model="ctrl.user.nodered.nodered_image_name"
+        ng-options="item.name as item.name for item in menuctrl.WebSocketClientService.nodered_images">
+      </select>
+    </div>
+  </div>
+
+
 </section>
 <section>
   <div class="form-group" ng-show="menuctrl.hasrole('admins') && menuctrl.WebSocketClientService.stripe_api_key == ''">
@@ -118,8 +135,8 @@
         <option value="">No label</option>
         <option ng-repeat="key in ctrl.keys">{{ '{"' + key + '":"' + ctrl.labels[key] + '"}'}}</option>
       </select> -->
-      <span class="border mr-2" ng-repeat="key in ctrl.labelkeys"
-        ng-click="ctrl.removekey(key)">{{key + '=' + ctrl.label[key]}}</span>
+      <span class="border mr-2" ng-repeat="key in ctrl.labelkeys" ng-click="ctrl.removekey(key)">{{key + '=' +
+        ctrl.label[key]}}</span>
       <br>
       <select ng-model="ctrl.newkey" ng-options="item as item for item in ctrl.keys"
         ng-change="ctrl.newkeyselected()"></select>

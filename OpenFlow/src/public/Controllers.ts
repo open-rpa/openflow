@@ -2888,6 +2888,10 @@ export class NoderedCtrl {
                 this.user = NoderedUser.assign(users[0]);
                 this.name = users[0].username;
             }
+            // ctrl.user.nodered.nodered_image_name = ctrl.user.nodered.nodered_image_name || menuctrl.WebSocketClientService.nodered_images[0].name
+
+            if (this.user.nodered == null) this.user.nodered = {} as any;
+            this.user.nodered.nodered_image_name = this.user.nodered.nodered_image_name || WebSocketClientService.nodered_images[0].name;
             if (this.user.nodered != null && this.user.nodered.resources != null && this.user.nodered.resources.limits != null) {
                 this.limitsmemory = this.user.nodered.resources.limits.memory;
             }
@@ -2895,7 +2899,6 @@ export class NoderedCtrl {
                 // this.label = JSON.stringify((this.user.nodered as any).nodeselector);
                 this.label = (this.user.nodered as any).nodeselector;
                 this.labelkeys = Object.keys(this.label);
-
             }
             this.name = this.name.split("@").join("").split(".").join("");
             this.name = this.name.toLowerCase();

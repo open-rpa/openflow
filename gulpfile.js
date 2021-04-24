@@ -102,6 +102,7 @@ gulp.task("browserify", function () {
                     var source = path.join(rootDir, relativePath);
                     var target = path.join(rootDir, vendorPath);
                     if (fs.existsSync(source)) {
+                        fs.mkdirSync(path.dirname(target), { recursive: true });
                         fs.copyFileSync(source, target);
                     } else if (source.indexOf('fontawesome-webfont') > -1) {
                         // console.error(source + " WHAT?????")
@@ -176,12 +177,21 @@ gulp.task("browserify", function () {
 // 'gulp browserify',
 
 gulp.task("compose", shell.task([
+
     'echo "Build openiap/nodered"',
     'cd OpenFlowNodeRED && docker build -t openiap/nodered:edge .',
     'docker tag openiap/nodered:edge openiap/nodered:' + version,
     'echo "Push openiap/nodered"',
-    'docker push openiap/nodered:edge',       //'docker push openiap/nodered:' + version,
-    'docker push openiap/nodered:' + version,       //'docker push openiap/nodered:' + version,
+    'docker push openiap/nodered:edge',
+    'docker push openiap/nodered:' + version,
+
+    'echo "Build openiap/nodered-puppeteer"',
+    'cd OpenFlowNodeRED && docker build -t openiap/nodered-puppeteer:edge -f Dockerfilepuppeteer .',
+    'docker tag openiap/nodered-puppeteer:edge openiap/nodered-puppeteer:' + version,
+    'echo "Push openiap/nodered-puppeteer"',
+    'docker push openiap/nodered-puppeteer:edge',
+    'docker push openiap/nodered-puppeteer:' + version,
+
     'echo "Build openiap/openflow"',
     'docker build -t openiap/openflow:edge .',
     'docker tag openiap/openflow:edge openiap/openflow:' + version,

@@ -35,6 +35,8 @@ export class WebSocketClientService {
                 this.stripe_api_key = data.stripe_api_key;
                 this.validate_user_form = data.validate_user_form;
 
+                this.nodered_images = data.nodered_images;
+
                 if (WebSocketClient.instance == null) {
                     const cli: WebSocketClient = new WebSocketClient(this.logger, wsurl);
                     cli.agent = "webapp";
@@ -155,6 +157,7 @@ export class WebSocketClientService {
     public websocket_package_size: number = 4096;
     public stripe_api_key: string = "";
     public validate_user_form: string = "";
+    public nodered_images: nodered_image[];
 
     getJSON(url: string, callback: any): void {
         const xhr: XMLHttpRequest = new XMLHttpRequest();
@@ -208,4 +211,7 @@ export class QueuedMessage {
     public id: string;
     public message: any;
 }
-
+export class nodered_image {
+    public name: string;
+    public image: string;
+}
