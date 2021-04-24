@@ -415,7 +415,8 @@ export class LoginProvider {
                     stripe_api_key: Config.stripe_api_key,
                     getting_started_url: Config.getting_started_url,
                     validate_user_form: Config.validate_user_form,
-                    supports_watch: Config.supports_watch
+                    supports_watch: Config.supports_watch,
+                    nodered_images: Config.nodered_images
                 }
                 res.end(JSON.stringify(res2));
             } catch (error) {

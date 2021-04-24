@@ -1268,14 +1268,22 @@ export class Message {
 
 
 
+            let nodered_image_name = Config.nodered_images[0].name;
             if (user.nodered) {
                 try {
                     if (user.nodered.api_allow_anonymous == null) user.nodered.api_allow_anonymous = false;
                     if (user.nodered.function_external_modules == null) user.nodered.function_external_modules = false;
+                    if (user.nodered.nodered_image_name == null) user.nodered.nodered_image_name = nodered_image_name;
                 } catch (error) {
-                    user.nodered = { api_allow_anonymous: false, function_external_modules: false } as any;
+                    user.nodered = { api_allow_anonymous: false, function_external_modules: false, nodered_image_name } as any;
                 }
+            } else {
+                user.nodered = { api_allow_anonymous: false, function_external_modules: false, nodered_image_name } as any;
             }
+            const _nodered_image = Config.nodered_images.filter(x => x.name == user.nodered.nodered_image_name);
+            let nodered_image = Config.nodered_images[0].image;
+            if (_nodered_image.length == 1) { nodered_image = _nodered_image[0].image; }
+
             if (user.nodered && user.nodered.resources) {
                 if (NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
                     if (user.nodered.resources.limits) {
@@ -1322,7 +1330,7 @@ export class Message {
             let livenessProbe: any = {
                 httpGet: {
                     path: "/livenessprobe",
-                    port: 80,
+                    port: Config.port,
                     scheme: "HTTP"
                 },
                 initialDelaySeconds: Config.nodered_initial_liveness_delay,
@@ -1387,9 +1395,9 @@ export class Message {
                                 containers: [
                                     {
                                         name: 'nodered',
-                                        image: Config.nodered_image,
+                                        image: nodered_image,
                                         imagePullPolicy: "Always",
-                                        ports: [{ containerPort: 80 }, { containerPort: 5859 }],
+                                        ports: [{ containerPort: Config.port }, { containerPort: 5859 }],
                                         resources: resources,
                                         env: [
                                             { name: "saml_federation_metadata", value: Config.saml_federation_metadata },
@@ -1448,14 +1456,14 @@ export class Message {
                 }
                 try {
                     await KubeUtil.instance().AppsV1Api.createNamespacedDeployment(namespace, (_deployment as any));
-                    Audit.NoderedAction(TokenUser.From(cli.user), true, name, "createdeployment", Config.nodered_image, null, span);
+                    Audit.NoderedAction(TokenUser.From(cli.user), true, name, "createdeployment", nodered_image, null, span);
                 } catch (error) {
                     if (error.response && error.response.body && error.response.body.message) {
                         Logger.instanse.error(new Error(error.response.body.message));
                         throw new Error(error.response.body.message);
                     }
                     await handleError(cli, error);
-                    Audit.NoderedAction(TokenUser.From(cli.user), false, name, "createdeployment", Config.nodered_image, null, span);
+                    Audit.NoderedAction(TokenUser.From(cli.user), false, name, "createdeployment", nodered_image, null, span);
                     throw error;
                 }
             } else {
@@ -1500,7 +1508,7 @@ export class Message {
                         sessionAffinity: "ClientIP",
                         selector: { app: name },
                         ports: [
-                            { port: 80, name: "www" }
+                            { port: Config.port, name: "www" }
                         ]
                     }
                 }
@@ -1542,7 +1550,7 @@ export class Message {
                                         service: {
                                             name: name,
                                             port: {
-                                                number: 80
+                                                number: Config.port
                                             }
                                         }
                                     }

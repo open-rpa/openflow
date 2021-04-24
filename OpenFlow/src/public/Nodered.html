@@ -99,6 +99,15 @@
       <input type="checkbox" class='form-control' ng-model="ctrl.user.nodered.function_external_modules"></input>
     </div>
   </div>
+  <div class="row" ng-show="menuctrl.WebSocketClientService.nodered_images.length > 1">
+    <label class="col-sm-4 control-label"><span translate lib="web">nodered_image</span>: </label>
+    <div class="col-sm-1">
+      <select ng-model="ctrl.user.nodered.nodered_image_name"
+        ng-options="item.name as item.name for item in menuctrl.WebSocketClientService.nodered_images">
+      </select>
+    </div>
+  </div>
+
 
 </section>
 <section>

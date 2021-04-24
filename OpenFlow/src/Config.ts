@@ -104,7 +104,8 @@ export class Config {
         Config.downloadtoken_expires_in = Config.getEnv("downloadtoken_expires_in", "15m");
         Config.personalnoderedtoken_expires_in = Config.getEnv("personalnoderedtoken_expires_in", "365d");
 
-        Config.nodered_image = Config.getEnv("nodered_image", "openiap/nodered");
+        // Config.nodered_image = Config.getEnv("nodered_image", "openiap/nodered");
+        Config.nodered_images = JSON.parse(Config.getEnv("nodered_images", "[{\"name\":\"Latest Plain Nodered\", \"image\":\"openiap/nodered\"}]"));
         Config.saml_federation_metadata = Config.getEnv("saml_federation_metadata", "");
         Config.api_ws_url = Config.getEnv("api_ws_url", "");
         Config.nodered_ws_url = Config.getEnv("nodered_ws_url", "");
@@ -230,7 +231,8 @@ export class Config {
     public static downloadtoken_expires_in: string = Config.getEnv("downloadtoken_expires_in", "15m");
     public static personalnoderedtoken_expires_in: string = Config.getEnv("personalnoderedtoken_expires_in", "365d");
 
-    public static nodered_image: string = Config.getEnv("nodered_image", "openiap/nodered");
+    // public static nodered_image: string = Config.getEnv("nodered_image", "openiap/nodered");
+    public static nodered_images: nodered_image[] = JSON.parse(Config.getEnv("nodered_images", "[{\"name\":\"Latest Plain Nodered\", \"image\":\"openiap/nodered\"}]"));
     public static saml_federation_metadata: string = Config.getEnv("saml_federation_metadata", "");
     public static api_ws_url: string = Config.getEnv("api_ws_url", "");
     public static nodered_ws_url: string = Config.getEnv("nodered_ws_url", "");
@@ -279,7 +281,7 @@ export class Config {
         } else {
             result = "wss://" + Config.domain;
         }
-        if (Config.port != 80 && Config.port != 443) {
+        if (Config.port != 80 && Config.port != 443 && Config.port != 3000) {
             result = result + ":" + Config.port + "/";
         } else { result = result + "/"; }
         return result;
@@ -332,4 +334,8 @@ export class Config {
         }
     }
 
+}
+export class nodered_image {
+    public name: string;
+    public image: string;
 }
