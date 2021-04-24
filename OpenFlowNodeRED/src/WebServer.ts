@@ -186,6 +186,7 @@ export class WebServer {
 
                 Logger.instanse.debug("WebServer.configure::configure nodered settings");
                 this.settings = new nodered_settings();
+                this.settings.functionExternalModules = Config.function_external_modules;
                 const c = Config;
                 if (Config.nodered_port > 0) {
                     this.settings.uiPort = Config.nodered_port;

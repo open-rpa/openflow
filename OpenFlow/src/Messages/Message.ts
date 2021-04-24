@@ -1271,8 +1271,9 @@ export class Message {
             if (user.nodered) {
                 try {
                     if (user.nodered.api_allow_anonymous == null) user.nodered.api_allow_anonymous = false;
+                    if (user.nodered.function_external_modules == null) user.nodered.function_external_modules = false;
                 } catch (error) {
-                    user.nodered = { api_allow_anonymous: false } as any;
+                    user.nodered = { api_allow_anonymous: false, function_external_modules: false } as any;
                 }
             }
             if (user.nodered && user.nodered.resources) {
@@ -1407,6 +1408,7 @@ export class Message {
                                             { name: "noderedusers", value: (name + "noderedusers") },
                                             { name: "noderedadmins", value: (name + "noderedadmins") },
                                             { name: "api_allow_anonymous", value: user.nodered.api_allow_anonymous.toString() },
+                                            { name: "function_external_modules", value: user.nodered.function_external_modules.toString() },
                                             { name: "prometheus_measure_nodeid", value: Config.prometheus_measure_nodeid.toString() },
                                             { name: "prometheus_measure_queued_messages", value: Config.prometheus_measure_queued_messages.toString() },
                                             { name: "NODE_ENV", value: Config.NODE_ENV },

@@ -30,6 +30,7 @@ export class nodered_settings {
     public serialReconnectTime: number = 15000;
     public debugMaxLength: number = 1000;
     public functionGlobalContext: any = { process: process };
+    public functionExternalModules: boolean = false;
     public paletteCategories: string[] = ["workflow", "rpa", "subflows", "input", "output", "function", "api",
         "social", "mobile", "storage", "analysis", "advanced"];
     public debugUseColors: boolean = true;
