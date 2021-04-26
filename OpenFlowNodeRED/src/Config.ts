@@ -192,7 +192,7 @@ export class Config {
             result = Config.protocol + "://" + Config.domain;
         }
         const port: number = (Config.nodered_port > 0 ? Config.nodered_port : Config.port);
-        if (port != 80 && port != 443) {
+        if (port != 80 && port != 443 && port != 3000) {
             result = result + ":" + port + "/";
         } else { result = result + "/"; }
         return result;
