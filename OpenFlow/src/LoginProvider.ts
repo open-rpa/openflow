@@ -413,7 +413,7 @@ export class LoginProvider {
                     allow_personal_nodered: Config.allow_personal_nodered,
                     auto_create_personal_nodered_group: Config.auto_create_personal_nodered_group,
                     namespace: Config.namespace,
-                    nodered_domain_schema: Config.nodered_domain_schema,
+                    nodered_domain_schema: nodered_domain_schema,
                     websocket_package_size: Config.websocket_package_size,
                     version: Config.version,
                     stripe_api_key: Config.stripe_api_key,
