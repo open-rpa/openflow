@@ -996,7 +996,7 @@ export class LoginProvider {
                         user = new User(); user.name = username; user.username = username;
                         await Crypt.SetPassword(user, password, span);
                         const jwt: string = Crypt.rootToken();
-                        user = await DBHelper.ensureUser(jwt, user.name, user.username, null, null, span);
+                        user = await DBHelper.ensureUser(jwt, user.name, user.username, null, password, span);
 
                         const admins: Role = await DBHelper.FindRoleByName("admins", span);
                         admins.AddMember(user);
