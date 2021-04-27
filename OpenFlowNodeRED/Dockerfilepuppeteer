@@ -1,5 +1,6 @@
-FROM openiap/nodered:edge
-USER root
+FROM node:lts
+EXPOSE 80
+EXPOSE 5859
 RUN apt-get update \
     && apt-get install -y wget gnupg \
     && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
@@ -8,6 +9,17 @@ RUN apt-get update \
     && apt-get install -y google-chrome-stable fonts-ipafont-gothic fonts-wqy-zenhei fonts-thai-tlwg fonts-kacst fonts-freefont-ttf libxss1 \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /data
+RUN groupadd -r openiapuser && useradd -r -g openiapuser -G audio,video openiapuser \
+    && mkdir -p /home/openiapuser/Downloads \
+    && chown -R openiapuser:openiapuser /home/openiapuser \
+    && chown -R openiapuser:openiapuser /data/
+
+COPY --chown=openiapuser:openiapuser docker-package.json ./package.json
+RUN npm install --only=prod
+# RUN npm install
+COPY --chown=openiapuser:openiapuser dist ./
 
 USER openiapuser
 ENTRYPOINT ["/usr/local/bin/node", "--inspect=0.0.0.0:5859", "index.js"]

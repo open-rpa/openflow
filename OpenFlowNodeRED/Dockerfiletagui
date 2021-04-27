@@ -1,5 +1,6 @@
-FROM openiap/nodered:edge
-USER root
+FROM node:lts
+EXPOSE 80
+EXPOSE 5859
 RUN apt-get update \
     && apt-get install -y unzip wget gnupg python3-pip python3-venv php \
     && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
@@ -9,8 +10,20 @@ RUN apt-get update \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 RUN pip3 install rpa
+WORKDIR /data
+RUN groupadd -r openiapuser && useradd -r -g openiapuser -G audio,video openiapuser \
+    && mkdir -p /home/openiapuser/Downloads \
+    && chown -R openiapuser:openiapuser /home/openiapuser \
+    && chown -R openiapuser:openiapuser /data/
+
 RUN wget -O /tmp/tagui_linux.zip https://github.com/kelaberetiv/TagUI/releases/download/v6.14.0/TagUI_Linux.zip \
 && unzip '/tmp/tagui_linux.zip' -d /home/openiapuser && rm /tmp/tagui_linux.zip || true && mv /home/openiapuser/tagui /home/openiapuser/.tagui && chown -R openiapuser:openiapuser /home/openiapuser
 RUN ln -sf /home/openiapuser/.tagui/src/tagui /usr/local/bin/tagui
 USER openiapuser
+
+COPY --chown=openiapuser:openiapuser docker-package.json ./package.json
+RUN npm install --only=prod
+# RUN npm install
+COPY --chown=openiapuser:openiapuser dist ./
+
 ENTRYPOINT ["/usr/local/bin/node", "--inspect=0.0.0.0:5859", "index.js"]
