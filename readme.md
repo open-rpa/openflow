@@ -265,7 +265,6 @@ nodered_id=nodered1
 nodered_sa=nodered1
 port=80
 nodered_port=1880
-nodered_domain_schema=$nodered_id$.localhost.openiap.io
 tls_crt=
 tls_key=
 tls_ca=

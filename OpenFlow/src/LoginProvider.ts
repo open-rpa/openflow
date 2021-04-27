@@ -401,6 +401,10 @@ export class LoginProvider {
                     const user: TokenUser = TokenUser.From(req.user);
                     span.setAttribute("username", user.username);
                 }
+                let nodered_domain_schema = Config.nodered_domain_schema;
+                if (NoderedUtil.IsNullEmpty(nodered_domain_schema)) {
+                    nodered_domain_schema = "$nodered_id$." + Config.domain;
+                }
                 const res2 = {
                     wshost: _url,
                     wsurl: _url,
