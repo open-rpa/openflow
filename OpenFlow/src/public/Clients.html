@@ -82,7 +82,8 @@
             class="fas fa-money-bill-wave"></i></a>
       </td>
       <td class="btn-cell">
-        <a ng-href="#/Nodered/{{model._id}}" class="table-btn"><i class="fas fa-tools"></i></a>
+        <a ng-href="#/Nodered/{{model._id}}" class="table-btn"
+          ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true"><i class="fas fa-tools"></i></a>
       </td>
       <td class="btn-cell">
         <a ng-href="#/Entity/{{ctrl.collection}}/{{model._id}}" class="table-btn"><i class="az-edit"></i></a>
