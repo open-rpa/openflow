@@ -47,6 +47,11 @@ services:
       - "traefik.frontend.passHostHeader=true"
     image: "openiap/openflow"
     container_name: "web"
+    pull_policy: always
+    restart: always
+    depends_on:
+      - rabbitmq
+      - mongodb
     environment:
       - update_acl_based_on_groups=true
       - multi_tenant=false
@@ -84,6 +89,9 @@ services:
       - "traefik.http.services.nodered.loadbalancer.server.port=1880"
     image: "openiap/nodered"
     container_name: "nodered"
+    restart: always
+    depends_on:
+      - web
     environment:
       #      - nodered_id=1
       - nodered_sa=nodered1
