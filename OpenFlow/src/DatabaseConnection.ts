@@ -1412,7 +1412,13 @@ export class DatabaseConnection {
             else if (exists.length > 1) {
                 throw JSON.stringify(query) + " is not uniqe, more than 1 item in collection matches this";
             }
-            if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to InsertOrUpdateOne"); }
+            if (!this.hasAuthorization(user, q.item, Rights.update)) {
+                Base.addRight(q.item, user._id, user.name, [Rights.full_control], false);
+                this.ensureResource(q.item);
+            }
+            // if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to InsertOrUpdateOne"); }
+
+
             if (exists.length == 1) {
                 if (Config.log_updates) Logger.instanse.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Updating found one in database");
                 const uq = new UpdateOneMessage();
