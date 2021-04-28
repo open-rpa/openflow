@@ -2902,9 +2902,7 @@ export class NoderedCtrl {
             }
             this.name = this.name.split("@").join("").split(".").join("");
             this.name = this.name.toLowerCase();
-            // this.noderedurl = "https://" + WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", this.name);
             this.noderedurl = "//" + WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", this.name);
-            // // this.GetNoderedInstance();
             this.GetNoderedInstance();
             this.labels = await NoderedUtil.GetKubeNodeLabels(null);
             if (this.labels != null) this.keys = Object.keys(this.labels);
@@ -3241,7 +3239,7 @@ export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
         let name = model.username;
         name = name.split("@").join("").split(".").join("");
         name = name.toLowerCase();
-        const noderedurl = "https://" + this.WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", name);
+        const noderedurl = "//" + this.WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", name);
         window.open(noderedurl);
     }
     ManageNodered(model: any) {

@@ -205,9 +205,9 @@ export class DatabaseConnection {
                         const b = new Binary(Buffer.from(ace.rights, "base64"), 0);
                         (ace.rights as any) = b;
                     }
-                    if (this.WellknownIdsArray.indexOf(ace._id) == -1) {
-                        let user = await Auth.getUser(ace._id, "cleanacl");
-                        if (user == null || user != null) {
+                    if (this.WellknownIdsArray.indexOf(ace._id) === -1) {
+                        let user = Auth.getUser(ace._id, "cleanacl");
+                        if (NoderedUtil.IsNullUndefinded(user)) {
                             const ot_end = Logger.otel.startTimer();
                             const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.find", span);
                             mongodbspan.setAttribute("collection", "users");
@@ -221,7 +221,7 @@ export class DatabaseConnection {
                                 await Auth.AddUser(user, ace._id, "cleanacl");
                             }
                         }
-                        if (user == null) {
+                        if (NoderedUtil.IsNullUndefinded(user)) {
                             item._acl.splice(i, 1);
                         } else { ace.name = user.name; }
                     }
@@ -233,10 +233,10 @@ export class DatabaseConnection {
             }
             var addself: boolean = true;
             item._acl.forEach(ace => {
-                if (ace._id == user._id) addself = false;
+                if (ace._id === user._id) addself = false;
                 if (addself) {
                     user.roles.forEach(role => {
-                        if (ace._id == role._id) addself = false;
+                        if (ace._id === role._id) addself = false;
                     });
                 }
             })
@@ -252,12 +252,12 @@ export class DatabaseConnection {
     }
     async Cleanmembers<T extends Role>(item: T, original: T): Promise<T> {
         const removed: Rolemember[] = [];
-        if (item.members == null) item.members = [];
-        if (original != null && Config.update_acl_based_on_groups == true) {
+        if (NoderedUtil.IsNullUndefinded(item.members)) item.members = [];
+        if (original != null && Config.update_acl_based_on_groups === true) {
             for (let i = original.members.length - 1; i >= 0; i--) {
                 const ace = original.members[i];
-                const exists = item.members.filter(x => x._id == ace._id);
-                if (exists.length == 0) {
+                const exists = item.members.filter(x => x._id === ace._id);
+                if (exists.length === 0) {
                     removed.push(ace);
                 }
             }
@@ -265,15 +265,15 @@ export class DatabaseConnection {
         let doadd: boolean = true;
         const multi_tenant_skip: string[] = [WellknownIds.users, WellknownIds.filestore_users,
         WellknownIds.nodered_api_users, WellknownIds.nodered_users, WellknownIds.personal_nodered_users,
-        WellknownIds.robot_users, , WellknownIds.robots];
-        if (item._id == WellknownIds.users && Config.multi_tenant) {
+        WellknownIds.robot_users, WellknownIds.robots];
+        if (item._id === WellknownIds.users && Config.multi_tenant) {
             doadd = false;
         }
         if (doadd) {
             for (let i = item.members.length - 1; i >= 0; i--) {
                 {
                     const ace = item.members[i];
-                    if (Config.update_acl_based_on_groups == true) {
+                    if (Config.update_acl_based_on_groups === true) {
                         if (multi_tenant_skip.indexOf(item._id) > -1) {
                             if (ace._id != WellknownIds.admins && ace._id != WellknownIds.root) {
                                 // item.removeRight(ace._id, [Rights.read]);
@@ -282,22 +282,22 @@ export class DatabaseConnection {
                             // item.addRight(ace._id, ace.name, [Rights.read]);
                         }
                     }
-                    const exists = item.members.filter(x => x._id == ace._id);
+                    const exists = item.members.filter(x => x._id === ace._id);
                     if (exists.length > 1) {
                         item.members.splice(i, 1);
                     } else {
                         const ot_end = Logger.otel.startTimer();
                         const arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1, _acl: 1, _type: 1 }).limit(1).toArray();
                         Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: "users" });
-                        if (arr.length == 0) {
+                        if (arr.length === 0) {
                             item.members.splice(i, 1);
                         }
-                        else if (Config.update_acl_based_on_groups == true) {
+                        else if (Config.update_acl_based_on_groups === true) {
                             ace.name = arr[0].name;
                             if (Config.multi_tenant && multi_tenant_skip.indexOf(item._id) > -1) {
                                 // when multi tenant don't allow members of common user groups to see each other
                                 Logger.instanse.info("Running in multi tenant mode, skip adding permissions for " + item.name);
-                            } else if (arr[0]._type == "user") {
+                            } else if (arr[0]._type === "user") {
                                 const u: User = User.assign(arr[0]);
                                 if (!Base.hasRight(u, item._id, Rights.read)) {
                                     Logger.instanse.debug("Assigning " + item.name + " read permission to " + u.name);
@@ -308,11 +308,11 @@ export class DatabaseConnection {
                                 } else if (u._id != item._id) {
                                     Logger.instanse.debug(item.name + " allready exists on " + u.name);
                                 }
-                            } else if (arr[0]._type == "role") {
+                            } else if (arr[0]._type === "role") {
                                 const r: Role = Role.assign(arr[0]);
-                                if (r._id == WellknownIds.admins || r._id == WellknownIds.users) {
+                                if (r._id === WellknownIds.admins || r._id === WellknownIds.users) {
                                 } else if (!Base.hasRight(r, item._id, Rights.read)) {
-                                    if (r.name == "admins") {
+                                    if (r.name === "admins") {
                                         const b = true;
                                     }
                                     Logger.instanse.debug("Assigning " + item.name + " read permission to " + r.name);
@@ -337,18 +337,18 @@ export class DatabaseConnection {
                 const ot_end = Logger.otel.startTimer();
                 const arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1, _acl: 1, _type: 1 }).limit(1).toArray();
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: "users" });
-                if (arr.length == 1 && item._id != WellknownIds.admins && item._id != WellknownIds.root) {
+                if (arr.length === 1 && item._id != WellknownIds.admins && item._id != WellknownIds.root) {
                     if (Config.multi_tenant && multi_tenant_skip.indexOf(item._id) > -1) {
                         // when multi tenant don't allow members of common user groups to see each other
                         Logger.instanse.info("Running in multi tenant mode, skip removing permissions for " + item.name);
-                    } else if (arr[0]._type == "user") {
+                    } else if (arr[0]._type === "user") {
                         const u: User = User.assign(arr[0]);
                         if (Base.hasRight(u, item._id, Rights.read)) {
                             Base.removeRight(u, item._id, [Rights.read]);
 
                             // was read the only right ? then remove it
                             const right = Base.getRight(u, item._id, false);
-                            if (right == null) {
+                            if (NoderedUtil.IsNullUndefinded(right)) {
                                 Logger.instanse.debug("Removing " + item.name + " read permissions from " + u.name);
                                 const ot_end = Logger.otel.startTimer();
                                 await this.db.collection("users").updateOne({ _id: u._id }, { $set: { _acl: u._acl } });
@@ -358,14 +358,14 @@ export class DatabaseConnection {
                         } else {
                             Logger.instanse.debug("No need to remove " + item.name + " read permissions from " + u.name);
                         }
-                    } else if (arr[0]._type == "role") {
+                    } else if (arr[0]._type === "role") {
                         const r: Role = Role.assign(arr[0]);
                         if (Base.hasRight(r, item._id, Rights.read)) {
                             Base.removeRight(r, item._id, [Rights.read]);
 
                             // was read the only right ? then remove it
                             const right = Base.getRight(r, item._id, false);
-                            if (right == null) {
+                            if (NoderedUtil.IsNullUndefinded(right)) {
                                 Logger.instanse.debug("Removing " + item.name + " read permissions from " + r.name);
                                 const ot_end = Logger.otel.startTimer();
                                 await this.db.collection("users").updateOne({ _id: r._id }, { $set: { _acl: r._acl } });
@@ -417,7 +417,7 @@ export class DatabaseConnection {
                         console.error(orderby)
                         console.error(error);
                     }
-                    if (neworderby == null) mysort[(orderby as string)] = 1;
+                    if (NoderedUtil.IsNullUndefinded(neworderby)) mysort[(orderby as string)] = 1;
                 } else {
                     mysort = orderby;
                 }
@@ -439,7 +439,7 @@ export class DatabaseConnection {
                         span.setAttribute("failedhint", hint as string);
                         console.error(error, hint);
                     }
-                    if (newhint == null) myhint[(hint as string)] = 1;
+                    if (NoderedUtil.IsNullUndefinded(newhint)) myhint[(hint as string)] = 1;
                 } else {
                     myhint = hint;
                 }
@@ -468,7 +468,7 @@ export class DatabaseConnection {
                 query = JSON.parse(json, (key, value) => {
                     if (typeof value === 'string' && value.match(isoDatePattern)) {
                         return new Date(value); // isostring, so cast to js date
-                    } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") == 0) {
+                    } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") === 0) {
                         const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
                         return new RegExp(m[1], m[2] || "");
                     } else
@@ -549,9 +549,9 @@ export class DatabaseConnection {
         try {
 
             let result: T = await this.getbyid<T>(id, collectionname, jwt, span);
-            if (result == null) {
+            if (NoderedUtil.IsNullUndefinded(result)) {
                 const subbasehist = await this.query<any>({ id: id, item: { $exists: true, $ne: null } }, null, 1, 0, { _version: -1 }, collectionname + "_hist", jwt, undefined, undefined, span);
-                if (subbasehist.length == 0) return null;
+                if (subbasehist.length === 0) return null;
                 result = subbasehist[0];
                 result._version = version + 1;
             }
@@ -630,7 +630,7 @@ export class DatabaseConnection {
                 } catch (error) {
                     console.error(error, hint);
                 }
-                if (newhint == null) myhint[(hint as string)] = 1;
+                if (NoderedUtil.IsNullUndefinded(newhint)) myhint[(hint as string)] = 1;
             } else {
                 myhint = hint;
             }
@@ -639,7 +639,7 @@ export class DatabaseConnection {
         aggregates = JSON.parse(json, (key, value) => {
             if (typeof value === 'string' && value.match(isoDatePattern)) {
                 return new Date(value); // isostring, so cast to js date
-            } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") == 0) {
+            } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") === 0) {
                 const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
                 return new RegExp(m[1], m[2] || "");
             } else
@@ -707,7 +707,7 @@ export class DatabaseConnection {
             aggregates = JSON.parse(json, (key, value) => {
                 if (typeof value === 'string' && value.match(isoDatePattern)) {
                     return new Date(value); // isostring, so cast to js date
-                } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") == 0) {
+                } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") === 0) {
                     const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
                     return new RegExp(m[1], m[2] || "");
                 } else
@@ -752,7 +752,7 @@ export class DatabaseConnection {
             query = JSON.parse(json, (key, value) => {
                 if (typeof value === 'string' && value.match(isoDatePattern)) {
                     return new Date(value); // isostring, so cast to js date
-                } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") == 0) {
+                } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") === 0) {
                     const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
                     return new RegExp(m[1], m[2] || "");
                 } else
@@ -768,7 +768,7 @@ export class DatabaseConnection {
 
         if (finalize != null && finalize != undefined) {
             try {
-                if (((finalize as any) as string).trim() == "") { (finalize as any) = null; }
+                if (((finalize as any) as string).trim() === "") { (finalize as any) = null; }
             } catch (error) {
             }
         }
@@ -897,15 +897,15 @@ export class DatabaseConnection {
 
             if (collectionname === "users" && item._type === "user") {
                 const u: TokenUser = (item as any);
-                if (u.username == null || u.username == "") { throw new Error("Username is mandatory"); }
-                if (u.name == null || u.name == "") { throw new Error("Name is mandatory"); }
+                if (NoderedUtil.IsNullEmpty(u.username)) { throw new Error("Username is mandatory"); }
+                if (NoderedUtil.IsNullEmpty(u.name)) { throw new Error("Name is mandatory"); }
                 span.addEvent("FindByUsername");
                 const exists = await DBHelper.FindByUsername(u.username, null, span);
                 if (exists != null) { throw new Error("Access denied, user  '" + u.username + "' already exists"); }
             }
             if (collectionname === "users" && item._type === "role") {
                 const r: Role = (item as any);
-                if (r.name == null || r.name == "") { throw new Error("Name is mandatory"); }
+                if (NoderedUtil.IsNullEmpty(r.name)) { throw new Error("Name is mandatory"); }
                 span.addEvent("FindByUsername");
                 const exists2 = await DBHelper.FindRoleByName(r.name, span);
                 if (exists2 != null) { throw new Error("Access denied, role '" + r.name + "' already exists"); }
@@ -960,7 +960,7 @@ export class DatabaseConnection {
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_replace, { collection: collectionname });
                 DBHelper.cached_roles = [];
             }
-            if (collectionname == "config" && item._type == "oauthclient") {
+            if (collectionname === "config" && item._type === "oauthclient") {
                 if (user.HasRoleName("admins")) {
                     setTimeout(() => OAuthProvider.LoadClients(), 1000);
                 }
@@ -1012,10 +1012,10 @@ export class DatabaseConnection {
         let q = new UpdateOneMessage();
         q.query = query; q.item = item; q.collectionname = collectionname; q.w = w; q.j; q.jwt = jwt;
         q = await this.UpdateOne(q, parent);
-        if (q.opresult.result.ok == 1) {
-            if (q.opresult.modifiedCount == 0) {
+        if (q.opresult.result.ok === 1) {
+            if (q.opresult.modifiedCount === 0) {
                 throw Error("item not found!");
-            } else if (q.opresult.modifiedCount == 1 || q.opresult.modifiedCount == undefined) {
+            } else if (q.opresult.modifiedCount === 1 || NoderedUtil.IsNullUndefinded(q.opresult.modifiedCount)) {
                 q.item = q.item;
             } else {
                 throw Error("More than one item was updated !!!");
@@ -1087,7 +1087,7 @@ export class DatabaseConnection {
                     DatabaseConnection.traversejsonencode(q.item);
                     q.item = this.encryptentity(q.item);
                     const hasUser: Ace = q.item._acl.find(e => e._id === user._id);
-                    if ((hasUser === null || hasUser === undefined) && q.item._acl.length == 0) {
+                    if (NoderedUtil.IsNullUndefinded(hasUser) && q.item._acl.length === 0) {
                         Base.addRight(q.item, user._id, user.name, [Rights.full_control]);
                     }
                     if (q.collectionname === "users" && q.item._type === "user") {
@@ -1126,7 +1126,7 @@ export class DatabaseConnection {
                     DatabaseConnection.traversejsonencode(q.item);
                     (q.item as any).metadata = this.encryptentity((q.item as any).metadata);
                     const hasUser: Ace = (q.item as any).metadata._acl.find(e => e._id === user._id);
-                    if ((hasUser === null || hasUser === undefined) && (q.item as any).metadata._acl.length == 0) {
+                    if ((hasUser === null || hasUser === undefined) && (q.item as any).metadata._acl.length === 0) {
                         Base.addRight((q.item as any).metadata, user._id, user.name, [Rights.full_control]);
                     }
                 }
@@ -1147,7 +1147,7 @@ export class DatabaseConnection {
                 q.item = JSON.parse(json, (key, value) => {
                     if (typeof value === 'string' && value.match(isoDatePattern)) {
                         return new Date(value); // isostring, so cast to js date
-                    } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") == 0) {
+                    } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") === 0) {
                         const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
                         return new RegExp(m[1], m[2] || "");
                     } else
@@ -1173,7 +1173,7 @@ export class DatabaseConnection {
                 (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
                 delete (q.item as any).newpassword;
             }
-            if (q.collectionname == "config" && q.item._type == "oauthclient") {
+            if (q.collectionname === "config" && q.item._type === "oauthclient") {
                 if (user.HasRoleName("admins")) {
                     setTimeout(() => OAuthProvider.LoadClients(), 1000);
                 }
@@ -1293,7 +1293,7 @@ export class DatabaseConnection {
             json = JSON.stringify(json);
         }
         q.item = JSON.parse(json, (key, value) => {
-            if (key == "_acl") {
+            if (key === "_acl") {
                 if (Array.isArray(value)) {
                     for (let i = 0; i < value.length; i++) {
                         const a = value[i];
@@ -1305,7 +1305,7 @@ export class DatabaseConnection {
             }
             if (typeof value === 'string' && value.match(isoDatePattern)) {
                 return new Date(value); // isostring, so cast to js date
-            } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") == 0) {
+            } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") === 0) {
                 const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
                 return new RegExp(m[1], m[2] || "");
             } else
@@ -1350,18 +1350,6 @@ export class DatabaseConnection {
         options.WriteConcern.j = q.j;
         try {
             q.opresult = await this.db.collection(q.collectionname).updateMany(_query, q.item, options);
-            // if (res.modifiedCount == 0) {
-            //     throw Error("item not found!");
-            // }
-            // if (res.result.ok == 1) {
-            //     if (res.modifiedCount == 0) {
-            //         throw Error("item not found!");
-            //     } else if (res.modifiedCount == 1 || res.modifiedCount == undefined) {
-            //         q.item = q.item;
-            //     }
-            // } else {
-            //     throw Error("UpdateOne failed!!!");
-            // }
             if (Config.log_updates && q.opresult) Logger.instanse.debug("[" + user.username + "][" + q.collectionname + "] updated " + q.opresult.modifiedCount + " items");
             return q;
         } catch (error) {
@@ -1406,14 +1394,20 @@ export class DatabaseConnection {
                 // exists = await this.query(query, { name: 1 }, 2, 0, null, q.collectionname, q.jwt);
                 exists = await this.query(query, null, 2, 0, null, q.collectionname, q.jwt, undefined, undefined, span);
             }
-            if (exists.length == 1) {
+            if (exists.length === 1) {
                 q.item._id = exists[0]._id;
             }
             else if (exists.length > 1) {
                 throw JSON.stringify(query) + " is not uniqe, more than 1 item in collection matches this";
             }
-            if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to InsertOrUpdateOne"); }
-            if (exists.length == 1) {
+            if (!this.hasAuthorization(user, q.item, Rights.update)) {
+                Base.addRight(q.item, user._id, user.name, [Rights.full_control], false);
+                this.ensureResource(q.item);
+            }
+            // if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to InsertOrUpdateOne"); }
+
+
+            if (exists.length === 1) {
                 if (Config.log_updates) Logger.instanse.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Updating found one in database");
                 const uq = new UpdateOneMessage();
                 // uq.query = query; 
@@ -1430,7 +1424,7 @@ export class DatabaseConnection {
                 q.result = uqres.result;
             } else {
                 if (Config.log_updates) Logger.instanse.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Inserting as new in database");
-                if (q.collectionname == "openrpa_instances" && q.item._type == "workflowinstance") {
+                if (q.collectionname === "openrpa_instances" && q.item._type === "workflowinstance") {
                     // Normally we need to remove _id to avoid unique constrains, but in this case we WANT to preserve the id
                 } else {
                     delete q.item._id;
@@ -1487,7 +1481,7 @@ export class DatabaseConnection {
             const ot_end = Logger.otel.startTimer();
             const arr = await this.db.collection(collectionname).find(_query).toArray();
             Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: collectionname });
-            if (arr.length == 1) {
+            if (arr.length === 1) {
                 const ot_end = Logger.otel.startTimer();
                 await this._DeleteFile(id);
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, { collection: collectionname });
@@ -1564,7 +1558,7 @@ export class DatabaseConnection {
                 query = JSON.parse(json, (key, value) => {
                     if (typeof value === 'string' && value.match(isoDatePattern)) {
                         return new Date(value); // isostring, so cast to js date
-                    } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") == 0) {
+                    } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") === 0) {
                         const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
                         return new RegExp(m[1], m[2] || "");
                     } else
@@ -1624,7 +1618,7 @@ export class DatabaseConnection {
                 bulkInsert.insert(fullhist);
                 bulkRemove.find({ _id: doc._id }).removeOne();
                 counter++
-                if (counter % x == 0) {
+                if (counter % x === 0) {
                     const ot_end = Logger.otel.startTimer();
                     bulkInsert.execute()
                     bulkRemove.execute()
@@ -1660,7 +1654,7 @@ export class DatabaseConnection {
      * @returns T Object with encrypted fields
      */
     public encryptentity(item: Base): Base {
-        if (item == null || item._encrypt === undefined || item._encrypt === null) { return item; }
+        if (NoderedUtil.IsNullUndefinded(item) || NoderedUtil.IsNullUndefinded(item._encrypt) || NoderedUtil.IsNullUndefinded(item._encrypt)) { return item; }
         const me: DatabaseConnection = this;
         return (Object.keys(item).reduce((newObj, key) => {
             const value: any = item[key];
@@ -1688,7 +1682,7 @@ export class DatabaseConnection {
      * @returns T Object with decrypted fields
      */
     public decryptentity<T extends Base>(item: T): T {
-        if (item == null || item._encrypt === undefined || item._encrypt === null) { return item; }
+        if (NoderedUtil.IsNullUndefinded(item) || NoderedUtil.IsNullUndefinded(item._encrypt) || NoderedUtil.IsNullUndefinded(item._encrypt)) { return item; }
         const me: DatabaseConnection = this;
         return (Object.keys(item).reduce((newObj, key) => {
             const value: any = item[key];
@@ -1828,12 +1822,12 @@ export class DatabaseConnection {
                 item._acl = JSON.parse((item._acl as any));
             }
 
-            const a = item._acl.filter(x => x._id == user._id);
+            const a = item._acl.filter(x => x._id === user._id);
             if (a.length > 0) {
                 if (Ace.isBitSet(a[0], action)) return true;
             }
             for (let i = 0; i < user.roles.length; i++) {
-                const b = item._acl.filter(x => x._id == user.roles[i]._id);
+                const b = item._acl.filter(x => x._id === user.roles[i]._id);
                 if (b.length > 0) {
                     if (Ace.isBitSet(b[0], action)) return true;
                 }
@@ -1885,12 +1879,12 @@ export class DatabaseConnection {
             if (key.startsWith('$$')) {
                 delete o[key];
             } else if (o[key]) {
-                if (typeof o[key] == 'string') {
-                    if (o[key].length == 24 && o[key].endsWith('Z')) {
+                if (typeof o[key] === 'string') {
+                    if (o[key].length === 24 && o[key].endsWith('Z')) {
                         o[key] = new Date(o[key]);
                     }
                 }
-                if (typeof (o[key]) == "object") {
+                if (typeof (o[key]) === "object") {
                     this.traversejsonencode(o[key]);
                 }
             }
@@ -1915,12 +1909,12 @@ export class DatabaseConnection {
             if (key.startsWith('$$')) {
                 delete o[key];
             } else if (o[key]) {
-                if (typeof o[key] == 'string') {
-                    if (o[key].length == 24 && o[key].endsWith('Z')) {
+                if (typeof o[key] === 'string') {
+                    if (o[key].length === 24 && o[key].endsWith('Z')) {
                         o[key] = new Date(o[key]);
                     }
                 }
-                if (typeof (o[key]) == "object") {
+                if (typeof (o[key]) === "object") {
                     this.traversejsondecode(o[key]);
                 }
             }
@@ -1996,8 +1990,8 @@ export class DatabaseConnection {
             if (!precision) return num;
             return (Math.floor(num / precision) * precision);
         };
-        if (item._type == 'instance' && collectionname == 'workflows') return 0;
-        if (item._type == 'instance' && collectionname == 'workflows') return 0;
+        if (item._type === 'instance' && collectionname === 'workflows') return 0;
+        if (item._type === 'instance' && collectionname === 'workflows') return 0;
 
         if (!original && item._id) {
             const rootjwt = Crypt.rootToken()
@@ -2044,7 +2038,7 @@ export class DatabaseConnection {
                     delete obj[k];
                 }
             });
-            if (original != null && original._version == 0) {
+            if (original != null && original._version === 0) {
                 const fullhist = {
                     _acl: _acl,
                     _type: _type,
@@ -2073,7 +2067,7 @@ export class DatabaseConnection {
             }
             if (original != null && original._version > 0) {
                 delta = jsondiffpatch.diff(original, item);
-                if (delta == undefined || delta == null) return 0;
+                if (NoderedUtil.IsNullUndefinded(delta)) return 0;
                 const keys = Object.keys(delta);
                 if (keys.length > 1) {
                     const deltahist = {
@@ -2093,7 +2087,7 @@ export class DatabaseConnection {
                         reason: reason
                     }
                     const baseversion = roundDown(_version, Config.history_delta_count);
-                    if (baseversion == _version) {
+                    if (baseversion === _version) {
                         deltahist.item = original;
                     }
                     const ot_end = Logger.otel.startTimer();
@@ -2182,77 +2176,77 @@ export class DatabaseConnection {
                     const indexes = await this.db.collection(collection.name).indexes();
                     const indexnames = indexes.map(x => x.name);
                     if (collection.name.endsWith("_hist")) {
-                        if (indexnames.indexOf("id_1__version_-1") == -1) {
+                        if (indexnames.indexOf("id_1__version_-1") === -1) {
                             await this.createIndex(collection.name, "id_1__version_-1", { "id": 1, "_version": -1 }, null, span)
                         }
                     } else {
                         switch (collection.name) {
                             case "fs.files":
-                                if (indexnames.indexOf("metadata.workflow_1") == -1) {
+                                if (indexnames.indexOf("metadata.workflow_1") === -1) {
                                     await this.createIndex(collection.name, "metadata.workflow_1", { "metadata.workflow": 1 }, null, span)
                                 }
                                 break;
                             case "fs.chunks":
                                 break;
                             case "workflow":
-                                if (indexnames.indexOf("queue_1") == -1) {
+                                if (indexnames.indexOf("queue_1") === -1) {
                                     await this.createIndex(collection.name, "queue_1", { "queue": 1 }, null, span)
                                 }
                                 break;
                             case "openrpa_instances":
-                                if (indexnames.indexOf("_created_1") == -1) {
+                                if (indexnames.indexOf("_created_1") === -1) {
                                     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
                                 }
-                                if (indexnames.indexOf("WorkflowId_1") == -1) {
+                                if (indexnames.indexOf("WorkflowId_1") === -1) {
                                     await this.createIndex(collection.name, "WorkflowId_1", { "WorkflowId": 1 }, null, span)
                                 }
-                                if (indexnames.indexOf("state_1") == -1) {
+                                if (indexnames.indexOf("state_1") === -1) {
                                     await this.createIndex(collection.name, "state_1", { "state": 1 }, null, span)
                                 }
-                                if (indexnames.indexOf("fqdn_1") == -1) {
+                                if (indexnames.indexOf("fqdn_1") === -1) {
                                     await this.createIndex(collection.name, "fqdn_1", { "fqdn": 1 }, null, span)
                                 }
                                 break;
                             case "audit":
-                                if (indexnames.indexOf("_type_1") == -1) {
+                                if (indexnames.indexOf("_type_1") === -1) {
                                     await this.createIndex(collection.name, "_type_1", { "_type": 1 }, null, span)
                                 }
-                                if (indexnames.indexOf("_created_1") == -1) {
+                                if (indexnames.indexOf("_created_1") === -1) {
                                     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
                                 }
-                                if (indexnames.indexOf("remoteip_1") == -1) {
+                                if (indexnames.indexOf("remoteip_1") === -1) {
                                     await this.createIndex(collection.name, "remoteip_1", { "remoteip": 1 }, null, span)
                                 }
-                                if (indexnames.indexOf("username_1") == -1) {
+                                if (indexnames.indexOf("username_1") === -1) {
                                     await this.createIndex(collection.name, "username_1", { "username": 1 }, null, span)
                                 }
                                 break;
                             case "users":
-                                if (indexnames.indexOf("workflowid_1") == -1) {
+                                if (indexnames.indexOf("workflowid_1") === -1) {
                                     await this.createIndex(collection.name, "workflowid_1", { "workflowid": 1 }, null, span)
                                 }
-                                if (indexnames.indexOf("_rpaheartbeat_1") == -1) {
+                                if (indexnames.indexOf("_rpaheartbeat_1") === -1) {
                                     await this.createIndex(collection.name, "_rpaheartbeat_1", { "_rpaheartbeat": 1 }, null, span)
                                 }
-                                if (indexnames.indexOf("name_1") == -1) {
+                                if (indexnames.indexOf("name_1") === -1) {
                                     await this.createIndex(collection.name, "name_1", { "name": 1 }, null, span)
                                 }
-                                if (indexnames.indexOf("_type_1") == -1) {
+                                if (indexnames.indexOf("_type_1") === -1) {
                                     await this.createIndex(collection.name, "_type_1", { "_type": 1 }, null, span)
                                 }
-                                if (indexnames.indexOf("_created_1") == -1) {
+                                if (indexnames.indexOf("_created_1") === -1) {
                                     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
                                 }
-                                if (indexnames.indexOf("unique_username_1") == -1) {
+                                if (indexnames.indexOf("unique_username_1") === -1) {
                                     await this.createIndex(collection.name, "unique_username_1", { "username": 1 },
                                         { "unique": true, "name": "unique_username_1", "partialFilterExpression": { "_type": "user" } }, span)
                                 }
                                 break;
                             default:
-                                if (indexnames.indexOf("_type_1") == -1) {
+                                if (indexnames.indexOf("_type_1") === -1) {
                                     await this.createIndex(collection.name, "_type_1", { "_type": 1 }, null, span)
                                 }
-                                if (indexnames.indexOf("_created_1") == -1) {
+                                if (indexnames.indexOf("_created_1") === -1) {
                                     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
                                 }
                                 break;

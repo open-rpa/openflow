@@ -35,7 +35,6 @@ export class Config {
         Config.domain = Config.getEnv("domain", "localhost");
         Config.domain_use_ip_from_network = Config.getEnv("domain_use_ip_from_network", ""); // grab ip address from this adaptor and use for domain
         Config.protocol = Config.getEnv("protocol", "http");
-        Config.nodered_domain_schema = Config.getEnv("nodered_domain_schema", "");
         Config.noderedusers = Config.getEnv("noderedusers", "");
         Config.noderedadmins = Config.getEnv("noderedadmins", "");
         Config.cookie_secret = Config.getEnv("cookie_secret", "NLgUIsozJaxO38ze0WuHthfj2eb1eIEu");
@@ -100,7 +99,6 @@ export class Config {
     public static domain: string = Config.getEnv("domain", "localhost");
     public static domain_use_ip_from_network: string = Config.getEnv("domain_use_ip_from_network", ""); // grab ip address from this adaptor and use for domain
     public static protocol: string = Config.getEnv("protocol", "http");
-    public static nodered_domain_schema: string = Config.getEnv("nodered_domain_schema", "");
     public static noderedusers: string = Config.getEnv("noderedusers", "");
     public static noderedadmins: string = Config.getEnv("noderedadmins", "");
     public static cookie_secret: string = Config.getEnv("cookie_secret", "NLgUIsozJaxO38ze0WuHthfj2eb1eIEu"); // Used to protect cookies
@@ -172,13 +170,6 @@ export class Config {
                         Config.nodered_id = matches[matches.length - 1]; // Just grab the last number
                     }
                 }
-                if (Config.nodered_domain_schema != "") {
-                    Config.domain = Config.nodered_domain_schema.replace("$nodered_id$", Config.nodered_id)
-                }
-            } else {
-                if (Config.nodered_domain_schema != "") {
-                    Config.domain = Config.nodered_domain_schema.replace("$nodered_id$", Config.nodered_id)
-                }
             }
         }
         // if (Config.tls_crt != '' && Config.tls_key != '') {
@@ -192,7 +183,7 @@ export class Config {
             result = Config.protocol + "://" + Config.domain;
         }
         const port: number = (Config.nodered_port > 0 ? Config.nodered_port : Config.port);
-        if (port != 80 && port != 443) {
+        if (port != 80 && port != 443 && port != 3000) {
             result = result + ":" + port + "/";
         } else { result = result + "/"; }
         return result;

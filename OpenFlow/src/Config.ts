@@ -267,7 +267,7 @@ export class Config {
         } else {
             result = Config.protocol + "://" + Config.domain;
         }
-        if (Config.port != 80 && Config.port != 443) {
+        if (Config.port != 80 && Config.port != 443 && Config.port != 3000) {
             result = result + ":" + Config.port + "/";
         } else { result = result + "/"; }
         return result;
@@ -317,7 +317,7 @@ export class Config {
         return arr;
     }
     public static parseBoolean(s: any): boolean {
-        let val: string = "false";
+        let val: string;
         if (typeof s === "number") {
             val = s.toString();
         } else if (typeof s === "string") {

@@ -1241,7 +1241,11 @@ export class Message {
             const rootjwt = Crypt.rootToken();
 
             const namespace = Config.namespace;
-            const hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
+            let nodered_domain_schema = Config.nodered_domain_schema;
+            if (NoderedUtil.IsNullEmpty(nodered_domain_schema)) {
+                nodered_domain_schema = "$nodered_id$." + Config.domain;
+            }
+            const hostname = nodered_domain_schema.replace("$nodered_id$", name);
 
             const nodereduser = await DBHelper.FindById(_id, cli.jwt, span);
             const tuser: TokenUser = TokenUser.From(nodereduser);
@@ -1409,7 +1413,6 @@ export class Message {
                                             { name: "queue_prefix", value: user.nodered.queue_prefix },
                                             { name: "api_ws_url", value: api_ws_url },
                                             { name: "amqp_url", value: Config.amqp_url },
-                                            { name: "nodered_domain_schema", value: hostname },
                                             { name: "domain", value: hostname },
                                             { name: "protocol", value: Config.protocol },
                                             { name: "port", value: Config.port.toString() },
@@ -1581,7 +1584,12 @@ export class Message {
             const name = await this.GetInstanceName(_id, myuserid, myusername, jwt, span);
             const user = Crypt.verityToken(jwt);
             const namespace = Config.namespace;
-            const hostname = Config.nodered_domain_schema.replace("$nodered_id$", name);
+            let nodered_domain_schema = Config.nodered_domain_schema;
+            if (NoderedUtil.IsNullEmpty(nodered_domain_schema)) {
+                nodered_domain_schema = "$nodered_id$." + Config.domain;
+            }
+            const hostname = nodered_domain_schema.replace("$nodered_id$", name);
+
 
             const deployment = await KubeUtil.instance().GetDeployment(namespace, name);
             if (deployment != null) {

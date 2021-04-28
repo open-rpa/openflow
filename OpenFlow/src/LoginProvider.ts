@@ -401,6 +401,10 @@ export class LoginProvider {
                     const user: TokenUser = TokenUser.From(req.user);
                     span.setAttribute("username", user.username);
                 }
+                let nodered_domain_schema = Config.nodered_domain_schema;
+                if (NoderedUtil.IsNullEmpty(nodered_domain_schema)) {
+                    nodered_domain_schema = "$nodered_id$." + Config.domain;
+                }
                 const res2 = {
                     wshost: _url,
                     wsurl: _url,
@@ -409,7 +413,7 @@ export class LoginProvider {
                     allow_personal_nodered: Config.allow_personal_nodered,
                     auto_create_personal_nodered_group: Config.auto_create_personal_nodered_group,
                     namespace: Config.namespace,
-                    nodered_domain_schema: Config.nodered_domain_schema,
+                    nodered_domain_schema: nodered_domain_schema,
                     websocket_package_size: Config.websocket_package_size,
                     version: Config.version,
                     stripe_api_key: Config.stripe_api_key,
@@ -996,7 +1000,7 @@ export class LoginProvider {
                         user = new User(); user.name = username; user.username = username;
                         await Crypt.SetPassword(user, password, span);
                         const jwt: string = Crypt.rootToken();
-                        user = await DBHelper.ensureUser(jwt, user.name, user.username, null, null, span);
+                        user = await DBHelper.ensureUser(jwt, user.name, user.username, null, password, span);
 
                         const admins: Role = await DBHelper.FindRoleByName("admins", span);
                         admins.AddMember(user);

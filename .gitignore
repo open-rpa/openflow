@@ -7,4 +7,5 @@ temp
 .cache
 .npmrc
 .openflowapicache
+.scannerwork
 docker-package.json

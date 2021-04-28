@@ -68,6 +68,11 @@ services:
       - "traefik.frontend.passHostHeader=true"
     image: "openiap/openflow"
     container_name: "web"
+    pull_policy: always
+    restart: always
+    depends_on:
+      - rabbitmq
+      - mongodb
     # ports:
     #   - "5858:5858"
     environment:
@@ -107,6 +112,9 @@ services:
       - "traefik.http.services.nodered.loadbalancer.server.port=1880"
     image: "openiap/nodered"
     container_name: "nodered"
+    restart: always
+    depends_on:
+      - web
     # ports:
     #   - "5858:5859"
     environment:
