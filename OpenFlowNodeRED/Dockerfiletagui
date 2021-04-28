@@ -19,11 +19,15 @@ RUN groupadd -r openiapuser && useradd -r -g openiapuser -G audio,video openiapu
 RUN wget -O /tmp/tagui_linux.zip https://github.com/kelaberetiv/TagUI/releases/download/v6.14.0/TagUI_Linux.zip \
 && unzip '/tmp/tagui_linux.zip' -d /home/openiapuser && rm /tmp/tagui_linux.zip || true && mv /home/openiapuser/tagui /home/openiapuser/.tagui && chown -R openiapuser:openiapuser /home/openiapuser
 RUN ln -sf /home/openiapuser/.tagui/src/tagui /usr/local/bin/tagui
-USER openiapuser
+# USER openiapuser
 
 COPY --chown=openiapuser:openiapuser docker-package.json ./package.json
 RUN npm install --only=prod
 # RUN npm install
 COPY --chown=openiapuser:openiapuser dist ./
+
+ENV search="browser_option = 'chrome'"
+ENV replace="browser_option = 'headless'"
+RUN sed -i "s/${search}/${replace}/" /usr/local/lib/python3.5/dist-packages/tagui.py
 
 ENTRYPOINT ["/usr/local/bin/node", "--inspect=0.0.0.0:5859", "index.js"]

@@ -317,7 +317,7 @@ export class Config {
         return arr;
     }
     public static parseBoolean(s: any): boolean {
-        let val: string = "false";
+        let val: string;
         if (typeof s === "number") {
             val = s.toString();
         } else if (typeof s === "string") {
