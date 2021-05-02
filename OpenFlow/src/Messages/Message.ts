@@ -1,5 +1,8 @@
 import * as os from "os";
+import * as fs from "fs";
 import * as crypto from "crypto";
+
+const Docker = require("dockerode");
 import { lookup } from "mimetype";
 import { SocketMessage } from "../SocketMessage";
 import { Auth } from "../Auth";
@@ -23,6 +26,7 @@ import { WebSocketServer } from "../WebSocketServer";
 import { OAuthProvider } from "../OAuthProvider";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "../Logger";
+import Dockerode = require("dockerode");
 const request = require("request");
 const got = require("got");
 const { RateLimiterMemory } = require('rate-limiter-flexible')
@@ -1202,6 +1206,235 @@ export class Message {
         return name;
     }
     private async EnsureNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
+        if (Message.detectdocker) {
+            try {
+                const docker = new Docker();
+                Message.usedocker = true;
+            } catch (error) {
+                console.log(error);
+                Message.usedocker = false;
+            }
+            Message.detectdocker = false;
+        }
+        if (Message.usedocker) {
+            this.DockerEnsureNoderedInstance(cli, parent);
+        } else {
+            this.KubeEnsureNoderedInstance(cli, parent);
+        }
+    }
+    _pullImage(docker: Dockerode, imagename: string) {
+        const self = this;
+        return new Promise<void>((resolve, reject) => {
+            docker.pull(imagename, function (err, stream) {
+                if (err)
+                    return reject(err);
+
+                docker.modem.followProgress(stream, onFinished, onProgress);
+
+                function onFinished(err, output) {
+                    console.log(output);
+                    if (err) return reject(err);
+
+                    return resolve();
+                }
+                function onProgress(event) {
+                    console.log(event);
+                }
+            });
+        })
+    }
+    private async DockerEnsureNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
+        this.Reply();
+        const span: Span = Logger.otel.startSubSpan("message.EnsureNoderedInstance", parent);
+        let msg: EnsureNoderedInstanceMessage;
+        try {
+            msg = EnsureNoderedInstanceMessage.assign(this.data);
+            let _id = msg._id;
+
+            Logger.instanse.debug("[" + cli.user.username + "] EnsureNoderedInstance");
+            if (_id === null || _id === undefined || _id === "") _id = cli.user._id;
+            const name = await this.GetInstanceName(_id, cli.user._id, cli.user.username, cli.jwt, span);
+
+            const users = await Config.db.query<NoderedUser>({ _id: _id }, null, 1, 0, null, "users", cli.jwt, undefined, undefined, span);
+            if (users.length == 0) {
+                throw new Error("Unknown userid " + _id);
+            }
+            const user: NoderedUser = NoderedUser.assign(users[0]);
+
+            const docker: Dockerode = new Docker();
+            const myhostname = require('os').hostname();
+            let me = null;
+            let list = await docker.listContainers({ all: 1 });
+            let instance: any = null;
+            for (let i = 0; i < list.length; i++) {
+                const item = list[i];
+                var Created = new Date(item.Created * 1000);
+                (item as any).metadata = { creationTimestamp: Created, name: item.Labels["com.docker.compose.service"] };
+                (item as any).status = { phase: item.State }
+                if (item.Names[0] == "/" + name) {
+                    instance = item;
+                }
+                if (item.Names[0] == "/" + myhostname || item.Id.startsWith(myhostname)) {
+                    me = item;
+                }
+                if (me == null && item.Labels["com.docker.compose.project"] == Config.namespace) {
+                    me = item;
+                }
+            }
+
+            if (NoderedUtil.IsNullUndefinded(instance)) {
+
+                let nodered_domain_schema = Config.nodered_domain_schema;
+                if (NoderedUtil.IsNullEmpty(nodered_domain_schema)) {
+                    nodered_domain_schema = "$nodered_id$." + Config.domain;
+                }
+                const hostname = nodered_domain_schema.replace("$nodered_id$", name);
+
+
+                let nodered_image_name = Config.nodered_images[0].name;
+                if (user.nodered) {
+                    try {
+                        if (user.nodered.api_allow_anonymous == null) user.nodered.api_allow_anonymous = false;
+                        if (user.nodered.function_external_modules == null) user.nodered.function_external_modules = false;
+                        if (user.nodered.nodered_image_name == null) user.nodered.nodered_image_name = nodered_image_name;
+                    } catch (error) {
+                        user.nodered = { api_allow_anonymous: false, function_external_modules: false, nodered_image_name } as any;
+                    }
+                } else {
+                    user.nodered = { api_allow_anonymous: false, function_external_modules: false, nodered_image_name } as any;
+                }
+                const _nodered_image = Config.nodered_images.filter(x => x.name == user.nodered.nodered_image_name);
+                let nodered_image = Config.nodered_images[0].image;
+                if (_nodered_image.length == 1) { nodered_image = _nodered_image[0].image; }
+
+                const Labels = {
+                    "com.docker.compose.project": Config.namespace,
+                    "com.docker.compose.service": Config.namespace
+                };
+                let NetworkingConfig: Dockerode.EndpointsConfig = undefined;
+                let HostConfig: Dockerode.HostConfig = undefined;
+                HostConfig = {};
+                if (me != null) {
+                    if (me.Labels["com.docker.compose.config-hash"]) Labels["com.docker.compose.config-hash"] = me.Labels["com.docker.compose.config-hash"];
+                    if (me.Labels["com.docker.compose.project"]) Labels["com.docker.compose.project"] = me.Labels["com.docker.compose.project"];
+                    if (me.Labels["com.docker.compose.project.config_files"]) Labels["com.docker.compose.project.config_files"] = me.Labels["com.docker.compose.project.config_files"];
+                    if (me.Labels["com.docker.compose.project.working_dir"]) Labels["com.docker.compose.project.working_dir"] = me.Labels["com.docker.compose.project.working_dir"];
+                    if (me.Labels["com.docker.compose.service"]) Labels["com.docker.compose.service"] = me.Labels["com.docker.compose.service"];
+                    if (me.Labels["com.docker.compose.version"]) Labels["com.docker.compose.version"] = me.Labels["com.docker.compose.version"];
+                    if (me.NetworkSettings && me.NetworkSettings.Networks) {
+                        const keys = Object.keys(me.NetworkSettings.Networks);
+                        // NetworkingConfig = {};
+                        // for (let i = 0; i < keys.length; i++) {
+                        //     NetworkingConfig[keys[i]] = {};
+                        // }
+                        HostConfig.NetworkMode = keys[0];
+                    }
+                }
+                // docker-compose -f docker-compose-traefik.yml -p demo up -d
+                Labels["traefik.enable"] = "true";
+                Labels["traefik.http.routers." + name + ".entrypoints"] = "web";
+                Labels["traefik.http.routers." + name + ".rule"] = "Host(`" + hostname + "`)";
+                Labels["traefik.http.services." + name + ".loadbalancer.server.port"] = Config.port.toString();
+
+                // HostConfig.PortBindings = { "5859/tcp": [{ HostPort: '5859' }] }
+
+                let api_ws_url = Config.basewsurl();
+                if (!NoderedUtil.IsNullEmpty(Config.api_ws_url)) api_ws_url = Config.api_ws_url;
+                if (!NoderedUtil.IsNullEmpty(Config.nodered_ws_url)) api_ws_url = Config.nodered_ws_url;
+                if (!api_ws_url.endsWith("/")) api_ws_url += "/";
+
+                const nodereduser = await DBHelper.FindById(_id, cli.jwt, span);
+                const tuser: TokenUser = TokenUser.From(nodereduser);
+                const nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
+
+                Logger.instanse.debug("[" + cli.user.username + "] ensure nodered role " + name + "noderedadmins");
+                const noderedadmins = await DBHelper.EnsureRole(cli.jwt, name + "noderedadmins", null, span);
+                Base.addRight(noderedadmins, nodereduser._id, nodereduser.username, [Rights.full_control]);
+                Base.removeRight(noderedadmins, nodereduser._id, [Rights.delete]);
+                Base.addRight(noderedadmins, cli.user._id, cli.user.username, [Rights.full_control]);
+                Base.removeRight(noderedadmins, cli.user._id, [Rights.delete]);
+                noderedadmins.AddMember(nodereduser);
+                Logger.instanse.debug("[" + cli.user.username + "] update nodered role " + name + "noderedadmins");
+                await DBHelper.Save(noderedadmins, cli.jwt, span);
+
+
+                let saml_baseurl = Config.protocol + "://" + hostname + "/";
+
+                let _samlparsed = url.parse(Config.saml_federation_metadata);
+                if (_samlparsed.protocol == "http:" || _samlparsed.protocol == "ws:") {
+                    saml_baseurl = "http://" + hostname
+                    if (_samlparsed.port && _samlparsed.port != "80" && _samlparsed.port != "3000") {
+                        saml_baseurl += ":" + _samlparsed.port;
+                    }
+                } else {
+                    saml_baseurl = "https://" + hostname
+                    if (_samlparsed.port && _samlparsed.port != "443" && _samlparsed.port != "3000") {
+                        saml_baseurl += ":" + _samlparsed.port;
+                    }
+                }
+                saml_baseurl += "/";
+
+
+                // "saml_baseurl=" + saml_baseurl,
+
+                const Env = [
+                    "saml_federation_metadata=" + Config.saml_federation_metadata,
+                    "saml_issuer=" + Config.saml_issuer,
+                    "saml_entrypoint=" + Config.baseurl() + 'issue',
+                    "nodered_id=" + name,
+                    "nodered_sa=" + nodereduser.username,
+                    "jwt=" + nodered_jwt,
+                    "queue_prefix=" + user.nodered.queue_prefix,
+                    "api_ws_url=" + api_ws_url,
+                    "amqp_url=" + Config.amqp_url,
+                    "domain=" + hostname,
+                    "protocol=" + Config.protocol,
+                    "port=" + Config.port.toString(),
+                    "noderedusers=" + (name + "noderedusers"),
+                    "noderedadmins=" + (name + "noderedadmins"),
+                    "api_allow_anonymous=" + user.nodered.api_allow_anonymous.toString(),
+                    "function_external_modules=" + user.nodered.function_external_modules.toString(),
+                    "prometheus_measure_nodeid=" + Config.prometheus_measure_nodeid.toString(),
+                    "prometheus_measure_queued_messages=" + Config.prometheus_measure_queued_messages.toString(),
+                    "NODE_ENV=" + Config.NODE_ENV,
+                    "prometheus_expose_metric=" + "false",
+                    "enable_analytics=" + Config.enable_analytics.toString(),
+                    "otel_trace_url=" + Config.otel_trace_url,
+                    "otel_metric_url=" + Config.otel_metric_url,
+                    "otel_trace_interval=" + Config.otel_trace_interval.toString(),
+                    "otel_metric_interval=" + Config.otel_metric_interval.toString(),
+                ]
+                // const image = await docker.pull(nodered_image, { serveraddress: "https://index.docker.io/v1" });
+                await this._pullImage(docker, nodered_image);
+                instance = await docker.createContainer({
+                    Image: nodered_image, name, Labels, Env, NetworkingConfig, HostConfig
+                })
+                await instance.start();
+            } else {
+                const container = docker.getContainer(instance.Id);
+                if (instance.State != "running") {
+                    container.start();
+                }
+
+            }
+        } catch (error) {
+            span.recordException(error);
+            this.data = "";
+            await handleError(cli, error);
+            //msg.error = JSON.stringify(error, null, 2);
+            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            span.recordException(error);
+            this.data = "";
+            await handleError(cli, error);
+        }
+        Logger.otel.endSpan(span);
+        this.Send(cli);
+    }
+    private async KubeEnsureNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
         const span: Span = Logger.otel.startSubSpan("message.EnsureNoderedInstance", parent);
         let msg: EnsureNoderedInstanceMessage;
@@ -1639,6 +1872,26 @@ export class Message {
         Logger.otel.endSpan(span);
     }
     private async DeleteNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
+        if (Message.detectdocker) {
+            try {
+                const docker = new Docker();
+                Message.usedocker = true;
+            } catch (error) {
+                console.log(error);
+                Message.usedocker = false;
+            }
+            Message.detectdocker = false;
+        }
+        if (Message.usedocker) {
+            this.dockerDeleteNoderedInstance(cli, parent);
+        } else {
+            this.KubeDeleteNoderedInstance(cli, parent);
+        }
+    }
+    private async dockerDeleteNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
+        this.dockerDeleteNoderedPod(cli, parent);
+    }
+    private async KubeDeleteNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.DeleteNoderedInstance", parent);
         try {
             this.Reply();
@@ -1670,6 +1923,64 @@ export class Message {
         this.Send(cli);
     }
     private async DeleteNoderedPod(cli: WebSocketServerClient, parent: Span): Promise<void> {
+        if (Message.detectdocker) {
+            try {
+                const docker = new Docker();
+                Message.usedocker = true;
+            } catch (error) {
+                console.log(error);
+                Message.usedocker = false;
+            }
+            Message.detectdocker = false;
+        }
+        if (Message.usedocker) {
+            this.dockerDeleteNoderedPod(cli, parent);
+        } else {
+            this.KubeDeleteNoderedPod(cli, parent);
+        }
+
+    }
+    private async dockerDeleteNoderedPod(cli: WebSocketServerClient, parent: Span): Promise<void> {
+        this.Reply();
+        let msg: DeleteNoderedPodMessage;
+        const span: Span = Logger.otel.startSubSpan("message.GetNoderedInstance", parent);
+        try {
+            Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstance");
+            msg = DeleteNoderedPodMessage.assign(this.data);
+            const name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt, span);
+            if (NoderedUtil.IsNullEmpty(msg.name)) msg.name = name;
+
+            span.addEvent("init Docker()");
+            const docker: Dockerode = new Docker();
+            span.addEvent("listContainers()");
+            var list = await docker.listContainers({ all: 1 });
+            for (let i = 0; i < list.length; i++) {
+                const item = list[i];
+                if (item.Names[0] == "/" + msg.name) {
+                    span.addEvent("getContainer(" + item.Id + ")");
+                    const container = docker.getContainer(item.Id);
+                    if (item.State == "running") await container.stop();
+                    span.addEvent("remove()");
+                    await container.remove();
+                }
+            }
+        } catch (error) {
+            span.recordException(error);
+            this.data = "";
+            await handleError(cli, error);
+            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            span.recordException(error);
+            this.data = "";
+            await handleError(cli, error);
+        }
+        Logger.otel.endSpan(span);
+        this.Send(cli);
+    }
+    private async KubeDeleteNoderedPod(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
         const span: Span = Logger.otel.startSubSpan("message.DeleteNoderedPod", parent);
         let msg: DeleteNoderedPodMessage;
@@ -1725,11 +2036,70 @@ export class Message {
         this.Send(cli);
     }
     private async RestartNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
+        if (Message.detectdocker) {
+            try {
+                const docker = new Docker();
+                Message.usedocker = true;
+            } catch (error) {
+                console.log(error);
+                Message.usedocker = false;
+            }
+            Message.detectdocker = false;
+        }
+        if (Message.usedocker) {
+            this.DockerRestartNoderedInstance(cli, parent);
+        } else {
+            this.KubeRestartNoderedInstance(cli, parent);
+        }
+    }
+    private async DockerRestartNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
-        const span: Span = Logger.otel.startSubSpan("message.RestartNoderedInstance", parent);
+        let msg: RestartNoderedInstanceMessage;
+        const span: Span = Logger.otel.startSubSpan("message.DockerRestartNoderedInstance", parent);
+        try {
+            Logger.instanse.debug("[" + cli.user.username + "] DockerRestartNoderedInstance");
+            msg = RestartNoderedInstanceMessage.assign(this.data);
+            const name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt, span);
+
+            span.addEvent("init Docker()");
+            const docker: Dockerode = new Docker();
+            span.addEvent("listContainers()");
+            var list = await docker.listContainers({ all: 1 });
+            var instance = null;
+            for (let i = 0; i < list.length; i++) {
+                const item = list[i];
+                if (item.Names[0] == "/" + name) {
+                    instance = item;
+                }
+            }
+            if (instance != null) {
+                span.addEvent("getContainer(" + instance.Id + ")");
+                const container = docker.getContainer(instance.Id);
+                if (instance.State == "running") await container.stop();
+                await container.restart();
+            }
+        } catch (error) {
+            span.recordException(error);
+            this.data = "";
+            await handleError(cli, error);
+            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            span.recordException(error);
+            this.data = "";
+            await handleError(cli, error);
+        }
+        Logger.otel.endSpan(span);
+        this.Send(cli);
+    }
+    private async KubeRestartNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
+        this.Reply();
+        const span: Span = Logger.otel.startSubSpan("message.KubeRestartNoderedInstance", parent);
         let msg: RestartNoderedInstanceMessage;
         try {
-            Logger.instanse.debug("[" + cli.user.username + "] RestartNoderedInstance");
+            Logger.instanse.debug("[" + cli.user.username + "] KubeRestartNoderedInstance");
             msg = RestartNoderedInstanceMessage.assign(this.data);
             const name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt, span);
             const namespace = Config.namespace;
@@ -1806,7 +2176,76 @@ export class Message {
         }
         this.Send(cli);
     }
+    private static detectdocker: boolean = true;
+    private static usedocker: boolean = false;
     private async GetNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
+        if (Message.detectdocker) {
+            try {
+                const docker = new Docker();
+                Message.usedocker = true;
+            } catch (error) {
+                console.log(error);
+                Message.usedocker = false;
+            }
+            Message.detectdocker = false;
+        }
+        if (Message.usedocker) {
+            this.dockerGetNoderedInstance(cli, parent);
+        } else {
+            this.KubeGetNoderedInstance(cli, parent);
+        }
+    }
+    private async dockerGetNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
+        this.Reply();
+        let msg: GetNoderedInstanceMessage;
+        const span: Span = Logger.otel.startSubSpan("message.GetNoderedInstance", parent);
+        try {
+            Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstance");
+            msg = GetNoderedInstanceMessage.assign(this.data);
+            const name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt, span);
+
+            span.addEvent("init Docker()");
+            const docker = new Docker();
+            span.addEvent("listContainers()");
+            var list = await docker.listContainers({ all: 1 });
+            var result = [];
+            for (let i = 0; i < list.length; i++) {
+                const item = list[i];
+                var Created = new Date(item.Created * 1000);
+                item.metadata = { creationTimestamp: Created, name: (item.Names[0] as string).substr(1) };
+                item.status = { phase: item.State }
+                if (item.Names[0] == "/" + name) {
+                    span.addEvent("getContainer(" + item.Id + ")");
+                    const container = docker.getContainer(item.Id);
+                    span.addEvent("stats()");
+                    var stats = await container.stats({ stream: false });
+                    item.metrics = {
+                        cpu: parseFloat((stats.cpu_stats.cpu_usage.usage_in_usermode / 1024 / 1024).toString()).toFixed(2) + "n",
+                        memory: parseFloat((stats.memory_stats.usage / 1024 / 1024).toString()).toFixed(2) + "Mi",
+                        memorylimit: parseFloat((stats.memory_stats.limit / 1024 / 1024).toString()).toFixed(2) + "Mi"
+                    };
+                    result.push(item);
+                }
+            }
+            msg.results = result;
+            if (result.length > 0) msg.result = result[0];
+        } catch (error) {
+            span.recordException(error);
+            this.data = "";
+            await handleError(cli, error);
+            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            span.recordException(error);
+            this.data = "";
+            await handleError(cli, error);
+        }
+        Logger.otel.endSpan(span);
+        this.Send(cli);
+    }
+    private async KubeGetNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
         let msg: GetNoderedInstanceMessage;
         const span: Span = Logger.otel.startSubSpan("message.GetNoderedInstance", parent);
@@ -1895,38 +2334,143 @@ export class Message {
         this.Send(cli);
     }
     private async GetNoderedInstanceLog(cli: WebSocketServerClient, parent: Span): Promise<void> {
+        if (Message.detectdocker) {
+            try {
+                const docker = new Docker();
+                Message.usedocker = true;
+            } catch (error) {
+                console.log(error);
+                Message.usedocker = false;
+            }
+            Message.detectdocker = false;
+        }
+        if (Message.usedocker) {
+            this.DockerGetNoderedInstanceLog(cli, parent);
+        } else {
+            this.KubeGetNoderedInstanceLog(cli, parent);
+        }
+    }
+    streamToString(stream) {
+        const chunks = [];
+        return new Promise<string>((resolve, reject) => {
+            stream.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+            stream.on('error', (err) => reject(err));
+            stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+        })
+    }
+    private async DockerGetNoderedInstanceLog(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
         let msg: GetNoderedInstanceLogMessage;
         const span: Span = Logger.otel.startSubSpan("message.GetNoderedInstanceLog", parent);
         try {
             Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstanceLog");
             msg = GetNoderedInstanceLogMessage.assign(this.data);
-            const name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt, span);
+            var name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt, span);
             const namespace = Config.namespace;
+            // if (!msg.instancename.startsWith(name + "-")) msg.instancename = "";
+
+            const docker: Dockerode = new Docker();
+            let me = null;
+            let list = await docker.listContainers({ all: 1 });
+            let instance: Dockerode.ContainerInfo = null;
+            for (let i = 0; i < list.length; i++) {
+                const item = list[i];
+                var Created = new Date(item.Created * 1000);
+                (item as any).metadata = { creationTimestamp: Created, name: item.Labels["com.docker.compose.service"] };
+                (item as any).status = { phase: item.State }
+                if (item.Names[0] == "/" + msg.instancename) {
+                    instance = item;
+                }
+            }
+            if (instance != null) {
+                var logOpts = {
+                    stdout: 1,
+                    stderr: 1,
+                    tail: 50,
+                    follow: 0
+                };
+                const container = docker.getContainer(instance.Id);
+                // msg.result = await this.streamToString(await container.logs(logOpts as any));
+                var s = await container.logs((logOpts as any) as Dockerode.ContainerLogsOptions);
+                // msg.result = await this.streamToString(s);
+                msg.result = s.toString();
+                if (msg.result == null) msg.result = "";
+                console.log(msg.result);
+            }
+        } catch (error) {
+            span.recordException(error);
+            this.data = "";
+            await handleError(cli, error);
+            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error
+            if (error.response && error.response.body && !NoderedUtil.IsNullEmpty(error.response.body.message)) {
+                msg.error = error.response.body.message;
+                if (msg !== null && msg !== undefined) msg.error = error.response.body.message
+            }
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            span.recordException(error);
+            this.data = "";
+            await handleError(cli, error);
+        }
+        Logger.otel.endSpan(span);
+        this.Send(cli);
+    }
+    private async KubeGetNoderedInstanceLog(cli: WebSocketServerClient, parent: Span): Promise<void> {
+        this.Reply();
+        let msg: GetNoderedInstanceLogMessage;
+        const span: Span = Logger.otel.startSubSpan("message.GetNoderedInstanceLog", parent);
+        try {
+            Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstanceLog");
+            msg = GetNoderedInstanceLogMessage.assign(this.data);
+            var name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt, span);
+            const namespace = Config.namespace;
+            if (!msg.instancename.startsWith(name + "-")) msg.instancename = "";
 
             const list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
 
             let image: string = "unknown";
-            if (list.body.items.length > 0) {
-                for (let i = 0; i < list.body.items.length; i++) {
-                    const item = list.body.items[i];
-                    try {
-                        image = item.spec.containers[0].image;
-                    } catch (error) {
+            if (!NoderedUtil.IsNullEmpty(msg.instancename)) {
+                if (list.body.items.length > 0) {
+                    for (let i = 0; i < list.body.items.length; i++) {
+                        const item = list.body.items[i];
+                        if (msg.instancename == item.metadata.name) {
+                            if (cli.user.HasRoleName("admins") || item.metadata.labels.app === name) {
 
-                    }
-                    if (!NoderedUtil.IsNullEmpty(msg.name) && item.metadata.name == msg.name && cli.user.HasRoleName("admins")) {
-                        Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstanceLog:" + name + " found one as " + item.metadata.name);
-                        const obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
-                        msg.result = obj.body;
-                        Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name, span);
-                    } else if (item.metadata.labels.app === name) {
-                        Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstanceLog:" + name + " found one as " + item.metadata.name);
-                        const obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
-                        msg.result = obj.body;
-                        Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name, span);
+                                Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstanceLog:" + name + " found one as " + item.metadata.name);
+                                const obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
+                                msg.result = obj.body;
+                                Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name, span);
+
+                            }
+                        }
                     }
                 }
+            }
+            if (NoderedUtil.IsNullEmpty(msg.result)) {
+                if (list.body.items.length > 0) {
+                    for (let i = 0; i < list.body.items.length; i++) {
+                        const item = list.body.items[i];
+                        try {
+                            image = item.spec.containers[0].image;
+                        } catch (error) {
+
+                        }
+                        if (!NoderedUtil.IsNullEmpty(msg.name) && item.metadata.name == msg.name && cli.user.HasRoleName("admins")) {
+                            Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstanceLog:" + name + " found one as " + item.metadata.name);
+                            const obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
+                            msg.result = obj.body;
+                            Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name, span);
+                        } else if (item.metadata.labels.app === name) {
+                            Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstanceLog:" + name + " found one as " + item.metadata.name);
+                            const obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
+                            msg.result = obj.body;
+                            Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name, span);
+                        }
+                    }
+                }
+
             }
             if (NoderedUtil.IsNullUndefinded(msg.result)) {
                 Audit.NoderedAction(TokenUser.From(cli.user), false, name, "readpodlog", image, null, span);

@@ -26,10 +26,6 @@ RUN ln -sf /home/openiapuser/tagui/src/tagui /usr/local/bin/tagui
 
 # USER openiapuser
 
-COPY --chown=openiapuser:openiapuser docker-package.json ./package.json
-RUN npm install --only=prod
-COPY --chown=openiapuser:openiapuser dist ./
-
 ENV search="browser_option = 'chrome'"
 ENV replace="browser_option = 'headless'"
 RUN sed -i "s/${search}/${replace}/" /usr/local/lib/python3.5/dist-packages/tagui.py
@@ -39,7 +35,12 @@ RUN wget -O /tmp/tagui_linux2.zip https://github.com/tebelorg/Tump/releases/down
 
 # RUN mkdir /home/openiapuser/.tagui  && chown -R openiapuser:openiapuser /home/openiapuser/.tagui
 # RUN mkdir /home/openiapuser/.tagui_previous  && chown -R openiapuser:openiapuser /home/openiapuser/.tagui_previous
-USER openiapuser
 # RUN ln -sf /home/openiapuser/tagui /root/tagui
+
+COPY --chown=openiapuser:openiapuser docker-package.json ./package.json
+RUN npm install --only=prod
+COPY --chown=openiapuser:openiapuser dist ./
+
+USER openiapuser
 
 ENTRYPOINT ["/usr/local/bin/node", "--inspect=0.0.0.0:5859", "index.js"]

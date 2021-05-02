@@ -177,6 +177,12 @@ gulp.task("browserify", function () {
 // 'gulp browserify',
 
 gulp.task("compose", shell.task([
+    'echo "Build openiap/openflow"',
+    'docker build -t openiap/openflow:edge .',
+    'docker tag openiap/openflow:edge openiap/openflow:' + version,
+    'echo "Push openiap/openflow"',
+    'docker push openiap/openflow:edge',
+    'docker push openiap/openflow:' + version,
 
     'echo "Build openiap/nodered"',
     'cd OpenFlowNodeRED && docker build -t openiap/nodered:edge .',
@@ -199,12 +205,6 @@ gulp.task("compose", shell.task([
     'docker push openiap/nodered-tagui:edge',
     'docker push openiap/nodered-tagui:' + version,
 
-    'echo "Build openiap/openflow"',
-    'docker build -t openiap/openflow:edge .',
-    'docker tag openiap/openflow:edge openiap/openflow:' + version,
-    'echo "Push openiap/openflow"',
-    'docker push openiap/openflow:edge',
-    'docker push openiap/openflow:' + version
 ]));
 
 gulp.task("latest", shell.task([

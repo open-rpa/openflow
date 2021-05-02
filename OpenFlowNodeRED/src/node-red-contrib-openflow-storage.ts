@@ -47,8 +47,8 @@ export class noderedcontribopenflowstorage {
         this.saveSettings = (this._saveSettings.bind(this));
         this.getSessions = (this._getSessions.bind(this));
         this.saveSessions = (this._saveSessions.bind(this));
-        // this.getLibraryEntry = (this._getLibraryEntry.bind(this));
-        // this.saveLibraryEntry = (this._saveLibraryEntry.bind(this));
+        this.getLibraryEntry = (this._getLibraryEntry.bind(this));
+        this.saveLibraryEntry = (this._saveLibraryEntry.bind(this));
     }
 
     // compare contents of two objects and return a list of differences
@@ -967,7 +967,6 @@ export class noderedcontribopenflowstorage {
         }
         Logger.instanse.info(" _saveSettings - COMPLETE!!! " + new Date().toLocaleTimeString());
     }
-
     public async _getSessions(): Promise<any[]> {
         let item: any[] = [];
         try {
@@ -1014,6 +1013,38 @@ export class noderedcontribopenflowstorage {
         } catch (error) {
             Logger.instanse.error(error);
         }
+    }
+    public async _saveLibraryEntry(type, path, meta, body): Promise<void> {
+        try {
+            // if (type === "flows" && !path.endsWith(".json")) {
+            //     path += ".json";
+            // }
+            // const filename: string = Config.nodered_id + "_sessions";
+            const item = { type, path, meta, body, _type: "library", nodered_id: Config.nodered_id };
+            // await this.backupStore.set(filename, JSON.stringify(sessions));
+            if (WebSocketClient.instance.isConnected()) {
+                this.last_reload = new Date();
+                // const result = await NoderedUtil.Query("nodered", { _type: "library", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                const result = await NoderedUtil.InsertOrUpdateOne("nodered", item, "_type,nodered_id,type,path", 1, true, null);
+                this.last_reload = new Date();
+            }
+        } catch (error) {
+            Logger.instanse.error(error);
+        }
+    }
+    public async _getLibraryEntry(type, path): Promise<any> {
+        try {
+            Logger.instanse.silly("noderedcontribopenflowstorage::_getSessions");
+            if (WebSocketClient.instance.isConnected()) {
+                const result = await NoderedUtil.Query("nodered", { _type: "library", nodered_id: Config.nodered_id, type, path }, null, null, 1, 0, null);
+                if (result.length === 0) { return null; }
+                var item = JSON.parse(result[0].sessions);
+                return item.body;
+            }
+        } catch (error) {
+            Logger.instanse.error(error);
+        }
+        return null;
     }
 
 }
