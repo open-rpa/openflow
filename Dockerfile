@@ -7,7 +7,7 @@ RUN groupadd -r openiapuser && useradd -r -g openiapuser -G audio,video openiapu
     && mkdir -p /home/openiapuser/Downloads \
     && chown -R openiapuser:openiapuser /home/openiapuser \
     && chown -R openiapuser:openiapuser /data/
-USER openiapuser
+
 COPY --chown=openiapuser:openiapuser docker-package.json ./package.json
 RUN npm install --only=prod
 # RUN npm install --production
