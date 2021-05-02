@@ -60,13 +60,16 @@
     <div class="row">
       <label class="col-sm-1 control-label"><span translate lib="web">image</span>: </label>
       <div class="col">
-        <span ng-show="ctrl.instance!=null">{{ instance.spec.containers[0].image }}</span>
+        <span ng-show="ctrl.instance!=null">{{ instance.Image || instance.spec.containers[0].image }}</span>
       </div>
-      <div class="col" ng-show="instance.status.phase == 'Failed' || instance.status.phase == 'Running'">
-        <button type="button" class="btn btn-sm btn-secondary" ng-show="instance.status.phase == 'Running'"
+      <div class="col" ng-show="instance.status.phase == 'Failed' || instance.status.phase == 'Running'
+         || instance.status.phase == 'running' || instance.status.phase == 'exited'">
+        <button type="button" class="btn btn-sm btn-secondary"
+          ng-show="instance.status.phase == 'Running' || instance.status.phase == 'running' || instance.status.phase == 'exited'"
           ng-click="ctrl.GetNoderedInstanceLog(instance.metadata.name)">Logs</button>
         <button type="button" class="btn btn-sm btn-secondary" ng-click="ctrl.DeleteNoderedPod(instance.metadata.name)"
-          ng-show="instance.status.phase == 'Failed' || instance.status.phase == 'Running'">Delete</button>
+          ng-show="instance.status.phase == 'Failed' || instance.status.phase == 'Running'
+           || instance.status.phase == 'running' || instance.status.phase == 'exited'">Delete</button>
       </div>
     </div>
     <div class="row" ng-show="instance.status.phase == 'Failed'">
