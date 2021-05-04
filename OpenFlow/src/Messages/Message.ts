@@ -1205,17 +1205,26 @@ export class Message {
         Logger.otel.endSpan(span);
         return name;
     }
-    private async EnsureNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    private async DetectDocker() {
         if (Message.detectdocker) {
-            try {
-                const docker = new Docker();
-                Message.usedocker = true;
-            } catch (error) {
-                console.log(error);
-                Message.usedocker = false;
+            if (!NoderedUtil.isKubernetes() && NoderedUtil.isDocker()) {
+                if (NoderedUtil.IsNullEmpty(process.env["KUBERNETES_SERVICE_HOST"])) {
+                    try {
+                        const docker = new Docker();
+                        var list = await docker.listContainers();
+                        Message.usedocker = true;
+                    } catch (error) {
+                        console.log(error);
+                        Message.usedocker = false;
+                    }
+
+                }
             }
             Message.detectdocker = false;
         }
+    }
+    private async EnsureNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
+        await this.DetectDocker();
         if (Message.usedocker) {
             this.DockerEnsureNoderedInstance(cli, parent);
         } else {
@@ -1872,16 +1881,7 @@ export class Message {
         Logger.otel.endSpan(span);
     }
     private async DeleteNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
-        if (Message.detectdocker) {
-            try {
-                const docker = new Docker();
-                Message.usedocker = true;
-            } catch (error) {
-                console.log(error);
-                Message.usedocker = false;
-            }
-            Message.detectdocker = false;
-        }
+        await this.DetectDocker();
         if (Message.usedocker) {
             this.dockerDeleteNoderedInstance(cli, parent);
         } else {
@@ -1923,16 +1923,7 @@ export class Message {
         this.Send(cli);
     }
     private async DeleteNoderedPod(cli: WebSocketServerClient, parent: Span): Promise<void> {
-        if (Message.detectdocker) {
-            try {
-                const docker = new Docker();
-                Message.usedocker = true;
-            } catch (error) {
-                console.log(error);
-                Message.usedocker = false;
-            }
-            Message.detectdocker = false;
-        }
+        await this.DetectDocker();
         if (Message.usedocker) {
             this.dockerDeleteNoderedPod(cli, parent);
         } else {
@@ -2036,16 +2027,7 @@ export class Message {
         this.Send(cli);
     }
     private async RestartNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
-        if (Message.detectdocker) {
-            try {
-                const docker = new Docker();
-                Message.usedocker = true;
-            } catch (error) {
-                console.log(error);
-                Message.usedocker = false;
-            }
-            Message.detectdocker = false;
-        }
+        await this.DetectDocker();
         if (Message.usedocker) {
             this.DockerRestartNoderedInstance(cli, parent);
         } else {
@@ -2179,16 +2161,7 @@ export class Message {
     private static detectdocker: boolean = true;
     private static usedocker: boolean = false;
     private async GetNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
-        if (Message.detectdocker) {
-            try {
-                const docker = new Docker();
-                Message.usedocker = true;
-            } catch (error) {
-                console.log(error);
-                Message.usedocker = false;
-            }
-            Message.detectdocker = false;
-        }
+        await this.DetectDocker();
         if (Message.usedocker) {
             this.dockerGetNoderedInstance(cli, parent);
         } else {
@@ -2334,16 +2307,7 @@ export class Message {
         this.Send(cli);
     }
     private async GetNoderedInstanceLog(cli: WebSocketServerClient, parent: Span): Promise<void> {
-        if (Message.detectdocker) {
-            try {
-                const docker = new Docker();
-                Message.usedocker = true;
-            } catch (error) {
-                console.log(error);
-                Message.usedocker = false;
-            }
-            Message.detectdocker = false;
-        }
+        await this.DetectDocker();
         if (Message.usedocker) {
             this.DockerGetNoderedInstanceLog(cli, parent);
         } else {
