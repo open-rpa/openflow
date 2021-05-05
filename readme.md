@@ -49,10 +49,9 @@ Go to the folder where you want to keep your config files,
 mkdir c:\openflow
 cd \openflow
 ```
-
-install [pm2-windows-service](https://www.npmjs.com/package/pm2-windows-service)
-
+install pm2 as a global package, and then install [pm2-windows-service](https://www.npmjs.com/package/pm2-windows-service)
 ```bash
+npm i -g pm2
 npm i -g pm2-windows-service
 pm2-service-install
 ```
