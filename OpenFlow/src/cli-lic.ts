@@ -1,5 +1,7 @@
 #!/usr/bin/env node
+import { NoderedUtil } from "@openiap/openflow-api";
 import * as fs from "fs";
+import { Config } from "./Config";
 import { Logger } from "./Logger";
 import { license_data } from "./otelspec";
 function printusage() {
@@ -14,6 +16,27 @@ const optionDefinitions = [
     { name: 'months', type: Number },
     { name: 'domain', type: String, defaultOption: true }
 ]
+
+
+let _lic_require: any = null;
+try {
+    _lic_require = require("./license-file");
+} catch (error) {
+}
+if (_lic_require != null) {
+    Logger.License = new _lic_require.LicenseFile();
+} else {
+    Logger.License = {} as any;
+    Logger.License.ofid = function () {
+        if (!NoderedUtil.IsNullEmpty(this._ofid)) return this._ofid;
+        var crypto = require('crypto');
+        const openflow_uniqueid = Config.openflow_uniqueid || crypto.createHash('md5').update(Config.domain).digest("hex");
+        Config.openflow_uniqueid = openflow_uniqueid;
+        this._ofid = openflow_uniqueid;
+        return openflow_uniqueid;
+    };
+}
+
 const commandLineArgs = require('command-line-args');
 let options = null;
 try {
