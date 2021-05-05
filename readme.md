@@ -50,6 +50,7 @@ mkdir c:\openflow
 cd \openflow
 ```
 install pm2 as a global package, and then install [pm2-windows-service](https://www.npmjs.com/package/pm2-windows-service)
+**Important**: Say no to startup scripts PM2_SERVICE_SCRIPTS
 ```bash
 npm i -g pm2
 npm i -g pm2-windows-service
