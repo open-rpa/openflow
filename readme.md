@@ -21,7 +21,7 @@ Install rabbitmq ( answer yes to run the script )
 choco install rabbitmq
 ```
 
-Please ensure you can see rabbitmq as a service when you open the services.msc also make sure management got enabled ( a restart may help ). You can check this by going to [http://localhost:15672](http://localhost:15672)  ( if not, run `choco install rabbitmq --force` )
+Please ensure you can see rabbitmq as a service when you open the services.msc also make sure management got enabled ( a restart may help ). You can check this by going to [http://localhost:15672](http://localhost:15672)  ( if not, run `choco install rabbitmq --force` or follow try following the [guide here](https://www.rabbitmq.com/management.html) )
 
 install mongodb ( answer yes to run the script )
 
