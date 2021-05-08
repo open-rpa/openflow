@@ -55,6 +55,10 @@ install pm2 as a global package, and then install [pm2-windows-service](https://
 npm i -g pm2
 npm i -g pm2-windows-service
 pm2-service-install
+# Perform environment setup: answer yes
+# Set PM2_HOME: answer yes and the type the path to the folder you intent on saving the openflow/nodered config files into ( like c:\openflow )
+# PM2_SERVICE_SCRIPTS: answer no
+# PM2_SERVICE_PM2_DIR: answer yes, and then accept the default path
 ```
 
 then create a template configuration file using 
@@ -92,11 +96,16 @@ mkdir c:\openflow
 cd \openflow
 ```
 
-install [pm2-windows-service](https://www.npmjs.com/package/pm2-windows-service)
-
+install pm2 as a global package, and then install [pm2-windows-service](https://www.npmjs.com/package/pm2-windows-service)
+**Important**: Say no to startup scripts PM2_SERVICE_SCRIPTS
 ```bash
+npm i -g pm2
 npm i -g pm2-windows-service
 pm2-service-install
+# Perform environment setup: answer yes
+# Set PM2_HOME: answer yes and the type the path to the folder you intent on saving the openflow/nodered config files into ( like c:\openflow )
+# PM2_SERVICE_SCRIPTS: answer no
+# PM2_SERVICE_PM2_DIR: answer yes, and then accept the default path
 ```
 
 then create a template configuration file using 
