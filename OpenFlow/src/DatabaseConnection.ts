@@ -935,20 +935,7 @@ export class DatabaseConnection {
                 span.addEvent("Save");
                 await DBHelper.Save(users, Crypt.rootToken(), span);
                 const user2: TokenUser = item as any;
-                if (Config.auto_create_personal_nodered_group) {
-                    let name = user2.username;
-                    name = name.split("@").join("").split(".").join("");
-                    name = name.toLowerCase();
-
-                    span.addEvent("EnsureRole");
-                    const noderedadmins = await DBHelper.EnsureRole(jwt, name + "noderedadmins", null, span);
-                    Base.addRight(noderedadmins, user2._id, user2.username, [Rights.full_control]);
-                    Base.removeRight(noderedadmins, user2._id, [Rights.delete]);
-                    noderedadmins.AddMember(item);
-                    span.addEvent("Save");
-                    await DBHelper.Save(noderedadmins, Crypt.rootToken(), span);
-                }
-
+                DBHelper.EnsureNoderedRoles(user2, Crypt.rootToken(), span);
             }
             if (collectionname === "users" && item._type === "role") {
                 Base.addRight(item, item._id, item.name, [Rights.read]);

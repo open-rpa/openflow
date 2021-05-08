@@ -412,6 +412,7 @@ export class LoginProvider {
                     auto_create_users: Config.auto_create_users,
                     allow_personal_nodered: Config.allow_personal_nodered,
                     auto_create_personal_nodered_group: Config.auto_create_personal_nodered_group,
+                    auto_create_personal_noderedapi_group: Config.auto_create_personal_noderedapi_group,
                     namespace: Config.namespace,
                     nodered_domain_schema: nodered_domain_schema,
                     websocket_package_size: Config.websocket_package_size,

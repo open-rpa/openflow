@@ -37,6 +37,7 @@ export class Config {
         Config.protocol = Config.getEnv("protocol", "http");
         Config.noderedusers = Config.getEnv("noderedusers", "");
         Config.noderedadmins = Config.getEnv("noderedadmins", "");
+        Config.noderedapiusers = Config.getEnv("noderedapiusers", "");
         Config.cookie_secret = Config.getEnv("cookie_secret", "NLgUIsozJaxO38ze0WuHthfj2eb1eIEu");
 
         Config.flow_refresh_interval = parseInt(Config.getEnv("flow_refresh_interval", "60000"));
@@ -101,6 +102,7 @@ export class Config {
     public static protocol: string = Config.getEnv("protocol", "http");
     public static noderedusers: string = Config.getEnv("noderedusers", "");
     public static noderedadmins: string = Config.getEnv("noderedadmins", "");
+    public static noderedapiusers: string = Config.getEnv("noderedapiusers", "");
     public static cookie_secret: string = Config.getEnv("cookie_secret", "NLgUIsozJaxO38ze0WuHthfj2eb1eIEu"); // Used to protect cookies
 
     public static flow_refresh_interval: number = parseInt(Config.getEnv("flow_refresh_interval", "60000"));

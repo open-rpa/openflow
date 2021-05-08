@@ -1195,14 +1195,7 @@ export class Message {
             name = name.split("@").join("").split(".").join("");
             name = name.toLowerCase();
 
-            Logger.instanse.debug("[" + user.username + "] ensure nodered role " + name + "noderedadmins");
-            const noderedadmins = await DBHelper.EnsureRole(jwt, name + "noderedadmins", null, span);
-            Base.addRight(noderedadmins, user._id, user.username, [Rights.full_control]);
-            Base.removeRight(noderedadmins, user._id, [Rights.delete]);
-            noderedadmins.AddMember(user);
-            Logger.instanse.debug("[" + user.username + "] update nodered role " + name + "noderedadmins");
-            await DBHelper.Save(noderedadmins, jwt, span);
-
+            DBHelper.EnsureNoderedRoles(user, jwt, span);
         } catch (error) {
             span.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -1390,19 +1383,8 @@ export class Message {
                 const tuser: TokenUser = TokenUser.From(nodereduser);
                 const nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
 
-                Logger.instanse.debug("[" + cli.user.username + "] ensure nodered role " + name + "noderedadmins");
-                const noderedadmins = await DBHelper.EnsureRole(cli.jwt, name + "noderedadmins", null, span);
-                Base.addRight(noderedadmins, nodereduser._id, nodereduser.username, [Rights.full_control]);
-                Base.removeRight(noderedadmins, nodereduser._id, [Rights.delete]);
-                Base.addRight(noderedadmins, cli.user._id, cli.user.username, [Rights.full_control]);
-                Base.removeRight(noderedadmins, cli.user._id, [Rights.delete]);
-                noderedadmins.AddMember(nodereduser);
-                Logger.instanse.debug("[" + cli.user.username + "] update nodered role " + name + "noderedadmins");
-                await DBHelper.Save(noderedadmins, cli.jwt, span);
-
-
+                DBHelper.EnsureNoderedRoles(tuser, cli.jwt, span);
                 let saml_baseurl = Config.protocol + "://" + hostname + "/";
-
                 let _samlparsed = url.parse(Config.saml_federation_metadata);
                 if (_samlparsed.protocol == "http:" || _samlparsed.protocol == "ws:") {
                     saml_baseurl = "http://" + hostname
@@ -1416,10 +1398,7 @@ export class Message {
                     }
                 }
                 saml_baseurl += "/";
-
-
                 // "saml_baseurl=" + saml_baseurl,
-
                 const Env = [
                     "saml_federation_metadata=" + Config.saml_federation_metadata,
                     "saml_issuer=" + Config.saml_issuer,
@@ -1435,6 +1414,7 @@ export class Message {
                     "port=" + Config.port.toString(),
                     "noderedusers=" + (name + "noderedusers"),
                     "noderedadmins=" + (name + "noderedadmins"),
+                    "noderedapiusers=" + (name + "nodered api users"),
                     "api_allow_anonymous=" + user.nodered.api_allow_anonymous.toString(),
                     "function_external_modules=" + user.nodered.function_external_modules.toString(),
                     "prometheus_measure_nodeid=" + Config.prometheus_measure_nodeid.toString(),
@@ -1527,15 +1507,7 @@ export class Message {
             const tuser: TokenUser = TokenUser.From(nodereduser);
             const nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
 
-            Logger.instanse.debug("[" + cli.user.username + "] ensure nodered role " + name + "noderedadmins");
-            const noderedadmins = await DBHelper.EnsureRole(cli.jwt, name + "noderedadmins", null, span);
-            Base.addRight(noderedadmins, nodereduser._id, nodereduser.username, [Rights.full_control]);
-            Base.removeRight(noderedadmins, nodereduser._id, [Rights.delete]);
-            Base.addRight(noderedadmins, cli.user._id, cli.user.username, [Rights.full_control]);
-            Base.removeRight(noderedadmins, cli.user._id, [Rights.delete]);
-            noderedadmins.AddMember(nodereduser);
-            Logger.instanse.debug("[" + cli.user.username + "] update nodered role " + name + "noderedadmins");
-            await DBHelper.Save(noderedadmins, cli.jwt, span);
+            DBHelper.EnsureNoderedRoles(tuser, cli.jwt, span);
 
             const resources = new V1ResourceRequirements();
             let hasbilling: boolean = false;
@@ -1694,6 +1666,7 @@ export class Message {
                                             { name: "port", value: Config.port.toString() },
                                             { name: "noderedusers", value: (name + "noderedusers") },
                                             { name: "noderedadmins", value: (name + "noderedadmins") },
+                                            { name: "noderedapiusers", value: (name + "nodered api users") },
                                             { name: "api_allow_anonymous", value: user.nodered.api_allow_anonymous.toString() },
                                             { name: "function_external_modules", value: user.nodered.function_external_modules.toString() },
                                             { name: "prometheus_measure_nodeid", value: Config.prometheus_measure_nodeid.toString() },

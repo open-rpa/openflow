@@ -1087,12 +1087,12 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
         name = name.split("@").join("").split(".").join("");
         name = name.toLowerCase();
 
-        const list = await NoderedUtil.Query("users", { _type: "role", name: name + "noderedadmins" }, null, null, 2, 0, null);
-        if (list.length == 1) {
-            console.debug("Deleting " + name + "noderedadmins")
-            await NoderedUtil.DeleteOne("users", list[0]._id, null);
+        var q = { _type: "role", "$or": [{ name: name + "noderedadmins" }, { name: name + "nodered api users" }] }
+        const list = await NoderedUtil.Query("users", q, null, null, 4, 0, null);
+        for (var i = 0; i < list.length; i++) {
+            console.debug("Deleting " + list[i].name)
+            await NoderedUtil.DeleteOne("users", list[i]._id, null);
         }
-
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 }
@@ -3961,10 +3961,11 @@ export class CredentialsCtrl extends entitiesCtrl<Base> {
         name = name.split("@").join("").split(".").join("");
         name = name.toLowerCase();
 
-        const list = await NoderedUtil.Query("users", { _type: "role", name: name + "noderedadmins" }, null, null, 2, 0, null);
-        if (list.length == 1) {
-            console.debug("Deleting " + name + "noderedadmins")
-            await NoderedUtil.DeleteOne("users", list[0]._id, null);
+        var q = { _type: "role", "$or": [{ name: name + "noderedadmins" }, { name: name + "nodered api users" }] }
+        const list = await NoderedUtil.Query("users", q, null, null, 4, 0, null);
+        for (var i = 0; i < list.length; i++) {
+            console.debug("Deleting " + list[i].name)
+            await NoderedUtil.DeleteOne("users", list[i]._id, null);
         }
 
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
