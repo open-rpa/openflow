@@ -216,7 +216,7 @@ export class Message {
                     await this.RegisterQueue(cli, span);
                     break;
                 case "queuemessage":
-                    await this.QueueMessage(cli);
+                    await this.QueueMessage(cli, span);
                     break;
                 case "closequeue":
                     await this.CloseQueue(cli, span);
@@ -319,7 +319,8 @@ export class Message {
         }
         this.Send(cli);
     }
-    async QueueMessage(cli: WebSocketServerClient) {
+    async QueueMessage(cli: WebSocketServerClient, parent: Span) {
+        const span: Span = Logger.otel.startSubSpan("message.QueueMessage", parent);
         this.Reply();
         let msg: QueueMessage
         try {
@@ -342,6 +343,38 @@ export class Message {
                 } catch (error) {
                 }
             }
+
+            if (msg.queuename.length == 24 && Config.amqp_force_sender_has_read) {
+                const tuser = Crypt.verityToken(msg.jwt);
+                let name = tuser.username.split("@").join("").split(".").join("");
+                name = name.toLowerCase();
+                let allowed: boolean = false;
+                if (tuser._id == msg.queuename) {
+                    // Queue is for me
+                    allowed = true;
+                } else if (tuser.roles != null) {
+                    // Queue is for a group i am a member of.
+                    const isrole = tuser.roles.filter(x => x._id == msg.queuename);
+                    if (isrole.length > 0) allowed = true;
+                }
+                if (!allowed) {
+                    // Do i have permission to send to a queue with this id ?
+                    const arr = await Config.db.query({ _id: msg.queuename }, { name: 1 }, 1, 0, null, "users", msg.jwt, undefined, undefined, span);
+                    if (arr.length > 0) allowed = true;
+                    if (!allowed) {
+                        const arr = await Config.db.query({ _id: msg.queuename }, { name: 1 }, 1, 0, null, "openrpa", msg.jwt, undefined, undefined, span);
+                        if (arr.length > 0) allowed = true;
+                    }
+                    if (!allowed) {
+                        const arr = await Config.db.query({ _id: msg.queuename }, { name: 1 }, 1, 0, null, "workflow", msg.jwt, undefined, undefined, span);
+                        if (arr.length > 0) allowed = true;
+                    }
+                }
+                if (!allowed) {
+                    throw new Error("Unknown queue or access denied");
+                }
+            }
+
             const sendthis: any = msg.data;
             try {
                 if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(msg.data.jwt)) {
@@ -382,6 +415,7 @@ export class Message {
             this.data = "";
             await handleError(cli, error);
         }
+        Logger.otel.endSpan(span);
         this.Send(cli);
     }
     async CloseQueue(cli: WebSocketServerClient, parent: Span) {

@@ -177,7 +177,7 @@ export class amqpwrapper {
                         // Queue is for me
                         skip = false;
                     } else if (tuser.roles != null) {
-                        // Queue ss for a group i am a member of.
+                        // Queue is for a group i am a member of.
                         const isrole = tuser.roles.filter(x => x._id == queue);
                         if (isrole.length > 0) skip = false;
                     }
