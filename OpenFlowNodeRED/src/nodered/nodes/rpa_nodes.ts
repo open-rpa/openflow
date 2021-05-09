@@ -48,6 +48,9 @@ export class rpa_detector_node {
 
             this.localqueue = await NoderedUtil.RegisterQueue(WebSocketClient.instance, this.config.queue, (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
+            }, (msg) => {
+                if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected" });
+                setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
             });
             this.node.status({ fill: "green", shape: "dot", text: "Connected" });
         } catch (error) {
@@ -150,6 +153,9 @@ export class rpa_workflow_node {
             this.localqueue = this.uid;
             this.localqueue = await NoderedUtil.RegisterQueue(WebSocketClient.instance, this.localqueue, (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
+            }, (msg) => {
+                if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected" });
+                setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
             });
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
 
@@ -281,7 +287,7 @@ export class rpa_workflow_node {
                 data: { payload: msg.payload }
             }
             const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_workflow_out_expiration);
-            await NoderedUtil.QueueMessage(WebSocketClient.instance, queue, this.localqueue, rpacommand, correlationId, expiration);
+            await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", queue, this.localqueue, rpacommand, correlationId, expiration);
             this.node.status({ fill: "yellow", shape: "dot", text: "Pending " + this.localqueue });
         } catch (error) {
             // NoderedUtil.HandleError(this, error);
@@ -358,6 +364,9 @@ export class rpa_killworkflows_node {
             this.localqueue = this.uid;
             this.localqueue = await NoderedUtil.RegisterQueue(WebSocketClient.instance, this.localqueue, (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
+            }, (msg) => {
+                if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected" });
+                setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
             });
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
 
@@ -472,7 +481,7 @@ export class rpa_killworkflows_node {
                 data: {}
             }
             const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_workflow_out_expiration);
-            await NoderedUtil.QueueMessage(WebSocketClient.instance, queue, this.localqueue, rpacommand, correlationId, expiration);
+            await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", queue, this.localqueue, rpacommand, correlationId, expiration);
             this.node.status({ fill: "yellow", shape: "dot", text: "Pending " + this.localqueue });
         } catch (error) {
             try {

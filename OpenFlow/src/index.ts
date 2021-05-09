@@ -70,11 +70,9 @@ if (_otel_require != null) {
 Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db);
 
 
-async function initamqp() {
-    const amqp: amqpwrapper = new amqpwrapper(Config.amqp_url);
-    amqpwrapper.SetInstance(amqp);
-    await amqp.connect();
-    // Must also consume messages in the dead letter queue, to catch messages that have timed out
+
+async function adddlx() {
+    if (NoderedUtil.IsNullEmpty(Config.amqp_dlx)) return;
     await amqp.AddExchangeConsumer(Config.amqp_dlx, "fanout", "", null, null, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
         if (typeof msg === "string" || msg instanceof String) {
             try {
@@ -87,7 +85,7 @@ async function initamqp() {
             // Resend message, this time to the reply queue for the correct node (replyTo)
             // this.SendMessage(JSON.stringify(data), msg.properties.replyTo, msg.properties.correlationId, false);
             Logger.instanse.info("[DLX][" + options.exchange + "] Send timeout to " + options.replyTo)
-            await amqpwrapper.Instance().sendWithReply("", options.replyTo, msg, 20000, options.correlationId);
+            await amqpwrapper.Instance().sendWithReply("", options.replyTo, msg, 20000, options.correlationId, "");
         } catch (error) {
             console.error("Failed sending deadletter message to " + options.replyTo);
             console.error(error);
@@ -95,6 +93,15 @@ async function initamqp() {
         ack();
         done();
     }, undefined);
+}
+let amqp: amqpwrapper = null;
+async function initamqp() {
+    amqp = new amqpwrapper(Config.amqp_url);
+    amqpwrapper.SetInstance(amqp);
+    amqp.on("connected", adddlx);
+    await amqp.connect();
+
+    // Must also consume messages in the dead letter queue, to catch messages that have timed out
 
     // await amqp.AddExchangeConsumer("testexchange", "fanout", "", null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
     //     console.info("testexchange: " + msg);

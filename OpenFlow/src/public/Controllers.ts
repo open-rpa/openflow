@@ -72,33 +72,37 @@ export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
         this.collection = "openrpa";
         this.messages = "";
         WebSocketClientService.onSignedin(async (_user: TokenUser) => {
+            await this.RegisterQueue();
             if (this.id !== null && this.id !== undefined) {
-                this.queuename = await NoderedUtil.RegisterQueue(WebSocketClient.instance, "", (data: QueueMessage, ack: any) => {
-                    ack();
-                    console.debug(data);
-                    if (data.data.command == undefined && data.data.data != null) data.data = data.data.data;
-                    this.messages += data.data.command + "\n";
-                    if (data.data.command == "invokecompleted") {
-                        this.arguments = data.data.data;
-                    }
-                    if (data.data.command == "invokefailed") {
-                        if (data.data && data.data.data && data.data.data.Message) {
-                            this.errormessage = data.data.data.Message;
-                        } else {
-                            this.errormessage = JSON.stringify(data.data);
-                        }
-
-                    }
-
-                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
-
-                });
                 console.debug("queuename: " + this.queuename);
                 await this.loadData();
                 await this.loadUsers();
             } else {
                 console.error("Missing id");
             }
+        });
+    }
+    async RegisterQueue() {
+        this.queuename = await NoderedUtil.RegisterQueue(WebSocketClient.instance, "", (data: QueueMessage, ack: any) => {
+            ack();
+            console.debug(data);
+            if (data.data.command == undefined && data.data.data != null) data.data = data.data.data;
+            this.messages += data.data.command + "\n";
+            if (data.data.command == "invokecompleted") {
+                this.arguments = data.data.data;
+            }
+            if (data.data.command == "invokefailed") {
+                if (data.data && data.data.data && data.data.data.Message) {
+                    this.errormessage = data.data.data.Message;
+                } else {
+                    this.errormessage = JSON.stringify(data.data);
+                }
+
+            }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }, (msg) => {
+            this.queuename = "";
+            setTimeout(this.RegisterQueue.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
         });
     }
     async loadUsers(): Promise<void> {
@@ -120,7 +124,7 @@ export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
                 data: this.arguments
             }
             if (this.arguments === null || this.arguments === undefined) { this.arguments = {}; }
-            const result: any = await NoderedUtil.QueueMessage(WebSocketClient.instance, this.user._id, this.queuename, rpacommand, null, parseInt(this.timeout));
+            const result: any = await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", this.user._id, this.queuename, rpacommand, null, parseInt(this.timeout));
             try {
                 // result = JSON.parse(result);
             } catch (error) {
@@ -1400,9 +1404,15 @@ export class SocketCtrl {
     ) {
         console.debug("SocketCtrl");
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
-            await NoderedUtil.RegisterQueue(WebSocketClient.instance, "", (data: QueueMessage, ack: any) => {
-                ack();
-            });
+            await this.RegisterQueue();
+        });
+    }
+    async RegisterQueue() {
+        await NoderedUtil.RegisterQueue(WebSocketClient.instance, "", (data: QueueMessage, ack: any) => {
+            ack();
+        }, (msg) => {
+            this.queuename = "";
+            setTimeout(this.RegisterQueue.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
         });
     }
 }
@@ -1820,22 +1830,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         this.basequery = { _id: this.id };
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
             await jsutil.ensureJQuery();
-            this.queuename = await NoderedUtil.RegisterQueue(WebSocketClient.instance, "", (data: QueueMessage, ack: any) => {
-                ack();
-                console.debug(data);
-                if (data.queuename == this.queuename) {
-                    if (this.instanceid == null && data.data._id != null) {
-                        this.instanceid = data.data._id;
-                        // this.$location.path("/Form/" + this.id + "/" + this.instanceid);
-                        // if (!this.$scope.$$phase) { this.$scope.$apply(); }
-                        this.loadData();
-                        return;
-                    } else {
-                        this.loadData();
-                    }
-                }
-                if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            });
+            await this.RegisterQueue();
             console.debug("queuename: " + this.queuename);
             if (this.id !== null && this.id !== undefined && this.id !== "") {
                 this.basequery = { _id: this.id };
@@ -1847,6 +1842,27 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             }
         });
 
+    }
+    async RegisterQueue() {
+        this.queuename = await NoderedUtil.RegisterQueue(WebSocketClient.instance, "", (data: QueueMessage, ack: any) => {
+            ack();
+            console.debug(data);
+            if (data.queuename == this.queuename) {
+                if (this.instanceid == null && data.data._id != null) {
+                    this.instanceid = data.data._id;
+                    // this.$location.path("/Form/" + this.id + "/" + this.instanceid);
+                    // if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    this.loadData();
+                    return;
+                } else {
+                    this.loadData();
+                }
+            }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }, (msg) => {
+            this.queuename = "";
+            setTimeout(this.RegisterQueue.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+        });
     }
     async hideFormElements() {
         console.debug("hideFormElements");
@@ -1955,7 +1971,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         }
     }
     async SendOne(queuename: string, message: any): Promise<void> {
-        let result: any = await NoderedUtil.QueueMessage(WebSocketClient.instance, queuename, this.queuename, message, null, this.queue_message_timeout);
+        let result: any = await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", queuename, this.queuename, message, null, this.queue_message_timeout);
         try {
             if (typeof result === "string" || result instanceof String) {
                 result = JSON.parse((result as any));

@@ -33,8 +33,10 @@ export class log_message_node {
     public name: string;
     constructor(public nodeid: string) {
         this.node = RED.nodes.getNode(nodeid);
-        this.nodetype = this.node.type;
-        this.name = this.node.name || this.node.type;
+        if (this.node != null) {
+            this.nodetype = this.node.type;
+            this.name = this.node.name || this.node.type;
+        }
     }
     startspan(parentspan: Span, msgid) {
         this.span = Logger.otel.startSubSpan(this.name, parentspan);

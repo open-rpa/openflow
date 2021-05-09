@@ -54,6 +54,9 @@ export class workflow_in_node {
             this.localqueue = this.config.queue;
             this.localqueue = await NoderedUtil.RegisterQueue(WebSocketClient.instance, this.localqueue, (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
+            }, (msg) => {
+                if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected" });
+                setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
             });
             await this.init();
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
@@ -365,7 +368,7 @@ export class workflow_out_node {
                 data.jwt = msg.jwt;
                 const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_workflow_out_expiration);
                 this.node.status({ fill: "blue", shape: "dot", text: "QueueMessage.1" });
-                await NoderedUtil.QueueMessage(WebSocketClient.instance, msg.resultqueue, null, data, msg.correlationId, expiration);
+                await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", msg.resultqueue, null, data, msg.correlationId, expiration);
                 if (msg.resultqueue == msg._replyTo) msg._replyTo = null; // don't double message (??)
 
             }
@@ -391,7 +394,7 @@ export class workflow_out_node {
                 // ROLLBACK
                 // Don't wait for ack(), we don't care if the receiver is there, right ?
                 this.node.status({ fill: "blue", shape: "dot", text: "Queue message for " + msg._replyTo });
-                await NoderedUtil.QueueMessage(WebSocketClient.instance, msg._replyTo, null, data, msg.correlationId, Config.amqp_workflow_out_expiration);
+                await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", msg._replyTo, null, data, msg.correlationId, Config.amqp_workflow_out_expiration);
             }
         } catch (error) {
             NoderedUtil.HandleError(this, error, msg);
@@ -496,6 +499,9 @@ export class assign_workflow_node {
             this.localqueue = this.config.queue;
             this.localqueue = await NoderedUtil.RegisterQueue(WebSocketClient.instance, this.localqueue, (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
+            }, (msg) => {
+                if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected" });
+                setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
             });
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
 
