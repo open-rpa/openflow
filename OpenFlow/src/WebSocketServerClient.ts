@@ -267,8 +267,6 @@ export class WebSocketServerClient {
                 } else {
                     exchange = "unknown." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
                 }
-                if (exchange.length == 24) { exchange += "1"; }
-
             }
             await semaphore.down();
             this.CloseConsumer(exchange, span);

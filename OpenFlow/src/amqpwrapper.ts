@@ -87,8 +87,6 @@ export class amqpwrapper extends events.EventEmitter {
         if (!NoderedUtil.IsNullEmpty(Config.amqp_dlx)) {
             this.AssertQueueOptions.arguments = {};
             this.AssertQueueOptions.arguments['x-dead-letter-exchange'] = Config.amqp_dlx;
-            this.AssertExchangeOptions.arguments = {};
-            this.AssertExchangeOptions.arguments['x-dead-letter-exchange'] = Config.amqp_dlx;
         }
     }
     private timeout: NodeJS.Timeout = null;
@@ -182,7 +180,7 @@ export class amqpwrapper extends events.EventEmitter {
                     }
                     if (!NoderedUtil.IsNullEmpty(replyTo)) {
                         msg.command = "timeout";
-                        Logger.instanse.info("[AMQP][" + routingKey + "] " + errormsg + " to " + replyTo)
+                        Logger.instanse.info("[AMQP][" + routingKey + "] notify " + replyTo + " " + errormsg + " to " + routingKey)
                         await amqpwrapper.Instance().send("", replyTo, msg, 20000, correlationId, "");
                     }
                 } catch (error) {
@@ -255,6 +253,7 @@ export class amqpwrapper extends events.EventEmitter {
                         }
                         if (!skip) {
                             queue = name + queue;
+                            if (queue.length == 24) { queue += "1"; }
                         } else {
                             Logger.instanse.info("[SKIP] skipped force prefix for " + queue);
                         }
@@ -267,7 +266,6 @@ export class amqpwrapper extends events.EventEmitter {
                     name = name.toLowerCase();
                     queue = name + queue;
                 }
-                if (queue.length == 24) { queue += "1"; }
             } else if (queue.length == 24) {
                 if (NoderedUtil.IsNullEmpty(jwt)) {
                     const tuser = Crypt.verityToken(jwt);
@@ -336,7 +334,7 @@ export class amqpwrapper extends events.EventEmitter {
             }
             // q.ExchangeOptions = new Object((ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));
             q.ExchangeOptions = Object.assign({}, (ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));
-            // if (exchange != Config.amqp_dlx) q.ExchangeOptions.autoDelete = true;
+            if (exchange != Config.amqp_dlx) q.ExchangeOptions.autoDelete = true;
             q.exchange = exchange; q.algorithm = algorithm; q.routingkey = routingkey; q.callback = callback;
             const _ok = await this.channel.assertExchange(q.exchange, q.algorithm, q.ExchangeOptions);
             let AssertQueueOptions = null;
