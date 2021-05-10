@@ -421,7 +421,8 @@ export class LoginProvider {
                     getting_started_url: Config.getting_started_url,
                     validate_user_form: Config.validate_user_form,
                     supports_watch: Config.supports_watch,
-                    nodered_images: Config.nodered_images
+                    nodered_images: Config.nodered_images,
+                    amqp_enabled_exchange: Config.amqp_enabled_exchange
                 }
                 res.end(JSON.stringify(res2));
             } catch (error) {

@@ -265,6 +265,7 @@ export class amqpwrapper extends events.EventEmitter {
                     let name = tuser.username.split("@").join("").split(".").join("");
                     name = name.toLowerCase();
                     queue = name + queue;
+                    if (queue.length == 24) { queue += "1"; }
                 }
             } else if (queue.length == 24) {
                 if (NoderedUtil.IsNullEmpty(jwt)) {
@@ -327,6 +328,7 @@ export class amqpwrapper extends events.EventEmitter {
                 let name = tuser.username.split("@").join("").split(".").join("");
                 name = name.toLowerCase();
                 exchange = name + exchange;
+                if (exchange.length == 24) { exchange += "1"; }
             }
             const q: amqpexchange = new amqpexchange();
             if (!NoderedUtil.IsNullEmpty(q.queue)) {

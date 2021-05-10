@@ -360,6 +360,9 @@ export class Message {
                     msg.data.jwt = msg.jwt;
                 }
             }
+            if (!NoderedUtil.IsNullEmpty(msg.exchange) && !Config.amqp_enabled_exchange) {
+                throw new Error("AMQP exchange is not enabled on this OpenFlow");
+            }
             const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_default_expiration);
             if (typeof msg.data === 'string' || msg.data instanceof String) {
                 try {
@@ -1450,6 +1453,7 @@ export class Message {
                     "otel_metric_url=" + Config.otel_metric_url,
                     "otel_trace_interval=" + Config.otel_trace_interval.toString(),
                     "otel_metric_interval=" + Config.otel_metric_interval.toString(),
+                    "amqp_enabled_exchange=" + Config.amqp_enabled_exchange.toString()
                 ]
                 // const image = await docker.pull(nodered_image, { serveraddress: "https://index.docker.io/v1" });
                 await this._pullImage(docker, nodered_image);
@@ -1702,7 +1706,7 @@ export class Message {
                                             { name: "otel_metric_url", value: Config.otel_metric_url },
                                             { name: "otel_trace_interval", value: Config.otel_trace_interval.toString() },
                                             { name: "otel_metric_interval", value: Config.otel_metric_interval.toString() },
-
+                                            { name: "amqp_enabled_exchange", value: Config.amqp_enabled_exchange.toString() },
                                         ],
                                         livenessProbe: livenessProbe,
                                     }
