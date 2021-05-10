@@ -57,7 +57,7 @@ export class rpa_detector_node {
         } catch (error) {
             this.localqueue = "";
             NoderedUtil.HandleError(this, error, null);
-            setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+            setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 2000);
         }
     }
     async OnMessage(msg: any, ack: any) {
@@ -166,7 +166,7 @@ export class rpa_workflow_node {
         } catch (error) {
             this.localqueue = "";
             NoderedUtil.HandleError(this, error, null);
-            setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+            setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 2000);
         }
     }
     async OnMessage(msg: any, ack: any) {
@@ -380,7 +380,7 @@ export class rpa_killworkflows_node {
         } catch (error) {
             this.localqueue = "";
             NoderedUtil.HandleError(this, error, null);
-            setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+            setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 2000);
         }
     }
     async OnMessage(msg: any, ack: any) {

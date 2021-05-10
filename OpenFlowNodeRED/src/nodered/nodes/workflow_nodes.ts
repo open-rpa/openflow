@@ -61,7 +61,9 @@ export class workflow_in_node {
             await this.init();
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
         } catch (error) {
+            this.localqueue = "";
             NoderedUtil.HandleError(this, error, null);
+            setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 2000);
         }
     }
     async init() {
@@ -519,7 +521,9 @@ export class assign_workflow_node {
                 }
             }
         } catch (error) {
+            this.localqueue = "";
             NoderedUtil.HandleError(this, error, null);
+            setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 2000);
         }
     }
     async OnMessage(msg: any, ack: any) {

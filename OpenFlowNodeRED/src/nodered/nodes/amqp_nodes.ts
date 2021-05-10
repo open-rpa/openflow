@@ -132,7 +132,7 @@ export class amqp_consumer_node {
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
         } catch (error) {
             NoderedUtil.HandleError(this, error, null);
-            setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+            setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 2000);
         }
     }
     async OnMessage(msg: any, ack: any) {
@@ -242,7 +242,7 @@ export class amqp_publisher_node {
         } catch (error) {
             this.localqueue = "";
             NoderedUtil.HandleError(this, error, null);
-            setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+            setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 2000);
         }
     }
     async OnMessage(msg: any, ack: any) {
@@ -421,7 +421,7 @@ export class amqp_exchange_node {
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + result.exchangename });
         } catch (error) {
             NoderedUtil.HandleError(this, error, null);
-            setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+            setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 2000);
         }
     }
     async OnMessage(msg: any, ack: any) {
