@@ -73,8 +73,10 @@ export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
         this.messages = "";
         WebSocketClientService.onSignedin(async (_user: TokenUser) => {
             await this.RegisterQueue();
+            this.$scope.$on('signin', (event, data) => {
+                this.RegisterQueue();
+            });
             if (this.id !== null && this.id !== undefined) {
-                console.debug("queuename: " + this.queuename);
                 await this.loadData();
                 await this.loadUsers();
             } else {
@@ -83,27 +85,35 @@ export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
         });
     }
     async RegisterQueue() {
-        this.queuename = await NoderedUtil.RegisterQueue(WebSocketClient.instance, "", (data: QueueMessage, ack: any) => {
-            ack();
-            console.debug(data);
-            if (data.data.command == undefined && data.data.data != null) data.data = data.data.data;
-            this.messages += data.data.command + "\n";
-            if (data.data.command == "invokecompleted") {
-                this.arguments = data.data.data;
-            }
-            if (data.data.command == "invokefailed") {
-                if (data.data && data.data.data && data.data.data.Message) {
-                    this.errormessage = data.data.data.Message;
-                } else {
-                    this.errormessage = JSON.stringify(data.data);
+        try {
+            this.queuename = await NoderedUtil.RegisterQueue(WebSocketClient.instance, "", (data: QueueMessage, ack: any) => {
+                ack();
+                console.debug(data);
+                if (data.data.command == undefined && data.data.data != null) data.data = data.data.data;
+                this.messages += data.data.command + "\n";
+                if (data.data.command == "invokecompleted") {
+                    this.arguments = data.data.data;
                 }
+                if (data.data.command == "invokefailed") {
+                    if (data.data && data.data.data && data.data.data.Message) {
+                        this.errormessage = data.data.data.Message;
+                    } else {
+                        this.errormessage = JSON.stringify(data.data);
+                    }
 
-            }
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
-        }, (msg) => {
+                }
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            }, (msg) => {
+                this.queuename = "";
+                console.debug("rabbitmq disconnected, start reconnect")
+                setTimeout(this.RegisterQueue.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+            });
+            console.debug("queuename: " + this.queuename);
+        } catch (error) {
             this.queuename = "";
+            console.debug("register queue failed, start reconnect. " + error.message ? error.message : error)
             setTimeout(this.RegisterQueue.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
-        });
+        }
     }
     async loadUsers(): Promise<void> {
         this.users = await NoderedUtil.Query("users", { $or: [{ _type: "user" }, { _type: "role", rparole: true }] }, null, null, 100, 0, null);
