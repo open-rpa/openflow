@@ -49,8 +49,8 @@ export class noderedcontribmiddlewareauth {
                 if (result == null || result.user == null) result = await NoderedUtil.SigninWithToken(null, token, null, false, true);
                 if (result.user != null) {
                     const user: TokenUser = TokenUser.assign(result.user);
-                    const allowed = user.roles.filter(x => x.name == "nodered api users" || x.name == Config.noderedadmins);
-                    if (allowed.length > 0) {
+                    const allowed = user.roles.filter(x => x.name == "nodered api users" || x.name == Config.noderedadmins || x.name == Config.noderedapiusers);
+                    if (allowed.length > 0 && !NoderedUtil.IsNullEmpty(allowed[0].name)) {
                         cacheduser = new CachedUser(result.user, result.jwt);
                         this.authorizationCache[authorization] = cacheduser;
                         Logger.instanse.info("noderedcontribmiddlewareauth: Authorized " + user.username + " for " + req.url);
@@ -79,8 +79,8 @@ export class noderedcontribmiddlewareauth {
                 const result = await NoderedUtil.SigninWithUsername(login, password, null, false, true);
                 if (result.user != null) {
                     const user: TokenUser = TokenUser.assign(result.user);
-                    const allowed = user.roles.filter(x => x.name == "nodered api users" || x.name == Config.noderedadmins);
-                    if (allowed.length > 0) {
+                    const allowed = user.roles.filter(x => x.name == "nodered api users" || x.name == Config.noderedadmins || x.name == Config.noderedapiusers);
+                    if (allowed.length > 0 && !NoderedUtil.IsNullEmpty(allowed[0].name)) {
                         cacheduser = new CachedUser(result.user, result.jwt);
                         this.authorizationCache[authorization] = cacheduser;
                         Logger.instanse.info("noderedcontribmiddlewareauth: Authorized " + user.username + " for " + req.url);

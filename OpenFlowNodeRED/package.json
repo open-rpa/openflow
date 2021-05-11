@@ -1,6 +1,6 @@
 {
   "name": "@openiap/nodered",
-  "version": "1.2.102",
+  "version": "1.2.105",
   "description": "Simple wrapper around NodeRed, RabbitMQ and MongoDB to support a more scaleable NodeRed implementation.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {
@@ -25,7 +25,7 @@
   },
   "dependencies": {
     "@nodemailer/mailparser2": "^1.0.3",
-    "@openiap/openflow-api": "^1.0.63",
+    "@openiap/openflow-api": "^1.0.71",
     "@opentelemetry/api": "^0.18.1",
     "@opentelemetry/core": "^0.18.2",
     "@opentelemetry/exporter-collector-grpc": "^0.18.2",

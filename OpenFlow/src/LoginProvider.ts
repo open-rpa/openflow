@@ -412,6 +412,7 @@ export class LoginProvider {
                     auto_create_users: Config.auto_create_users,
                     allow_personal_nodered: Config.allow_personal_nodered,
                     auto_create_personal_nodered_group: Config.auto_create_personal_nodered_group,
+                    auto_create_personal_noderedapi_group: Config.auto_create_personal_noderedapi_group,
                     namespace: Config.namespace,
                     nodered_domain_schema: nodered_domain_schema,
                     websocket_package_size: Config.websocket_package_size,
@@ -420,7 +421,8 @@ export class LoginProvider {
                     getting_started_url: Config.getting_started_url,
                     validate_user_form: Config.validate_user_form,
                     supports_watch: Config.supports_watch,
-                    nodered_images: Config.nodered_images
+                    nodered_images: Config.nodered_images,
+                    amqp_enabled_exchange: Config.amqp_enabled_exchange
                 }
                 res.end(JSON.stringify(res2));
             } catch (error) {

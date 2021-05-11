@@ -124,11 +124,15 @@ export class amqp_consumer_node {
 
             this.localqueue = await NoderedUtil.RegisterQueue(this.websocket(), this.config.queue, (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
+            }, (msg) => {
+                if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected" });
+                setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
             });
             Logger.instanse.info("registed amqp consumer as " + this.localqueue);
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
         } catch (error) {
             NoderedUtil.HandleError(this, error, null);
+            setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 2000);
         }
     }
     async OnMessage(msg: any, ack: any) {
@@ -167,6 +171,8 @@ export class amqp_consumer_node {
 export interface Iamqp_publisher_node {
     config: any;
     queue: string;
+    exchange: string;
+    routingkey: string;
     localqueue: string;
     name: string;
 }
@@ -221,12 +227,22 @@ export class amqp_publisher_node {
             this.localqueue = this.config.localqueue;
             this.localqueue = await NoderedUtil.RegisterQueue(this.websocket(), this.localqueue, (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
+            }, (msg) => {
+                this.localqueue = "";
+                if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected" });
+                setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
             });
-            Logger.instanse.info("registed amqp published return queue as " + this.localqueue);
-            this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
-
+            if (!NoderedUtil.IsNullEmpty(this.localqueue)) {
+                Logger.instanse.info("registed amqp published return queue as " + this.localqueue);
+                this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
+            } else {
+                if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected" });
+                setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+            }
         } catch (error) {
+            this.localqueue = "";
             NoderedUtil.HandleError(this, error, null);
+            setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 2000);
         }
     }
     async OnMessage(msg: any, ack: any) {
@@ -234,8 +250,10 @@ export class amqp_publisher_node {
             let result: any = {};
             let data = msg.data;
             if (!NoderedUtil.IsNullEmpty(data._msgid)) {
-                result = Object.assign(amqp_publisher_node.payloads[data._msgid], data);
-                delete amqp_publisher_node.payloads[data._msgid];
+                if (amqp_publisher_node.payloads && amqp_publisher_node.payloads[data._msgid]) {
+                    result = Object.assign(amqp_publisher_node.payloads[data._msgid], data);
+                    delete amqp_publisher_node.payloads[data._msgid];
+                }
             }
             result.payload = data.payload;
             result.jwt = data.jwt;
@@ -260,16 +278,22 @@ export class amqp_publisher_node {
                 throw new Error("Queue not registered yet");
             }
 
+            let queue = this.config.queue;
+            let exchange = this.config.exchange;
+            let routingkey = this.config.routingkey;
+            if (!NoderedUtil.IsNullEmpty(msg.queue)) { queue = msg.queue; }
+            if (!NoderedUtil.IsNullEmpty(msg.exchange)) { exchange = msg.exchange; }
+            if (!NoderedUtil.IsNullEmpty(msg.routingkey)) { routingkey = msg.routingkey; }
+
             const data: any = {};
             data.payload = msg.payload;
             data.jwt = msg.jwt;
             data._id = msg._id;
             data._msgid = msg._msgid;
             const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_message_ttl);
-            const queue = this.config.queue;
             this.node.status({ fill: "blue", shape: "dot", text: "Sending message ..." });
             try {
-                await NoderedUtil.QueueMessage(this.websocket(), queue, this.localqueue, data, null, expiration);
+                await NoderedUtil.QueueMessage(this.websocket(), exchange, routingkey, queue, this.localqueue, data, null, expiration);
                 amqp_publisher_node.payloads[msg._msgid] = msg;
             } catch (error) {
                 data.error = error;
@@ -281,10 +305,10 @@ export class amqp_publisher_node {
         }
     }
     async onclose(removed: boolean, done: any) {
-        if (!NoderedUtil.IsNullEmpty(this.localqueue) && removed) {
-            NoderedUtil.CloseQueue(this.websocket(), this.localqueue);
-            this.localqueue = "";
-        }
+        // if (!NoderedUtil.IsNullEmpty(this.localqueue) && removed) {
+        NoderedUtil.CloseQueue(this.websocket(), this.localqueue);
+        this.localqueue = "";
+        // }
         this.websocket().events.removeListener("onsignedin", this._onsignedin);
         this.websocket().events.removeListener("onclose", this._onsocketclose);
 
@@ -323,5 +347,108 @@ export class amqp_acknowledgment_node {
         }
     }
     onclose() {
+    }
+}
+
+
+
+
+
+export interface Iamqp_exchange_node {
+    config: any;
+    exchange: string;
+    routingkey: string;
+    algorithm: "direct" | "fanout" | "topic" | "header";
+    name: string;
+}
+export class amqp_exchange_node {
+    public node: Red = null;
+    public name: string = "";
+    public host: string = null;
+    public localqueue: string = "";
+    private connection: amqp_connection;
+    private _onsignedin: any = null;
+    private _onsocketclose: any = null;
+    constructor(public config: Iamqp_exchange_node) {
+        RED.nodes.createNode(this, config);
+        try {
+            this.node = this;
+            this.name = config.name;
+            // this.node.status({});
+            this.node.status({ fill: "blue", shape: "dot", text: "Offline" });
+            this.node.on("close", this.onclose);
+            this.connection = RED.nodes.getNode(this.config.config);
+            this._onsignedin = this.onsignedin.bind(this);
+            this._onsocketclose = this.onsocketclose.bind(this);
+            this.websocket().events.on("onsignedin", this._onsignedin);
+            this.websocket().events.on("onclose", this._onsocketclose);
+            if (this.websocket().isConnected && this.websocket().user != null) {
+                this.connect();
+            } else {
+                this.node.status({ fill: "blue", shape: "dot", text: "Waiting on conn" });
+            }
+        } catch (error) {
+            NoderedUtil.HandleError(this, error, null);
+        }
+    }
+    onsocketclose(message) {
+        if (message == null) message = "";
+        if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
+    }
+    onsignedin() {
+        this.connect();
+    }
+    websocket(): WebSocketClient {
+        if (this.connection != null) {
+            return this.connection.websocket();
+        }
+        return WebSocketClient.instance;
+    }
+    async connect() {
+        try {
+            this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
+            Logger.instanse.info("track::amqp exchange node in::connect");
+
+            const result = await NoderedUtil.RegisterExchange(this.websocket(), this.config.exchange, this.config.algorithm,
+                this.config.routingkey, (msg: QueueMessage, ack: any) => {
+                    this.OnMessage(msg, ack);
+                }, (msg) => {
+                    if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected" });
+                    setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+                });
+            this.localqueue = result.queuename;
+            Logger.instanse.info("registed amqp exchange as " + result.exchangename);
+            this.node.status({ fill: "green", shape: "dot", text: "Connected " + result.exchangename });
+        } catch (error) {
+            NoderedUtil.HandleError(this, error, null);
+            setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 2000);
+        }
+    }
+    async OnMessage(msg: any, ack: any) {
+        try {
+            const data: any = msg.data;
+            data.amqpacknowledgment = ack;
+            if (!NoderedUtil.IsNullUndefinded(data.__user)) {
+                data.user = data.__user;
+                delete data.__user;
+            }
+            if (!NoderedUtil.IsNullUndefinded(data.__jwt)) {
+                data.jwt = data.__jwt;
+                delete data.__jwt;
+            }
+            this.node.send(data);
+            ack();
+        } catch (error) {
+            NoderedUtil.HandleError(this, error, msg);
+        }
+    }
+    async onclose(removed: boolean, done: any) {
+        // if (!NoderedUtil.IsNullEmpty(this.localqueue) && removed) {
+        NoderedUtil.CloseQueue(this.websocket(), this.localqueue);
+        this.localqueue = "";
+        // }
+        this.websocket().events.removeListener("onsignedin", this._onsignedin);
+        this.websocket().events.removeListener("onclose", this._onsocketclose);
+        if (done != null) done();
     }
 }

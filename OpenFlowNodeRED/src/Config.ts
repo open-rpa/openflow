@@ -37,6 +37,7 @@ export class Config {
         Config.protocol = Config.getEnv("protocol", "http");
         Config.noderedusers = Config.getEnv("noderedusers", "");
         Config.noderedadmins = Config.getEnv("noderedadmins", "");
+        Config.noderedapiusers = Config.getEnv("noderedapiusers", "");
         Config.cookie_secret = Config.getEnv("cookie_secret", "NLgUIsozJaxO38ze0WuHthfj2eb1eIEu");
 
         Config.flow_refresh_interval = parseInt(Config.getEnv("flow_refresh_interval", "60000"));
@@ -48,7 +49,8 @@ export class Config {
         Config.amqp_reply_expiration = parseInt(Config.getEnv("amqp_reply_expiration", (60 * 1000).toString())); // 1 min
         Config.amqp_workflow_out_expiration = parseInt(Config.getEnv("amqp_workflow_out_expiration", (60 * 1000).toString())); // 1 min
         Config.amqp_reply_expiration = parseInt(Config.getEnv("amqp_reply_expiration", "10000")); // 10 seconds
-        Config.amqp_workflow_out_expiration = parseInt(Config.getEnv("amqp_workflow_out_expiration", "10000")); // 10 seconds
+        Config.amqp_enabled_exchange = Config.parseBoolean(Config.getEnv("amqp_enabled_exchange", "false"));
+
 
         Config.api_credential_cache_seconds = parseInt(Config.getEnv("api_credential_cache_seconds", "300"));
         Config.api_allow_anonymous = Config.parseBoolean(Config.getEnv("api_allow_anonymous", "false"));
@@ -101,6 +103,7 @@ export class Config {
     public static protocol: string = Config.getEnv("protocol", "http");
     public static noderedusers: string = Config.getEnv("noderedusers", "");
     public static noderedadmins: string = Config.getEnv("noderedadmins", "");
+    public static noderedapiusers: string = Config.getEnv("noderedapiusers", "");
     public static cookie_secret: string = Config.getEnv("cookie_secret", "NLgUIsozJaxO38ze0WuHthfj2eb1eIEu"); // Used to protect cookies
 
     public static flow_refresh_interval: number = parseInt(Config.getEnv("flow_refresh_interval", "60000"));
@@ -113,6 +116,7 @@ export class Config {
     // public static amqp_workflow_out_expiration: number = parseInt(Config.getEnv("amqp_workflow_out_expiration", (60 * 1000).toString())); // 1 min
     public static amqp_reply_expiration: number = parseInt(Config.getEnv("amqp_reply_expiration", "10000")); // 10 seconds
     public static amqp_workflow_out_expiration: number = parseInt(Config.getEnv("amqp_workflow_out_expiration", "10000")); // 10 seconds
+    public static amqp_enabled_exchange: boolean = Config.parseBoolean(Config.getEnv("amqp_enabled_exchange", "false"));
 
     public static api_credential_cache_seconds: number = parseInt(Config.getEnv("api_credential_cache_seconds", "300"));
     public static api_allow_anonymous: boolean = Config.parseBoolean(Config.getEnv("api_allow_anonymous", "false"));

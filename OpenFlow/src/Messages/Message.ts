@@ -16,7 +16,7 @@ import { Readable, Stream } from "stream";
 import { GridFSBucket, ObjectID, Db, Cursor, MongoNetworkError } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
-import { StripeMessage, EnsureStripeCustomerMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, GetKubeNodeLabels, PushMetricsMessage } from "@openiap/openflow-api";
+import { StripeMessage, EnsureStripeCustomerMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, GetKubeNodeLabels, PushMetricsMessage, RegisterExchangeMessage } from "@openiap/openflow-api";
 import { Billing, stripe_customer, stripe_base, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription, stripe_subscription_item, stripe_plan, stripe_coupon } from "@openiap/openflow-api";
 import { V1ResourceRequirements, V1Deployment } from "@kubernetes/client-node";
 import { amqpwrapper } from "../amqpwrapper";
@@ -215,8 +215,11 @@ export class Message {
                 case "registerqueue":
                     await this.RegisterQueue(cli, span);
                     break;
+                case "registerexchange":
+                    await this.RegisterExchange(cli, span);
+                    break;
                 case "queuemessage":
-                    await this.QueueMessage(cli);
+                    await this.QueueMessage(cli, span);
                     break;
                 case "closequeue":
                     await this.CloseQueue(cli, span);
@@ -300,6 +303,27 @@ export class Message {
             Logger.otel.endSpan(span);
         }
     }
+    async RegisterExchange(cli: WebSocketServerClient, parent: Span) {
+        this.Reply();
+        let msg: RegisterExchangeMessage;
+        try {
+            msg = RegisterExchangeMessage.assign(this.data);
+            var res = await cli.RegisterExchange(msg.exchangename, msg.algorithm, msg.routingkey, parent);
+            msg.queuename = res.queuename;
+            msg.exchangename = res.exchangename;
+        } catch (error) {
+            await handleError(cli, error);
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            await handleError(cli, error);
+        }
+        this.Send(cli);
+    }
     async RegisterQueue(cli: WebSocketServerClient, parent: Span) {
         this.Reply();
         let msg: RegisterQueueMessage;
@@ -319,7 +343,8 @@ export class Message {
         }
         this.Send(cli);
     }
-    async QueueMessage(cli: WebSocketServerClient) {
+    async QueueMessage(cli: WebSocketServerClient, parent: Span) {
+        const span: Span = Logger.otel.startSubSpan("message.QueueMessage", parent);
         this.Reply();
         let msg: QueueMessage
         try {
@@ -335,6 +360,9 @@ export class Message {
                     msg.data.jwt = msg.jwt;
                 }
             }
+            if (!NoderedUtil.IsNullEmpty(msg.exchange) && !Config.amqp_enabled_exchange) {
+                throw new Error("AMQP exchange is not enabled on this OpenFlow");
+            }
             const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_default_expiration);
             if (typeof msg.data === 'string' || msg.data instanceof String) {
                 try {
@@ -342,6 +370,38 @@ export class Message {
                 } catch (error) {
                 }
             }
+
+            if (msg.queuename.length == 24 && Config.amqp_force_sender_has_read) {
+                const tuser = Crypt.verityToken(msg.jwt);
+                let name = tuser.username.split("@").join("").split(".").join("");
+                name = name.toLowerCase();
+                let allowed: boolean = false;
+                if (tuser._id == msg.queuename) {
+                    // Queue is for me
+                    allowed = true;
+                } else if (tuser.roles != null) {
+                    // Queue is for a group i am a member of.
+                    const isrole = tuser.roles.filter(x => x._id == msg.queuename);
+                    if (isrole.length > 0) allowed = true;
+                }
+                if (!allowed) {
+                    // Do i have permission to send to a queue with this id ?
+                    const arr = await Config.db.query({ _id: msg.queuename }, { name: 1 }, 1, 0, null, "users", msg.jwt, undefined, undefined, span);
+                    if (arr.length > 0) allowed = true;
+                    if (!allowed) {
+                        const arr = await Config.db.query({ _id: msg.queuename }, { name: 1 }, 1, 0, null, "openrpa", msg.jwt, undefined, undefined, span);
+                        if (arr.length > 0) allowed = true;
+                    }
+                    if (!allowed) {
+                        const arr = await Config.db.query({ _id: msg.queuename }, { name: 1 }, 1, 0, null, "workflow", msg.jwt, undefined, undefined, span);
+                        if (arr.length > 0) allowed = true;
+                    }
+                }
+                if (!allowed) {
+                    throw new Error("Unknown queue or access denied");
+                }
+            }
+
             const sendthis: any = msg.data;
             try {
                 if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(msg.data.jwt)) {
@@ -363,13 +423,13 @@ export class Message {
             }
             if (NoderedUtil.IsNullEmpty(msg.replyto)) {
                 const sendthis = msg.data;
-                await amqpwrapper.Instance().send("", msg.queuename, sendthis, expiration, msg.correlationId);
+                await amqpwrapper.Instance().send(msg.exchange, msg.queuename, sendthis, expiration, msg.correlationId, msg.routingkey);
             } else {
                 if (msg.queuename === msg.replyto) {
-                    throw new Error("Cannot send reply to self queuename:" + msg.queuename + " correlationId:" + msg.correlationId);
+                    throw new Error("Cannot send reply to self queuename: " + msg.queuename + " correlationId: " + msg.correlationId);
                 }
                 const sendthis = msg.data;
-                const result = await amqpwrapper.Instance().sendWithReplyTo("", msg.queuename, msg.replyto, sendthis, expiration, msg.correlationId);
+                const result = await amqpwrapper.Instance().sendWithReplyTo(msg.exchange, msg.queuename, msg.replyto, sendthis, expiration, msg.correlationId, msg.routingkey);
             }
         } catch (error) {
             await handleError(cli, error);
@@ -382,6 +442,7 @@ export class Message {
             this.data = "";
             await handleError(cli, error);
         }
+        Logger.otel.endSpan(span);
         this.Send(cli);
     }
     async CloseQueue(cli: WebSocketServerClient, parent: Span) {
@@ -1161,14 +1222,7 @@ export class Message {
             name = name.split("@").join("").split(".").join("");
             name = name.toLowerCase();
 
-            Logger.instanse.debug("[" + user.username + "] ensure nodered role " + name + "noderedadmins");
-            const noderedadmins = await DBHelper.EnsureRole(jwt, name + "noderedadmins", null, span);
-            Base.addRight(noderedadmins, user._id, user.username, [Rights.full_control]);
-            Base.removeRight(noderedadmins, user._id, [Rights.delete]);
-            noderedadmins.AddMember(user);
-            Logger.instanse.debug("[" + user.username + "] update nodered role " + name + "noderedadmins");
-            await DBHelper.Save(noderedadmins, jwt, span);
-
+            DBHelper.EnsureNoderedRoles(user, jwt, span);
         } catch (error) {
             span.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -1356,19 +1410,8 @@ export class Message {
                 const tuser: TokenUser = TokenUser.From(nodereduser);
                 const nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
 
-                Logger.instanse.debug("[" + cli.user.username + "] ensure nodered role " + name + "noderedadmins");
-                const noderedadmins = await DBHelper.EnsureRole(cli.jwt, name + "noderedadmins", null, span);
-                Base.addRight(noderedadmins, nodereduser._id, nodereduser.username, [Rights.full_control]);
-                Base.removeRight(noderedadmins, nodereduser._id, [Rights.delete]);
-                Base.addRight(noderedadmins, cli.user._id, cli.user.username, [Rights.full_control]);
-                Base.removeRight(noderedadmins, cli.user._id, [Rights.delete]);
-                noderedadmins.AddMember(nodereduser);
-                Logger.instanse.debug("[" + cli.user.username + "] update nodered role " + name + "noderedadmins");
-                await DBHelper.Save(noderedadmins, cli.jwt, span);
-
-
+                DBHelper.EnsureNoderedRoles(tuser, cli.jwt, span);
                 let saml_baseurl = Config.protocol + "://" + hostname + "/";
-
                 let _samlparsed = url.parse(Config.saml_federation_metadata);
                 if (_samlparsed.protocol == "http:" || _samlparsed.protocol == "ws:") {
                     saml_baseurl = "http://" + hostname
@@ -1382,10 +1425,7 @@ export class Message {
                     }
                 }
                 saml_baseurl += "/";
-
-
                 // "saml_baseurl=" + saml_baseurl,
-
                 const Env = [
                     "saml_federation_metadata=" + Config.saml_federation_metadata,
                     "saml_issuer=" + Config.saml_issuer,
@@ -1401,6 +1441,7 @@ export class Message {
                     "port=" + Config.port.toString(),
                     "noderedusers=" + (name + "noderedusers"),
                     "noderedadmins=" + (name + "noderedadmins"),
+                    "noderedapiusers=" + (name + "nodered api users"),
                     "api_allow_anonymous=" + user.nodered.api_allow_anonymous.toString(),
                     "function_external_modules=" + user.nodered.function_external_modules.toString(),
                     "prometheus_measure_nodeid=" + Config.prometheus_measure_nodeid.toString(),
@@ -1412,6 +1453,7 @@ export class Message {
                     "otel_metric_url=" + Config.otel_metric_url,
                     "otel_trace_interval=" + Config.otel_trace_interval.toString(),
                     "otel_metric_interval=" + Config.otel_metric_interval.toString(),
+                    "amqp_enabled_exchange=" + Config.amqp_enabled_exchange.toString()
                 ]
                 // const image = await docker.pull(nodered_image, { serveraddress: "https://index.docker.io/v1" });
                 await this._pullImage(docker, nodered_image);
@@ -1493,15 +1535,7 @@ export class Message {
             const tuser: TokenUser = TokenUser.From(nodereduser);
             const nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
 
-            Logger.instanse.debug("[" + cli.user.username + "] ensure nodered role " + name + "noderedadmins");
-            const noderedadmins = await DBHelper.EnsureRole(cli.jwt, name + "noderedadmins", null, span);
-            Base.addRight(noderedadmins, nodereduser._id, nodereduser.username, [Rights.full_control]);
-            Base.removeRight(noderedadmins, nodereduser._id, [Rights.delete]);
-            Base.addRight(noderedadmins, cli.user._id, cli.user.username, [Rights.full_control]);
-            Base.removeRight(noderedadmins, cli.user._id, [Rights.delete]);
-            noderedadmins.AddMember(nodereduser);
-            Logger.instanse.debug("[" + cli.user.username + "] update nodered role " + name + "noderedadmins");
-            await DBHelper.Save(noderedadmins, cli.jwt, span);
+            DBHelper.EnsureNoderedRoles(tuser, cli.jwt, span);
 
             const resources = new V1ResourceRequirements();
             let hasbilling: boolean = false;
@@ -1660,6 +1694,7 @@ export class Message {
                                             { name: "port", value: Config.port.toString() },
                                             { name: "noderedusers", value: (name + "noderedusers") },
                                             { name: "noderedadmins", value: (name + "noderedadmins") },
+                                            { name: "noderedapiusers", value: (name + "nodered api users") },
                                             { name: "api_allow_anonymous", value: user.nodered.api_allow_anonymous.toString() },
                                             { name: "function_external_modules", value: user.nodered.function_external_modules.toString() },
                                             { name: "prometheus_measure_nodeid", value: Config.prometheus_measure_nodeid.toString() },
@@ -1671,7 +1706,7 @@ export class Message {
                                             { name: "otel_metric_url", value: Config.otel_metric_url },
                                             { name: "otel_trace_interval", value: Config.otel_trace_interval.toString() },
                                             { name: "otel_metric_interval", value: Config.otel_metric_interval.toString() },
-
+                                            { name: "amqp_enabled_exchange", value: Config.amqp_enabled_exchange.toString() },
                                         ],
                                         livenessProbe: livenessProbe,
                                     }
@@ -2275,7 +2310,7 @@ export class Message {
                         found = item;
                         if (item.status.phase != "Failed") {
                             msg.result = item;
-                            Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstance:" + name + " found one");
+                            Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstance: " + name + " found one");
                         }
                         var metrics: any = null;
                         try {
@@ -2402,7 +2437,7 @@ export class Message {
                         if (msg.instancename == item.metadata.name) {
                             if (cli.user.HasRoleName("admins") || item.metadata.labels.app === name) {
 
-                                Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstanceLog:" + name + " found one as " + item.metadata.name);
+                                Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstanceLog: " + name + " found one as " + item.metadata.name);
                                 const obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
                                 msg.result = obj.body;
                                 Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name, span);
@@ -2422,12 +2457,12 @@ export class Message {
 
                         }
                         if (!NoderedUtil.IsNullEmpty(msg.name) && item.metadata.name == msg.name && cli.user.HasRoleName("admins")) {
-                            Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstanceLog:" + name + " found one as " + item.metadata.name);
+                            Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstanceLog: " + name + " found one as " + item.metadata.name);
                             const obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
                             msg.result = obj.body;
                             Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name, span);
                         } else if (item.metadata.labels.app === name) {
-                            Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstanceLog:" + name + " found one as " + item.metadata.name);
+                            Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstanceLog: " + name + " found one as " + item.metadata.name);
                             const obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
                             msg.result = obj.body;
                             Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name, span);
@@ -2715,7 +2750,7 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.name)) throw new Error("name is mandatory when workflowid not set")
 
             if (msg.queue === msg.resultqueue) {
-                throw new Error("Cannot reply to self queuename:" + msg.queue + " correlationId:" + msg.resultqueue);
+                throw new Error("Cannot reply to self queuename: " + msg.queue + " correlationId: " + msg.resultqueue);
             }
 
             const res = await Config.db.query({ "_id": msg.targetid }, null, 1, 0, null, "users", msg.jwt, undefined, undefined, span);
@@ -2741,7 +2776,7 @@ export class Message {
 
             if (msg.initialrun) {
                 const message = { _id: res2._id, __jwt: msg.jwt, __user: tuser };
-                amqpwrapper.Instance().sendWithReplyTo("", msg.queue, msg.resultqueue, message, Config.amqp_default_expiration, msg.correlationId);
+                amqpwrapper.Instance().sendWithReplyTo("", msg.queue, msg.resultqueue, message, Config.amqp_default_expiration, msg.correlationId, "");
             }
         } catch (error) {
             span.recordException(error);

@@ -227,19 +227,7 @@ export class DBHelper {
             await this.Save(user, jwt, span);
             const users: Role = await this.FindRoleByName("users", span);
             users.AddMember(user);
-
-            if (Config.auto_create_personal_nodered_group) {
-                let name = user.username;
-                name = name.split("@").join("").split(".").join("");
-                name = name.toLowerCase();
-
-                const noderedadmins = await this.EnsureRole(jwt, name + "noderedadmins", null, span);
-                Base.addRight(noderedadmins, user._id, user.username, [Rights.full_control]);
-                Base.removeRight(noderedadmins, user._id, [Rights.delete]);
-                noderedadmins.AddMember(user);
-                await this.Save(noderedadmins, jwt, span);
-            }
-
+            this.EnsureNoderedRoles(user, jwt, span);
             await this.Save(users, jwt, span)
             await this.DecorateWithRoles(user, span);
             return user;
@@ -250,5 +238,28 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
+    public static async EnsureNoderedRoles(user: TokenUser | User, jwt: string, parent: Span): Promise<void> {
+        if (Config.auto_create_personal_nodered_group) {
+            let name = user.username;
+            name = name.split("@").join("").split(".").join("");
+            name = name.toLowerCase();
 
+            const noderedadmins = await this.EnsureRole(jwt, name + "noderedadmins", null, parent);
+            Base.addRight(noderedadmins, user._id, user.username, [Rights.full_control]);
+            Base.removeRight(noderedadmins, user._id, [Rights.delete]);
+            noderedadmins.AddMember(user as User);
+            await this.Save(noderedadmins, jwt, parent);
+        }
+        if (Config.auto_create_personal_noderedapi_group) {
+            let name = user.username;
+            name = name.split("@").join("").split(".").join("");
+            name = name.toLowerCase();
+
+            const noderedadmins = await this.EnsureRole(jwt, name + "nodered api users", null, parent);
+            Base.addRight(noderedadmins, user._id, user.username, [Rights.full_control]);
+            Base.removeRight(noderedadmins, user._id, [Rights.delete]);
+            noderedadmins.AddMember(user as User);
+            await this.Save(noderedadmins, jwt, parent);
+        }
+    }
 }

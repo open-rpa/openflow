@@ -7,6 +7,7 @@ import { NoderedUtil } from "@openiap/openflow-api";
 import { WebSocketServer } from "./WebSocketServer";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
+import events = require("events");
 const got = require("got");
 type QueueOnMessage = (msg: string, options: QueueMessageOptions, ack: any, done: any) => void;
 interface IHashTable<T> {
@@ -53,8 +54,13 @@ export class amqpexchange {
     public ok: amqplib.Replies.AssertExchange;
     public ExchangeOptions: any;
 }
+export declare interface amqpwrapper {
+    on(event: 'connected', listener: () => void): this;
+    on(event: 'disconnected', listener: () => void): this;
+    on(event: string, listener: Function): this;
+}
 // tslint:disable-next-line: class-name
-export class amqpwrapper {
+export class amqpwrapper extends events.EventEmitter {
     private conn: amqplib.Connection;
     private channel: amqplib.ConfirmChannel; // amqplib.Channel  channel: amqplib.ConfirmChannel;
     // private confirmchannel: amqplib.ConfirmChannel; // channel: amqplib.ConfirmChannel;
@@ -62,9 +68,10 @@ export class amqpwrapper {
     public AssertExchangeOptions: any = { durable: false, confirm: true };
     public AssertQueueOptions: amqplib.any = { durable: true };
     private activecalls: IHashTable<Deferred<string>> = {};
+    // private queues: IHashTable<Deferred<string>> = {};
     // public queues: IHashTable<amqpqueue> = {};
     // private exchanges: IHashTable<amqpexchange> = {};
-    // public queues: amqpqueue[] = [];
+    private queues: amqpqueue[] = [];
     private exchanges: amqpexchange[] = [];
     private replyqueue: amqpqueue;
     private static _instance: amqpwrapper = null;
@@ -75,6 +82,7 @@ export class amqpwrapper {
         this._instance = instance;
     }
     constructor(connectionstring: string) {
+        super();
         this.connectionstring = connectionstring;
         if (!NoderedUtil.IsNullEmpty(Config.amqp_dlx)) {
             this.AssertQueueOptions.arguments = {};
@@ -94,6 +102,7 @@ export class amqpwrapper {
     async connect(): Promise<void> {
         try {
             if (this.timeout != null) {
+                clearTimeout(this.timeout);
                 this.timeout = null;
             }
             if (this.conn == null) {
@@ -106,12 +115,33 @@ export class amqpwrapper {
                 this.conn.on("close", () => {
                     Logger.instanse.info("[AMQP] reconnecting");
                     this.conn = null;
-                    if (this.timeout == null) {
-                        this.timeout = setTimeout(this.connect.bind(this), 1000);
+                    if (this.timeout != null) {
+                        clearTimeout(this.timeout);
+                        this.timeout = null;
                     }
+                    this.timeout = setTimeout(this.connect.bind(this), 1000);
+                    this.emit("disconnected");
                 });
             }
-
+            await this.AddReplyQueue();
+            this.channel.on('error', (error) => {
+                if (error.code != 404) {
+                    Logger.instanse.error(error);
+                }
+            });
+            this.emit("connected");
+        } catch (error) {
+            console.error(error);
+            if (this.timeout != null) {
+                clearTimeout(this.timeout);
+                this.timeout = null;
+            }
+            this.timeout = setTimeout(this.connect.bind(this), 1000);
+        }
+    }
+    async AddReplyQueue(): Promise<void> {
+        try {
+            console.log("AddReplyQueue begin");
             this.channel = await this.conn.createConfirmChannel();
             this.replyqueue = await this.AddQueueConsumer("", null, null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
                 if (this.replyqueue) {
@@ -126,25 +156,52 @@ export class amqpwrapper {
                 ack();
                 done();
             }, undefined);
-            this.channel.on('close', (e) => {
+            // We don't want to recreate this
+            this.queues = this.queues.filter(q => q.consumerTag != this.replyqueue.consumerTag);
+            this.channel.on('return', async (e1) => {
+                try {
+                    let msg = e1.content.toString();
+                    let exchange: string = "";
+                    let routingKey: string = "";
+                    let replyTo: string = "";
+                    let correlationId: string = "";
+                    let errormsg: string = "Send timeout";
+                    if (e1.fields && e1.fields.replyText) errormsg = e1.fields.replyText;
+                    if (e1.fields && e1.fields.exchange) exchange = e1.fields.exchange;
+                    if (e1.fields && e1.fields.routingKey) routingKey = e1.fields.routingKey;
+                    if (e1.properties && e1.properties.replyTo) replyTo = e1.properties.replyTo;
+                    if (e1.properties && e1.properties.correlationId) correlationId = e1.properties.correlationId;
+
+                    if (typeof msg === "string" || msg instanceof String) {
+                        try {
+                            msg = JSON.parse((msg as any));
+                        } catch (error) {
+                        }
+                    }
+                    if (!NoderedUtil.IsNullEmpty(replyTo)) {
+                        msg.command = "timeout";
+                        Logger.instanse.info("[AMQP][" + routingKey + "] notify " + replyTo + " " + errormsg + " to " + routingKey)
+                        await amqpwrapper.Instance().send("", replyTo, msg, 20000, correlationId, "");
+                    }
+                } catch (error) {
+                }
+            })
+            this.channel.on('close', () => {
                 try {
                     if (this.conn != null) this.conn.close();
                 } catch (error) {
                 }
-                this.conn = null;
                 this.channel = null;
-                if (this.timeout == null) {
-                    this.timeout = setTimeout(this.connect.bind(this), 1000);
+                if (this.timeout != null) {
+                    clearTimeout(this.timeout);
+                    this.timeout = null;
                 }
+                this.timeout = setTimeout(this.connect.bind(this), 1000);
             });
-            this.channel.on('error', (error) => {
-                if (error.code != 404) {
-                    Logger.instanse.error(error);
-                }
-            });
+
+            console.log("AddReplyQueue complete");
         } catch (error) {
             console.error(error);
-            this.timeout = setTimeout(this.connect.bind(this), 1000);
         }
     }
     async RemoveQueueConsumer(queue: amqpqueue, parent: Span): Promise<void> {
@@ -153,6 +210,7 @@ export class amqpwrapper {
             if (queue != null) {
                 Logger.instanse.info("[AMQP] Remove queue consumer " + queue.queue + "/" + queue.consumerTag);
                 if (this.channel != null) await this.channel.cancel(queue.consumerTag);
+                this.queues = this.queues.filter(q => q.consumerTag != queue.consumerTag);
             }
         } catch (error) {
             span.recordException(error);
@@ -177,7 +235,7 @@ export class amqpwrapper {
                         // Queue is for me
                         skip = false;
                     } else if (tuser.roles != null) {
-                        // Queue ss for a group i am a member of.
+                        // Queue is for a group i am a member of.
                         const isrole = tuser.roles.filter(x => x._id == queue);
                         if (isrole.length > 0) skip = false;
                     }
@@ -195,6 +253,7 @@ export class amqpwrapper {
                         }
                         if (!skip) {
                             queue = name + queue;
+                            if (queue.length == 24) { queue += "1"; }
                         } else {
                             Logger.instanse.info("[SKIP] skipped force prefix for " + queue);
                         }
@@ -206,6 +265,7 @@ export class amqpwrapper {
                     let name = tuser.username.split("@").join("").split(".").join("");
                     name = name.toLowerCase();
                     queue = name + queue;
+                    if (queue.length == 24) { queue += "1"; }
                 }
             } else if (queue.length == 24) {
                 if (NoderedUtil.IsNullEmpty(jwt)) {
@@ -236,9 +296,12 @@ export class amqpwrapper {
             q.QueueOptions = Object.assign({}, (QueueOptions != null ? QueueOptions : this.AssertQueueOptions));
             if (NoderedUtil.IsNullEmpty(queue)) queue = "";
             if (queue.startsWith("amq.")) queue = "";
-            if (NoderedUtil.IsNullEmpty(queue)) q.QueueOptions.autoDelete = true;
+            // if (NoderedUtil.IsNullEmpty(queue)) q.QueueOptions.autoDelete = true;
+            if (NoderedUtil.IsNullEmpty(queue)) q.QueueOptions.exclusive = true;
+            // if (NoderedUtil.IsNullEmpty(queue)) q.QueueOptions.autoDelete = true;
             q.ok = await this.channel.assertQueue(queue, q.QueueOptions);
             if (q && q.ok) {
+                this.queues.push(q);
                 q.queue = q.ok.queue;
                 q.queuename = queuename;
                 const consumeresult = await this.channel.consume(q.ok.queue, (msg) => {
@@ -258,12 +321,14 @@ export class amqpwrapper {
     async AddExchangeConsumer(exchange: string, algorithm: string, routingkey: string, ExchangeOptions: any, jwt: string, callback: QueueOnMessage, parent: Span): Promise<amqpexchange> {
         const span: Span = Logger.otel.startSubSpan("amqpwrapper.validateToken", parent);
         try {
+            if (NoderedUtil.IsNullEmpty(exchange)) throw new Error("exchange name cannot be empty");
             if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Exchange Consumer, not connected to rabbitmq");
             if (Config.amqp_force_exchange_prefix && !NoderedUtil.IsNullEmpty(jwt)) {
                 const tuser = Crypt.verityToken(jwt);
                 let name = tuser.username.split("@").join("").split(".").join("");
                 name = name.toLowerCase();
                 exchange = name + exchange;
+                if (exchange.length == 24) { exchange += "1"; }
             }
             const q: amqpexchange = new amqpexchange();
             if (!NoderedUtil.IsNullEmpty(q.queue)) {
@@ -271,6 +336,7 @@ export class amqpwrapper {
             }
             // q.ExchangeOptions = new Object((ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));
             q.ExchangeOptions = Object.assign({}, (ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));
+            if (exchange != Config.amqp_dlx) q.ExchangeOptions.autoDelete = true;
             q.exchange = exchange; q.algorithm = algorithm; q.routingkey = routingkey; q.callback = callback;
             const _ok = await this.channel.assertExchange(q.exchange, q.algorithm, q.ExchangeOptions);
             let AssertQueueOptions = null;
@@ -350,44 +416,53 @@ export class amqpwrapper {
             console.error(error);
         }
     }
-    async sendWithReply(exchange: string, queue: string, data: any, expiration: number, correlationId: string): Promise<string> {
+    async sendWithReply(exchange: string, queue: string, data: any, expiration: number, correlationId: string, routingkey: string): Promise<string> {
         if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = this.generateUuid();
         this.activecalls[correlationId] = new Deferred();
         if (this.replyqueue) {
-            await this.sendWithReplyTo(exchange, queue, this.replyqueue.queue, data, expiration, correlationId);
+            await this.sendWithReplyTo(exchange, queue, this.replyqueue.queue, data, expiration, correlationId, routingkey);
         }
         return this.activecalls[correlationId].promise;
     }
-    async sendWithReplyTo(exchange: string, queue: string, replyTo: string, data: any, expiration: number, correlationId: string): Promise<void> {
+    async sendWithReplyTo(exchange: string, queue: string, replyTo: string, data: any, expiration: number, correlationId: string, routingkey: string): Promise<void> {
         if (this.channel == null || this.conn == null) {
             throw new Error("Cannot send message, when not connected");
         }
         if (typeof data !== 'string' && !(data instanceof String)) {
             data = JSON.stringify(data);
         }
-
-        Logger.instanse.info("send to queue: " + queue + " exchange: " + exchange + " with reply to " + replyTo);
+        Logger.instanse.info("send to queue: " + queue + " exchange: " + exchange + " with reply to " + replyTo + " correlationId: " + correlationId);
         const options: any = { mandatory: true };
         options.replyTo = replyTo;
         if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = this.generateUuid();
         if (!NoderedUtil.IsNullEmpty(correlationId)) options.correlationId = correlationId;
         if (expiration < 1) expiration = Config.amqp_default_expiration;
         options.expiration = expiration.toString();
+        options.mandatory = true;
+        // options.confirm = true;
+        // options.persistent = true;
+        // options.durable = true;
+        // options.mandatory = true;
+        // options.immediate = true;
         if (NoderedUtil.IsNullEmpty(exchange)) {
-            if (!await this.checkQueue(queue)) {
-                throw new Error("No consumer listening at " + queue);
-            }
-            if (!this.channel.sendToQueue(queue, Buffer.from(data), options, (err, ok) => {
-            })) {
-                throw new Error("No consumer listening at " + queue);
-            }
+            this.channel.publish("", queue, Buffer.from(data), options);
+
+            await this.channel.waitForConfirms();
+
+            // if (!await this.checkQueue(queue)) {
+            //     throw new Error("No consumer listening at " + queue);
+            // }
+            // if (!this.channel.sendToQueue(queue, Buffer.from(data), options, (err, ok) => {
+            // })) {
+            //     throw new Error("No consumer listening at " + queue);
+            // }
             if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_message_count)) WebSocketServer.websocket_queue_message_count.
                 bind({ ...Logger.otel.defaultlabels, queuename: queue }).update(this.incqueuemessagecounter(queue));
         } else {
-            this.channel.publish(exchange, "", Buffer.from(data), options);
+            this.channel.publish(exchange, routingkey, Buffer.from(data), options);
         }
     }
-    async send(exchange: string, queue: string, data: any, expiration: number, correlationId: string): Promise<void> {
+    async send(exchange: string, queue: string, data: any, expiration: number, correlationId: string, routingkey: string): Promise<void> {
         if (this.channel == null || this.conn == null) {
             throw new Error("Cannot send message, when not connected");
         }
@@ -395,24 +470,32 @@ export class amqpwrapper {
             data = JSON.stringify(data);
         }
         if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = this.generateUuid();
-
         Logger.instanse.info("send to queue: " + queue + " exchange: " + exchange);
         const options: any = { mandatory: true };
         if (!NoderedUtil.IsNullEmpty(correlationId)) options.correlationId = correlationId;
         if (expiration < 1) expiration = Config.amqp_default_expiration;
         options.expiration = expiration.toString();
+        options.mandatory = true;
+        // options.confirm = true;
+        // options.persistent = true;
+        // options.durable = true;
+        // options.mandatory = true;
+        // options.immediate = true;
         if (NoderedUtil.IsNullEmpty(exchange)) {
-            if (!await this.checkQueue(queue)) {
-                throw new Error("No consumer listening at " + queue);
-            }
-            if (!this.channel.sendToQueue(queue, Buffer.from(data), options, (err, ok) => {
-            })) {
-                throw new Error("No consumer listening at " + queue);
-            }
+            this.channel.publish("", queue, Buffer.from(data), options);
+            await this.channel.waitForConfirms();
+
+            // if (!await this.checkQueue(queue)) {
+            //     throw new Error("No consumer listening at " + queue);
+            // }
+            // if (!this.channel.sendToQueue(queue, Buffer.from(data), options, (err, ok) => {
+            // })) {
+            //     throw new Error("No consumer listening at " + queue);
+            // }
             if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_message_count)) WebSocketServer.websocket_queue_message_count.
                 bind({ ...Logger.otel.defaultlabels, queuename: queue }).update(this.incqueuemessagecounter(queue));
         } else {
-            this.channel.publish(exchange, "", Buffer.from(data), options);
+            this.channel.publish(exchange, routingkey, Buffer.from(data), options);
         }
     }
     generateUuid(): string {
