@@ -337,15 +337,16 @@ export class WebSocketServerClient {
                 queue = await amqpwrapper.Instance().AddQueueConsumer(qname, AssertQueueOptions, this.jwt, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
                     const _data = msg;
                     try {
+                        Logger.instanse.verbose("[preack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId)
                         const result = await this.Queue(msg, qname, options);
                         ack();
                         done(result);
+                        Logger.instanse.debug("[ack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId)
                     } catch (error) {
                         setTimeout(() => {
                             ack(false);
-                            // ack(); // just eat the error 
                             done(_data);
-                            console.error(qname + " failed message queue message, nack and re queue message: ", (error.message ? error.message : error));
+                            Logger.instanse.warn("[nack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId + " error: " + (error.message ? error.message : error))
                         }, Config.amqp_requeue_time);
                     }
                 }, span);
@@ -486,7 +487,6 @@ export class WebSocketServerClient {
         q.consumerTag = options.consumerTag;
         q.routingkey = options.routingkey;
         q.exchange = options.exchange;
-
         let m: Message = Message.fromcommand("queuemessage");
         if (NoderedUtil.IsNullEmpty(q.correlationId)) { q.correlationId = m.id; }
         m.data = JSON.stringify(q);

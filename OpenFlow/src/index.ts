@@ -84,7 +84,7 @@ async function adddlx() {
             msg.command = "timeout";
             // Resend message, this time to the reply queue for the correct node (replyTo)
             // this.SendMessage(JSON.stringify(data), msg.properties.replyTo, msg.properties.correlationId, false);
-            Logger.instanse.info("[DLX][" + options.exchange + "] Send timeout to " + options.replyTo)
+            Logger.instanse.info("[DLX][" + options.exchange + "] Send timeout to " + options.replyTo + " correlationId: " + options.correlationId);
             await amqpwrapper.Instance().sendWithReply("", options.replyTo, msg, 20000, options.correlationId, "");
         } catch (error) {
             console.error("Failed sending deadletter message to " + options.replyTo);

@@ -426,7 +426,7 @@ export class Message {
                 await amqpwrapper.Instance().send(msg.exchange, msg.queuename, sendthis, expiration, msg.correlationId, msg.routingkey);
             } else {
                 if (msg.queuename === msg.replyto) {
-                    throw new Error("Cannot send reply to self queuename:" + msg.queuename + " correlationId:" + msg.correlationId);
+                    throw new Error("Cannot send reply to self queuename: " + msg.queuename + " correlationId: " + msg.correlationId);
                 }
                 const sendthis = msg.data;
                 const result = await amqpwrapper.Instance().sendWithReplyTo(msg.exchange, msg.queuename, msg.replyto, sendthis, expiration, msg.correlationId, msg.routingkey);
@@ -2310,7 +2310,7 @@ export class Message {
                         found = item;
                         if (item.status.phase != "Failed") {
                             msg.result = item;
-                            Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstance:" + name + " found one");
+                            Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstance: " + name + " found one");
                         }
                         var metrics: any = null;
                         try {
@@ -2437,7 +2437,7 @@ export class Message {
                         if (msg.instancename == item.metadata.name) {
                             if (cli.user.HasRoleName("admins") || item.metadata.labels.app === name) {
 
-                                Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstanceLog:" + name + " found one as " + item.metadata.name);
+                                Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstanceLog: " + name + " found one as " + item.metadata.name);
                                 const obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
                                 msg.result = obj.body;
                                 Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name, span);
@@ -2457,12 +2457,12 @@ export class Message {
 
                         }
                         if (!NoderedUtil.IsNullEmpty(msg.name) && item.metadata.name == msg.name && cli.user.HasRoleName("admins")) {
-                            Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstanceLog:" + name + " found one as " + item.metadata.name);
+                            Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstanceLog: " + name + " found one as " + item.metadata.name);
                             const obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
                             msg.result = obj.body;
                             Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name, span);
                         } else if (item.metadata.labels.app === name) {
-                            Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstanceLog:" + name + " found one as " + item.metadata.name);
+                            Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstanceLog: " + name + " found one as " + item.metadata.name);
                             const obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
                             msg.result = obj.body;
                             Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name, span);
@@ -2750,7 +2750,7 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.name)) throw new Error("name is mandatory when workflowid not set")
 
             if (msg.queue === msg.resultqueue) {
-                throw new Error("Cannot reply to self queuename:" + msg.queue + " correlationId:" + msg.resultqueue);
+                throw new Error("Cannot reply to self queuename: " + msg.queue + " correlationId: " + msg.resultqueue);
             }
 
             const res = await Config.db.query({ "_id": msg.targetid }, null, 1, 0, null, "users", msg.jwt, undefined, undefined, span);

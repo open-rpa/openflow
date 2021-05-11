@@ -431,7 +431,6 @@ export class amqpwrapper extends events.EventEmitter {
         if (typeof data !== 'string' && !(data instanceof String)) {
             data = JSON.stringify(data);
         }
-
         Logger.instanse.info("send to queue: " + queue + " exchange: " + exchange + " with reply to " + replyTo + " correlationId: " + correlationId);
         const options: any = { mandatory: true };
         options.replyTo = replyTo;
@@ -471,7 +470,6 @@ export class amqpwrapper extends events.EventEmitter {
             data = JSON.stringify(data);
         }
         if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = this.generateUuid();
-
         Logger.instanse.info("send to queue: " + queue + " exchange: " + exchange);
         const options: any = { mandatory: true };
         if (!NoderedUtil.IsNullEmpty(correlationId)) options.correlationId = correlationId;
