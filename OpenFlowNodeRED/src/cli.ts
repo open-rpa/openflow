@@ -6,7 +6,6 @@ import { Config } from "./Config";
 import { logger, loadenv, envfilename, envfilepathname, servicename, isOpenFlow } from "./nodeclient/cliutil";
 import { WebSocketClient, SigninMessage, Message, NoderedUtil } from "@openiap/openflow-api";
 import { pm2stop, pm2delete, pm2start, pm2restart, pm2list, pm2disconnect, pm2dump, pm2startup, pm2exists } from "./nodeclient/pm2util";
-import { platform } from "node:os";
 
 const optionDefinitions = [
     { name: 'verbose', alias: 'v', type: Boolean },
