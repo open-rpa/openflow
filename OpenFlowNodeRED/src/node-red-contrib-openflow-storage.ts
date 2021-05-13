@@ -350,17 +350,17 @@ export class noderedcontribopenflowstorage {
             "license": "MPL-2.0",
             "description": "A OpenFlow Node-RED Project",
             "version": "0.0.1",
-            "dependencies": [],
+            "dependencies": {},
             "repository": {
                 "type": "git",
                 "url": "git+https://github.com/open-rpa/openflow.git"
             },
         };
         // Let's not !
-        //if (!fs.existsSync(packageFile)) {
-        Logger.instanse.debug("creating new packageFile " + packageFile);
-        fs.writeFileSync(packageFile, JSON.stringify(defaultPackage, null, 4));
-        //}
+        if (!fs.existsSync(packageFile)) {
+            Logger.instanse.debug("creating new packageFile " + packageFile);
+            fs.writeFileSync(packageFile, JSON.stringify(defaultPackage, null, 4));
+        }
         // const dbsettings = await this._getSettings();
         // spawn gettings, so it starts installing
         return true;
