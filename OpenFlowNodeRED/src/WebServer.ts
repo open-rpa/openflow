@@ -1,3 +1,4 @@
+import * as os from "os";
 import * as path from "path";
 import * as http from "http";
 import * as https from "https";
@@ -24,6 +25,7 @@ import { hrTime } from "@opentelemetry/core";
 import * as RED from "node-red";
 import { Red } from "node-red";
 import { Logger } from "./Logger";
+var _hostname = "";
 
 export class log_message_node {
     public span: Span;
@@ -70,7 +72,6 @@ export class log_message {
         this.span.setAttribute("name", this.name)
     }
 }
-
 export class WebServer {
     private static app: express.Express = null;
 
@@ -347,7 +348,8 @@ export class WebServer {
                 this.app.use(this.settings.httpNodeRoot, RED.httpNode);
 
                 this.app.get("/livenessprobe", (req: any, res: any, next: any): void => {
-                    res.end(JSON.stringify({ "success": "true" }));
+                    if (NoderedUtil.IsNullEmpty(_hostname)) _hostname = (Config.getEnv("HOSTNAME", undefined) || os.hostname()) || "unknown";
+                    res.end(JSON.stringify({ "success": "true", "hostname": _hostname }));
                     res.end();
                 });
 
