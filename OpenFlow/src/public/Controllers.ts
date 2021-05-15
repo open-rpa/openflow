@@ -3723,6 +3723,22 @@ export class PaymentCtrl extends entityCtrl<Billing> {
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
+    async OpenPortal() {
+        try {
+            var payload: stripe_base = {} as any;
+            (payload as any).customer = this.stripe_customer.id;
+            var session: any = await NoderedUtil.Stripe("POST", "billing_portal/sessions", null, null, payload, null);
+            if (session && session.url) {
+                window.open(session.url, '_blank');
+                // window.location.href = session.url;
+            } else {
+                this.cardmessage = "Failed getting portal session url";
+            }
+        } catch (error) {
+            console.error(error);
+            this.cardmessage = error;
+        }
+    }
     async CheckOut(planid: string, subplanid: string) {
         try {
             const result = await NoderedUtil.StripeAddPlan(this.userid, planid, subplanid, null);

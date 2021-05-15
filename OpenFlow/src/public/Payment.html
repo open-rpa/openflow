@@ -344,9 +344,12 @@
         </div>
         <!-- ng-hide="ctrl.hastaxinfo && ctrl.hascustomer && (ctrl.model.coupon==null || ctrl.model.coupon == "")" -->
         <div class="form-group">
+            <label class="control-label" translate lib="web" ng-hide="!ctrl.hastaxinfo">Update / Manage</label>
             <div class="col-sm-offset-3 col-sm-9">
                 <button type="button" ng-click="ctrl.Save()" ng-disabled="ctrl.loading==true" class="btn btn-success"
                     translate lib="web">save</button>
+                <button type="button" ng-click="ctrl.OpenPortal()" ng-disabled="ctrl.loading==true"
+                    class="btn btn-success" translate lib="web">Portal</button>
             </div>
         </div>
         <!-- If you are based in Denmark, or you are based in an EU country and do not have a valid VAT number, you will be

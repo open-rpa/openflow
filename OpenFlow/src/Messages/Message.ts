@@ -1513,9 +1513,11 @@ export class Message {
         let user: NoderedUser;
         const span: Span = Logger.otel.startSubSpan("message._EnsureNoderedInstance", parent);
         try {
-            Logger.instanse.debug("[" + cli.user.username + "] EnsureNoderedInstance");
+            // Logger.instanse.debug("[" + cli.user.username + "] EnsureNoderedInstance");
             if (_id === null || _id === undefined || _id === "") _id = cli.user._id;
             const name = await this.GetInstanceName(_id, cli.user._id, cli.user.username, cli.jwt, span);
+
+            Logger.instanse.debug("[" + cli.user.username + "] EnsureNoderedInstance for " + name + " in namespace " + Config.namespace);
 
             const users = await Config.db.query<NoderedUser>({ _id: _id }, null, 1, 0, null, "users", cli.jwt, undefined, undefined, span);
             if (users.length == 0) {
@@ -1858,7 +1860,12 @@ export class Message {
     private async _DeleteNoderedInstance(_id: string, myuserid: string, myusername: string, jwt: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message._DeleteNoderedInstance", parent);
         try {
+
+            if (_id === null || _id === undefined || _id === "") _id = myuserid;
             const name = await this.GetInstanceName(_id, myuserid, myusername, jwt, span);
+
+
+            // const name = await this.GetInstanceName(_id, myuserid, myusername, jwt, span);
             const user = Crypt.verityToken(jwt);
             const namespace = Config.namespace;
             let nodered_domain_schema = Config.nodered_domain_schema;
@@ -1866,7 +1873,6 @@ export class Message {
                 nodered_domain_schema = "$nodered_id$." + Config.domain;
             }
             const hostname = nodered_domain_schema.replace("$nodered_id$", name);
-
 
             const deployment = await KubeUtil.instance().GetDeployment(namespace, name);
             if (deployment != null) {
@@ -1883,14 +1889,20 @@ export class Message {
                     Audit.NoderedAction(user, false, name, "deletedeployment", image, null, span);
                     throw error;
                 }
+            } else {
+                Logger.instanse.warn("_DeleteNoderedInstance: Did not find deployment for " + name + " in namespace " + namespace);
             }
             const service = await KubeUtil.instance().GetService(namespace, name);
             if (service != null) {
                 await KubeUtil.instance().CoreV1Api.deleteNamespacedService(name, namespace);
+            } else {
+                Logger.instanse.warn("_DeleteNoderedInstance: Did not find service for " + name + " in namespace " + namespace);
             }
             const replicaset = await KubeUtil.instance().GetReplicaset(namespace, "app", name);
             if (replicaset !== null) {
                 KubeUtil.instance().AppsV1Api.deleteNamespacedReplicaSet(replicaset.metadata.name, namespace);
+            } else {
+                Logger.instanse.warn("_DeleteNoderedInstance: Did not find replicaset for " + name + " in namespace " + namespace);
             }
             const ingress = await KubeUtil.instance().GetIngressV1beta1(namespace, "useringress");
             if (ingress !== null) {
@@ -1904,6 +1916,8 @@ export class Message {
                 if (updated) {
                     delete ingress.metadata.creationTimestamp;
                     await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("useringress", namespace, ingress);
+                } else {
+                    Logger.instanse.warn("_DeleteNoderedInstance: Did not find ingress entry for " + name + " in namespace " + namespace);
                 }
             } else {
                 throw new Error("failed locating useringress");
@@ -3284,7 +3298,9 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.object)) throw new Error("object is mandatory");
             if (!cli.user.HasRoleName("admins")) {
                 if (!NoderedUtil.IsNullEmpty(msg.url)) throw new Error("Custom url not allowed");
-                if (msg.object != "plans" && msg.object != "subscription_items" && msg.object != "invoices_upcoming") throw new Error("Access to " + msg.object + " is not allowed");
+                if (msg.object != "plans" && msg.object != "subscription_items" && msg.object != "invoices_upcoming" && msg.object != "billing_portal/sessions") {
+                    throw new Error("Access to " + msg.object + " is not allowed");
+                }
 
                 if (msg.object == "subscription_items" && msg.method != "POST") throw new Error("Access to " + msg.object + " is not allowed");
                 if (msg.object == "plans" && msg.method != "GET") throw new Error("Access to " + msg.object + " is not allowed");
