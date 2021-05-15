@@ -107,10 +107,9 @@ const Semaphore = (n) => ({
         this.n++;
     },
     async wait() {
-        if (this.n <= 0) return await new Promise((res, req) => {
+        if (this.n <= 0) return new Promise((res, req) => {
             setImmediate(async () => res(await this.wait()))
         });
-        return;
     },
 });
 const semaphore = Semaphore(1);

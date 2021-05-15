@@ -684,7 +684,10 @@ export class LoginProvider {
                 },
             });
             const upload = multer({ //multer settings for single upload
-                storage: storage
+                storage: storage,
+                limits: {
+                    fileSize: (1000000 * 25) // 25MB
+                }
             }).any();
 
             // app.get("/upload", async (req: any, res: any, next: any): Promise<void> => {

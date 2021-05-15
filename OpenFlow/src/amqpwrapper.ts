@@ -505,13 +505,14 @@ export class amqpwrapper extends events.EventEmitter {
     }
     static parseurl(amqp_url): url.UrlWithParsedQuery {
         const q = url.parse(amqp_url, true);
-        (q as any).username = "guest";
-        (q as any).password = "guest";
         if (q.port == null || q.port == "") { q.port = "15672"; }
         if (q.auth != null && q.auth != "") {
             const arr = q.auth.split(':');
             (q as any).username = arr[0];
             (q as any).password = arr[1];
+        } else {
+            (q as any).username = Config.amqp_username;
+            (q as any).password = Config.amqp_password;
         }
         q.protocol = 'http://';
         return q;
