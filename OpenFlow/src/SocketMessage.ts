@@ -1,3 +1,4 @@
+import { NoderedUtil } from "@openiap/openflow-api";
 import * as crypto from "crypto";
 import { Message } from "./Messages/Message";
 
@@ -23,7 +24,7 @@ export class SocketMessage {
         if (isNumber(obj.count)) { result.count = obj.count; }
         if (isNumber(obj.index)) { result.index = obj.index; }
         if (result.id === null || result.id === undefined || result.id === "") {
-            result.id = crypto.randomBytes(16).toString("hex");
+            result.id = NoderedUtil.GetUniqueIdentifier();
         }
         return result;
     }
@@ -32,7 +33,7 @@ export class SocketMessage {
         result.command = command;
         result.count = 1;
         result.index = 0;
-        result.id = crypto.randomBytes(16).toString("hex");
+        result.id = NoderedUtil.GetUniqueIdentifier();
         return result;
     }
     public static frommessage(msg: Message, data: string, count: number, index: number): SocketMessage {

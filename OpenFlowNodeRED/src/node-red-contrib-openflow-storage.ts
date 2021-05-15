@@ -666,19 +666,19 @@ export class noderedcontribopenflowstorage {
         try {
             // let events = this.RED.runtime.events;
             // events.emit("runtime-event", { id: "runtime-deploy", payload: { revision: "1" }, retain: true });
-            // events.emit("runtime-event", { id: Math.random().toString(36).substr(2, 9), payload: { type: "warning", text: "Hi mom1" }, retain: false });
-            // events.emit("runtime-event", { id: Math.random().toString(36).substr(2, 9), payload: { type: "warning", text: "Hi mom2" }, retain: true });
-            // events.emit("runtime-event", { id: Math.random().toString(36).substr(2, 9), payload: { text: "Hi mom3" }, retain: true });
-            // events.emit("runtime-event", { id: Math.random().toString(36).substr(2, 9), payload: { text: "Hi mom4" }, retain: false });
+            // events.emit("runtime-event", { id: NoderedUtil.GetUniqueIdentifier(), payload: { type: "warning", text: "Hi mom1" }, retain: false });
+            // events.emit("runtime-event", { id: NoderedUtil.GetUniqueIdentifier(), payload: { type: "warning", text: "Hi mom2" }, retain: true });
+            // events.emit("runtime-event", { id: NoderedUtil.GetUniqueIdentifier(), payload: { text: "Hi mom3" }, retain: true });
+            // events.emit("runtime-event", { id: NoderedUtil.GetUniqueIdentifier(), payload: { text: "Hi mom4" }, retain: false });
             // events.emit("runtime-event", { id: "runtime-state", payload: { type: "warning", text: "Hi mom" }, retain: true });
             // events.emit("runtime-event", { id: "runtime-state", payload: { type: "warning", text: "Hi mom" }, retain: false });
             // events.emit("runtime-event", { id: "node/added", retain: false, payload: "Hi mom" });
             // events.emit("runtime-event", { id: "runtime-state", retain: true });
             // events.emit("runtime-event", { id: "node/enabled", retain: false, payload: "Hi mom" });
             // try {
-            // events.emit("runtime-event", { id: Math.random().toString(36).substr(2, 9), payload: { text: "Hi mom" }, retain: false });
-            // events.emit("runtime-event", { id: Math.random().toString(36).substr(2, 9), payload: { type: "info", text: "Hi mom" }, retain: false });
-            // events.emit("runtime-event", { id: Math.random().toString(36).substr(2, 9), payload: { text: "Hi mom" } });
+            // events.emit("runtime-event", { id: NoderedUtil.GetUniqueIdentifier(), payload: { text: "Hi mom" }, retain: false });
+            // events.emit("runtime-event", { id: NoderedUtil.GetUniqueIdentifier(), payload: { type: "info", text: "Hi mom" }, retain: false });
+            // events.emit("runtime-event", { id: NoderedUtil.GetUniqueIdentifier(), payload: { text: "Hi mom" } });
             // } catch (error) {
             //     console.error(error);
             // }

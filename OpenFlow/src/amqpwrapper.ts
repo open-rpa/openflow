@@ -417,7 +417,7 @@ export class amqpwrapper extends events.EventEmitter {
         }
     }
     async sendWithReply(exchange: string, queue: string, data: any, expiration: number, correlationId: string, routingkey: string): Promise<string> {
-        if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = this.generateUuid();
+        if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = NoderedUtil.GetUniqueIdentifier();
         this.activecalls[correlationId] = new Deferred();
         if (this.replyqueue) {
             await this.sendWithReplyTo(exchange, queue, this.replyqueue.queue, data, expiration, correlationId, routingkey);
@@ -434,7 +434,7 @@ export class amqpwrapper extends events.EventEmitter {
         Logger.instanse.info("send to queue: " + queue + " exchange: " + exchange + " with reply to " + replyTo + " correlationId: " + correlationId);
         const options: any = { mandatory: true };
         options.replyTo = replyTo;
-        if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = this.generateUuid();
+        if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = NoderedUtil.GetUniqueIdentifier();
         if (!NoderedUtil.IsNullEmpty(correlationId)) options.correlationId = correlationId;
         if (expiration < 1) expiration = Config.amqp_default_expiration;
         options.expiration = expiration.toString();
@@ -469,7 +469,7 @@ export class amqpwrapper extends events.EventEmitter {
         if (typeof data !== 'string' && !(data instanceof String)) {
             data = JSON.stringify(data);
         }
-        if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = this.generateUuid();
+        if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = NoderedUtil.GetUniqueIdentifier();
         Logger.instanse.info("send to queue: " + queue + " exchange: " + exchange);
         const options: any = { mandatory: true };
         if (!NoderedUtil.IsNullEmpty(correlationId)) options.correlationId = correlationId;
@@ -497,11 +497,6 @@ export class amqpwrapper extends events.EventEmitter {
         } else {
             this.channel.publish(exchange, routingkey, Buffer.from(data), options);
         }
-    }
-    generateUuid(): string {
-        return Math.random().toString() +
-            Math.random().toString() +
-            Math.random().toString();
     }
     static parseurl(amqp_url): url.UrlWithParsedQuery {
         const q = url.parse(amqp_url, true);

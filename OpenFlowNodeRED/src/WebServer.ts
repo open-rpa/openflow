@@ -115,6 +115,8 @@ export class WebServer {
             let server: http.Server = null;
             if (this.app === null) {
                 this.app = express();
+                this.app.disable("x-powered-by");
+
 
                 const hostname = Config.getEnv("HOSTNAME", null);
                 const defaultLabels: any = {};
@@ -173,6 +175,7 @@ export class WebServer {
                     server = https.createServer(options, this.app);
 
                     const redirapp = express();
+                    redirapp.disable("x-powered-by");
                     // const _http = http.createServer(redirapp);
                     redirapp.get('*', function (req, res) {
                         // res.redirect('https://' + req.headers.host + req.url);

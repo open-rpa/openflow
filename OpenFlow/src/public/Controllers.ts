@@ -680,7 +680,7 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
     }
     async InsertNew(): Promise<void> {
         // this.loading = true;
-        const model = { name: "Find me " + Math.random().toString(36).substr(2, 9), "temp": "hi mom" };
+        const model = { name: "Find me " + NoderedUtil.GetUniqueIdentifier(), "temp": "hi mom" };
         const result = await NoderedUtil.InsertOne(this.collection, model, 1, false, null);
         this.models.push(result);
         this.loading = false;

@@ -63,6 +63,7 @@ export class WebServer {
             }) // "route"
         }
         this.app = express();
+        this.app.disable("x-powered-by");
         this.app.get("/metrics", async (req: any, res: any, next: any): Promise<void> => {
             let result: string = ""
             for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {

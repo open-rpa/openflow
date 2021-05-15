@@ -74,7 +74,7 @@ export class Message {
     public static fromcommand(command: string): Message {
         const result: Message = new Message();
         result.command = command;
-        result.id = crypto.randomBytes(16).toString("hex");
+        result.id = NoderedUtil.GetUniqueIdentifier();
         return result;
     }
     public static frommessage(msg: SocketMessage, data: string): Message {
@@ -88,7 +88,7 @@ export class Message {
     public Reply(command: string = null): void {
         if (!NoderedUtil.IsNullEmpty(command)) { this.command = command; }
         this.replyto = this.id;
-        this.id = crypto.randomBytes(16).toString("hex");
+        this.id = NoderedUtil.GetUniqueIdentifier();
     }
     public async Process(cli: WebSocketServerClient): Promise<void> {
         if (cli.devnull) return;
