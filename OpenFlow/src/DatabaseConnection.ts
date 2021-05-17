@@ -528,7 +528,7 @@ export class DatabaseConnection {
                 result = basehist[0].item;
                 const baseversion = basehist[0]._version;
                 const history = await this.query<T>({ id: id, "_version": { $gt: baseversion, $lte: version } }, null, Config.history_delta_count, 0, { _version: 1 }, collectionname + "_hist", rootjwt, undefined, undefined, span);
-                for(let delta of history) {                
+                for (let delta of history) {
                     if (delta != null) {
                         result = jsondiffpatch.patch(result, delta);
                     }
@@ -2148,8 +2148,14 @@ export class DatabaseConnection {
                                 if (indexnames.indexOf("_created_1") === -1) {
                                     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
                                 }
-                                if (indexnames.indexOf("WorkflowId_1") === -1) {
-                                    await this.createIndex(collection.name, "WorkflowId_1", { "WorkflowId": 1 }, null, span)
+                                // if (indexnames.indexOf("WorkflowId_1") === -1) {
+                                //     await this.createIndex(collection.name, "WorkflowId_1", { "WorkflowId": 1 }, null, span)
+                                // }
+                                // if (indexnames.indexOf("InstanceId_1") === -1) {
+                                //     await this.createIndex(collection.name, "InstanceId_1", { "InstanceId": 1 }, null, span)
+                                // }
+                                if (indexnames.indexOf("InstanceId_1_WorkflowId_1") === -1) {
+                                    await this.createIndex(collection.name, "InstanceId_1_WorkflowId_1", { "WorkflowId": 1, "InstanceId": 1 }, null, span)
                                 }
                                 if (indexnames.indexOf("state_1") === -1) {
                                     await this.createIndex(collection.name, "state_1", { "state": 1 }, null, span)
@@ -2188,9 +2194,26 @@ export class DatabaseConnection {
                                 if (indexnames.indexOf("_created_1") === -1) {
                                     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
                                 }
+                                if (indexnames.indexOf("federationids_1") === -1) {
+                                    await this.createIndex(collection.name, "federationids_1", { "federationids": 1 }, null, span)
+                                }
                                 if (indexnames.indexOf("unique_username_1") === -1) {
                                     await this.createIndex(collection.name, "unique_username_1", { "username": 1 },
                                         { "unique": true, "name": "unique_username_1", "partialFilterExpression": { "_type": "user" } }, span)
+                                }
+                                break;
+                            case "openrpa":
+                                // if (indexnames.indexOf("_type_1") === -1) {
+                                //     await this.createIndex(collection.name, "_type_1", { "_type": 1 }, null, span)
+                                // }
+                                if (indexnames.indexOf("_created_1") === -1) {
+                                    await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
+                                }
+                                // if (indexnames.indexOf("projectid_name_1") === -1) {
+                                //     await this.createIndex(collection.name, "projectid_name_1", { projectid: -1, name: -1 }, null, span)
+                                // }
+                                if (indexnames.indexOf("_type_projectid_name_1") === -1) {
+                                    await this.createIndex(collection.name, "_type_projectid_name_1", { _type: 1, "{projectid:-1,name:-1}": 1 }, null, span)
                                 }
                                 break;
                             default:
