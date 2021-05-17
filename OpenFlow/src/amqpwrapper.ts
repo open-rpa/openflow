@@ -209,6 +209,15 @@ export class amqpwrapper extends events.EventEmitter {
         try {
             if (queue != null) {
                 Logger.instanse.info("[AMQP] Remove queue consumer " + queue.queue + "/" + queue.consumerTag);
+                var exc = this.exchanges.filter(x => x.queue.consumerTag == queue.consumerTag);
+                if (exc.length > 0) {
+                    try {
+                        this.channel.unbindQueue(exc[0].queue.queue, exc[0].exchange, exc[0].routingkey);
+                    } catch (error) {
+                        Logger.instanse.error(error);
+                    }
+                }
+                //this.exchanges.push(q);
                 if (this.channel != null) await this.channel.cancel(queue.consumerTag);
                 this.queues = this.queues.filter(q => q.consumerTag != queue.consumerTag);
             }
