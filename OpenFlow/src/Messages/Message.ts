@@ -403,23 +403,24 @@ export class Message {
             }
 
             const sendthis: any = msg.data;
-            try {
-                if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(msg.data.jwt)) {
-                    msg.jwt = msg.data.jwt;
-                }
-                if (NoderedUtil.IsNullEmpty(msg.jwt)) {
-                    msg.jwt = cli.jwt;
-                }
-                if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
-                    const tuser = Crypt.verityToken(msg.jwt);
-                    msg.user = tuser;
-                }
-                if (typeof sendthis === "object") {
-                    sendthis.__jwt = msg.jwt;
-                    sendthis.__user = msg.user;
-                }
-            } catch (error) {
-                await handleError(cli, error);
+            if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(msg.data.jwt)) {
+                msg.jwt = msg.data.jwt;
+            }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) {
+                msg.jwt = cli.jwt;
+            }
+            if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
+                const tuser = Crypt.verityToken(msg.jwt);
+                msg.user = tuser;
+            }
+            if (typeof sendthis === "object") {
+                sendthis.__jwt = msg.jwt;
+                sendthis.__user = msg.user;
+            }
+            if (msg.striptoken) {
+                delete msg.jwt;
+                delete msg.data.jwt;
+                delete sendthis.__jwt;
             }
             if (NoderedUtil.IsNullEmpty(msg.replyto)) {
                 const sendthis = msg.data;
@@ -429,7 +430,7 @@ export class Message {
                     throw new Error("Cannot send reply to self queuename: " + msg.queuename + " correlationId: " + msg.correlationId);
                 }
                 const sendthis = msg.data;
-                const result = await amqpwrapper.Instance().sendWithReplyTo(msg.exchange, msg.queuename, msg.replyto, sendthis, expiration, msg.correlationId, msg.routingkey);
+                await amqpwrapper.Instance().sendWithReplyTo(msg.exchange, msg.queuename, msg.replyto, sendthis, expiration, msg.correlationId, msg.routingkey);
             }
         } catch (error) {
             await handleError(cli, error);

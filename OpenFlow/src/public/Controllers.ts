@@ -134,7 +134,7 @@ export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
                 data: this.arguments
             }
             if (this.arguments === null || this.arguments === undefined) { this.arguments = {}; }
-            const result: any = await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", this.user._id, this.queuename, rpacommand, null, parseInt(this.timeout));
+            const result: any = await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", this.user._id, this.queuename, rpacommand, null, parseInt(this.timeout), true);
             try {
                 // result = JSON.parse(result);
             } catch (error) {
@@ -1981,7 +1981,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         }
     }
     async SendOne(queuename: string, message: any): Promise<void> {
-        let result: any = await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", queuename, this.queuename, message, null, this.queue_message_timeout);
+        let result: any = await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", queuename, this.queuename, message, null, this.queue_message_timeout, false);
         try {
             if (typeof result === "string" || result instanceof String) {
                 result = JSON.parse((result as any));
