@@ -100,20 +100,18 @@ export class Crypt {
         const key = Crypt.encryption_key;
         if (NoderedUtil.IsNullEmpty(Config.aes_secret)) throw new Exception("Config missing aes_secret");
         if (NoderedUtil.IsNullEmpty(key)) throw new Exception("Config missing aes_secret");
-        const token: string = jsonwebtoken.sign({ data: user }, key,
+        return jsonwebtoken.sign({ data: user }, key,
             { expiresIn: expiresIn }); // 60 (seconds), "2 days", "10h", "7d"
-        return token;
     }
     static verityToken(token: string): TokenUser {
         if (NoderedUtil.IsNullEmpty(token)) {
             throw new Error('jwt must be provided');
         }
         const o: any = jsonwebtoken.verify(token, Crypt.encryption_key);
-        o.data = TokenUser.assign(o.data);
-        return o.data;
+        return TokenUser.assign(o.data);
+
     }
     static decryptToken(token: string): any {
-        const o: any = jsonwebtoken.verify(token, Crypt.encryption_key);
-        return o;
+        return jsonwebtoken.verify(token, Crypt.encryption_key);
     }
 }

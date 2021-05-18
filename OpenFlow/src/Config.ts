@@ -84,6 +84,8 @@ export class Config {
         Config.amqp_force_sender_has_read = Config.parseBoolean(Config.getEnv("amqp_force_sender_has_read", "true"));
         Config.amqp_enabled_exchange = Config.parseBoolean(Config.getEnv("amqp_enabled_exchange", "false"));
         Config.amqp_url = Config.getEnv("amqp_url", "amqp://localhost"); // used to register queues and by personal nodered
+        Config.amqp_username = Config.getEnv("amqp_username", "guest"); // used to talk wth rabbitmq api, used if not present in amqp_url
+        Config.amqp_password = Config.getEnv("amqp_password", "guest"); // used to talk wth rabbitmq api, used if not present in amqp_url
         Config.amqp_check_for_consumer = Config.parseBoolean(Config.getEnv("amqp_check_for_consumer", "true"));
         Config.amqp_check_for_consumer_count = Config.parseBoolean(Config.getEnv("amqp_check_for_consumer_count", "false"));
         Config.amqp_default_expiration = parseInt(Config.getEnv("amqp_default_expiration", "10000")); // 10 seconds
@@ -107,7 +109,6 @@ export class Config {
         Config.downloadtoken_expires_in = Config.getEnv("downloadtoken_expires_in", "15m");
         Config.personalnoderedtoken_expires_in = Config.getEnv("personalnoderedtoken_expires_in", "365d");
 
-        // Config.nodered_image = Config.getEnv("nodered_image", "openiap/nodered");
         Config.nodered_images = JSON.parse(Config.getEnv("nodered_images", "[{\"name\":\"Latest Plain Nodered\", \"image\":\"openiap/nodered\"}]"));
         Config.saml_federation_metadata = Config.getEnv("saml_federation_metadata", "");
         Config.api_ws_url = Config.getEnv("api_ws_url", "");
@@ -214,6 +215,9 @@ export class Config {
     public static amqp_force_sender_has_read: boolean = Config.parseBoolean(Config.getEnv("amqp_force_sender_has_read", "true"));
     public static amqp_enabled_exchange: boolean = Config.parseBoolean(Config.getEnv("amqp_enabled_exchange", "false"));
     public static amqp_url: string = Config.getEnv("amqp_url", "amqp://localhost"); // used to register queues and by personal nodered
+    public static amqp_username: string = Config.getEnv("amqp_username", "guest"); // used to talk wth rabbitmq api
+    public static amqp_password: string = Config.getEnv("amqp_password", "guest"); // used to talk wth rabbitmq api
+
     public static amqp_check_for_consumer: boolean = Config.parseBoolean(Config.getEnv("amqp_check_for_consumer", "true"));
     public static amqp_check_for_consumer_count: boolean = Config.parseBoolean(Config.getEnv("amqp_check_for_consumer_count", "false"));
     public static amqp_default_expiration: number = parseInt(Config.getEnv("amqp_default_expiration", (60 * 1000).toString())); // 1 min
@@ -239,7 +243,7 @@ export class Config {
     public static personalnoderedtoken_expires_in: string = Config.getEnv("personalnoderedtoken_expires_in", "365d");
 
     // public static nodered_image: string = Config.getEnv("nodered_image", "openiap/nodered");
-    public static nodered_images: nodered_image[] = JSON.parse(Config.getEnv("nodered_images", "[{\"name\":\"Latest Plain Nodered\", \"image\":\"openiap/nodered\"}]"));
+    public static nodered_images: NoderedImage[] = JSON.parse(Config.getEnv("nodered_images", "[{\"name\":\"Latest Plain Nodered\", \"image\":\"openiap/nodered\"}]"));
     public static saml_federation_metadata: string = Config.getEnv("saml_federation_metadata", "");
     public static api_ws_url: string = Config.getEnv("api_ws_url", "");
     public static nodered_ws_url: string = Config.getEnv("nodered_ws_url", "");
@@ -300,7 +304,7 @@ export class Config {
     }
     public static async parse_federation_metadata(url: string): Promise<any> {
         // if anything throws, we retry
-        const metadata: any = await retry(async bail => {
+        return retry(async bail => {
             const reader: any = await fetch({ url });
             if (NoderedUtil.IsNullUndefinded(reader)) { bail(new Error("Failed getting result")); return; }
             const config: any = toPassportConfig(reader);
@@ -315,7 +319,6 @@ export class Config {
                 Logger.instanse.warn("retry " + count + " error " + error.message + " getting " + url);
             }
         });
-        return metadata;
     }
     public static parseArray(s: string): string[] {
         let arr = s.split(",");
@@ -342,7 +345,7 @@ export class Config {
     }
 
 }
-export class nodered_image {
+export class NoderedImage {
     public name: string;
     public image: string;
 }

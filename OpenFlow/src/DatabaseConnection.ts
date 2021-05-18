@@ -1,13 +1,10 @@
-import {
-    ObjectID, Db, Binary, InsertOneWriteOpResult, DeleteWriteOpResultObject, ObjectId, MapReduceOptions, CollectionInsertOneOptions, UpdateWriteOpResult, WriteOpResult, GridFSBucket, ReadPreference, ChangeStream, CollectionAggregationOptions, MongoClientOptions
-} from "mongodb";
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectID, Db, Binary, InsertOneWriteOpResult, MapReduceOptions, CollectionInsertOneOptions, GridFSBucket, ChangeStream, CollectionAggregationOptions, MongoClientOptions } from "mongodb";
 import { Crypt } from "./Crypt";
 import { Config } from "./Config";
 import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User } from "@openiap/openflow-api";
 import { DBHelper } from "./DBHelper";
 import { OAuthProvider } from "./OAuthProvider";
-import { ValueRecorder, Counter } from "@opentelemetry/api-metrics"
+import { ValueRecorder } from "@opentelemetry/api-metrics"
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { Auth } from "./Auth";
@@ -32,10 +29,9 @@ const Semaphore = (n) => ({
         this.n++;
     },
     async wait() {
-        if (this.n <= 0) return await new Promise((res, req) => {
+        if (this.n <= 0) return new Promise((res, req) => {
             setImmediate(async () => res(await this.wait()))
         });
-        return;
     },
 });
 Object.defineProperty(Promise, 'retry', {
@@ -43,11 +39,9 @@ Object.defineProperty(Promise, 'retry', {
     writable: true,
     value: function retry(retries, executor) {
         console.warn(`${retries} retries left!`)
-
         if (typeof retries !== 'number') {
             throw new TypeError('retries is not a number')
         }
-
         return new Promise(executor).catch(error => retries > 0
             ? (Promise as any).retry(retries - 1, executor)
             : Promise.reject(error)
@@ -73,10 +67,6 @@ export class DatabaseConnection {
         this.mongodburl = mongodburl;
 
         if (!NoderedUtil.IsNullUndefinded(Logger.otel)) {
-            // DatabaseConnection.ot_mongodb_query_count = this._otel.meter.createCounter('openflow_mongodb_query_count', {
-            //     description: 'Total number of mongodb queues'
-            // });
-            // DatabaseConnection.ot_mongodb_query_count.add(1, { ...otel.defaultlabels, collection: "users" });
             DatabaseConnection.mongodb_query = Logger.otel.meter.createValueRecorder('openflow_mongodb_query_seconds', {
                 description: 'Duration for mongodb queries',
                 boundaries: Logger.otel.default_boundaries
@@ -125,7 +115,6 @@ export class DatabaseConnection {
      * @returns Promise<void>
      */
     async connect(parent: Span = undefined): Promise<void> {
-        //if (this.cli !== null && this.cli !== undefined && this.cli.isConnected) {
         if (this.cli !== null && this.cli !== undefined && this.isConnected) {
             return;
         }
@@ -142,7 +131,6 @@ export class DatabaseConnection {
             });
         });
         Logger.instanse.info(`Really connected to mongodb`);
-        // this.cli = await MongoClient.connect(this.mongodburl, { autoReconnect: false, useNewUrlParser: true });
         const errEvent = (error) => {
             this.isConnected = false;
             Logger.instanse.error(error);
@@ -206,8 +194,8 @@ export class DatabaseConnection {
                         (ace.rights as any) = b;
                     }
                     if (this.WellknownIdsArray.indexOf(ace._id) === -1) {
-                        let user = Auth.getUser(ace._id, "cleanacl");
-                        if (NoderedUtil.IsNullUndefinded(user)) {
+                        let _user = Auth.getUser(ace._id, "cleanacl");
+                        if (NoderedUtil.IsNullUndefinded(_user)) {
                             const ot_end = Logger.otel.startTimer();
                             const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.find", span);
                             mongodbspan.setAttribute("collection", "users");
@@ -217,13 +205,13 @@ export class DatabaseConnection {
                             Logger.otel.endSpan(mongodbspan);
                             Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: "users" });
                             if (arr.length > 0) {
-                                user = arr[0];
-                                await Auth.AddUser(user, ace._id, "cleanacl");
+                                _user = arr[0];
+                                await Auth.AddUser(_user, ace._id, "cleanacl");
                             }
                         }
-                        if (NoderedUtil.IsNullUndefinded(user)) {
+                        if (NoderedUtil.IsNullUndefinded(_user)) {
                             item._acl.splice(i, 1);
-                        } else { ace.name = user.name; }
+                        } else { ace.name = _user.name; }
                     }
                 }
             }
@@ -273,15 +261,6 @@ export class DatabaseConnection {
             for (let i = item.members.length - 1; i >= 0; i--) {
                 {
                     const ace = item.members[i];
-                    if (Config.update_acl_based_on_groups === true) {
-                        if (multi_tenant_skip.indexOf(item._id) > -1) {
-                            if (ace._id != WellknownIds.admins && ace._id != WellknownIds.root) {
-                                // item.removeRight(ace._id, [Rights.read]);
-                            }
-                        } else {
-                            // item.addRight(ace._id, ace.name, [Rights.read]);
-                        }
-                    }
                     const exists = item.members.filter(x => x._id === ace._id);
                     if (exists.length > 1) {
                         item.members.splice(i, 1);
@@ -302,24 +281,20 @@ export class DatabaseConnection {
                                 if (!Base.hasRight(u, item._id, Rights.read)) {
                                     Logger.instanse.debug("Assigning " + item.name + " read permission to " + u.name);
                                     Base.addRight(u, item._id, item.name, [Rights.read], false);
-                                    const ot_end = Logger.otel.startTimer();
+                                    const _ot_end1 = Logger.otel.startTimer();
                                     await this.db.collection("users").updateOne({ _id: u._id }, { $set: { _acl: u._acl } });
-                                    Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: "users" });
+                                    Logger.otel.endTimer(_ot_end1, DatabaseConnection.mongodb_update, { collection: "users" });
                                 } else if (u._id != item._id) {
                                     Logger.instanse.debug(item.name + " allready exists on " + u.name);
                                 }
                             } else if (arr[0]._type === "role") {
                                 const r: Role = Role.assign(arr[0]);
-                                if (r._id === WellknownIds.admins || r._id === WellknownIds.users) {
-                                } else if (!Base.hasRight(r, item._id, Rights.read)) {
-                                    if (r.name === "admins") {
-                                        const b = true;
-                                    }
+                                if (r._id !== WellknownIds.admins && r._id !== WellknownIds.users && !Base.hasRight(r, item._id, Rights.read)) {
                                     Logger.instanse.debug("Assigning " + item.name + " read permission to " + r.name);
                                     Base.addRight(r, item._id, item.name, [Rights.read], false);
-                                    const ot_end = Logger.otel.startTimer();
+                                    const _ot_end2 = Logger.otel.startTimer();
                                     await this.db.collection("users").updateOne({ _id: r._id }, { $set: { _acl: r._acl } });
-                                    Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: "users" });
+                                    Logger.otel.endTimer(_ot_end2, DatabaseConnection.mongodb_update, { collection: "users" });
                                 } else if (r._id != item._id) {
                                     Logger.instanse.debug(item.name + " allready exists on " + r.name);
                                 }
@@ -350,9 +325,9 @@ export class DatabaseConnection {
                             const right = Base.getRight(u, item._id, false);
                             if (NoderedUtil.IsNullUndefinded(right)) {
                                 Logger.instanse.debug("Removing " + item.name + " read permissions from " + u.name);
-                                const ot_end = Logger.otel.startTimer();
+                                const _ot_end1 = Logger.otel.startTimer();
                                 await this.db.collection("users").updateOne({ _id: u._id }, { $set: { _acl: u._acl } });
-                                Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: "users" });
+                                Logger.otel.endTimer(_ot_end1, DatabaseConnection.mongodb_update, { collection: "users" });
                             }
 
                         } else {
@@ -367,9 +342,9 @@ export class DatabaseConnection {
                             const right = Base.getRight(r, item._id, false);
                             if (NoderedUtil.IsNullUndefinded(right)) {
                                 Logger.instanse.debug("Removing " + item.name + " read permissions from " + r.name);
-                                const ot_end = Logger.otel.startTimer();
+                                const _ot_end2 = Logger.otel.startTimer();
                                 await this.db.collection("users").updateOne({ _id: r._id }, { $set: { _acl: r._acl } });
-                                Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: "users" });
+                                Logger.otel.endTimer(_ot_end2, DatabaseConnection.mongodb_update, { collection: "users" });
                             }
 
                         } else {
@@ -395,7 +370,7 @@ export class DatabaseConnection {
      * @returns Promise<T[]> Array of results
      */
     // tslint:disable-next-line: max-line-length
-    async query<T extends Base>(query: any, projection: Object, top: number, skip: number, orderby: Object | string, collectionname: string, jwt: string, queryas: string = null, hint: Object | string = null, parent: Span): Promise<T[]> {
+    async query<T extends Base>(query: any, projection: Object, top: number, skip: number, orderby: Object | string, collectionname: string, jwt: string, queryas: string, hint: Object | string, parent: Span): Promise<T[]> {
         const span: Span = Logger.otel.startSubSpan("db.query", parent);
         try {
             await this.connect(span);
@@ -445,7 +420,6 @@ export class DatabaseConnection {
                 }
                 span.setAttribute("hint", JSON.stringify(myhint));
             }
-            // orderby: Object | string
             if (projection) {
                 span.addEvent("parse projection");
                 if (typeof projection === "string" || projection instanceof String) {
@@ -453,7 +427,6 @@ export class DatabaseConnection {
                 }
                 span.setAttribute("projection", JSON.stringify(projection));
             }
-            // for (let key in query) {
             if (query !== null && query !== undefined) {
                 span.addEvent("parse query");
                 let json: any = query;
@@ -477,8 +450,7 @@ export class DatabaseConnection {
                 span.setAttribute("query", JSON.stringify(query));
             }
             const keys: string[] = Object.keys(query);
-            for (let i: number = 0; i < keys.length; i++) {
-                let key: string = keys[i];
+            for (let key of keys) {
                 if (key === "_id") {
                     const id: string = query._id;
                     const safeid = safeObjectID(id);
@@ -540,11 +512,6 @@ export class DatabaseConnection {
         }
     }
     async GetDocumentVersion<T extends Base>(collectionname: string, id: string, version: number, jwt: string, parent: Span): Promise<T> {
-        const roundDown = function (num, precision): number {
-            num = parseFloat(num);
-            if (!precision) return num;
-            return (Math.floor(num / precision) * precision);
-        };
         const span: Span = Logger.otel.startSubSpan("db.GetDocumentVersion", parent);
         try {
 
@@ -557,13 +524,11 @@ export class DatabaseConnection {
             }
             if (result._version > version) {
                 const rootjwt = Crypt.rootToken()
-                // const baseversion = roundDown(version, Config.history_delta_count);
                 const basehist = await this.query<any>({ id: id, item: { $exists: true, $ne: null }, "_version": { $lte: version } }, null, 1, 0, { _version: -1 }, collectionname + "_hist", rootjwt, undefined, undefined, span);
                 result = basehist[0].item;
                 const baseversion = basehist[0]._version;
                 const history = await this.query<T>({ id: id, "_version": { $gt: baseversion, $lte: version } }, null, Config.history_delta_count, 0, { _version: 1 }, collectionname + "_hist", rootjwt, undefined, undefined, span);
-                for (let i = 0; i < history.length; i++) {
-                    const delta = (history[i] as any).delta;
+                for (let delta of history) {
                     if (delta != null) {
                         result = jsondiffpatch.patch(result, delta);
                     }
@@ -577,7 +542,6 @@ export class DatabaseConnection {
             Logger.otel.endSpan(span);
         }
     }
-
     /**
      * Get a single item based on id
      * @param  {string} id Id to search for
@@ -606,7 +570,7 @@ export class DatabaseConnection {
      * @param  {string} jwt
      * @returns Promise
      */
-    async aggregate<T extends Base>(aggregates: object[], collectionname: string, jwt: string, hint: Object | string = null, parent: Span): Promise<T[]> {
+    async aggregate<T extends Base>(aggregates: object[], collectionname: string, jwt: string, hint: Object | string, parent: Span): Promise<T[]> {
         const span: Span = Logger.otel.startSubSpan("db.Aggregate", parent);
         await this.connect(span);
         let json: any = aggregates;
@@ -2184,8 +2148,14 @@ export class DatabaseConnection {
                                 if (indexnames.indexOf("_created_1") === -1) {
                                     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
                                 }
-                                if (indexnames.indexOf("WorkflowId_1") === -1) {
-                                    await this.createIndex(collection.name, "WorkflowId_1", { "WorkflowId": 1 }, null, span)
+                                // if (indexnames.indexOf("WorkflowId_1") === -1) {
+                                //     await this.createIndex(collection.name, "WorkflowId_1", { "WorkflowId": 1 }, null, span)
+                                // }
+                                // if (indexnames.indexOf("InstanceId_1") === -1) {
+                                //     await this.createIndex(collection.name, "InstanceId_1", { "InstanceId": 1 }, null, span)
+                                // }
+                                if (indexnames.indexOf("InstanceId_1_WorkflowId_1") === -1) {
+                                    await this.createIndex(collection.name, "InstanceId_1_WorkflowId_1", { "WorkflowId": 1, "InstanceId": 1 }, null, span)
                                 }
                                 if (indexnames.indexOf("state_1") === -1) {
                                     await this.createIndex(collection.name, "state_1", { "state": 1 }, null, span)
@@ -2224,9 +2194,26 @@ export class DatabaseConnection {
                                 if (indexnames.indexOf("_created_1") === -1) {
                                     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
                                 }
+                                if (indexnames.indexOf("federationids_1") === -1) {
+                                    await this.createIndex(collection.name, "federationids_1", { "federationids": 1 }, null, span)
+                                }
                                 if (indexnames.indexOf("unique_username_1") === -1) {
                                     await this.createIndex(collection.name, "unique_username_1", { "username": 1 },
                                         { "unique": true, "name": "unique_username_1", "partialFilterExpression": { "_type": "user" } }, span)
+                                }
+                                break;
+                            case "openrpa":
+                                // if (indexnames.indexOf("_type_1") === -1) {
+                                //     await this.createIndex(collection.name, "_type_1", { "_type": 1 }, null, span)
+                                // }
+                                if (indexnames.indexOf("_created_1") === -1) {
+                                    await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
+                                }
+                                // if (indexnames.indexOf("projectid_name_1") === -1) {
+                                //     await this.createIndex(collection.name, "projectid_name_1", { projectid: -1, name: -1 }, null, span)
+                                // }
+                                if (indexnames.indexOf("_type_projectid_name_1") === -1) {
+                                    await this.createIndex(collection.name, "_type_projectid_name_1", { _type: 1, "{projectid:-1,name:-1}": 1 }, null, span)
                                 }
                                 break;
                             default:

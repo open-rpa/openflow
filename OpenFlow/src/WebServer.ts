@@ -1,3 +1,4 @@
+import * as os from "os";
 import * as path from "path";
 import * as http from "http";
 import * as https from "https";
@@ -22,6 +23,7 @@ import { WebSocketServer } from "./WebSocketServer";
 import { WebSocketServerClient } from "./WebSocketServerClient";
 import { Counter } from "@opentelemetry/api-metrics"
 import { Logger } from "./Logger";
+var _hostname = "";
 
 const BaseRateLimiter = new RateLimiterMemory({
     points: Config.api_rate_limit_points,
@@ -61,6 +63,7 @@ export class WebServer {
             }) // "route"
         }
         this.app = express();
+        this.app.disable("x-powered-by");
         this.app.get("/metrics", async (req: any, res: any, next: any): Promise<void> => {
             let result: string = ""
             for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
@@ -115,6 +118,11 @@ export class WebServer {
         this.app.use(flash());
         if (Config.api_rate_limit) this.app.use(rateLimiter);
 
+        this.app.get("/livenessprobe", (req: any, res: any, next: any): void => {
+            if (NoderedUtil.IsNullEmpty(_hostname)) _hostname = (Config.getEnv("HOSTNAME", undefined) || os.hostname()) || "unknown";
+            res.end(JSON.stringify({ "success": "true", "hostname": _hostname }));
+            res.end();
+        });
 
         // Add headers
         this.app.use(function (req, res, next) {

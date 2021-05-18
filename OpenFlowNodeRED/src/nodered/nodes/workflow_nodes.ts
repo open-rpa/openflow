@@ -9,6 +9,7 @@ export interface Iworkflow_in_node {
     name: string;
     rpa: boolean;
     web: boolean;
+    exchange: boolean;
 }
 export class workflow_in_node {
     public node: Red = null;
@@ -16,6 +17,7 @@ export class workflow_in_node {
     public host: string = null;
     public workflow: any;
     public localqueue: string = "";
+    public localexchangequeue: string = "";
     private _onsignedin: any = null;
     private _onsocketclose: any = null;
     constructor(public config: Iworkflow_in_node) {
@@ -62,6 +64,7 @@ export class workflow_in_node {
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
         } catch (error) {
             this.localqueue = "";
+            this.localexchangequeue = "";
             NoderedUtil.HandleError(this, error, null);
             setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 2000);
         }
@@ -110,6 +113,22 @@ export class workflow_in_node {
         this.workflow.rpa = this.config.rpa;
         this.workflow.web = this.config.web;
         this.workflow = await NoderedUtil.UpdateOne("workflow", null, this.workflow, 0, false, null);
+
+        if (this.config.exchange) {
+            if (Config.amqp_enabled_exchange) {
+                const result = await NoderedUtil.RegisterExchange(WebSocketClient.instance, this.localqueue, "direct",
+                    "", (msg: QueueMessage, ack: any) => {
+                        // this.OnMessage(msg, ack);
+                        ack();
+                    }, (msg) => {
+                        // if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected" });
+                        // setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+                    });
+                this.localexchangequeue = result.queuename;
+            } else {
+                this.node.warn("AMQP exchange is not enabled on this OpenFlow")
+            }
+        }
     }
     nestedassign(target, source) {
         if (source === null || source === undefined) return null;
@@ -275,9 +294,13 @@ export class workflow_in_node {
                     await NoderedUtil.DeleteOne("users", res[0]._id, null);
                 }
             }
-            if (!NoderedUtil.IsNullEmpty(this.localqueue) && removed) {
+            if (!NoderedUtil.IsNullEmpty(this.localqueue)) {
                 NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
                 this.localqueue = "";
+            }
+            if (!NoderedUtil.IsNullEmpty(this.localexchangequeue)) {
+                NoderedUtil.CloseQueue(WebSocketClient.instance, this.localexchangequeue);
+                this.localexchangequeue = "";
             }
         } catch (error) {
             Logger.instanse.error(error);
@@ -370,7 +393,7 @@ export class workflow_out_node {
                 data.jwt = msg.jwt;
                 const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_workflow_out_expiration);
                 this.node.status({ fill: "blue", shape: "dot", text: "QueueMessage.1" });
-                await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", msg.resultqueue, null, data, msg.correlationId, expiration);
+                await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", msg.resultqueue, null, data, msg.correlationId, expiration, false);
                 if (msg.resultqueue == msg._replyTo) msg._replyTo = null; // don't double message (??)
 
             }
@@ -396,7 +419,7 @@ export class workflow_out_node {
                 // ROLLBACK
                 // Don't wait for ack(), we don't care if the receiver is there, right ?
                 this.node.status({ fill: "blue", shape: "dot", text: "Queue message for " + msg._replyTo });
-                await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", msg._replyTo, null, data, msg.correlationId, Config.amqp_workflow_out_expiration);
+                await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", msg._replyTo, null, data, msg.correlationId, Config.amqp_workflow_out_expiration, false);
             }
         } catch (error) {
             NoderedUtil.HandleError(this, error, msg);

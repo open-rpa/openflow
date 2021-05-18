@@ -209,6 +209,15 @@ export class amqpwrapper extends events.EventEmitter {
         try {
             if (queue != null) {
                 Logger.instanse.info("[AMQP] Remove queue consumer " + queue.queue + "/" + queue.consumerTag);
+                var exc = this.exchanges.filter(x => x.queue.consumerTag == queue.consumerTag);
+                if (exc.length > 0) {
+                    try {
+                        this.channel.unbindQueue(exc[0].queue.queue, exc[0].exchange, exc[0].routingkey);
+                    } catch (error) {
+                        Logger.instanse.error(error);
+                    }
+                }
+                //this.exchanges.push(q);
                 if (this.channel != null) await this.channel.cancel(queue.consumerTag);
                 this.queues = this.queues.filter(q => q.consumerTag != queue.consumerTag);
             }
@@ -309,6 +318,8 @@ export class amqpwrapper extends events.EventEmitter {
                 }, { noAck: false });
                 q.consumerTag = consumeresult.consumerTag;
                 Logger.instanse.info("[AMQP] Added queue consumer " + q.queue + "/" + q.consumerTag);
+            } else {
+                throw new Error("Failed asserting Queue " + queue);
             }
             return q;
         } catch (error) {
@@ -417,7 +428,7 @@ export class amqpwrapper extends events.EventEmitter {
         }
     }
     async sendWithReply(exchange: string, queue: string, data: any, expiration: number, correlationId: string, routingkey: string): Promise<string> {
-        if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = this.generateUuid();
+        if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = NoderedUtil.GetUniqueIdentifier();
         this.activecalls[correlationId] = new Deferred();
         if (this.replyqueue) {
             await this.sendWithReplyTo(exchange, queue, this.replyqueue.queue, data, expiration, correlationId, routingkey);
@@ -434,7 +445,7 @@ export class amqpwrapper extends events.EventEmitter {
         Logger.instanse.info("send to queue: " + queue + " exchange: " + exchange + " with reply to " + replyTo + " correlationId: " + correlationId);
         const options: any = { mandatory: true };
         options.replyTo = replyTo;
-        if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = this.generateUuid();
+        if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = NoderedUtil.GetUniqueIdentifier();
         if (!NoderedUtil.IsNullEmpty(correlationId)) options.correlationId = correlationId;
         if (expiration < 1) expiration = Config.amqp_default_expiration;
         options.expiration = expiration.toString();
@@ -469,7 +480,7 @@ export class amqpwrapper extends events.EventEmitter {
         if (typeof data !== 'string' && !(data instanceof String)) {
             data = JSON.stringify(data);
         }
-        if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = this.generateUuid();
+        if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = NoderedUtil.GetUniqueIdentifier();
         Logger.instanse.info("send to queue: " + queue + " exchange: " + exchange);
         const options: any = { mandatory: true };
         if (!NoderedUtil.IsNullEmpty(correlationId)) options.correlationId = correlationId;
@@ -498,20 +509,16 @@ export class amqpwrapper extends events.EventEmitter {
             this.channel.publish(exchange, routingkey, Buffer.from(data), options);
         }
     }
-    generateUuid(): string {
-        return Math.random().toString() +
-            Math.random().toString() +
-            Math.random().toString();
-    }
     static parseurl(amqp_url): url.UrlWithParsedQuery {
         const q = url.parse(amqp_url, true);
-        (q as any).username = "guest";
-        (q as any).password = "guest";
         if (q.port == null || q.port == "") { q.port = "15672"; }
         if (q.auth != null && q.auth != "") {
             const arr = q.auth.split(':');
             (q as any).username = arr[0];
             (q as any).password = arr[1];
+        } else {
+            (q as any).username = Config.amqp_username;
+            (q as any).password = Config.amqp_password;
         }
         q.protocol = 'http://';
         return q;

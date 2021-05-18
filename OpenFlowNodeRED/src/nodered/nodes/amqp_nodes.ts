@@ -174,6 +174,7 @@ export interface Iamqp_publisher_node {
     exchange: string;
     routingkey: string;
     localqueue: string;
+    striptoken: boolean;
     name: string;
 }
 export class amqp_publisher_node {
@@ -281,9 +282,11 @@ export class amqp_publisher_node {
             let queue = this.config.queue;
             let exchange = this.config.exchange;
             let routingkey = this.config.routingkey;
+            let striptoken = this.config.striptoken;
             if (!NoderedUtil.IsNullEmpty(msg.queue)) { queue = msg.queue; }
             if (!NoderedUtil.IsNullEmpty(msg.exchange)) { exchange = msg.exchange; }
             if (!NoderedUtil.IsNullEmpty(msg.routingkey)) { routingkey = msg.routingkey; }
+            if (!NoderedUtil.IsNullEmpty(msg.striptoken)) { striptoken = msg.striptoken; }
 
             const data: any = {};
             data.payload = msg.payload;
@@ -293,7 +296,7 @@ export class amqp_publisher_node {
             const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_message_ttl);
             this.node.status({ fill: "blue", shape: "dot", text: "Sending message ..." });
             try {
-                await NoderedUtil.QueueMessage(this.websocket(), exchange, routingkey, queue, this.localqueue, data, null, expiration);
+                await NoderedUtil.QueueMessage(this.websocket(), exchange, routingkey, queue, this.localqueue, data, null, expiration, striptoken);
                 amqp_publisher_node.payloads[msg._msgid] = msg;
             } catch (error) {
                 data.error = error;

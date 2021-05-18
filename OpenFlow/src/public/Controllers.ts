@@ -134,7 +134,7 @@ export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
                 data: this.arguments
             }
             if (this.arguments === null || this.arguments === undefined) { this.arguments = {}; }
-            const result: any = await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", this.user._id, this.queuename, rpacommand, null, parseInt(this.timeout));
+            const result: any = await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", this.user._id, this.queuename, rpacommand, null, parseInt(this.timeout), true);
             try {
                 // result = JSON.parse(result);
             } catch (error) {
@@ -680,7 +680,7 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
     }
     async InsertNew(): Promise<void> {
         // this.loading = true;
-        const model = { name: "Find me " + Math.random().toString(36).substr(2, 9), "temp": "hi mom" };
+        const model = { name: "Find me " + NoderedUtil.GetUniqueIdentifier(), "temp": "hi mom" };
         const result = await NoderedUtil.InsertOne(this.collection, model, 1, false, null);
         this.models.push(result);
         this.loading = false;
@@ -1819,6 +1819,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
     public myid: string;
     public submitbutton: string;
     public queuename: string;
+    public localexchangequeue: string;
     public queue_message_timeout: number = (60 * 1000); // 1 min
 
     constructor(
@@ -1851,6 +1852,35 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 console.error(this.errormessage);
             }
         });
+
+    }
+    async RegisterExchange(exchange: string) {
+        if (!NoderedUtil.IsNullEmpty(this.localexchangequeue)) return;
+        const result = await NoderedUtil.RegisterExchange(WebSocketClient.instance, exchange, "direct",
+            "", async (msg: QueueMessage, ack: any) => {
+                // this.OnMessage(msg, ack);
+                console.log(msg);
+                ack();
+                // this.loadData();
+                this.model.payload = Object.assign(this.model.payload, msg.data.payload);
+                if (!NoderedUtil.IsNullEmpty(msg.data.payload.form)) {
+                    if (msg.data.payload.form != this.model.form) {
+                        const res = await NoderedUtil.Query("forms", { _id: msg.data.payload.form }, null, { _created: -1 }, 1, 0, null);
+                        if (res.length > 0) {
+                            this.model.form = msg.data.payload.form;
+                            this.form = res[0];
+                        } else {
+                            console.error("Failed locating form " + msg.data.payload.form)
+                        }
+                    }
+                }
+                this.renderform();
+            }, (msg) => {
+                // if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected" });
+                // setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+            });
+        this.localexchangequeue = result.queuename;
+        console.log("Register exchange for " + exchange + " with queue " + this.localexchangequeue);
 
     }
     async RegisterQueue() {
@@ -1901,6 +1931,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             console.error(this.errormessage);
             return;
         }
+        this.RegisterExchange(this.workflow.queue);
         if (this.instanceid !== null && this.instanceid !== undefined && this.instanceid !== "") {
             const res = await NoderedUtil.Query("workflow_instances", { _id: this.instanceid }, null, { _created: -1 }, 1, 0, null);
             if (res.length > 0) { this.model = res[0]; } else {
@@ -1981,7 +2012,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         }
     }
     async SendOne(queuename: string, message: any): Promise<void> {
-        let result: any = await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", queuename, this.queuename, message, null, this.queue_message_timeout);
+        let result: any = await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", queuename, this.queuename, message, null, this.queue_message_timeout, false);
         try {
             if (typeof result === "string" || result instanceof String) {
                 result = JSON.parse((result as any));
@@ -3722,6 +3753,22 @@ export class PaymentCtrl extends entityCtrl<Billing> {
             this.cardmessage = error;
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async OpenPortal() {
+        try {
+            var payload: stripe_base = {} as any;
+            (payload as any).customer = this.stripe_customer.id;
+            var session: any = await NoderedUtil.Stripe("POST", "billing_portal/sessions", null, null, payload, null);
+            if (session && session.url) {
+                window.open(session.url, '_blank');
+                // window.location.href = session.url;
+            } else {
+                this.cardmessage = "Failed getting portal session url";
+            }
+        } catch (error) {
+            console.error(error);
+            this.cardmessage = error;
+        }
     }
     async CheckOut(planid: string, subplanid: string) {
         try {

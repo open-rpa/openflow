@@ -5,7 +5,7 @@ import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 
 export class DBHelper {
-    public static async FindByUsername(username: string, jwt: string = null, parent: Span): Promise<User> {
+    public static async FindByUsername(username: string, jwt: string, parent: Span): Promise<User> {
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindByUsername", parent);
         try {
             const byuser = { username: new RegExp(["^", username, "$"].join(""), "i") };
@@ -24,7 +24,7 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public static async FindById(_id: string, jwt: string = null, parent: Span): Promise<User> {
+    public static async FindById(_id: string, jwt: string, parent: Span): Promise<User> {
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
             if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
@@ -84,14 +84,12 @@ export class DBHelper {
             const query: any = { "members": { "$elemMatch": { _id: _id } } };
             const ids: string[] = [];
             const _roles: Role[] = await Config.db.query<Role>(query, null, Config.expected_max_roles, 0, null, "users", Crypt.rootToken(), undefined, undefined, span);
-            for (let i = 0; i < _roles.length; i++) {
-                const role = _roles[i];
+            for (let role of _roles) {
                 if (ids.indexOf(role._id) == -1) {
                     ids.push(role._id);
                     result.push(role);
                     const _subroles: Role[] = await this.GetRoles(role._id, ident + 1, span);
-                    for (let y = 0; y < _subroles.length; y++) {
-                        const subrole = _subroles[y];
+                    for (let subrole of _subroles) {
                         if (ids.indexOf(subrole._id) == -1) {
                             ids.push(subrole._id);
                             result.push(subrole);
@@ -168,24 +166,17 @@ export class DBHelper {
     public static async FindRoleByName(name: string, parent: Span): Promise<Role> {
         const items: Role[] = await Config.db.query<Role>({ name: name }, null, 1, 0, null, "users", Crypt.rootToken(), undefined, undefined, parent);
         if (items === null || items === undefined || items.length === 0) { return null; }
-        const result: Role = Role.assign(items[0]);
-        return result;
+        return Role.assign(items[0]);
     }
     public static async FindRoleByNameOrId(name: string, id: string, parent: Span): Promise<Role> {
         const jwt = Crypt.rootToken();
         const items: Role[] = await Config.db.query<Role>({ $or: [{ name: name }, { _id: id }] }, null, 1, 0, null, "users", jwt, undefined, undefined, parent);
         if (items === null || items === undefined || items.length === 0) { return null; }
-        const result: Role = Role.assign(items[0]);
-        return result;
+        return Role.assign(items[0]);
     }
     public static async Save(item: User | Role, jwt: string, parent: Span): Promise<void> {
         await Config.db._UpdateOne(null, item, "users", 0, false, jwt, parent);
     }
-
-
-
-
-
     public static async EnsureRole(jwt: string, name: string, id: string, parent: Span): Promise<Role> {
         const span: Span = Logger.otel.startSubSpan("dbhelper.EnsureRole", parent);
         try {

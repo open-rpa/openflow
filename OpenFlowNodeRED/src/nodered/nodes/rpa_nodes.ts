@@ -293,7 +293,7 @@ export class rpa_workflow_node {
                 data: { payload: msg.payload }
             }
             const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_workflow_out_expiration);
-            await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", queue, this.localqueue, rpacommand, correlationId, expiration);
+            await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", queue, this.localqueue, rpacommand, correlationId, expiration, false);
             this.node.status({ fill: "yellow", shape: "dot", text: "Pending " + this.localqueue });
         } catch (error) {
             // NoderedUtil.HandleError(this, error);
@@ -490,7 +490,7 @@ export class rpa_killworkflows_node {
                 data: {}
             }
             const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_workflow_out_expiration);
-            await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", queue, this.localqueue, rpacommand, correlationId, expiration);
+            await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", queue, this.localqueue, rpacommand, correlationId, expiration, true);
             this.node.status({ fill: "yellow", shape: "dot", text: "Pending " + this.localqueue });
         } catch (error) {
             try {

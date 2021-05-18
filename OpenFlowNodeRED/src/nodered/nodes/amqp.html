@@ -104,6 +104,10 @@ Remember that your queue maybe get prefixed with your usename, if amqp_force_que
     <input type="text" id="node-input-localqueue" placeholder="Queue name">
 </div>
 <div class="form-row">
+    <label><i class="fa fa-tag"></i> Striptoken</label>
+    <input type="checkbox" id="node-input-striptoken" style="width: auto;">
+</div>
+<div class="form-row">
     <label><i class="fa fa-tag"></i> Name</label>
     <input type="text" id="node-input-name" placeholder="Node name">
 </div>
@@ -125,6 +129,7 @@ Remember that your <b>consumer queue</b> maybe get prefixed with your usename, i
             exchange: { value: "" },
             routingkey: { value: "" },
             localqueue: { value: "" },
+            striptoken: { value: false },
             config: { value: "", type: "amqp-connection", required: false },
             name: { value: "" }
         },
