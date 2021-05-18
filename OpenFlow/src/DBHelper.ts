@@ -218,7 +218,7 @@ export class DBHelper {
             await this.Save(user, jwt, span);
             const users: Role = await this.FindRoleByName("users", span);
             users.AddMember(user);
-            this.EnsureNoderedRoles(user, jwt, span);
+            this.EnsureNoderedRoles(user, jwt, false, span);
             await this.Save(users, jwt, span)
             await this.DecorateWithRoles(user, span);
             return user;
@@ -229,8 +229,8 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public static async EnsureNoderedRoles(user: TokenUser | User, jwt: string, parent: Span): Promise<void> {
-        if (Config.auto_create_personal_nodered_group) {
+    public static async EnsureNoderedRoles(user: TokenUser | User, jwt: string, force: boolean, parent: Span): Promise<void> {
+        if (Config.auto_create_personal_nodered_group || force) {
             let name = user.username;
             name = name.split("@").join("").split(".").join("");
             name = name.toLowerCase();
@@ -241,7 +241,7 @@ export class DBHelper {
             noderedadmins.AddMember(user as User);
             await this.Save(noderedadmins, jwt, parent);
         }
-        if (Config.auto_create_personal_noderedapi_group) {
+        if (Config.auto_create_personal_noderedapi_group || force) {
             let name = user.username;
             name = name.split("@").join("").split(".").join("");
             name = name.toLowerCase();

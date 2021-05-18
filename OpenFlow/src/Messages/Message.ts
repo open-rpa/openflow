@@ -1223,7 +1223,7 @@ export class Message {
             name = name.split("@").join("").split(".").join("");
             name = name.toLowerCase();
 
-            DBHelper.EnsureNoderedRoles(user, jwt, span);
+            DBHelper.EnsureNoderedRoles(user, jwt, false, span);
         } catch (error) {
             span.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -1411,7 +1411,7 @@ export class Message {
                 const tuser: TokenUser = TokenUser.From(nodereduser);
                 const nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
 
-                DBHelper.EnsureNoderedRoles(tuser, cli.jwt, span);
+                DBHelper.EnsureNoderedRoles(tuser, cli.jwt, true, span);
                 let saml_baseurl = Config.protocol + "://" + hostname + "/";
                 let _samlparsed = url.parse(Config.saml_federation_metadata);
                 if (_samlparsed.protocol == "http:" || _samlparsed.protocol == "ws:") {
@@ -1538,7 +1538,7 @@ export class Message {
             const tuser: TokenUser = TokenUser.From(nodereduser);
             const nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
 
-            DBHelper.EnsureNoderedRoles(tuser, cli.jwt, span);
+            DBHelper.EnsureNoderedRoles(tuser, cli.jwt, true, span);
 
             const resources = new V1ResourceRequirements();
             let hasbilling: boolean = false;

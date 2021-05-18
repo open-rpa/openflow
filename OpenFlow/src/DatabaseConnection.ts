@@ -899,7 +899,7 @@ export class DatabaseConnection {
                 span.addEvent("Save");
                 await DBHelper.Save(users, Crypt.rootToken(), span);
                 const user2: TokenUser = item as any;
-                DBHelper.EnsureNoderedRoles(user2, Crypt.rootToken(), span);
+                DBHelper.EnsureNoderedRoles(user2, Crypt.rootToken(), false, span);
             }
             if (collectionname === "users" && item._type === "role") {
                 Base.addRight(item, item._id, item.name, [Rights.read]);
