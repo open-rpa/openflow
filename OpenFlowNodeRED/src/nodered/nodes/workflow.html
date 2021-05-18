@@ -12,6 +12,10 @@
         <input type="checkbox" id="node-input-web" style="width: auto;">
     </div>
     <div class="form-row">
+        <label><i class="fa fa-tag"></i> EXCHANGE</label>
+        <input type="checkbox" id="node-input-exchange" style="width: auto;">
+    </div>
+    <div class="form-row">
         <label ><i class="fa fa-tag"></i> Name</label>
         <input type="text" id="node-input-name" placeholder="Node name">
     </div>
@@ -21,6 +25,9 @@ Create an entry point that can be activated either from openflow web or a RPA ro
 The workflow MUST end with a workflow out node, to send a reply back to the webpage/robot.<br>
 msg.jwt will contain the token of the calling user<br>
 msg.user will contain the TokenUser of the calling user<br>
+Check WEB to list the workflow on the workflow tab in OpenFlow<br>
+Check RPA to list the workflow in the Invoke OpenFlow activity in OpenRPA<br>
+Check EXCHANGE to register an exchange for the workflow to send messages to listening web clients<br>
 </script>
 <script type="text/javascript">
     RED.nodes.registerType('workflow in', {
@@ -32,6 +39,7 @@ msg.user will contain the TokenUser of the calling user<br>
             queue: { value: "", required: true },
             rpa: { value: false, required: true },
             web: { value: false, required: true },
+            exchange: { value: false, required: true },
             name: { value: "" }
         },
         inputs: 0,

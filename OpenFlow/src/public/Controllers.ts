@@ -1819,6 +1819,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
     public myid: string;
     public submitbutton: string;
     public queuename: string;
+    public localexchangequeue: string;
     public queue_message_timeout: number = (60 * 1000); // 1 min
 
     constructor(
@@ -1851,6 +1852,35 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 console.error(this.errormessage);
             }
         });
+
+    }
+    async RegisterExchange(exchange: string) {
+        if (!NoderedUtil.IsNullEmpty(this.localexchangequeue)) return;
+        const result = await NoderedUtil.RegisterExchange(WebSocketClient.instance, exchange, "direct",
+            "", async (msg: QueueMessage, ack: any) => {
+                // this.OnMessage(msg, ack);
+                console.log(msg);
+                ack();
+                // this.loadData();
+                this.model.payload = Object.assign(this.model.payload, msg.data.payload);
+                if (!NoderedUtil.IsNullEmpty(msg.data.payload.form)) {
+                    if (msg.data.payload.form != this.model.form) {
+                        const res = await NoderedUtil.Query("forms", { _id: msg.data.payload.form }, null, { _created: -1 }, 1, 0, null);
+                        if (res.length > 0) {
+                            this.model.form = msg.data.payload.form;
+                            this.form = res[0];
+                        } else {
+                            console.error("Failed locating form " + msg.data.payload.form)
+                        }
+                    }
+                }
+                this.renderform();
+            }, (msg) => {
+                // if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected" });
+                // setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+            });
+        this.localexchangequeue = result.queuename;
+        console.log("Register exchange for " + exchange + " with queue " + this.localexchangequeue);
 
     }
     async RegisterQueue() {
@@ -1901,6 +1931,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             console.error(this.errormessage);
             return;
         }
+        this.RegisterExchange(this.workflow.queue);
         if (this.instanceid !== null && this.instanceid !== undefined && this.instanceid !== "") {
             const res = await NoderedUtil.Query("workflow_instances", { _id: this.instanceid }, null, { _created: -1 }, 1, 0, null);
             if (res.length > 0) { this.model = res[0]; } else {

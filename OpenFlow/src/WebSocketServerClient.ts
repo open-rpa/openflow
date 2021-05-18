@@ -269,7 +269,7 @@ export class WebSocketServerClient {
                 }
             }
             await semaphore.down();
-            this.CloseConsumer(exchange, span);
+            // this.CloseConsumer(exchange, span);
             let exchangequeue: amqpexchange = null;
             try {
                 const AssertExchangeOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertExchangeOptions));

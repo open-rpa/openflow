@@ -318,6 +318,8 @@ export class amqpwrapper extends events.EventEmitter {
                 }, { noAck: false });
                 q.consumerTag = consumeresult.consumerTag;
                 Logger.instanse.info("[AMQP] Added queue consumer " + q.queue + "/" + q.consumerTag);
+            } else {
+                throw new Error("Failed asserting Queue " + queue);
             }
             return q;
         } catch (error) {
