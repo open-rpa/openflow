@@ -1858,23 +1858,24 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         if (!NoderedUtil.IsNullEmpty(this.localexchangequeue)) return;
         const result = await NoderedUtil.RegisterExchange(WebSocketClient.instance, exchange, "direct",
             "", async (msg: QueueMessage, ack: any) => {
-                // this.OnMessage(msg, ack);
                 console.log(msg);
                 ack();
-                // this.loadData();
-                this.model.payload = Object.assign(this.model.payload, msg.data.payload);
-                if (!NoderedUtil.IsNullEmpty(msg.data.payload.form)) {
-                    if (msg.data.payload.form != this.model.form) {
-                        const res = await NoderedUtil.Query("forms", { _id: msg.data.payload.form }, null, { _created: -1 }, 1, 0, null);
-                        if (res.length > 0) {
-                            this.model.form = msg.data.payload.form;
-                            this.form = res[0];
-                        } else {
-                            console.error("Failed locating form " + msg.data.payload.form)
+                if (NoderedUtil.IsNullEmpty(msg.routingkey) || msg.routingkey == this.instanceid) {
+                    // this.loadData();
+                    this.model.payload = Object.assign(this.model.payload, msg.data.payload);
+                    if (!NoderedUtil.IsNullEmpty(msg.data.payload.form)) {
+                        if (msg.data.payload.form != this.model.form) {
+                            const res = await NoderedUtil.Query("forms", { _id: msg.data.payload.form }, null, { _created: -1 }, 1, 0, null);
+                            if (res.length > 0) {
+                                this.model.form = msg.data.payload.form;
+                                this.form = res[0];
+                            } else {
+                                console.error("Failed locating form " + msg.data.payload.form)
+                            }
                         }
                     }
+                    this.renderform();
                 }
-                this.renderform();
             }, (msg) => {
                 // if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected" });
                 // setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);

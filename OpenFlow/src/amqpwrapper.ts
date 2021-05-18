@@ -391,13 +391,14 @@ export class amqpwrapper extends events.EventEmitter {
             const correlationId: string = msg.properties.correlationId;
             const replyTo: string = msg.properties.replyTo;
             const consumerTag: string = msg.fields.consumerTag;
-            const routingkey: string = msg.fields.routingkey;
+            const routingKey: string = msg.fields.routingKey;
+
             const exchange: string = msg.fields.exchange;
             const options: QueueMessageOptions = {
                 correlationId: correlationId,
                 replyTo: replyTo,
                 consumerTag: consumerTag,
-                routingkey: routingkey,
+                routingkey: routingKey,
                 exchange: exchange
             }
             const data: string = msg.content.toString();
