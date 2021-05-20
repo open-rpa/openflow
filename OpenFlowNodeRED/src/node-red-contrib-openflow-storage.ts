@@ -371,7 +371,7 @@ export class noderedcontribopenflowstorage {
         try {
             Logger.instanse.silly("noderedcontribopenflowstorage::_getnpmrc");
             if (WebSocketClient.instance != null && WebSocketClient.instance.isConnected()) {
-                const array = await NoderedUtil.Query("nodered", { _type: "npmrc", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                const array = await NoderedUtil.Query("nodered", { _type: "npmrc", nodered_id: Config.nodered_id }, null, null, 1, 0, null, null, null, 1);
                 if (array.length === 0) { return null; }
                 try {
                     this.npmrc = array[0];
@@ -408,15 +408,15 @@ export class noderedcontribopenflowstorage {
             // const filename: string = Config.nodered_id + "_npmrc.txt";
             // await backupStore.set(filename, JSON.stringify(npmrc));
             if (WebSocketClient.instance.isConnected()) {
-                const result = await NoderedUtil.Query("nodered", { _type: "npmrc", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                const result = await NoderedUtil.Query("nodered", { _type: "npmrc", nodered_id: Config.nodered_id }, null, null, 1, 0, null, null, null, 1);
                 if (result.length === 0) {
                     npmrc.name = "npmrc for " + Config.nodered_id;
                     npmrc.nodered_id = Config.nodered_id;
                     npmrc._type = "npmrc";
-                    await NoderedUtil.InsertOne("nodered", npmrc, 1, true, null);
+                    await NoderedUtil.InsertOne("nodered", npmrc, 1, true, null, 1);
                 } else {
                     npmrc._id = result[0]._id;
-                    await NoderedUtil.UpdateOne("nodered", null, npmrc, 1, true, null);
+                    await NoderedUtil.UpdateOne("nodered", null, npmrc, 1, true, null, 1);
                 }
             }
         } catch (error) {
@@ -428,7 +428,7 @@ export class noderedcontribopenflowstorage {
         try {
             Logger.instanse.silly("noderedcontribopenflowstorage::_getFlows");
             if (WebSocketClient.instance.isConnected()) {
-                const array = await NoderedUtil.Query("nodered", { _type: "flow", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                const array = await NoderedUtil.Query("nodered", { _type: "flow", nodered_id: Config.nodered_id }, null, null, 1, 0, null, null, null, 1);
                 if (array.length === 0) { return []; }
                 try {
                     this._flows = JSON.parse(array[0].flows);
@@ -461,17 +461,17 @@ export class noderedcontribopenflowstorage {
             await this.backupStore.set(filename, JSON.stringify(flows));
             if (WebSocketClient.instance.isConnected()) {
                 this.last_reload = new Date();
-                const result = await NoderedUtil.Query("nodered", { _type: "flow", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                const result = await NoderedUtil.Query("nodered", { _type: "flow", nodered_id: Config.nodered_id }, null, null, 1, 0, null, null, null, 1);
                 this.last_reload = new Date();
                 if (result.length === 0) {
                     const item: any = {
                         name: "flows for " + Config.nodered_id,
                         flows: JSON.stringify(flows), _type: "flow", nodered_id: Config.nodered_id
                     };
-                    await NoderedUtil.InsertOne("nodered", item, 1, true, null);
+                    await NoderedUtil.InsertOne("nodered", item, 1, true, null, 1);
                 } else {
                     result[0].flows = JSON.stringify(flows);
-                    await NoderedUtil.UpdateOne("nodered", null, result[0], 1, true, null);
+                    await NoderedUtil.UpdateOne("nodered", null, result[0], 1, true, null, 1);
                 }
                 this._flows = flows;
             }
@@ -484,7 +484,7 @@ export class noderedcontribopenflowstorage {
         try {
             Logger.instanse.silly("noderedcontribopenflowstorage::_getCredentials");
             if (WebSocketClient.instance.isConnected()) {
-                const result = await NoderedUtil.Query("nodered", { _type: "credential", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                const result = await NoderedUtil.Query("nodered", { _type: "credential", nodered_id: Config.nodered_id }, null, null, 1, 0, null, null, null, 1);
                 if (result.length === 0) { return []; }
                 cred = result[0].credentials;
                 const arr: any = result[0].credentialsarray;
@@ -524,7 +524,7 @@ export class noderedcontribopenflowstorage {
             let result: any[] = [];
             if (WebSocketClient.instance.isConnected()) {
                 this.last_reload = new Date();
-                result = await NoderedUtil.Query("nodered", { _type: "credential", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                result = await NoderedUtil.Query("nodered", { _type: "credential", nodered_id: Config.nodered_id }, null, null, 1, 0, null, null, null, 1);
                 this.last_reload = new Date();
                 const orgkeys = Object.keys(credentials);
                 for (let i = 0; i < orgkeys.length; i++) {
@@ -541,13 +541,13 @@ export class noderedcontribopenflowstorage {
                         credentials: credentials, credentialsarray: credentialsarray, _type: "credential", nodered_id: Config.nodered_id,
                         _encrypt: ["credentials", "credentialsarray"]
                     };
-                    const subresult = await NoderedUtil.InsertOne("nodered", item, 1, true, null);
+                    const subresult = await NoderedUtil.InsertOne("nodered", item, 1, true, null, 1);
                 } else {
                     const item: any = result[0];
                     item.credentials = credentials;
                     item.credentialsarray = credentialsarray;
                     item._encrypt = ["credentials", "credentialsarray"];
-                    const subresult = await NoderedUtil.UpdateOne("nodered", null, item, 1, true, null);
+                    const subresult = await NoderedUtil.UpdateOne("nodered", null, item, 1, true, null, 1);
                 }
                 this._credentials = credentials;
             }
@@ -561,7 +561,7 @@ export class noderedcontribopenflowstorage {
         try {
             Logger.instanse.silly("noderedcontribopenflowstorage::_getSettings");
             if (WebSocketClient.instance.isConnected()) {
-                const result = await NoderedUtil.Query("nodered", { _type: "setting", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                const result = await NoderedUtil.Query("nodered", { _type: "setting", nodered_id: Config.nodered_id }, null, null, 1, 0, null, null, null, 1);
                 if (result.length === 0) { return {}; }
                 settings = JSON.parse(result[0].settings);
             }
@@ -914,17 +914,17 @@ export class noderedcontribopenflowstorage {
             await this.backupStore.set(filename, JSON.stringify(settings));
             if (WebSocketClient.instance.isConnected()) {
                 this.last_reload = new Date();
-                const result = await NoderedUtil.Query("nodered", { _type: "setting", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                const result = await NoderedUtil.Query("nodered", { _type: "setting", nodered_id: Config.nodered_id }, null, null, 1, 0, null, null, null, 1);
                 this.last_reload = new Date();
                 if (result.length === 0) {
                     const item: any = {
                         name: "settings for " + Config.nodered_id,
                         settings: JSON.stringify(settings), _type: "setting", nodered_id: Config.nodered_id
                     };
-                    await NoderedUtil.InsertOne("nodered", item, 1, true, null);
+                    await NoderedUtil.InsertOne("nodered", item, 1, true, null, 1);
                 } else {
                     result[0].settings = JSON.stringify(settings);
-                    await NoderedUtil.UpdateOne("nodered", null, result[0], 1, true, null);
+                    await NoderedUtil.UpdateOne("nodered", null, result[0], 1, true, null, 1);
                 }
             }
 
@@ -972,7 +972,7 @@ export class noderedcontribopenflowstorage {
         try {
             Logger.instanse.silly("noderedcontribopenflowstorage::_getSessions");
             if (WebSocketClient.instance.isConnected()) {
-                const result = await NoderedUtil.Query("nodered", { _type: "session", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                const result = await NoderedUtil.Query("nodered", { _type: "session", nodered_id: Config.nodered_id }, null, null, 1, 0, null, null, null, 1);
                 if (result.length === 0) { return []; }
                 item = JSON.parse(result[0].sessions);
             }
@@ -997,17 +997,17 @@ export class noderedcontribopenflowstorage {
             await this.backupStore.set(filename, JSON.stringify(sessions));
             if (WebSocketClient.instance.isConnected()) {
                 this.last_reload = new Date();
-                const result = await NoderedUtil.Query("nodered", { _type: "session", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
+                const result = await NoderedUtil.Query("nodered", { _type: "session", nodered_id: Config.nodered_id }, null, null, 1, 0, null, null, null, 1);
                 this.last_reload = new Date();
                 if (result.length === 0) {
                     const item: any = {
                         name: "sessions for " + Config.nodered_id,
                         sessions: JSON.stringify(sessions), _type: "session", nodered_id: Config.nodered_id
                     };
-                    await NoderedUtil.InsertOne("nodered", item, 1, true, null);
+                    await NoderedUtil.InsertOne("nodered", item, 1, true, null, 1);
                 } else {
                     result[0].sessions = JSON.stringify(sessions);
-                    await NoderedUtil.UpdateOne("nodered", null, result[0], 1, true, null);
+                    await NoderedUtil.UpdateOne("nodered", null, result[0], 1, true, null, 1);
                 }
             }
         } catch (error) {
@@ -1025,7 +1025,7 @@ export class noderedcontribopenflowstorage {
             if (WebSocketClient.instance.isConnected()) {
                 this.last_reload = new Date();
                 // const result = await NoderedUtil.Query("nodered", { _type: "library", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
-                const result = await NoderedUtil.InsertOrUpdateOne("nodered", item, "_type,nodered_id,type,path", 1, true, null);
+                const result = await NoderedUtil.InsertOrUpdateOne("nodered", item, "_type,nodered_id,type,path", 1, true, null, 1);
                 this.last_reload = new Date();
             }
         } catch (error) {
@@ -1036,7 +1036,7 @@ export class noderedcontribopenflowstorage {
         try {
             Logger.instanse.silly("noderedcontribopenflowstorage::_getSessions");
             if (WebSocketClient.instance.isConnected()) {
-                const result = await NoderedUtil.Query("nodered", { _type: "library", nodered_id: Config.nodered_id, type, path }, null, null, 1, 0, null);
+                const result = await NoderedUtil.Query("nodered", { _type: "library", nodered_id: Config.nodered_id, type, path }, null, null, 1, 0, null, null, null, 1);
                 if (result.length === 0) { return null; }
                 var item = JSON.parse(result[0].sessions);
                 return item.body;

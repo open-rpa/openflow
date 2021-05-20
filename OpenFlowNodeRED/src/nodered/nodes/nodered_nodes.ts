@@ -21,9 +21,11 @@ export class get_pods {
         try {
             this.node.status({});
             const targetid = (!NoderedUtil.IsNullUndefinded(msg.targetid) ? msg.targetid : this.config.targetid);
+            let priority: number = 1;
+            if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
             this.node.status({ fill: "blue", shape: "dot", text: "Getting pods" });
 
-            const result = await NoderedUtil.GetNoderedInstance(targetid, msg.jwt);
+            const result = await NoderedUtil.GetNoderedInstance(targetid, msg.jwt, priority);
             msg.payload = result;
             this.node.send(msg);
             this.node.status({});

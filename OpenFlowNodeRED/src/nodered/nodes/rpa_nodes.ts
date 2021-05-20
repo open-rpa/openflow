@@ -259,7 +259,8 @@ export class rpa_workflow_node {
             let workflowid = this.config.workflow;
             let killexisting = this.config.killexisting;
             let killallexisting = this.config.killallexisting;
-
+            let priority: number = 1;
+            if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
             // if (!NoderedUtil.IsNullEmpty(msg.queue)) { queue = msg.queue; }
             if (!NoderedUtil.IsNullEmpty(msg.targetid)) { queue = msg.targetid; }
             if (queue == "none") queue = "";
@@ -293,7 +294,7 @@ export class rpa_workflow_node {
                 data: { payload: msg.payload }
             }
             const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_workflow_out_expiration);
-            await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", queue, this.localqueue, rpacommand, correlationId, expiration, false);
+            await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", queue, this.localqueue, rpacommand, correlationId, expiration, false, priority);
             this.node.status({ fill: "yellow", shape: "dot", text: "Pending " + this.localqueue });
         } catch (error) {
             // NoderedUtil.HandleError(this, error);
@@ -470,6 +471,8 @@ export class rpa_killworkflows_node {
             let queue = this.config.queue;
 
             if (!NoderedUtil.IsNullEmpty(msg.targetid)) { queue = msg.targetid; }
+            let priority: number = 1;
+            if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
             if (queue == "none") queue = "";
 
             const correlationId = msg._msgid || NoderedUtil.GetUniqueIdentifier();
@@ -490,7 +493,7 @@ export class rpa_killworkflows_node {
                 data: {}
             }
             const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_workflow_out_expiration);
-            await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", queue, this.localqueue, rpacommand, correlationId, expiration, true);
+            await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", queue, this.localqueue, rpacommand, correlationId, expiration, true, priority);
             this.node.status({ fill: "yellow", shape: "dot", text: "Pending " + this.localqueue });
         } catch (error) {
             try {
@@ -518,7 +521,7 @@ export async function get_rpa_detectors(req, res) {
         const rawAssertion = req.user.getAssertionXml();
         const token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
         const result: any[] = await NoderedUtil.Query('openrpa', { _type: "detector" },
-            { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
+            { name: 1 }, { name: -1 }, 1000, 0, token.jwt, null, null, 1)
         res.json(result);
     } catch (error) {
         res.status(500).json(error);
@@ -529,7 +532,7 @@ export async function get_rpa_robots_roles(req, res) {
         const rawAssertion = req.user.getAssertionXml();
         const token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
         const result: any[] = await NoderedUtil.Query('users', { $or: [{ _type: "user", _rpaheartbeat: { "$exists": true } }, { _type: "role", rparole: true }] },
-            { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
+            { name: 1 }, { name: -1 }, 1000, 0, token.jwt, null, null, 1)
         res.json(result);
     } catch (error) {
         res.status(500).json(error);
@@ -540,7 +543,7 @@ export async function get_rpa_robots(req, res) {
         const rawAssertion = req.user.getAssertionXml();
         const token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
         const result: any[] = await NoderedUtil.Query('users', { _type: "user", _rpaheartbeat: { "$exists": true } },
-            { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
+            { name: 1 }, { name: -1 }, 1000, 0, token.jwt, null, null, 1)
         res.json(result);
     } catch (error) {
         res.status(500).json(error);
@@ -552,7 +555,7 @@ export async function get_rpa_workflows(req, res) {
         const token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
         const q: any = { _type: "workflow" };
         const result: any[] = await NoderedUtil.Query('openrpa', q,
-            { name: 1, projectandname: 1 }, { projectid: -1, name: -1 }, 1000, 0, token.jwt, req.query.queue)
+            { name: 1, projectandname: 1 }, { projectid: -1, name: -1 }, 1000, 0, token.jwt, req.query.queue, null, 1)
         res.json(result);
     } catch (error) {
         res.status(500).json(error);

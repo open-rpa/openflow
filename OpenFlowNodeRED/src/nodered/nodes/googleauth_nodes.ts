@@ -177,7 +177,7 @@ export async function get_rpa_workflows(req, res) {
         const token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
         const q: any = { _type: "workflow" };
         const result: any[] = await NoderedUtil.Query('openrpa', q,
-            { name: 1, projectandname: 1 }, { projectid: -1, name: -1 }, 1000, 0, token.jwt, req.query.queue)
+            { name: 1, projectandname: 1 }, { projectid: -1, name: -1 }, 1000, 0, token.jwt, req.query.queue, null, 1)
         res.json(result);
     } catch (error) {
         res.status(500).json(error);

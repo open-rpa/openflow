@@ -385,7 +385,8 @@ export class entitiesCtrl<T> {
 
                 }
             }
-            this.models = await NoderedUtil.Query(this.collection, query, this.baseprojection, this.orderby, this.pagesize, 0, null, this.basequeryas);
+            this.models = await NoderedUtil.Query(this.collection, query, this.baseprojection, this.orderby, this.pagesize, 0, null, this.basequeryas,
+                null, 2);
             this.loading = false;
             if (this.autorefresh) {
                 if (this.models.length >= this.pagesize) {
@@ -430,7 +431,7 @@ export class entitiesCtrl<T> {
     async DeleteOne(model: any): Promise<any> {
         this.loading = true;
         try {
-            await NoderedUtil.DeleteOne(this.collection, model._id, null);
+            await NoderedUtil.DeleteOne(this.collection, model._id, null, 2);
             this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
         } catch (error) {
             this.errormessage = error;
@@ -502,7 +503,7 @@ export class entityCtrl<T> {
                 this.preloadData();
             }
 
-            const result = await NoderedUtil.Query(this.collection, this.basequery, this.baseprojection, null, 1, 0, null);
+            const result = await NoderedUtil.Query(this.collection, this.basequery, this.baseprojection, null, 1, 0, null, null, null, 2);
             if (result.length > 0) {
                 if (this.model == null) {
                     this.model = result[0];
