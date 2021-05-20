@@ -256,7 +256,7 @@ export class Message {
                 case "listcollections":
                     this.EnsureJWT(cli);
                     if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this));
+                        cli.Send(await QueueClient.SendForProcessing(this, (cli.clientagent == "webapp" ? 2 : 1)));
                     } else {
                         await this.ListCollections(span);
                         cli.Send(this);
@@ -265,7 +265,7 @@ export class Message {
                 case "dropcollection":
                     this.EnsureJWT(cli);
                     if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this));
+                        cli.Send(await QueueClient.SendForProcessing(this, (cli.clientagent == "webapp" ? 2 : 1)));
                     } else {
                         await this.DropCollection(span);
                         cli.Send(this);
@@ -274,7 +274,7 @@ export class Message {
                 case "query":
                     this.EnsureJWT(cli);
                     if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this));
+                        cli.Send(await QueueClient.SendForProcessing(this, (cli.clientagent == "webapp" ? 2 : 1)));
                     } else {
                         await this.Query(span);
                         cli.Send(this);
@@ -283,7 +283,7 @@ export class Message {
                 case "getdocumentversion":
                     this.EnsureJWT(cli);
                     if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this));
+                        cli.Send(await QueueClient.SendForProcessing(this, (cli.clientagent == "webapp" ? 2 : 1)));
                     } else {
                         await this.GetDocumentVersion(span);
                         cli.Send(this);
@@ -292,7 +292,7 @@ export class Message {
                 case "aggregate":
                     this.EnsureJWT(cli);
                     if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this));
+                        cli.Send(await QueueClient.SendForProcessing(this, (cli.clientagent == "webapp" ? 2 : 1)));
                     } else {
                         await this.Aggregate(span);
                         cli.Send(this);
@@ -307,7 +307,7 @@ export class Message {
                 case "insertone":
                     this.EnsureJWT(cli);
                     if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this));
+                        cli.Send(await QueueClient.SendForProcessing(this, (cli.clientagent == "webapp" ? 2 : 1)));
                     } else {
                         await this.InsertOne(span);
                         cli.Send(this);
@@ -327,7 +327,7 @@ export class Message {
                 case "updateone":
                     this.EnsureJWT(cli);
                     if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this));
+                        cli.Send(await QueueClient.SendForProcessing(this, (cli.clientagent == "webapp" ? 2 : 1)));
                     } else {
                         await this.UpdateOne(span);
                         cli.Send(this);
@@ -336,7 +336,7 @@ export class Message {
                 case "updatemany":
                     this.EnsureJWT(cli);
                     if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this));
+                        cli.Send(await QueueClient.SendForProcessing(this, (cli.clientagent == "webapp" ? 2 : 1)));
                     } else {
                         await this.UpdateMany(span);
                         cli.Send(this);
@@ -345,7 +345,7 @@ export class Message {
                 case "insertorupdateone":
                     this.EnsureJWT(cli);
                     if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this));
+                        cli.Send(await QueueClient.SendForProcessing(this, (cli.clientagent == "webapp" ? 2 : 1)));
                     } else {
                         await this.InsertOrUpdateOne(span);
                         cli.Send(this);
@@ -354,7 +354,7 @@ export class Message {
                 case "deleteone":
                     this.EnsureJWT(cli);
                     if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this));
+                        cli.Send(await QueueClient.SendForProcessing(this, (cli.clientagent == "webapp" ? 2 : 1)));
                     } else {
                         await this.DeleteOne(span);
                         cli.Send(this);
@@ -363,7 +363,7 @@ export class Message {
                 case "deletemany":
                     this.EnsureJWT(cli);
                     if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this));
+                        cli.Send(await QueueClient.SendForProcessing(this, (cli.clientagent == "webapp" ? 2 : 1)));
                     } else {
                         await this.DeleteMany(span);
                         cli.Send(this);
@@ -398,7 +398,7 @@ export class Message {
                 case "ensurenoderedinstance":
                     this.EnsureJWT(cli);
                     if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this));
+                        cli.Send(await QueueClient.SendForProcessing(this, (cli.clientagent == "webapp" ? 2 : 1)));
                     } else {
                         await this.EnsureNoderedInstance(span);
                         cli.Send(this);
@@ -915,7 +915,7 @@ export class Message {
                 insert.collectionname = msg.collectionname; insert.item = msg.items[i];
                 insert.w = msg.w; insert.j = msg.j; insert.jwt = msg.jwt;
                 tmpmsg.command = "insertone"; tmpmsg.data = JSON.stringify(insert);
-                Promises.push(QueueClient.SendForProcessing(tmpmsg));
+                Promises.push(QueueClient.SendForProcessing(tmpmsg, 1));
             }
             var results = await Promise.all(Promises.map(p => p.catch(e => e)));
             if (msg.skipresults) {

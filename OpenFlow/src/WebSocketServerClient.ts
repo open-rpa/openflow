@@ -485,7 +485,7 @@ export class WebSocketServerClient {
         q.error = d.error;
         q.correlationId = options.correlationId; q.queuename = queuename;
         q.consumerTag = options.consumerTag;
-        q.routingkey = options.routingkey;
+        q.routingkey = options.routingKey;
         q.exchange = options.exchange;
         let m: Message = Message.fromcommand("queuemessage");
         if (NoderedUtil.IsNullEmpty(q.correlationId)) { q.correlationId = m.id; }

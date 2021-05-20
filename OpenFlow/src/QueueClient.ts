@@ -14,30 +14,34 @@ export class QueueClient {
     }
     private static queue: amqpqueue = null;
     private static queuename: string = "openflow";
-    private static processingcount: number;
     public static async RegisterOpenflowQueue() {
         const AssertQueueOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertQueueOptions));
         AssertQueueOptions.exclusive = false;
-        this.processingcount = 0;
+        AssertQueueOptions["x-max-priority"] = 5;
+        AssertQueueOptions.maxPriority = 5;
         await amqpwrapper.Instance().AddQueueConsumer(this.queuename, AssertQueueOptions, null, async (data: any, options: QueueMessageOptions, ack: any, done: any) => {
             const msg: Message = Message.fromjson(data);
             let span: Span = null;
             try {
-                if (this.processingcount >= Config.openflow_amqp_processing_limit || !Config.db.isConnected) {
+                if (!Config.db.isConnected) {
                     // setTimeout(() => {
                     //     ack(false);
                     //     Logger.instanse.warn("[queue][nack] I'm busy, return message")
                     // }, Config.amqp_requeue_time);
+                    console.log("nack");
                     ack(false);
                     return;
                 }
+                if (options.priority == 1) {
+                    // const wait = ms => new Promise((r, j) => setTimeout(r, ms));
+                    // await wait(500);
+                }
                 if (!NoderedUtil.IsNullEmpty(options.replyTo)) {
                     span = Logger.otel.startSpan("QueueClient.QueueMessage");
-                    this.processingcount++;
                     if (Config.log_openflow_amqp) Logger.instanse.debug("[queue] Process command: " + msg.command + " id: " + msg.id + " correlationId: " + options.correlationId);
                     await msg.QueueProcess(msg, span);
                     ack();
-                    await amqpwrapper.Instance().send(options.exchange, options.replyTo, msg, Config.openflow_amqp_expiration, options.correlationId, options.routingkey);
+                    await amqpwrapper.Instance().send(options.exchange, options.replyTo, msg, Config.openflow_amqp_expiration, options.correlationId, options.routingKey);
                 } else {
                     Logger.instanse.debug("[queue][ack] No replyto !!!!");
                     ack();
@@ -51,7 +55,6 @@ export class QueueClient {
             }
             finally {
                 if (span != null) {
-                    this.processingcount--;
                     Logger.otel.endSpan(span);
                 }
             }
@@ -86,7 +89,7 @@ export class QueueClient {
         }, null);
     }
     private static messages: Message[] = [];
-    public static async SendForProcessing(msg: Message) {
+    public static async SendForProcessing(msg: Message, priority: number) {
         return new Promise<Message>(async (resolve, reject) => {
             try {
                 msg.correlationId = NoderedUtil.GetUniqueIdentifier();
@@ -103,7 +106,7 @@ export class QueueClient {
                     resolve(result);
                 }
                 if (Config.log_openflow_amqp) Logger.instanse.silly("[queue] Submit request for command: " + msg.command + " queuename: " + this.queuename + " replyto: " + this.queue.queue + " correlationId: " + msg.correlationId)
-                await amqpwrapper.Instance().sendWithReplyTo("", this.queuename, this.queue.queue, JSON.stringify(msg), Config.openflow_amqp_expiration, msg.correlationId, "");
+                await amqpwrapper.Instance().sendWithReplyTo("", this.queuename, this.queue.queue, JSON.stringify(msg), Config.openflow_amqp_expiration, msg.correlationId, "", priority);
             } catch (error) {
                 reject(error);
             }

@@ -28,7 +28,7 @@ export class Config {
         Config.openflow_uniqueid = Config.getEnv("openflow_uniqueid", "");
         Config.enable_openflow_amqp = Config.parseBoolean(Config.getEnv("enable_openflow_amqp", "false"));
         Config.openflow_amqp_expiration = parseInt(Config.getEnv("openflow_amqp_expiration", (60 * 1000 * 25).toString())); // 25 min
-        Config.openflow_amqp_processing_limit = parseInt(Config.getEnv("openflow_amqp_processing_limit", "50"));
+        Config.amqp_prefetch = parseInt(Config.getEnv("amqp_prefetch", "50"));
 
 
         Config.getting_started_url = Config.getEnv("getting_started_url", "");
@@ -156,7 +156,7 @@ export class Config {
     public static openflow_uniqueid: string = Config.getEnv("openflow_uniqueid", "");
     public static enable_openflow_amqp: boolean = Config.parseBoolean(Config.getEnv("enable_openflow_amqp", "false"));
     public static openflow_amqp_expiration: number = parseInt(Config.getEnv("openflow_amqp_expiration", (60 * 1000 * 25).toString())); // 25 min
-    public static openflow_amqp_processing_limit: number = parseInt(Config.getEnv("openflow_amqp_processing_limit", "50"));
+    public static amqp_prefetch: number = parseInt(Config.getEnv("amqp_prefetch", "50"));
 
     public static getting_started_url: string = Config.getEnv("getting_started_url", "");
 

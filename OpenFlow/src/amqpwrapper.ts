@@ -17,8 +17,9 @@ export type QueueMessageOptions = {
     correlationId: string,
     replyTo: string,
     consumerTag: string,
-    routingkey: string,
-    exchange: string
+    routingKey: string,
+    exchange: string,
+    priority: number
 }
 type AssertQueue = {
     consumerCount: number;
@@ -143,6 +144,7 @@ export class amqpwrapper extends events.EventEmitter {
         try {
             console.log("AddReplyQueue begin");
             this.channel = await this.conn.createConfirmChannel();
+            this.channel.prefetch(50);
             this.replyqueue = await this.AddQueueConsumer("", null, null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
                 try {
                     if (this.replyqueue) {
@@ -396,14 +398,15 @@ export class amqpwrapper extends events.EventEmitter {
             const replyTo: string = msg.properties.replyTo;
             const consumerTag: string = msg.fields.consumerTag;
             const routingKey: string = msg.fields.routingKey;
-
+            const priority: number = (msg.properties.priority ? msg.properties.priority : 0);
             const exchange: string = msg.fields.exchange;
             const options: QueueMessageOptions = {
-                correlationId: correlationId,
-                replyTo: replyTo,
-                consumerTag: consumerTag,
-                routingkey: routingKey,
-                exchange: exchange
+                correlationId,
+                replyTo,
+                consumerTag,
+                routingKey,
+                exchange,
+                priority
             }
             const data: string = msg.content.toString();
             callback(data, options, (nack: boolean) => {
@@ -440,7 +443,7 @@ export class amqpwrapper extends events.EventEmitter {
         }
         return this.activecalls[correlationId].promise;
     }
-    async sendWithReplyTo(exchange: string, queue: string, replyTo: string, data: any, expiration: number, correlationId: string, routingkey: string): Promise<void> {
+    async sendWithReplyTo(exchange: string, queue: string, replyTo: string, data: any, expiration: number, correlationId: string, routingkey: string, priority: number = 1): Promise<void> {
         if (this.channel == null || this.conn == null) {
             throw new Error("Cannot send message, when not connected");
         }
@@ -460,6 +463,7 @@ export class amqpwrapper extends events.EventEmitter {
         // options.durable = true;
         // options.mandatory = true;
         // options.immediate = true;
+        options.priority = priority;
         if (NoderedUtil.IsNullEmpty(exchange)) {
             this.channel.publish("", queue, Buffer.from(data), options);
 
@@ -478,7 +482,7 @@ export class amqpwrapper extends events.EventEmitter {
             this.channel.publish(exchange, routingkey, Buffer.from(data), options);
         }
     }
-    async send(exchange: string, queue: string, data: any, expiration: number, correlationId: string, routingkey: string): Promise<void> {
+    async send(exchange: string, queue: string, data: any, expiration: number, correlationId: string, routingkey: string, priority: number = 1): Promise<void> {
         if (this.channel == null || this.conn == null) {
             throw new Error("Cannot send message, when not connected");
         }
@@ -492,6 +496,7 @@ export class amqpwrapper extends events.EventEmitter {
         if (expiration < 1) expiration = Config.amqp_default_expiration;
         options.expiration = expiration.toString();
         options.mandatory = true;
+        options.priority = priority;
         // options.confirm = true;
         // options.persistent = true;
         // options.durable = true;
