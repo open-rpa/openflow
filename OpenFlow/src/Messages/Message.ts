@@ -27,6 +27,7 @@ import { OAuthProvider } from "../OAuthProvider";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "../Logger";
 import Dockerode = require("dockerode");
+import { QueueClient } from "../QueueClient";
 const request = require("request");
 const got = require("got");
 const { RateLimiterMemory } = require('rate-limiter-flexible')
@@ -43,6 +44,14 @@ let errorcounter: number = 0;
 var _hostname = "";
 async function handleError(cli: WebSocketServerClient, error: Error) {
     try {
+        if (cli == null) {
+            if (_hostname == "DESKTOP-HRNQ2GL" && false) {
+                Logger.instanse.error(error.message ? error.message : error);
+            } else {
+                Logger.instanse.error(error);
+            }
+            return;
+        }
         if (NoderedUtil.IsNullEmpty(_hostname)) _hostname = (Config.getEnv("HOSTNAME", undefined) || os.hostname()) || "unknown";
         errorcounter++;
         if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_errors)) WebSocketServer.websocket_errors.bind({ ...Logger.otel.defaultlabels }).update(errorcounter);
@@ -60,7 +69,6 @@ async function handleError(cli: WebSocketServerClient, error: Error) {
             cli.devnull = true;
             cli.Close();
         }
-        return;
     }
 
 }
@@ -71,6 +79,69 @@ export class Message {
     public replyto: string;
     public command: string;
     public data: string;
+    public jwt: string;
+    public correlationId: string;
+    public cb: any;
+    public async QueueProcess(cli: QueueClient, parent: Span): Promise<void> {
+        let span: Span = undefined;
+        try {
+            const ot_end = Logger.otel.startTimer();
+            span = Logger.otel.startSubSpan("QueueProcessMessage " + this.command, parent);
+            span.setAttribute("command", this.command);
+            span.setAttribute("id", this.id);
+            switch (this.command) {
+                case "listcollections":
+                    await this.ListCollections(span);
+                    break;
+                case "dropcollection":
+                    await this.DropCollection(span);
+                    break;
+                case "query":
+                    await this.Query(span);
+                    break;
+                case "getdocumentversion":
+                    await this.GetDocumentVersion(span);
+                    break;
+                case "aggregate":
+                    await this.Aggregate(span);
+                    break;
+                case "insertone":
+                    await this.InsertOne(span);
+                    break;
+                // case "insertmany":
+                //     await this.InsertMany(span);
+                //     break;
+                case "updateone":
+                    await this.UpdateOne(span);
+                    break;
+                case "updatemany":
+                    await this.UpdateMany(span);
+                    break;
+                case "insertorupdateone":
+                    await this.InsertOrUpdateOne(span);
+                    break;
+                case "deleteone":
+                    await this.DeleteOne(span);
+                    break;
+                case "deletemany":
+                    await this.DeleteMany(span);
+                    break;
+                case "ensurenoderedinstance":
+                    await this.EnsureNoderedInstance(span);
+                    break;
+                default:
+                    span.recordException("Unknown command " + this.command);
+                    this.UnknownCommand();
+                    break;
+            }
+            if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: this.command });
+        } catch (error) {
+            Logger.instanse.error(error);
+            span.recordException(error);
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
     public static fromcommand(command: string): Message {
         const result: Message = new Message();
         result.command = command;
@@ -85,10 +156,36 @@ export class Message {
         result.data = data;
         return result;
     }
+    public static fromjson(json: string): Message {
+        const result: Message = new Message();
+        let data: any = json;
+        if (typeof data == 'string') data = JSON.parse(json);
+        result.id = data.id;
+        result.replyto = data.replyto;
+        result.command = data.command;
+        result.data = data.data;
+        result.jwt = data.jwt;
+        return result;
+    }
     public Reply(command: string = null): void {
         if (!NoderedUtil.IsNullEmpty(command)) { this.command = command; }
         this.replyto = this.id;
         this.id = NoderedUtil.GetUniqueIdentifier();
+    }
+
+    public EnsureJWT(cli: WebSocketServerClient) {
+        if (!NoderedUtil.IsNullUndefinded(this.data)) {
+            var obj: any = this.data;
+            if (typeof obj == "string") obj = JSON.parse(obj);
+            if (!NoderedUtil.IsNullEmpty(obj.jwt)) {
+                this.jwt = obj.jwt; delete obj.jwt;
+                this.data = JSON.stringify(obj);
+            }
+        }
+        if (NoderedUtil.IsNullEmpty(this.jwt)) this.jwt = cli.jwt;
+        if (NoderedUtil.IsNullEmpty(this.jwt)) {
+            console.warn("no jwt");
+        }
     }
     public async Process(cli: WebSocketServerClient): Promise<void> {
         if (cli.devnull) return;
@@ -157,19 +254,49 @@ export class Message {
             span.setAttribute("id", this.id);
             switch (command) {
                 case "listcollections":
-                    await this.ListCollections(cli, span);
+                    this.EnsureJWT(cli);
+                    if (Config.enable_openflow_amqp) {
+                        cli.Send(await QueueClient.SendForProcessing(this));
+                    } else {
+                        await this.ListCollections(span);
+                        cli.Send(this);
+                    }
                     break;
                 case "dropcollection":
-                    await this.DropCollection(cli, span);
+                    this.EnsureJWT(cli);
+                    if (Config.enable_openflow_amqp) {
+                        cli.Send(await QueueClient.SendForProcessing(this));
+                    } else {
+                        await this.DropCollection(span);
+                        cli.Send(this);
+                    }
                     break;
                 case "query":
-                    await this.Query(cli, span);
+                    this.EnsureJWT(cli);
+                    if (Config.enable_openflow_amqp) {
+                        cli.Send(await QueueClient.SendForProcessing(this));
+                    } else {
+                        await this.Query(span);
+                        cli.Send(this);
+                    }
                     break;
                 case "getdocumentversion":
-                    await this.GetDocumentVersion(cli, span);
+                    this.EnsureJWT(cli);
+                    if (Config.enable_openflow_amqp) {
+                        cli.Send(await QueueClient.SendForProcessing(this));
+                    } else {
+                        await this.GetDocumentVersion(span);
+                        cli.Send(this);
+                    }
                     break;
                 case "aggregate":
-                    await this.Aggregate(cli, span);
+                    this.EnsureJWT(cli);
+                    if (Config.enable_openflow_amqp) {
+                        cli.Send(await QueueClient.SendForProcessing(this));
+                    } else {
+                        await this.Aggregate(span);
+                        cli.Send(this);
+                    }
                     break;
                 case "watch":
                     await this.Watch(cli);
@@ -178,25 +305,69 @@ export class Message {
                     await this.UnWatch(cli);
                     break;
                 case "insertone":
-                    await this.InsertOne(cli, span);
+                    this.EnsureJWT(cli);
+                    if (Config.enable_openflow_amqp) {
+                        cli.Send(await QueueClient.SendForProcessing(this));
+                    } else {
+                        await this.InsertOne(span);
+                        cli.Send(this);
+                    }
                     break;
                 case "insertmany":
-                    await this.InsertMany(cli, span);
+                    this.EnsureJWT(cli);
+                    if (Config.enable_openflow_amqp) {
+                        // cli.Send(await QueueClient.SendForProcessing(this));
+                        await this.QueueInsertMany(span);
+                        cli.Send(this);
+                    } else {
+                        await this.LocalInsertMany(span);
+                        cli.Send(this);
+                    }
                     break;
                 case "updateone":
-                    await this.UpdateOne(cli, span);
+                    this.EnsureJWT(cli);
+                    if (Config.enable_openflow_amqp) {
+                        cli.Send(await QueueClient.SendForProcessing(this));
+                    } else {
+                        await this.UpdateOne(span);
+                        cli.Send(this);
+                    }
                     break;
                 case "updatemany":
-                    await this.UpdateMany(cli);
+                    this.EnsureJWT(cli);
+                    if (Config.enable_openflow_amqp) {
+                        cli.Send(await QueueClient.SendForProcessing(this));
+                    } else {
+                        await this.UpdateMany(span);
+                        cli.Send(this);
+                    }
                     break;
                 case "insertorupdateone":
-                    await this.InsertOrUpdateOne(cli, span);
+                    this.EnsureJWT(cli);
+                    if (Config.enable_openflow_amqp) {
+                        cli.Send(await QueueClient.SendForProcessing(this));
+                    } else {
+                        await this.InsertOrUpdateOne(span);
+                        cli.Send(this);
+                    }
                     break;
                 case "deleteone":
-                    await this.DeleteOne(cli);
+                    this.EnsureJWT(cli);
+                    if (Config.enable_openflow_amqp) {
+                        cli.Send(await QueueClient.SendForProcessing(this));
+                    } else {
+                        await this.DeleteOne(span);
+                        cli.Send(this);
+                    }
                     break;
                 case "deletemany":
-                    await this.DeleteMany(cli);
+                    this.EnsureJWT(cli);
+                    if (Config.enable_openflow_amqp) {
+                        cli.Send(await QueueClient.SendForProcessing(this));
+                    } else {
+                        await this.DeleteMany(span);
+                        cli.Send(this);
+                    }
                     break;
                 case "signin":
                     await this.Signin(cli, span);
@@ -225,7 +396,13 @@ export class Message {
                     await this.CloseQueue(cli, span);
                     break;
                 case "ensurenoderedinstance":
-                    await this.EnsureNoderedInstance(cli, span);
+                    this.EnsureJWT(cli);
+                    if (Config.enable_openflow_amqp) {
+                        cli.Send(await QueueClient.SendForProcessing(this));
+                    } else {
+                        await this.EnsureNoderedInstance(span);
+                        cli.Send(this);
+                    }
                     break;
                 case "deletenoderedinstance":
                     await this.DeleteNoderedInstance(cli, span);
@@ -292,7 +469,8 @@ export class Message {
                     break;
                 default:
                     span.recordException("Unknown command " + command);
-                    this.UnknownCommand(cli);
+                    this.UnknownCommand();
+                    cli.Send(this);
                     break;
             }
             if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
@@ -468,15 +646,14 @@ export class Message {
     public Send(cli: WebSocketServerClient): void {
         cli.Send(this);
     }
-    private UnknownCommand(cli: WebSocketServerClient): void {
+    private UnknownCommand(): void {
         if (NoderedUtil.IsNullEmpty(this.command)) {
             Logger.instanse.error(new Error("Received message with no command"));
             return;
         }
         this.Reply("error");
-        this.data = "Unknown command " + this.command;
+        this.data = "{\"message\": \"Unknown command " + this.command + "\"}";
         Logger.instanse.error(new Error(this.data));
-        this.Send(cli);
     }
     private Ping(cli: WebSocketServerClient): void {
         this.Reply("pong");
@@ -484,13 +661,13 @@ export class Message {
     }
     private static collectionCache: any = {};
     private static collectionCachetime: Date = new Date();
-    private async ListCollections(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    private async ListCollections(parent: Span): Promise<void> {
         this.Reply();
         const span: Span = Logger.otel.startSubSpan("message.ListCollections", parent);
         let msg: ListCollectionsMessage
         try {
             msg = ListCollectionsMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             const d = new Date(Message.collectionCachetime.getTime() + 1000 * 60);
             if (d < new Date()) {
                 Message.collectionCache = {};
@@ -528,7 +705,7 @@ export class Message {
             }
         } catch (error) {
             span.recordException(error);
-            await handleError(cli, error);
+            await handleError(null, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
@@ -537,22 +714,21 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
         }
         Logger.otel.endSpan(span);
-        this.Send(cli);
     }
-    private async DropCollection(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    private async DropCollection(parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.DropCollection", parent);
         this.Reply();
         let msg: DropCollectionMessage
         try {
             msg = DropCollectionMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             await Config.db.DropCollection(msg.collectionname, msg.jwt, span);
         } catch (error) {
             span.recordException(error);
-            await handleError(cli, error);
+            await handleError(null, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
@@ -561,18 +737,17 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
         }
         Logger.otel.endSpan(span);
-        this.Send(cli);
     }
-    private async Query(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    private async Query(parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.Query", parent);
         this.Reply();
         let msg: QueryMessage
         try {
             msg = QueryMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) {
                 span.recordException("Access denied, not signed in")
                 msg.error = "Access denied, not signed in";
@@ -580,7 +755,7 @@ export class Message {
                 msg.result = await Config.db.query(msg.query, msg.projection, msg.top, msg.skip, msg.orderby, msg.collectionname, msg.jwt, msg.queryas, msg.hint, span);
             }
         } catch (error) {
-            await handleError(cli, error);
+            await handleError(null, error);
             span.recordException(error)
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -590,25 +765,24 @@ export class Message {
         } catch (error) {
             this.data = "";
             span.recordException(error)
-            await handleError(cli, error);
+            await handleError(null, error);
         }
         Logger.otel.endSpan(span);
-        this.Send(cli);
     }
-    private async GetDocumentVersion(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    private async GetDocumentVersion(parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.GetDocumentVersion", parent);
         this.Reply();
         let msg: GetDocumentVersionMessage
         try {
             msg = GetDocumentVersionMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) {
                 msg.error = "Access denied, not signed in";
             } else {
                 msg.result = await Config.db.GetDocumentVersion(msg.collectionname, msg._id, msg.version, msg.jwt, span);
             }
         } catch (error) {
-            await handleError(cli, error);
+            await handleError(null, error);
             span.recordException(error)
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -618,33 +792,31 @@ export class Message {
         } catch (error) {
             this.data = "";
             span.recordException(error)
-            await handleError(cli, error);
+            await handleError(null, error);
         }
         Logger.otel.endSpan(span);
-        this.Send(cli);
     }
 
-    private async Aggregate(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    private async Aggregate(parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.Aggregate", parent);
         this.Reply();
         let msg: AggregateMessage
         try {
             msg = AggregateMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             msg.result = await Config.db.aggregate(msg.aggregates, msg.collectionname, msg.jwt, msg.hint, span);
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            await handleError(cli, error);
+            await handleError(null, error);
         }
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
         }
         Logger.otel.endSpan(span);
-        this.Send(cli);
     }
     private async UnWatch(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
@@ -657,7 +829,6 @@ export class Message {
             } else {
                 msg.error = "Watch is not supported by this openflow";
             }
-
             msg.result = null;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -697,13 +868,13 @@ export class Message {
         }
         this.Send(cli);
     }
-    private async InsertOne(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    private async InsertOne(parent: Span): Promise<void> {
         this.Reply();
         const span: Span = Logger.otel.startSubSpan("message.InsertOne", parent);
         let msg: InsertOneMessage
         try {
             msg = InsertOneMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
             if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) {
@@ -714,25 +885,70 @@ export class Message {
             span.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            await handleError(cli, error);
+            await handleError(null, error);
         }
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
             span.recordException(error);
-            await handleError(cli, error);
+            await handleError(null, error);
         }
         Logger.otel.endSpan(span);
-        this.Send(cli);
     }
-    private async InsertMany(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    private async QueueInsertMany(parent: Span): Promise<void> {
+        this.Reply();
+        const span: Span = Logger.otel.startSubSpan("message.InsertMany", parent);
+        let msg: InsertManyMessage
+        try {
+            msg = InsertManyMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
+            if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) {
+                throw new Error("jwt is null and client is not authenticated");
+            }
+            const Promises: Promise<any>[] = [];
+            for (let i: number = 0; i < msg.items.length; i++) {
+                var tmpmsg: Message = new Message();
+                var insert: InsertOneMessage = new InsertOneMessage();
+                insert.collectionname = msg.collectionname; insert.item = msg.items[i];
+                insert.w = msg.w; insert.j = msg.j; insert.jwt = msg.jwt;
+                tmpmsg.command = "insertone"; tmpmsg.data = JSON.stringify(insert);
+                Promises.push(QueueClient.SendForProcessing(tmpmsg));
+            }
+            var results = await Promise.all(Promises.map(p => p.catch(e => e)));
+            if (msg.skipresults) {
+                msg.results = [];
+            } else {
+                msg.results = [];
+                for (let item of results) {
+                    var imsg = InsertOneMessage.assign(item.data);
+                    msg.results.push(imsg.result);
+                }
+            }
+        } catch (error) {
+            span.recordException(error);
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
+            await handleError(null, error);
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            span.recordException(error);
+            this.data = "";
+            await handleError(null, error);
+        }
+        Logger.otel.endSpan(span);
+    }
+    private async LocalInsertMany(parent: Span): Promise<void> {
         this.Reply();
         const span: Span = Logger.otel.startSubSpan("message.InsertOne", parent);
         let msg: InsertManyMessage
         try {
             msg = InsertManyMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
             if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) {
@@ -748,41 +964,33 @@ export class Message {
             span.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            await handleError(cli, error);
+            await handleError(null, error);
         }
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
         }
         Logger.otel.endSpan(span);
-        this.Send(cli);
     }
-    private async UpdateOne(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    private async UpdateOne(parent: Span): Promise<void> {
         this.Reply();
         const span: Span = Logger.otel.startSubSpan("message.UpdateOne", parent);
         let msg: UpdateOneMessage
         try {
             msg = UpdateOneMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
             if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
             var tempres = await Config.db.UpdateOne(msg, span);
-            if (tempres == null) {
-                msg = UpdateOneMessage.assign(this.data);
-                if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-                if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
-                if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
-                tempres = await Config.db.UpdateOne(msg, span);
-            }
             msg = tempres;
         } catch (error) {
             span.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            await handleError(cli, error);
+            await handleError(null, error);
         }
         try {
             if (msg != null) delete msg.query;
@@ -790,49 +998,49 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
         }
         Logger.otel.endSpan(span);
-        this.Send(cli);
     }
-    private async UpdateMany(cli: WebSocketServerClient): Promise<void> {
+    private async UpdateMany(parent: Span): Promise<void> {
         this.Reply();
         let msg: UpdateManyMessage
+        const span: Span = Logger.otel.startSubSpan("message.UpdateOne", parent);
         try {
             msg = UpdateManyMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
             if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
-            msg = await Config.db.UpdateMany(msg);
+            msg = await Config.db.UpdateMany(msg, span);
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            await handleError(cli, error);
+            await handleError(null, error);
         }
         try {
             delete msg.query;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
         }
-        this.Send(cli);
+        Logger.otel.endSpan(span);
     }
-    private async InsertOrUpdateOne(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    private async InsertOrUpdateOne(parent: Span): Promise<void> {
         this.Reply();
         let msg: InsertOrUpdateOneMessage
         try {
             msg = InsertOrUpdateOneMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
             if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
             if (msg.collectionname == "openrpa_instances" && msg.item._type == "workflowinstance") {
                 // Force uniqeness for workflow instances in old versions of openrpa
                 const versionPadded = version => version.split('.').map((n, i) => n.padStart(3, '0')).join('');
-                var version: string = versionPadded(cli.clientversion);
-                if (cli.clientagent == "openrpa" && parseInt(version) <= parseInt("001002040000")) { // 001002040000
-                    msg.uniqeness = "InstanceId,WorkflowId";
-                }
+                // var version: string = versionPadded(cli.clientversion);
+                // if (cli.clientagent == "openrpa" && parseInt(version) <= parseInt("001002040000")) { // 001002040000
+                //     msg.uniqeness = "InstanceId,WorkflowId";
+                // }
                 let state: string = (msg.item as any).state;
                 // Force removing completed states, for old versions of openrpa
                 if (msg.item && ["aborted", "failed", "completed"].indexOf(state) > -1) {
@@ -844,55 +1052,56 @@ export class Message {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (error) if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             if (!error) msg.error = "Unknown error";
-            await handleError(cli, error);
+            await handleError(null, error);
         }
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
         }
-        this.Send(cli);
     }
-    private async DeleteOne(cli: WebSocketServerClient): Promise<void> {
+    private async DeleteOne(parent: Span): Promise<void> {
         this.Reply();
         let msg: DeleteOneMessage
+        const span: Span = Logger.otel.startSubSpan("message.DeleteOne", parent);
         try {
             msg = DeleteOneMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-            await Config.db.DeleteOne(msg._id, msg.collectionname, msg.jwt);
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            await Config.db.DeleteOne(msg._id, msg.collectionname, msg.jwt, span);
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            await handleError(cli, error);
+            await handleError(null, error);
         }
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
         }
-        this.Send(cli);
+        Logger.otel.endSpan(span);
     }
-    private async DeleteMany(cli: WebSocketServerClient): Promise<void> {
+    private async DeleteMany(parent: Span): Promise<void> {
         this.Reply();
         let msg: DeleteManyMessage
+        const span: Span = Logger.otel.startSubSpan("message.DeleteMany", parent);
         try {
             msg = DeleteManyMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-            msg.affectedrows = await Config.db.DeleteMany(msg.query, msg.ids, msg.collectionname, msg.jwt);
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            msg.affectedrows = await Config.db.DeleteMany(msg.query, msg.ids, msg.collectionname, msg.jwt, span);
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            await handleError(cli, error);
+            await handleError(null, error);
         }
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
         }
-        this.Send(cli);
+        Logger.otel.endSpan(span);
     }
     private async MapReduce(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
@@ -1278,12 +1487,12 @@ export class Message {
             Message.detectdocker = false;
         }
     }
-    private async EnsureNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    private async EnsureNoderedInstance(parent: Span): Promise<void> {
         await this.DetectDocker();
         if (Message.usedocker) {
-            this.DockerEnsureNoderedInstance(cli, parent);
+            this.DockerEnsureNoderedInstance(parent);
         } else {
-            this.KubeEnsureNoderedInstance(cli, parent);
+            this.KubeEnsureNoderedInstance(parent);
         }
     }
     _pullImage(docker: Dockerode, imagename: string) {
@@ -1307,7 +1516,7 @@ export class Message {
             });
         })
     }
-    private async DockerEnsureNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    private async DockerEnsureNoderedInstance(parent: Span): Promise<void> {
         this.Reply();
         const span: Span = Logger.otel.startSubSpan("message.EnsureNoderedInstance", parent);
         let msg: EnsureNoderedInstanceMessage;
@@ -1315,11 +1524,13 @@ export class Message {
             msg = EnsureNoderedInstanceMessage.assign(this.data);
             let _id = msg._id;
 
-            Logger.instanse.debug("[" + cli.user.username + "] EnsureNoderedInstance");
-            if (_id === null || _id === undefined || _id === "") _id = cli.user._id;
-            const name = await this.GetInstanceName(_id, cli.user._id, cli.user.username, cli.jwt, span);
+            const tuser = Crypt.verityToken(this.jwt);
 
-            const users = await Config.db.query<NoderedUser>({ _id: _id }, null, 1, 0, null, "users", cli.jwt, undefined, undefined, span);
+            Logger.instanse.debug("[" + tuser.username + "] EnsureNoderedInstance");
+            if (_id === null || _id === undefined || _id === "") _id = tuser._id;
+            const name = await this.GetInstanceName(_id, tuser._id, tuser.username, this.jwt, span);
+
+            const users = await Config.db.query<NoderedUser>({ _id: _id }, null, 1, 0, null, "users", this.jwt, undefined, undefined, span);
             if (users.length == 0) {
                 throw new Error("Unknown userid " + _id);
             }
@@ -1407,11 +1618,11 @@ export class Message {
                 if (!NoderedUtil.IsNullEmpty(Config.nodered_ws_url)) api_ws_url = Config.nodered_ws_url;
                 if (!api_ws_url.endsWith("/")) api_ws_url += "/";
 
-                const nodereduser = await DBHelper.FindById(_id, cli.jwt, span);
+                const nodereduser = await DBHelper.FindById(_id, this.jwt, span);
                 const tuser: TokenUser = TokenUser.From(nodereduser);
                 const nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
 
-                DBHelper.EnsureNoderedRoles(tuser, cli.jwt, true, span);
+                DBHelper.EnsureNoderedRoles(tuser, this.jwt, true, span);
                 let saml_baseurl = Config.protocol + "://" + hostname + "/";
                 let _samlparsed = url.parse(Config.saml_federation_metadata);
                 if (_samlparsed.protocol == "http:" || _samlparsed.protocol == "ws:") {
@@ -1472,7 +1683,7 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
             //msg.error = JSON.stringify(error, null, 2);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
@@ -1481,22 +1692,21 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
         }
         Logger.otel.endSpan(span);
-        this.Send(cli);
     }
-    private async KubeEnsureNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    private async KubeEnsureNoderedInstance(parent: Span): Promise<void> {
         this.Reply();
         const span: Span = Logger.otel.startSubSpan("message.EnsureNoderedInstance", parent);
         let msg: EnsureNoderedInstanceMessage;
         try {
             msg = EnsureNoderedInstanceMessage.assign(this.data);
-            await this._EnsureNoderedInstance(cli, msg._id, false, span);
+            await this._EnsureNoderedInstance(msg._id, false, span);
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
             //msg.error = JSON.stringify(error, null, 2);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
@@ -1505,22 +1715,24 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
         }
         Logger.otel.endSpan(span);
-        this.Send(cli);
     }
-    private async _EnsureNoderedInstance(cli: WebSocketServerClient, _id: string, skipcreate: boolean, parent: Span): Promise<void> {
+    private async _EnsureNoderedInstance(_id: string, skipcreate: boolean, parent: Span): Promise<void> {
         let user: NoderedUser;
         const span: Span = Logger.otel.startSubSpan("message._EnsureNoderedInstance", parent);
         try {
-            // Logger.instanse.debug("[" + cli.user.username + "] EnsureNoderedInstance");
-            if (_id === null || _id === undefined || _id === "") _id = cli.user._id;
-            const name = await this.GetInstanceName(_id, cli.user._id, cli.user.username, cli.jwt, span);
 
-            Logger.instanse.debug("[" + cli.user.username + "] EnsureNoderedInstance for " + name + " in namespace " + Config.namespace);
+            const _tuser = Crypt.verityToken(this.jwt);
 
-            const users = await Config.db.query<NoderedUser>({ _id: _id }, null, 1, 0, null, "users", cli.jwt, undefined, undefined, span);
+            // Logger.instanse.debug("[" + tuser.username + "] EnsureNoderedInstance");
+            if (_id === null || _id === undefined || _id === "") _id = _tuser._id;
+            const name = await this.GetInstanceName(_id, _tuser._id, _tuser.username, this.jwt, span);
+
+            Logger.instanse.debug("[" + _tuser.username + "] EnsureNoderedInstance for " + name + " in namespace " + Config.namespace);
+
+            const users = await Config.db.query<NoderedUser>({ _id: _id }, null, 1, 0, null, "users", this.jwt, undefined, undefined, span);
             if (users.length == 0) {
                 throw new Error("Unknown userid " + _id);
             }
@@ -1534,11 +1746,11 @@ export class Message {
             }
             const hostname = nodered_domain_schema.replace("$nodered_id$", name);
 
-            const nodereduser = await DBHelper.FindById(_id, cli.jwt, span);
+            const nodereduser = await DBHelper.FindById(_id, this.jwt, span);
             const tuser: TokenUser = TokenUser.From(nodereduser);
             const nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
 
-            DBHelper.EnsureNoderedRoles(tuser, cli.jwt, true, span);
+            DBHelper.EnsureNoderedRoles(tuser, this.jwt, true, span);
 
             const resources = new V1ResourceRequirements();
             let hasbilling: boolean = false;
@@ -1625,11 +1837,11 @@ export class Message {
                 livenessProbe = (user.nodered as any).livenessProbe;
             }
 
-            Logger.instanse.debug("[" + cli.user.username + "] GetDeployments");
+            Logger.instanse.debug("[" + tuser.username + "] GetDeployments");
             const deployment: V1Deployment = await KubeUtil.instance().GetDeployment(namespace, name);
             if (deployment == null) {
                 if (skipcreate) return;
-                Logger.instanse.debug("[" + cli.user.username + "] Deployment " + name + " not found in " + namespace + " so creating it");
+                Logger.instanse.debug("[" + tuser.username + "] Deployment " + name + " not found in " + namespace + " so creating it");
 
                 let api_ws_url = Config.basewsurl();
                 if (!NoderedUtil.IsNullEmpty(Config.api_ws_url)) api_ws_url = Config.api_ws_url;
@@ -1739,14 +1951,14 @@ export class Message {
                 }
                 try {
                     await KubeUtil.instance().AppsV1Api.createNamespacedDeployment(namespace, (_deployment as any));
-                    Audit.NoderedAction(TokenUser.From(cli.user), true, name, "createdeployment", nodered_image, null, span);
+                    Audit.NoderedAction(TokenUser.From(tuser), true, name, "createdeployment", nodered_image, null, span);
                 } catch (error) {
                     if (error.response && error.response.body && error.response.body.message) {
                         Logger.instanse.error(new Error(error.response.body.message));
                         throw new Error(error.response.body.message);
                     }
-                    await handleError(cli, error);
-                    Audit.NoderedAction(TokenUser.From(cli.user), false, name, "createdeployment", nodered_image, null, span);
+                    await handleError(null, error);
+                    Audit.NoderedAction(TokenUser.From(tuser), false, name, "createdeployment", nodered_image, null, span);
                     throw error;
                 }
             } else {
@@ -1767,23 +1979,23 @@ export class Message {
                 }
                 try {
                     await KubeUtil.instance().AppsV1Api.replaceNamespacedDeployment(name, namespace, (deployment as any));
-                    Audit.NoderedAction(TokenUser.From(cli.user), true, name, "replacedeployment", image, null, span);
+                    Audit.NoderedAction(TokenUser.From(tuser), true, name, "replacedeployment", image, null, span);
                 } catch (error) {
-                    Logger.instanse.error("[" + cli.user.username + "] failed updating noeredinstance");
-                    Logger.instanse.error("[" + cli.user.username + "] " + JSON.stringify(error));
+                    Logger.instanse.error("[" + _tuser.username + "] failed updating noeredinstance");
+                    Logger.instanse.error("[" + _tuser.username + "] " + JSON.stringify(error));
                     if (error.response && error.response.body && !NoderedUtil.IsNullEmpty(error.response.body.message)) {
                         Logger.instanse.error(new Error(error.response.body.message));
                         throw new Error(error.response.body.message);
                     }
-                    Audit.NoderedAction(TokenUser.From(cli.user), false, name, "replacedeployment", image, null, span);
+                    Audit.NoderedAction(TokenUser.From(tuser), false, name, "replacedeployment", image, null, span);
                     throw new Error("failed updating noeredinstance");
                 }
             }
 
-            Logger.instanse.debug("[" + cli.user.username + "] GetService");
+            Logger.instanse.debug("[" + tuser.username + "] GetService");
             const service = await KubeUtil.instance().GetService(namespace, name);
             if (service == null) {
-                Logger.instanse.debug("[" + cli.user.username + "] Service " + name + " not found in " + namespace + " creating it");
+                Logger.instanse.debug("[" + _tuser.username + "] Service " + name + " not found in " + namespace + " creating it");
                 const _service = {
                     metadata: { name: name, namespace: namespace },
                     spec: {
@@ -1797,7 +2009,7 @@ export class Message {
                 }
                 await KubeUtil.instance().CoreV1Api.createNamespacedService(namespace, _service);
             }
-            Logger.instanse.debug("[" + cli.user.username + "] GetIngress useringress");
+            Logger.instanse.debug("[" + _tuser.username + "] GetIngress useringress");
             const ingress = await KubeUtil.instance().GetIngressV1beta1(namespace, "useringress");
             if (ingress !== null) {
                 let rule = null;
@@ -1807,7 +2019,7 @@ export class Message {
                     }
                 }
                 if (rule == null) {
-                    Logger.instanse.debug("[" + cli.user.username + "] ingress " + hostname + " not found in useringress creating it");
+                    Logger.instanse.debug("[" + _tuser.username + "] ingress " + hostname + " not found in useringress creating it");
                     if (Config.use_ingress_beta1_syntax) {
                         rule = {
                             host: hostname,
@@ -1844,11 +2056,11 @@ export class Message {
                     }
                     delete ingress.metadata.creationTimestamp;
                     delete ingress.status;
-                    Logger.instanse.debug("[" + cli.user.username + "] replaceNamespacedIngress");
+                    Logger.instanse.debug("[" + _tuser.username + "] replaceNamespacedIngress");
                     await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("useringress", namespace, ingress);
                 }
             } else {
-                Logger.instanse.error("[" + cli.user.username + "] failed locating useringress");
+                Logger.instanse.error("[" + _tuser.username + "] failed locating useringress");
                 throw new Error("failed locating useringress");
             }
         } catch (error) {
@@ -3133,7 +3345,7 @@ export class Message {
             if (billing.memory != newmemory) {
                 billing.memory = newmemory;
                 billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt, span);
-                this._EnsureNoderedInstance(cli, msg.userid, true, span);
+                this._EnsureNoderedInstance(msg.userid, true, span);
             }
             if (customer != null && !NoderedUtil.IsNullEmpty(billing.coupon) && customer.discount != null) {
                 if (billing.coupon != customer.discount.coupon.name) {
@@ -3359,7 +3571,7 @@ export class Message {
                 let id = client.id;
                 let exists = WebSocketServer._clients.filter((x: any) => x.id == id);
                 if (exists.length == 0) {
-                    await Config.db.DeleteOne(client._id, "configclients", jwt);
+                    await Config.db.DeleteOne(client._id, "configclients", jwt, span);
                 }
             }
         } catch (error) {
@@ -3415,7 +3627,7 @@ export class Message {
                 let exists = queues.filter((x: any) => x.name == queue.queuename);
                 if (exists.length == 0) {
                     try {
-                        await Config.db.DeleteOne(queue._id, "configclients", jwt);
+                        await Config.db.DeleteOne(queue._id, "configclients", jwt, span);
                     } catch (error) {
                         await handleError(cli, error);
                     }

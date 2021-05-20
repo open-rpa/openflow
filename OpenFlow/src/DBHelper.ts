@@ -182,7 +182,7 @@ export class DBHelper {
         try {
             let role: Role = await this.FindRoleByNameOrId(name, id, span);
             if (role !== null && (role._id === id || id === null)) { return role; }
-            if (role !== null && !NoderedUtil.IsNullEmpty(role._id)) { await Config.db.DeleteOne(role._id, "users", jwt); }
+            if (role !== null && !NoderedUtil.IsNullEmpty(role._id)) { await Config.db.DeleteOne(role._id, "users", jwt, span); }
             role = new Role(); role.name = name; role._id = id;
             role = await Config.db.InsertOne(role, "users", 0, false, jwt, span);
             role = Role.assign(role);
@@ -203,7 +203,7 @@ export class DBHelper {
         try {
             let user: User = await this.FindByUsernameOrId(username, id, span);
             if (user !== null && (user._id === id || id === null)) { return user; }
-            if (user !== null && id !== null) { await Config.db.DeleteOne(user._id, "users", jwt); }
+            if (user !== null && id !== null) { await Config.db.DeleteOne(user._id, "users", jwt, span); }
             user = new User(); user._id = id; user.name = name; user.username = username;
             if (password !== null && password !== undefined && password !== "") {
                 await Crypt.SetPassword(user, password, span);

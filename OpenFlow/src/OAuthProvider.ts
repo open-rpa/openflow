@@ -637,9 +637,9 @@ export class OAuthProvider {
                     { "_type": "token", "refreshTokenExpiresAt": { "$lte": refreshTokenExpiresAt } },
                     { "_type": "token", "accessTokenExpiresAt": { "$lte": accessTokenExpiresAt } }
                 ]
-        }, null, "oauthtokens", Crypt.rootToken());
+        }, null, "oauthtokens", Crypt.rootToken(), null);
         // await Config.db.DeleteMany({ "_type": "code", "code": code }, null, "oauthtokens", Crypt.rootToken());
-        await Config.db.DeleteMany({ "_type": "code", "_created": { "$lte": codeExpiresAt } }, null, "oauthtokens", Crypt.rootToken());
+        await Config.db.DeleteMany({ "_type": "code", "_created": { "$lte": codeExpiresAt } }, null, "oauthtokens", Crypt.rootToken(), null);
         return true;
         // const user: TokenUser = this.codes[code];
         // if (user != null) delete this.codes[code];

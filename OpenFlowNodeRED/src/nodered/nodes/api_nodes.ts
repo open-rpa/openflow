@@ -370,7 +370,7 @@ export class api_addmany {
                     subitems.push(element);
                 }
                 this.node.status({ fill: "blue", shape: "dot", text: y + " to " + (y + 49) + " of " + data.length });
-                results.push(await NoderedUtil.InsertMany(collection, subitems, writeconcern, journal, skipresults, msg.jwt));
+                results = results.concat(await NoderedUtil.InsertMany(collection, subitems, writeconcern, journal, skipresults, msg.jwt));
             }
             data = results;
             NoderedUtil.saveToObject(msg, resultfield, data);

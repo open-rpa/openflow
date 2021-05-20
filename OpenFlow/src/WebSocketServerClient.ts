@@ -149,7 +149,7 @@ export class WebSocketServerClient {
                 }
                 return;
             }
-            this._socketObject.send(msg.tojson());
+            // this._socketObject.send(msg.tojson());
         } catch (error) {
             Logger.instanse.error(error);
             span.recordException(error);

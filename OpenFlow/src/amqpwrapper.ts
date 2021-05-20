@@ -144,14 +144,18 @@ export class amqpwrapper extends events.EventEmitter {
             console.log("AddReplyQueue begin");
             this.channel = await this.conn.createConfirmChannel();
             this.replyqueue = await this.AddQueueConsumer("", null, null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
-                if (this.replyqueue) {
-                    if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_message_count)) WebSocketServer.websocket_queue_message_count.
-                        bind({ ...Logger.otel.defaultlabels, queuename: this.replyqueue.queue }).update(this.incqueuemessagecounter(this.replyqueue.queue));
-                    if (!NoderedUtil.IsNullUndefinded(this.activecalls[options.correlationId])) {
-                        this.activecalls[options.correlationId].resolve(msg);
-                        this.activecalls[options.correlationId] = null;
-                        delete this.activecalls[options.correlationId];
+                try {
+                    if (this.replyqueue) {
+                        if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_message_count)) WebSocketServer.websocket_queue_message_count.
+                            bind({ ...Logger.otel.defaultlabels, queuename: this.replyqueue.queue }).update(this.incqueuemessagecounter(this.replyqueue.queue));
+                        if (!NoderedUtil.IsNullUndefinded(this.activecalls[options.correlationId])) {
+                            this.activecalls[options.correlationId].resolve(msg);
+                            this.activecalls[options.correlationId] = null;
+                            delete this.activecalls[options.correlationId];
+                        }
                     }
+                } catch (error) {
+                    console.error(error);
                 }
                 ack();
                 done();
@@ -443,7 +447,7 @@ export class amqpwrapper extends events.EventEmitter {
         if (typeof data !== 'string' && !(data instanceof String)) {
             data = JSON.stringify(data);
         }
-        Logger.instanse.info("send to queue: " + queue + " exchange: " + exchange + " with reply to " + replyTo + " correlationId: " + correlationId);
+        Logger.instanse.silly("send to queue: " + queue + " exchange: " + exchange + " with reply to " + replyTo + " correlationId: " + correlationId);
         const options: any = { mandatory: true };
         options.replyTo = replyTo;
         if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = NoderedUtil.GetUniqueIdentifier();
@@ -482,7 +486,7 @@ export class amqpwrapper extends events.EventEmitter {
             data = JSON.stringify(data);
         }
         if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = NoderedUtil.GetUniqueIdentifier();
-        Logger.instanse.info("send to queue: " + queue + " exchange: " + exchange);
+        Logger.instanse.silly("send to queue: " + queue + " exchange: " + exchange);
         const options: any = { mandatory: true };
         if (!NoderedUtil.IsNullEmpty(correlationId)) options.correlationId = correlationId;
         if (expiration < 1) expiration = Config.amqp_default_expiration;

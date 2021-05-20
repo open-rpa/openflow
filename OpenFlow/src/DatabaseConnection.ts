@@ -449,6 +449,9 @@ export class DatabaseConnection {
                 });
                 span.setAttribute("query", JSON.stringify(query));
             }
+            if (NoderedUtil.IsNullUndefinded(query)) {
+                throw new Error("Query is mandatory");
+            }
             const keys: string[] = Object.keys(query);
             for (let key of keys) {
                 if (key === "_id") {
@@ -1228,86 +1231,97 @@ export class DatabaseConnection {
     * @param  {string} jwt JWT of user who is doing the update, ensuring rights
     * @returns Promise<T>
     */
-    async UpdateMany<T extends Base>(q: UpdateManyMessage): Promise<UpdateManyMessage> {
-        if (q === null || q === undefined) { throw Error("UpdateManyMessage cannot be null"); }
-        if (q.item === null || q.item === undefined) { throw Error("Cannot update null item"); }
-        await this.connect();
-        const user: TokenUser = Crypt.verityToken(q.jwt);
-        if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to UpdateMany"); }
+    async UpdateMany<T extends Base>(q: UpdateManyMessage, parent: Span): Promise<UpdateManyMessage> {
+        const span: Span = Logger.otel.startSubSpan("db.UpdateMany", parent);
+        try {
+            if (q === null || q === undefined) { throw Error("UpdateManyMessage cannot be null"); }
+            if (q.item === null || q.item === undefined) { throw Error("Cannot update null item"); }
+            await this.connect();
+            const user: TokenUser = Crypt.verityToken(q.jwt);
+            if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to UpdateMany"); }
 
-        if (q.collectionname === "users" && q.item._type === "user" && q.item.hasOwnProperty("newpassword")) {
-            (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
-            delete (q.item as any).newpassword;
-        }
-        let json: string = q.item as any;
-        if (typeof json !== 'string') {
-            json = JSON.stringify(json);
-        }
-        q.item = JSON.parse(json, (key, value) => {
-            if (key === "_acl") {
-                if (Array.isArray(value)) {
-                    for (let i = 0; i < value.length; i++) {
-                        const a = value[i];
-                        if (typeof a.rights === "string") {
-                            a.rights = (new Binary(Buffer.from(a.rights, "base64"), 0) as any);
+            if (q.collectionname === "users" && q.item._type === "user" && q.item.hasOwnProperty("newpassword")) {
+                (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
+                delete (q.item as any).newpassword;
+            }
+            let json: string = q.item as any;
+            if (typeof json !== 'string') {
+                json = JSON.stringify(json);
+            }
+            q.item = JSON.parse(json, (key, value) => {
+                if (key === "_acl") {
+                    if (Array.isArray(value)) {
+                        for (let i = 0; i < value.length; i++) {
+                            const a = value[i];
+                            if (typeof a.rights === "string") {
+                                a.rights = (new Binary(Buffer.from(a.rights, "base64"), 0) as any);
+                            }
                         }
                     }
                 }
+                if (typeof value === 'string' && value.match(isoDatePattern)) {
+                    return new Date(value); // isostring, so cast to js date
+                } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") === 0) {
+                    const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
+                    return new RegExp(m[1], m[2] || "");
+                } else
+                    return value; // leave any other value as-is
+            });
+            for (let key in q.query) {
+                if (key === "_id") {
+                    const id: string = (q.query as any)._id;
+                    delete (q.query as any)._id;
+                    (q.query as any).$or = [{ _id: id }, { _id: safeObjectID(id) }];
+                }
             }
-            if (typeof value === 'string' && value.match(isoDatePattern)) {
-                return new Date(value); // isostring, so cast to js date
-            } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") === 0) {
-                const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
-                return new RegExp(m[1], m[2] || "");
-            } else
-                return value; // leave any other value as-is
-        });
-        for (let key in q.query) {
-            if (key === "_id") {
-                const id: string = (q.query as any)._id;
-                delete (q.query as any)._id;
-                (q.query as any).$or = [{ _id: id }, { _id: safeObjectID(id) }];
+            let _query: Object = {};
+            if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret) && q.collectionname === "users") {
+                if (!user.HasRoleId("admins")) throw new Error("Access denied, no authorization to UpdateMany");
             }
-        }
-        let _query: Object = {};
-        if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret) && q.collectionname === "users") {
-            if (!user.HasRoleId("admins")) throw new Error("Access denied, no authorization to UpdateMany");
-        }
-        if (q.collectionname === "files") { q.collectionname = "fs.files"; }
-        if (q.collectionname === "fs.files") {
-            _query = { $and: [q.query, this.getbasequery(q.jwt, "metadata._acl", [Rights.update])] };
-        } else {
-            if (!q.collectionname.endsWith("_hist")) {
-                _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.update])] };
+            if (q.collectionname === "files") { q.collectionname = "fs.files"; }
+            if (q.collectionname === "fs.files") {
+                _query = { $and: [q.query, this.getbasequery(q.jwt, "metadata._acl", [Rights.update])] };
             } else {
-                // todo: enforcer permissions when fetching _hist ?
-                _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.update])] };
+                if (!q.collectionname.endsWith("_hist")) {
+                    _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.update])] };
+                } else {
+                    // todo: enforcer permissions when fetching _hist ?
+                    _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.update])] };
+                }
             }
-        }
 
-        if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };
-        (q.item["$set"])._modifiedby = user.name;
-        (q.item["$set"])._modifiedbyid = user._id;
-        (q.item["$set"])._modified = new Date(new Date().toISOString());
+            if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };
+            (q.item["$set"])._modifiedby = user.name;
+            (q.item["$set"])._modifiedbyid = user._id;
+            (q.item["$set"])._modified = new Date(new Date().toISOString());
 
 
-        Logger.instanse.silly("[" + user.username + "][" + q.collectionname + "] UpdateMany " + (q.item.name || q.item._name) + " in database");
+            Logger.instanse.silly("[" + user.username + "][" + q.collectionname + "] UpdateMany " + (q.item.name || q.item._name) + " in database");
 
-        q.j = ((q.j as any) === 'true' || q.j === true);
-        if ((q.w as any) !== "majority") q.w = parseInt((q.w as any));
-        const options: CollectionInsertOneOptions = {};
-        options.WriteConcern = {}; // new WriteConcern();
-        options.WriteConcern.w = q.w;
-        options.WriteConcern.j = q.j;
-        try {
-            q.opresult = await this.db.collection(q.collectionname).updateMany(_query, q.item, options);
-            if (Config.log_updates && q.opresult) Logger.instanse.debug("[" + user.username + "][" + q.collectionname + "] updated " + q.opresult.modifiedCount + " items");
-            return q;
+            q.j = ((q.j as any) === 'true' || q.j === true);
+            if ((q.w as any) !== "majority") q.w = parseInt((q.w as any));
+            const options: CollectionInsertOneOptions = {};
+            options.WriteConcern = {}; // new WriteConcern();
+            options.WriteConcern.w = q.w;
+            options.WriteConcern.j = q.j;
+            try {
+                // const ot_end = Logger.otel.startTimer();
+                const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.updateMany", span);
+                q.opresult = await this.db.collection(q.collectionname).updateMany(_query, q.item, options);
+                Logger.otel.endSpan(mongodbspan);
+                // Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insertmany, { collection: q.collectionname });
+
+                if (Config.log_updates && q.opresult) Logger.instanse.debug("[" + user.username + "][" + q.collectionname + "] updated " + q.opresult.modifiedCount + " items");
+                return q;
+            } catch (error) {
+                throw error;
+            }
         } catch (error) {
+            span.recordException(error);
             throw error;
+        } finally {
+            Logger.otel.endSpan(span);
         }
-        // this.traversejsondecode(item);
-        // return item;
     }
     private static InsertOrUpdateOneSemaphore = Semaphore(1);
     /**
@@ -1415,139 +1429,47 @@ export class DatabaseConnection {
      * @param  {string} jwt JWT of user who is doing the delete, ensuring rights
      * @returns Promise<void>
      */
-    async DeleteOne(id: string | any, collectionname: string, jwt: string): Promise<void> {
+    async DeleteOne(id: string | any, collectionname: string, jwt: string, parent: Span): Promise<void> {
         if (id === null || id === undefined || id === "") { throw Error("id cannot be null"); }
-        await this.connect();
-        const user: TokenUser = Crypt.verityToken(jwt);
-        let _query: any = {};
-        if (typeof id === 'string' || id instanceof String) {
-            _query = { $and: [{ _id: id }, this.getbasequery(jwt, "_acl", [Rights.delete])] };
-        } else {
-            _query = { $and: [{ id }, this.getbasequery(jwt, "_acl", [Rights.delete])] };
-        }
+        const span: Span = Logger.otel.startSubSpan("db.DeleteOne", parent);
+        try {
 
-        if (collectionname === "files") { collectionname = "fs.files"; }
-        if (collectionname === "fs.files") {
-            _query = { $and: [{ _id: safeObjectID(id) }, this.getbasequery(jwt, "metadata._acl", [Rights.delete])] };
-            const ot_end = Logger.otel.startTimer();
-            const arr = await this.db.collection(collectionname).find(_query).toArray();
-            Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: collectionname });
-            if (arr.length === 1) {
-                const ot_end = Logger.otel.startTimer();
-                await this._DeleteFile(id);
-                Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, { collection: collectionname });
-                return;
+            await this.connect();
+            const user: TokenUser = Crypt.verityToken(jwt);
+            let _query: any = {};
+            if (typeof id === 'string' || id instanceof String) {
+                _query = { $and: [{ _id: id }, this.getbasequery(jwt, "_acl", [Rights.delete])] };
             } else {
-                throw Error("item not found!");
+                _query = { $and: [{ id }, this.getbasequery(jwt, "_acl", [Rights.delete])] };
             }
-        }
-        // if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] Deleting " + id + " in database");
-        // const ot_end = Logger.otel.startTimer();
-        // const res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne(_query);
-        // Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, { collection: collectionname });
-        var docs = await this.db.collection(collectionname).find(_query).toArray();
-        for (var i = 0; i < docs.length; i++) {
-            var doc = docs[i];
-            doc._deleted = new Date(new Date().toISOString());
-            doc._deletedby = user.name;
-            doc._deletedbyid = user._id;
-            const fullhist = {
-                _acl: doc._acl,
-                _type: doc._type,
-                _modified: doc._modified,
-                _modifiedby: doc._modifiedby,
-                _modifiedbyid: doc._modifiedbyid,
-                _created: doc._modified,
-                _createdby: doc._modifiedby,
-                _createdbyid: doc._modifiedbyid,
-                _deleted: doc._deleted,
-                _deletedby: doc._deletedby,
-                _deletedbyid: doc._deletedbyid,
-                name: doc.name,
-                id: doc._id,
-                item: doc,
-                _version: doc._version,
-                reason: doc.reason
-            }
-            const ot_end = Logger.otel.startTimer();
-            await this.db.collection(collectionname + '_hist').insertOne(fullhist);
-            await this.db.collection(collectionname).deleteOne({ _id: doc._id });
-            Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, { collection: collectionname });
-        }
-    }
 
-    /**
-     * @param  {string} id id of object to delete
-     * @param  {string} collectionname collectionname Collection containing item
-     * @param  {string} jwt JWT of user who is doing the delete, ensuring rights
-     * @returns Promise<void>
-     */
-    async DeleteMany(query: string | any, ids: string[], collectionname: string, jwt: string): Promise<number> {
-        if (NoderedUtil.IsNullUndefinded(ids) && NoderedUtil.IsNullUndefinded(query)) { throw Error("id cannot be null"); }
-        await this.connect();
-        const user: TokenUser = Crypt.verityToken(jwt);
-        let _query: any = {};
-        let aclfield = "_acl";
-        if (collectionname === "files") { collectionname = "fs.files"; }
-        if (collectionname === "fs.files") {
-            aclfield = "metadata._acl"
-        }
-        const baseq = this.getbasequery(jwt, aclfield, [Rights.delete]);
-        if (NoderedUtil.IsNullUndefinded(query) && !NoderedUtil.IsNullUndefinded(ids)) {
-            _query = { $and: [{ _id: { "$in": ids } }, baseq] };
-        } else if (!NoderedUtil.IsNullUndefinded(query)) {
-            if (query !== null && query !== undefined) {
-                let json: any = query;
-                if (typeof json !== 'string' && !(json instanceof String)) {
-                    json = JSON.stringify(json, (key, value) => {
-                        if (value instanceof RegExp)
-                            return ("__REGEXP " + value.toString());
-                        else
-                            return value;
-                    });
-                }
-                query = JSON.parse(json, (key, value) => {
-                    if (typeof value === 'string' && value.match(isoDatePattern)) {
-                        return new Date(value); // isostring, so cast to js date
-                    } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") === 0) {
-                        const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
-                        return new RegExp(m[1], m[2] || "");
-                    } else
-                        return value; // leave any other value as-is
-                });
-            }
-            _query = { $and: [query, baseq] };
-        } else {
-            throw new Error("DeleteMany needs either a list of ids or a query");
-        }
-
-        if (collectionname === "files") { collectionname = "fs.files"; }
-        if (collectionname === "fs.files") {
-            const ot_end = Logger.otel.startTimer();
-            const arr = await this.db.collection(collectionname).find(_query).toArray();
-            Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: collectionname });
-            Logger.instanse.debug("[" + user.username + "][" + collectionname + "] Deleting " + arr.length + " files in database");
-            for (let i = 0; i < arr.length; i++) {
+            if (collectionname === "files") { collectionname = "fs.files"; }
+            if (collectionname === "fs.files") {
+                _query = { $and: [{ _id: safeObjectID(id) }, this.getbasequery(jwt, "metadata._acl", [Rights.delete])] };
                 const ot_end = Logger.otel.startTimer();
-                await this._DeleteFile(arr[i]._id);
-                Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });
+                const arr = await this.db.collection(collectionname).find(_query).toArray();
+                Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: collectionname });
+                if (arr.length === 1) {
+                    const ot_end = Logger.otel.startTimer();
+                    const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.deleteOne", span);
+                    await this._DeleteFile(id);
+                    Logger.otel.endSpan(mongodbspan);
+                    Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, { collection: collectionname });
+                    return;
+                } else {
+                    throw Error("item not found!");
+                }
             }
-            if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] deleted " + arr.length + " items in database");
-            return arr.length;
-        } else {
+            // if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] Deleting " + id + " in database");
             // const ot_end = Logger.otel.startTimer();
-            // const res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteMany(_query);
-            // Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });
-            var bulkInsert = this.db.collection(collectionname + "_hist").initializeUnorderedBulkOp();
-            var bulkRemove = this.db.collection(collectionname).initializeUnorderedBulkOp()
-            var x = 1000
-            var counter = 0
-            var date = new Date()
-            date.setMonth(date.getMonth() - 1)
-
+            // const res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne(_query);
+            // Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, { collection: collectionname });
             var docs = await this.db.collection(collectionname).find(_query).toArray();
             for (var i = 0; i < docs.length; i++) {
                 var doc = docs[i];
+                doc._deleted = new Date(new Date().toISOString());
+                doc._deletedby = user.name;
+                doc._deletedbyid = user._id;
                 const fullhist = {
                     _acl: doc._acl,
                     _type: doc._type,
@@ -1557,33 +1479,156 @@ export class DatabaseConnection {
                     _created: doc._modified,
                     _createdby: doc._modifiedby,
                     _createdbyid: doc._modifiedbyid,
-                    _deleted: new Date(new Date().toISOString()),
-                    _deletedby: user.name,
-                    _deletedbyid: user._id,
+                    _deleted: doc._deleted,
+                    _deletedby: doc._deletedby,
+                    _deletedbyid: doc._deletedbyid,
                     name: doc.name,
                     id: doc._id,
                     item: doc,
                     _version: doc._version,
                     reason: doc.reason
                 }
-                bulkInsert.insert(fullhist);
-                bulkRemove.find({ _id: doc._id }).removeOne();
-                counter++
-                if (counter % x === 0) {
+                const ot_end = Logger.otel.startTimer();
+                await this.db.collection(collectionname + '_hist').insertOne(fullhist);
+                const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.deleteOne", span);
+                await this.db.collection(collectionname).deleteOne({ _id: doc._id });
+                Logger.otel.endSpan(mongodbspan);
+                Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, { collection: collectionname });
+            }
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+
+    /**
+     * @param  {string} id id of object to delete
+     * @param  {string} collectionname collectionname Collection containing item
+     * @param  {string} jwt JWT of user who is doing the delete, ensuring rights
+     * @returns Promise<void>
+     */
+    async DeleteMany(query: string | any, ids: string[], collectionname: string, jwt: string, parent: Span): Promise<number> {
+        if (NoderedUtil.IsNullUndefinded(ids) && NoderedUtil.IsNullUndefinded(query)) { throw Error("id cannot be null"); }
+        const span: Span = Logger.otel.startSubSpan("db.DeleteMany", parent);
+        try {
+            await this.connect();
+            const user: TokenUser = Crypt.verityToken(jwt);
+            let _query: any = {};
+            let aclfield = "_acl";
+            if (collectionname === "files") { collectionname = "fs.files"; }
+            if (collectionname === "fs.files") {
+                aclfield = "metadata._acl"
+            }
+            const baseq = this.getbasequery(jwt, aclfield, [Rights.delete]);
+            if (NoderedUtil.IsNullUndefinded(query) && !NoderedUtil.IsNullUndefinded(ids)) {
+                _query = { $and: [{ _id: { "$in": ids } }, baseq] };
+            } else if (!NoderedUtil.IsNullUndefinded(query)) {
+                if (query !== null && query !== undefined) {
+                    let json: any = query;
+                    if (typeof json !== 'string' && !(json instanceof String)) {
+                        json = JSON.stringify(json, (key, value) => {
+                            if (value instanceof RegExp)
+                                return ("__REGEXP " + value.toString());
+                            else
+                                return value;
+                        });
+                    }
+                    query = JSON.parse(json, (key, value) => {
+                        if (typeof value === 'string' && value.match(isoDatePattern)) {
+                            return new Date(value); // isostring, so cast to js date
+                        } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") === 0) {
+                            const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
+                            return new RegExp(m[1], m[2] || "");
+                        } else
+                            return value; // leave any other value as-is
+                    });
+                }
+                _query = { $and: [query, baseq] };
+            } else {
+                throw new Error("DeleteMany needs either a list of ids or a query");
+            }
+
+            if (collectionname === "files") { collectionname = "fs.files"; }
+            if (collectionname === "fs.files") {
+                const ot_end = Logger.otel.startTimer();
+                const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.find", span);
+                const arr = await this.db.collection(collectionname).find(_query).toArray();
+                Logger.otel.endSpan(mongodbspan);
+                Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: collectionname });
+                Logger.instanse.debug("[" + user.username + "][" + collectionname + "] Deleting " + arr.length + " files in database");
+                for (let i = 0; i < arr.length; i++) {
                     const ot_end = Logger.otel.startTimer();
-                    bulkInsert.execute()
-                    bulkRemove.execute()
-                    bulkInsert = this.db.collection(collectionname + "_hist").initializeUnorderedBulkOp()
-                    bulkRemove = this.db.collection(collectionname).initializeUnorderedBulkOp()
+                    const _mongodbspan: Span = Logger.otel.startSubSpan("mongodb.deletefile", span);
+                    await this._DeleteFile(arr[i]._id);
+                    Logger.otel.endSpan(_mongodbspan);
                     Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });
                 }
+                if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] deleted " + arr.length + " items in database");
+                return arr.length;
+            } else {
+                // const ot_end = Logger.otel.startTimer();
+                // const res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteMany(_query);
+                // Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });
+                var bulkInsert = this.db.collection(collectionname + "_hist").initializeUnorderedBulkOp();
+                var bulkRemove = this.db.collection(collectionname).initializeUnorderedBulkOp()
+                var x = 1000
+                var counter = 0
+                var date = new Date()
+                date.setMonth(date.getMonth() - 1)
+
+                const qot_end = Logger.otel.startTimer();
+                const qmongodbspan: Span = Logger.otel.startSubSpan("mongodb.find", span);
+                var docs = await this.db.collection(collectionname).find(_query).toArray();
+                Logger.otel.endSpan(qmongodbspan);
+                Logger.otel.endTimer(qot_end, DatabaseConnection.mongodb_query, { collection: collectionname });
+                for (var i = 0; i < docs.length; i++) {
+                    var doc = docs[i];
+                    const fullhist = {
+                        _acl: doc._acl,
+                        _type: doc._type,
+                        _modified: doc._modified,
+                        _modifiedby: doc._modifiedby,
+                        _modifiedbyid: doc._modifiedbyid,
+                        _created: doc._modified,
+                        _createdby: doc._modifiedby,
+                        _createdbyid: doc._modifiedbyid,
+                        _deleted: new Date(new Date().toISOString()),
+                        _deletedby: user.name,
+                        _deletedbyid: user._id,
+                        name: doc.name,
+                        id: doc._id,
+                        item: doc,
+                        _version: doc._version,
+                        reason: doc.reason
+                    }
+                    bulkInsert.insert(fullhist);
+                    bulkRemove.find({ _id: doc._id }).removeOne();
+                    counter++
+                    if (counter % x === 0) {
+                        const ot_end = Logger.otel.startTimer();
+                        bulkInsert.execute()
+                        bulkRemove.execute()
+                        bulkInsert = this.db.collection(collectionname + "_hist").initializeUnorderedBulkOp()
+                        bulkRemove = this.db.collection(collectionname).initializeUnorderedBulkOp()
+                        Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });
+                    }
+                }
+                const ot_end = Logger.otel.startTimer();
+                const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.bulkexecute", span);
+                bulkInsert.execute()
+                bulkRemove.execute()
+                Logger.otel.endSpan(mongodbspan);
+                Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });
+                if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] deleted " + counter + " items in database");
+                return counter;
             }
-            const ot_end = Logger.otel.startTimer();
-            bulkInsert.execute()
-            bulkRemove.execute()
-            Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });
-            if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] deleted " + counter + " items in database");
-            return counter;
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
         }
     }
     /**

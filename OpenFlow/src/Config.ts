@@ -24,7 +24,12 @@ export class Config {
         Config.log_updates = Config.parseBoolean(Config.getEnv("log_updates", "false"));
         Config.log_deletes = Config.parseBoolean(Config.getEnv("log_deletes", "false"));
         Config.log_otel_times = Config.parseBoolean(Config.getEnv("log_otel_times", "false"));
+        Config.log_openflow_amqp = Config.parseBoolean(Config.getEnv("log_openflow_amqp", "false"));
         Config.openflow_uniqueid = Config.getEnv("openflow_uniqueid", "");
+        Config.enable_openflow_amqp = Config.parseBoolean(Config.getEnv("enable_openflow_amqp", "false"));
+        Config.openflow_amqp_expiration = parseInt(Config.getEnv("openflow_amqp_expiration", (60 * 1000 * 25).toString())); // 25 min
+        Config.openflow_amqp_processing_limit = parseInt(Config.getEnv("openflow_amqp_processing_limit", "50"));
+
 
         Config.getting_started_url = Config.getEnv("getting_started_url", "");
 
@@ -147,8 +152,11 @@ export class Config {
     public static log_updates: boolean = Config.parseBoolean(Config.getEnv("log_updates", "false"));
     public static log_deletes: boolean = Config.parseBoolean(Config.getEnv("log_deletes", "false"));
     public static log_otel_times: boolean = Config.parseBoolean(Config.getEnv("log_otel_times", "false"));
+    public static log_openflow_amqp: boolean = Config.parseBoolean(Config.getEnv("log_openflow_amqp", "false"));
     public static openflow_uniqueid: string = Config.getEnv("openflow_uniqueid", "");
-
+    public static enable_openflow_amqp: boolean = Config.parseBoolean(Config.getEnv("enable_openflow_amqp", "false"));
+    public static openflow_amqp_expiration: number = parseInt(Config.getEnv("openflow_amqp_expiration", (60 * 1000 * 25).toString())); // 25 min
+    public static openflow_amqp_processing_limit: number = parseInt(Config.getEnv("openflow_amqp_processing_limit", "50"));
 
     public static getting_started_url: string = Config.getEnv("getting_started_url", "");
 

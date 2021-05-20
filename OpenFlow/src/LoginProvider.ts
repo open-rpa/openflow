@@ -725,7 +725,7 @@ export class LoginProvider {
 
                     const arr = await Config.db.query(q, undefined, 1, 0, { "uploadDate": -1 }, "files", jwt, undefined, undefined, span);
                     if (arr.length > 0) {
-                        await Config.db.DeleteOne(arr[0]._id, "files", jwt);
+                        await Config.db.DeleteOne(arr[0]._id, "files", jwt, span);
                     }
                     res.send({
                         status: "success",

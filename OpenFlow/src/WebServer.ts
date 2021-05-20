@@ -173,10 +173,12 @@ export class WebServer {
             server = http.createServer(this.app);
         }
 
+        await Config.db.connect();
         const port = Config.port;
         server.listen(port).on('error', function (error) {
             Logger.instanse.error(error);
-            process.exit(404);
+            server.close();
+            // process.exit(404);
         });
         return server;
     }
