@@ -308,7 +308,7 @@ export class Message {
                 case "insertone":
                     this.EnsureJWT(cli);
                     if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, (cli.clientagent == "webapp" ? Config.amqp_web_default_priority : 1)));
+                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
                         await this.InsertOne(span);
                         cli.Send(this);
@@ -503,10 +503,10 @@ export class Message {
         this.Reply();
         let msg: RegisterQueueMessage;
         try {
+            msg = RegisterQueueMessage.assign(this.data);
             if (!NoderedUtil.IsNullEmpty(msg.queuename) && msg.queuename.toLowerCase() == "openflow") {
                 throw new Error("Access denied");
             }
-            msg = RegisterQueueMessage.assign(this.data);
             msg.queuename = await cli.CreateConsumer(msg.queuename, parent);
         } catch (error) {
             await handleError(cli, error);
@@ -921,7 +921,7 @@ export class Message {
                 insert.collectionname = msg.collectionname; insert.item = msg.items[i];
                 insert.w = msg.w; insert.j = msg.j; insert.jwt = msg.jwt;
                 tmpmsg.command = "insertone"; tmpmsg.data = JSON.stringify(insert);
-                Promises.push(QueueClient.SendForProcessing(tmpmsg, 1));
+                Promises.push(QueueClient.SendForProcessing(tmpmsg, this.priority));
             }
             var results = await Promise.all(Promises.map(p => p.catch(e => e)));
             if (msg.skipresults) {

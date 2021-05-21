@@ -407,6 +407,7 @@ export class WebSocketServerClient {
                 if (msgs.length === 1) {
                     this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
                     const singleresult: Message = Message.frommessage(first, first.data);
+                    singleresult.priority = first.priority;
                     singleresult.Process(this);
                 } else {
                     let buffer: string = "";
@@ -415,6 +416,7 @@ export class WebSocketServerClient {
                     });
                     this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
                     const result: Message = Message.frommessage(first, buffer);
+                    result.priority = first.priority;
                     result.Process(this);
                 }
             } else {

@@ -12,6 +12,7 @@ export class SocketMessage {
     public data: string;
     public count: number;
     public index: number;
+    public priority: number = 1;
     public static fromjson(json: string): SocketMessage {
         let result: SocketMessage = new SocketMessage();
         let obj: any = JSON.parse(json);
@@ -20,6 +21,7 @@ export class SocketMessage {
         result.replyto = obj.replyto;
         result.count = 1;
         result.index = 0;
+        if (!NoderedUtil.IsNullEmpty(obj.priority)) result.priority = obj.priority;
         result.data = obj.data;
         if (isNumber(obj.count)) { result.count = obj.count; }
         if (isNumber(obj.index)) { result.index = obj.index; }

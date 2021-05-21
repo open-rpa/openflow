@@ -177,12 +177,12 @@ export class LoginProvider {
             }
         });
         app.get("/dashboardauth", async (req: any, res: any, next: any) => {
-            const span: Span = Logger.otel.startSpan("LoginProvider.dashboardauth");
+            const span: Span = (Config.trace_dashboardauth ? Logger.otel.startSpan("LoginProvider.dashboardauth") : null);
             try {
-                span.setAttribute("remoteip", WebServer.remoteip(req));
+                span?.setAttribute("remoteip", WebServer.remoteip(req));
                 if (req.user) {
                     const user: TokenUser = TokenUser.From(req.user);
-                    span.setAttribute("username", user.username);
+                    span?.setAttribute("username", user.username);
                     if (user != null) {
                         const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
                         if (allowed.length > 0) {
@@ -241,7 +241,7 @@ export class LoginProvider {
                 // const [login, password] = new Buffer(b64auth, 'base64').toString().split(':')
                 const [login, password] = Buffer.from(b64auth, "base64").toString().split(':')
                 if (login && password) {
-                    span.setAttribute("username", login);
+                    span?.setAttribute("username", login);
                     let user: User = Auth.getUser(b64auth, "dashboard");
                     if (user == null) user = await Auth.ValidateByPassword(login, password, span);
                     if (user != null) {
@@ -265,7 +265,7 @@ export class LoginProvider {
                 res.setHeader('WWW-Authenticate', 'Basic realm="OpenFlow"');
                 res.end('Unauthorized');
             } catch (error) {
-                span.recordException(error);
+                span?.recordException(error);
                 throw error;
             } finally {
                 Logger.otel.endSpan(span);
@@ -467,12 +467,12 @@ export class LoginProvider {
                 console.error(error.message ? error.message : error);
                 return res.status(500).send({ message: error.message ? error.message : error });
             }
-            try {
-                span.addEvent("RegisterProviders");
-                LoginProvider.RegisterProviders(app, baseurl);
-            } catch (error) {
-                span.recordException(error);
-            }
+            // try {
+            //     span.addEvent("RegisterProviders");
+            //     LoginProvider.RegisterProviders(app, baseurl);
+            // } catch (error) {
+            //     span.recordException(error);
+            // }
             Logger.otel.endSpan(span);
         });
         app.get("/validateuserform", async (req: any, res: any, next: any): Promise<void> => {
@@ -571,15 +571,17 @@ export class LoginProvider {
                 console.error(error.message ? error.message : error);
                 Logger.otel.endSpan(span);
                 return res.status(500).send({ message: error.message ? error.message : error });
-            }
-            try {
-                LoginProvider.RegisterProviders(app, baseurl);
-            } catch (error) {
-                span.recordException(error);
-                return res.status(500).send({ message: error.message ? error.message : error });
             } finally {
                 Logger.otel.endSpan(span);
             }
+            // try {
+            //     LoginProvider.RegisterProviders(app, baseurl);
+            // } catch (error) {
+            //     span.recordException(error);
+            //     return res.status(500).send({ message: error.message ? error.message : error });
+            // } finally {
+            //     Logger.otel.endSpan(span);
+            // }
 
         });
         app.get("/download/:id", async (req, res) => {

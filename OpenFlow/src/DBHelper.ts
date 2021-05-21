@@ -74,48 +74,66 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public static async GetRoles(_id: string, ident: number, parent: Span): Promise<Role[]> {
-        const span: Span = Logger.otel.startSubSpan("dbhelper.GetRoles", parent);
-        span.setAttribute("_id", _id);
-        span.setAttribute("ident", ident);
-        try {
-            if (ident > Config.max_recursive_group_depth) return [];
-            const result: Role[] = [];
-            const query: any = { "members": { "$elemMatch": { _id: _id } } };
-            const ids: string[] = [];
-            const _roles: Role[] = await Config.db.query<Role>(query, null, Config.expected_max_roles, 0, null, "users", Crypt.rootToken(), undefined, undefined, span);
-            for (let role of _roles) {
-                if (ids.indexOf(role._id) == -1) {
-                    ids.push(role._id);
-                    result.push(role);
-                    const _subroles: Role[] = await this.GetRoles(role._id, ident + 1, span);
-                    for (let subrole of _subroles) {
-                        if (ids.indexOf(subrole._id) == -1) {
-                            ids.push(subrole._id);
-                            result.push(subrole);
-                        }
-                    }
-                }
-            }
-            return result;
-        } catch (error) {
-            span.recordException(error);
-            throw error;
-        } finally {
-            Logger.otel.endSpan(span);
-        }
-    }
+    // public static async GetRoles(_id: string, ident: number, parent: Span): Promise<Role[]> {
+    //     const span: Span = Logger.otel.startSubSpan("dbhelper.GetRoles", parent);
+    //     span.setAttribute("_id", _id);
+    //     span.setAttribute("ident", ident);
+    //     try {
+    //         if (ident > Config.max_recursive_group_depth) return [];
+    //         const result: Role[] = [];
+    //         const query: any = { "members": { "$elemMatch": { _id: _id } } };
+    //         const ids: string[] = [];
+    //         const _roles: Role[] = await Config.db.query<Role>(query, null, Config.expected_max_roles, 0, null, "users", Crypt.rootToken(), undefined, undefined, span);
+    //         for (let role of _roles) {
+    //             if (ids.indexOf(role._id) == -1) {
+    //                 ids.push(role._id);
+    //                 result.push(role);
+    //                 const _subroles: Role[] = await this.GetRoles(role._id, ident + 1, span);
+    //                 for (let subrole of _subroles) {
+    //                     if (ids.indexOf(subrole._id) == -1) {
+    //                         ids.push(subrole._id);
+    //                         result.push(subrole);
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //         return result;
+    //     } catch (error) {
+    //         span.recordException(error);
+    //         throw error;
+    //     } finally {
+    //         Logger.otel.endSpan(span);
+    //     }
+    // }
     public static cached_roles: Role[] = [];
     public static cached_at: Date = new Date();
     public static async DecorateWithRoles(user: User, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("dbhelper.DecorateWithRoles", parent);
         try {
             if (!Config.decorate_roles_fetching_all_roles) {
-                const roles: Role[] = await this.GetRoles(user._id, 0, span);
-                user.roles = [];
-                roles.forEach(role => {
-                    user.roles.push(new Rolemember(role.name, role._id));
-                });
+                // const roles: Role[] = await this.GetRoles(user._id, 0, span);
+                // user.roles = [];
+                // roles.forEach(role => {
+                //     user.roles.push(new Rolemember(role.name, role._id));
+                // });
+                const pipe: any = [{ "$match": { "_id": user._id } },
+                {
+                    "$graphLookup": {
+                        from: "users",
+                        startWith: "$_id",
+                        connectFromField: "_id",
+                        connectToField: "members._id",
+                        as: "roles",
+                        maxDepth: Config.max_recursive_group_depth,
+                        restrictSearchWithMatch: { "_type": "role" }
+                    }
+                }]
+                const results = await Config.db.aggregate<User>(pipe, "users", Crypt.rootToken(), null, span);
+                if (results.length > 0) {
+                    user = results[0];
+                    user.roles = user.roles.map(x => ({ "_id": x._id, "name": x.name })) as any;
+                    user.roles = user.roles;
+                }
             } else {
                 var end: number = new Date().getTime();
                 var seconds = Math.round((end - this.cached_at.getTime()) / 1000);

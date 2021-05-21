@@ -434,7 +434,7 @@ export class entitiesCtrl<T> {
             await NoderedUtil.DeleteOne(this.collection, model._id, null, 2);
             this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
         }
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }

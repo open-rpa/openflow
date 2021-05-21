@@ -126,7 +126,6 @@ export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     async submit(): Promise<void> {
-
         try {
             this.errormessage = "";
             const rpacommand = {
@@ -142,7 +141,7 @@ export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
             } catch (error) {
             }
         } catch (error) {
-            this.errormessage = JSON.stringify(error);
+            this.errormessage = error.message ? error.message : error;
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
@@ -905,7 +904,7 @@ export class LoginCtrl {
             this.setCookie("jwt", result.jwt, 365);
             this.$location.path("/");
         } catch (error) {
-            this.message = error;
+            this.message = error.message ? error.message : error;
             console.error(error);
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -1034,13 +1033,17 @@ export class ProviderCtrl extends entityCtrl<Provider> {
         });
     }
     async submit(): Promise<void> {
-        if (this.model._id) {
-            await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null, 2);
-        } else {
-            await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
+        try {
+            if (this.model._id) {
+                await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null, 2);
+            } else {
+                await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
+            }
+            this.$location.path("/Providers");
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error;
         }
-        this.$location.path("/Providers");
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 }
 export class UsersCtrl extends entitiesCtrl<TokenUser> {
@@ -1206,7 +1209,7 @@ export class UserCtrl extends entityCtrl<TokenUser> {
             }
             this.$location.path("/Users");
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
@@ -1276,15 +1279,19 @@ export class RoleCtrl extends entityCtrl<Role> {
         });
     }
     async submit(): Promise<void> {
-        if (this.model._id) {
-            await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null, 2);
-        } else {
-            this.model = await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
-            // this.model = await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null);
-            // this.model = await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null);
+        try {
+            if (this.model._id) {
+                await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null, 2);
+            } else {
+                this.model = await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
+                // this.model = await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null);
+                // this.model = await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null);
+            }
+            this.$location.path("/Roles");
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error;
         }
-        this.$location.path("/Roles");
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     RemoveMember(model: any) {
         if (this.model.members === undefined) { this.model.members = []; }
@@ -2008,7 +2015,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 console.debug("SendOne: " + this.workflow._id + " / " + this.workflow.queue);
                 await this.SendOne(this.workflow.queue, {});
             } catch (error) {
-                this.errormessage = error;
+                this.errormessage = error.message ? error.message : error;
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 console.error(this.errormessage);
 
@@ -2022,7 +2029,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 result = JSON.parse((result as any));
             }
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             console.error(this.errormessage);
         }
@@ -2055,7 +2062,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         try {
             await this.SendOne(this.workflow.queue, this.model.payload);
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             console.error(this.errormessage);
         }
@@ -2342,8 +2349,8 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             if (this.model.payload != null && this.model.payload != undefined) {
                 this.formioRender.submission = { data: this.model.payload };
             }
-            this.formioRender.on('error', (errors) => {
-                this.errormessage = errors;
+            this.formioRender.on('error', (error) => {
+                this.errormessage = error.message ? error.message : error;
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 console.error(this.errormessage);
             });
@@ -2515,7 +2522,7 @@ export class EntityCtrl extends entityCtrl<Base> {
             }
             this.$location.path("/Entities/" + this.collection);
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
@@ -3008,7 +3015,7 @@ export class NoderedCtrl {
             this.messages = 'update complete\n' + this.messages;
             this.EnsureNoderedInstance();
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
         }
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -3060,7 +3067,7 @@ export class NoderedCtrl {
                 }, 2000);
             }
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
             this.messages = error + "\n" + this.messages;
             this.instancestatus = "";
             console.error(error);
@@ -3078,7 +3085,7 @@ export class NoderedCtrl {
             this.messages = "GetNoderedInstanceLog completed\n" + this.messages;
             this.instancestatus = "";
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
             this.messages = error + "\n" + this.messages;
             this.instancestatus = "";
             console.error(error);
@@ -3092,7 +3099,7 @@ export class NoderedCtrl {
             this.messages = "EnsureNoderedInstance completed" + "\n" + this.messages;
             this.GetNoderedInstance();
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
             this.messages = error + "\n" + this.messages;
             console.error(error);
         }
@@ -3105,7 +3112,7 @@ export class NoderedCtrl {
             this.messages = "DeleteNoderedInstance completed" + "\n" + this.messages;
             this.GetNoderedInstance();
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
             this.messages = error + "\n" + this.messages;
             console.error(error);
         }
@@ -3118,7 +3125,7 @@ export class NoderedCtrl {
             this.messages = "DeleteNoderedPod completed" + "\n" + this.messages;
             this.GetNoderedInstance();
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
             this.messages = error + "\n" + this.messages;
             console.error(error);
         }
@@ -3131,7 +3138,7 @@ export class NoderedCtrl {
             this.messages = "RestartNoderedInstance completed" + "\n" + this.messages;
             this.GetNoderedInstance();
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
             this.messages = error + "\n" + this.messages;
             console.error(error);
         }
@@ -3144,7 +3151,7 @@ export class NoderedCtrl {
             this.messages = "StartNoderedInstance completed" + "\n" + this.messages;
             this.GetNoderedInstance();
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
             this.messages = error + "\n" + this.messages;
             console.error(error);
         }
@@ -3157,7 +3164,7 @@ export class NoderedCtrl {
             this.messages = "StopNoderedInstance completed" + "\n" + this.messages;
             this.GetNoderedInstance();
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
             this.messages = error + "\n" + this.messages;
             console.error(error);
         }
@@ -3936,7 +3943,7 @@ export class QueueCtrl extends entityCtrl<Base> {
             this.data = q.data;
             this.$location.path("/Queues");
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
             console.error(error);
         }
         this.loading = false;
@@ -4077,13 +4084,17 @@ export class CredentialCtrl extends entityCtrl<Base> {
         });
     }
     async submit(): Promise<void> {
-        if (this.model._id) {
-            await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null, 2);
-        } else {
-            await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
+        try {
+            if (this.model._id) {
+                await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null, 2);
+            } else {
+                await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
+            }
+            this.$location.path("/Credentials");
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error;
         }
-        this.$location.path("/Credentials");
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 
 
@@ -4387,15 +4398,19 @@ export class OAuthClientCtrl extends entityCtrl<Base> {
         });
     }
     async submit(): Promise<void> {
-        this.model["id"] = this.model["clientId"];
-        if (this.model.name == null || this.model.name == "") this.model.name = this.model["id"];
-        if (this.model._id) {
-            await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null, 2);
-        } else {
-            await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
+        try {
+            this.model["id"] = this.model["clientId"];
+            if (this.model.name == null || this.model.name == "") this.model.name = this.model["id"];
+            if (this.model._id) {
+                await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null, 2);
+            } else {
+                await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
+            }
+            this.$location.path("/OAuthClients");
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error;
         }
-        this.$location.path("/OAuthClients");
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     deletefromarray(name: string, id: string) {
         if (id == null || id == "") return false;

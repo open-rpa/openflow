@@ -182,6 +182,37 @@ export class DatabaseConnection {
         WellknownIds.personal_nodered_users,
         WellknownIds.robot_agent_users
     ]
+    WellknownNamesArray: string[] = [
+        "root",
+        "admins",
+        "users",
+        "user",
+        "admin",
+        "nodered",
+        "administrator",
+        "robots",
+        "robot",
+        "nodered_users",
+        "nodered_admins",
+        "nodered_api_users",
+        "filestore_users",
+        "filestore_admins",
+        "robot_users",
+        "robot_admins",
+        "personal_nodered_users",
+        "robot_agent_users",
+
+        "nodered users",
+        "nodered admins",
+        "nodered api_users",
+        "filestore users",
+        "filestore admins",
+        "robot users",
+        "robot admins",
+        "personal nodered users",
+        "robot agent users"
+
+    ]
 
     async CleanACL<T extends Base>(item: T, user: TokenUser, parent: Span): Promise<T> {
         const span: Span = Logger.otel.startSubSpan("db.CleanACL", parent);
@@ -817,6 +848,12 @@ export class DatabaseConnection {
                 (item as any).passwordhash = await Crypt.hash((item as any).newpassword);
                 delete (item as any).newpassword;
             }
+            if (collectionname === "users" && !NoderedUtil.IsNullEmpty(item._type) && !NoderedUtil.IsNullEmpty(item.name)) {
+                if ((item._type === "user" || item._type === "role") &&
+                    (this.WellknownNamesArray.indexOf(item.name) > -1 || this.WellknownNamesArray.indexOf((item as any).username) > -1)) {
+                    throw new Error("Access denied");
+                }
+            }
             j = ((j as any) === 'true' || j === true);
             w = parseInt((w as any));
             item._version = 0;
@@ -1009,6 +1046,15 @@ export class DatabaseConnection {
                     const again = this.hasAuthorization(user, original, Rights.update);
                     throw new Error("Access denied, no authorization to UpdateOne " + q.item._type + " " + name + " to database");
                 }
+                if (q.collectionname === "users" && !NoderedUtil.IsNullEmpty(q.item._type) && !NoderedUtil.IsNullEmpty(q.item.name)) {
+                    if ((q.item._type === "user" || q.item._type === "role") &&
+                        (this.WellknownNamesArray.indexOf(q.item.name) > -1 || this.WellknownNamesArray.indexOf((q.item as any).username) > -1)) {
+                        if (this.WellknownIdsArray.indexOf(q.item._id) == -1) {
+                            throw new Error("Access denied");
+                        }
+                    }
+                }
+
                 if (q.collectionname != "fs.files") {
                     q.item._modifiedby = user.name;
                     q.item._modifiedbyid = user._id;
