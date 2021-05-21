@@ -457,16 +457,12 @@ export class Message {
                     await this.DumpClients(cli, span);
                     break;
                 case "dumprabbitmq":
-                    await this.DumpRabbitmq(cli, span);
                     break;
                 case "getrabbitmqqueue":
-                    await this.GetRabbitmqQueue(cli);
                     break;
                 case "deleterabbitmqqueue":
-                    await this.DeleterabbitmqQueue(cli);
                     break;
                 case "pushmetrics":
-                    await this.PushMetrics(cli);
                     break;
                 default:
                     span.recordException("Unknown command " + command);
@@ -507,6 +503,9 @@ export class Message {
         this.Reply();
         let msg: RegisterQueueMessage;
         try {
+            if (!NoderedUtil.IsNullEmpty(msg.queuename) && msg.queuename.toLowerCase() == "openflow") {
+                throw new Error("Access denied");
+            }
             msg = RegisterQueueMessage.assign(this.data);
             msg.queuename = await cli.CreateConsumer(msg.queuename, parent);
         } catch (error) {
@@ -549,6 +548,12 @@ export class Message {
                 } catch (error) {
                 }
             }
+            if (!NoderedUtil.IsNullEmpty(msg.queuename) && msg.queuename.toLowerCase() == "openflow") {
+                throw new Error("Access denied");
+            } else if (NoderedUtil.IsNullEmpty(msg.queuename) && NoderedUtil.IsNullEmpty(msg.exchange)) {
+                throw new Error("queuename or exchange must be given");
+            }
+
 
             if (msg.queuename.length == 24 && Config.amqp_force_sender_has_read) {
                 const tuser = Crypt.verityToken(msg.jwt);
@@ -3581,124 +3586,6 @@ export class Message {
             await handleError(cli, error);
         }
         Logger.otel.endSpan(span);
-        this.Send(cli);
-    }
-    async DumpRabbitmq(cli: WebSocketServerClient, parent: Span) {
-        this.Reply();
-        const span: Span = Logger.otel.startSubSpan("message.DumpRabbitmq", parent);
-        try {
-            const kickstartapi = amqpwrapper.getvhosts(Config.amqp_url);
-            const jwt = Crypt.rootToken();
-            const known = await Config.db.query({ _type: "queue" }, null, 5000, 0, null, "configclients", jwt, undefined, undefined, span);
-            const queues = await amqpwrapper.getqueues(Config.amqp_url);
-            for (let i = 0; i < queues.length; i++) {
-                let queue = queues[i];
-                let exists = known.filter((x: any) => (x && x.queuename == queue.name));
-                let item: any = {
-                    name: queue.id, consumers: queue.consumers, consumer_details: queue.consumer_details, _type: "queue"
-                };
-                let consumers: number = 0;
-                if (queue.consumers > 0) { consumers = queue.consumers; }
-                if (consumers == 0) {
-                    if (queue.consumer_details != null && queue.consumer_details.length > 0) {
-                        consumers = queue.consumer_details.length;
-                    }
-                }
-                item.queuename = queue.name;
-                item.consumers = consumers;
-                item.name = queue.name + "(" + consumers + ")";
-                if (exists.length == 0) {
-                    try {
-                        await Config.db.InsertOne(item, "configclients", 1, false, jwt, span);
-                    } catch (error) {
-                        await handleError(cli, error);
-                    }
-                } else {
-                    item._id = exists[0]._id;
-                    try {
-                        await Config.db._UpdateOne(null, item, "configclients", 1, false, jwt, span);
-                    } catch (error) {
-                        await handleError(cli, error);
-                    }
-                }
-            }
-            for (let i = 0; i < known.length; i++) {
-                let queue: any = known[i];
-                let id = queue.id;
-                let exists = queues.filter((x: any) => x.name == queue.queuename);
-                if (exists.length == 0) {
-                    try {
-                        await Config.db.DeleteOne(queue._id, "configclients", jwt, span);
-                    } catch (error) {
-                        await handleError(cli, error);
-                    }
-                }
-            }
-        } catch (error) {
-            span.recordException(error);
-            this.data = "";
-            await handleError(cli, error);
-        }
-        Logger.otel.endSpan(span);
-        this.Send(cli);
-    }
-    async GetRabbitmqQueue(cli: WebSocketServerClient) {
-        this.Reply();
-        try {
-            let msg: any = JSON.parse(this.data);
-            const kickstartapi = amqpwrapper.getvhosts(Config.amqp_url);
-            try {
-                msg.data = await amqpwrapper.getqueue(Config.amqp_url, '/', msg.name);
-                this.data = JSON.stringify(msg);
-            } catch (error) {
-                await handleError(cli, error);
-            }
-        } catch (error) {
-            this.data = JSON.stringify(error);
-            await handleError(cli, error);
-
-        }
-        this.Send(cli);
-    }
-    async DeleterabbitmqQueue(cli: WebSocketServerClient) {
-        this.Reply();
-        try {
-            let msg: any = JSON.parse(this.data);
-            const kickstartapi = amqpwrapper.getvhosts(Config.amqp_url);
-            try {
-                msg.data = await amqpwrapper.deletequeue(Config.amqp_url, '/', msg.name);
-                this.data = JSON.stringify(msg);
-            } catch (error) {
-                await handleError(cli, error);
-            }
-        } catch (error) {
-            this.data = JSON.stringify(error);
-            await handleError(cli, error);
-
-        }
-        this.Send(cli);
-    }
-    async PushMetrics(cli: WebSocketServerClient) {
-        this.Reply();
-        // let msg: PushMetricsMessage;
-        // try {
-        //     msg = PushMetricsMessage.assign(this.data);
-        //     cli.metrics = msg.metrics;
-        //     if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
-        // } catch (error) {
-        //     if (error == null) new Error("Unknown error");
-        //     await handleError(cli, error);
-        //     if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-        //     if (msg !== null && msg !== undefined) {
-        //         msg.error = (error.message ? error.message : error);
-        //     }
-        // }
-        // try {
-        //     this.data = JSON.stringify(msg);
-        // } catch (error) {
-        //     this.data = "";
-        //     await handleError(cli, error);
-        // }
         this.Send(cli);
     }
 }
