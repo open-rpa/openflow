@@ -32,6 +32,7 @@ export class QueueClient {
                     ack(false);
                     return;
                 }
+                msg.priority = options.priority;
                 if (options.priority == 1) {
                     // const wait = ms => new Promise((r, j) => setTimeout(r, ms));
                     // await wait(500);

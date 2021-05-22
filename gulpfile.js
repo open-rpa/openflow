@@ -207,14 +207,14 @@ gulp.task("compose", shell.task([
 
 ]));
 
-// gulp.task("latest", shell.task([
-//     'docker tag openiap/nodered:edge openiap/nodered:latest',
-//     'echo "Push openiap/nodered"',
-//     'docker push openiap/nodered:latest',
-//     'docker tag openiap/openflow:edge openiap/openflow:latest',
-//     'echo "Push openiap/openflow"',
-//     'docker push openiap/openflow:latest',
-// ]));
+gulp.task("latest", shell.task([
+    'docker tag openiap/nodered:edge openiap/nodered:latest',
+    'echo "Push openiap/nodered"',
+    'docker push openiap/nodered:latest',
+    'docker tag openiap/openflow:edge openiap/openflow:latest',
+    'echo "Push openiap/openflow"',
+    'docker push openiap/openflow:latest',
+]));
 // gulp.task("composelatest", gulp.series("compose", "latest"));
 
 gulp.task("bumpyml1", function () {
