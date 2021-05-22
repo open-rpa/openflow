@@ -140,7 +140,7 @@ export class amqpwrapper extends events.EventEmitter {
         try {
             console.log("AddReplyQueue begin");
             this.channel = await this.conn.createConfirmChannel();
-            this.channel.prefetch(50);
+            this.channel.prefetch(Config.amqp_prefetch);
             this.replyqueue = await this.AddQueueConsumer("", null, null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
                 try {
                     if (this.replyqueue) {
