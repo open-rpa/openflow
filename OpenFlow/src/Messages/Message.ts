@@ -109,9 +109,9 @@ export class Message {
                 case "insertone":
                     await this.InsertOne(span);
                     break;
-                // case "insertmany":
-                //     await this.InsertMany(span);
-                //     break;
+                case "insertmany":
+                    await this.InsertMany(span);
+                    break;
                 case "updateone":
                     await this.UpdateOne(span);
                     break;
@@ -129,6 +129,15 @@ export class Message {
                     break;
                 case "ensurenoderedinstance":
                     await this.EnsureNoderedInstance(span);
+                    break;
+                case "deletenoderedinstance":
+                    await this.DeleteNoderedInstance(span);
+                    break;
+                case "restartnoderedinstance":
+                    await this.RestartNoderedInstance(span);
+                    break;
+                case "deletenoderedpod":
+                    await this.DeleteNoderedPod(span);
                     break;
                 default:
                     span.recordException("Unknown command " + this.command);
@@ -257,7 +266,7 @@ export class Message {
                 case "listcollections":
                     this.EnsureJWT(cli);
                     if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, (cli.clientagent == "webapp" ? Config.amqp_web_default_priority : 1)));
+                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
                         await this.ListCollections(span);
                         cli.Send(this);
@@ -266,7 +275,7 @@ export class Message {
                 case "dropcollection":
                     this.EnsureJWT(cli);
                     if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, (cli.clientagent == "webapp" ? Config.amqp_web_default_priority : 1)));
+                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
                         await this.DropCollection(span);
                         cli.Send(this);
@@ -275,7 +284,7 @@ export class Message {
                 case "query":
                     this.EnsureJWT(cli);
                     if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, (cli.clientagent == "webapp" ? Config.amqp_web_default_priority : 1)));
+                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
                         await this.Query(span);
                         cli.Send(this);
@@ -284,7 +293,7 @@ export class Message {
                 case "getdocumentversion":
                     this.EnsureJWT(cli);
                     if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, (cli.clientagent == "webapp" ? Config.amqp_web_default_priority : 1)));
+                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
                         await this.GetDocumentVersion(span);
                         cli.Send(this);
@@ -293,7 +302,7 @@ export class Message {
                 case "aggregate":
                     this.EnsureJWT(cli);
                     if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, (cli.clientagent == "webapp" ? Config.amqp_web_default_priority : 1)));
+                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
                         await this.Aggregate(span);
                         cli.Send(this);
@@ -317,18 +326,16 @@ export class Message {
                 case "insertmany":
                     this.EnsureJWT(cli);
                     if (Config.enable_openflow_amqp) {
-                        // cli.Send(await QueueClient.SendForProcessing(this));
-                        await this.QueueInsertMany(span);
-                        cli.Send(this);
+                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
-                        await this.LocalInsertMany(span);
+                        await this.InsertMany(span);
                         cli.Send(this);
                     }
                     break;
                 case "updateone":
                     this.EnsureJWT(cli);
                     if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, (cli.clientagent == "webapp" ? Config.amqp_web_default_priority : 1)));
+                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
                         await this.UpdateOne(span);
                         cli.Send(this);
@@ -337,7 +344,7 @@ export class Message {
                 case "updatemany":
                     this.EnsureJWT(cli);
                     if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, (cli.clientagent == "webapp" ? Config.amqp_web_default_priority : 1)));
+                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
                         await this.UpdateMany(span);
                         cli.Send(this);
@@ -346,7 +353,7 @@ export class Message {
                 case "insertorupdateone":
                     this.EnsureJWT(cli);
                     if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, (cli.clientagent == "webapp" ? Config.amqp_web_default_priority : 1)));
+                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
                         await this.InsertOrUpdateOne(span);
                         cli.Send(this);
@@ -355,7 +362,7 @@ export class Message {
                 case "deleteone":
                     this.EnsureJWT(cli);
                     if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, (cli.clientagent == "webapp" ? Config.amqp_web_default_priority : 1)));
+                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
                         await this.DeleteOne(span);
                         cli.Send(this);
@@ -364,7 +371,7 @@ export class Message {
                 case "deletemany":
                     this.EnsureJWT(cli);
                     if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, (cli.clientagent == "webapp" ? Config.amqp_web_default_priority : 1)));
+                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
                         await this.DeleteMany(span);
                         cli.Send(this);
@@ -399,17 +406,29 @@ export class Message {
                 case "ensurenoderedinstance":
                     this.EnsureJWT(cli);
                     if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, (cli.clientagent == "webapp" ? Config.amqp_web_default_priority : 1)));
+                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
                         await this.EnsureNoderedInstance(span);
                         cli.Send(this);
                     }
                     break;
                 case "deletenoderedinstance":
-                    await this.DeleteNoderedInstance(cli, span);
+                    this.EnsureJWT(cli);
+                    if (Config.enable_openflow_amqp) {
+                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                    } else {
+                        await this.DeleteNoderedInstance(span);
+                        cli.Send(this);
+                    }
                     break;
                 case "restartnoderedinstance":
-                    await this.RestartNoderedInstance(cli, span);
+                    this.EnsureJWT(cli);
+                    if (Config.enable_openflow_amqp) {
+                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                    } else {
+                        await this.RestartNoderedInstance(span);
+                        cli.Send(this);
+                    }
                     break;
                 case "getkubenodelabels":
                     await this.GetKubeNodeLabels(cli);
@@ -427,7 +446,13 @@ export class Message {
                     await this.StopNoderedInstance(cli, span);
                     break;
                 case "deletenoderedpod":
-                    await this.DeleteNoderedPod(cli, span);
+                    this.EnsureJWT(cli);
+                    if (Config.enable_openflow_amqp) {
+                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                    } else {
+                        await this.DeleteNoderedPod(span);
+                        cli.Send(this);
+                    }
                     break;
                 case "savefile":
                     await this.SaveFile(cli);
@@ -454,7 +479,6 @@ export class Message {
                     await this.StripeMessage(cli);
                     break;
                 case "dumpclients":
-                    await this.DumpClients(cli, span);
                     break;
                 case "dumprabbitmq":
                     break;
@@ -902,7 +926,7 @@ export class Message {
         }
         Logger.otel.endSpan(span);
     }
-    private async QueueInsertMany(parent: Span): Promise<void> {
+    private async InsertMany(parent: Span): Promise<void> {
         this.Reply();
         const span: Span = Logger.otel.startSubSpan("message.InsertMany", parent);
         let msg: InsertManyMessage
@@ -914,57 +938,7 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) {
                 throw new Error("jwt is null and client is not authenticated");
             }
-            const Promises: Promise<any>[] = [];
-            for (let i: number = 0; i < msg.items.length; i++) {
-                var tmpmsg: Message = new Message();
-                var insert: InsertOneMessage = new InsertOneMessage();
-                insert.collectionname = msg.collectionname; insert.item = msg.items[i];
-                insert.w = msg.w; insert.j = msg.j; insert.jwt = msg.jwt;
-                tmpmsg.command = "insertone"; tmpmsg.data = JSON.stringify(insert);
-                Promises.push(QueueClient.SendForProcessing(tmpmsg, this.priority));
-            }
-            var results = await Promise.all(Promises.map(p => p.catch(e => e)));
-            if (msg.skipresults) {
-                msg.results = [];
-            } else {
-                msg.results = [];
-                for (let item of results) {
-                    var imsg = InsertOneMessage.assign(item.data);
-                    msg.results.push(imsg.result);
-                }
-            }
-        } catch (error) {
-            span.recordException(error);
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            await handleError(null, error);
-        }
-        try {
-            this.data = JSON.stringify(msg);
-        } catch (error) {
-            span.recordException(error);
-            this.data = "";
-            await handleError(null, error);
-        }
-        Logger.otel.endSpan(span);
-    }
-    private async LocalInsertMany(parent: Span): Promise<void> {
-        this.Reply();
-        const span: Span = Logger.otel.startSubSpan("message.InsertOne", parent);
-        let msg: InsertManyMessage
-        try {
-            msg = InsertManyMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
-            if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) {
-                throw new Error("jwt is null and client is not authenticated");
-            }
-            const Promises: Promise<any>[] = [];
-            for (let i: number = 0; i < msg.items.length; i++) {
-                Promises.push(Config.db.InsertOne(msg.items[i], msg.collectionname, msg.w, msg.j, msg.jwt, span));
-            }
-            msg.results = await Promise.all(Promises.map(p => p.catch(e => e)));
+            msg.results = await Config.db.InsertMany(msg.items, msg.collectionname, msg.w, msg.j, msg.jwt, span);
             if (msg.skipresults) msg.results = [];
         } catch (error) {
             span.recordException(error);
@@ -2076,16 +2050,13 @@ export class Message {
         }
         Logger.otel.endSpan(span);
     }
-    private async _DeleteNoderedInstance(_id: string, myuserid: string, myusername: string, jwt: string, parent: Span): Promise<void> {
+    private async _DeleteNoderedInstance(_id: string, jwt: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message._DeleteNoderedInstance", parent);
         try {
-
-            if (_id === null || _id === undefined || _id === "") _id = myuserid;
-            const name = await this.GetInstanceName(_id, myuserid, myusername, jwt, span);
-
-
-            // const name = await this.GetInstanceName(_id, myuserid, myusername, jwt, span);
             const user = Crypt.verityToken(jwt);
+            if (_id === null || _id === undefined || _id === "") _id = user._id;
+            const name = await this.GetInstanceName(_id, user._id, user.username, jwt, span);
+
             const namespace = Config.namespace;
             let nodered_domain_schema = Config.nodered_domain_schema;
             if (NoderedUtil.IsNullEmpty(nodered_domain_schema)) {
@@ -2148,18 +2119,18 @@ export class Message {
         }
         Logger.otel.endSpan(span);
     }
-    private async DeleteNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    private async DeleteNoderedInstance(parent: Span): Promise<void> {
         await this.DetectDocker();
         if (Message.usedocker) {
-            this.dockerDeleteNoderedInstance(cli, parent);
+            this.dockerDeleteNoderedInstance(parent);
         } else {
-            this.KubeDeleteNoderedInstance(cli, parent);
+            this.KubeDeleteNoderedInstance(parent);
         }
     }
-    private async dockerDeleteNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
-        this.dockerDeleteNoderedPod(cli, parent);
+    private async dockerDeleteNoderedInstance(parent: Span): Promise<void> {
+        this.dockerDeleteNoderedPod(parent);
     }
-    private async KubeDeleteNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    private async KubeDeleteNoderedInstance(parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.DeleteNoderedInstance", parent);
         try {
             this.Reply();
@@ -2167,20 +2138,18 @@ export class Message {
             let user: User;
             try {
                 msg = DeleteNoderedInstanceMessage.assign(this.data);
-                Logger.instanse.debug("[" + cli.user.username + "] DeleteNoderedInstance");
-                await this._DeleteNoderedInstance(msg._id, cli.user._id, cli.user.username, cli.jwt, span);
+                await this._DeleteNoderedInstance(msg._id, this.jwt, span);
 
             } catch (error) {
-                Logger.instanse.error("[" + cli.user.username + "] failed deleting Nodered Instance");
                 this.data = "";
-                await handleError(cli, error);
+                await handleError(null, error);
                 if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             }
             try {
                 this.data = JSON.stringify(msg);
             } catch (error) {
                 this.data = "";
-                await handleError(cli, error);
+                await handleError(null, error);
             }
         } catch (error) {
             span.recordException(error);
@@ -2188,25 +2157,25 @@ export class Message {
             throw error;
         }
         Logger.otel.endSpan(span);
-        this.Send(cli);
     }
-    private async DeleteNoderedPod(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    private async DeleteNoderedPod(parent: Span): Promise<void> {
         await this.DetectDocker();
         if (Message.usedocker) {
-            this.dockerDeleteNoderedPod(cli, parent);
+            this.dockerDeleteNoderedPod(parent);
         } else {
-            this.KubeDeleteNoderedPod(cli, parent);
+            this.KubeDeleteNoderedPod(parent);
         }
 
     }
-    private async dockerDeleteNoderedPod(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    private async dockerDeleteNoderedPod(parent: Span): Promise<void> {
         this.Reply();
         let msg: DeleteNoderedPodMessage;
         const span: Span = Logger.otel.startSubSpan("message.GetNoderedInstance", parent);
         try {
-            Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstance");
+            const user = Crypt.verityToken(this.jwt);
+            Logger.instanse.debug("[" + user.username + "] GetNoderedInstance");
             msg = DeleteNoderedPodMessage.assign(this.data);
-            const name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt, span);
+            const name = await this.GetInstanceName(msg._id, user._id, user.username, this.jwt, span);
             if (NoderedUtil.IsNullEmpty(msg.name)) msg.name = name;
 
             span.addEvent("init Docker()");
@@ -2226,7 +2195,7 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error
         }
         try {
@@ -2234,18 +2203,18 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
         }
         Logger.otel.endSpan(span);
-        this.Send(cli);
     }
-    private async KubeDeleteNoderedPod(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    private async KubeDeleteNoderedPod(parent: Span): Promise<void> {
         this.Reply();
         const span: Span = Logger.otel.startSubSpan("message.DeleteNoderedPod", parent);
         let msg: DeleteNoderedPodMessage;
         let user: User;
         try {
-            Logger.instanse.debug("[" + cli.user.username + "] DeleteNoderedInstance");
+            const user = Crypt.verityToken(this.jwt);
+            Logger.instanse.debug("[" + user.username + "] DeleteNoderedInstance");
             msg = DeleteNoderedPodMessage.assign(this.data);
             const namespace = Config.namespace;
             const list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
@@ -2267,21 +2236,21 @@ export class Message {
                         }
                         try {
                             await KubeUtil.instance().CoreV1Api.deleteNamespacedPod(item.metadata.name, namespace);
-                            Audit.NoderedAction(TokenUser.From(cli.user), true, name, "deletepod", image, msg.name, span);
+                            Audit.NoderedAction(TokenUser.From(user), true, name, "deletepod", image, msg.name, span);
                         } catch (error) {
-                            Audit.NoderedAction(TokenUser.From(cli.user), false, name, "deletepod", image, msg.name, span);
+                            Audit.NoderedAction(TokenUser.From(user), false, name, "deletepod", image, msg.name, span);
                             throw error;
                         }
                     }
                 }
             } else {
-                Logger.instanse.warn("[" + cli.user.username + "] DeleteNoderedPod: found NO Namespaced Pods ???");
-                Audit.NoderedAction(TokenUser.From(cli.user), false, null, "deletepod", image, msg.name, span);
+                Logger.instanse.warn("[" + user.username + "] DeleteNoderedPod: found NO Namespaced Pods ???");
+                Audit.NoderedAction(TokenUser.From(user), false, null, "deletepod", image, msg.name, span);
             }
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
         try {
@@ -2289,27 +2258,27 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
         }
         Logger.otel.endSpan(span);
-        this.Send(cli);
     }
-    private async RestartNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    private async RestartNoderedInstance(parent: Span): Promise<void> {
         await this.DetectDocker();
         if (Message.usedocker) {
-            this.DockerRestartNoderedInstance(cli, parent);
+            this.DockerRestartNoderedInstance(parent);
         } else {
-            this.KubeRestartNoderedInstance(cli, parent);
+            this.KubeRestartNoderedInstance(parent);
         }
     }
-    private async DockerRestartNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    private async DockerRestartNoderedInstance(parent: Span): Promise<void> {
         this.Reply();
         let msg: RestartNoderedInstanceMessage;
         const span: Span = Logger.otel.startSubSpan("message.DockerRestartNoderedInstance", parent);
         try {
-            Logger.instanse.debug("[" + cli.user.username + "] DockerRestartNoderedInstance");
+            const user = Crypt.verityToken(this.jwt);
+            Logger.instanse.debug("[" + user.username + "] DockerRestartNoderedInstance");
             msg = RestartNoderedInstanceMessage.assign(this.data);
-            const name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt, span);
+            const name = await this.GetInstanceName(msg._id, user._id, user.username, this.jwt, span);
 
             span.addEvent("init Docker()");
             const docker: Dockerode = new Docker();
@@ -2331,7 +2300,7 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error
         }
         try {
@@ -2339,19 +2308,19 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
         }
         Logger.otel.endSpan(span);
-        this.Send(cli);
     }
-    private async KubeRestartNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    private async KubeRestartNoderedInstance(parent: Span): Promise<void> {
         this.Reply();
         const span: Span = Logger.otel.startSubSpan("message.KubeRestartNoderedInstance", parent);
         let msg: RestartNoderedInstanceMessage;
         try {
-            Logger.instanse.debug("[" + cli.user.username + "] KubeRestartNoderedInstance");
+            const user = Crypt.verityToken(this.jwt);
+            Logger.instanse.debug("[" + user.username + "] KubeRestartNoderedInstance");
             msg = RestartNoderedInstanceMessage.assign(this.data);
-            const name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt, span);
+            const name = await this.GetInstanceName(msg._id, user._id, user.username, this.jwt, span);
             const namespace = Config.namespace;
 
             const list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
@@ -2366,16 +2335,16 @@ export class Message {
                     }
                     try {
                         await KubeUtil.instance().CoreV1Api.deleteNamespacedPod(item.metadata.name, namespace);
-                        Audit.NoderedAction(TokenUser.From(cli.user), true, name, "restartdeployment", image, item.metadata.name, span);
+                        Audit.NoderedAction(TokenUser.From(user), true, name, "restartdeployment", image, item.metadata.name, span);
                     } catch (error) {
-                        Audit.NoderedAction(TokenUser.From(cli.user), false, name, "restartdeployment", image, item.metadata.name, span);
+                        Audit.NoderedAction(TokenUser.From(user), false, name, "restartdeployment", image, item.metadata.name, span);
                     }
                 }
             }
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
         try {
@@ -2383,10 +2352,9 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
         }
         Logger.otel.endSpan(span);
-        this.Send(cli);
     }
     private async GetKubeNodeLabels(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
@@ -2518,7 +2486,7 @@ export class Message {
                             try {
                                 if (billed != "true" && diffhours > 24) {
                                     Logger.instanse.debug("[" + cli.user.username + "] Remove un billed nodered instance " + itemname + " that has been running for " + diffhours + " hours");
-                                    await this._DeleteNoderedInstance(userid, cli.user._id, cli.user.username, rootjwt, span);
+                                    await this._DeleteNoderedInstance(userid, rootjwt, span);
                                 }
                             } catch (error) {
                             }
@@ -3543,49 +3511,6 @@ export class Message {
             this.data = "";
             await handleError(cli, error);
         }
-        this.Send(cli);
-    }
-    async DumpClients(cli: WebSocketServerClient, parent: Span) {
-        this.Reply();
-        const span: Span = Logger.otel.startSubSpan("message.DumpClients", parent);
-        try {
-            const jwt = Crypt.rootToken();
-            const known = await Config.db.query({ _type: "socketclient" }, null, 5000, 0, null, "configclients", jwt, undefined, undefined, span);
-            for (let i = 0; i < WebSocketServer._clients.length; i++) {
-                let client = WebSocketServer._clients[i];
-                let id = client.id;
-                let exists = known.filter((x: any) => x.id == id);
-                let item: any = {
-                    id: client.id, user: client.user, clientagent: client.clientagent, clientversion: client.clientversion
-                    , lastheartbeat: client.lastheartbeat, _type: "socketclient", name: client.id, remoteip: client.remoteip,
-                    queues: client._queues
-                };
-                if (client.user != null) {
-                    let name = client.user.username.split("@").join("").split(".").join("");
-                    name = name.toLowerCase();
-                    item.name = name + "/" + client.clientagent + "/" + client.id;
-                }
-                if (exists.length == 0) {
-                    await Config.db.InsertOne(item, "configclients", 1, false, jwt, span);
-                } else {
-                    item._id = exists[0]._id;
-                    await Config.db._UpdateOne(null, item, "configclients", 1, false, jwt, span);
-                }
-            }
-            for (let i = 0; i < known.length; i++) {
-                let client: any = known[i];
-                let id = client.id;
-                let exists = WebSocketServer._clients.filter((x: any) => x.id == id);
-                if (exists.length == 0) {
-                    await Config.db.DeleteOne(client._id, "configclients", jwt, span);
-                }
-            }
-        } catch (error) {
-            span.recordException(error);
-            this.data = "";
-            await handleError(cli, error);
-        }
-        Logger.otel.endSpan(span);
         this.Send(cli);
     }
 }
