@@ -152,13 +152,13 @@ export class api_get {
             if (!NoderedUtil.IsNullUndefinded(msg.query)) { query = msg.query; }
             if (!NoderedUtil.IsNullUndefinded(msg.projection)) { projection = msg.projection; }
             if (!NoderedUtil.IsNullUndefinded(msg.orderby)) { orderby = msg.orderby; }
-            if (!NoderedUtil.IsNullEmpty(msg.top)) { top = parseInt(msg.top); }
-            if (!NoderedUtil.IsNullEmpty(msg.skip)) { skip = parseInt(msg.skip); }
             if (NoderedUtil.IsNullEmpty(top)) { top = 500; }
             if (NoderedUtil.IsNullEmpty(skip)) { skip = 0; }
+            if (!NoderedUtil.IsNullEmpty(msg.top)) { top = parseInt(msg.top); }
+            if (!NoderedUtil.IsNullEmpty(msg.skip)) { skip = parseInt(msg.skip); }
             if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { resultfield = msg.resultfield; }
-            top = parseInt(this.config.top as any);
-            skip = parseInt(this.config.skip as any);
+            top = parseInt(top as any);
+            skip = parseInt(skip as any);
 
             if (!NoderedUtil.IsNullEmpty(orderby) && NoderedUtil.IsString(orderby)) {
                 if (orderby.indexOf("{") > -1) {
