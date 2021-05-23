@@ -157,7 +157,9 @@ export class WebSocketServerClient {
             this._sendQueue = [];
             try {
                 if (this._socketObject != null) {
-                    this.Close();
+                    this.Close().catch((err) => {
+                        console.error(err);
+                    });
                 }
             } catch (error) {
             }

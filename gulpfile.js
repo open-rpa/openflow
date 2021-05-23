@@ -117,16 +117,6 @@ gulp.task("browserify", function () {
                 console.error(error);
 
             }
-
-            return relativeUrl;
-
-            // if (_.contains(['.jpg', '.png', '.gif', '.eot'], path.extname(relativeUrl))) {
-            //     // Embed image data with data URI
-            //     var DataUri = require('datauri');
-            //     var dUri = new DataUri(relativeUrl);
-            //     console.log(dUri.content);
-            //     return dUri.content;
-            // }
             return relativeUrl;
         }
     })

@@ -1170,13 +1170,12 @@ export class DatabaseConnection {
      */
     async _UpdateOne<T extends Base>(query: any, item: T, collectionname: string, w: number, j: boolean, jwt: string, parent: Span): Promise<T> {
         let q = new UpdateOneMessage();
-        q.query = query; q.item = item; q.collectionname = collectionname; q.w = w; q.j; q.jwt = jwt;
+        q.query = query; q.item = item; q.collectionname = collectionname; q.w = w; q.j = j; q.jwt = jwt;
         q = await this.UpdateOne(q, parent);
         if (q.opresult.result.ok === 1) {
             if (q.opresult.modifiedCount === 0) {
                 throw Error("item not found!");
             } else if (q.opresult.modifiedCount === 1 || NoderedUtil.IsNullUndefinded(q.opresult.modifiedCount)) {
-                q.item = q.item;
             } else {
                 throw Error("More than one item was updated !!!");
             }
@@ -1358,12 +1357,8 @@ export class DatabaseConnection {
             if (q.collectionname === "fs.files") {
                 _query = { $and: [q.query, this.getbasequery(q.jwt, "metadata._acl", [Rights.update])] };
             } else {
-                if (!q.collectionname.endsWith("_hist")) {
-                    _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.update])] };
-                } else {
-                    // todo: enforcer permissions when fetching _hist ?
-                    _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.update])] };
-                }
+                // todo: enforcer permissions when fetching _hist ?
+                _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.update])] };
             }
 
             q.j = ((q.j as any) === 'true' || q.j === true);
@@ -1591,7 +1586,7 @@ export class DatabaseConnection {
                 if (Config.log_updates) Logger.instanse.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Updating found one in database");
                 const uq = new UpdateOneMessage();
                 // uq.query = query; 
-                uq.item = q.item; uq.collectionname = q.collectionname; uq.w = q.w; uq.j; uq.jwt = q.jwt;
+                uq.item = q.item; uq.collectionname = q.collectionname; uq.w = q.w; uq.j = q.j; uq.jwt = q.jwt;
                 const keys = Object.keys(exists[0]);
                 for (let i = 0; i < keys.length; i++) {
                     let key = keys[i];
@@ -1985,7 +1980,6 @@ export class DatabaseConnection {
             }
         });
         if (item._acl.length === 0) {
-            item = item;
             Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control]);
         }
         return item;

@@ -405,7 +405,7 @@ export class workflow_out_node {
         try {
             // if (!NoderedUtil.IsNullEmpty(msg._replyTo) && NoderedUtil.IsNullEmpty(msg.resultqueue)) {
             if (!NoderedUtil.IsNullEmpty(msg._replyTo)) {
-                if (msg.payload === null || msg.payload === undefined) { msg.payload == {}; }
+                if (msg.payload === null || msg.payload === undefined) { msg.payload = {}; }
                 const data: any = {};
                 data.state = msg.state;
                 if (msg.error) {
@@ -517,7 +517,7 @@ export class assign_workflow_node {
     }
     onsocketclose(message) {
         if (message == null) message = "";
-        if (this != null && this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
+        if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
     }
     async connect() {
         try {

@@ -1910,18 +1910,7 @@ export class Message {
                         }
                     }
                 }
-                // if (_deployment && labels && Config.nodered_allow_nodeselector) {
-                //     if (typeof labels === "string") {
-                //         let item = JSON.parse(labels);
-                //         let spec: any = _deployment.spec.template.spec;
-                //         const keys = Object.keys(item);
-                //         if (spec.nodeSelector == null) spec.nodeSelector = {};
-                //         keys.forEach(key => {
-                //             spec.nodeSelector[key] = item[key];
-                //         })
-                //     }
-                // }
-                if (user.nodered && user.nodered && (user.nodered as any).nodeselector && Config.nodered_allow_nodeselector) {
+                if (user.nodered && (user.nodered as any).nodeselector && Config.nodered_allow_nodeselector) {
                     var spec: any = _deployment.spec.template.spec;
                     const keys = Object.keys((user.nodered as any).nodeselector);
                     if (spec.nodeSelector == null) spec.nodeSelector = {};
@@ -3081,7 +3070,6 @@ export class Message {
             const res = await this.Stripe("POST", "subscription_items", subscriptionitem.id, payload, customer.id);
             msg.customer = customer;
         } catch (error) {
-            if (error == null) new Error("Unknown error");
             span.recordException(error);
             await handleError(cli, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -3182,7 +3170,6 @@ export class Message {
             }
             msg.customer = customer;
         } catch (error) {
-            if (error == null) new Error("Unknown error");
             span.recordException(error);
             await handleError(cli, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -3354,9 +3341,9 @@ export class Message {
                 let openflowuserplan: string = "";
                 let supportplan: string = "";
                 let supporthourplan: string = "";
-                if (customer.subscriptions != null && customer.subscriptions.data != null)
-                    customer.subscriptions.data.filter(s => {
-                        s.items.data.filter(y => {
+                if (customer.subscriptions != null && customer.subscriptions.data != null) {
+                    const outarr = customer.subscriptions.data.filter(s => {
+                        const inarr = s.items.data.filter(y => {
                             if (y.plan.metadata.supporthourplan == "true") {
                                 supporthourplan = y.id;
                             }
@@ -3369,6 +3356,7 @@ export class Message {
                         });
                         return false;
                     });
+                }
                 if (billing.openflowuserplan != openflowuserplan || billing.supportplan != supportplan || billing.supporthourplan != supporthourplan) {
                     billing.openflowuserplan = openflowuserplan;
                     billing.supportplan = supportplan;
@@ -3385,7 +3373,6 @@ export class Message {
             msg.customer = customer;
 
         } catch (error) {
-            if (error == null) new Error("Unknown error");
             span.recordException(error);
             await handleError(cli, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -3495,7 +3482,6 @@ export class Message {
             }
             msg.payload = await this.Stripe(msg.method, msg.object, msg.id, msg.payload, msg.customerid);
         } catch (error) {
-            if (error == null) new Error("Unknown error");
             await handleError(cli, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {

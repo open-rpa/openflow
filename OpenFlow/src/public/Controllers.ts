@@ -119,7 +119,7 @@ export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
         this.users = await NoderedUtil.Query("users", { $or: [{ _type: "user" }, { _type: "role", rparole: true }] }, null, null, 100, 0, null,
             null, null, 2);
         this.users.forEach(user => {
-            if (user._id == this.model._createdbyid || user._id == this.model._createdbyid) {
+            if (user._id == this.model._createdbyid || user._id == this.model._modifiedbyid) {
                 this.user = user;
             }
         });
@@ -3545,7 +3545,7 @@ export class PaymentCtrl extends entityCtrl<Billing> {
                     }
                 }
             }
-            if (this.stripe_customer && this.stripe_customer && this.stripe_customer.tax_ids) {
+            if (this.stripe_customer && this.stripe_customer.tax_ids) {
                 if (this.stripe_customer.tax_ids.total_count > 0) {
                     this.hastaxinfo = true;
                     this.taxstatus = this.stripe_customer.tax_ids.data[0].verification.status;
@@ -3704,7 +3704,7 @@ export class PaymentCtrl extends entityCtrl<Billing> {
             }
 
 
-            if (this.stripe_customer && this.stripe_customer) {
+            if (this.stripe_customer) {
                 try {
                     this.nextbill = (await NoderedUtil.Stripe<stripe_invoice>("GET", "invoices_upcoming", this.stripe_customer.id, null, null, null, 2) as any);
                     this.nextbill.dtperiod_start = new Date(this.nextbill.period_start * 1000);

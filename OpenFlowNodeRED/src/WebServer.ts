@@ -307,10 +307,10 @@ export class WebServer {
                         const roles: string[] = profile["http://schemas.xmlsoap.org/claims/Group"];
                         if (roles !== undefined) {
                             if (Config.noderedusers !== "") {
-                                if (roles.indexOf(Config.noderedusers) !== -1 || roles.indexOf(Config.noderedusers) !== -1) { profile.permissions = "read"; }
+                                if (roles.indexOf(Config.noderedusers) !== -1) { profile.permissions = "read"; }
                             }
                             if (Config.noderedadmins !== "") {
-                                if (roles.indexOf(Config.noderedadmins) !== -1 || roles.indexOf(Config.noderedadmins) !== -1) { profile.permissions = "*"; }
+                                if (roles.indexOf(Config.noderedadmins) !== -1) { profile.permissions = "*"; }
                             }
                         }
                         // profile.permissions = "*";
