@@ -1179,7 +1179,7 @@ export class LoginProvider {
                             await DBHelper.Save(role, jwt, span);
                         }
                     }
-                    await DBHelper.DecorateWithRoles(_user, span);
+                    _user = await DBHelper.DecorateWithRoles(_user, span);
                 }
             }
 

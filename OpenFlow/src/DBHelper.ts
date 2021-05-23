@@ -14,8 +14,7 @@ export class DBHelper {
             if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
             const items: User[] = await Config.db.query<User>(q, null, 1, 0, null, "users", jwt, undefined, undefined, span);
             if (items === null || items === undefined || items.length === 0) { return null; }
-            const result: User = User.assign(items[0]);
-            await this.DecorateWithRoles(result, span);
+            const result: User = await this.DecorateWithRoles(User.assign(items[0]), span);
             return result;
         } catch (error) {
             span.recordException(error);
@@ -30,8 +29,7 @@ export class DBHelper {
             if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
             const items: User[] = await Config.db.query<User>({ _id: _id }, null, 1, 0, null, "users", jwt, undefined, undefined, span);
             if (items === null || items === undefined || items.length === 0) { return null; }
-            const result: User = User.assign(items[0]);
-            await this.DecorateWithRoles(result, span);
+            const result: User = await this.DecorateWithRoles(User.assign(items[0]), span);
             return result;
         } catch (error) {
             span.recordException(error);
@@ -46,8 +44,7 @@ export class DBHelper {
             const items: User[] = await Config.db.query<User>({ $or: [{ username: new RegExp(["^", username, "$"].join(""), "i") }, { _id: id }] },
                 null, 1, 0, null, "users", Crypt.rootToken(), undefined, undefined, span);
             if (items === null || items === undefined || items.length === 0) { return null; }
-            const result: User = User.assign(items[0]);
-            await this.DecorateWithRoles(result, span);
+            const result: User = await this.DecorateWithRoles(User.assign(items[0]), span);
             return result;
         } catch (error) {
             span.recordException(error);
@@ -107,7 +104,7 @@ export class DBHelper {
     // }
     public static cached_roles: Role[] = [];
     public static cached_at: Date = new Date();
-    public static async DecorateWithRoles(user: User, parent: Span): Promise<void> {
+    public static async DecorateWithRoles(user: User, parent: Span): Promise<User> {
         const span: Span = Logger.otel.startSubSpan("dbhelper.DecorateWithRoles", parent);
         try {
             if (!Config.decorate_roles_fetching_all_roles) {
@@ -180,6 +177,7 @@ export class DBHelper {
         } finally {
             Logger.otel.endSpan(span);
         }
+        return user;
     }
     public static async FindRoleByName(name: string, parent: Span): Promise<Role> {
         const items: Role[] = await Config.db.query<Role>({ name: name }, null, 1, 0, null, "users", Crypt.rootToken(), undefined, undefined, parent);
@@ -238,7 +236,7 @@ export class DBHelper {
             users.AddMember(user);
             this.EnsureNoderedRoles(user, jwt, false, span);
             await this.Save(users, jwt, span)
-            await this.DecorateWithRoles(user, span);
+            user = await this.DecorateWithRoles(user, span);
             return user;
         } catch (error) {
             span.recordException(error);

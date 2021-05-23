@@ -1271,7 +1271,7 @@ export class Message {
                         }
                         const tuserimpostor = tuser;
                         user = User.assign(items[0] as User);
-                        await DBHelper.DecorateWithRoles(user, span);
+                        user = await DBHelper.DecorateWithRoles(user, span);
                         // Check we have update rights
                         try {
                             await DBHelper.Save(user, msg.jwt, span);
