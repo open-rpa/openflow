@@ -155,13 +155,10 @@ export class WebSocketServerClient {
             span.recordException(error);
             this._receiveQueue = [];
             this._sendQueue = [];
-            try {
-                if (this._socketObject != null) {
-                    this.Close().catch((err) => {
-                        console.error(err);
-                    });
-                }
-            } catch (error) {
+            if (this._socketObject != null) {
+                this.Close().catch((err) => {
+                    console.error(err);
+                });
             }
         } finally {
             Logger.otel.endSpan(span);

@@ -1492,12 +1492,8 @@ export class DatabaseConnection {
             if (q.collectionname === "fs.files") {
                 _query = { $and: [q.query, this.getbasequery(q.jwt, "metadata._acl", [Rights.update])] };
             } else {
-                if (!q.collectionname.endsWith("_hist")) {
-                    _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.update])] };
-                } else {
-                    // todo: enforcer permissions when fetching _hist ?
-                    _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.update])] };
-                }
+                // todo: enforcer permissions when fetching _hist ?
+                _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.update])] };
             }
 
             if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };
