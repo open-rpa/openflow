@@ -129,7 +129,6 @@ export class DBHelper {
                 if (results.length > 0) {
                     // user = results[0];
                     user.roles = results[0].roles.map(x => ({ "_id": x._id, "name": x.name })) as any;
-                    user.roles = user.roles;
                 }
             } else {
                 var end: number = new Date().getTime();
