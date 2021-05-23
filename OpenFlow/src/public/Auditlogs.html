@@ -4,7 +4,7 @@
   <div class="form-group col-sm-3 form-horizontal">
     <label class="sr-only">Filter</label>
     <div class="input-group unframed-addons">
-      <div class="input-group-addon"><i class="fas fa-search"></i></div>
+      <div class="input-group-addon"><em class="fas fa-search"></em></div>
       <input ng-model="ctrl.searchstring" ng-change="ctrl.Search()" class="form-control input-md"
         ng-model-options="{debounce: 400}" />
     </div>
@@ -36,21 +36,11 @@
   <tbody>
     <tr ng-repeat="model in ctrl.models" ng-class="{failed: model.success == false}">
       <td>
-        <!-- <i class="fas fa-robot" ng-show="model.clientagent=='openrpa'"></i>
-        <i class="fas fa-globe" ng-show="model.clientagent=='webapp' || model.clientagent=='browser'"></i>
-        <i class="fas fa-mobile-alt" ng-show="model.clientagent=='mobileapp'"></i>
-        <i class="fab fa-node-js" ng-show="model.clientagent=='nodered' || model.clientagent=='getUserFromRequest'"></i>
-        <i class="fab fa-google" ng-show="model.clientagent=='googleverify'"></i>
-        <i class="fab fa-windows" ng-show="model.clientagent=='samlverify'"></i>
-        <i class="far fa-question-circle" ng-show="model.clientagent=='' || model.clientagent==null"></i>
-
-        <i class="fas fa-user-secret" ng-show="model.impostorname!='' && model.impostorname!=null"> -->
         <i ng-class="model.fa">
           <i ng-class="model.fa2">
-
       </td>
-      <td class="btn-cell"><a href ng-click="ctrl.ShowAudit(model)"
-          class="table-btn">{{( model.name == "" || model.name == null? "unknown": model.name)}}</a></td>
+      <td class="btn-cell"><a href ng-click="ctrl.ShowAudit(model)" class="table-btn">{{( model.name == "" || model.name
+          == null? "unknown": model.name)}}</a></td>
       <td>{{model.type}}</td>
       <td>{{model.impostorname}}</td>
       <td>{{model.clientagent || model.imagename}}</td>
