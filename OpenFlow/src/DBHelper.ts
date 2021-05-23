@@ -14,8 +14,7 @@ export class DBHelper {
             if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
             const items: User[] = await Config.db.query<User>(q, null, 1, 0, null, "users", jwt, undefined, undefined, span);
             if (items === null || items === undefined || items.length === 0) { return null; }
-            const result: User = await this.DecorateWithRoles(User.assign(items[0]), span);
-            return result;
+            return await this.DecorateWithRoles(User.assign(items[0]), span);
         } catch (error) {
             span.recordException(error);
             throw error;
@@ -29,8 +28,7 @@ export class DBHelper {
             if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
             const items: User[] = await Config.db.query<User>({ _id: _id }, null, 1, 0, null, "users", jwt, undefined, undefined, span);
             if (items === null || items === undefined || items.length === 0) { return null; }
-            const result: User = await this.DecorateWithRoles(User.assign(items[0]), span);
-            return result;
+            return await this.DecorateWithRoles(User.assign(items[0]), span);
         } catch (error) {
             span.recordException(error);
             throw error;
@@ -44,8 +42,7 @@ export class DBHelper {
             const items: User[] = await Config.db.query<User>({ $or: [{ username: new RegExp(["^", username, "$"].join(""), "i") }, { _id: id }] },
                 null, 1, 0, null, "users", Crypt.rootToken(), undefined, undefined, span);
             if (items === null || items === undefined || items.length === 0) { return null; }
-            const result: User = await this.DecorateWithRoles(User.assign(items[0]), span);
-            return result;
+            return await this.DecorateWithRoles(User.assign(items[0]), span);
         } catch (error) {
             span.recordException(error);
             throw error;
@@ -61,9 +58,7 @@ export class DBHelper {
             const q = { $or: [byuser, byid] };
             const items: User[] = await Config.db.query<User>(q, null, 1, 0, null, "users", Crypt.rootToken(), undefined, undefined, span);
             if (items === null || items === undefined || items.length === 0) { return null; }
-            const result: User = User.assign(items[0]);
-            await this.DecorateWithRoles(result, span);
-            return result;
+            return await this.DecorateWithRoles(User.assign(items[0]), span);
         } catch (error) {
             span.recordException(error);
             throw error;
