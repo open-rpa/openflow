@@ -2417,6 +2417,12 @@ export class Message {
                     const container = docker.getContainer(item.Id);
                     span.addEvent("stats()");
                     var stats = await container.stats({ stream: false });
+                    let cpu_usage: 0;
+                    let memory: 0;
+                    let memorylimit: 0;
+                    if (stats && stats.cpu_stats && stats.cpu_stats.cpu_usage && stats.cpu_stats.cpu_usage.usage_in_usermode) cpu_usage = stats.cpu_stats.cpu_usage.usage_in_usermode;
+                    if (stats && stats.memory_stats && stats.memory_stats.usage) memory = stats.memory_stats.usage;
+                    if (stats && stats.memory_stats && stats.memory_stats.limit) memorylimit = stats.memory_stats.limit;
                     item.metrics = {
                         cpu: parseFloat((stats.cpu_stats.cpu_usage.usage_in_usermode / 1024 / 1024).toString()).toFixed(2) + "n",
                         memory: parseFloat((stats.memory_stats.usage / 1024 / 1024).toString()).toFixed(2) + "Mi",

@@ -168,31 +168,31 @@ gulp.task("browserify", function () {
 
 gulp.task("compose", shell.task([
     'echo "Build openiap/openflow"',
-    'docker build -t openiap/openflow:edge1.3 .',
-    'docker tag openiap/openflow:edge1.3 openiap/openflow:' + version,
+    'docker build -t openiap/openflow:edge .',
+    'docker tag openiap/openflow:edge openiap/openflow:' + version,
     'echo "Push openiap/openflow"',
-    'docker push openiap/openflow:edge1.3',
+    'docker push openiap/openflow:edge',
     'docker push openiap/openflow:' + version,
 
     'echo "Build openiap/nodered"',
-    'cd OpenFlowNodeRED && docker build -t openiap/nodered:edge1.3 .',
-    'docker tag openiap/nodered:edge1.3 openiap/nodered:' + version,
+    'cd OpenFlowNodeRED && docker build -t openiap/nodered:edge .',
+    'docker tag openiap/nodered:edge openiap/nodered:' + version,
     'echo "Push openiap/nodered"',
-    'docker push openiap/nodered:edge1.3',
+    'docker push openiap/nodered:edge',
     'docker push openiap/nodered:' + version,
 
     // 'echo "Build openiap/nodered-puppeteer"',
-    // 'cd OpenFlowNodeRED && docker build -t openiap/nodered-puppeteer:edge1.3 -f Dockerfilepuppeteer .',
-    // 'docker tag openiap/nodered-puppeteer:edge1.3 openiap/nodered-puppeteer:' + version,
+    // 'cd OpenFlowNodeRED && docker build -t openiap/nodered-puppeteer:edge -f Dockerfilepuppeteer .',
+    // 'docker tag openiap/nodered-puppeteer:edge openiap/nodered-puppeteer:' + version,
     // 'echo "Push openiap/nodered-puppeteer"',
-    // 'docker push openiap/nodered-puppeteer:edge1.3',
+    // 'docker push openiap/nodered-puppeteer:edge',
     // 'docker push openiap/nodered-puppeteer:' + version,
 
     // 'echo "Build openiap/nodered-tagui"',
-    // 'cd OpenFlowNodeRED && docker build -t openiap/nodered-tagui:edge1.3 -f Dockerfiletagui .',
-    // 'docker tag openiap/nodered-tagui:edge1.3 openiap/nodered-tagui:' + version,
+    // 'cd OpenFlowNodeRED && docker build -t openiap/nodered-tagui:edge -f Dockerfiletagui .',
+    // 'docker tag openiap/nodered-tagui:edge openiap/nodered-tagui:' + version,
     // 'echo "Push openiap/nodered-tagui"',
-    // 'docker push openiap/nodered-tagui:edge1.3',
+    // 'docker push openiap/nodered-tagui:edge',
     // 'docker push openiap/nodered-tagui:' + version,
 
 ]));
