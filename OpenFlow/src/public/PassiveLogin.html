@@ -8,6 +8,7 @@
   <link rel="preload" href="/vendor/fortawesome/fontawesome-free/webfonts/fa-brands-400.woff2" as="font"
     type="font/woff2" crossorigin>
   <link rel="stylesheet" href="bundle.css">
+  <title>Login</title>
   <script src="bundle.js"></script>
   <script src="angular-localization.min.js"></script>
 </head>
@@ -128,14 +129,8 @@
                 this.formioRender.submission = { data: this.user };
                 this.formioRender.on('submit', async submission => {
                   console.debug('onsubmit', submission);
-                  // $(".alert-success").hide();
-                  // setTimeout(() => {
-                  //   // just to be safe
-                  //   $(".alert-success").hide();
-                  // }, 200);
                   postJSON("/validateuserform", submission, (err, data) => {
                     location.reload();
-                    // location.reload(true);
                   })
                 });
                 if (!$scope.$$phase) { $scope.$apply(); }
@@ -159,7 +154,6 @@
       if (data._id) {
         this.user = data;
         this.jwt.bind(this)(null, null);
-        // getJSON("/jwt", this.jwt.bind(this));
       }
       getJSON("/loginproviders", this.process.bind(this));
     });
@@ -203,14 +197,14 @@
 
               <a ng-href="/{{model.id}}" ng-repeat="model in ctrl.providers track by $index"
                 class="btn btn-lg btn-block text-uppercase">
-                <i class="fab {{model.logo}}"></i><span translate lib="web">{{model.name}}</span>
+                <em class="fab {{model.logo}}"></em><span translate lib="web">{{model.name}}</span>
               </a>
 
               <div class="card-body" ng-show="ctrl.allow_user_registration==true">
-                <small><i>
+                <small><em>
                     Select a provider or login using a local username and password.
                     A new user will automaticly be created if username is unknown.
-                    Email validation will be requered to use the core functions.</i></small>
+                    Email validation will be requered to use the core functions.</em></small>
               </div>
             </form>
           </div>
@@ -227,7 +221,7 @@
             <div id='formio' ng-show="ctrl.form!=null">
             </div>
             <a tabindex="-1" ng-href="/Signout" class="btn btn-lg btn-block text-uppercase">
-              <i class="fas fa-sign-out-alt"></i>
+              <em class="fas fa-sign-out-alt"></em>
               Singout
             </a>
 
