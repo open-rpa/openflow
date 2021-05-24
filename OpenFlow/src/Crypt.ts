@@ -44,7 +44,7 @@ export class Crypt {
     }
     static encrypt(text: string): string {
         let iv: Buffer = crypto.randomBytes(Crypt.iv_length);
-        let cipher: crypto.Cipher = crypto.createCipheriv("aes-256-cbc", Buffer.from(Crypt.encryption_key), iv);
+        let cipher: crypto.Cipher = crypto.createCipheriv("AES-256-GCM", Buffer.from(Crypt.encryption_key), iv);
         let encrypted: Buffer = cipher.update((text as any));
         encrypted = Buffer.concat([encrypted, cipher.final()]);
         return iv.toString("hex") + ":" + encrypted.toString("hex");
@@ -53,9 +53,16 @@ export class Crypt {
         let textParts: string[] = text.split(":");
         let iv: Buffer = Buffer.from(textParts.shift(), "hex");
         let encryptedText: Buffer = Buffer.from(textParts.join(":"), "hex");
-        let decipher: crypto.Decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(Crypt.encryption_key), iv);
-        let decrypted: Buffer = decipher.update(encryptedText);
-        decrypted = Buffer.concat([decrypted, decipher.final()]);
+        let decrypted: Buffer
+        try {
+            let decipher: crypto.Decipher = crypto.createDecipheriv("AES-256-GCM", Buffer.from(this.encryption_key), iv);
+            decrypted = decipher.update(encryptedText);
+            decrypted = Buffer.concat([decrypted, decipher.final()]);
+        } catch {
+            let decipher: crypto.Decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(this.encryption_key), iv);
+            decrypted = decipher.update(encryptedText);
+            decrypted = Buffer.concat([decrypted, decipher.final()]);
+        }
         return decrypted.toString();
     }
     static async hash(password: string): Promise<string> {
