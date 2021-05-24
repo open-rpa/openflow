@@ -1,5 +1,5 @@
 <div class="row">
-  <h1 translate lib="web">entities</h1>
+  <h1 translate lib="web">deleted entities</h1>
   <p class="col-md-5 lead"></p>
   <div class="form-group col-sm-3 form-horizontal">
     <label class="sr-only">Filter</label>
@@ -24,14 +24,15 @@
   </div>
   <div class=" col-md-6 text-right">
     <!-- <a ng-href="#/Entity/{{ctrl.collection}}" class="btn btn-info" translate lib="web">addentity</a> -->
-    <a ng-href="#/Duplicates/{{ctrl.collection}}" class="btn btn-info"><i class="fas fa-clone"></i></a>
-    <a ng-href="#/Entity/{{ctrl.collection}}" class="btn btn-info"><i class="az-add-lg"></i></a>
+    <a ng-href="#/Duplicates/{{ctrl.collection}}" class="btn btn-info"><em class="fas fa-clone"></em></a>
+    <a ng-href="#/Entity/{{ctrl.collection}}" class="btn btn-info"><em class="az-add-lg"></em></a>
   </div>
 </div>
 
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 
 <table id=" table1" class="table table-striped table-hover table-sm" when-scrolled="ctrl.more()" style="width: 100%;">
+  <caption translate lib="web">deleted entities</caption>
   <thead class="thead-dark">
     <tr>
       <th scope="col" ng-click="ctrl.ToggleOrder('name')"><b translate lib="web">name</b></th>

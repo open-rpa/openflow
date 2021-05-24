@@ -18,25 +18,21 @@
         <select ng-model="ctrl.collection" ng-options="item.name as item.name for item in ctrl.collections"
           ng-change="ctrl.SelectCollection()">
         </select>
-        <!-- <a href ng-click="ctrl.DropCollection()" class="btn btn-secondary" translate lib="web"
-          ng-show="ctrl.WebSocketClientService.user.username=='az'"" ng-disabled=" ctrl.loading==true">Drop</a>
-        <a href ng-click="ctrl.DeleteMany()" class="btn btn-secondary" translate lib="web"
-          ng-show="ctrl.WebSocketClientService.user.username=='az'"" ng-disabled=" ctrl.loading==true">empty</a> -->
       </div>
 
     </div>
   </div>
   <div class=" col-md-6 text-right">
-    <!-- <a ng-href="#/Entity/{{ctrl.collection}}" class="btn btn-info" translate lib="web">addentity</a> -->
-    <a ng-href="#/Deleted/{{ctrl.collection}}" class="btn btn-info"><i class="fas fa-undo"></i></a>
-    <a ng-href="#/Duplicates/{{ctrl.collection}}" class="btn btn-info"><i class="fas fa-clone"></i></a>
-    <a ng-href="#/Entity/{{ctrl.collection}}" class="btn btn-info"><i class="az-add-lg"></i></a>
+    <a ng-href="#/Deleted/{{ctrl.collection}}" class="btn btn-info"><em class="fas fa-undo"></em></a>
+    <a ng-href="#/Duplicates/{{ctrl.collection}}" class="btn btn-info"><em class="fas fa-clone"></em></a>
+    <a ng-href="#/Entity/{{ctrl.collection}}" class="btn btn-info"><em class="az-add-lg"></em></a>
   </div>
 </div>
 
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 
 <table id=" table1" class="table table-striped table-hover table-sm" when-scrolled="ctrl.more()" style="width: 100%;">
+  <caption translate lib="web">entities</caption>
   <thead class="thead-dark">
     <tr>
       <th scope="col" ng-click="ctrl.ToggleOrder('name')"><b translate lib="web">name</b></th>
@@ -64,11 +60,11 @@
         <a ng-href="#/History/{{ctrl.collection}}/{{model._id}}" class="table-btn">Hist</a>
       </td>
       <td class="btn-cell">
-        <a ng-href="#/Entity/{{ctrl.collection}}/{{model._id}}" class="table-btn"><i class="az-edit"></i></a>
+        <a ng-href="#/Entity/{{ctrl.collection}}/{{model._id}}" class="table-btn"><em class="az-edit"></em></a>
       </td>
       <td class="btn-cell">
-        <a href ng-click="ctrl.DeleteOne(model)" ng-disabled="ctrl.loading==true" class="table-btn"><i
-            class="az-trash"></i></a>
+        <a href ng-click="ctrl.DeleteOne(model)" ng-disabled="ctrl.loading==true" class="table-btn"><em
+            class="az-trash"></em></a>
       </td>
     </tr>
   </tbody>
