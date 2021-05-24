@@ -113,13 +113,6 @@ export class rabbitmq {
         return payload;
     }
     static async getqueue(amqp_url: string, vhost: string, queuename) {
-        // const queues = await amqpwrapper.getqueues(Config.amqp_url);
-        // for (let i = 0; i < queues.length; i++) {
-        //     let queue = queues[i];
-        //     if (queue.name == queuename) {
-        //         return queue;
-        //     }
-        // }
         const q = this.parseurl(amqp_url);
         const options = {
             headers: {

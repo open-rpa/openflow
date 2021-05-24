@@ -1,5 +1,4 @@
-import { CoreV1Api, AppsV1Api, ExtensionsV1beta1Api, ExtensionsApi, VoidAuth, ApiKeyAuth } from "@kubernetes/client-node";
-import { Config } from "./Config";
+import { CoreV1Api, AppsV1Api, ExtensionsV1beta1Api, VoidAuth, ApiKeyAuth } from "@kubernetes/client-node";
 import http = require('http');
 const localVarRequest = require("request");
 let defaultBasePath = 'https://localhost';

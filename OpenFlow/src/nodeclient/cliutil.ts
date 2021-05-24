@@ -2,7 +2,6 @@ import { Logger } from "../Logger";
 import { Config } from "../Config";
 import * as fs from "fs";
 export const logger = Logger.configure();
-const cp = require('child_process');
 const path = require('path');
 const envfile = require('envfile')
 export const envfilename = ".env";

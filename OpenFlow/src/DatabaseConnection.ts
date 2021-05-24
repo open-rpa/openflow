@@ -991,7 +991,6 @@ export class DatabaseConnection {
                 let item = items[i];
 
                 item = this.ensureResource(item);
-                // span.addEvent("traversejsonencode");
                 DatabaseConnection.traversejsonencode(item);
                 let name = item.name;
                 if (NoderedUtil.IsNullEmpty(name)) name = item._name;
@@ -1009,7 +1008,6 @@ export class DatabaseConnection {
                 if (collectionname != "audit") { Logger.instanse.silly("[" + user.username + "][" + collectionname + "] Adding " + item._type + " " + name + " to database"); }
                 if (!this.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
 
-                // span.addEvent("encryptentity");
                 item = this.encryptentity(item) as T;
 
                 if (collectionname === "users" && item._type === "user" && item.hasOwnProperty("newpassword")) {
@@ -1080,11 +1078,11 @@ export class DatabaseConnection {
                 bulkInsert.insert(item);
                 counter++
                 if (counter % x === 0) {
-                    const ot_end = Logger.otel.startTimer();
+                    const ot_end_inner = Logger.otel.startTimer();
                     const mongodbspan_inner: Span = Logger.otel.startSubSpan("mongodb.bulkexecute", span);
                     tempresult = tempresult.concat(bulkInsert.execute())
                     Logger.otel.endSpan(mongodbspan_inner);
-                    Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname });
+                    Logger.otel.endTimer(ot_end_inner, DatabaseConnection.mongodb_insert, { collection: collectionname });
                     bulkInsert = this.db.collection(collectionname).initializeUnorderedBulkOp()
                 }
             }
@@ -1111,11 +1109,11 @@ export class DatabaseConnection {
                 if (collectionname === "users" && item._type === "role") {
                     Base.addRight(item, item._id, item.name, [Rights.read]);
                     item = await this.CleanACL(item, user, span);
-                    const ot_end = Logger.otel.startTimer();
-                    const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.replaceOne", span);
+                    const ot_end_inner2 = Logger.otel.startTimer();
+                    const mongodbspan_inner2: Span = Logger.otel.startSubSpan("mongodb.replaceOne", span);
                     await this.db.collection(collectionname).replaceOne({ _id: item._id }, item);
-                    Logger.otel.endSpan(mongodbspan);
-                    Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_replace, { collection: collectionname });
+                    Logger.otel.endSpan(mongodbspan_inner2);
+                    Logger.otel.endTimer(ot_end_inner2, DatabaseConnection.mongodb_replace, { collection: collectionname });
                     DBHelper.cached_roles = [];
                 }
                 if (collectionname === "config" && item._type === "oauthclient") {
@@ -1172,11 +1170,10 @@ export class DatabaseConnection {
         let q = new UpdateOneMessage();
         q.query = query; q.item = item; q.collectionname = collectionname; q.w = w; q.j = j; q.jwt = jwt;
         q = await this.UpdateOne(q, parent);
-        if (q.opresult.result.ok === 1) {
+        if (!NoderedUtil.IsNullUndefinded(q.opresult) && q.opresult.result.ok === 1) {
             if (q.opresult.modifiedCount === 0) {
                 throw Error("item not found!");
-            } else if (q.opresult.modifiedCount === 1 || NoderedUtil.IsNullUndefinded(q.opresult.modifiedCount)) {
-            } else {
+            } else if (q.opresult.modifiedCount !== 1) {
                 throw Error("More than one item was updated !!!");
             }
         } else {
@@ -1511,12 +1508,9 @@ export class DatabaseConnection {
             options.WriteConcern.w = q.w;
             options.WriteConcern.j = q.j;
             try {
-                // const ot_end = Logger.otel.startTimer();
                 const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.updateMany", span);
                 q.opresult = await this.db.collection(q.collectionname).updateMany(_query, q.item, options);
                 Logger.otel.endSpan(mongodbspan);
-                // Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insertmany, { collection: q.collectionname });
-
                 if (Config.log_updates && q.opresult) Logger.instanse.debug("[" + user.username + "][" + q.collectionname + "] updated " + q.opresult.modifiedCount + " items");
                 return q;
             } catch (error) {
@@ -2398,12 +2392,6 @@ export class DatabaseConnection {
                                 if (indexnames.indexOf("_created_1") === -1) {
                                     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
                                 }
-                                // if (indexnames.indexOf("WorkflowId_1") === -1) {
-                                //     await this.createIndex(collection.name, "WorkflowId_1", { "WorkflowId": 1 }, null, span)
-                                // }
-                                // if (indexnames.indexOf("InstanceId_1") === -1) {
-                                //     await this.createIndex(collection.name, "InstanceId_1", { "InstanceId": 1 }, null, span)
-                                // }
                                 if (indexnames.indexOf("InstanceId_1_WorkflowId_1") === -1) {
                                     await this.createIndex(collection.name, "InstanceId_1_WorkflowId_1", { "WorkflowId": 1, "InstanceId": 1 }, null, span)
                                 }
@@ -2453,15 +2441,9 @@ export class DatabaseConnection {
                                 }
                                 break;
                             case "openrpa":
-                                // if (indexnames.indexOf("_type_1") === -1) {
-                                //     await this.createIndex(collection.name, "_type_1", { "_type": 1 }, null, span)
-                                // }
                                 if (indexnames.indexOf("_created_1") === -1) {
                                     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
                                 }
-                                // if (indexnames.indexOf("projectid_name_1") === -1) {
-                                //     await this.createIndex(collection.name, "projectid_name_1", { projectid: -1, name: -1 }, null, span)
-                                // }
                                 if (indexnames.indexOf("_type_projectid_name_1") === -1) {
                                     await this.createIndex(collection.name, "_type_projectid_name_1", { _type: 1, "{projectid:-1,name:-1}": 1 }, null, span)
                                 }

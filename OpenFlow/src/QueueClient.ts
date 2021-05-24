@@ -2,11 +2,8 @@ import { NoderedUtil } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import { amqpqueue, amqpwrapper, QueueMessageOptions } from "./amqpwrapper";
 import { Config } from "./Config";
-import { DatabaseConnection } from "./DatabaseConnection";
-import { DBHelper } from "./DBHelper";
 import { Logger } from "./Logger";
 import { Message } from "./Messages/Message";
-
 export class QueueClient {
     static async configure(): Promise<void> {
         await this.RegisterMyQueue();
@@ -24,19 +21,11 @@ export class QueueClient {
             let span: Span = null;
             try {
                 if (!Config.db.isConnected) {
-                    // setTimeout(() => {
-                    //     ack(false);
-                    //     Logger.instanse.warn("[queue][nack] I'm busy, return message")
-                    // }, Config.amqp_requeue_time);
                     console.log("nack");
                     ack(false);
                     return;
                 }
                 msg.priority = options.priority;
-                if (options.priority == 1) {
-                    // const wait = ms => new Promise((r, j) => setTimeout(r, ms));
-                    // await wait(500);
-                }
                 if (!NoderedUtil.IsNullEmpty(options.replyTo)) {
                     span = Logger.otel.startSpan("QueueClient.QueueMessage");
                     if (Config.log_openflow_amqp) Logger.instanse.debug("[queue] Process command: " + msg.command + " id: " + msg.id + " correlationId: " + options.correlationId);

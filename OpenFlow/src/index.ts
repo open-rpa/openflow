@@ -1,5 +1,4 @@
 import * as http from "http";
-
 import { Logger } from "./Logger";
 import { WebServer } from "./WebServer";
 import { WebSocketServer } from "./WebSocketServer";

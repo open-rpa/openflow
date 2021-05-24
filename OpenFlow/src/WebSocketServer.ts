@@ -1,7 +1,6 @@
 import * as http from "http";
 import * as WebSocket from "ws";
 import { WebSocketServerClient } from "./WebSocketServerClient";
-import { DatabaseConnection } from "./DatabaseConnection";
 import { Crypt } from "./Crypt";
 import { Message } from "./Messages/Message";
 import { Config } from "./Config";
@@ -12,10 +11,7 @@ import { Logger } from "./Logger";
 
 export class WebSocketServer {
     private static _socketserver: WebSocket.Server;
-    private static _server: http.Server;
     public static _clients: WebSocketServerClient[];
-    private static _db: DatabaseConnection;
-
     public static p_all: BaseObserver;
     public static websocket_queue_count: BaseObserver;
     public static websocket_queue_message_count: BaseObserver;
@@ -44,7 +40,6 @@ export class WebSocketServer {
     }
     static configure(server: http.Server): void {
         this._clients = [];
-        this._server = server;
         this._socketserver = new WebSocket.Server({ server: server });
         this._socketserver.on("connection", (socketObject: WebSocket, req: any): void => {
             this._clients.push(new WebSocketServerClient(socketObject, req));
@@ -141,8 +136,6 @@ export class WebSocketServer {
                 Logger.instanse.info("new client count: " + WebSocketServer._clients.length);
                 span.setAttribute("clientcount", WebSocketServer._clients.length)
             }
-            // let openrpa: number = 0;
-            // this.p_online_clients.labels("openrpa").set(count);
             const p_all = {};
             for (let i = 0; i < WebSocketServer._clients.length; i++) {
                 try {

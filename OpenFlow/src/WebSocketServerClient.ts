@@ -9,8 +9,6 @@ import { WebSocketServer } from "./WebSocketServer";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { WebServer } from "./WebServer";
-import { DatabaseConnection } from "./DatabaseConnection";
-import { cli } from "winston/lib/winston/config";
 interface IHashTable<T> {
     [key: string]: T;
 }
@@ -149,7 +147,6 @@ export class WebSocketServerClient {
                 }
                 return;
             }
-            // this._socketObject.send(msg.tojson());
         } catch (error) {
             Logger.instanse.error(error);
             span.recordException(error);
@@ -165,7 +162,7 @@ export class WebSocketServerClient {
         }
     }
     private _message(message: string): void {
-        //Logger.instanse.silly("WebSocket message received " + message);
+        Logger.instanse.silly("WebSocket message received " + message);
         let msg: SocketMessage = SocketMessage.fromjson(message);
         Logger.instanse.silly("WebSocket message received id: " + msg.id + " index: " + msg.index + " count: " + msg.count);
         this._receiveQueue.push(msg);
@@ -268,7 +265,6 @@ export class WebSocketServerClient {
                 }
             }
             await semaphore.down();
-            // this.CloseConsumer(exchange, span);
             let exchangequeue: amqpexchange = null;
             try {
                 const AssertExchangeOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertExchangeOptions));
@@ -282,7 +278,6 @@ export class WebSocketServerClient {
                     } catch (error) {
                         setTimeout(() => {
                             ack(false);
-                            // ack(); // just eat the error 
                             done(_data);
                             console.error(exchange + " failed message queue message, nack and re queue message: ", (error.message ? error.message : error));
                         }, Config.amqp_requeue_time);
@@ -293,7 +288,6 @@ export class WebSocketServerClient {
                     this._exchanges.push(exchangequeue);
                     this._queues.push(exchangequeue.queue);
                 }
-                // if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...Logger.otel.defaultlabels, clientid: this.id }).update(this._queues.length);
             } catch (error) {
                 Logger.instanse.error("WebSocketclient::CreateConsumer " + error);
             }
@@ -355,7 +349,6 @@ export class WebSocketServerClient {
                 }
                 if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...Logger.otel.defaultlabels, clientid: this.id }).update(this._queues.length);
             } catch (error) {
-                // Logger.instanse.error("WebSocketclient::CreateConsumer " + error);
                 throw error
             }
             finally {
@@ -418,8 +411,6 @@ export class WebSocketServerClient {
                     result.priority = first.priority;
                     result.Process(this);
                 }
-            } else {
-                // Logger.instanse.debug("[" + username + "] WebSocketclient::ProcessQueue receiveQueue: Cannot process i have " + msgs.length + " out of " + first.count + " for message " + first.id);
             }
         });
         this._sendQueue.forEach(msg => {
@@ -431,9 +422,6 @@ export class WebSocketServerClient {
             }
             this._sendQueue = this._sendQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
         });
-        // if (this._receiveQueue.length > 25 || this._sendQueue.length > 25) {
-        //     Logger.instanse.debug("[" + username + "] WebSocketclient::ProcessQueue receiveQueue: " + this._receiveQueue.length + " sendQueue: " + this._sendQueue.length);
-        // }
     }
     public async Send<T>(message: Message): Promise<T> {
         return new Promise<T>(async (resolve, reject) => {
@@ -463,9 +451,6 @@ export class WebSocketServerClient {
             this.messageQueue[message.id] = new QueuedMessage(message, cb);
             WebSocketServer.update_message_queue_count(this);
         }
-        // setTimeout(() => {
-        //     this.ProcessQueue();
-        // }, 500);
         this.ProcessQueue();
     }
     public chunkString(str: string, length: number): string[] {
@@ -481,7 +466,6 @@ export class WebSocketServerClient {
         } else {
             q.data = d;
         }
-        // q.data = d.payload; 
         q.replyto = options.replyTo;
         q.error = d.error;
         q.correlationId = options.correlationId; q.queuename = queuename;
@@ -495,7 +479,6 @@ export class WebSocketServerClient {
         if ((q2 as any).command == "error") throw new Error(q2.data);
         return q2.data;
     }
-
     async Query<T extends Base>(collection: string, query: any, projection: any = null, orderby: any = { _created: -1 }, top: number = 500, skip: number = 0): Promise<any[]> {
         const q: QueryMessage = new QueryMessage();
         q.collectionname = collection; q.query = query;
@@ -590,7 +573,6 @@ export class WebSocketServerClient {
             });
             (stream.stream as any).on("change", next => {
                 try {
-                    // Logger.instanse.info(JSON.stringify(next, null, 4));
                     Logger.instanse.info("Watch: " + JSON.stringify(next.documentKey));
                     const msg: SocketMessage = SocketMessage.fromcommand("watchevent");
                     const q = new WatchEventMessage();

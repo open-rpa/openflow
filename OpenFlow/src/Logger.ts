@@ -2,7 +2,6 @@ import * as winston from "winston";
 import { Config } from "./Config";
 import { LicenseFile, otel } from "./otelspec";
 const path = require('path');
-
 export class Logger {
     public static otel: otel;
     public static License: LicenseFile;

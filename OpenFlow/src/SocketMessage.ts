@@ -1,5 +1,4 @@
 import { NoderedUtil } from "@openiap/openflow-api";
-import * as crypto from "crypto";
 import { Message } from "./Messages/Message";
 
 function isNumber(value: string | number): boolean {

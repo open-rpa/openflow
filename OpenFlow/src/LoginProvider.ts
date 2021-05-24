@@ -2,22 +2,16 @@ import * as crypto from "crypto";
 import * as url from "url";
 import * as express from "express";
 import * as path from "path";
-
-// import * as SAMLStrategy from "passport-saml";
 import * as GoogleStrategy from "passport-google-oauth20";
 import * as LocalStrategy from "passport-local";
-
-
 import * as passport from "passport";
 import { Config } from "./Config";
-
 import { Crypt } from "./Crypt";
 import { Audit } from "./Audit";
-
 import * as saml from "saml20";
 const multer = require('multer');
 const GridFsStorage = require('multer-gridfs-storage');
-import { GridFSBucket, ObjectID, Db, Cursor, Binary } from "mongodb";
+import { GridFSBucket, ObjectID, Binary } from "mongodb";
 import { Base, User, NoderedUtil, TokenUser, WellknownIds, Rights, Role } from "@openiap/openflow-api";
 import { DBHelper } from "./DBHelper";
 import { Span } from "@opentelemetry/api";
@@ -442,7 +436,6 @@ export class LoginProvider {
                     res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
                 }
                 if (!NoderedUtil.IsNullEmpty(validateurl)) {
-                    // logger.debug("validateurl: " + validateurl);
                     if (req.user) {
                         const user: User = await DBHelper.FindById(req.user._id, undefined, span);
                         const tuser: TokenUser = TokenUser.From(user);
@@ -458,21 +451,11 @@ export class LoginProvider {
                 }
                 const file = path.join(__dirname, 'public', 'PassiveLogin.html');
                 res.sendFile(file);
-                // const result: any[] = await this.getProviders();
-                // res.setHeader("Content-Type", "application/json");
-                // res.end(JSON.stringify(result));
-                // res.end();
             } catch (error) {
                 span.recordException(error);
                 console.error(error.message ? error.message : error);
                 return res.status(500).send({ message: error.message ? error.message : error });
             }
-            // try {
-            //     span.addEvent("RegisterProviders");
-            //     LoginProvider.RegisterProviders(app, baseurl);
-            // } catch (error) {
-            //     span.recordException(error);
-            // }
             Logger.otel.endSpan(span);
         });
         app.get("/validateuserform", async (req: any, res: any, next: any): Promise<void> => {
