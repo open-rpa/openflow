@@ -250,7 +250,7 @@ export class DatabaseConnection {
                 Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control], false);
                 this.ensureResource(item);
             }
-            var addself: boolean = true;
+            let addself: boolean = true;
             item._acl.forEach(ace => {
                 if (ace._id === user._id) addself = false;
                 if (addself) {
@@ -981,14 +981,14 @@ export class DatabaseConnection {
             const user = Crypt.verityToken(jwt);
             span.setAttribute("collection", collectionname);
             span.setAttribute("username", user.username);
-            var bulkInsert = this.db.collection(collectionname).initializeUnorderedBulkOp();
-            var x = 1000
-            var counter = 0
-            var date = new Date()
+            let bulkInsert = this.db.collection(collectionname).initializeUnorderedBulkOp();
+            let x = 1000
+            let counter = 0
+            let date = new Date()
             date.setMonth(date.getMonth() - 1);
             let tempresult: any[] = [];
-            for (var i = 0; i < items.length; i++) {
-                var item = items[i];
+            for (let i = 0; i < items.length; i++) {
+                let item = items[i];
 
                 item = this.ensureResource(item);
                 // span.addEvent("traversejsonencode");
@@ -1081,9 +1081,9 @@ export class DatabaseConnection {
                 counter++
                 if (counter % x === 0) {
                     const ot_end = Logger.otel.startTimer();
-                    const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.bulkexecute", span);
+                    const mongodbspan_inner: Span = Logger.otel.startSubSpan("mongodb.bulkexecute", span);
                     tempresult = tempresult.concat(bulkInsert.execute())
-                    Logger.otel.endSpan(mongodbspan);
+                    Logger.otel.endSpan(mongodbspan_inner);
                     Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname });
                     bulkInsert = this.db.collection(collectionname).initializeUnorderedBulkOp()
                 }
@@ -1094,8 +1094,8 @@ export class DatabaseConnection {
             Logger.otel.endSpan(mongodbspan);
             Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname });
 
-            for (var i = 0; i < items.length; i++) {
-                var item = items[i];
+            for (let y = 0; y < items.length; y++) {
+                let item = items[y];
                 if (collectionname === "users" && item._type === "user") {
                     Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
                     span.addEvent("FindRoleByNameOrId");
@@ -1670,9 +1670,9 @@ export class DatabaseConnection {
             // const ot_end = Logger.otel.startTimer();
             // const res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne(_query);
             // Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, { collection: collectionname });
-            var docs = await this.db.collection(collectionname).find(_query).toArray();
-            for (var i = 0; i < docs.length; i++) {
-                var doc = docs[i];
+            const docs = await this.db.collection(collectionname).find(_query).toArray();
+            for (let i = 0; i < docs.length; i++) {
+                let doc = docs[i];
                 doc._deleted = new Date(new Date().toISOString());
                 doc._deletedby = user.name;
                 doc._deletedbyid = user._id;
@@ -1777,20 +1777,20 @@ export class DatabaseConnection {
                 // const ot_end = Logger.otel.startTimer();
                 // const res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteMany(_query);
                 // Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });
-                var bulkInsert = this.db.collection(collectionname + "_hist").initializeUnorderedBulkOp();
-                var bulkRemove = this.db.collection(collectionname).initializeUnorderedBulkOp()
-                var x = 1000
-                var counter = 0
-                var date = new Date()
+                let bulkInsert = this.db.collection(collectionname + "_hist").initializeUnorderedBulkOp();
+                let bulkRemove = this.db.collection(collectionname).initializeUnorderedBulkOp()
+                const x = 1000
+                let counter = 0
+                const date = new Date()
                 date.setMonth(date.getMonth() - 1)
 
                 const qot_end = Logger.otel.startTimer();
                 const qmongodbspan: Span = Logger.otel.startSubSpan("mongodb.find", span);
-                var docs = await this.db.collection(collectionname).find(_query).toArray();
+                const docs = await this.db.collection(collectionname).find(_query).toArray();
                 Logger.otel.endSpan(qmongodbspan);
                 Logger.otel.endTimer(qot_end, DatabaseConnection.mongodb_query, { collection: collectionname });
-                for (var i = 0; i < docs.length; i++) {
-                    var doc = docs[i];
+                for (let i = 0; i < docs.length; i++) {
+                    const doc = docs[i];
                     const fullhist = {
                         _acl: doc._acl,
                         _type: doc._type,
@@ -2370,7 +2370,7 @@ export class DatabaseConnection {
             if (!Config.ensure_indexes) return;
             const collections = await DatabaseConnection.toArray(this.db.listCollections());
 
-            for (var i = 0; i < collections.length; i++) {
+            for (let i = 0; i < collections.length; i++) {
                 try {
                     const collection = collections[i];
                     if (collection.type != "collection") continue;

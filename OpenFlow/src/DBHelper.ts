@@ -86,7 +86,6 @@ export class DBHelper {
                 }]
                 const results = await Config.db.aggregate<User>(pipe, "users", Crypt.rootToken(), null, span);
                 if (results.length > 0) {
-                    // user = results[0];
                     user.roles = results[0].roles.map(x => ({ "_id": x._id, "name": x.name })) as any;
                 }
             } else {
