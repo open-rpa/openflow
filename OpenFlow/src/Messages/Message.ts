@@ -2424,9 +2424,9 @@ export class Message {
                     if (stats && stats.memory_stats && stats.memory_stats.usage) memory = stats.memory_stats.usage;
                     if (stats && stats.memory_stats && stats.memory_stats.limit) memorylimit = stats.memory_stats.limit;
                     item.metrics = {
-                        cpu: parseFloat((stats.cpu_stats.cpu_usage.usage_in_usermode / 1024 / 1024).toString()).toFixed(2) + "n",
-                        memory: parseFloat((stats.memory_stats.usage / 1024 / 1024).toString()).toFixed(2) + "Mi",
-                        memorylimit: parseFloat((stats.memory_stats.limit / 1024 / 1024).toString()).toFixed(2) + "Mi"
+                        cpu: parseFloat((cpu_usage / 1024 / 1024).toString()).toFixed(2) + "n",
+                        memory: parseFloat((memory / 1024 / 1024).toString()).toFixed(2) + "Mi",
+                        memorylimit: parseFloat((memorylimit / 1024 / 1024).toString()).toFixed(2) + "Mi"
                     };
                     result.push(item);
                 }
