@@ -44,24 +44,28 @@ export class Crypt {
     }
     static encrypt(text: string): string {
         let iv: Buffer = crypto.randomBytes(Crypt.iv_length);
-        let cipher: crypto.Cipher = crypto.createCipheriv("AES-256-GCM", Buffer.from(Crypt.encryption_key), iv);
+        let cipher: crypto.CipherGCM = crypto.createCipheriv('aes-256-gcm', Buffer.from(Crypt.encryption_key), iv);
         let encrypted: Buffer = cipher.update((text as any));
         encrypted = Buffer.concat([encrypted, cipher.final()]);
-        return iv.toString("hex") + ":" + encrypted.toString("hex");
+        const authTag = cipher.getAuthTag()
+        return iv.toString("hex") + ":" + encrypted.toString("hex") + ":" + authTag.toString("hex");
     }
     static decrypt(text: string): string {
         let textParts: string[] = text.split(":");
         let iv: Buffer = Buffer.from(textParts.shift(), "hex");
-        let encryptedText: Buffer = Buffer.from(textParts.join(":"), "hex");
+        let encryptedText: Buffer = Buffer.from(textParts.shift(), "hex");
+        let authTag: Buffer = null;
+        if (textParts.length > 0) authTag = Buffer.from(textParts.shift(), "hex");
         let decrypted: Buffer
-        try {
-            let decipher: crypto.Decipher = crypto.createDecipheriv("AES-256-GCM", Buffer.from(this.encryption_key), iv);
+        if (authTag != null) {
+            let decipher: crypto.DecipherGCM = crypto.createDecipheriv('aes-256-gcm', Buffer.from(Crypt.encryption_key), iv);
+            decipher.setAuthTag(authTag);
             decrypted = decipher.update(encryptedText);
             decrypted = Buffer.concat([decrypted, decipher.final()]);
-        } catch {
-            let decipher: crypto.Decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(this.encryption_key), iv);
-            decrypted = decipher.update(encryptedText);
-            decrypted = Buffer.concat([decrypted, decipher.final()]);
+        } else {
+            let decipher2: crypto.Decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(this.encryption_key), iv);
+            decrypted = decipher2.update(encryptedText);
+            decrypted = Buffer.concat([decrypted, decipher2.final()]);
         }
         return decrypted.toString();
     }
