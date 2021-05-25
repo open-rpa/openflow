@@ -622,7 +622,7 @@ export class Message {
                 sendthis.__jwt = msg.jwt;
                 sendthis.__user = msg.user;
             }
-            if (msg.striptoken) {
+            if (msg.striptoken && !NoderedUtil.IsNullEmpty(msg.exchange)) {
                 delete msg.jwt;
                 delete msg.data.jwt;
                 delete sendthis.__jwt;
@@ -1584,10 +1584,12 @@ export class Message {
                 }
                 // docker-compose -f docker-compose-traefik.yml -p demo up -d
                 Labels["traefik.enable"] = "true";
-                Labels["traefik.http.routers." + name + ".entrypoints"] = "web";
+                Labels["traefik.http.routers." + name + ".entrypoints"] = Config.nodered_docker_entrypoints;
                 Labels["traefik.http.routers." + name + ".rule"] = "Host(`" + hostname + "`)";
                 Labels["traefik.http.services." + name + ".loadbalancer.server.port"] = Config.port.toString();
-
+                if (!NoderedUtil.IsNullEmpty(Config.nodered_docker_certresolver)) {
+                    Labels["traefik.http.routers." + name + ".tls.certresolver"] = Config.nodered_docker_certresolver;
+                }
                 // HostConfig.PortBindings = { "5859/tcp": [{ HostPort: '5859' }] }
 
                 let api_ws_url = Config.basewsurl();
@@ -1624,7 +1626,6 @@ export class Message {
                     "jwt=" + nodered_jwt,
                     "queue_prefix=" + user.nodered.queue_prefix,
                     "api_ws_url=" + api_ws_url,
-                    "amqp_url=" + Config.amqp_url,
                     "domain=" + hostname,
                     "protocol=" + Config.protocol,
                     "port=" + Config.port.toString(),
@@ -1880,7 +1881,6 @@ export class Message {
                                             { name: "jwt", value: nodered_jwt },
                                             { name: "queue_prefix", value: user.nodered.queue_prefix },
                                             { name: "api_ws_url", value: api_ws_url },
-                                            { name: "amqp_url", value: Config.amqp_url },
                                             { name: "domain", value: hostname },
                                             { name: "protocol", value: Config.protocol },
                                             { name: "port", value: Config.port.toString() },
