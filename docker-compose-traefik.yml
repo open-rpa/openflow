@@ -2,17 +2,13 @@ version: "3.3"
 services:
   mongodb:
     image: "mongo"
-    #image: "mongo:3.6.16"
     restart: always
-    ports:
-      - "27017:27017"
     volumes:
       - mongodb_data:/data/db
   traefik:
     image: "traefik:v2.0.0-rc3"
     container_name: "traefik"
     command:
-      #- "--log.level=DEBUG"
       - "--api.insecure=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
@@ -34,10 +30,6 @@ services:
     environment:
       - RABBITMQ_DEFAULT_USER=admin
       - RABBITMQ_DEFAULT_PASS=demo2018
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-
   web:
     labels:
       - "traefik.enable=true"
@@ -51,8 +43,6 @@ services:
     restart: always
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
-    ports:
-      - "5858:5858"
     depends_on:
       - rabbitmq
       - mongodb
