@@ -2,22 +2,16 @@ import * as crypto from "crypto";
 import * as url from "url";
 import * as express from "express";
 import * as path from "path";
-
-// import * as SAMLStrategy from "passport-saml";
 import * as GoogleStrategy from "passport-google-oauth20";
 import * as LocalStrategy from "passport-local";
-
-
 import * as passport from "passport";
 import { Config } from "./Config";
-
 import { Crypt } from "./Crypt";
 import { Audit } from "./Audit";
-
 import * as saml from "saml20";
 const multer = require('multer');
 const GridFsStorage = require('multer-gridfs-storage');
-import { GridFSBucket, ObjectID, Db, Cursor, Binary } from "mongodb";
+import { GridFSBucket, ObjectID, Binary } from "mongodb";
 import { Base, User, NoderedUtil, TokenUser, WellknownIds, Rights, Role } from "@openiap/openflow-api";
 import { DBHelper } from "./DBHelper";
 import { Span } from "@opentelemetry/api";
@@ -177,12 +171,12 @@ export class LoginProvider {
             }
         });
         app.get("/dashboardauth", async (req: any, res: any, next: any) => {
-            const span: Span = Logger.otel.startSpan("LoginProvider.dashboardauth");
+            const span: Span = (Config.trace_dashboardauth ? Logger.otel.startSpan("LoginProvider.dashboardauth") : null);
             try {
-                span.setAttribute("remoteip", WebServer.remoteip(req));
+                span?.setAttribute("remoteip", WebServer.remoteip(req));
                 if (req.user) {
                     const user: TokenUser = TokenUser.From(req.user);
-                    span.setAttribute("username", user.username);
+                    span?.setAttribute("username", user.username);
                     if (user != null) {
                         const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
                         if (allowed.length > 0) {
@@ -241,7 +235,7 @@ export class LoginProvider {
                 // const [login, password] = new Buffer(b64auth, 'base64').toString().split(':')
                 const [login, password] = Buffer.from(b64auth, "base64").toString().split(':')
                 if (login && password) {
-                    span.setAttribute("username", login);
+                    span?.setAttribute("username", login);
                     let user: User = Auth.getUser(b64auth, "dashboard");
                     if (user == null) user = await Auth.ValidateByPassword(login, password, span);
                     if (user != null) {
@@ -265,7 +259,7 @@ export class LoginProvider {
                 res.setHeader('WWW-Authenticate', 'Basic realm="OpenFlow"');
                 res.end('Unauthorized');
             } catch (error) {
-                span.recordException(error);
+                span?.recordException(error);
                 throw error;
             } finally {
                 Logger.otel.endSpan(span);
@@ -442,7 +436,6 @@ export class LoginProvider {
                     res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
                 }
                 if (!NoderedUtil.IsNullEmpty(validateurl)) {
-                    // logger.debug("validateurl: " + validateurl);
                     if (req.user) {
                         const user: User = await DBHelper.FindById(req.user._id, undefined, span);
                         const tuser: TokenUser = TokenUser.From(user);
@@ -458,20 +451,10 @@ export class LoginProvider {
                 }
                 const file = path.join(__dirname, 'public', 'PassiveLogin.html');
                 res.sendFile(file);
-                // const result: any[] = await this.getProviders();
-                // res.setHeader("Content-Type", "application/json");
-                // res.end(JSON.stringify(result));
-                // res.end();
             } catch (error) {
                 span.recordException(error);
                 console.error(error.message ? error.message : error);
                 return res.status(500).send({ message: error.message ? error.message : error });
-            }
-            try {
-                span.addEvent("RegisterProviders");
-                LoginProvider.RegisterProviders(app, baseurl);
-            } catch (error) {
-                span.recordException(error);
             }
             Logger.otel.endSpan(span);
         });
@@ -571,15 +554,17 @@ export class LoginProvider {
                 console.error(error.message ? error.message : error);
                 Logger.otel.endSpan(span);
                 return res.status(500).send({ message: error.message ? error.message : error });
-            }
-            try {
-                LoginProvider.RegisterProviders(app, baseurl);
-            } catch (error) {
-                span.recordException(error);
-                return res.status(500).send({ message: error.message ? error.message : error });
             } finally {
                 Logger.otel.endSpan(span);
             }
+            // try {
+            //     LoginProvider.RegisterProviders(app, baseurl);
+            // } catch (error) {
+            //     span.recordException(error);
+            //     return res.status(500).send({ message: error.message ? error.message : error });
+            // } finally {
+            //     Logger.otel.endSpan(span);
+            // }
 
         });
         app.get("/download/:id", async (req, res) => {
@@ -725,7 +710,7 @@ export class LoginProvider {
 
                     const arr = await Config.db.query(q, undefined, 1, 0, { "uploadDate": -1 }, "files", jwt, undefined, undefined, span);
                     if (arr.length > 0) {
-                        await Config.db.DeleteOne(arr[0]._id, "files", jwt);
+                        await Config.db.DeleteOne(arr[0]._id, "files", jwt, span);
                     }
                     res.send({
                         status: "success",
@@ -1177,7 +1162,7 @@ export class LoginProvider {
                             await DBHelper.Save(role, jwt, span);
                         }
                     }
-                    await DBHelper.DecorateWithRoles(_user, span);
+                    _user = await DBHelper.DecorateWithRoles(_user, span);
                 }
             }
 

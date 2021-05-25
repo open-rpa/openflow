@@ -14,9 +14,7 @@ export class DBHelper {
             if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
             const items: User[] = await Config.db.query<User>(q, null, 1, 0, null, "users", jwt, undefined, undefined, span);
             if (items === null || items === undefined || items.length === 0) { return null; }
-            const result: User = User.assign(items[0]);
-            await this.DecorateWithRoles(result, span);
-            return result;
+            return await this.DecorateWithRoles(User.assign(items[0]), span);
         } catch (error) {
             span.recordException(error);
             throw error;
@@ -30,9 +28,7 @@ export class DBHelper {
             if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
             const items: User[] = await Config.db.query<User>({ _id: _id }, null, 1, 0, null, "users", jwt, undefined, undefined, span);
             if (items === null || items === undefined || items.length === 0) { return null; }
-            const result: User = User.assign(items[0]);
-            await this.DecorateWithRoles(result, span);
-            return result;
+            return await this.DecorateWithRoles(User.assign(items[0]), span);
         } catch (error) {
             span.recordException(error);
             throw error;
@@ -46,9 +42,7 @@ export class DBHelper {
             const items: User[] = await Config.db.query<User>({ $or: [{ username: new RegExp(["^", username, "$"].join(""), "i") }, { _id: id }] },
                 null, 1, 0, null, "users", Crypt.rootToken(), undefined, undefined, span);
             if (items === null || items === undefined || items.length === 0) { return null; }
-            const result: User = User.assign(items[0]);
-            await this.DecorateWithRoles(result, span);
-            return result;
+            return await this.DecorateWithRoles(User.assign(items[0]), span);
         } catch (error) {
             span.recordException(error);
             throw error;
@@ -64,40 +58,7 @@ export class DBHelper {
             const q = { $or: [byuser, byid] };
             const items: User[] = await Config.db.query<User>(q, null, 1, 0, null, "users", Crypt.rootToken(), undefined, undefined, span);
             if (items === null || items === undefined || items.length === 0) { return null; }
-            const result: User = User.assign(items[0]);
-            await this.DecorateWithRoles(result, span);
-            return result;
-        } catch (error) {
-            span.recordException(error);
-            throw error;
-        } finally {
-            Logger.otel.endSpan(span);
-        }
-    }
-    public static async GetRoles(_id: string, ident: number, parent: Span): Promise<Role[]> {
-        const span: Span = Logger.otel.startSubSpan("dbhelper.GetRoles", parent);
-        span.setAttribute("_id", _id);
-        span.setAttribute("ident", ident);
-        try {
-            if (ident > Config.max_recursive_group_depth) return [];
-            const result: Role[] = [];
-            const query: any = { "members": { "$elemMatch": { _id: _id } } };
-            const ids: string[] = [];
-            const _roles: Role[] = await Config.db.query<Role>(query, null, Config.expected_max_roles, 0, null, "users", Crypt.rootToken(), undefined, undefined, span);
-            for (let role of _roles) {
-                if (ids.indexOf(role._id) == -1) {
-                    ids.push(role._id);
-                    result.push(role);
-                    const _subroles: Role[] = await this.GetRoles(role._id, ident + 1, span);
-                    for (let subrole of _subroles) {
-                        if (ids.indexOf(subrole._id) == -1) {
-                            ids.push(subrole._id);
-                            result.push(subrole);
-                        }
-                    }
-                }
-            }
-            return result;
+            return await this.DecorateWithRoles(User.assign(items[0]), span);
         } catch (error) {
             span.recordException(error);
             throw error;
@@ -107,15 +68,26 @@ export class DBHelper {
     }
     public static cached_roles: Role[] = [];
     public static cached_at: Date = new Date();
-    public static async DecorateWithRoles(user: User, parent: Span): Promise<void> {
+    public static async DecorateWithRoles(user: User, parent: Span): Promise<User> {
         const span: Span = Logger.otel.startSubSpan("dbhelper.DecorateWithRoles", parent);
         try {
             if (!Config.decorate_roles_fetching_all_roles) {
-                const roles: Role[] = await this.GetRoles(user._id, 0, span);
-                user.roles = [];
-                roles.forEach(role => {
-                    user.roles.push(new Rolemember(role.name, role._id));
-                });
+                const pipe: any = [{ "$match": { "_id": user._id } },
+                {
+                    "$graphLookup": {
+                        from: "users",
+                        startWith: "$_id",
+                        connectFromField: "_id",
+                        connectToField: "members._id",
+                        as: "roles",
+                        maxDepth: Config.max_recursive_group_depth,
+                        restrictSearchWithMatch: { "_type": "role" }
+                    }
+                }]
+                const results = await Config.db.aggregate<User>(pipe, "users", Crypt.rootToken(), null, span);
+                if (results.length > 0) {
+                    user.roles = results[0].roles.map(x => ({ "_id": x._id, "name": x.name })) as any;
+                }
             } else {
                 var end: number = new Date().getTime();
                 var seconds = Math.round((end - this.cached_at.getTime()) / 1000);
@@ -162,6 +134,7 @@ export class DBHelper {
         } finally {
             Logger.otel.endSpan(span);
         }
+        return user;
     }
     public static async FindRoleByName(name: string, parent: Span): Promise<Role> {
         const items: Role[] = await Config.db.query<Role>({ name: name }, null, 1, 0, null, "users", Crypt.rootToken(), undefined, undefined, parent);
@@ -182,7 +155,7 @@ export class DBHelper {
         try {
             let role: Role = await this.FindRoleByNameOrId(name, id, span);
             if (role !== null && (role._id === id || id === null)) { return role; }
-            if (role !== null && !NoderedUtil.IsNullEmpty(role._id)) { await Config.db.DeleteOne(role._id, "users", jwt); }
+            if (role !== null && !NoderedUtil.IsNullEmpty(role._id)) { await Config.db.DeleteOne(role._id, "users", jwt, span); }
             role = new Role(); role.name = name; role._id = id;
             role = await Config.db.InsertOne(role, "users", 0, false, jwt, span);
             role = Role.assign(role);
@@ -203,7 +176,7 @@ export class DBHelper {
         try {
             let user: User = await this.FindByUsernameOrId(username, id, span);
             if (user !== null && (user._id === id || id === null)) { return user; }
-            if (user !== null && id !== null) { await Config.db.DeleteOne(user._id, "users", jwt); }
+            if (user !== null && id !== null) { await Config.db.DeleteOne(user._id, "users", jwt, span); }
             user = new User(); user._id = id; user.name = name; user.username = username;
             if (password !== null && password !== undefined && password !== "") {
                 await Crypt.SetPassword(user, password, span);
@@ -218,9 +191,9 @@ export class DBHelper {
             await this.Save(user, jwt, span);
             const users: Role = await this.FindRoleByName("users", span);
             users.AddMember(user);
-            this.EnsureNoderedRoles(user, jwt, span);
+            this.EnsureNoderedRoles(user, jwt, false, span);
             await this.Save(users, jwt, span)
-            await this.DecorateWithRoles(user, span);
+            user = await this.DecorateWithRoles(user, span);
             return user;
         } catch (error) {
             span.recordException(error);
@@ -229,8 +202,8 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public static async EnsureNoderedRoles(user: TokenUser | User, jwt: string, parent: Span): Promise<void> {
-        if (Config.auto_create_personal_nodered_group) {
+    public static async EnsureNoderedRoles(user: TokenUser | User, jwt: string, force: boolean, parent: Span): Promise<void> {
+        if (Config.auto_create_personal_nodered_group || force) {
             let name = user.username;
             name = name.split("@").join("").split(".").join("");
             name = name.toLowerCase();
@@ -241,7 +214,7 @@ export class DBHelper {
             noderedadmins.AddMember(user as User);
             await this.Save(noderedadmins, jwt, parent);
         }
-        if (Config.auto_create_personal_noderedapi_group) {
+        if (Config.auto_create_personal_noderedapi_group || force) {
             let name = user.username;
             name = name.split("@").join("").split(".").join("");
             name = name.toLowerCase();

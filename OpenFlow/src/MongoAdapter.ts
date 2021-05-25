@@ -1,16 +1,3 @@
-// import { Configuration, KoaContextWithOIDC } from "oidc-provider";
-// const events = require('events');
-// const url = require('url');
-// export class Provider extends events.EventEmitter {
-//     constructor(issuer, setup) {
-//         const components = url.parse(issuer);
-//         super();
-//         this.issuer = issuer;
-//         const conf = new Configu
-//         // const configuration = new Configuration(setup);
-//     }
-// }
-
 import { Config } from "./Config";
 
 export class MongoAdapter {

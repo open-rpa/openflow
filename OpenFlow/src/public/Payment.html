@@ -3,13 +3,6 @@
         width: 350px;
     }
 </style>
-<!-- <script src="https://js.stripe.com/v3/"></script> -->
-
-<!-- <section ng-show="ctrl.WebSocketClientService.stripe_api_key != ''" ng-show="ctrl.allowpayment">
-    <label for="card-element">Card</label>
-    <div id="card-element"></div>
-</section>
-<a href ng-click="ctrl.Test()" class="button">Test</a> -->
 <form>
     <div id="customer-info" ng-hide="ctrl.loading==true">
         <div class="row">
@@ -387,8 +380,8 @@
             {{ ctrl.nextbill.dtperiod_end.toDateString() }} ) </div>
         <div class="row">
             <div class="col-sm-1"></div>
-            <div class="col-sm-6"><b>description</b></div>
-            <div class="col-sm-2"><b>price</b></div>
+            <div class="col-sm-6"><strong>description</strong></div>
+            <div class="col-sm-2"><strong>price</strong></div>
         </div>
         <div class="row" ng-repeat="line in ctrl.nextbill.lines.data">
             <div class="col-sm-1"></div>
@@ -397,25 +390,25 @@
         </div>
         <div class="row" ng-show="ctrl.nextbill.discount != null && ctrl.nextbill.discount.coupon != null">
             <div class="col-sm-1"></div>
-            <div class="col-sm-1"><b>discount</b></div>
+            <div class="col-sm-1"><strong>discount</strong></div>
             <div class="col-sm-5"></div>
             <div class="col-sm-2">{{ ctrl.nextbill.discount.coupon.percent_off }}%</div>
         </div>
         <div class="row" ng-show="ctrl.nextbill.tax > 0">
             <div class="col-sm-1"></div>
-            <div class="col-sm-1"><b>subtotal</b></div>
+            <div class="col-sm-1"><strong>subtotal</strong></div>
             <div class="col-sm-5"></div>
             <div class="col-sm-2">{{ ctrl.nextbill.subtotal / 100 }}</div>
         </div>
         <div class="row">
             <div class="col-sm-1"></div>
-            <div class="col-sm-1"><b>tax</b></div>
+            <div class="col-sm-1"><strong>tax</strong></div>
             <div class="col-sm-5"></div>
             <div class="col-sm-2">{{ ctrl.nextbill.tax / 100 }}</div>
         </div>
         <div class="row">
             <div class="col-sm-1"></div>
-            <div class="col-sm-1"><b>total</b></div>
+            <div class="col-sm-1"><strong>total</strong></div>
             <div class="col-sm-5"></div>
             <div class="col-sm-2">{{ ctrl.nextbill.total / 100 }}</div>
         </div>
@@ -426,7 +419,7 @@
         </div>
         <div class="row">
             <div class="col-sm-1"></div>
-            <div class="col-sm-6"><b>Amount due</b></div>
+            <div class="col-sm-6"><strong>Amount due</strong></div>
             <div class="col-sm-2">{{ (ctrl.nextbill.starting_balance + ctrl.nextbill.total) / 100 }}</div>
         </div>
 
@@ -478,10 +471,11 @@
     </div>
     <br />
     <br />
-    <small><i style="color: gray;">
+    <small><em style="color: gray;">
             All plans include a fair usage of database space/queries, and network trafic.
-            All plans are covered by our <a href="https://www.openrpa.dk/terms" target="_blank">terms</a>.
-        </i></small>
+            All plans are covered by our <a href="https://www.openrpa.dk/terms" target="_blank"
+                rel="noopener">terms</a>.
+        </em></small>
     <br />
     <br />
 </form>

@@ -21,24 +21,20 @@
             </div>
             <button class="btn btn-lg btn-primary btn-block text-uppercase" type="submit" ng-show="ctrl.localenabled"
               translate lib="web">signin</button>
-            <!-- <button class="btn btn-lg btn-primary btn-block text-uppercase" type="button" ng-click="ctrl.submit()"
-              ng-show="ctrl.localenabled" translate lib="web">signin</button> -->
-            <!-- <button class="btn btn-lg btn-primary btn-block text-uppercase" type="button" ng-click="ctrl.Signup()"
-              ng-show="ctrl.WebSocketClientService.stripe_api_key != ''" translate lib="web">signup</button> -->
             <hr class="my-4" ng-show="ctrl.localenabled">
 
             <a ng-href="/{{model.id}}" ng-repeat="model in ctrl.providers" class="btn btn-lg btn-block text-uppercase">
-              <i class="fab {{model.logo}} mr-2"></i><span translate lib="web">{{model.name}}</span>
+              <em class="fab {{model.logo}} mr-2"></em><span translate lib="web">{{model.name}}</span>
             </a>
 
             <a href ng-click="ctrl.Scan()" ng-show="ctrl.qrcodescan" class="btn btn-lg btn-block text-uppercase">
-              <i class="fas fa-qrcode mr-2"></i><span translate lib="web">QRCode Scan</span>
+              <em class="fas fa-qrcode mr-2"></em><span translate lib="web">QRCode Scan</span>
             </a>
             <div class="card-body" ng-show="ctrl.allow_user_registration==true">
-              <small><i>
+              <small><em>
                   Select a provider or login using a local username and password.
                   A new user will automaticly be created if username is unknown.
-                  Email validation will be requered to use the core functions.</i></small>
+                  Email validation will be requered to use the core functions.</em></small>
             </div>
           </form>
         </div>
@@ -48,5 +44,5 @@
 </div>
 <div class="cameraView" ng-show="ctrl.scanning==true">
   <a href ng-click="ctrl.Scan()" ng-show="ctrl.scanning==true" class="btn btn-lg btn-block text-uppercase">
-    <i class="fas fa-qrcode mr-2"></i><span translate lib="web">QRCode Scan</span>
+    <em class="fas fa-qrcode mr-2"></em><span translate lib="web">QRCode Scan</span>
 </div>

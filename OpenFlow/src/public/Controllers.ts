@@ -116,16 +116,16 @@ export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
         }
     }
     async loadUsers(): Promise<void> {
-        this.users = await NoderedUtil.Query("users", { $or: [{ _type: "user" }, { _type: "role", rparole: true }] }, null, null, 100, 0, null);
+        this.users = await NoderedUtil.Query("users", { $or: [{ _type: "user" }, { _type: "role", rparole: true }] }, null, null, 100, 0, null,
+            null, null, 2);
         this.users.forEach(user => {
-            if (user._id == this.model._createdbyid || user._id == this.model._createdbyid) {
+            if (user._id == this.model._createdbyid || user._id == this.model._modifiedbyid) {
                 this.user = user;
             }
         });
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     async submit(): Promise<void> {
-
         try {
             this.errormessage = "";
             const rpacommand = {
@@ -134,13 +134,14 @@ export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
                 data: this.arguments
             }
             if (this.arguments === null || this.arguments === undefined) { this.arguments = {}; }
-            const result: any = await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", this.user._id, this.queuename, rpacommand, null, parseInt(this.timeout), true);
+            const result: any = await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", this.user._id, this.queuename, rpacommand, null, parseInt(this.timeout), true,
+                2);
             try {
                 // result = JSON.parse(result);
             } catch (error) {
             }
         } catch (error) {
-            this.errormessage = JSON.stringify(error);
+            this.errormessage = error.message ? error.message : error;
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
@@ -215,7 +216,7 @@ export class RPAWorkflowsCtrl extends entitiesCtrl<Base> {
             { $sort: { "_id.day": 1 } }
             // ,{ "$limit": 20 }
         ];
-        const workflowruns = await NoderedUtil.Aggregate("openrpa_instances", agg, null);
+        const workflowruns = await NoderedUtil.Aggregate("openrpa_instances", agg, null, null, 0);
 
 
         for (let i = 0; i < this.models.length; i++) {
@@ -255,7 +256,8 @@ export class RPAWorkflowsCtrl extends entitiesCtrl<Base> {
         }
     }
     async Download(model: any) {
-        const workflows = await NoderedUtil.Query("openrpa", { _type: "workflow", _id: model._id }, null, null, 0, 0, null);
+        const workflows = await NoderedUtil.Query("openrpa", { _type: "workflow", _id: model._id }, null, null, 0, 0, null, null,
+            null, 2);
         if (workflows.length > 0) {
             model = workflows[0];
             this.download(model.Xaml, model.name + ".xaml", "application/xaml+xml");
@@ -400,7 +402,7 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
             { $match: { _rpaheartbeat: { "$gte": this.datatimeframe } } },
             { "$count": "_rpaheartbeat" }
         ];
-        const data: any[] = await NoderedUtil.Aggregate("users", agg, null);
+        const data: any[] = await NoderedUtil.Aggregate("users", agg, null, null, 0);
         let totalrobots = 0;
         if (data.length > 0) totalrobots = data[0]._rpaheartbeat;
 
@@ -408,7 +410,7 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
             { $match: { _rpaheartbeat: { "$gte": this.onlinetimeframe } } },
             { "$count": "_rpaheartbeat" }
         ];
-        const data2 = await NoderedUtil.Aggregate("users", agg2, null);
+        const data2 = await NoderedUtil.Aggregate("users", agg2, null, null, 0);
         let onlinerobots = 0;
         if (data2.length > 0) onlinerobots = data2[0]._rpaheartbeat;
 
@@ -440,7 +442,7 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
             { $sort: { "count": -1 } },
             { "$limit": 20 }
         ];
-        const workflowruns = await NoderedUtil.Aggregate("openrpa_instances", agg3, null);
+        const workflowruns = await NoderedUtil.Aggregate("openrpa_instances", agg3, null, null, 0);
 
 
         const chart2: chartset = new chartset();
@@ -508,7 +510,7 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
             // , { "$limit": 20 }
         ];
 
-        const data = await NoderedUtil.Aggregate("users", agg, null);
+        const data = await NoderedUtil.Aggregate("users", agg, null, null, 0);
 
         chart = new chartset();
         if (points[0]._index == 0) // Online robots
@@ -569,7 +571,7 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
             { $sort: { "count": -1 } },
             { "$limit": 20 }
         ];
-        const workflowruns = await NoderedUtil.Aggregate("openrpa_instances", agg, null);
+        const workflowruns = await NoderedUtil.Aggregate("openrpa_instances", agg, null, null, 0);
 
         chart = new chartset();
         if (points[0]._index == 0) // Online robots
@@ -605,7 +607,7 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
             { $sort: { "count": -1 } },
             { "$limit": 20 }
         ];
-        const workflowruns = await NoderedUtil.Aggregate("openrpa_instances", agg, null);
+        const workflowruns = await NoderedUtil.Aggregate("openrpa_instances", agg, null, null, 0);
 
         chart = new chartset();
         if (workflowruns.length > 0) // Online robots
@@ -657,7 +659,7 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
             { $sort: { "_id.day": 1 } },
             { "$limit": 20 }
         ];
-        const workflowruns = await NoderedUtil.Aggregate("openrpa_instances", agg, null);
+        const workflowruns = await NoderedUtil.Aggregate("openrpa_instances", agg, null, null, 0);
 
         chart = new chartset();
         if (workflowruns.length > 0) {
@@ -681,7 +683,7 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
     async InsertNew(): Promise<void> {
         // this.loading = true;
         const model = { name: "Find me " + NoderedUtil.GetUniqueIdentifier(), "temp": "hi mom" };
-        const result = await NoderedUtil.InsertOne(this.collection, model, 1, false, null);
+        const result = await NoderedUtil.InsertOne(this.collection, model, 1, false, null, 1);
         this.models.push(result);
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -690,7 +692,7 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
         const index = this.models.indexOf(model);
         this.loading = true;
         model.name = "Find me " + NoderedUtil.GetUniqueIdentifier();
-        const newmodel = await NoderedUtil.UpdateOne(this.collection, null, model, 1, false, null);
+        const newmodel = await NoderedUtil.UpdateOne(this.collection, null, model, 1, false, null, 1);
         this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
         this.models.splice(index, 0, newmodel);
         this.loading = false;
@@ -902,7 +904,7 @@ export class LoginCtrl {
             this.setCookie("jwt", result.jwt, 365);
             this.$location.path("/");
         } catch (error) {
-            this.message = error;
+            this.message = error.message ? error.message : error;
             console.error(error);
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -1031,13 +1033,17 @@ export class ProviderCtrl extends entityCtrl<Provider> {
         });
     }
     async submit(): Promise<void> {
-        if (this.model._id) {
-            await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null);
-        } else {
-            await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null);
+        try {
+            if (this.model._id) {
+                await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null, 2);
+            } else {
+                await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
+            }
+            this.$location.path("/Providers");
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error;
         }
-        this.$location.path("/Providers");
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 }
 export class UsersCtrl extends entitiesCtrl<TokenUser> {
@@ -1094,7 +1100,7 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
     }
     async DeleteOneUser(model: TokenUser): Promise<any> {
         this.loading = true;
-        await NoderedUtil.DeleteOne(this.collection, model._id, null);
+        await NoderedUtil.DeleteOne(this.collection, model._id, null, 2);
         this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
         this.loading = false;
         let name = model.username;
@@ -1102,10 +1108,10 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
         name = name.toLowerCase();
 
         var q = { _type: "role", "$or": [{ name: name + "noderedadmins" }, { name: name + "nodered api users" }] }
-        const list = await NoderedUtil.Query("users", q, null, null, 4, 0, null);
+        const list = await NoderedUtil.Query("users", q, null, null, 4, 0, null, null, null, 2);
         for (var i = 0; i < list.length; i++) {
             console.debug("Deleting " + list[i].name)
-            await NoderedUtil.DeleteOne("users", list[i]._id, null);
+            await NoderedUtil.DeleteOne("users", list[i]._id, null, 2);
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
@@ -1150,7 +1156,7 @@ export class UserCtrl extends entityCtrl<TokenUser> {
                         { _type: "role" },
                         { members: { $elemMatch: { _id: this.model._id } } }
                     ]
-                }, null, { _type: -1, name: 1 }, 5, 0, null);
+                }, null, { _type: -1, name: 1 }, 5, 0, null, null, null, 2);
         } else {
             this.memberof = [];
         }
@@ -1174,9 +1180,9 @@ export class UserCtrl extends entityCtrl<TokenUser> {
     async submit(): Promise<void> {
         try {
             if (this.model._id) {
-                await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null);
+                await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null, 2);
             } else {
-                await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null);
+                await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
             }
             const currentmemberof = await NoderedUtil.Query("users",
                 {
@@ -1184,7 +1190,7 @@ export class UserCtrl extends entityCtrl<TokenUser> {
                         { _type: "role" },
                         { members: { $elemMatch: { _id: this.model._id } } }
                     ]
-                }, null, { _type: -1, name: 1 }, 5, 0, null);
+                }, null, { _type: -1, name: 1 }, 5, 0, null, null, null, 2);
             for (let i = 0; i < currentmemberof.length; i++) {
                 const memberof = currentmemberof[i];
                 if (this.memberof == null || this.memberof == undefined) this.memberof = [];
@@ -1195,7 +1201,7 @@ export class UserCtrl extends entityCtrl<TokenUser> {
                     memberof.members = memberof.members.filter(x => x._id != this.model._id);
                     console.debug("members: " + memberof.members.length);
                     try {
-                        await NoderedUtil.UpdateOne("users", null, memberof, 1, false, null);
+                        await NoderedUtil.UpdateOne("users", null, memberof, 1, false, null, 2);
                     } catch (error) {
                         console.error("Error updating " + memberof.name, error);
                     }
@@ -1203,7 +1209,7 @@ export class UserCtrl extends entityCtrl<TokenUser> {
             }
             this.$location.path("/Users");
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
@@ -1273,15 +1279,19 @@ export class RoleCtrl extends entityCtrl<Role> {
         });
     }
     async submit(): Promise<void> {
-        if (this.model._id) {
-            await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null);
-        } else {
-            this.model = await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null);
-            // this.model = await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null);
-            // this.model = await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null);
+        try {
+            if (this.model._id) {
+                await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null, 2);
+            } else {
+                this.model = await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
+                // this.model = await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null);
+                // this.model = await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null);
+            }
+            this.$location.path("/Roles");
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error;
         }
-        this.$location.path("/Roles");
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     RemoveMember(model: any) {
         if (this.model.members === undefined) { this.model.members = []; }
@@ -1361,7 +1371,7 @@ export class RoleCtrl extends entityCtrl<Role> {
                     { name: this.searchtext }
                 ]
             }
-            , null, { _type: -1, name: 1 }, 2, 0, null);
+            , null, { _type: -1, name: 1 }, 2, 0, null, null, null, 2);
 
         this.searchFilteredList = this.searchFilteredList.concat(await NoderedUtil.Query("users",
             {
@@ -1371,7 +1381,7 @@ export class RoleCtrl extends entityCtrl<Role> {
                     { _id: { $nin: ids } }
                 ]
             }
-            , null, { _type: -1, name: 1 }, 5, 0, null));
+            , null, { _type: -1, name: 1 }, 5, 0, null, null, null, 2));
         // this.searchFilteredList = await NoderedUtil.Query("users",
         //     {
         //         $and: [
@@ -1465,7 +1475,7 @@ export class FilesCtrl extends entitiesCtrl<Base> {
         //         elem.innerText = 'Processing ...';
         //     }
         // });
-        const fileinfo = await NoderedUtil.GetFile(null, id, null);
+        const fileinfo = await NoderedUtil.GetFile(null, id, null, 2);
 
         const elem = document.getElementById("myBar");
         elem.style.width = '0%';
@@ -1527,7 +1537,7 @@ export class FilesCtrl extends entitiesCtrl<Base> {
             this.loading = true;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             const lastp: number = 0;
-            await NoderedUtil.SaveFile(filename, type, null, this.file, null);
+            await NoderedUtil.SaveFile(filename, type, null, this.file, null, 2);
             // await NoderedUtil.SaveFile(filename, type, null, this.file, (msg, index, count) => {
             //     const p: number = ((index + 1) / count * 100) | 0;
             //     if (p > lastp || (index + 1) == count) {
@@ -1686,9 +1696,9 @@ export class EditFormCtrl extends entityCtrl<Form> {
             // allready there
         }
         if (this.model._id) {
-            this.model = await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null);
+            this.model = await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null, 2);
         } else {
-            this.model = await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null);
+            this.model = await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
         }
         this.$location.path("/Forms");
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -1858,23 +1868,24 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         if (!NoderedUtil.IsNullEmpty(this.localexchangequeue)) return;
         const result = await NoderedUtil.RegisterExchange(WebSocketClient.instance, exchange, "direct",
             "", async (msg: QueueMessage, ack: any) => {
-                // this.OnMessage(msg, ack);
                 console.log(msg);
                 ack();
-                // this.loadData();
-                this.model.payload = Object.assign(this.model.payload, msg.data.payload);
-                if (!NoderedUtil.IsNullEmpty(msg.data.payload.form)) {
-                    if (msg.data.payload.form != this.model.form) {
-                        const res = await NoderedUtil.Query("forms", { _id: msg.data.payload.form }, null, { _created: -1 }, 1, 0, null);
-                        if (res.length > 0) {
-                            this.model.form = msg.data.payload.form;
-                            this.form = res[0];
-                        } else {
-                            console.error("Failed locating form " + msg.data.payload.form)
+                if (NoderedUtil.IsNullEmpty(msg.routingkey) || msg.routingkey == this.instanceid) {
+                    // this.loadData();
+                    this.model.payload = Object.assign(this.model.payload, msg.data.payload);
+                    if (!NoderedUtil.IsNullEmpty(msg.data.payload.form)) {
+                        if (msg.data.payload.form != this.model.form) {
+                            const res = await NoderedUtil.Query("forms", { _id: msg.data.payload.form }, null, { _created: -1 }, 1, 0, null, null, null, 2);
+                            if (res.length > 0) {
+                                this.model.form = msg.data.payload.form;
+                                this.form = res[0];
+                            } else {
+                                console.error("Failed locating form " + msg.data.payload.form)
+                            }
                         }
                     }
+                    this.renderform();
                 }
-                this.renderform();
             }, (msg) => {
                 // if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected" });
                 // setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
@@ -1924,7 +1935,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
     async loadData(): Promise<void> {
         this.loading = true;
         this.message = "";
-        const res = await NoderedUtil.Query(this.collection, this.basequery, null, { _created: -1 }, 1, 0, null);
+        const res = await NoderedUtil.Query(this.collection, this.basequery, null, { _created: -1 }, 1, 0, null, null, null, 2);
         if (res.length > 0) { this.workflow = res[0]; } else {
             this.errormessage = this.id + " workflow not found!";
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -1933,7 +1944,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         }
         this.RegisterExchange(this.workflow.queue);
         if (this.instanceid !== null && this.instanceid !== undefined && this.instanceid !== "") {
-            const res = await NoderedUtil.Query("workflow_instances", { _id: this.instanceid }, null, { _created: -1 }, 1, 0, null);
+            const res = await NoderedUtil.Query("workflow_instances", { _id: this.instanceid }, null, { _created: -1 }, 1, 0, null, null, null, 2);
             if (res.length > 0) { this.model = res[0]; } else {
                 this.errormessage = this.id + " workflow instances not found!";
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -1979,7 +1990,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 this.Save();
                 return;
             } else if (this.model.form !== "") {
-                const res = await NoderedUtil.Query("forms", { _id: this.model.form }, null, { _created: -1 }, 1, 0, null);
+                const res = await NoderedUtil.Query("forms", { _id: this.model.form }, null, { _created: -1 }, 1, 0, null, null, null, 2);
                 if (res.length > 0) { this.form = res[0]; } else {
                     if (this.model.state == "completed") {
                         this.$location.path("/main");
@@ -2004,7 +2015,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 console.debug("SendOne: " + this.workflow._id + " / " + this.workflow.queue);
                 await this.SendOne(this.workflow.queue, {});
             } catch (error) {
-                this.errormessage = error;
+                this.errormessage = error.message ? error.message : error;
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 console.error(this.errormessage);
 
@@ -2012,13 +2023,13 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         }
     }
     async SendOne(queuename: string, message: any): Promise<void> {
-        let result: any = await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", queuename, this.queuename, message, null, this.queue_message_timeout, false);
+        let result: any = await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", queuename, this.queuename, message, null, this.queue_message_timeout, false, 2);
         try {
             if (typeof result === "string" || result instanceof String) {
                 result = JSON.parse((result as any));
             }
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             console.error(this.errormessage);
         }
@@ -2051,7 +2062,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         try {
             await this.SendOne(this.workflow.queue, this.model.payload);
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             console.error(this.errormessage);
         }
@@ -2338,8 +2349,8 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             if (this.model.payload != null && this.model.payload != undefined) {
                 this.formioRender.submission = { data: this.model.payload };
             }
-            this.formioRender.on('error', (errors) => {
-                this.errormessage = errors;
+            this.formioRender.on('error', (error) => {
+                this.errormessage = error.message ? error.message : error;
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 console.error(this.errormessage);
             });
@@ -2392,7 +2403,7 @@ export class jslogCtrl extends entitiesCtrl<Base> {
         this.loading = true;
         const Promises: Promise<void>[] = [];
         this.models.forEach(model => {
-            Promises.push(NoderedUtil.DeleteOne(this.collection, model._id, null));
+            Promises.push(NoderedUtil.DeleteOne(this.collection, model._id, null, 2));
         });
         const results: any = await Promise.all(Promises.map(p => p.catch(e => e)));
         // const values: void[] = results.filter(result => !(result instanceof Error));
@@ -2401,7 +2412,7 @@ export class jslogCtrl extends entitiesCtrl<Base> {
         // this.models = this.models.filter(function (m: any): boolean { return ids.indexOf(m._id) === -1; });
         // this.loading = false;
 
-        this.models = await NoderedUtil.Query(this.collection, this.basequery, this.baseprojection, this.orderby, 100, 0, null);
+        this.models = await NoderedUtil.Query(this.collection, this.basequery, this.baseprojection, this.orderby, 100, 0, null, null, null, 2);
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         if (this.models.length > 0) {
             await this.DeleteMany();
@@ -2500,9 +2511,9 @@ export class EntityCtrl extends entityCtrl<Base> {
         try {
             // if (this.model._id) {
             if (this.id !== null && this.id !== undefined) {
-                await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null);
+                await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null, 2);
             } else {
-                await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null);
+                await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
             }
             if (this.collection == "files") {
                 this.$location.path("/Files");
@@ -2511,7 +2522,7 @@ export class EntityCtrl extends entityCtrl<Base> {
             }
             this.$location.path("/Entities/" + this.collection);
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
@@ -2702,7 +2713,7 @@ export class EntityCtrl extends entityCtrl<Base> {
                     { name: this.searchtext }
                 ]
             }
-            , null, { _type: -1, name: 1 }, 2, 0, null);
+            , null, { _type: -1, name: 1 }, 2, 0, null, null, null, 2);
 
         this.searchFilteredList = this.searchFilteredList.concat(await NoderedUtil.Query("users",
             {
@@ -2712,7 +2723,7 @@ export class EntityCtrl extends entityCtrl<Base> {
                     { _id: { $nin: ids } }
                 ]
             }
-            , null, { _type: -1, name: 1 }, 5, 0, null));
+            , null, { _type: -1, name: 1 }, 5, 0, null, null, null, 2));
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     fillTextbox(searchtext) {
@@ -2763,7 +2774,7 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
                 delete this.model[key];
             }
         });
-        this.models = await NoderedUtil.Query(this.collection + "_hist", { id: this.id }, { name: 1, _createdby: 1, _modified: 1, _deleted: 1, _version: 1, _type: 1 }, this.orderby, 100, 0, null);
+        this.models = await NoderedUtil.Query(this.collection + "_hist", { id: this.id }, { name: 1, _createdby: 1, _modified: 1, _deleted: 1, _version: 1, _type: 1 }, this.orderby, 100, 0, null, null, null, 2);
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     async CompareNow(model) {
@@ -2777,7 +2788,7 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
 
 
         if (model.item == null) {
-            const item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null);
+            const item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null, 2);
             if (item != null) model.item = item;
         }
         if (model.item == null) {
@@ -2803,7 +2814,7 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
 
 
         if (model.item == null) {
-            const item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null);
+            const item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null, 2);
             if (item != null) model.item = item;
         }
         if (model.item == null) {
@@ -2833,7 +2844,7 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
     }
     async DownloadVersion(model, asXAML) {
         if (model.item == null) {
-            const item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null);
+            const item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null, 2);
             if (item != null) model.item = item;
         }
         if (model.item == null) {
@@ -2849,7 +2860,7 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
     }
     async CompareThen(model) {
         if (model.delta == null) {
-            const items = await NoderedUtil.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby, 100, 0, null);
+            const items = await NoderedUtil.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby, 100, 0, null, null, null, 2);
             if (items.length > 0) {
                 model.item = items[0].item;
                 model.delta = items[0].delta;
@@ -2866,17 +2877,17 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
     }
     async RevertTo(model) {
         if (model.item == null) {
-            const item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null);
+            const item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null, 2);
             if (item != null) model.item = item;
         }
         let result = window.confirm("Overwrite current version with version " + model._version + "?");
         if (result) {
             if (this.isNew) {
-                await NoderedUtil.InsertOne(this.collection, model.item, 1, false, null);
+                await NoderedUtil.InsertOne(this.collection, model.item, 1, false, null, 2);
             } else {
                 jsondiffpatch.patch(model.item, model.delta);
                 model.item._id = this.id;
-                await NoderedUtil.UpdateOne(this.collection, null, model.item, 1, false, null);
+                await NoderedUtil.UpdateOne(this.collection, null, model.item, 1, false, null, 2);
             }
             this.loadData();
         }
@@ -2924,7 +2935,7 @@ export class NoderedCtrl {
             if (this.userid == null || this.userid == undefined || this.userid == "") {
                 this.name = WebSocketClientService.user.username;
                 this.userid = WebSocketClientService.user._id;
-                const users: NoderedUser[] = await NoderedUtil.Query("users", { _id: this.userid }, null, null, 1, 0, null);
+                const users: NoderedUser[] = await NoderedUtil.Query("users", { _id: this.userid }, null, null, 1, 0, null, null, null, 2);
                 if (users.length == 0) {
                     this.instancestatus = "Unknown id! " + this.userid;
                     this.errormessage = "Unknown id! " + this.userid;
@@ -2935,7 +2946,7 @@ export class NoderedCtrl {
                 this.user = NoderedUser.assign(users[0]);
                 this.name = users[0].username;
             } else {
-                const users: NoderedUser[] = await NoderedUtil.Query("users", { _id: this.userid }, null, null, 1, 0, null);
+                const users: NoderedUser[] = await NoderedUtil.Query("users", { _id: this.userid }, null, null, 1, 0, null, null, null, 2);
                 if (users.length == 0) {
                     this.instancestatus = "Unknown id! " + this.userid;
                     this.errormessage = "Unknown id! " + this.userid;
@@ -2999,12 +3010,12 @@ export class NoderedCtrl {
             this.loading = true;
             this.messages = 'Updating ' + this.user.name + "\n" + this.messages;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            await NoderedUtil.UpdateOne("users", null, this.user, 1, false, null);
+            await NoderedUtil.UpdateOne("users", null, this.user, 1, false, null, 2);
             this.loading = false;
             this.messages = 'update complete\n' + this.messages;
             this.EnsureNoderedInstance();
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
         }
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -3014,7 +3025,7 @@ export class NoderedCtrl {
             this.errormessage = "";
             this.instancestatus = "fetching status";
 
-            this.instances = await NoderedUtil.GetNoderedInstance(this.userid, null);
+            this.instances = await NoderedUtil.GetNoderedInstance(this.userid, null, 2);
             if (this.instances != null && this.instances.length > 0) {
                 this.instance = this.instances[0];
             }
@@ -3056,7 +3067,7 @@ export class NoderedCtrl {
                 }, 2000);
             }
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
             this.messages = error + "\n" + this.messages;
             this.instancestatus = "";
             console.error(error);
@@ -3069,12 +3080,12 @@ export class NoderedCtrl {
             this.errormessage = "";
             this.instancestatus = "fetching log";
             console.debug("GetNoderedInstanceLog:");
-            this.instancelog = await NoderedUtil.GetNoderedInstanceLog(this.userid, instancename, null);
+            this.instancelog = await NoderedUtil.GetNoderedInstanceLog(this.userid, instancename, null, 2);
             this.instancelog = this.instancelog.split("\n").reverse().join("\n");
             this.messages = "GetNoderedInstanceLog completed\n" + this.messages;
             this.instancestatus = "";
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
             this.messages = error + "\n" + this.messages;
             this.instancestatus = "";
             console.error(error);
@@ -3084,11 +3095,11 @@ export class NoderedCtrl {
     async EnsureNoderedInstance() {
         try {
             this.errormessage = "";
-            await NoderedUtil.EnsureNoderedInstance(this.userid, false, null);
+            await NoderedUtil.EnsureNoderedInstance(this.userid, false, null, 2);
             this.messages = "EnsureNoderedInstance completed" + "\n" + this.messages;
             this.GetNoderedInstance();
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
             this.messages = error + "\n" + this.messages;
             console.error(error);
         }
@@ -3097,11 +3108,11 @@ export class NoderedCtrl {
     async DeleteNoderedInstance() {
         try {
             this.errormessage = "";
-            await NoderedUtil.DeleteNoderedInstance(this.userid, null);
+            await NoderedUtil.DeleteNoderedInstance(this.userid, null, 2);
             this.messages = "DeleteNoderedInstance completed" + "\n" + this.messages;
             this.GetNoderedInstance();
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
             this.messages = error + "\n" + this.messages;
             console.error(error);
         }
@@ -3110,11 +3121,11 @@ export class NoderedCtrl {
     async DeleteNoderedPod(instancename: string) {
         try {
             this.errormessage = "";
-            await NoderedUtil.DeleteNoderedPod(this.userid, instancename, null);
+            await NoderedUtil.DeleteNoderedPod(this.userid, instancename, null, 2);
             this.messages = "DeleteNoderedPod completed" + "\n" + this.messages;
             this.GetNoderedInstance();
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
             this.messages = error + "\n" + this.messages;
             console.error(error);
         }
@@ -3123,11 +3134,11 @@ export class NoderedCtrl {
     async RestartNoderedInstance() {
         try {
             this.errormessage = "";
-            await NoderedUtil.RestartNoderedInstance(this.userid, null);
+            await NoderedUtil.RestartNoderedInstance(this.userid, null, 2);
             this.messages = "RestartNoderedInstance completed" + "\n" + this.messages;
             this.GetNoderedInstance();
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
             this.messages = error + "\n" + this.messages;
             console.error(error);
         }
@@ -3136,11 +3147,11 @@ export class NoderedCtrl {
     async StartNoderedInstance() {
         try {
             this.errormessage = "";
-            await NoderedUtil.StartNoderedInstance(this.userid, null);
+            await NoderedUtil.StartNoderedInstance(this.userid, null, 2);
             this.messages = "StartNoderedInstance completed" + "\n" + this.messages;
             this.GetNoderedInstance();
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
             this.messages = error + "\n" + this.messages;
             console.error(error);
         }
@@ -3149,11 +3160,11 @@ export class NoderedCtrl {
     async StopNoderedInstance() {
         try {
             this.errormessage = "";
-            await NoderedUtil.StopNoderedInstance(this.userid, null);
+            await NoderedUtil.StopNoderedInstance(this.userid, null, 2);
             this.messages = "StopNoderedInstance completed" + "\n" + this.messages;
             this.GetNoderedInstance();
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
             this.messages = error + "\n" + this.messages;
             console.error(error);
         }
@@ -3200,14 +3211,14 @@ export class hdrobotsCtrl extends entitiesCtrl<unattendedclient> {
     async Enable(model: any): Promise<any> {
         this.loading = true;
         model.enabled = true;
-        await NoderedUtil.UpdateOne(this.collection, null, model, 1, false, null);
+        await NoderedUtil.UpdateOne(this.collection, null, model, 1, false, null, 2);
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     async Disable(model: any): Promise<any> {
         this.loading = true;
         model.enabled = false;
-        await NoderedUtil.UpdateOne(this.collection, null, model, 1, false, null);
+        await NoderedUtil.UpdateOne(this.collection, null, model, 1, false, null, 2);
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
@@ -3373,7 +3384,7 @@ export class AuditlogsCtrl extends entitiesCtrl<Role> {
             modal.modal();
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
-        const arr = await NoderedUtil.Query(this.collection, { _id: model._id }, null, null, 1, 0, null);
+        const arr = await NoderedUtil.Query(this.collection, { _id: model._id }, null, null, 1, 0, null, null, null, 2);
         if (arr.length == 1) {
             this.model = arr[0];
         }
@@ -3525,7 +3536,7 @@ export class PaymentCtrl extends entityCtrl<Billing> {
             } else {
                 if (this.model != null && this.model.stripeid != null && this.model.stripeid != "") {
                     const payload: stripe_customer = new stripe_customer;
-                    this.stripe_customer = await NoderedUtil.EnsureStripeCustomer(this.model, this.userid, null);
+                    this.stripe_customer = await NoderedUtil.EnsureStripeCustomer(this.model, this.userid, null, 2);
                     this.hascustomer = (this.stripe_customer != null);
                     if (this.model.tax != 1) {
                         this.hastaxtext = "vat included";
@@ -3534,7 +3545,7 @@ export class PaymentCtrl extends entityCtrl<Billing> {
                     }
                 }
             }
-            if (this.stripe_customer && this.stripe_customer && this.stripe_customer.tax_ids) {
+            if (this.stripe_customer && this.stripe_customer.tax_ids) {
                 if (this.stripe_customer.tax_ids.total_count > 0) {
                     this.hastaxinfo = true;
                     this.taxstatus = this.stripe_customer.tax_ids.data[0].verification.status;
@@ -3559,7 +3570,7 @@ export class PaymentCtrl extends entityCtrl<Billing> {
             //if (this.allowopenflowsignup || this.allowsupportsignup) {
             this.model.taxrate = "";
             if (this.openflowplans.length == 0 && this.supportplans.length == 0) {
-                this.stripe_plans = (await NoderedUtil.Stripe("GET", "plans", null, null, null, null) as any);
+                this.stripe_plans = (await NoderedUtil.Stripe("GET", "plans", null, null, null, null, 2) as any);
                 for (let x = 0; x < this.stripe_plans.data.length; x++) {
                     const stripeplan = this.stripe_plans.data[x];
                     if ((stripeplan as any).active == true) {
@@ -3687,15 +3698,15 @@ export class PaymentCtrl extends entityCtrl<Billing> {
                     // (payload as any) = { subscription: subscription.id, plan: this.supporthoursplan.id, quantity: 1 };
                     // const payload:any = { subscription: subscription.id, plan: this.supporthoursplan.id };
                     // await NoderedUtil.Stripe("POST", "subscription_items", null, null, payload);
-                    const result = await NoderedUtil.StripeAddPlan(this.userid, this.supporthoursplan.id, null, null);
+                    const result = await NoderedUtil.StripeAddPlan(this.userid, this.supporthoursplan.id, null, null, 2);
                     // this.loadData();
                 }
             }
 
 
-            if (this.stripe_customer && this.stripe_customer) {
+            if (this.stripe_customer) {
                 try {
-                    this.nextbill = (await NoderedUtil.Stripe<stripe_invoice>("GET", "invoices_upcoming", this.stripe_customer.id, null, null, null) as any);
+                    this.nextbill = (await NoderedUtil.Stripe<stripe_invoice>("GET", "invoices_upcoming", this.stripe_customer.id, null, null, null, 2) as any);
                     this.nextbill.dtperiod_start = new Date(this.nextbill.period_start * 1000);
                     this.nextbill.dtperiod_end = new Date(this.nextbill.period_end * 1000);
                 } catch (error) {
@@ -3717,7 +3728,7 @@ export class PaymentCtrl extends entityCtrl<Billing> {
             let customer: stripe_customer = null;
 
             if (customer == null && this.model.name != null) {
-                customer = await NoderedUtil.EnsureStripeCustomer(this.model, this.userid, null);
+                customer = await NoderedUtil.EnsureStripeCustomer(this.model, this.userid, null, 2);
             }
 
             this.loadData();
@@ -3729,7 +3740,7 @@ export class PaymentCtrl extends entityCtrl<Billing> {
     }
     async CancelPlan(planid: string) {
         try {
-            const result = await NoderedUtil.StripeCancelPlan(this.userid, planid, null);
+            const result = await NoderedUtil.StripeCancelPlan(this.userid, planid, null, 2);
             this.loadData();
         } catch (error) {
             console.error(error);
@@ -3745,7 +3756,7 @@ export class PaymentCtrl extends entityCtrl<Billing> {
             if (hours > 0) {
                 const dt = parseInt((new Date().getTime() / 1000).toFixed(0))
                 const payload: any = { "quantity": hours, "timestamp": dt };
-                const res = await NoderedUtil.Stripe("POST", "usage_records", null, this.supporthourssubscription.id, payload, null);
+                const res = await NoderedUtil.Stripe("POST", "usage_records", null, this.supporthourssubscription.id, payload, null, 2);
             }
             this.loadData();
         } catch (error) {
@@ -3758,7 +3769,7 @@ export class PaymentCtrl extends entityCtrl<Billing> {
         try {
             var payload: stripe_base = {} as any;
             (payload as any).customer = this.stripe_customer.id;
-            var session: any = await NoderedUtil.Stripe("POST", "billing_portal/sessions", null, null, payload, null);
+            var session: any = await NoderedUtil.Stripe("POST", "billing_portal/sessions", null, null, payload, null, 2);
             if (session && session.url) {
                 window.open(session.url, '_blank');
                 // window.location.href = session.url;
@@ -3772,7 +3783,7 @@ export class PaymentCtrl extends entityCtrl<Billing> {
     }
     async CheckOut(planid: string, subplanid: string) {
         try {
-            const result = await NoderedUtil.StripeAddPlan(this.userid, planid, subplanid, null);
+            const result = await NoderedUtil.StripeAddPlan(this.userid, planid, subplanid, null, 2);
             if (result.checkout) {
                 const stripe = Stripe(this.WebSocketClientService.stripe_api_key);
                 stripe
@@ -3834,7 +3845,7 @@ export class QueuesCtrl extends entitiesCtrl<Base> {
             this.loading = true;
             let m: Message = new Message();
             m.command = "dumprabbitmq"; m.data = "{}";
-            const q = await WebSocketClient.instance.Send<any>(m);
+            const q = await WebSocketClient.instance.Send<any>(m, 1);
             if ((q as any).command == "error") throw new Error(q.data);
         } catch (error) {
             console.error(error);
@@ -3883,7 +3894,7 @@ export class QueueCtrl extends entityCtrl<Base> {
             this.loading = true;
             let m: Message = new Message();
             m.command = "getrabbitmqqueue"; m.data = "{\"name\": \"" + (this.model as any).queuename + "\"}";
-            const q = await WebSocketClient.instance.Send<any>(m);
+            const q = await WebSocketClient.instance.Send<any>(m, 2);
             if ((q as any).command == "error") throw new Error(q.data);
             this.data = q.data;
             if (this.data == null) {
@@ -3900,7 +3911,7 @@ export class QueueCtrl extends entityCtrl<Base> {
             }
             this.collection = "configclients";
             this.basequery = { _type: "socketclient" };
-            const clients = await NoderedUtil.Query("configclients", { _type: "socketclient" }, null, null, 2000, 0, null, null);
+            const clients = await NoderedUtil.Query("configclients", { _type: "socketclient" }, null, null, 2000, 0, null, null, null, 2);
             for (let i = 0; i < this.data.consumer_details.length; i++) {
                 for (let y = 0; y < clients.length; y++) {
                     const _client = clients[y];
@@ -3927,12 +3938,12 @@ export class QueueCtrl extends entityCtrl<Base> {
             this.loading = true;
             let m: Message = new Message();
             m.command = "deleterabbitmqqueue"; m.data = "{\"name\": \"" + (this.model as any).queuename + "\"}";
-            const q = await WebSocketClient.instance.Send<any>(m);
+            const q = await WebSocketClient.instance.Send<any>(m, 1);
             if ((q as any).command == "error") throw new Error(q.data);
             this.data = q.data;
             this.$location.path("/Queues");
         } catch (error) {
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
             console.error(error);
         }
         this.loading = false;
@@ -3975,7 +3986,7 @@ export class SocketsCtrl extends entitiesCtrl<Base> {
             this.loading = true;
             let m: Message = new Message();
             m.command = "dumpclients"; m.data = "{}";
-            const q = await WebSocketClient.instance.Send<any>(m);
+            const q = await WebSocketClient.instance.Send<any>(m, 1);
             if ((q as any).command == "error") throw new Error(q.data);
         } catch (error) {
             console.error(error);
@@ -4027,7 +4038,7 @@ export class CredentialsCtrl extends entitiesCtrl<Base> {
     }
     async DeleteOneUser(model: TokenUser): Promise<any> {
         this.loading = true;
-        await NoderedUtil.DeleteOne(this.collection, model._id, null);
+        await NoderedUtil.DeleteOne(this.collection, model._id, null, 2);
         this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
         this.loading = false;
         let name = model.username;
@@ -4035,10 +4046,10 @@ export class CredentialsCtrl extends entitiesCtrl<Base> {
         name = name.toLowerCase();
 
         var q = { _type: "role", "$or": [{ name: name + "noderedadmins" }, { name: name + "nodered api users" }] }
-        const list = await NoderedUtil.Query("users", q, null, null, 4, 0, null);
+        const list = await NoderedUtil.Query("users", q, null, null, 4, 0, null, null, null, 2);
         for (var i = 0; i < list.length; i++) {
             console.debug("Deleting " + list[i].name)
-            await NoderedUtil.DeleteOne("users", list[i]._id, null);
+            await NoderedUtil.DeleteOne("users", list[i]._id, null, 2);
         }
 
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -4073,13 +4084,17 @@ export class CredentialCtrl extends entityCtrl<Base> {
         });
     }
     async submit(): Promise<void> {
-        if (this.model._id) {
-            await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null);
-        } else {
-            await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null);
+        try {
+            if (this.model._id) {
+                await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null, 2);
+            } else {
+                await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
+            }
+            this.$location.path("/Credentials");
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error;
         }
-        this.$location.path("/Credentials");
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 
 
@@ -4264,7 +4279,7 @@ export class CredentialCtrl extends entityCtrl<Base> {
                     { name: this.searchtext }
                 ]
             }
-            , null, { _type: -1, name: 1 }, 2, 0, null);
+            , null, { _type: -1, name: 1 }, 2, 0, null, null, null, 2);
 
         this.searchFilteredList = this.searchFilteredList.concat(await NoderedUtil.Query("users",
             {
@@ -4274,7 +4289,7 @@ export class CredentialCtrl extends entityCtrl<Base> {
                     { _id: { $nin: ids } }
                 ]
             }
-            , null, { _type: -1, name: 1 }, 5, 0, null));
+            , null, { _type: -1, name: 1 }, 5, 0, null, null, null, 2));
 
         // this.searchFilteredList = await NoderedUtil.Query("users",
         //     {
@@ -4383,15 +4398,19 @@ export class OAuthClientCtrl extends entityCtrl<Base> {
         });
     }
     async submit(): Promise<void> {
-        this.model["id"] = this.model["clientId"];
-        if (this.model.name == null || this.model.name == "") this.model.name = this.model["id"];
-        if (this.model._id) {
-            await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null);
-        } else {
-            await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null);
+        try {
+            this.model["id"] = this.model["clientId"];
+            if (this.model.name == null || this.model.name == "") this.model.name = this.model["id"];
+            if (this.model._id) {
+                await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null, 2);
+            } else {
+                await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
+            }
+            this.$location.path("/OAuthClients");
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error;
         }
-        this.$location.path("/OAuthClients");
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     deletefromarray(name: string, id: string) {
         if (id == null || id == "") return false;
@@ -4527,7 +4546,7 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
             pipe.push({ "$limit": 100 });
             pipe.push({ "$sort": this.orderby })
             try {
-                this.models = await NoderedUtil.Aggregate(this.collection, pipe, null);
+                this.models = await NoderedUtil.Aggregate(this.collection, pipe, null, null, 1);
             } catch (error) {
                 this.errormessage = JSON.stringify(error);
             }
@@ -4582,7 +4601,7 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         this.loading = true;
         for (let x = 0; x < this.models.length; x++) {
             const item = (this.models[x] as any);
-            await NoderedUtil.DeleteOne(this.collection, item.items[0]._id, null);
+            await NoderedUtil.DeleteOne(this.collection, item.items[0]._id, null, 1);
         }
         this.loading = false;
         this.loadData();
@@ -4592,7 +4611,7 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         for (let x = 0; x < this.models.length; x++) {
             const item = (this.models[x] as any);
             for (let y = 1; y < item.items.length; y++) {
-                await NoderedUtil.DeleteOne(this.collection, item.items[y]._id, null);
+                await NoderedUtil.DeleteOne(this.collection, item.items[y]._id, null, 1);
             }
         }
         this.loading = false;
@@ -4603,7 +4622,7 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         for (let x = 0; x < this.models.length; x++) {
             const item = (this.models[x] as any);
             for (let y = 0; y < item.items.length; y++) {
-                await NoderedUtil.DeleteOne(this.collection, item.items[y]._id, null);
+                await NoderedUtil.DeleteOne(this.collection, item.items[y]._id, null, 1);
             }
         }
         this.loading = false;
@@ -4614,7 +4633,7 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         if (NoderedUtil.IsNullUndefinded(model.items)) return;
         if (model.items.length < 2) return;
         this.loading = true;
-        await NoderedUtil.DeleteOne(this.collection, model.items[0]._id, null);
+        await NoderedUtil.DeleteOne(this.collection, model.items[0]._id, null, 1);
         this.loading = false;
         this.loadData();
     }
@@ -4623,7 +4642,7 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         if (NoderedUtil.IsNullUndefinded(model.items)) return;
         this.loading = true;
         for (let i = 1; i < model.items.length; i++) {
-            await NoderedUtil.DeleteOne(this.collection, model.items[i]._id, null);
+            await NoderedUtil.DeleteOne(this.collection, model.items[i]._id, null, 1);
         }
         this.loading = false;
         this.loadData();
@@ -4633,14 +4652,14 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         if (NoderedUtil.IsNullUndefinded(model.items)) return;
         this.loading = true;
         for (let i = 0; i < model.items.length; i++) {
-            await NoderedUtil.DeleteOne(this.collection, model.items[i]._id, null);
+            await NoderedUtil.DeleteOne(this.collection, model.items[i]._id, null, 1);
         }
         this.loading = false;
         this.loadData();
     }
     async ModalDeleteOne(model) {
         this.loading = true;
-        await NoderedUtil.DeleteOne(this.collection, model._id, null);
+        await NoderedUtil.DeleteOne(this.collection, model._id, null, 2);
         let arr: any[] = (this.model as any).items;
         arr = arr.filter(x => x._id != model._id);
         (this.model as any).items = arr;
@@ -4727,7 +4746,8 @@ export class DeletedCtrl extends entitiesCtrl<Base> {
 
         }
         this.models = await NoderedUtil.Query(this.collection + "_hist",
-            query, { name: 1, _type: 1, _createdby: 1, _created: 1, _modified: 1, _deleted: 1, _version: 1, id: 1 }, this.orderby, 100, 0, null);
+            query, { name: 1, _type: 1, _createdby: 1, _created: 1, _modified: 1, _deleted: 1, _version: 1, id: 1 }, this.orderby, 100, 0, null,
+            null, null, 2);
         this.processdata();
     }
     processdata() {

@@ -77,7 +77,7 @@ export class workflow_in_node {
             name = this.config.queue;
         }
 
-        const res = await NoderedUtil.Query("workflow", { "queue": this.localqueue }, null, null, 1, 0, null);
+        const res = await NoderedUtil.Query("workflow", { "queue": this.localqueue }, null, null, 1, 0, null, null, null, 1);
         if (res.length == 0) {
             const noderedadmins = await NoderedUtil.GetRole(null, Config.noderedadmins);
             let wf: Base = new Base();
@@ -87,7 +87,7 @@ export class workflow_in_node {
             if (noderedadmins != null) {
                 Base.addRight(wf, noderedadmins._id, noderedadmins.name, [-1]);
             }
-            this.workflow = await NoderedUtil.InsertOne("workflow", { _type: "workflow", "queue": this.localqueue, "name": name }, 0, false, null);
+            this.workflow = await NoderedUtil.InsertOne("workflow", { _type: "workflow", "queue": this.localqueue, "name": name }, 0, false, null, 1);
         } else {
             this.workflow = res[0];
             const hasnoderedadmins = this.workflow._acl.filter(x => x.name == Config.noderedadmins);
@@ -98,12 +98,12 @@ export class workflow_in_node {
                 }
             }
         }
-        const res2 = await NoderedUtil.Query("users", { "_type": "role", "$or": [{ "workflowid": this.workflow._id }, { "name": this.localqueue + "users" }] }, null, null, 1, 0, null);
+        const res2 = await NoderedUtil.Query("users", { "_type": "role", "$or": [{ "workflowid": this.workflow._id }, { "name": this.localqueue + "users" }] }, null, null, 1, 0, null, null, null, 1);
         let role: Base = null;
         if (res2.length == 0) {
             const who = WebSocketClient.instance.user;
             (role as any) = { _type: "role", "name": this.localqueue + "users", members: [{ "_id": who._id, "name": who.name }], "workflowid": this.workflow._id };
-            role = await NoderedUtil.InsertOne("users", role, 0, false, null);
+            role = await NoderedUtil.InsertOne("users", role, 0, false, null, 1);
         } else {
             role = res2[0];
         }
@@ -112,7 +112,7 @@ export class workflow_in_node {
         this.workflow.name = name;
         this.workflow.rpa = this.config.rpa;
         this.workflow.web = this.config.web;
-        this.workflow = await NoderedUtil.UpdateOne("workflow", null, this.workflow, 0, false, null);
+        this.workflow = await NoderedUtil.UpdateOne("workflow", null, this.workflow, 0, false, null, 1);
 
         if (this.config.exchange) {
             if (Config.amqp_enabled_exchange) {
@@ -193,7 +193,7 @@ export class workflow_in_node {
                 const jwt = data.jwt;
                 delete data.jwt;
 
-                const res = await NoderedUtil.Query("workflow_instances", { "_id": _id }, null, null, 1, 0, jwt);
+                const res = await NoderedUtil.Query("workflow_instances", { "_id": _id }, null, null, 1, 0, jwt, null, null, 1);
                 if (res.length == 0) {
                     NoderedUtil.HandleError(this, "Unknown workflow_instances id " + _id, msg);
                     if (ack !== null && ack !== undefined) ack(false, "Unknown workflow_instances id " + _id);
@@ -235,7 +235,7 @@ export class workflow_in_node {
                 Base.addRight(item, who._id, who.name, [-1]);
                 if (who._id != me._id) Base.addRight(item, me._id, me.name, [-1]);
                 this.node.status({ fill: "blue", shape: "dot", text: "Create instance " });
-                const res2 = await NoderedUtil.InsertOne("workflow_instances", item, 1, true, jwt);
+                const res2 = await NoderedUtil.InsertOne("workflow_instances", item, 1, true, jwt, 1);
 
                 // Logger.instanse.info("workflow in activated creating a new workflow instance with id " + res2._id);
                 // OpenFlow Controller.ts needs the id, when creating a new intance !
@@ -283,15 +283,15 @@ export class workflow_in_node {
     async onclose(removed: boolean, done: any) {
         try {
             if (removed && Config.workflow_node_auto_cleanup) {
-                let res = await NoderedUtil.Query("workflow", { "queue": this.localqueue }, null, null, 1, 0, null);
+                let res = await NoderedUtil.Query("workflow", { "queue": this.localqueue }, null, null, 1, 0, null, null, null, 1);
                 if (res.length > 0) {
-                    await NoderedUtil.DeleteOne("workflow", res[0]._id, null);
+                    await NoderedUtil.DeleteOne("workflow", res[0]._id, null, 1);
                 }
                 if (this.workflow != null) {
-                    res = await NoderedUtil.Query("users", { "_type": "role", "$or": [{ "workflowid": this.workflow._id }, { "name": this.localqueue + "users" }] }, null, null, 1, 0, null);
+                    res = await NoderedUtil.Query("users", { "_type": "role", "$or": [{ "workflowid": this.workflow._id }, { "name": this.localqueue + "users" }] }, null, null, 1, 0, null, null, null, 1);
                 }
                 if (res.length > 0) {
-                    await NoderedUtil.DeleteOne("users", res[0]._id, null);
+                    await NoderedUtil.DeleteOne("users", res[0]._id, null, 1);
                 }
             }
             if (!NoderedUtil.IsNullEmpty(this.localqueue)) {
@@ -338,6 +338,8 @@ export class workflow_out_node {
             this.node.status({});
             msg.state = this.config.state;
             msg.form = this.config.form;
+            let priority: number = 1;
+            if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
             if (msg._id !== null && msg._id !== undefined && msg._id !== "") {
                 if (this.config.removestate) {
                     let msgcopy: any = {};
@@ -355,14 +357,14 @@ export class workflow_out_node {
                     msgcopy.state = msg.state;
                     msgcopy.form = msg.form;
                     this.node.status({ fill: "blue", shape: "dot", text: "Updating workflow instance" });
-                    await NoderedUtil.UpdateOne("workflow_instances", null, msgcopy, 1, false, msg.jwt);
+                    await NoderedUtil.UpdateOne("workflow_instances", null, msgcopy, 1, false, msg.jwt, priority);
                 } else {
                     let msgcopy = Object.assign({}, msg);
                     delete msgcopy.jwt;
                     delete msgcopy.user;
                     // Logger.instanse.info("Updating workflow instance with id " + msg._id + " (" + msg.name + " with state " + msg.state);
                     this.node.status({ fill: "blue", shape: "dot", text: "Updating workflow instance" });
-                    await NoderedUtil.UpdateOne("workflow_instances", null, msgcopy, 1, false, msg.jwt);
+                    await NoderedUtil.UpdateOne("workflow_instances", null, msgcopy, 1, false, msg.jwt, priority);
                 }
             }
         } catch (error) {
@@ -393,7 +395,7 @@ export class workflow_out_node {
                 data.jwt = msg.jwt;
                 const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_workflow_out_expiration);
                 this.node.status({ fill: "blue", shape: "dot", text: "QueueMessage.1" });
-                await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", msg.resultqueue, null, data, msg.correlationId, expiration, false);
+                await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", msg.resultqueue, null, data, msg.correlationId, expiration, false, 1);
                 if (msg.resultqueue == msg._replyTo) msg._replyTo = null; // don't double message (??)
 
             }
@@ -403,7 +405,7 @@ export class workflow_out_node {
         try {
             // if (!NoderedUtil.IsNullEmpty(msg._replyTo) && NoderedUtil.IsNullEmpty(msg.resultqueue)) {
             if (!NoderedUtil.IsNullEmpty(msg._replyTo)) {
-                if (msg.payload === null || msg.payload === undefined) { msg.payload == {}; }
+                if (msg.payload === null || msg.payload === undefined) { msg.payload = {}; }
                 const data: any = {};
                 data.state = msg.state;
                 if (msg.error) {
@@ -419,7 +421,7 @@ export class workflow_out_node {
                 // ROLLBACK
                 // Don't wait for ack(), we don't care if the receiver is there, right ?
                 this.node.status({ fill: "blue", shape: "dot", text: "Queue message for " + msg._replyTo });
-                await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", msg._replyTo, null, data, msg.correlationId, Config.amqp_workflow_out_expiration, false);
+                await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", msg._replyTo, null, data, msg.correlationId, Config.amqp_workflow_out_expiration, false, 1);
             }
         } catch (error) {
             NoderedUtil.HandleError(this, error, msg);
@@ -436,7 +438,7 @@ export async function get_workflow_forms(req, res) {
         const rawAssertion = req.user.getAssertionXml();
         const token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
         const result: any[] = await NoderedUtil.Query('forms', { _type: "form" },
-            { name: 1 }, { name: -1 }, 1000, 0, token.jwt)
+            { name: 1 }, { name: -1 }, 1000, 0, token.jwt, null, null, 1)
         res.json(result);
     } catch (error) {
         res.status(500).json(error);
@@ -464,7 +466,7 @@ export async function get_workflows(req, res) {
                 ]
             };
         }
-        const result: any[] = await NoderedUtil.Query('workflow', q, { name: 1 }, { name: -1 }, 100, 0, token.jwt)
+        const result: any[] = await NoderedUtil.Query('workflow', q, { name: 1 }, { name: -1 }, 100, 0, token.jwt, null, null, 1)
         res.json(result);
     } catch (error) {
         res.status(500).json(error);
@@ -515,7 +517,7 @@ export class assign_workflow_node {
     }
     onsocketclose(message) {
         if (message == null) message = "";
-        if (this != null && this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
+        if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
     }
     async connect() {
         try {
@@ -533,13 +535,13 @@ export class assign_workflow_node {
 
 
             if (!NoderedUtil.IsNullUndefinded(this.config.targetid) && !NoderedUtil.IsNullUndefinded(this.config.workflowid)) {
-                const res = await NoderedUtil.Query("users", { "_type": "role", "workflowid": this.config.workflowid }, null, null, 1, 0, null);
+                const res = await NoderedUtil.Query("users", { "_type": "role", "workflowid": this.config.workflowid }, null, null, 1, 0, null, null, null, 1);
                 if (res.length == 1) {
                     const role: Role = res[0];
                     const exists = role.members.filter(x => x._id == this.config.targetid);
                     if (exists.length == 0) {
                         role.members.push(new Rolemember("target", this.config.targetid));
-                        await NoderedUtil.UpdateOne("users", null, role, 1, true, null);
+                        await NoderedUtil.UpdateOne("users", null, role, 1, true, null, 1);
                     }
                 }
             }
@@ -563,6 +565,8 @@ export class assign_workflow_node {
                 delete data.__jwt;
             }
             // delete data.jwt;
+            let priority: number = 1;
+            if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
             let _id = data._id;
             if (_id === null || _id === undefined || _id === "") {
                 if (data.payload !== null && data.payload !== undefined) {
@@ -572,7 +576,7 @@ export class assign_workflow_node {
                 }
             }
             if (_id !== null && _id !== undefined && _id !== "") {
-                const res = await NoderedUtil.Query("workflow_instances", { "_id": _id }, { parentid: 1 }, null, 1, 0, data.jwt);
+                const res = await NoderedUtil.Query("workflow_instances", { "_id": _id }, { parentid: 1 }, null, 1, 0, data.jwt, null, null, priority);
                 if (res.length == 0) {
                     NoderedUtil.HandleError(this, "Unknown workflow_instances id " + _id, msg);
                     if (ack !== null && ack !== undefined) ack();
@@ -582,7 +586,7 @@ export class assign_workflow_node {
                 const state = res[0].state;
                 const _parentid = res[0].parentid;
                 if (_parentid !== null && _parentid !== undefined && _parentid !== "") {
-                    const res2 = await NoderedUtil.Query("workflow_instances", { "_id": _parentid }, null, null, 1, 0, null);
+                    const res2 = await NoderedUtil.Query("workflow_instances", { "_id": _parentid }, null, null, 1, 0, null, null, null, priority);
                     if (res2.length == 0) {
                         NoderedUtil.HandleError(this, "Unknown workflow_instances parentid " + _parentid, msg);
                         if (ack !== null && ack !== undefined) ack();
@@ -617,6 +621,8 @@ export class assign_workflow_node {
             let name = this.config.name;
             if (NoderedUtil.IsNullEmpty(name)) name = msg.name;
             if (NoderedUtil.IsNullEmpty(name)) name = this.config.queue;
+            let priority: number = 1;
+            if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
             const targetid = (!NoderedUtil.IsNullEmpty(this.config.targetid) ? this.config.targetid : msg.targetid);
 
             if (NoderedUtil.IsNullEmpty(targetid)) {
@@ -646,10 +652,10 @@ export class assign_workflow_node {
             const who = WebSocketClient.instance.user;
             Base.addRight(runnerinstance, who._id, who.name, [-1]);
 
-            const res3 = await NoderedUtil.InsertOne("workflow_instances", runnerinstance, 1, true, jwt);
+            const res3 = await NoderedUtil.InsertOne("workflow_instances", runnerinstance, 1, true, jwt, priority);
             msg._parentid = res3._id;
 
-            msg.newinstanceid = await NoderedUtil.CreateWorkflowInstance(targetid, workflowid, null, this.localqueue, res3._id, msg.payload, initialrun, jwt);;
+            msg.newinstanceid = await NoderedUtil.CreateWorkflowInstance(targetid, workflowid, null, this.localqueue, res3._id, msg.payload, initialrun, jwt, priority);;
 
             this.node.send(msg);
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });

@@ -6,16 +6,11 @@ import * as express from "express";
 import * as compression from "compression";
 import * as cookieParser from "cookie-parser";
 import * as cookieSession from "cookie-session";
-import * as crypto from "crypto";
 import * as flash from "flash";
 import * as morgan from "morgan";
-
-import * as samlp from "samlp";
 import { SamlProvider } from "./SamlProvider";
 import { LoginProvider } from "./LoginProvider";
-import { DatabaseConnection } from "./DatabaseConnection";
 import { Config } from "./Config";
-
 import { NoderedUtil } from "@openiap/openflow-api";
 const { RateLimiterMemory } = require('rate-limiter-flexible')
 import * as url from "url";
@@ -163,7 +158,6 @@ export class WebServer {
                     ca = Buffer.from(Config.tls_ca, 'base64').toString('ascii');
                 }
                 options.ca = ca;
-                // options.cert += "\n" + ca;
             }
             if (Config.tls_passphrase !== "") {
                 options.passphrase = Config.tls_passphrase;
@@ -173,9 +167,11 @@ export class WebServer {
             server = http.createServer(this.app);
         }
 
+        await Config.db.connect();
         const port = Config.port;
         server.listen(port).on('error', function (error) {
             Logger.instanse.error(error);
+            server.close();
             process.exit(404);
         });
         return server;

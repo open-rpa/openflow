@@ -1,5 +1,4 @@
 import * as http from "http";
-
 import { Logger } from "./Logger";
 import { WebServer } from "./WebServer";
 import { WebSocketServer } from "./WebSocketServer";
@@ -11,6 +10,7 @@ import { WellknownIds, Role, Rights, User, Base, NoderedUtil } from "@openiap/op
 import { DBHelper } from "./DBHelper";
 import { OAuthProvider } from "./OAuthProvider";
 import { Span } from "@opentelemetry/api";
+import { QueueClient } from "./QueueClient";
 
 Logger.configure();
 
@@ -331,6 +331,9 @@ var signals = {
 function handle(signal, value) {
     console.trace(`process received a ${signal} signal with value ${value}`);
     try {
+        setTimeout(() => {
+            process.exit(128 + value);
+        }, 1000);
         server.close((err) => {
             console.log(`server stopped by ${signal} with value ${value}`);
             console.error(err);
@@ -396,9 +399,9 @@ var server: http.Server = null;
         if (GrafanaProxy != null) {
             const grafana = await GrafanaProxy.GrafanaProxy.configure(WebServer.app);
         }
-
         OAuthProvider.configure(WebServer.app);
         WebSocketServer.configure(server);
+        await QueueClient.configure();
         Logger.instanse.info("listening on " + Config.baseurl());
         Logger.instanse.info("namespace: " + Config.namespace);
         if (!await initDatabase()) {

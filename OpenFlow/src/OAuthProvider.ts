@@ -3,13 +3,11 @@ import * as express from "express";
 import { TokenUser, Base, NoderedUtil, User } from "@openiap/openflow-api";
 import { Config } from "./Config";
 import { Crypt } from "./Crypt";
-const fs = require("fs");
 import { Provider, KoaContextWithOIDC } from "oidc-provider";
 import { MongoAdapter } from "./MongoAdapter";
 import { DBHelper } from "./DBHelper";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
-// import * as Provider from "oidc-provider";
 const Request = OAuthServer.Request;
 const Response = OAuthServer.Response;
 export class OAuthProvider {
@@ -22,7 +20,6 @@ export class OAuthProvider {
     public oidc: Provider;
     static async interactionsUrl(ctx: KoaContextWithOIDC, interaction): Promise<any> {
         return "/oidclogin";
-        // return `/interaction/${ctx.oidc.uid}`;
     }
     static async logoutSource(ctx, form) {
         // @param ctx - koa request context
@@ -101,14 +98,8 @@ export class OAuthProvider {
                 // response_types can only contain 'code id_token', 'code', 'id_token', or 'none' 
                 // id_token token
                 if (NoderedUtil.IsNullEmpty(cli.response_types)) cli.response_types = ['code', 'id_token', 'code id_token'];
-
                 // https://github.com/panva/node-oidc-provider/blob/64edda69a84e556531f45ac814788c8c92ab6212/test/claim_types/claim_types.test.js
-
-
-                // cli.grant_types = cli.grants;
-                // if (cli.grant_types == null) cli.grant_types = ['authorization_code'];
                 if (cli.grant_types == null) cli.grant_types = ['implicit', 'authorization_code'];
-                // cli.redirect_uris.push("https://localhost.openiap.io/")
             });
             const provider = new Provider(Config.baseurl() + "oidc", {
                 clients: instance.clients,
@@ -130,7 +121,6 @@ export class OAuthProvider {
                         enabled: true,
                         logoutSource: this.logoutSource
                     }
-                    // sessionManagement: { enabled: true },
                 },
                 claims: {
                     acr: null,
@@ -145,18 +135,7 @@ export class OAuthProvider {
                 interactions: {
                     url: this.interactionsUrl
                 },
-                // logoutSource: this.logoutSource,
-                // findAccount: this.FindAccount,
-                // findAccount: this.findAccount,
                 findAccount: Account.findAccount,
-                // cookies: {
-                //     long: { signed: false, maxAge: 0, path: '/' },
-                //     keys: ["Y6SPiXCxDhAJbN7cbydMw5eX1wIrdy8PiWApqEcguss="], // node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
-                //     short: {
-                //         signed: false,
-                //         path: '/',
-                //     },
-                // },
                 cookies: {
                     short: {
                         path: '/',
@@ -177,13 +156,11 @@ export class OAuthProvider {
             };
             const orgpostLogoutRedirectUriAllowed = provider.Client.prototype.postLogoutRedirectUriAllowed;
             provider.Client.prototype.postLogoutRedirectUriAllowed = function (value) {
-                // const client = await provider.Client.find(this.clientId);
                 if (this.postLogoutRedirectUris == null || this.postLogoutRedirectUris.length == 0) return true;
                 return orgpostLogoutRedirectUriAllowed(value);
             };
             const orgredirectUriAllowed = provider.Client.prototype.redirectUriAllowed;
             provider.Client.prototype.redirectUriAllowed = function (value) {
-                // const client = await provider.Client.find(this.clientId);
                 if (this.redirectUris == null || this.redirectUris.length == 0) return true;
                 return orgredirectUriAllowed(value);
             };
@@ -194,11 +171,6 @@ export class OAuthProvider {
             instance.oidc = provider;
             instance.app.use('/oidc', async (req, res, next) => {
                 if (req.originalUrl == "/oidc/me/emails") { // Grafana old school hack
-                    // if (req.user) {
-                    //     res.send('["' + (req.user as any).username + '"]');
-                    // } else {
-                    //     res.send('[]');
-                    // }
                     res.send('[]');
                     return;
                 }
@@ -226,10 +198,6 @@ export class OAuthProvider {
 
             instance.app.use('/oidclogin', async (req, res, next) => {
                 if (req && (req as any).user) {
-                    // const _session = req.cookies["_session"];
-                    // var session1 = await this.instance.oidc.Session.find(_session)
-                    // if (session1 != null) {
-                    // }
                     res.cookie("originalUrl", "/oidccb", { maxAge: 900000, httpOnly: true });
                     res.redirect("/oidccb");
                 } else {
@@ -248,10 +216,6 @@ export class OAuthProvider {
                     var u = req.user;
                     const isAuthenticated: boolean = req.isAuthenticated();
                     if (isAuthenticated) {
-                        // if(!NoderedUtil.IsNullEmpty(test.returnTo) ) {
-                        //     res.redirect(test.returnTo);
-                        //     return;                            
-                        // }
                     } else {
                         res.cookie("originalUrl", "/oidccb", { maxAge: 900000, httpOnly: true });
                         res.redirect('/login');
@@ -637,9 +601,9 @@ export class OAuthProvider {
                     { "_type": "token", "refreshTokenExpiresAt": { "$lte": refreshTokenExpiresAt } },
                     { "_type": "token", "accessTokenExpiresAt": { "$lte": accessTokenExpiresAt } }
                 ]
-        }, null, "oauthtokens", Crypt.rootToken());
+        }, null, "oauthtokens", Crypt.rootToken(), null);
         // await Config.db.DeleteMany({ "_type": "code", "code": code }, null, "oauthtokens", Crypt.rootToken());
-        await Config.db.DeleteMany({ "_type": "code", "_created": { "$lte": codeExpiresAt } }, null, "oauthtokens", Crypt.rootToken());
+        await Config.db.DeleteMany({ "_type": "code", "_created": { "$lte": codeExpiresAt } }, null, "oauthtokens", Crypt.rootToken(), null);
         return true;
         // const user: TokenUser = this.codes[code];
         // if (user != null) delete this.codes[code];

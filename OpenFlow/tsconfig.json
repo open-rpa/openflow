@@ -3,13 +3,13 @@
         "emitDecoratorMetadata": true,
         "experimentalDecorators": true,
         "module": "commonjs",
-        "target": "ES5",
+        "target": "es2017",
         "outDir": "../dist",
         "rootDir": "src",
         "sourceMap": true,
         "declaration": true,
         "lib": [
-            "es2015",
+            "es2017",
             "dom"
         ],
         // "lib": ["es2015.promise", "dom"]

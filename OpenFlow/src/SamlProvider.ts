@@ -118,19 +118,6 @@ export class SamlProvider {
             issuer: Config.saml_issuer,
             cert: cert,
         }));
-        // const SessionParticipants = require('samlp/lib/sessionParticipants');
-
-        // https://github.com/mcguinness/saml-idp/blob/master/app.js
-        // https://www.diycode.cc/projects/auth0/node-samlp
-        // https://github.com/auth0/node-samlp/blob/master/lib/sessionParticipants/index.js
-        // app.get('/logout', samlp.logout({
-        //     deflate:            true,
-        //     issuer:             'the-issuer',
-        //     protocolBinding:    'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect',
-        //     cert:               cert,
-        //     key:                key
-        // }));
-
         // TODO: FIX !!!!
         app.get('/wssignout', async (req: any, res: any, next: any) => {
             req.logout();
@@ -182,14 +169,7 @@ export class SamlProvider {
             } else {
                 res.redirect("/");
             }
-            // samlp.logout({
-            //     issuer: Config.saml_issuer,
-            //     protocolBinding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
-            //     cert: cert,
-            //     key: key
-            // })(req, res, next);
         });
-
         app.post('/logout', (req: any, res: any, next: any): void => {
 
             samlp.logout({

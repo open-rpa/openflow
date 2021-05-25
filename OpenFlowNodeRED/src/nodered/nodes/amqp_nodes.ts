@@ -45,7 +45,7 @@ export class amqp_connection {
                     q.password = this.password;
                     const msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
                     Logger.instanse.info("amqp_config: signing into " + this.host + " as " + this.username);
-                    const result: SigninMessage = await this.webcli.Send<SigninMessage>(msg);
+                    const result: SigninMessage = await this.webcli.Send<SigninMessage>(msg, 1);
                     Logger.instanse.info("signed in to " + this.host + " as " + result.user.name + " with id " + result.user._id);
                     this.webcli.user = result.user;
                     this.webcli.jwt = result.jwt;
@@ -283,6 +283,8 @@ export class amqp_publisher_node {
             let exchange = this.config.exchange;
             let routingkey = this.config.routingkey;
             let striptoken = this.config.striptoken;
+            let priority: number = 1;
+            if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
             if (!NoderedUtil.IsNullEmpty(msg.queue)) { queue = msg.queue; }
             if (!NoderedUtil.IsNullEmpty(msg.exchange)) { exchange = msg.exchange; }
             if (!NoderedUtil.IsNullEmpty(msg.routingkey)) { routingkey = msg.routingkey; }
@@ -296,7 +298,7 @@ export class amqp_publisher_node {
             const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_message_ttl);
             this.node.status({ fill: "blue", shape: "dot", text: "Sending message ..." });
             try {
-                await NoderedUtil.QueueMessage(this.websocket(), exchange, routingkey, queue, this.localqueue, data, null, expiration, striptoken);
+                await NoderedUtil.QueueMessage(this.websocket(), exchange, routingkey, queue, this.localqueue, data, null, expiration, striptoken, priority);
                 amqp_publisher_node.payloads[msg._msgid] = msg;
             } catch (error) {
                 data.error = error;

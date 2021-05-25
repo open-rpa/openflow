@@ -13,7 +13,7 @@
 <div class="form-group form-horizontal">
   <label class="sr-only">Uniqeness</label>
   <div class="input-group unframed-addons col-sm-9 ">
-    <div class="input-group-addon"><i class="fas fa-search"></i></div>
+    <div class="input-group-addon"><em class="fas fa-search"></em></div>
     <input ng-model="ctrl.uniqeness" ng-change="ctrl.loadData()" class="form-control input-md"
       ng-model-options="{debounce: 400}" />
     <p class="col-md-1 lead"></p>
@@ -51,11 +51,12 @@
 
 </div>
 <table id=" table1" class="table table-striped table-hover table-sm" when-scrolled="ctrl.more()" style="width: 100%;">
+  <caption></caption>
   <thead class="thead-dark">
     <tr>
-      <th scope="col" ng-click="ctrl.ToggleOrder('_id')"><b>_id</b></th>
-      <th scope="col" ng-click="ctrl.ToggleOrder('name')"><b>name</b></th>
-      <th scope="col" ng-click="ctrl.ToggleOrder('count')"><b>count</b></th>
+      <th scope="col" ng-click="ctrl.ToggleOrder('_id')"><strong>_id</strong></th>
+      <th scope="col" ng-click="ctrl.ToggleOrder('name')"><strong>name</strong></th>
+      <th scope="col" ng-click="ctrl.ToggleOrder('count')"><strong>count</strong></th>
       <th scope="col"></th>
       <th scope="col"></th>
       <th scope="col"></th>
@@ -67,16 +68,16 @@
       <td><a ng-click="ctrl.ShowData(model)">{{model.items[0].name}}</a></td>
       <td>{{model.count}}</td>
       <td class="btn-cell">
-        <a href ng-click="ctrl.DeleteOnlyOne(model)" ng-disabled="ctrl.loading==true" class="table-btn"><i
-            class="az-trash"></i> one</a>
+        <a href ng-click="ctrl.DeleteOnlyOne(model)" ng-disabled="ctrl.loading==true" class="table-btn"><em
+            class="az-trash"></em> one</a>
       </td>
       <td class="btn-cell">
-        <a href ng-click="ctrl.DeleteAllButOne(model)" ng-disabled="ctrl.loading==true" class="table-btn"><i
-            class="az-trash"></i> all but one</a>
+        <a href ng-click="ctrl.DeleteAllButOne(model)" ng-disabled="ctrl.loading==true" class="table-btn"><em
+            class="az-trash"></em> all but one</a>
       </td>
       <td class="btn-cell">
         <a href ng-click="ctrl.DeleteAll(model)" ng-disabled="ctrl.loading==true" ng-disabled="ctrl.loading==true"
-          class="table-btn"><i class="az-trash"></i> all</a>
+          class="table-btn"><em class="az-trash"></em> all</a>
       </td>
     </tr>
   </tbody>
@@ -96,24 +97,25 @@
       <div class="modal-body">
         <table id=" table1" class="table table-striped table-hover table-sm" when-scrolled="ctrl.more()"
           style="width: 100%;">
+          <caption></caption>
           <thead class="thead-dark">
-            <th scope="col"><b>id</b></th>
-            <th scope="col"><b>name</b></th>
-            <th></th>
+            <th scope="col"><strong>id</strong></th>
+            <th scope="col"><strong>name</strong></th>
+            <th scope="col"></th>
           </thead>
           <tbody>
             <tr ng-repeat="model in ctrl.model.items | limitTo: 20">
               <td class="btn-cell">
                 <!-- <a ng-click="ctrl.OpenEntity(model)" class="table-btn"><i class="az-edit"></i>{{ model }}</a> -->
                 <a ng-href="#/Entity/{{ctrl.collection}}/{{model._id}}" ng-click="ctrl.CloseModal()"
-                  class="table-btn"><i class="az-edit"></i>{{ model._id }}</a>
+                  class="table-btn"><em class="az-edit"></em>{{ model._id }}</a>
               </td>
               <td class="btn-cell">
                 {{ model.name }}
               </td>
               <td class="btn-cell">
-                <a href ng-click="ctrl.ModalDeleteOne(model)" ng-disabled="ctrl.loading==true" class="table-btn"><i
-                    class="az-trash"></i></a>
+                <a href ng-click="ctrl.ModalDeleteOne(model)" ng-disabled="ctrl.loading==true" class="table-btn"><em
+                    class="az-trash"></em></a>
               </td>
             </tr>
           </tbody>

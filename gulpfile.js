@@ -117,16 +117,6 @@ gulp.task("browserify", function () {
                 console.error(error);
 
             }
-
-            return relativeUrl;
-
-            // if (_.contains(['.jpg', '.png', '.gif', '.eot'], path.extname(relativeUrl))) {
-            //     // Embed image data with data URI
-            //     var DataUri = require('datauri');
-            //     var dUri = new DataUri(relativeUrl);
-            //     console.log(dUri.content);
-            //     return dUri.content;
-            // }
             return relativeUrl;
         }
     })
@@ -191,19 +181,19 @@ gulp.task("compose", shell.task([
     'docker push openiap/nodered:edge',
     'docker push openiap/nodered:' + version,
 
-    'echo "Build openiap/nodered-puppeteer"',
-    'cd OpenFlowNodeRED && docker build -t openiap/nodered-puppeteer:edge -f Dockerfilepuppeteer .',
-    'docker tag openiap/nodered-puppeteer:edge openiap/nodered-puppeteer:' + version,
-    'echo "Push openiap/nodered-puppeteer"',
-    'docker push openiap/nodered-puppeteer:edge',
-    'docker push openiap/nodered-puppeteer:' + version,
+    // 'echo "Build openiap/nodered-puppeteer"',
+    // 'cd OpenFlowNodeRED && docker build -t openiap/nodered-puppeteer:edge -f Dockerfilepuppeteer .',
+    // 'docker tag openiap/nodered-puppeteer:edge openiap/nodered-puppeteer:' + version,
+    // 'echo "Push openiap/nodered-puppeteer"',
+    // 'docker push openiap/nodered-puppeteer:edge',
+    // 'docker push openiap/nodered-puppeteer:' + version,
 
-    'echo "Build openiap/nodered-tagui"',
-    'cd OpenFlowNodeRED && docker build -t openiap/nodered-tagui:edge -f Dockerfiletagui .',
-    'docker tag openiap/nodered-tagui:edge openiap/nodered-tagui:' + version,
-    'echo "Push openiap/nodered-tagui"',
-    'docker push openiap/nodered-tagui:edge',
-    'docker push openiap/nodered-tagui:' + version,
+    // 'echo "Build openiap/nodered-tagui"',
+    // 'cd OpenFlowNodeRED && docker build -t openiap/nodered-tagui:edge -f Dockerfiletagui .',
+    // 'docker tag openiap/nodered-tagui:edge openiap/nodered-tagui:' + version,
+    // 'echo "Push openiap/nodered-tagui"',
+    // 'docker push openiap/nodered-tagui:edge',
+    // 'docker push openiap/nodered-tagui:' + version,
 
 ]));
 
@@ -215,7 +205,7 @@ gulp.task("latest", shell.task([
     'echo "Push openiap/openflow"',
     'docker push openiap/openflow:latest',
 ]));
-gulp.task("composelatest", gulp.series("compose", "latest"));
+// gulp.task("composelatest", gulp.series("compose", "latest"));
 
 gulp.task("bumpyml1", function () {
     return gulp.src(["./*.yml"]).pipe(replace(/openflow:\d+(\.\d+)+/g, 'openflow:' + version)).
