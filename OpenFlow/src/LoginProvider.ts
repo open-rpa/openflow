@@ -702,9 +702,10 @@ export class LoginProvider {
                     console.log("project: " + query.project);
                     console.log("uniquename: " + query.uniquename);
                     let uniquename: string = query.uniquename;
-                    if (uniquename.indexOf('/') > -1) uniquename = uniquename.substr(0, uniquename.indexOf('/'));
                     let q: any = {};
                     if (!NoderedUtil.IsNullEmpty(uniquename)) {
+                        if (Array.isArray(uniquename)) uniquename = uniquename.join("_");
+                        if (uniquename.indexOf('/') > -1) uniquename = uniquename.substr(0, uniquename.indexOf('/'));
                         q = { "metadata.uniquename": uniquename };
                     }
 
@@ -751,9 +752,10 @@ export class LoginProvider {
                     console.log("project: " + query.project);
                     console.log("uniquename: " + query.uniquename);
                     let uniquename: string = query.uniquename;
-                    if (uniquename.indexOf('/') > -1) uniquename = uniquename.substr(0, uniquename.indexOf('/'));
                     let q: any = {};
                     if (!NoderedUtil.IsNullEmpty(uniquename)) {
+                        if (Array.isArray(uniquename)) uniquename = uniquename.join("_");
+                        if (uniquename.indexOf('/') > -1) uniquename = uniquename.substr(0, uniquename.indexOf('/'));
                         q = { "metadata.uniquename": uniquename };
                     }
 
