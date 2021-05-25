@@ -6,7 +6,7 @@ services:
     volumes:
       - mongodb_data:/data/db
   traefik:
-    image: "traefik:v2.0.0-rc3"
+    image: "traefik"
     container_name: "traefik"
     command:
       - "--api.insecure=true"
@@ -15,7 +15,6 @@ services:
       - "--entrypoints.web.address=:80"
     ports:
       - "80:80"
-      - "8080:8080"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
   rabbitmq:
