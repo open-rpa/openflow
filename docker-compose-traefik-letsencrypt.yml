@@ -3,8 +3,6 @@ services:
   mongodb:
     image: "mongo"
     restart: always
-    # ports:
-    #   - "27017:27017"
     volumes:
       - mongodb_data:/data/db
   traefik:
@@ -21,7 +19,6 @@ services:
       - "traefik.http.routers.traefik.middlewares=admin"
       - "traefik.http.middlewares.admin.basicauth.users=admin:$$apr1$$iB.BZjJJ$$FmaZuX35eFCMe5t3a.OqR."
     command:
-      #- "--log.level=DEBUG"
       - "--api.insecure=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
@@ -57,9 +54,6 @@ services:
     environment:
       - RABBITMQ_DEFAULT_USER=admin
       - RABBITMQ_DEFAULT_PASS=demo2018
-    # ports:
-    #   - "5672:5672"
-    #   - "15672:15672"
   web:
     labels:
       - "traefik.enable=true"
@@ -73,8 +67,6 @@ services:
     depends_on:
       - rabbitmq
       - mongodb
-    # ports:
-    #   - "5858:5858"
     environment:
       - update_acl_based_on_groups=true
       - multi_tenant=false
@@ -115,8 +107,6 @@ services:
     restart: always
     depends_on:
       - web
-    # ports:
-    #   - "5858:5859"
     environment:
       #      - nodered_id=1
       - nodered_sa=nodered1
