@@ -4,6 +4,7 @@ logs
 dist
 config
 temp
+letsencrypt
 .cache
 .npmrc
 .openflowapicache

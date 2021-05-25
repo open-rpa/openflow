@@ -36,8 +36,9 @@ services:
       - "traefik.http.routers.web.entrypoints=web"
       - "traefik.http.services.web.loadbalancer.server.port=3000"
       - "traefik.frontend.passHostHeader=true"
-    image: "openiap/openflow:edge"
-    container_name: "web"
+    image: "openiap/openflow"
+    deploy:
+      replicas: 2
     pull_policy: always
     restart: always
     volumes:
@@ -57,13 +58,19 @@ services:
       - tls_ca=
       - tls_passphrase=
       - api_bypass_perm_check=false
-      - websocket_package_size=4096
+      - websocket_package_size=25000
       - websocket_max_package_count=1048576
       - protocol=http
       - port=3000
       - domain=localhost.openiap.io
 
-      - nodered_images=[{"name":"Latest Plain Nodered", "image":"openiap/nodered:edge"},{"name":"Latest Puppeteer Nodered", "image":"openiap/nodered-puppeteer:edge"},{"name":"Latest TagUI Nodered", "image":"openiap/nodered-tagui:edge"}]
+      - enable_openflow_amqp=true
+      - amqp_prefetch=25
+      - socket_rate_limit=true
+      - socket_rate_limit_points=1000
+      - socket_rate_limit_points_disconnect=2500
+
+      - nodered_images=[{"name":"Latest Plain Nodered", "image":"openiap/nodered"},{"name":"Latest Puppeteer Nodered", "image":"openiap/nodered-puppeteer"},{"name":"Latest TagUI Nodered", "image":"openiap/nodered-tagui"}]
       - nodered_ws_url=ws://web:3000
       - saml_federation_metadata=http://web:3000/issue/FederationMetadata/2007-06/FederationMetadata.xml
       - amqp_url=amqp://admin:demo2018@rabbitmq
