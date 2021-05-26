@@ -1094,7 +1094,8 @@ export class DatabaseConnection {
             Logger.otel.endSpan(mongodbspan);
             Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname });
 
-            for (let item of items) {
+            for (let y = 0; y < items.length; y++) {
+                let item = items[y];
                 if (collectionname === "users" && item._type === "user") {
                     Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
                     span.addEvent("FindRoleByNameOrId");
