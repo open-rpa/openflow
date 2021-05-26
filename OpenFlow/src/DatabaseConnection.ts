@@ -989,9 +989,7 @@ export class DatabaseConnection {
             let date = new Date()
             date.setMonth(date.getMonth() - 1);
             let tempresult: any[] = [];
-            for (let i = 0; i < items.length; i++) {
-                let item = items[i];
-
+            for (let item of items) {
                 item = this.ensureResource(item);
                 DatabaseConnection.traversejsonencode(item);
                 let name = item.name;
@@ -1096,8 +1094,7 @@ export class DatabaseConnection {
             Logger.otel.endSpan(mongodbspan);
             Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname });
 
-            for (let y = 0; y < items.length; y++) {
-                let item = items[y];
+            for (let item of items) {
                 if (collectionname === "users" && item._type === "user") {
                     Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
                     span.addEvent("FindRoleByNameOrId");

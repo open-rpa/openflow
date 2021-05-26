@@ -13,7 +13,7 @@ import { Readable, Stream } from "stream";
 import { GridFSBucket, ObjectID, Cursor } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
-import { StripeMessage, EnsureStripeCustomerMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, GetKubeNodeLabels, PushMetricsMessage, RegisterExchangeMessage } from "@openiap/openflow-api";
+import { StripeMessage, EnsureStripeCustomerMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, GetKubeNodeLabels, RegisterExchangeMessage } from "@openiap/openflow-api";
 import { Billing, stripe_customer, stripe_base, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription, stripe_subscription_item, stripe_plan, stripe_coupon } from "@openiap/openflow-api";
 import { V1ResourceRequirements, V1Deployment } from "@kubernetes/client-node";
 import { amqpwrapper } from "../amqpwrapper";
@@ -578,8 +578,6 @@ export class Message {
 
             if (msg.queuename.length == 24 && Config.amqp_force_sender_has_read) {
                 const tuser = Crypt.verityToken(msg.jwt);
-                let name = tuser.username.split("@").join("").split(".").join("");
-                name = name.toLowerCase();
                 let allowed: boolean = false;
                 if (tuser._id == msg.queuename) {
                     // Queue is for me
@@ -594,12 +592,12 @@ export class Message {
                     const arr = await Config.db.query({ _id: msg.queuename }, { name: 1 }, 1, 0, null, "users", msg.jwt, undefined, undefined, span);
                     if (arr.length > 0) allowed = true;
                     if (!allowed) {
-                        const arr = await Config.db.query({ _id: msg.queuename }, { name: 1 }, 1, 0, null, "openrpa", msg.jwt, undefined, undefined, span);
-                        if (arr.length > 0) allowed = true;
+                        const arr1 = await Config.db.query({ _id: msg.queuename }, { name: 1 }, 1, 0, null, "openrpa", msg.jwt, undefined, undefined, span);
+                        if (arr1.length > 0) allowed = true;
                     }
                     if (!allowed) {
-                        const arr = await Config.db.query({ _id: msg.queuename }, { name: 1 }, 1, 0, null, "workflow", msg.jwt, undefined, undefined, span);
-                        if (arr.length > 0) allowed = true;
+                        const arr2 = await Config.db.query({ _id: msg.queuename }, { name: 1 }, 1, 0, null, "workflow", msg.jwt, undefined, undefined, span);
+                        if (arr2.length > 0) allowed = true;
                     }
                 }
                 if (!allowed) {
@@ -1012,12 +1010,6 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
             if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
             if (msg.collectionname == "openrpa_instances" && msg.item._type == "workflowinstance") {
-                // Force uniqeness for workflow instances in old versions of openrpa
-                const versionPadded = version => version.split('.').map((n, i) => n.padStart(3, '0')).join('');
-                // var version: string = versionPadded(cli.clientversion);
-                // if (cli.clientagent == "openrpa" && parseInt(version) <= parseInt("001002040000")) { // 001002040000
-                //     msg.uniqeness = "InstanceId,WorkflowId";
-                // }
                 let state: string = (msg.item as any).state;
                 // Force removing completed states, for old versions of openrpa
                 if (msg.item && ["aborted", "failed", "completed"].indexOf(state) > -1) {
@@ -1405,10 +1397,6 @@ export class Message {
             msg.user = TokenUser.From(user);
 
             const jwt: string = Crypt.createToken(msg.user, Config.shorttoken_expires_in);
-            let name = user.username;
-            name = name.split("@").join("").split(".").join("");
-            name = name.toLowerCase();
-
             DBHelper.EnsureNoderedRoles(user, jwt, false, span);
         } catch (error) {
             span.recordException(error);
@@ -1452,7 +1440,7 @@ export class Message {
                 if (NoderedUtil.IsNullEmpty(process.env["KUBERNETES_SERVICE_HOST"])) {
                     try {
                         const docker = new Docker();
-                        var list = await docker.listContainers();
+                        await docker.listContainers();
                         Message.usedocker = true;
                     } catch (error) {
                         console.log(error);
@@ -1473,7 +1461,6 @@ export class Message {
         }
     }
     _pullImage(docker: Dockerode, imagename: string) {
-        const self = this;
         return new Promise<void>((resolve, reject) => {
             docker.pull(imagename, function (err, stream) {
                 if (err)
@@ -1481,9 +1468,9 @@ export class Message {
 
                 docker.modem.followProgress(stream, onFinished, onProgress);
 
-                function onFinished(err, output) {
+                function onFinished(err2, output) {
                     console.log(output);
-                    if (err) return reject(err);
+                    if (err2) return reject(err2);
 
                     return resolve();
                 }
@@ -1518,8 +1505,7 @@ export class Message {
             let me = null;
             let list = await docker.listContainers({ all: 1 });
             let instance: any = null;
-            for (let i = 0; i < list.length; i++) {
-                const item = list[i];
+            for (let item of list) {
                 var Created = new Date(item.Created * 1000);
                 (item as any).metadata = { creationTimestamp: Created, name: item.Labels["com.docker.compose.service"] };
                 (item as any).status = { phase: item.State }
@@ -1575,10 +1561,6 @@ export class Message {
                     if (me.Labels["com.docker.compose.version"]) Labels["com.docker.compose.version"] = me.Labels["com.docker.compose.version"];
                     if (me.NetworkSettings && me.NetworkSettings.Networks) {
                         const keys = Object.keys(me.NetworkSettings.Networks);
-                        // NetworkingConfig = {};
-                        // for (let i = 0; i < keys.length; i++) {
-                        //     NetworkingConfig[keys[i]] = {};
-                        // }
                         HostConfig.NetworkMode = keys[0];
                     }
                 }

@@ -557,15 +557,6 @@ export class LoginProvider {
             } finally {
                 Logger.otel.endSpan(span);
             }
-            // try {
-            //     LoginProvider.RegisterProviders(app, baseurl);
-            // } catch (error) {
-            //     span.recordException(error);
-            //     return res.status(500).send({ message: error.message ? error.message : error });
-            // } finally {
-            //     Logger.otel.endSpan(span);
-            // }
-
         });
         app.get("/download/:id", async (req, res) => {
             const span: Span = Logger.otel.startSpan("LoginProvider.download");
@@ -674,10 +665,6 @@ export class LoginProvider {
                     fileSize: (1000000 * 25) // 25MB
                 }
             }).any();
-
-            // app.get("/upload", async (req: any, res: any, next: any): Promise<void> => {
-            //     const query = req.query;
-            // });
             app.delete("/upload", async (req: any, res: any, next: any): Promise<void> => {
                 const span: Span = Logger.otel.startSpan("LoginProvider.upload");
                 try {
@@ -727,7 +714,6 @@ export class LoginProvider {
                 }
 
             });
-            // app.get("/upload/:fileId", async (req: any, res: any, next: any): Promise<void> => {
             app.get("/upload", async (req: any, res: any, next: any): Promise<void> => {
                 const span: Span = Logger.otel.startSpan("LoginProvider.upload");
                 try {
