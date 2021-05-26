@@ -852,7 +852,9 @@ export class DatabaseConnection {
             if (collectionname === "users" && !NoderedUtil.IsNullEmpty(item._type) && !NoderedUtil.IsNullEmpty(item.name)) {
                 if ((item._type === "user" || item._type === "role") &&
                     (this.WellknownNamesArray.indexOf(item.name) > -1 || this.WellknownNamesArray.indexOf((item as any).username) > -1)) {
-                    throw new Error("Access denied");
+                    if (this.WellknownIdsArray.indexOf(item._id) == -1) {
+                        throw new Error("Access denied");
+                    }
                 }
             }
             j = ((j as any) === 'true' || j === true);
@@ -1017,7 +1019,9 @@ export class DatabaseConnection {
                 if (collectionname === "users" && !NoderedUtil.IsNullEmpty(item._type) && !NoderedUtil.IsNullEmpty(item.name)) {
                     if ((item._type === "user" || item._type === "role") &&
                         (this.WellknownNamesArray.indexOf(item.name) > -1 || this.WellknownNamesArray.indexOf((item as any).username) > -1)) {
-                        throw new Error("Access denied");
+                        if (this.WellknownIdsArray.indexOf(item._id) == -1) {
+                            throw new Error("Access denied");
+                        }
                     }
                 }
                 item._version = 0;
