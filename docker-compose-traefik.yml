@@ -38,7 +38,7 @@ services:
       - "traefik.frontend.passHostHeader=true"
     image: "openiap/openflow"
     deploy:
-      replicas: 1
+      replicas: 2
     pull_policy: always
     restart: always
     volumes:
