@@ -989,8 +989,8 @@ export class DatabaseConnection {
             let date = new Date()
             date.setMonth(date.getMonth() - 1);
             let tempresult: any[] = [];
-            for (let item of items) {
-                item = this.ensureResource(item);
+            for (let i = 0; i < items.length; i++) {
+                let item = this.ensureResource(items[i]);
                 DatabaseConnection.traversejsonencode(item);
                 let name = item.name;
                 if (NoderedUtil.IsNullEmpty(name)) name = item._name;
