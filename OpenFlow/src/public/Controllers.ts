@@ -2,6 +2,7 @@ import { userdata, api, entityCtrl, entitiesCtrl } from "./CommonControllers";
 import { TokenUser, QueueMessage, SigninMessage, Ace, NoderedUser, Billing, stripe_customer, stripe_list, stripe_base, stripe_plan, stripe_subscription_item, Base, NoderedUtil, WebSocketClient, Role, NoderedConfig, Resources, ResourceValues, stripe_invoice, Message } from "@openiap/openflow-api";
 import { RPAWorkflow, Provider, Form, WorkflowInstance, Workflow, unattendedclient } from "./Entities";
 import { WebSocketClientService } from "./WebSocketClientService";
+
 import * as jsondiffpatch from "jsondiffpatch";
 import * as ofurl from "./formsio_of_provider";
 
@@ -133,6 +134,7 @@ export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
                 workflowid: this.model._id,
                 data: this.arguments
             }
+            console.log('test');
             if (this.arguments === null || this.arguments === undefined) { this.arguments = {}; }
             const result: any = await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", this.user._id, this.queuename, rpacommand, null, parseInt(this.timeout), true,
                 2);
@@ -150,6 +152,7 @@ export class RPAWorkflowsCtrl extends entitiesCtrl<Base> {
     public message: string = "";
     public charts: chartset[] = [];
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -158,7 +161,7 @@ export class RPAWorkflowsCtrl extends entitiesCtrl<Base> {
         public api: api,
         public userdata: userdata
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         console.debug("RPAWorkflowsCtrl");
         this.collection = "openrpa";
         this.basequery = { _type: "workflow" };
@@ -269,6 +272,7 @@ export class WorkflowsCtrl extends entitiesCtrl<Base> {
     public message: string = "";
     public charts: chartset[] = [];
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -277,7 +281,7 @@ export class WorkflowsCtrl extends entitiesCtrl<Base> {
         public api: api,
         public userdata: userdata
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         this.collection = "workflow";
         this.basequery = { _type: "workflow", web: true };
         console.debug("WorkflowsCtrl");
@@ -347,6 +351,7 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
     public onlinetimeframe: Date;
     public timeframedesc: string = "";
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -355,7 +360,7 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
         public api: api,
         public userdata: userdata
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         console.debug("ReportsCtrl");
         WebSocketClientService.onSignedin((user: TokenUser) => {
             if (this.userdata.data.ReportsCtrl) {
@@ -702,6 +707,7 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
 export class MainCtrl extends entitiesCtrl<Base> {
     public showcompleted: boolean = false;
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -710,7 +716,7 @@ export class MainCtrl extends entitiesCtrl<Base> {
         public api: api,
         public userdata: userdata
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         console.debug("MainCtrl");
         this.collection = "workflow_instances"
         // this.basequery = { state: { $ne: "completed" }, $and: [{ form: { $exists: true } }, { form: { "$ne": "none" } }] };
@@ -940,7 +946,9 @@ export class MenuCtrl {
     public user: TokenUser;
     public signedin: boolean = false;
     public path: string = "";
+    public searchstring: string = "";
     public static $inject = [
+        "$rootScope",
         "$scope",
         "$location",
         "$routeParams",
@@ -948,6 +956,7 @@ export class MenuCtrl {
         "api"
     ];
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -957,13 +966,8 @@ export class MenuCtrl {
         console.debug("MenuCtrl::constructor");
         $scope.$root.$on('$routeChangeStart', (...args) => { this.routeChangeStart.apply(this, args); });
         this.path = this.$location.path();
-        // const navMain = $(".navbar-collapse"); // avoid dependency on #id
-        // // "a:not([data-toggle])" - to avoid issues caused
-        // // when you have dropdown inside navbar
-        // navMain.on("click", "a:not([data-toggle])", null, function () {
-        //     (navMain as any).collapse('hide');
-        // });
-
+        const halfmoon = require("halfmoon");
+        halfmoon.onDOMContentLoaded();
         const cleanup = this.$scope.$on('signin', (event, data) => {
             if (event && data) { }
             this.user = data;
@@ -971,6 +975,11 @@ export class MenuCtrl {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             // cleanup();
         });
+        this.$scope.$on('setsearch', (event, data) => {
+            console.log("setsearch", data)
+            this.searchstring = data;
+        });
+
     }
     routeChangeStart(event: any, next: any, current: any) {
         this.path = this.$location.path();
@@ -988,12 +997,21 @@ export class MenuCtrl {
         this.WebSocketClientService.impersonate("-1");
     }
     PathIs(path: string) {
+        if (path == null && path == undefined) return false;
         if (this.path == null && this.path == undefined) return false;
-        return this.path.startsWith(path);
+        return this.path.toLowerCase().startsWith(path.toLowerCase());
+    }
+    toggleDarkMode() {
+        const halfmoon = require("halfmoon");
+        halfmoon.toggleDarkMode();
+    }
+    Search() {
+        this.$rootScope.$broadcast("search", this.searchstring);
     }
 }
 export class ProvidersCtrl extends entitiesCtrl<Provider> {
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -1002,7 +1020,7 @@ export class ProvidersCtrl extends entitiesCtrl<Provider> {
         public api,
         public userdata: userdata
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         console.debug("ProvidersCtrl");
         this.basequery = { _type: "provider" };
         this.collection = "config";
@@ -1027,9 +1045,15 @@ export class ProviderCtrl extends entityCtrl<Provider> {
             if (this.id !== null && this.id !== undefined) {
                 this.loadData();
             } else {
-                this.model = new Provider("", "", "", "uri:" + this.WebSocketClientService.domain, "")
+                try {
+                    this.model = new Provider("", "", "", "uri:" + this.WebSocketClientService.domain, "")
+                } catch (error) {
+                    this.model = {} as any;
+                    this.model.name = "";
+                    this.model._type = "provider";
+                    this.model.issuer = "uri:" + this.WebSocketClientService.domain;
+                }
             }
-
         });
     }
     async submit(): Promise<void> {
@@ -1048,6 +1072,7 @@ export class ProviderCtrl extends entityCtrl<Provider> {
 }
 export class UsersCtrl extends entitiesCtrl<TokenUser> {
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -1056,7 +1081,7 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
         public api: api,
         public userdata: userdata
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         this.autorefresh = true;
         console.debug("UsersCtrl");
         this.basequery = { _type: "user" };
@@ -1216,6 +1241,7 @@ export class UserCtrl extends entityCtrl<TokenUser> {
 }
 export class RolesCtrl extends entitiesCtrl<Role> {
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -1224,7 +1250,7 @@ export class RolesCtrl extends entitiesCtrl<Role> {
         public api: api,
         public userdata: userdata
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         this.autorefresh = true;
         console.debug("RolesCtrl");
         this.basequery = { _type: "role" };
@@ -1439,6 +1465,7 @@ export class SocketCtrl {
 export class FilesCtrl extends entitiesCtrl<Base> {
     public file: string;
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -1447,7 +1474,7 @@ export class FilesCtrl extends entitiesCtrl<Base> {
         public api: api,
         public userdata: userdata
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         console.debug("EntitiesCtrl");
         this.autorefresh = true;
         this.basequery = {};
@@ -1566,6 +1593,7 @@ export class FilesCtrl extends entitiesCtrl<Base> {
 export class EntitiesCtrl extends entitiesCtrl<Base> {
     public collections: any;
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -1574,7 +1602,7 @@ export class EntitiesCtrl extends entitiesCtrl<Base> {
         public api: api,
         public userdata: userdata
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         console.debug("EntitiesCtrl");
         this.autorefresh = true;
         this.basequery = {};
@@ -1638,6 +1666,7 @@ export class EntitiesCtrl extends entitiesCtrl<Base> {
 }
 export class FormsCtrl extends entitiesCtrl<Base> {
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -1646,7 +1675,7 @@ export class FormsCtrl extends entitiesCtrl<Base> {
         public api: api,
         public userdata: userdata
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         console.debug("FormsCtrl");
         this.autorefresh = true;
         this.collection = "forms";
@@ -1682,7 +1711,13 @@ export class EditFormCtrl extends entityCtrl<Form> {
                     this.basequery = { _id: this.id };
                     this.loadData();
                 } else {
-                    this.model = new Form();
+                    try {
+                        this.model = new Form();
+                    } catch (error) {
+                        this.model = {} as any;
+                        this.model._type = "form";
+                        this.model.dataType = "json";
+                    }
                     this.model.fbeditor = false;
                     this.renderform();
                 }
@@ -1830,7 +1865,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
     public submitbutton: string;
     public queuename: string;
     public localexchangequeue: string;
-    public queue_message_timeout: number = (60 * 1000); // 1 min
+    public queue_message_timeout: number = 1000;
 
     constructor(
         public $scope: ng.IScope,
@@ -1899,6 +1934,14 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             ack();
             console.debug(data);
             if (data.queuename == this.queuename) {
+                if (data && data.data && data.data.command == "timeout") {
+                    this.errormessage = "No \"workflow in\" node listening or message timed out, is nodered running?";
+                    console.error(this.errormessage);
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    return;
+                } else {
+                    this.queue_message_timeout = (60 * 1000); // 1 min
+                }
                 if (this.instanceid == null && data.data._id != null) {
                     this.instanceid = data.data._id;
                     // this.$location.path("/Form/" + this.id + "/" + this.instanceid);
@@ -2192,10 +2235,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 item.url = "/upload"
             }
             console.log(item);
-            // if (item.validate == null) item.validate = {};
-            // item.validateOn = "blur";
-            // item.validate.custom = "console.log(arguments)";
-            // console.log(item);
         }
     }
     sleep(ms) {
@@ -2304,7 +2343,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
 
                 const Provider = Providers.getProvider('storage', storage);
                 const provider = new Provider(this);
-                // console.log(provider);
             } catch (error) {
                 console.error(error);
             }
@@ -2379,6 +2417,7 @@ export class jslogCtrl extends entitiesCtrl<Base> {
     public message: string = "";
     public charts: chartset[] = [];
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -2387,7 +2426,7 @@ export class jslogCtrl extends entitiesCtrl<Base> {
         public api: api,
         public userdata: userdata
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         this.autorefresh = true;
         console.debug("jslogCtrl");
         this.searchfields = ["_createdby", "host", "message"];
@@ -2742,6 +2781,7 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
     public id: string = "";
     public model: Base;
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -2750,7 +2790,7 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
         public api: api,
         public userdata: userdata
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         this.autorefresh = true;
         console.debug("HistoryCtrl");
         this.id = $routeParams.id;
@@ -3191,6 +3231,7 @@ export class NoderedCtrl {
 }
 export class hdrobotsCtrl extends entitiesCtrl<unattendedclient> {
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -3199,7 +3240,7 @@ export class hdrobotsCtrl extends entitiesCtrl<unattendedclient> {
         public api: api,
         public userdata: userdata
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         this.autorefresh = true;
         console.debug("RolesCtrl");
         this.basequery = { _type: "unattendedclient" };
@@ -3227,6 +3268,7 @@ export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
     public showinactive: boolean = false;
     public show: string = "all";
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -3235,7 +3277,7 @@ export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
         public api: api,
         public userdata: userdata
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         this.autorefresh = true;
         console.debug("RobotsCtrl");
         this.basequery = { _type: "user" };
@@ -3329,6 +3371,7 @@ export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
 export class AuditlogsCtrl extends entitiesCtrl<Role> {
     public model: Role;
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -3337,7 +3380,7 @@ export class AuditlogsCtrl extends entitiesCtrl<Role> {
         public api: api,
         public userdata: userdata
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         this.autorefresh = false;
         this.baseprojection = { name: 1, type: 1, _type: 1, impostorname: 1, clientagent: 1, clientversion: 1, _created: 1, success: 1, remoteip: 1 };
         this.searchfields = ["name", "impostorname", "clientagent", "type"];
@@ -3824,6 +3867,7 @@ export class QueuesCtrl extends entitiesCtrl<Base> {
     public message: string = "";
     public charts: chartset[] = [];
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -3832,7 +3876,7 @@ export class QueuesCtrl extends entitiesCtrl<Base> {
         public api: api,
         public userdata: userdata
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         this.collection = "configclients";
         this.basequery = { _type: "queue" };
         console.debug("QueuesCtrl");
@@ -3955,6 +3999,7 @@ export class SocketsCtrl extends entitiesCtrl<Base> {
     public message: string = "";
     public charts: chartset[] = [];
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -3963,7 +4008,7 @@ export class SocketsCtrl extends entitiesCtrl<Base> {
         public api: api,
         public userdata: userdata
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         this.collection = "configclients";
         this.basequery = { _type: "socketclient" };
         console.debug("SocketsCtrl");
@@ -3997,6 +4042,7 @@ export class SocketsCtrl extends entitiesCtrl<Base> {
 }
 export class CredentialsCtrl extends entitiesCtrl<Base> {
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -4005,7 +4051,7 @@ export class CredentialsCtrl extends entitiesCtrl<Base> {
         public api: api,
         public userdata: userdata
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         this.autorefresh = true;
         console.debug("CredentialsCtrl");
         this.basequery = { _type: "credential" };
@@ -4318,6 +4364,7 @@ export class CredentialCtrl extends entityCtrl<Base> {
 
 export class OAuthClientsCtrl extends entitiesCtrl<Base> {
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -4326,7 +4373,7 @@ export class OAuthClientsCtrl extends entitiesCtrl<Base> {
         public api: api,
         public userdata: userdata
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         this.autorefresh = true;
         console.debug("OAuthClientsCtrl");
         this.basequery = { _type: "oauthclient" };
@@ -4465,6 +4512,7 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
     public model: Base;
     public uniqeness: string;
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -4473,7 +4521,7 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         public api: api,
         public userdata: userdata
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         console.debug("DuplicatesCtrl");
         this.autorefresh = true;
         this.basequery = {};
@@ -4672,6 +4720,7 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
 export class DeletedCtrl extends entitiesCtrl<Base> {
     public collections: any;
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -4680,7 +4729,7 @@ export class DeletedCtrl extends entitiesCtrl<Base> {
         public api: api,
         public userdata: userdata
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         console.debug("DeletedCtrl");
         this.autorefresh = true;
         this.basequery = {};

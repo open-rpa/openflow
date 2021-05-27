@@ -9,6 +9,9 @@ const tsify = require('tsify');
 const watchify = require('watchify');
 const exorcist = require('exorcist')
 
+var sass = require('gulp-sass')
+
+
 
 let minify = true;
 let watch = false;
@@ -45,6 +48,15 @@ gulp.task("dowatch", function () {
     console.log("watch")
     return gulp.watch(NodeREDHTMLFiles.concat(OpenFlowFiles).concat('./VERSION').concat('./OpenFlow/src/public/**/*.ts'), gulp.series("browserify", "copyfiles1"));
 });
+
+gulp.task('sass', function () {
+    return gulp
+        .src('./OpenFlow/src/public/**/*.scss')
+        .pipe(sass().on('error', sass.logError))
+        .pipe(gulp.dest('./OpenFlow/src/public'));
+});
+
+
 let bfi = null;
 gulp.task("browserify", function () {
     console.log("browserify")

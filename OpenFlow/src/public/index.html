@@ -3,57 +3,54 @@
 
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <link rel="preload" href="/vendor/fortawesome/fontawesome-free/webfonts/fa-brands-400.woff2" as="font"
-    type="font/woff2" crossorigin>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+  <meta name="viewport" content="width=device-width" />
   <title>OpenFlow</title>
-  <style>
-    body {
-      padding-top: 65px;
-    }
-  </style>
 </head>
 
-<body ng-controller="MenuCtrl as menuctrl">
-  <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top" ng-show="menuctrl.signedin">
-    <a class="navbar-brand" href="#"><span translate lib="web">sitename</span></a>
-    <button class="navbar-toggler" type="button" data-toggle="collapse" aria-expanded="false"
-      data-target=".navbar-collapse" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse">
-      <ul class="navbar-nav mr-auto">
-        <li class="nav-item" ng-class="{active: menuctrl.PathIs('/main')}">
-          <a class="nav-link" href="#/main"><span translate lib="web">home</span> <span
-              class="sr-only">(current)</span></a>
-        </li>
-        <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Entities/')}" ng-show="menuctrl.hasrole('users')">
-          <a class="nav-link" href="#/Entities"><span translate lib="web">entities</span></a>
+<body ng-controller="MenuCtrl as menuctrl" class="with-custom-webkit-scrollbars with-custom-css-scrollbars halfmoon-ns"
+  data-dm-shortcut-enabled="true" data-set-preferred-mode-onload="true">
+  <div class="page-wrapper with-navbar">
+    <div class="sticky-alerts"></div>
+
+    <nav class="navbar navbar-expand-md fixed-top" ng-show="menuctrl.signedin">
+      <a href="#" class="navbar-brand">
+        <span translate lib="web">sitename</span>
+      </a>
+      <span class="navbar-text text-monospace">v{{menuctrl.WebSocketClientService.version}}</span>
+      <ul class="navbar-nav d-none d-md-flex">
+        <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Entities')}">
+          <a href="#/Entities" class="nav-link" ng-show="menuctrl.hasrole('users')"><span translate
+              lib="web">entities</span></a>
         </li>
         <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Workflows')}">
-          <a class="nav-link" href="#/Workflows"><span translate lib="web">workflows</span></a>
+          <a href="#/Workflows" class="nav-link"><span translate lib="web">workflows</span></a>
         </li>
-        <li class="nav-item" ng-class="{active: menuctrl.PathIs('/RPAWorkflows')}" ng-show="menuctrl.hasrole('users')">
-          <a class="nav-link" href="#/RPAWorkflows"><span translate lib="web">rpaworkflows</span></a>
+        <li class="nav-item" ng-class="{active: menuctrl.PathIs('/RPAWorkflows')}">
+          <a href="#/RPAWorkflows" class="nav-link" ng-show="menuctrl.hasrole('users')"><span translate
+              lib="web">rpaworkflows</span></a>
         </li>
-        <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Clients')}" ng-show="menuctrl.hasrole('users')">
-          <a class="nav-link" href="#/Clients"><span translate lib="web">clients</span></a>
+        <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Clients')}">
+          <a href="#/Clients" class="nav-link" ng-show="menuctrl.hasrole('users')"><span translate
+              lib="web">clients</span></a>
         </li>
-        <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Reports')}" ng-show="menuctrl.hasrole('users')">
-          <a class="nav-link" href="#/Reports"><span translate lib="web">reports</span></a>
+        <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Nodered')}">
+          <a href="#/Nodered" class="nav-link"
+            ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')">
+            <span translate lib="web">nodered</span></a>
         </li>
-        <li class="nav-item"
-          ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')">
-          <a class="nav-link" href="#/Nodered"><span translate lib="web">nodered</span></a>
+        <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Payment')}">
+          <a href="#/Payment" class="nav-link" ng-show="menuctrl.WebSocketClientService.stripe_api_key != ''">
+            <span translate lib="web">billing</span></a>
         </li>
-        <li class="nav-item" ng-show="menuctrl.WebSocketClientService.stripe_api_key != ''">
-          <a class="nav-link" href="#/Payment"><span translate lib="web">billing</span></a>
-        </li>
-        <li class="nav-item dropdown" ng-show="menuctrl.hasrole('users') || menuctrl.hasrole('admins')">
-          <a class="nav-link dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
-            translate lib="web">admin</a>
-          <div class="dropdown-menu">
+        <!-- d-md-none = display: none on medium screens and up (width > 768px), ml-auto = margin-left: auto -->
+        <div class="dropdown with-arrow">
+          <button class="btn" data-toggle="dropdown" type="button" id="navbar-dropdown-toggle-btn-1">
+            <span translate lib="web">admin</span>
+            <i class="fa fa-angle-down" aria-hidden="true"></i>
+          </button>
+          <div class="dropdown-menu dropdown-menu-right w-200" aria-labelledby="navbar-dropdown-toggle-btn-1">
             <a class="dropdown-item" href="#/Users"><span translate lib="web">users</span></a>
             <a class="dropdown-item" href="#/Roles"><span translate lib="web">roles</span></a>
             <a class="dropdown-item" href="#/Credentials"><span translate lib="web">credentials</span></a>
@@ -65,37 +62,47 @@
                 lib="web">oauthclients</span></a>
             <a class="dropdown-item" href="#/Files"><span translate lib="web">files</span></a>
             <a class="dropdown-item" href="#/hdrobots"><span translate lib="web">hdrobots</span></a>
-            <!-- <a class="dropdown-item" href="#/jslog" ng-show="menuctrl.hasrole('admins')"><span translate
-              lib="web">jslog</span></a>
-          <a class="dropdown-item" href="#/Queues" ng-show="menuctrl.hasrole('admins')"><span translate
-                lib="web">queues</span></a>
-            <a class="dropdown-item" href="#/Sockets" ng-show="menuctrl.hasrole('admins')"><span translate
-                lib="web">sockets</span></a> -->
-            <a class="dropdown-item" href>ver {{menuctrl.WebSocketClientService.version}}</a>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-content">{{menuctrl.user.name || menuctrl.user.username }}</div>
+
           </div>
-        </li>
+        </div>
       </ul>
-      <a href ng-click="menuctrl.stopimpersonation()" class="btn btn-outline-secondary"
-        ng-show="menuctrl.user.impostor != undefined && menuctrl.user.impostor != null && menuctrl.user.impostor != ''">
-        <em class="fas fa-user-secret" style="color: red;"></em>
-      </a>
-      <a href="/Signout" class="btn btn-outline-secondary"><span translate lib="web">logout</span>
-        {{menuctrl.user.name || menuctrl.user.username }}</a>
-    </div>
-  </nav>
-  <main role="main" class="container"
-    ng-show="menuctrl.signedin || menuctrl.path=='/Login' || menuctrl.path=='/Signup'">
-    <div ng-view class="starter-template">
-    </div>
-  </main>
+      <form class="form-inline d-none d-md-flex ml-auto">
+        <input type="text" class="form-control" placeholder="Search" ng-model="menuctrl.searchstring"
+          ng-change="menuctrl.Search()" ng-show="!menuctrl.PathIs('/Nodered') && !menuctrl.PathIs('/Payment')">
+        <button class="btn btn-action mr-5" type="button" ng-click="menuctrl.toggleDarkMode()"
+          aria-label="Toggle dark mode" zn_id="16">
+          <i class="fa fa-moon" aria-hidden="true" zn_id="17"></i>
+        </button>
 
-  <script src="bundle.js"></script>
-  <script src="angular-localization.min.js"></script>
-  <link rel="stylesheet" href="bundle.css">
-  <script>
-    angular.lowercase = text => (text == undefined || text == null ? "" : text.toLowerCase());
-  </script>
 
+        <button class="btn btn-primary" type="submit" ng-click="menuctrl.stopimpersonation()"
+          ng-show="menuctrl.user.impostor != undefined && menuctrl.user.impostor != null && menuctrl.user.impostor != ''">
+          <em class="fas fa-user-secret" style="color: red;"></em></button>
+
+        <a href="/Signout" class="btn btn-primary"><span translate lib="web">logout</span></a>
+
+      </form>
+
+
+
+    </nav>
+    <div class="content-wrapper">
+      <main role="main" class="container"
+        ng-show="menuctrl.signedin || menuctrl.path=='/Login' || menuctrl.path=='/Signup'">
+        <div ng-view class="starter-template">
+        </div>
+      </main>
+    </div>
+
+    <script src="bundle.js"></script>
+    <script src="angular-localization.min.js"></script>
+    <link rel="stylesheet" href="bundle.css">
+    <script>
+      angular.lowercase = text => (text == undefined || text == null ? "" : text.toLowerCase());
+    </script>
+  </div>
 </body>
 
 </html>

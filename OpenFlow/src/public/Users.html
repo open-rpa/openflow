@@ -1,14 +1,5 @@
 <div class="row">
   <h1 translate lib="web">users</h1>
-  <p class="col-md-5 lead"></p>
-  <div class="form-group col-sm-3 form-horizontal">
-    <label class="sr-only">Filter</label>
-    <div class="input-group unframed-addons">
-      <div class="input-group-addon"><em class="fas fa-search"></em></div>
-      <input ng-model="ctrl.searchstring" ng-change="ctrl.Search()" class="form-control input-md"
-        ng-model-options="{debounce: 400}" />
-    </div>
-  </div>
 </div>
 <div class="col-sm-12 text-right">
   <a href="#/User" class="btn btn-info" translate lib="web">Adduser</a>
@@ -19,17 +10,15 @@
     <tr>
       <th ng-click="ctrl.ToggleOrder('name')"><b translate lib="web">name</b></th>
       <th ng-click="ctrl.ToggleOrder('username')"><b translate lib="web">username</b></th>
-      <th ng-click="ctrl.ToggleOrder('_created')"><b translate lib="web">created</b></th>
-      <th ng-click="ctrl.ToggleOrder('lastseen')"><b translate lib="web">lastseen</b></th>
+      <th class="w-150" ng-click="ctrl.ToggleOrder('_created')"><b translate lib="web">created</b></th>
+      <th class="w-150" ng-click="ctrl.ToggleOrder('lastseen')"><b translate lib="web">lastseen</b></th>
       <th ng-show="ctrl.WebSocketClientService.stripe_api_key != ''" ng-click="ctrl.ToggleOrder('_hasbilling')">
         <i class="fas fa-money-bill-wave"></i>
       </th>
-      <th></th>
       <th ng-show="ctrl.WebSocketClientService.validate_user_form != ''" ng-click="ctrl.ToggleOrder('validated')">
         <i class="fas fa-check"></i>
       </th>
-      <th></th>
-      <th></th>
+      <th class="w-200"></th>
     </tr>
   </thead>
   <tbody>
@@ -42,28 +31,22 @@
       <td>
         <timesince ng-model="model.lastseen" />
       </td>
-      <!-- <td class="btn-cell" height="40px" width="200">
-        <canvas id="bar" class="model.chart-base" chart-type="model.chart.charttype" chart-data="model.chart.data"
-          chart-labels="model.chart.labels" chart-series="model.chart.series" height="40px" width="200">
-        </canvas>
-      </td> -->
-      <td class="btn-cell" ng-show="ctrl.WebSocketClientService.stripe_api_key != ''">
-        <a ng-href="#/Payment/{{model._id}}" class="table-btn"
+      <td ng-show="ctrl.WebSocketClientService.stripe_api_key != ''">
+        <a ng-href="#/Payment/{{model._id}}" class="btn"
           ng-show="menuctrl.hasrole('admins') && model._hasbilling == true">
-          <i class="fas fa-money-bill-wave"></i></a>
+          <em class="fas fa-money-bill-wave"></em></a>
       </td>
-      <td class="btn-cell">
-        <a ng-href ng-click="ctrl.Impersonate(model)" ng-show="model._id != ctrl.WebSocketClientService.user._id"><i
-            class="fas fa-user-secret" style="color: #007bff;"></i></a>
+      <td ng-show="ctrl.WebSocketClientService.validate_user_form != ''">
+        <em ng-show="model.validated" class="fas fa-check"></em>
       </td>
-      <td class="btn-cell" ng-show="ctrl.WebSocketClientService.validate_user_form != ''">
-        <i ng-show="model.validated" class="fas fa-check"></i></th>
-      </td>
-      <td class="btn-cell">
-        <a ng-href="#/User/{{model._id}}"><i class="az-edit"></i></a>
-      </td>
-      <td class="btn-cell">
-        <a href ng-click="ctrl.DeleteOneUser(model)" ng-disabled="ctrl.loading==true"><i class="az-trash"></i></a>
+      <td>
+        <a ng-href ng-click="ctrl.Impersonate(model)" class="btn"
+          ng-show="model._id != ctrl.WebSocketClientService.user._id"><em class="fas fa-user-secret"></em></a>
+        <a class="btn" ng-href="#/User/{{model._id}}">
+          <em class="fas fa-edit"></em>
+        </a>
+        <a href ng-click="ctrl.DeleteOneUser(model)" class="btn" ng-disabled="ctrl.loading==true"><em
+            class="fas fa-trash"></em></a>
       </td>
     </tr>
   </tbody>

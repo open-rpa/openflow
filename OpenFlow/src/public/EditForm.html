@@ -3,7 +3,7 @@
         padding-top: 0px;
     }
 </style>
-<link rel='stylesheet' href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css'> -->
+ -->
 <section>
     <div class="form-inline">
         <label for="sid" class="col-sm-2 control-label" translate lib="web">name</label>
@@ -16,8 +16,8 @@
     <div class="form-inline">
         <label for="sid" class="col-sm-2 control-label" translate lib="web">fbeditor</label>
         <div class="col-sm-4">
-            <input type="checkbox" ng-model="ctrl.model.fbeditor" class="form-control input-md"
-                ng-change="ctrl.renderform()" ng-disabled="ctrl.loading==true" />
+            <input type="checkbox" ng-model="ctrl.model.fbeditor" class="input-md" ng-change="ctrl.renderform()"
+                ng-disabled="ctrl.loading==true" />
         </div>
     </div>
 </section>
@@ -27,10 +27,27 @@
     <div class="form-inline">
         <label for="sid" class="col-sm-2 control-label" translate lib="web">Wizard</label>
         <div class="col-sm-4">
-            <input type="checkbox" ng-model="ctrl.model.wizard" class="form-control input-md"
-                ng-change="ctrl.renderform()" ng-disabled="ctrl.loading==true" />
+            <input type="checkbox" ng-model="ctrl.model.wizard" class="input-md" ng-change="ctrl.renderform()"
+                ng-disabled="ctrl.loading==true" />
         </div>
     </div>
 </div>
+<!-- <link rel='stylesheet' href='https://cdn.form.io/formiojs/formio.full.min.css'>
+<script src='https://cdn.form.io/formiojs/formio.full.min.js'></script> -->
+<link rel='stylesheet' href='bootstrap.css'>
+<script type='text/javascript'>
+    // window.onload = function () {
+    //     Formio.builder(document.getElementById('builder'), {}, {});
+    // };
+</script>
+<style>
+    .formbuilder {
+        min-width: 900px;
+    }
+
+    .builder-sidebar {
+        width: 200px;
+    }
+</style>
 <div id="builder" ng-show="ctrl.model.fbeditor==false">
 </div>

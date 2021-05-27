@@ -1,16 +1,5 @@
 <div class="row">
   <h1 translate lib="web">auditlogs</h1>
-  <p class="col-md-5 lead"></p>
-  <div class="form-group col-sm-3 form-horizontal">
-    <label class="sr-only">Filter</label>
-    <div class="input-group unframed-addons">
-      <div class="input-group-addon"><em class="fas fa-search"></em></div>
-      <input ng-model="ctrl.searchstring" ng-change="ctrl.Search()" class="form-control input-md"
-        ng-model-options="{debounce: 400}" />
-    </div>
-  </div>
-</div>
-<div class="col-sm-12 text-right">
 </div>
 <style>
   .failed {
@@ -39,7 +28,7 @@
         <i ng-class="model.fa">
           <i ng-class="model.fa2">
       </td>
-      <td class="btn-cell"><a href ng-click="ctrl.ShowAudit(model)" class="table-btn">{{( model.name == "" || model.name
+      <td><a href ng-click="ctrl.ShowAudit(model)" class="btn">{{( model.name == "" || model.name
           == null? "unknown": model.name)}}</a></td>
       <td>{{model.type}}</td>
       <td>{{model.impostorname}}</td>
@@ -55,7 +44,7 @@
 
 
 
-<div class="modal" tabindex="-1" role="dialog" id="exampleModal">
+<div class="modal modal-full" tabindex="-1" role="dialog" id="exampleModal">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
@@ -113,7 +102,7 @@
         </table>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        <button type="button" class="btn" data-dismiss="modal">Close</button>
       </div>
     </div>
   </div>

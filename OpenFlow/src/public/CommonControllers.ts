@@ -280,6 +280,7 @@ export class entitiesCtrl<T> {
     public errormessage: string = "";
 
     public static $inject = [
+        "$rootScope",
         "$scope",
         "$location",
         "$routeParams",
@@ -289,6 +290,7 @@ export class entitiesCtrl<T> {
         "userdata"
     ];
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -304,6 +306,7 @@ export class entitiesCtrl<T> {
             }
             if (this.userdata.data.searchstring != null) {
                 this.searchstring = this.userdata.data.searchstring;
+                this.$rootScope.$broadcast("setsearch", this.searchstring);
                 delete this.userdata.data.searchstring;
             }
             if (this.userdata.data.basequeryas != null) {
@@ -311,6 +314,11 @@ export class entitiesCtrl<T> {
                 delete this.userdata.data.basequeryas;
             }
         }
+        this.$scope.$on('search', (event, data) => {
+            this.searchstring = data;
+            this.loadData();
+        });
+
     }
     public static parseJson(txt, reviver, context) {
         context = context || 20
@@ -348,13 +356,14 @@ export class entitiesCtrl<T> {
     async loadData(): Promise<void> {
         try {
             if (this.loading == true) { console.debug("allready loading data, exit"); return; }
+            this.$rootScope.$broadcast("setsearch", this.searchstring);
             this.errormessage = "";
             this.loading = true;
             if (this.preloadData != null) {
                 this.preloadData();
             }
             let query: object = this.basequery;
-            if (this.searchstring !== "") {
+            if (this.searchstring !== "" && this.searchstring != null) {
                 if ((this.searchstring as string).indexOf("{") == 0) {
                     if ((this.searchstring as string).lastIndexOf("}") == ((this.searchstring as string).length - 1)) {
                         try {

@@ -3,22 +3,18 @@ import angular = require("angular");
 import { timesince, translate, textarea, fileread, userdata, api, copytext } from "./CommonControllers";
 import { MenuCtrl, ProvidersCtrl, MainCtrl, LoginCtrl, ProviderCtrl, UsersCtrl, UserCtrl, RolesCtrl, RoleCtrl, RPAWorkflowsCtrl, RPAWorkflowCtrl, WorkflowsCtrl, ReportsCtrl, jslogCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, SocketCtrl, NoderedCtrl, hdrobotsCtrl, ClientsCtrl, AuditlogsCtrl, SignupCtrl, PaymentCtrl, QueuesCtrl, SocketsCtrl, QueueCtrl, CredentialsCtrl, CredentialCtrl, DuplicatesCtrl, OAuthClientsCtrl, OAuthClientCtrl, DeletedCtrl } from "./Controllers";
 
-require('bootstrap');
 require('angular-route');
 require('angular-sanitize');
 require('@fortawesome/fontawesome-free');
 require('chart.js');
 require('angular-chart.js');
 
-// require('formBuilder');
-// require('formBuilder/dist/form-render.min.js');
-// require('./angular-localization.min');
-
-// require('./formio.full.min');
+require('./formio.full.js');
+// var css = require('./app.css');
 
 var css = require('./app.css');
 
-// require('./angular-localization.min')
+
 /**
  * @type {angular.Module}
  */

@@ -1,14 +1,6 @@
 <div class="row">
   <h1 translate lib="web">workflows</h1>
   <p class="col-md-5 lead"></p>
-  <div class="form-group col-sm-3 form-horizontal">
-    <label class="sr-only">Filter</label>
-    <div class="input-group unframed-addons">
-      <div class="input-group-addon"><em class="fas fa-search"></em></div>
-      <input ng-model="ctrl.searchstring" ng-change="ctrl.Search()" class="form-control input-md"
-        ng-model-options="{debounce: 400}" />
-    </div>
-  </div>
 </div>
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <div class="row">
@@ -16,20 +8,17 @@
     <thead class="thead-dark">
       <tr>
         <th ng-click="ctrl.ToggleOrder('name')"><b translate lib="web">name</b></th>
-        <th ng-click="ctrl.ToggleOrder('_createdby')"><b translate lib="web">createdby</b></th>
-        <th></th>
-        <th></th>
+        <th class="w-200" ng-click="ctrl.ToggleOrder('_createdby')"><b translate lib="web">createdby</b></th>
+        <th class="w-150"></th>
       </tr>
     </thead>
     <tbody>
       <tr ng-repeat="model in ctrl.models">
         <td>{{model.name}}</td>
         <td>{{model._createdby}}</td>
-        <td class="btn-cell">
-          <a ng-href="#/Form/{{model._id}}" translate lib="web">invoke</a>
-        </td>
-        <td class="btn-cell">
-          <a href ng-click="ctrl.DeleteOne(model)"><i class="az-trash"></i></a>
+        <td>
+          <a ng-href="#/Form/{{model._id}}" class="btn"><em class="fas fa-play-circle"></em></a>
+          <a href ng-click="ctrl.DeleteOne(model)" class="btn"><em class="fas fa-trash"></em></a>
         </td>
       </tr>
     </tbody>

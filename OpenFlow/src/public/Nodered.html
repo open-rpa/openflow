@@ -6,21 +6,25 @@
   <section>
     <div class="form-group">
       <div class="col-sm-offset-2 col-sm-10">
-        <button type="button" class="btn btn-secondary" ng-click="ctrl.GetNoderedInstance()">Reload</button>
-        <button type="button" class="btn btn-secondary" ng-click="ctrl.EnsureNoderedInstance()"
-          ng-show="ctrl.instance==null || ctrl.instancestatus == 'pending deletion (Running)' ">Create Nodered </button>
-        <button type="button" class="btn btn-secondary" ng-click="ctrl.EnsureNoderedInstance()"
-          ng-show="ctrl.instance!=null && ctrl.instancestatus != 'pending deletion (Running)' ">Ensure Nodered </button>
-        <button type="button" class="btn btn-secondary" ng-click="ctrl.RestartNoderedInstance()"
-          ng-show="ctrl.instance!=null && ctrl.instancestatus != 'pending deletion (Running)' && ctrl.instancestatus != 'Pending'">Restart
+        <button type="button" class="btn " ng-click="ctrl.GetNoderedInstance()">Reload</button>
+        <button type="button" class="btn"
+          ng-click="!(ctrl.instance==null || ctrl.instancestatus == 'pending deletion (Running)') || ctrl.EnsureNoderedInstance()"
+          ng-class="{disabled: !(ctrl.instance==null || ctrl.instancestatus == 'pending deletion (Running)')}">Create
+          Nodered </button>
+        <button type="button" class="btn"
+          ng-click="!(ctrl.instance!=null && ctrl.instancestatus != 'pending deletion (Running)') || ctrl.EnsureNoderedInstance()"
+          ng-class="{disabled: !(ctrl.instance!=null && ctrl.instancestatus != 'pending deletion (Running)')}">Ensure
+          Nodered </button>
+        <button type="button" class="btn btn-secondary"
+          ng-click="!(ctrl.instance!=null && ctrl.instancestatus != 'pending deletion (Running)' && ctrl.instancestatus != 'Pending') || ctrl.RestartNoderedInstance()"
+          ng-class="{disabled: !(ctrl.instance!=null && ctrl.instancestatus != 'pending deletion (Running)' && ctrl.instancestatus != 'Pending')}">Restart
           Nodered</button>
-        <button type="button" class="btn btn-secondary" ng-click="ctrl.DeleteNoderedInstance()"
-          ng-show="ctrl.instance!=null && ctrl.instancestatus != 'pending deletion (Running)' ">Delete Nodered</button>
-        <!-- <button type="button" class="btn btn-secondary"
-          ng-show="ctrl.instance!=null && ctrl.instancestatus != 'pending deletion (Running)' && ctrl.instancestatus != 'Pending'"
-          ng-click="ctrl.GetNoderedInstanceLog()">Get Console</button> -->
+        <button type="button" class="btn btn-danger"
+          ng-click="!(ctrl.instance!=null && ctrl.instancestatus != 'pending deletion (Running)') || ctrl.DeleteNoderedInstance()"
+          ng-class="{disabled: !(ctrl.instance!=null && ctrl.instancestatus != 'pending deletion (Running)')}">Delete
+          Nodered</button>
 
-        <a ng-href="{{ctrl.noderedurl}}" class="btn btn-danger" target="nodered" ng-show="ctrl.instance!=null">Open
+        <a ng-href="{{ctrl.noderedurl}}" class="btn" ng-show="ctrl.instance!=null" target="_blank" rel="noopener">Open
           Nodered</a>
       </div>
     </div>
@@ -64,10 +68,10 @@
       </div>
       <div class="col" ng-show="instance.status.phase == 'Failed' || instance.status.phase == 'Running'
          || instance.status.phase == 'running' || instance.status.phase == 'exited'">
-        <button type="button" class="btn btn-sm btn-secondary"
+        <button type="button" class="btn btn-sm "
           ng-show="instance.status.phase == 'Running' || instance.status.phase == 'running' || instance.status.phase == 'exited'"
           ng-click="ctrl.GetNoderedInstanceLog(instance.metadata.name)">Logs</button>
-        <button type="button" class="btn btn-sm btn-secondary" ng-click="ctrl.DeleteNoderedPod(instance.metadata.name)"
+        <button type="button" class="btn btn-sm btn-danger" ng-click="ctrl.DeleteNoderedPod(instance.metadata.name)"
           ng-show="instance.status.phase == 'Failed' || instance.status.phase == 'Running'
            || instance.status.phase == 'running' || instance.status.phase == 'exited'">Delete</button>
       </div>
@@ -76,8 +80,8 @@
       <span>{{ instance.status.message }}</span>
     </div>
   </div>
-
 </section>
+<hr>
 <section ng-show="ctrl.instancelog!=''">
   <div class="form-group">
     <label class="col-sm-3 control-label"><span translate lib="web">console</span>: </label>
@@ -93,13 +97,13 @@
   <div class="row">
     <label class="col-sm-4 control-label"><span translate lib="web">api_allow_anonymous</span>: </label>
     <div class="col-sm-1">
-      <input type="checkbox" class='form-control' ng-model="ctrl.user.nodered.api_allow_anonymous"></input>
+      <input type="checkbox" ng-model="ctrl.user.nodered.api_allow_anonymous"></input>
     </div>
   </div>
   <div class="row">
     <label class="col-sm-4 control-label"><span translate lib="web">function_external_modules</span>: </label>
     <div class="col-sm-1">
-      <input type="checkbox" class='form-control' ng-model="ctrl.user.nodered.function_external_modules"></input>
+      <input type="checkbox" ng-model="ctrl.user.nodered.function_external_modules"></input>
     </div>
   </div>
   <div class="row" ng-show="menuctrl.WebSocketClientService.nodered_images.length > 1">
