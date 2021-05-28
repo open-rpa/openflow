@@ -430,7 +430,31 @@
     <div ng-show="menuctrl.hasrole('admins')">
         <h3 ng-show="ctrl.openflowplans.length > 0">OpenFlow User w/NodeRed with a SLA</h3>
         <div class="row" ng-hide="ctrl.loading==true">
-            <div ng-repeat="model in ctrl.openflowplans">
+            <div ng-repeat="model in ctrl.openflowplans" class="w-400 mw-full">
+                <div class="card">
+                    <h2 class="card-title">
+                        {{model.metadata.webname}}
+                    </h2>
+                    <p>
+                        {{model.metadata.subtitle}}
+                    </p>
+                    <p>
+                        {{model.metadata.text}}
+                    </p>
+                    <div class="text-right">
+                        <!-- ng-show="ctrl.allowopenflowsignup" -->
+                        <a href ng-click="ctrl.CheckOut(model.id)" class="btn">Buy
+                            now</a>
+
+                    </div>
+                    <div class="px-card py-10 bg-light-lm bg-very-dark-dm rounded-bottom">
+                        <p class="font-size-12 m-0">
+                            {{(model.amount / 100)*ctrl.model.tax}} DKK/month {{ctrl.hastaxtext}}
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 
                 <div class="card" style="width: 17rem;height: 332px;">
                     <div class="card-body">
                         <h5 class="card-title">{{model.metadata.webname}}</h5>
@@ -444,14 +468,38 @@
                     <div class="card-footer text-muted">
                         {{(model.amount / 100)*ctrl.model.tax}} DKK/month {{ctrl.hastaxtext}}
                     </div>
-                </div>
+                </div> -->
             </div>
         </div>
     </div>
     <h3 ng-show="ctrl.supportplans.length > 0">OpenFlow Licenses</h3>
     <div class="row" ng-hide="ctrl.loading==true">
-        <div ng-repeat="model in ctrl.supportplans">
-            <div class="card" style="width: 17rem;height: 435px; vertical-align: top;">
+        <div ng-repeat="model in ctrl.supportplans" class="w-400 mw-full">
+
+            <div class="card">
+                <h2 class="card-title">
+                    {{model.metadata.webname}}
+                </h2>
+                <p>
+                    {{(model.subplan.amount / 100)*ctrl.model.tax}} DKK/hour {{ctrl.hastaxtext}}
+                </p>
+                <p>
+                    {{model.metadata.text}}
+                </p>
+                <div class="text-right">
+                    <!-- ng-show="ctrl.allowsupportsignup" -->
+                    <a href ng-click="ctrl.CheckOut(model.id, model.subplan.id)" class="btn">Buy
+                        now</a>
+
+                </div>
+                <div class="px-card py-10 bg-light-lm bg-very-dark-dm rounded-bottom">
+                    <p class="font-size-12 m-0">
+                        {{(model.amount / 100)*ctrl.model.tax}} DKK/month {{ctrl.hastaxtext}}
+                    </p>
+                </div>
+            </div>
+
+            <!-- <div class="card" style="width: 17rem;height: 435px; vertical-align: top;">
                 <div class="card-body">
                     <h5 class="card-title">{{model.metadata.webname}}</h5>
                     <h6 class="card-subtitle mb-2 text-muted">{{(model.subplan.amount / 100)*ctrl.model.tax}} DKK/hour
@@ -465,7 +513,8 @@
                 <div class="card-footer text-muted">
                     {{(model.amount / 100)*ctrl.model.tax}} DKK/month {{ctrl.hastaxtext}}
                 </div>
-            </div>
+            </div> -->
+
         </div>
 
     </div>

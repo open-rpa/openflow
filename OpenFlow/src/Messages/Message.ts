@@ -3085,6 +3085,166 @@ export class Message {
             if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
             if (NoderedUtil.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
 
+            const users = await Config.db.query({ _id: msg.userid, _type: "user" }, null, 1, 0, null, "users", msg.jwt, undefined, undefined, span);
+            if (users.length == 0) throw new Error("Unknown userid");
+            const user: User = users[0] as any;
+
+            const billings = await Config.db.query<Billing>({ userid: msg.userid, _type: "billing" }, null, 1, 0, null, "users", rootjwt, undefined, undefined, span);
+            let billing: Billing = null;
+            if (billings.length == 1) billing = billings[0];
+            if (billing == null) {
+                billing = Billing.assign({ userid: msg.userid } as any);
+                billing.name = user.name;
+                billing.email = user.username;
+                if (!NoderedUtil.IsNullEmpty(user.email)) billing.email = user.email
+                Base.addRight(billing, user._id, user.name, [Rights.read]);
+                Base.addRight(billing, WellknownIds.admins, "admins", [Rights.full_control]);
+                billing = await Config.db.InsertOne(billing, "users", 3, true, rootjwt, span);
+            }
+
+            let customer: stripe_customer = null;
+            if (billing != null && !NoderedUtil.IsNullEmpty(billing.stripeid)) {
+                customer = await this.Stripe<stripe_customer>("GET", "customers", billing.stripeid, null, null);
+            } else {
+                var sessions: any = await this.Stripe("GET", "checkout.sessions", null, null, null);
+                for (var cust of sessions.data) {
+                    if (cust.client_reference_id == msg.userid) {
+                    }
+                }
+                var customers: any = await this.Stripe("GET", "customers", null, null, null);
+                for (var cust of customers.data) {
+                    console.log(cust);
+                }
+
+
+            }
+            let subscription: stripe_subscription = null;
+            let subscription_item: stripe_subscription_item = null;
+
+            if (customer != null) {
+                const hasPlan = customer.subscriptions.data.filter(s => {
+                    const arr = s.items.data.filter(y => y.plan.id == msg.planid);
+                    if (arr.length == 1) {
+                        subscription = s;
+                        subscription_item = arr[0];
+                        if (arr[0].quantity > 0) {
+                            if ((subscription as any).cancel_at_period_end) {
+                                (subscription as any).cancel_at_period_end = false;
+                            } else {
+                                var test = arr[0];
+                                console.log(test);
+                                return true;
+                            }
+                        }
+                    } else if (subscription == null) { subscription = s; }
+                    return false;
+                });
+                // if (hasPlan.length > 0) {
+                //     throw new Error("Customer already has this plan");
+                // }
+            }
+
+            if (subscription != null) {
+                await this.Stripe("POST", "subscriptions", subscription.id, { cancel_at_period_end: false }, customer.id);
+            }
+            // if (subscription != null && subscription.default_tax_rates.length == 0 && !NoderedUtil.IsNullEmpty(billing.taxrate)) {
+            //     const payload: any = { default_tax_rates: [billing.taxrate] };
+            //     await this.Stripe("POST", "subscriptions", subscription.id, payload, customer.id);
+            // } else if (subscription != null && subscription.default_tax_rates.length != 0 && NoderedUtil.IsNullEmpty(billing.taxrate)) {
+            //     const payload: any = { default_tax_rates: [] };
+            //     await this.Stripe("POST", "subscriptions", subscription.id, payload, customer.id);
+            // }
+
+            const plan = await this.Stripe<stripe_plan>("GET", "plans", msg.planid, null, null);
+            if (subscription == null) {
+                const baseurl = Config.baseurl() + "/#/Payment";
+                const payload: any = {
+                    client_reference_id: cli.user._id,
+                    success_url: baseurl + "/" + cli.user._id, cancel_url: baseurl + "/" + cli.user._id,
+                    payment_method_types: ["card"], mode: "subscription",
+                    subscription_data: {
+                        items: [],
+                    }
+                };
+                if (customer != null && NoderedUtil.IsNullEmpty(customer.id)) {
+                    payload.customer = customer.id;
+                }
+                payload.subscription_data.items.push({ plan: msg.planid });
+                msg.checkout = await this.Stripe("POST", "checkout.sessions", null, payload, null);
+            } else {
+                if (plan.usage_type != "metered" && subscription_item != null) {
+                    for (var item of subscription.items.data) {
+                        const payload: any = { quantity: 0 };
+                        if (item.plan.id == msg.planid) {
+                            payload.quantity = 1;
+                        }
+                        if (item.plan.usage_type != "metered") {
+                            if (payload.quantity == 0) {
+                                const res = await this.Stripe("DELETE", "subscription_items", item.id, payload, customer.id);
+                            } else {
+                                const res = await this.Stripe("POST", "subscription_items", item.id, payload, customer.id);
+                            }
+                        } else {
+                            const hours: any = await this.Stripe("GET", "usage_record_summaries", item.id, null, null);
+                            let deleteit: boolean = true;
+                            if (hours.data.length > 0) {
+                                if (hours.data[0].total_usage > 0 && hours.data[0].invoice == null) {
+                                    deleteit = false;
+                                }
+                            }
+                            if (deleteit) {
+                                const res = await this.Stripe("DELETE", "subscription_items", item.id, payload, customer.id);
+                            }
+                        }
+
+                    }
+                    // }
+                    // if (subscription_item != null) {
+                    //     const payload: any = { quantity: 1 };
+                    //     if (plan.usage_type != "metered") {
+                    //         const res = await this.Stripe("POST", "subscription_items", subscription_item.id, payload, customer.id);
+                    //     }
+                } else {
+                    const payload: any = { subscription: subscription.id, plan: msg.planid };
+                    if (plan.usage_type != "metered") {
+                        payload.quantity = 1;
+                    }
+                    const res = await this.Stripe("POST", "subscription_items", null, payload, customer.id);
+                }
+
+            }
+            msg.customer = customer;
+        } catch (error) {
+            span.recordException(error);
+            await handleError(cli, error);
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) {
+                msg.error = (error.message ? error.message : error);
+                if (error.response && error.response.body) {
+                    msg.error = error.response.body;
+                }
+            }
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            span.recordException(error);
+            this.data = "";
+            await handleError(cli, error);
+        }
+        Logger.otel.endSpan(span);
+        this.Send(cli);
+    }
+    async StripeAddPlanOld(cli: WebSocketServerClient, parent: Span) {
+        const span: Span = Logger.otel.startSubSpan("message.StripeAddPlan", parent);
+        this.Reply();
+        let msg: StripeAddPlanMessage;
+        const rootjwt = Crypt.rootToken();
+        try {
+            msg = StripeAddPlanMessage.assign(this.data);
+            if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+            if (NoderedUtil.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
+
             const billings = await Config.db.query<Billing>({ userid: msg.userid, _type: "billing" }, null, 1, 0, null, "users", rootjwt, undefined, undefined, span);
             if (billings.length == 0) throw new Error("Need billing info and a stripe customer in order to add plan");
             const billing: Billing = billings[0];
@@ -3399,6 +3559,9 @@ export class Message {
         }
         if (object == "usage_records") {
             url = "https://api.stripe.com/v1/subscription_items/" + id + "/usage_records";
+        }
+        if (object == "usage_record_summaries") {
+            url = "https://api.stripe.com/v1/subscription_items/" + id + "/usage_record_summaries";
         }
         if (object == "sources") {
             if (NoderedUtil.IsNullEmpty(customerid)) throw new Error("Need customer to work with sources");

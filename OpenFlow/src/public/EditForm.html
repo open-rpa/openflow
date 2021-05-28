@@ -32,22 +32,69 @@
         </div>
     </div>
 </div>
+
 <!-- <link rel='stylesheet' href='https://cdn.form.io/formiojs/formio.full.min.css'>
-<script src='https://cdn.form.io/formiojs/formio.full.min.js'></script> -->
-<link rel='stylesheet' href='bootstrap.css'>
-<script type='text/javascript'>
-    // window.onload = function () {
-    //     Formio.builder(document.getElementById('builder'), {}, {});
-    // };
-</script>
+<script src='https://cdn.form.io/formiojs/formio.full.min.js'></script>
+<link rel='stylesheet' href='bootstrap.css'> -->
+
+
 <style>
+    .formio-dialog-content {
+        background: unset !important;
+    }
+
     .formbuilder {
         min-width: 900px;
     }
 
+
     .builder-sidebar {
-        width: 200px;
+        width: 130px;
     }
+
+    .ignore-css-no :root {
+        all: unset;
+    }
+
+    .builder-group-button {
+        text-align: left !important;
+    }
+
+    .btn {
+        all: unset;
+    }
+
+    h5 {
+        all: unset;
+    }
+
+    .builder-sidebar_scroll {
+        position: sticky !important;
+        top: 15px !important;
+    }
+
+    .builder-sidebar {
+        width: 130px !important;
+    }
+
+    /*
+
+    .builder-sidebar_search {
+        margin-bottom: 10px;
+        appearance: auto;
+    }
+
+    .ng-scope {}
+
+    div {
+        all: unset;
+    } */
 </style>
-<div id="builder" ng-show="ctrl.model.fbeditor==false">
+<link rel='stylesheet' href='bootstrap.css'>
+<p>
+    <hr>
+</p>
+<div class="ignore-css-no">
+    <div id="builder" ng-show="ctrl.model.fbeditor==false">
+    </div>
 </div>
