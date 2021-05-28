@@ -218,10 +218,17 @@ export class amqpwrapper extends events.EventEmitter {
                     } catch (error) {
                         Logger.instanse.error(error);
                     }
+                    if (this.channel != null) await this.channel.cancel(exc[0].queue.consumerTag);
+                    this.exchanges = this.exchanges.filter(q => q.queue.consumerTag != queue.consumerTag);
+                }
+                var q = this.queues.filter(x => x.consumerTag == queue.consumerTag);
+                if (q.length > 0) {
+                    if (this.channel != null) await this.channel.cancel(queue.consumerTag);
+                    this.queues = this.queues.filter(q => q.consumerTag != queue.consumerTag);
                 }
                 //this.exchanges.push(q);
-                if (this.channel != null) await this.channel.cancel(queue.consumerTag);
-                this.queues = this.queues.filter(q => q.consumerTag != queue.consumerTag);
+
+
             }
         } catch (error) {
             span.recordException(error);

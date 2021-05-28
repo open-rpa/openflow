@@ -118,13 +118,13 @@ export class rpa_workflow_node {
     private localqueue: string = "";
     private _onsignedin: any = null;
     private _onsocketclose: any = null;
-    private originallocalqueue: string = "";
-    private uid: string = "";
+    // private originallocalqueue: string = "";
+    // private uid: string = "";
     constructor(public config: Irpa_workflow_node) {
         RED.nodes.createNode(this, config);
         try {
             this.node = this;
-            this.uid = NoderedUtil.GetUniqueIdentifier();
+            // this.uid = NoderedUtil.GetUniqueIdentifier();
             this.node.status({});
             this.name = config.name;
             this.node.on("input", this.oninput);
@@ -134,9 +134,7 @@ export class rpa_workflow_node {
             this._onsocketclose = this.onsocketclose.bind(this);
             WebSocketClient.instance.events.on("onsignedin", this._onsignedin);
             WebSocketClient.instance.events.on("onclose", this._onsocketclose);
-            if (!NoderedUtil.IsNullEmpty(this.originallocalqueue) || this.originallocalqueue != this.uid) {
-                this.connect();
-            } else if (WebSocketClient.instance.isConnected && WebSocketClient.instance.user != null) {
+            if (WebSocketClient.instance.isConnected && WebSocketClient.instance.user != null) {
                 this.connect();
             }
         } catch (error) {
@@ -153,8 +151,8 @@ export class rpa_workflow_node {
     async connect() {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
-            this.localqueue = this.uid;
-            this.localqueue = await NoderedUtil.RegisterQueue(WebSocketClient.instance, this.localqueue, (msg: QueueMessage, ack: any) => {
+            // this.localqueue = this.uid;
+            this.localqueue = await NoderedUtil.RegisterQueue(WebSocketClient.instance, "", (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
             }, (msg) => {
                 this.localqueue = "";
@@ -308,7 +306,7 @@ export class rpa_workflow_node {
     }
     async onclose(removed: boolean, done: any) {
         // if ((!NoderedUtil.IsNullEmpty(this.localqueue) && removed) || this.originallocalqueue != this.uid) {
-        NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
+        await NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
         this.localqueue = "";
         // }
         WebSocketClient.instance.events.removeListener("onsignedin", this._onsignedin);
