@@ -1027,7 +1027,15 @@ export class ProviderCtrl extends entityCtrl<Provider> {
             if (this.id !== null && this.id !== undefined) {
                 this.loadData();
             } else {
-                this.model = new Provider("", "", "", "uri:" + this.WebSocketClientService.domain, "")
+                try {
+                    this.model = new Provider("", "", "", "uri:" + this.WebSocketClientService.domain, "")
+                } catch (error) {
+                    this.model = {} as any;
+                    this.model.name = "";
+                    this.model._type = "provider";
+                    this.model.issuer = "uri:" + this.WebSocketClientService.domain;
+                }
+
             }
 
         });
@@ -1682,7 +1690,14 @@ export class EditFormCtrl extends entityCtrl<Form> {
                     this.basequery = { _id: this.id };
                     this.loadData();
                 } else {
-                    this.model = new Form();
+                    try {
+                        this.model = new Form();
+                    } catch (error) {
+                        this.model = {} as any;
+                        this.model._type = "form";
+                        this.model.dataType = "json";
+                    }
+
                     this.model.fbeditor = false;
                     this.renderform();
                 }
