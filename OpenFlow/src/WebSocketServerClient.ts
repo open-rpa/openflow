@@ -327,6 +327,9 @@ export class WebSocketServerClient {
             try {
                 const AssertQueueOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertQueueOptions));
                 AssertQueueOptions.exclusive = exclusive;
+                if (NoderedUtil.IsNullEmpty(queuename)) {
+                    AssertQueueOptions.autoDelete = true;
+                }
                 queue = await amqpwrapper.Instance().AddQueueConsumer(qname, AssertQueueOptions, this.jwt, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
                     const _data = msg;
                     try {
