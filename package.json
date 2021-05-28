@@ -88,7 +88,7 @@
     "angular-chart.js": "^1.1.1",
     "angular-route": "^1.8.2",
     "angular-sanitize": "^1.8.2",
-    "bootstrap": "^4.6.0",
+    "bootstrap": "4.6.0",
     "browserify": "^17.0.0",
     "browserify-css": "^0.15.0",
     "chart.js": "^2.9.4",
