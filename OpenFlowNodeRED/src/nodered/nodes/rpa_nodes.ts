@@ -307,10 +307,10 @@ export class rpa_workflow_node {
         }
     }
     async onclose(removed: boolean, done: any) {
-        if ((!NoderedUtil.IsNullEmpty(this.localqueue) && removed) || this.originallocalqueue != this.uid) {
-            NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
-            this.localqueue = "";
-        }
+        // if ((!NoderedUtil.IsNullEmpty(this.localqueue) && removed) || this.originallocalqueue != this.uid) {
+        NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
+        this.localqueue = "";
+        // }
         WebSocketClient.instance.events.removeListener("onsignedin", this._onsignedin);
         WebSocketClient.instance.events.removeListener("onclose", this._onsocketclose);
         if (done != null) done();
