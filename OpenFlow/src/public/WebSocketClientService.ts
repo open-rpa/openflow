@@ -34,6 +34,7 @@ export class WebSocketClientService {
                 this.websocket_package_size = data.websocket_package_size;
                 this.stripe_api_key = data.stripe_api_key;
                 this.validate_user_form = data.validate_user_form;
+                this.multi_tenant = data.multi_tenant;
 
                 this.nodered_images = data.nodered_images;
 
@@ -158,6 +159,7 @@ export class WebSocketClientService {
     public stripe_api_key: string = "";
     public validate_user_form: string = "";
     public nodered_images: nodered_image[];
+    public multi_tenant: boolean;
 
     getJSON(url: string, callback: any): void {
         const xhr: XMLHttpRequest = new XMLHttpRequest();

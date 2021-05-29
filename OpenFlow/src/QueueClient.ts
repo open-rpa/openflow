@@ -6,6 +6,13 @@ import { Logger } from "./Logger";
 import { Message } from "./Messages/Message";
 export class QueueClient {
     static async configure(): Promise<void> {
+        await QueueClient.connect();
+        var instance = amqpwrapper.Instance();
+        instance.on("connected", () => {
+            QueueClient.connect();
+        });
+    }
+    private static async connect() {
         await this.RegisterMyQueue();
         await this.RegisterOpenflowQueue();
     }
