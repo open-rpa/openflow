@@ -3031,7 +3031,7 @@ export class Message {
             const billing: Billing = billings[0];
             if (NoderedUtil.IsNullEmpty(billing.stripeid)) throw new Error("Need a stripe customer in order to cancel plan");
             const customer: stripe_customer = await this.Stripe<stripe_customer>("GET", "customers", billing.stripeid, null, null);
-            if (customer == null) throw new Error("Failed locating stripe customer at stribe");
+            if (customer == null) throw new Error("Failed locating stripe customer at stripe");
 
 
             let subscription: stripe_subscription = null;
@@ -3090,7 +3090,7 @@ export class Message {
             const billing: Billing = billings[0];
             if (NoderedUtil.IsNullEmpty(billing.stripeid)) throw new Error("Need a stripe customer in order to add plan");
             const customer: stripe_customer = await this.Stripe<stripe_customer>("GET", "customers", billing.stripeid, null, null);
-            if (customer == null) throw new Error("Failed locating stripe customer at stribe");
+            if (customer == null) throw new Error("Failed locating stripe customer at stripe");
 
             let subscription: stripe_subscription = null;
             let subscription_item: stripe_subscription_item = null;

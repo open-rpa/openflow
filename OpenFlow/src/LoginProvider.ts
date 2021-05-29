@@ -416,7 +416,8 @@ export class LoginProvider {
                     validate_user_form: Config.validate_user_form,
                     supports_watch: Config.supports_watch,
                     nodered_images: Config.nodered_images,
-                    amqp_enabled_exchange: Config.amqp_enabled_exchange
+                    amqp_enabled_exchange: Config.amqp_enabled_exchange,
+                    multi_tenant: Config.multi_tenant
                 }
                 res.end(JSON.stringify(res2));
             } catch (error) {
