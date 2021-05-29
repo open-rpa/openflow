@@ -33,39 +33,63 @@
     </div>
 </div>
 
-<!-- <link rel='stylesheet' href='https://cdn.form.io/formiojs/formio.full.min.css'>
-<script src='https://cdn.form.io/formiojs/formio.full.min.js'></script>
-<link rel='stylesheet' href='bootstrap.css'> -->
+<link rel='stylesheet' href='bootstrap.css'>
 
 
 <style>
-    .formio-dialog-content {
+    .dark-mode .formio-dialog-content {
+        background-color: var(--dm-card-bg-color) !important;
+    }
+
+
+    .dark-mode .formio-dialog {
+        color: unset !important;
+    }
+
+    .dark-mode .table {
+        color: unset !important;
+    }
+
+    .dark-mode .ace_editor {
+        background-color: var(--dm-card-bg-color) !important;
+    }
+
+    .dark-mode .ace_gutter {
+        background-color: var(--dm-card-bg-color) !important;
+        color: unset !important;
+    }
+
+    .dark-mode .ace-xcode {
+        color: unset !important;
+    }
+
+    .dark-mode .choices__inner {
+        background-color: unset !important;
+    }
+
+    .dark-mode .choices__input {
+        background-color: unset !important;
+    }
+
+    .dark-mode .list-group-item {
+        background-color: unset !important;
+    }
+
+
+    /* .formio-dialog-content {
         background: unset !important;
-    }
+    } */
 
-    .formbuilder {
+    /* .formbuilder {
         min-width: 900px;
-    }
+    } */
 
-
-    .builder-sidebar {
+    /* .builder-sidebar {
         width: 130px;
-    }
-
-    .ignore-css-no :root {
-        all: unset;
-    }
+    } */
 
     .builder-group-button {
         text-align: left !important;
-    }
-
-    .btn {
-        all: unset;
-    }
-
-    h5 {
-        all: unset;
     }
 
     .builder-sidebar_scroll {
@@ -77,24 +101,24 @@
         width: 130px !important;
     }
 
-    /*
-
-    .builder-sidebar_search {
-        margin-bottom: 10px;
-        appearance: auto;
+    .form-builder-panel {
+        margin: unset !important;
+        padding: unset !important;
     }
 
-    .ng-scope {}
+    .form-builder-panel .btn {
+        padding: unset !important;
+    }
 
-    div {
-        all: unset;
-    } */
+    .form-builder-panel .formcomponent {
+        line-height: unset !important;
+        margin-top: 1px !important;
+        padding: unset !important;
+    }
 </style>
-<link rel='stylesheet' href='bootstrap.css'>
+
 <p>
     <hr>
 </p>
-<div class="ignore-css-no">
-    <div id="builder" ng-show="ctrl.model.fbeditor==false">
-    </div>
+<div id="builder" ng-show="ctrl.model.fbeditor==false">
 </div>
