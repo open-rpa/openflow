@@ -2027,7 +2027,7 @@ export class DatabaseConnection {
         let result: boolean = false;
         const authorized = this.EntityRestrictions.filter(x => x.IsAuthorized(user) && (x.collection == collection || x.collection == ""));
         const matches = authorized.filter(x => x.IsMatch(item) && (x.collection == collection || x.collection == ""));
-        const copyperm = authorized.filter(x => x.copyperm && (x.collection == collection || x.collection == ""));
+        const copyperm = matches.filter(x => x.copyperm && (x.collection == collection || x.collection == ""));
         if (!defaultAllow && matches.length == 0) return false; // no hits, if not allowed return false
         if (matches.length > 0) result = true;
 

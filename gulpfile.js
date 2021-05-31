@@ -188,12 +188,12 @@ gulp.task("compose", shell.task([
     // 'docker push openiap/openflow:' + version,
     'docker push openiap/openflow:edge1.3',
 
-    // 'echo "Build openiap/nodered"',
-    // 'cd OpenFlowNodeRED && docker build -t openiap/nodered:edge .',
-    // // 'docker tag openiap/nodered:edge openiap/nodered:' + version,
-    // 'echo "Push openiap/nodered"',
-    // 'docker push openiap/nodered:edge',
-    // // 'docker push openiap/nodered:' + version,
+    'echo "Build openiap/nodered"',
+    'cd OpenFlowNodeRED && docker build -t openiap/nodered:edge .',
+    // 'docker tag openiap/nodered:edge openiap/nodered:' + version,
+    'echo "Push openiap/nodered"',
+    'docker push openiap/nodered:edge',
+    // 'docker push openiap/nodered:' + version,
 
     // 'echo "Build openiap/nodered-puppeteer"',
     // 'cd OpenFlowNodeRED && docker build -t openiap/nodered-puppeteer:edge -f Dockerfilepuppeteer .',
