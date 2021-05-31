@@ -1,7 +1,7 @@
 import { WebSocketClientService } from "./WebSocketClientService";
 import angular = require("angular");
 import { timesince, translate, textarea, fileread, userdata, api, copytext } from "./CommonControllers";
-import { MenuCtrl, ProvidersCtrl, MainCtrl, LoginCtrl, ProviderCtrl, UsersCtrl, UserCtrl, RolesCtrl, RoleCtrl, RPAWorkflowsCtrl, RPAWorkflowCtrl, WorkflowsCtrl, ReportsCtrl, jslogCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, SocketCtrl, NoderedCtrl, hdrobotsCtrl, ClientsCtrl, AuditlogsCtrl, SignupCtrl, PaymentCtrl, QueuesCtrl, SocketsCtrl, QueueCtrl, CredentialsCtrl, CredentialCtrl, DuplicatesCtrl, OAuthClientsCtrl, OAuthClientCtrl, DeletedCtrl } from "./Controllers";
+import { MenuCtrl, ProvidersCtrl, MainCtrl, LoginCtrl, ProviderCtrl, UsersCtrl, UserCtrl, RolesCtrl, RoleCtrl, RPAWorkflowsCtrl, RPAWorkflowCtrl, WorkflowsCtrl, ReportsCtrl, jslogCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, SocketCtrl, NoderedCtrl, hdrobotsCtrl, ClientsCtrl, AuditlogsCtrl, SignupCtrl, PaymentCtrl, QueuesCtrl, SocketsCtrl, QueueCtrl, CredentialsCtrl, CredentialCtrl, DuplicatesCtrl, OAuthClientsCtrl, OAuthClientCtrl, DeletedCtrl, CustomerCtrl, EntityRestrictionsCtrl, EntityRestrictionCtrl } from "./Controllers";
 
 require('angular-route');
 require('angular-sanitize');
@@ -115,6 +115,13 @@ module openflow {
                 .when('/OAuthClients', { templateUrl: 'OAuthClients.html', controller: OAuthClientsCtrl, controllerAs: 'ctrl' })
                 .when('/OAuthClient', { templateUrl: 'OAuthClient.html', controller: OAuthClientCtrl, controllerAs: 'ctrl' })
                 .when('/OAuthClient/:id', { templateUrl: 'OAuthClient.html', controller: OAuthClientCtrl, controllerAs: 'ctrl' })
+
+                .when('/Customer', { templateUrl: 'Customer.html', controller: CustomerCtrl, controllerAs: 'ctrl' })
+                .when('/Customer/:id', { templateUrl: 'Customer.html', controller: CustomerCtrl, controllerAs: 'ctrl' })
+
+                .when('/EntityRestrictions', { templateUrl: 'EntityRestrictions.html', controller: EntityRestrictionsCtrl, controllerAs: 'ctrl' })
+                .when('/EntityRestriction', { templateUrl: 'EntityRestriction.html', controller: EntityRestrictionCtrl, controllerAs: 'ctrl' })
+                .when('/EntityRestriction/:id', { templateUrl: 'EntityRestriction.html', controller: EntityRestrictionCtrl, controllerAs: 'ctrl' })
 
                 .otherwise({ redirectTo: '/main' });
         }

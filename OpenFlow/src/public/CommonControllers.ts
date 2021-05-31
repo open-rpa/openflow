@@ -484,6 +484,7 @@ export class entityCtrl<T> {
     public errormessage: string = "";
 
     public static $inject = [
+        "$rootScope",
         "$scope",
         "$location",
         "$routeParams",
@@ -492,6 +493,7 @@ export class entityCtrl<T> {
         "api"
     ];
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,

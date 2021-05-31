@@ -23,8 +23,8 @@
         <label for="clientSecret" class="col-sm-2 control-label" translate lib="web">clientSecret</label> <a href
             ng-click="ctrl.CopySecret('.secrettext')">copysecret</a>
         <div class="col-sm-4">
-            <input type="password" ng-model="ctrl.model.clientSecret" class="form-control input-md secrettext"
-                ng-disabled="ctrl.loading==true" id="clientSecret" copytext />
+            <input ng-model="ctrl.model.clientSecret" class="form-control input-md secrettext"
+                ng-disabled="ctrl.loading==true" id="clientSecret" copytext style="-webkit-text-security: disc;" />
 
         </div>
     </div>

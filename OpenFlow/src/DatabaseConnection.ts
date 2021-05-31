@@ -8,6 +8,11 @@ import { ValueRecorder } from "@opentelemetry/api-metrics"
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { Auth } from "./Auth";
+import { flush } from "pm2";
+const { JSONPath } = require('jsonpath-plus');
+
+
+
 // tslint:disable-next-line: typedef
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 const isoDatePattern = new RegExp(/\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z)/);
@@ -822,8 +827,10 @@ export class DatabaseConnection {
             span.addEvent("ensureResource");
             span.addEvent("verityToken");
             const user: TokenUser = Crypt.verityToken(jwt);
-
             item = this.ensureResource(item);
+            if (!await this.CheckEntityRestriction(user, collectionname, item, span)) {
+                throw Error("Create " + item._type + " access denied");
+            }
             span.addEvent("traversejsonencode");
             DatabaseConnection.traversejsonencode(item);
             let name = item.name;
@@ -840,7 +847,7 @@ export class DatabaseConnection {
                 Base.addRight(item, user._id, user.name, [Rights.full_control]);
             }
             if (collectionname != "audit") { Logger.instanse.silly("[" + user.username + "][" + collectionname + "] Adding " + item._type + " " + name + " to database"); }
-            if (!this.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
+            if (!DatabaseConnection.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
 
             span.addEvent("encryptentity");
             item = this.encryptentity(item) as T;
@@ -959,6 +966,9 @@ export class DatabaseConnection {
                     setTimeout(() => OAuthProvider.LoadClients(), 1000);
                 }
             }
+            if (collectionname === "config" && item._type === "restriction") {
+                this.EntityRestrictions = null;
+            }
             span.addEvent("traversejsondecode");
             DatabaseConnection.traversejsondecode(item);
             if (Config.log_inserts) Logger.instanse.debug("[" + user.username + "][" + collectionname + "] inserted " + item.name);
@@ -992,6 +1002,11 @@ export class DatabaseConnection {
             for (let i = 0; i < items.length; i++) {
                 let item = this.ensureResource(items[i]);
                 DatabaseConnection.traversejsonencode(item);
+
+                if (!await this.CheckEntityRestriction(user, collectionname, item, span)) {
+                    continue;
+                }
+
                 let name = item.name;
                 if (NoderedUtil.IsNullEmpty(name)) name = item._name;
                 if (NoderedUtil.IsNullEmpty(name)) name = "Unknown";
@@ -1006,7 +1021,7 @@ export class DatabaseConnection {
                     Base.addRight(item, user._id, user.name, [Rights.full_control]);
                 }
                 if (collectionname != "audit") { Logger.instanse.silly("[" + user.username + "][" + collectionname + "] Adding " + item._type + " " + name + " to database"); }
-                if (!this.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
+                if (!DatabaseConnection.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
 
                 item = this.encryptentity(item) as T;
 
@@ -1191,8 +1206,7 @@ export class DatabaseConnection {
             if (q.item === null || q.item === undefined) { throw Error("Cannot update null item"); }
             await this.connect(span);
             const user: TokenUser = Crypt.verityToken(q.jwt);
-            if (!this.hasAuthorization(user, (q.item as Base), Rights.update)) {
-                const again = this.hasAuthorization(user, (q.item as Base), Rights.update);
+            if (!DatabaseConnection.hasAuthorization(user, (q.item as Base), Rights.update)) {
                 throw new Error("Access denied, no authorization to UpdateOne");
             }
             if (q.collectionname === "files") { q.collectionname = "fs.files"; }
@@ -1209,8 +1223,7 @@ export class DatabaseConnection {
                 if (NoderedUtil.IsNullEmpty(name)) name = "Unknown";
                 original = await this.getbyid<T>(q.item._id, q.collectionname, q.jwt, span);
                 if (!original) { throw Error("item not found!"); }
-                if (!this.hasAuthorization(user, original, Rights.update)) {
-                    const again = this.hasAuthorization(user, original, Rights.update);
+                if (!DatabaseConnection.hasAuthorization(user, original, Rights.update)) {
                     throw new Error("Access denied, no authorization to UpdateOne " + q.item._type + " " + name + " to database");
                 }
                 if (q.collectionname === "users" && !NoderedUtil.IsNullEmpty(q.item._type) && !NoderedUtil.IsNullEmpty(q.item.name)) {
@@ -1230,6 +1243,11 @@ export class DatabaseConnection {
                     const keys: string[] = Object.keys(original);
                     for (let i: number = 0; i < keys.length; i++) {
                         let key: string = keys[i];
+                        if (key == "username" && q.collectionname == "users" && q.item._type == "user") {
+                            if (!user.HasRoleName("admins")) {
+                                q.item[key] = original[key];
+                            }
+                        }
                         if (key === "_created") {
                             q.item[key] = new Date(original[key]);
                         } else if (key === "_createdby" || key === "_createdbyid") {
@@ -1251,6 +1269,9 @@ export class DatabaseConnection {
                         q.item._version = original._version;
                     }
                     q.item = this.ensureResource(q.item);
+                    if (original._type != q.item._type && !await this.CheckEntityRestriction(user, q.collectionname, q.item, span)) {
+                        throw Error("Create " + q.item._type + " access denied");
+                    }
                     DatabaseConnection.traversejsonencode(q.item);
                     q.item = this.encryptentity(q.item);
                     const hasUser: Ace = q.item._acl.find(e => e._id === user._id);
@@ -1271,6 +1292,8 @@ export class DatabaseConnection {
                         let key: string = keys[i];
                         if (key === "_created") {
                             (q.item as any).metadata[key] = new Date((original as any).metadata[key]);
+                        } else if (key === "_type") {
+                            (q.item as any).metadata[key] = (original as any).metadata[key];
                         } else if (key === "_createdby" || key === "_createdbyid") {
                             (q.item as any).metadata[key] = (original as any).metadata[key];
                         } else if (key === "_modifiedby" || key === "_modifiedbyid" || key === "_modified") {
@@ -1416,6 +1439,9 @@ export class DatabaseConnection {
                 } else {
                     (q.item as any).metadata = this.decryptentity<T>((q.item as any).metadata);
                 }
+                if (q.collectionname === "config" && q.item._type === "restriction") {
+                    this.EntityRestrictions = null;
+                }
                 DatabaseConnection.traversejsondecode(q.item);
                 q.result = q.item;
             } catch (error) {
@@ -1447,7 +1473,7 @@ export class DatabaseConnection {
             if (q.item === null || q.item === undefined) { throw Error("Cannot update null item"); }
             await this.connect();
             const user: TokenUser = Crypt.verityToken(q.jwt);
-            if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to UpdateMany"); }
+            if (!DatabaseConnection.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to UpdateMany"); }
 
             if (q.collectionname === "users" && q.item._type === "user" && q.item.hasOwnProperty("newpassword")) {
                 (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
@@ -1496,6 +1522,7 @@ export class DatabaseConnection {
             }
 
             if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };
+            if (q.item["$set"]._type) delete q.item["$set"]._type;
             (q.item["$set"])._modifiedby = user.name;
             (q.item["$set"])._modifiedbyid = user._id;
             (q.item["$set"])._modified = new Date(new Date().toISOString());
@@ -1567,7 +1594,7 @@ export class DatabaseConnection {
             else if (exists.length > 1) {
                 throw JSON.stringify(query) + " is not uniqe, more than 1 item in collection matches this";
             }
-            if (!this.hasAuthorization(user, q.item, Rights.update)) {
+            if (!DatabaseConnection.hasAuthorization(user, q.item, Rights.update)) {
                 Base.addRight(q.item, user._id, user.name, [Rights.full_control], false);
                 this.ensureResource(q.item);
             }
@@ -1976,6 +2003,39 @@ export class DatabaseConnection {
         }
         return item;
     }
+    public EntityRestrictions: EntityRestriction[] = null;
+    async CheckEntityRestriction(user: TokenUser, collection: string, item: Base, parent: Span): Promise<boolean> {
+        if (this.EntityRestrictions == null) {
+            const rootjwt = Crypt.rootToken()
+            this.EntityRestrictions = await this.query<EntityRestriction>({ "_type": "restriction" }, null, 1, 0, null, "config", rootjwt, null, null, parent);
+            let allowadmins = new EntityRestriction();
+            allowadmins.copyperm = false; allowadmins.collection = ""; allowadmins.paths = ["$."];
+            Base.addRight(allowadmins, WellknownIds.admins, "admins", [Rights.create]);
+            this.EntityRestrictions.push(allowadmins);
+            for (let i = 0; i < this.EntityRestrictions.length; i++) {
+                this.EntityRestrictions[i] = EntityRestriction.assign(this.EntityRestrictions[i]);
+            }
+        }
+        const defaultAllow: boolean = false;
+        let result: boolean = false;
+        const authorized = this.EntityRestrictions.filter(x => x.IsAuthorized(user) && (x.collection == collection || x.collection == ""));
+        const matches = authorized.filter(x => x.IsMatch(item) && (x.collection == collection || x.collection == ""));
+        const copyperm = authorized.filter(x => x.copyperm && (x.collection == collection || x.collection == ""));
+        if (!defaultAllow && matches.length == 0) return false; // no hits, if not allowed return false
+        if (matches.length > 0) result = true;
+
+        for (let cr of copyperm) {
+            for (let a of cr._acl) {
+                let bits = [];
+                for (let i = 0; i < 10; i++) {
+                    if (Ace.isBitSet(a, i)) bits.push(i);
+
+                }
+                Base.addRight(item, a._id, a.name, bits, false);
+            }
+        }
+        return result;
+    }
     /**
      * Validated user has rights to perform the requested action ( create is missing! )
      * @param  {TokenUser} user User requesting permission
@@ -1983,7 +2043,7 @@ export class DatabaseConnection {
      * @param  {Rights} action Permission wanted (create, update, delete)
      * @returns boolean Is allowed
      */
-    hasAuthorization(user: TokenUser, item: Base, action: number): boolean {
+    static hasAuthorization(user: TokenUser, item: Base, action: number): boolean {
         if (Config.api_bypass_perm_check) { return true; }
         if (user._id === WellknownIds.root) { return true; }
         if (action === Rights.create || action === Rights.delete) {
@@ -2473,3 +2533,33 @@ export class DatabaseConnection {
     }
 }
 
+export class EntityRestriction extends Base {
+    public collection: string;
+    public copyperm: boolean;
+    public paths: string[];
+    constructor(
+    ) {
+        super();
+        this._type = "restriction";
+    }
+    static assign<EntityRestriction>(o: any): EntityRestriction {
+        if (typeof o === 'string' || o instanceof String) {
+            return Object.assign(new EntityRestriction(), JSON.parse(o.toString()));
+        }
+        return Object.assign(new EntityRestriction(), o);
+    }
+    public IsMatch(object: object): boolean {
+        for (let path of this.paths) {
+            const result = JSONPath({ path, json: { a: object } });
+            if (result && result.length > 0) return true;
+        }
+        return false;
+    }
+    public IsAuthorized(user: TokenUser | User): boolean {
+        return DatabaseConnection.hasAuthorization(user as TokenUser, this, Rights.create);
+    }
+    //     public IsAllowed(user: TokenUser | User, object: object, NoMatchValue: boolean) {
+    //         if (!this.IsMatch(object)) return NoMatchValue;
+    //         return this.IsAuthorized(user);
+    //     }
+}

@@ -2757,7 +2757,7 @@ export class Message {
                 Base.addRight(msg.metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
             }
             msg.metadata = Config.db.ensureResource(msg.metadata);
-            if (!Config.db.hasAuthorization(user, msg.metadata, Rights.create)) { throw new Error("Access denied, no authorization to save file"); }
+            if (!DatabaseConnection.hasAuthorization(user, msg.metadata, Rights.create)) { throw new Error("Access denied, no authorization to save file"); }
             msg.id = await this._SaveFile(readable, msg.filename, msg.mimeType, msg.metadata);
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -2880,7 +2880,7 @@ export class Message {
                 Base.addRight(msg.metadata, user._id, user.name, [Rights.full_control]);
             }
             Base.addRight(msg.metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
-            if (!Config.db.hasAuthorization(user, msg.metadata, Rights.update)) { throw new Error("Access denied, no authorization to update file"); }
+            if (!DatabaseConnection.hasAuthorization(user, msg.metadata, Rights.update)) { throw new Error("Access denied, no authorization to update file"); }
 
             msg.metadata = Config.db.ensureResource(msg.metadata);
             const fsc = Config.db.db.collection("fs.files");

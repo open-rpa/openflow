@@ -57,6 +57,7 @@
     "json-stable-stringify": "^1.0.1",
     "json-stringify-safe": "^5.0.1",
     "jsondiffpatch": "^0.4.1",
+    "jsonpath-plus": "^5.0.7",
     "jsonwebtoken": "^8.5.1",
     "mimetype": "0.0.8",
     "mongodb": "^3.6.6",

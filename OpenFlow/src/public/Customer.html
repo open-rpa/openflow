@@ -1,0 +1,43 @@
+<div class="row">
+    <div class="col-sm-7">
+        <h1 class="pagetitle" translate lib="web">customer</h1>
+    </div>
+</div>
+
+<pre ng-show="ErrorMessage!=null">{{ ErrorMessage }}</pre>
+<div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
+<form ng-submit="ctrl.submit()" class="form-horizontal" role="form" autocomplete="off">
+
+    <div class="form-group">
+        <label for="name" class="col-sm-2 control-label" translate lib="web">name</label>
+        <div class="col-sm-4">
+            <input ng-model="ctrl.model.name" class="form-control input-md" ng-disabled="ctrl.loading==true" />
+        </div>
+    </div>
+    <div class="form-group" ng-show="ctrl.model.stripeid && ctrl.model.stripeid != ''">
+        <label class="col-sm-2 control-label" translate lib="web">billing</label>
+        <div class="col-sm-4">
+            <button type="button" ng-click="ctrl.OpenPortal()" ng-disabled="ctrl.loading==true" class="btn btn-success"
+                translate lib="web">Portal</button>
+        </div>
+    </div>
+    <!-- <div class="form-group">
+        <label for="provider" class="col-sm-2 control-label" translate lib="web">provider</label>
+        <div class="col-sm-4">
+            <select class="form-control" ng-model="ctrl.model.provider">
+                <option value="saml">WS-Federation/SAML</option>
+                <option value="google">Google OAuth</option>
+                <option value="local">Username/Password</option>
+            </select>
+        </div>
+    </div> -->
+
+
+    <div class="form-group">
+        <div class="col-sm-offset-2 col-sm-10">
+            <button type="submit" ng-disabled="ctrl.loading==true" class="btn btn-success" translate
+                lib="web">Save</button>
+        </div>
+    </div>
+
+</form>

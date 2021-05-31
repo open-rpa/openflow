@@ -53,6 +53,92 @@ export class jsutil {
         });
     }
 }
+export class MenuCtrl {
+    public user: TokenUser;
+    public signedin: boolean = false;
+    public path: string = "";
+    public searchstring: string = "";
+    public static $inject = [
+        "$rootScope",
+        "$scope",
+        "$location",
+        "$routeParams",
+        "WebSocketClientService",
+        "api"
+    ];
+    public customer: Base;
+    public customers: Base[];
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api
+    ) {
+        console.debug("MenuCtrl::constructor");
+        $scope.$root.$on('$routeChangeStart', (...args) => { this.routeChangeStart.apply(this, args); });
+        this.path = this.$location.path();
+        const halfmoon = require("halfmoon");
+        halfmoon.onDOMContentLoaded();
+        const cleanup = this.$scope.$on('signin', async (event, data) => {
+            if (event && data) { }
+            this.user = data;
+            this.signedin = true;
+
+            this.customers = await NoderedUtil.Query("users", { _type: "customer" }, null, null, 100, 0, null, null, null, 2);
+            if (this.customers.length == 1) this.customer = this.customers[0];
+            if (this.customers.length > 1 && data.customerid != null) {
+                for (let cust of this.customers)
+                    if (cust._id == data.customerid) this.customer = cust;
+            }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            // cleanup();
+        });
+        this.$scope.$on('setsearch', (event, data) => {
+            if (event && data) { }
+            console.log("setsearch", data)
+            this.searchstring = data;
+        });
+        this.$scope.$on('menurefresh', async (event, data) => {
+            if (event && data) { }
+            this.customers = await NoderedUtil.Query("users", { _type: "customer" }, null, null, 100, 0, null, null, null, 2);
+            if (this.customers.length == 1) this.customer = this.customers[0];
+            if (this.customers.length > 1 && data.customerid != null) {
+                for (let cust of this.customers)
+                    if (cust._id == data.customerid) this.customer = cust;
+            }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        });
+    }
+    routeChangeStart(event: any, next: any, current: any) {
+        this.path = this.$location.path();
+    }
+    hasrole(role: string) {
+        if (this.WebSocketClientService.user === null || this.WebSocketClientService.user === undefined) return false;
+        const hits = this.WebSocketClientService.user.roles.filter(member => member.name == role);
+        return (hits.length == 1)
+    }
+    hascordova() {
+        return this.WebSocketClientService.usingCordova;
+    }
+    stopimpersonation() {
+        // this.WebSocketClientService.loadToken();
+        this.WebSocketClientService.impersonate("-1");
+    }
+    PathIs(path: string) {
+        if (path == null && path == undefined) return false;
+        if (this.path == null && this.path == undefined) return false;
+        return this.path.toLowerCase().startsWith(path.toLowerCase());
+    }
+    toggleDarkMode() {
+        const halfmoon = require("halfmoon");
+        halfmoon.toggleDarkMode();
+    }
+    Search() {
+        this.$rootScope.$broadcast("search", this.searchstring);
+    }
+}
 export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
     public arguments: any;
     public users: TokenUser[];
@@ -61,6 +147,7 @@ export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
     public queuename: string = "";
     public timeout: string = (60 * 1000).toString(); // 1 min;
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -68,7 +155,7 @@ export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
         public WebSocketClientService: WebSocketClientService,
         public api: api
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
         console.debug("RPAWorkflowCtrl");
         this.collection = "openrpa";
         this.messages = "";
@@ -942,73 +1029,6 @@ export class LoginCtrl {
     }
 
 }
-export class MenuCtrl {
-    public user: TokenUser;
-    public signedin: boolean = false;
-    public path: string = "";
-    public searchstring: string = "";
-    public static $inject = [
-        "$rootScope",
-        "$scope",
-        "$location",
-        "$routeParams",
-        "WebSocketClientService",
-        "api"
-    ];
-    constructor(
-        public $rootScope: ng.IRootScopeService,
-        public $scope: ng.IScope,
-        public $location: ng.ILocationService,
-        public $routeParams: ng.route.IRouteParamsService,
-        public WebSocketClientService: WebSocketClientService,
-        public api: api
-    ) {
-        console.debug("MenuCtrl::constructor");
-        $scope.$root.$on('$routeChangeStart', (...args) => { this.routeChangeStart.apply(this, args); });
-        this.path = this.$location.path();
-        const halfmoon = require("halfmoon");
-        halfmoon.onDOMContentLoaded();
-        const cleanup = this.$scope.$on('signin', (event, data) => {
-            if (event && data) { }
-            this.user = data;
-            this.signedin = true;
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            // cleanup();
-        });
-        this.$scope.$on('setsearch', (event, data) => {
-            console.log("setsearch", data)
-            this.searchstring = data;
-        });
-
-    }
-    routeChangeStart(event: any, next: any, current: any) {
-        this.path = this.$location.path();
-    }
-    hasrole(role: string) {
-        if (this.WebSocketClientService.user === null || this.WebSocketClientService.user === undefined) return false;
-        const hits = this.WebSocketClientService.user.roles.filter(member => member.name == role);
-        return (hits.length == 1)
-    }
-    hascordova() {
-        return this.WebSocketClientService.usingCordova;
-    }
-    stopimpersonation() {
-        // this.WebSocketClientService.loadToken();
-        this.WebSocketClientService.impersonate("-1");
-    }
-    PathIs(path: string) {
-        if (path == null && path == undefined) return false;
-        if (this.path == null && this.path == undefined) return false;
-        return this.path.toLowerCase().startsWith(path.toLowerCase());
-    }
-    toggleDarkMode() {
-        const halfmoon = require("halfmoon");
-        halfmoon.toggleDarkMode();
-    }
-    Search() {
-        this.$rootScope.$broadcast("search", this.searchstring);
-    }
-}
 export class ProvidersCtrl extends entitiesCtrl<Provider> {
     constructor(
         public $rootScope: ng.IRootScopeService,
@@ -1031,6 +1051,7 @@ export class ProvidersCtrl extends entitiesCtrl<Provider> {
 }
 export class ProviderCtrl extends entityCtrl<Provider> {
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -1038,7 +1059,7 @@ export class ProviderCtrl extends entityCtrl<Provider> {
         public WebSocketClientService: WebSocketClientService,
         public api: api
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
         console.debug("ProviderCtrl");
         this.collection = "config";
         WebSocketClientService.onSignedin((user: TokenUser) => {
@@ -1145,6 +1166,7 @@ export class UserCtrl extends entityCtrl<TokenUser> {
     public newid: string;
     public memberof: Role[];
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -1152,7 +1174,7 @@ export class UserCtrl extends entityCtrl<TokenUser> {
         public WebSocketClientService: WebSocketClientService,
         public api: api
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
         console.debug("UserCtrl");
         this.collection = "users";
         this.postloadData = this.processdata;
@@ -1286,6 +1308,7 @@ export class RoleCtrl extends entityCtrl<Role> {
     e: any = null;
 
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -1293,7 +1316,7 @@ export class RoleCtrl extends entityCtrl<Role> {
         public WebSocketClientService: WebSocketClientService,
         public api: api
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
         console.debug("RoleCtrl");
         this.collection = "users";
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
@@ -1691,6 +1714,7 @@ export class EditFormCtrl extends entityCtrl<Form> {
     public formBuilder: any;
     public Formiobuilder: any;
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -1698,7 +1722,7 @@ export class EditFormCtrl extends entityCtrl<Form> {
         public WebSocketClientService: WebSocketClientService,
         public api: api
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
         console.debug("EditFormCtrl");
         this.collection = "forms";
         this.basequery = {};
@@ -1730,12 +1754,16 @@ export class EditFormCtrl extends entityCtrl<Form> {
         } else {
             // allready there
         }
-        if (this.model._id) {
-            this.model = await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null, 2);
-        } else {
-            this.model = await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
+        try {
+            if (this.model._id) {
+                this.model = await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null, 2);
+            } else {
+                this.model = await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
+            }
+            this.$location.path("/Forms");
+        } catch (error) {
+            this.errormessage = error;
         }
-        this.$location.path("/Forms");
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     async renderform() {
@@ -1868,6 +1896,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
     public queue_message_timeout: number = 1000;
 
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -1875,7 +1904,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         public WebSocketClientService: WebSocketClientService,
         public api: api
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
         this.myid = new Date().toISOString();
         console.debug("FormCtrl");
         this.collection = "workflow";
@@ -2470,6 +2499,7 @@ export class EntityCtrl extends entityCtrl<Base> {
     public jsonmodel: string = "";
     public message: string = "";
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -2477,7 +2507,7 @@ export class EntityCtrl extends entityCtrl<Base> {
         public WebSocketClientService: WebSocketClientService,
         public api: api
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
         console.debug("EntityCtrl");
         this.collection = $routeParams.collection;
         this.postloadData = this.processdata;
@@ -3445,6 +3475,7 @@ export class SignupCtrl extends entityCtrl<Base> {
     public jsonmodel: string = "";
     public message: string = "";
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -3452,7 +3483,7 @@ export class SignupCtrl extends entityCtrl<Base> {
         public WebSocketClientService: WebSocketClientService,
         public api: api
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
         console.debug("SignupCtrl");
         this.collection = $routeParams.collection;
         this.postloadData = this.processdata;
@@ -3499,6 +3530,7 @@ export class PaymentCtrl extends entityCtrl<Billing> {
     public nextbill: stripe_invoice;
 
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -3506,7 +3538,7 @@ export class PaymentCtrl extends entityCtrl<Billing> {
         public WebSocketClientService: WebSocketClientService,
         public api: api
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
         console.debug("PaymentCtrl");
         //this.collection = $routeParams.collection;
         this.userid = $routeParams.userid;
@@ -3903,6 +3935,7 @@ export class QueueCtrl extends entityCtrl<Base> {
     public memberof: Role[];
     public data: any;
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -3910,7 +3943,7 @@ export class QueueCtrl extends entityCtrl<Base> {
         public WebSocketClientService: WebSocketClientService,
         public api: api
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
         console.debug("QueueCtrl");
         this.collection = "configclients";
         this.postloadData = this.processdata;
@@ -4107,6 +4140,7 @@ export class CredentialCtrl extends entityCtrl<Base> {
     searchtext: string = "";
     e: any = null;
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -4114,7 +4148,7 @@ export class CredentialCtrl extends entityCtrl<Base> {
         public WebSocketClientService: WebSocketClientService,
         public api: api
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
         console.debug("CredentialCtrl");
         this.collection = "openrpa";
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
@@ -4412,6 +4446,7 @@ export class OAuthClientCtrl extends entityCtrl<Base> {
     e: any = null;
     public rolemappings: any;
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -4419,7 +4454,7 @@ export class OAuthClientCtrl extends entityCtrl<Base> {
         public WebSocketClientService: WebSocketClientService,
         public api: api
     ) {
-        super($scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
         console.debug("OAuthClientCtrl");
         this.collection = "config";
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
@@ -4816,4 +4851,457 @@ export class DeletedCtrl extends entitiesCtrl<Base> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         // this.loadData();
     }
+}
+
+export class CustomerCtrl extends entityCtrl<Base> {
+    public stripe_customer: stripe_customer;
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api
+    ) {
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        console.debug("CustomerCtrl");
+        this.collection = "users";
+        this.postloadData = this.processdata;
+        WebSocketClientService.onSignedin((user: TokenUser) => {
+            if (this.id !== null && this.id !== undefined) {
+                this.loadData();
+            } else {
+                try {
+                    this.model = new Base();
+                    this.model.name = (WebSocketClientService.user as any).company;
+                    if (this.model.name == null || this.model.name == "") this.model.name = WebSocketClientService.user.name;
+                    this.model._type = "customer";
+                } catch (error) {
+                }
+            }
+        });
+    }
+    async submit(): Promise<void> {
+        try {
+            if (this.model._id) {
+                await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null, 2);
+            } else {
+                await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
+            }
+            this.$rootScope.$broadcast("menurefresh");
+            this.$location.path("/");
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error;
+        }
+    }
+    async processdata() {
+        try {
+            // this.stripe_customer = await NoderedUtil.EnsureStripeCustomer(this.model, this.userid, null, 2);
+
+        } catch (error) {
+
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+
+    async OpenPortal() {
+        try {
+            var payload: stripe_base = {} as any;
+            (payload as any).customer = this.stripe_customer.id;
+            var session: any = await NoderedUtil.Stripe("POST", "billing_portal/sessions", null, null, payload, null, 2);
+            if (session && session.url) {
+                window.open(session.url, '_blank');
+                // window.location.href = session.url;
+            } else {
+                this.errormessage = "Failed getting portal session url";
+            }
+        } catch (error) {
+            console.error(error);
+            this.errormessage = error;
+        }
+    }
+    async CheckOut(planid: string, subplanid: string) {
+        try {
+            // const result = await NoderedUtil.StripeAddPlan(this.userid, planid, subplanid, null, 2);
+            // if (result.checkout) {
+            //     const stripe = Stripe(this.WebSocketClientService.stripe_api_key);
+            //     stripe
+            //         .redirectToCheckout({
+            //             sessionId: result.checkout.id,
+            //         })
+            //         .then(function (event) {
+            //             if (event.complete) {
+            //                 // enable payment button
+            //             } else if (event.error) {
+            //                 console.error(event.error);
+            //                 if (event.error && event.error.message) {
+            //                     this.cardmessage = event.error.message;
+            //                 } else {
+            //                     this.cardmessage = event.error;
+            //                 }
+            //                 console.error(event.error);
+
+            //                 // show validation to customer
+            //             } else {
+            //             }
+            //         }).catch((error) => {
+            //             console.error(error);
+            //             this.errormessage = error;
+            //         });
+            // } else {
+            //     this.loadData();
+            // }
+        } catch (error) {
+            console.error(error);
+            this.errormessage = error;
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+
+    }
+}
+
+
+
+export class EntityRestrictionsCtrl extends entitiesCtrl<Base> {
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api,
+        public userdata: userdata
+    ) {
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        console.debug("EntityRestrictionsCtrl");
+        this.basequery = { _type: "restriction" };
+        this.collection = "config";
+        WebSocketClientService.onSignedin((user: TokenUser) => {
+            this.loadData();
+        });
+    }
+    async AddCommon() {
+        try {
+            this.newRestriction("Add to entities", "entities", ["$."]);
+            this.newRestriction("Create form in forms", "forms", ["$.[?(@._type == 'form')]"]);
+            this.newRestriction("Create workflow in openrpa", "openrpa", ["$.[?(@._type == 'workflow')]"]);
+            this.newRestriction("Create project in openrpa", "openrpa", ["$.[?(@._type == 'project')]"]);
+            this.newRestriction("Create detector in openrpa", "openrpa", ["$.[?(@._type == 'detector')]"]);
+            this.newRestriction("Create credential in openrpa", "openrpa", ["$.[?(@._type == 'credential')]"]);
+            this.newRestriction("Create unattendedserver in openrpa", "openrpa", ["$.[?(@._type == 'unattendedserver')]"]);
+            this.newRestriction("Create unattendedclient in openrpa", "openrpa", ["$.[?(@._type == 'unattendedclient')]"]);
+            this.newRestriction("Create workflowinstance in openrpa_instances", "openrpa_instances", ["$.[?(@._type == 'workflowinstance')]"]);
+            this.newRestriction("Create workflow in workflows", "workflows", ["$.[?(@._type == 'workflow')]"]);
+            this.newRestriction("Create setting in nodered", "nodered", ["$.[?(@._type == 'setting')]"]);
+            this.newRestriction("Create session in nodered", "nodered", ["$.[?(@._type == 'session')]"]);
+            this.newRestriction("Create npmrc in nodered", "nodered", ["$.[?(@._type == 'npmrc')]"]);
+            this.newRestriction("Create flow in nodered", "nodered", ["$.[?(@._type == 'flow')]"]);
+            this.newRestriction("Create credential in nodered", "nodered", ["$.[?(@._type == 'credential')]"]);
+            this.loadData();
+        } catch (error) {
+            this.errormessage = error;
+        }
+    }
+    async newRestriction(name: string, collection: string, paths: string[]) {
+        var results = await NoderedUtil.Query(this.collection, { "name": name }, null, null, 1, 0, null, null, null, 2);
+        const model: Base = (results.length == 1 ? results[0] : {} as any);
+        model.name = name;
+        model._type = "restriction";
+        model._acl = [];
+        Base.addRight(model, "5a1702fa245d9013697656fb", "admins", [-1]);
+        Base.addRight(model, "5a17f157c4815318c8536c21", "users", [1]);
+        (model as any).copyperm = false;
+        (model as any).collection = collection;
+        (model as any).paths = paths;
+        if (model._id) {
+            console.log("updating " + name);
+            await NoderedUtil.UpdateOne(this.collection, null, model, 1, false, null, 2);
+        } else {
+            console.log("adding " + name);
+            await NoderedUtil.InsertOne(this.collection, model, 1, false, null, 2);
+        }
+    }
+}
+export class EntityRestrictionCtrl extends entityCtrl<Base> {
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api
+    ) {
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        console.debug("EntityRestrictionCtrl");
+        this.collection = "config";
+        WebSocketClientService.onSignedin((user: TokenUser) => {
+            if (this.id !== null && this.id !== undefined) {
+                this.loadData();
+            } else {
+                this.model = {} as any;
+                this.model.name = "";
+                this.model.name = "Create test in entities";
+                this.model._type = "restriction";
+                this.model._acl = [];
+                Base.addRight(this.model, "5a1702fa245d9013697656fb", "admins", [-1]);
+                Base.addRight(this.model, "5a17f157c4815318c8536c21", "users", [1]);
+                (this.model as any).copyperm = false;
+                (this.model as any).collection = "entities";
+                (this.model as any).paths = ["$.[?(@._type == 'test')]"];
+            }
+        });
+    }
+    deleteid(id) {
+        if ((this.model as any).paths === null || (this.model as any).paths === undefined) {
+            (this.model as any).paths = [];
+        }
+        this.newpath = id;
+        (this.model as any).paths = (this.model as any).paths.filter(function (m: any): boolean { return m !== id; });
+    }
+    public newpath: string = "";
+    addid() {
+        if ((this.model as any).paths === null || (this.model as any).paths === undefined) {
+            (this.model as any).paths = [];
+        }
+        if ((this.model as any).paths.indexOf(this.newpath) == -1) (this.model as any).paths.push(this.newpath);
+        this.newpath = "";
+    }
+    async submit(): Promise<void> {
+        if (this.newpath != "") this.addid();
+        try {
+            if (this.model._id) {
+                await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null, 2);
+            } else {
+                await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
+            }
+            this.$location.path("/EntityRestrictions");
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error;
+        }
+    }
+
+
+
+    removeuser(_id) {
+        if (this.collection == "files") {
+            for (let i = 0; i < (this.model as any).metadata._acl.length; i++) {
+                if ((this.model as any).metadata._acl[i]._id == _id) {
+                    (this.model as any).metadata._acl.splice(i, 1);
+                }
+            }
+        } else {
+            for (let i = 0; i < this.model._acl.length; i++) {
+                if (this.model._acl[i]._id == _id) {
+                    this.model._acl.splice(i, 1);
+                    //this.model._acl = this.model._acl.splice(index, 1);
+                }
+            }
+        }
+
+    }
+    adduser() {
+        const ace = new Ace();
+        ace.deny = false;
+        ace._id = this.searchSelectedItem._id;
+        ace.name = this.searchSelectedItem.name;
+        // ace.rights = "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=";
+        if (this.WebSocketClientService.user._id != ace._id) {
+            ace.rights = this.setBit(ace.rights, 1);
+            ace.rights = this.unsetBit(ace.rights, 2);
+            ace.rights = this.unsetBit(ace.rights, 3);
+            ace.rights = this.unsetBit(ace.rights, 4);
+            ace.rights = this.unsetBit(ace.rights, 5);
+        }
+
+        if (this.collection == "files") {
+            (this.model as any).metadata._acl.push(ace);
+        } else {
+            this.model._acl.push(ace);
+        }
+        this.searchSelectedItem = null;
+        this.searchtext = "";
+    }
+
+    isBitSet(base64: string, bit: number): boolean {
+        bit--;
+        const buf = this._base64ToArrayBuffer(base64);
+        const view = new Uint8Array(buf);
+        const octet = Math.floor(bit / 8);
+        const currentValue = view[octet];
+        const _bit = (bit % 8);
+        const mask = Math.pow(2, _bit);
+        return (currentValue & mask) != 0;
+    }
+    setBit(base64: string, bit: number) {
+        bit--;
+        const buf = this._base64ToArrayBuffer(base64);
+        const view = new Uint8Array(buf);
+        const octet = Math.floor(bit / 8);
+        const currentValue = view[octet];
+        const _bit = (bit % 8);
+        const mask = Math.pow(2, _bit);
+        const newValue = currentValue | mask;
+        view[octet] = newValue;
+        return this._arrayBufferToBase64(view);
+    }
+    unsetBit(base64: string, bit: number) {
+        bit--;
+        const buf = this._base64ToArrayBuffer(base64);
+        const view = new Uint8Array(buf);
+        const octet = Math.floor(bit / 8);
+        let currentValue = view[octet];
+        const _bit = (bit % 8);
+        const mask = Math.pow(2, _bit);
+        const newValue = currentValue &= ~mask;
+        view[octet] = newValue;
+        return this._arrayBufferToBase64(view);
+    }
+    toogleBit(a: any, bit: number) {
+        if (this.isBitSet(a.rights, bit)) {
+            a.rights = this.unsetBit(a.rights, bit);
+        } else {
+            a.rights = this.setBit(a.rights, bit);
+        }
+        const buf2 = this._base64ToArrayBuffer(a.rights);
+        const view2 = new Uint8Array(buf2);
+    }
+    _base64ToArrayBuffer(string_base64): ArrayBuffer {
+        const binary_string = window.atob(string_base64);
+        const len = binary_string.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+            //const ascii = string_base64.charCodeAt(i);
+            const ascii = binary_string.charCodeAt(i);
+            bytes[i] = ascii;
+        }
+        return bytes.buffer;
+    }
+    _arrayBufferToBase64(array_buffer): string {
+        let binary = '';
+        const bytes = new Uint8Array(array_buffer);
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+            binary += String.fromCharCode(bytes[i])
+        }
+        return window.btoa(binary);
+    }
+
+
+
+    searchFilteredList: Role[] = [];
+    searchSelectedItem: Role = null;
+    searchtext: string = "";
+    e: any = null;
+
+    restrictInput(e) {
+        if (e.keyCode == 13) {
+            e.preventDefault();
+            return false;
+        }
+    }
+    setkey(e) {
+        this.e = e;
+        this.handlekeys();
+    }
+    handlekeys() {
+        if (this.searchFilteredList.length > 0) {
+            let idx: number = -1;
+            for (let i = 0; i < this.searchFilteredList.length; i++) {
+                if (this.searchSelectedItem != null) {
+                    if (this.searchFilteredList[i]._id == this.searchSelectedItem._id) {
+                        idx = i;
+                    }
+                }
+            }
+            if (this.e.keyCode == 38) { // up
+                if (idx <= 0) {
+                    idx = 0;
+                } else { idx--; }
+                console.debug("idx: " + idx);
+                // this.searchtext = this.searchFilteredList[idx].name;
+                this.searchSelectedItem = this.searchFilteredList[idx];
+                return;
+            }
+            else if (this.e.keyCode == 40) { // down
+                if (idx >= this.searchFilteredList.length) {
+                    idx = this.searchFilteredList.length - 1;
+                } else { idx++; }
+                console.debug("idx: " + idx);
+                // this.searchtext = this.searchFilteredList[idx].name;
+                this.searchSelectedItem = this.searchFilteredList[idx];
+                return;
+            }
+            else if (this.e.keyCode == 13) { // enter
+                if (idx >= 0) {
+                    this.searchtext = this.searchFilteredList[idx].name;
+                    this.searchSelectedItem = this.searchFilteredList[idx];
+                    this.searchFilteredList = [];
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                }
+                return;
+            }
+            else {
+                // console.debug(this.e.keyCode);
+            }
+        } else {
+            if (this.e.keyCode == 13 && this.searchSelectedItem != null) {
+                this.adduser();
+            }
+        }
+    }
+    async handlefilter(e) {
+        this.e = e;
+        // console.debug(e.keyCode);
+        let ids: string[];
+        if (this.collection == "files") {
+            ids = (this.model as any).metadata._acl.map(item => item._id);
+        } else {
+            ids = this.model._acl.map(item => item._id);
+        }
+        this.searchFilteredList = await NoderedUtil.Query("users",
+            {
+                $and: [
+                    { $or: [{ _type: "user" }, { _type: "role" }] },
+                    { name: this.searchtext }
+                ]
+            }
+            , null, { _type: -1, name: 1 }, 2, 0, null, null, null, 2);
+
+        this.searchFilteredList = this.searchFilteredList.concat(await NoderedUtil.Query("users",
+            {
+                $and: [
+                    { $or: [{ _type: "user" }, { _type: "role" }] },
+                    { name: new RegExp([this.searchtext].join(""), "i") },
+                    { _id: { $nin: ids } }
+                ]
+            }
+            , null, { _type: -1, name: 1 }, 5, 0, null, null, null, 2));
+
+        // this.searchFilteredList = await NoderedUtil.Query("users",
+        //     {
+        //         $and: [
+        //             { $or: [{ _type: "user" }, { _type: "role" }] },
+        //             { name: new RegExp([this.searchtext].join(""), "i") },
+        //             { _id: { $nin: ids } }
+        //         ]
+        //     }
+        //     , null, { _type: -1, name: 1 }, 5, 0, null);
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    fillTextbox(searchtext) {
+        this.searchFilteredList.forEach((item: any) => {
+            if (item.name.toLowerCase() == searchtext.toLowerCase()) {
+                this.searchtext = item.name;
+                this.searchSelectedItem = item;
+                this.searchFilteredList = [];
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            }
+        });
+    }
+
 }
