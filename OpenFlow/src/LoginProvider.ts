@@ -417,7 +417,8 @@ export class LoginProvider {
                     supports_watch: Config.supports_watch,
                     nodered_images: Config.nodered_images,
                     amqp_enabled_exchange: Config.amqp_enabled_exchange,
-                    multi_tenant: Config.multi_tenant
+                    multi_tenant: Config.multi_tenant,
+                    enable_entity_restriction: Config.enable_entity_restriction,
                 }
                 res.end(JSON.stringify(res2));
             } catch (error) {

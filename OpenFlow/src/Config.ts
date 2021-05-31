@@ -30,6 +30,7 @@ export class Config {
         Config.openflow_amqp_expiration = parseInt(Config.getEnv("openflow_amqp_expiration", (60 * 1000 * 25).toString())); // 25 min
         Config.amqp_prefetch = parseInt(Config.getEnv("amqp_prefetch", "50"));
         Config.trace_dashboardauth = Config.parseBoolean(Config.getEnv("trace_dashboardauth", "true"));
+        Config.enable_entity_restriction = Config.parseBoolean(Config.getEnv("enable_entity_restriction", "false"));
 
 
         Config.getting_started_url = Config.getEnv("getting_started_url", "");
@@ -161,6 +162,7 @@ export class Config {
     public static openflow_amqp_expiration: number = parseInt(Config.getEnv("openflow_amqp_expiration", (60 * 1000 * 25).toString())); // 25 min
     public static amqp_prefetch: number = parseInt(Config.getEnv("amqp_prefetch", "50"));
     public static trace_dashboardauth: boolean = Config.parseBoolean(Config.getEnv("trace_dashboardauth", "true"));
+    public static enable_entity_restriction: boolean = Config.parseBoolean(Config.getEnv("enable_entity_restriction", "false"));
 
     public static getting_started_url: string = Config.getEnv("getting_started_url", "");
 

@@ -2012,6 +2012,7 @@ export class DatabaseConnection {
     }
     public EntityRestrictions: EntityRestriction[] = null;
     async CheckEntityRestriction(user: TokenUser, collection: string, item: Base, parent: Span): Promise<boolean> {
+        if (!Config.enable_entity_restriction) return true;
         if (this.EntityRestrictions == null) {
             const rootjwt = Crypt.rootToken()
             this.EntityRestrictions = await this.query<EntityRestriction>({ "_type": "restriction" }, null, 1000, 0, null, "config", rootjwt, null, null, parent);

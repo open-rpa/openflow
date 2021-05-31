@@ -37,6 +37,7 @@ export class WebSocketClientService {
                 this.multi_tenant = data.multi_tenant;
 
                 this.nodered_images = data.nodered_images;
+                this.enable_entity_restriction = data.enable_entity_restriction;
 
                 if (WebSocketClient.instance == null) {
                     const cli: WebSocketClient = new WebSocketClient(this.logger, wsurl);
@@ -160,6 +161,7 @@ export class WebSocketClientService {
     public validate_user_form: string = "";
     public nodered_images: nodered_image[];
     public multi_tenant: boolean;
+    public enable_entity_restriction: boolean;
 
     getJSON(url: string, callback: any): void {
         const xhr: XMLHttpRequest = new XMLHttpRequest();

@@ -58,8 +58,9 @@
                 translate lib="web">roles</span></a>
             <a class="dropdown-item" href="#/Credentials"><span translate lib="web">credentials</span></a>
             <a class="dropdown-item" href="#/Auditlogs"><span translate lib="web">auditlogs</span></a>
-            <a class="dropdown-item" href="#/EntityRestrictions" ng-show="menuctrl.hasrole('admins')"><span translate
-                lib="web">entityrestrictions</span></a>
+            <a class="dropdown-item" href="#/EntityRestrictions"
+              ng-show="menuctrl.WebSocketClientService.enable_entity_restriction && menuctrl.hasrole('admins')"><span
+                translate lib="web">entityrestrictions</span></a>
             <a class="dropdown-item" href="#/Forms"><span translate lib="web">forms</span></a>
             <a class="dropdown-item" href="#/Providers" ng-show="menuctrl.hasrole('admins')"><span translate
                 lib="web">providers</span></a>
