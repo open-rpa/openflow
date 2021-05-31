@@ -51,11 +51,11 @@
           </button>
           <div class="dropdown-menu dropdown-menu-right w-200" aria-labelledby="navbar-dropdown-toggle-btn-1">
             <a class="dropdown-item" href="#/Users"
-              ng-show="!menuctrl.WebSocketClientService.multi_tenant || menuctrl.hasrole('admins')"><span translate
-                lib="web">users</span></a>
+              ng-show="!menuctrl.WebSocketClientService.multi_tenant || (menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins'))"><span
+                translate lib="web">users</span></a>
             <a class="dropdown-item" href="#/Roles"
-              ng-show="!menuctrl.WebSocketClientService.multi_tenant || menuctrl.hasrole('admins')"><span translate
-                lib="web">roles</span></a>
+              ng-show="!menuctrl.WebSocketClientService.multi_tenant || (menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins'))"><span
+                translate lib="web">roles</span></a>
             <a class="dropdown-item" href="#/Credentials"><span translate lib="web">credentials</span></a>
             <a class="dropdown-item" href="#/Auditlogs"><span translate lib="web">auditlogs</span></a>
             <a class="dropdown-item" href="#/EntityRestrictions" ng-show="menuctrl.hasrole('admins')"><span translate
@@ -72,7 +72,7 @@
           </div>
         </div>
 
-        <div class="dropdown with-arrow"
+        <!-- <div class="dropdown with-arrow"
           ng-show="menuctrl.WebSocketClientService.multi_tenant && menuctrl.customers != null && menuctrl.customers.length > 1">
           <button class="btn" data-toggle="dropdown" type="button" id="navbar-dropdown-toggle-btn-1">
             <span>{{menuctrl.customer.name}}</span>
@@ -82,10 +82,10 @@
             <a class="dropdown-item" ng-href="#/Customer/{{model._id}}"
               ng-repeat="model in menuctrl.customers">{{model.name}}</a>
           </div>
-        </div>
+        </div> -->
       </ul>
       <form class="form-inline d-none d-md-flex ml-auto">
-        <div ng-class="{active: menuctrl.PathIs('/Customer')}"
+        <!-- <div ng-class="{active: menuctrl.PathIs('/Customer')}"
           ng-show="menuctrl.WebSocketClientService.multi_tenant && menuctrl.customer == null">
           <a href="#/Customer" class="nav-link">
             <span translate lib="web">create customer</span></a>
@@ -93,7 +93,7 @@
         <div ng-class="{active: menuctrl.PathIs('/Customer')}"
           ng-show="menuctrl.WebSocketClientService.multi_tenant && menuctrl.customer != null">
           <a ng-href="#/Customer/{{menuctrl.customer._id}}" class="nav-link">{{menuctrl.customer.name}}</a>
-        </div>
+        </div> -->
 
         <input type="text" class="form-control" placeholder="Search" ng-model="menuctrl.searchstring"
           ng-change="menuctrl.Search()"

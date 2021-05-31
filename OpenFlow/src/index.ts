@@ -143,6 +143,8 @@ async function initDatabase(): Promise<boolean> {
     const span: Span = Logger.otel.startSpan("initDatabase");
     try {
         const jwt: string = Crypt.rootToken();
+
+
         const admins: Role = await DBHelper.EnsureRole(jwt, "admins", WellknownIds.admins, span);
         const users: Role = await DBHelper.EnsureRole(jwt, "users", WellknownIds.users, span);
         const root: User = await DBHelper.ensureUser(jwt, "root", "root", WellknownIds.root, null, span);
@@ -223,6 +225,19 @@ async function initDatabase(): Promise<boolean> {
             Base.addRight(nodered_api_users, nodered_api_users._id, "nodered api users", [Rights.read]);
         }
         await DBHelper.Save(nodered_api_users, jwt, span);
+
+        if (Config.multi_tenant) {
+            try {
+                const customer_admins: Role = await DBHelper.EnsureRole(jwt, "customer admins", '5a1702fa245d9013697656fc', span);
+                Base.addRight(customer_admins, WellknownIds.admins, "admins", [Rights.full_control]);
+                Base.removeRight(customer_admins, WellknownIds.admins, [Rights.delete]);
+                Base.removeRight(customer_admins, '5a1702fa245d9013697656fc', [Rights.full_control]);
+                await DBHelper.Save(customer_admins, jwt, span);
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
 
         const robot_admins: Role = await DBHelper.EnsureRole(jwt, "robot admins", WellknownIds.robot_admins, span);
         robot_admins.AddMember(admins);

@@ -185,7 +185,8 @@ export class DatabaseConnection {
         WellknownIds.robot_users,
         WellknownIds.robot_admins,
         WellknownIds.personal_nodered_users,
-        WellknownIds.robot_agent_users
+        WellknownIds.robot_agent_users,
+        '5a1702fa245d9013697656fc'
     ]
     WellknownNamesArray: string[] = [
         "root",
@@ -215,7 +216,8 @@ export class DatabaseConnection {
         "robot users",
         "robot admins",
         "personal nodered users",
-        "robot agent users"
+        "robot agent users",
+        "customer admins"
 
     ]
 
@@ -873,7 +875,12 @@ export class DatabaseConnection {
                     item._version = basehist[0]._version;
                 }
                 if (basehist.length > 0) {
-                    const org = await this.GetDocumentVersion(collectionname, item._id, item._version, Crypt.rootToken(), span)
+                    let org: any = null;
+                    try {
+                        org = await this.GetDocumentVersion(collectionname, item._id, item._version, Crypt.rootToken(), span)
+                    } catch (error) {
+
+                    }
                     if (org != null) {
                         item._createdby = org._createdby;
                         item._createdbyid = org._createdbyid;
@@ -2007,7 +2014,7 @@ export class DatabaseConnection {
     async CheckEntityRestriction(user: TokenUser, collection: string, item: Base, parent: Span): Promise<boolean> {
         if (this.EntityRestrictions == null) {
             const rootjwt = Crypt.rootToken()
-            this.EntityRestrictions = await this.query<EntityRestriction>({ "_type": "restriction" }, null, 1, 0, null, "config", rootjwt, null, null, parent);
+            this.EntityRestrictions = await this.query<EntityRestriction>({ "_type": "restriction" }, null, 1000, 0, null, "config", rootjwt, null, null, parent);
             let allowadmins = new EntityRestriction();
             allowadmins.copyperm = false; allowadmins.collection = ""; allowadmins.paths = ["$."];
             Base.addRight(allowadmins, WellknownIds.admins, "admins", [Rights.create]);

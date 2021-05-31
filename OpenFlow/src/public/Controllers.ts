@@ -1085,10 +1085,10 @@ export class ProviderCtrl extends entityCtrl<Provider> {
                 await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
             }
             this.$location.path("/Providers");
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         } catch (error) {
             this.errormessage = error.message ? error.message : error;
         }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 }
 export class UsersCtrl extends entitiesCtrl<TokenUser> {
@@ -1337,10 +1337,11 @@ export class RoleCtrl extends entityCtrl<Role> {
                 // this.model = await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null);
             }
             this.$location.path("/Roles");
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         } catch (error) {
+            console.error(error);
             this.errormessage = error.message ? error.message : error;
         }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     RemoveMember(model: any) {
         if (this.model.members === undefined) { this.model.members = []; }
@@ -4171,10 +4172,10 @@ export class CredentialCtrl extends entityCtrl<Base> {
                 await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
             }
             this.$location.path("/Credentials");
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         } catch (error) {
             this.errormessage = error.message ? error.message : error;
         }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 
 
@@ -4489,10 +4490,10 @@ export class OAuthClientCtrl extends entityCtrl<Base> {
                 await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
             }
             this.$location.path("/OAuthClients");
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         } catch (error) {
             this.errormessage = error.message ? error.message : error;
         }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     deletefromarray(name: string, id: string) {
         if (id == null || id == "") return false;
@@ -4891,10 +4892,10 @@ export class CustomerCtrl extends entityCtrl<Base> {
             }
             this.$rootScope.$broadcast("menurefresh");
             this.$location.path("/");
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         } catch (error) {
             this.errormessage = error.message ? error.message : error;
         }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     async processdata() {
         try {
@@ -5079,10 +5080,10 @@ export class EntityRestrictionCtrl extends entityCtrl<Base> {
                 await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
             }
             this.$location.path("/EntityRestrictions");
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         } catch (error) {
             this.errormessage = error.message ? error.message : error;
         }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 
 

@@ -2757,7 +2757,7 @@ export class Message {
                 Base.addRight(msg.metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
             }
             msg.metadata = Config.db.ensureResource(msg.metadata);
-            if (!DatabaseConnection.hasAuthorization(user, msg.metadata, Rights.create)) { throw new Error("Access denied, no authorization to save file"); }
+            if (!NoderedUtil.hasAuthorization(user, msg.metadata, Rights.create)) { throw new Error("Access denied, no authorization to save file"); }
             msg.id = await this._SaveFile(readable, msg.filename, msg.mimeType, msg.metadata);
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -2880,7 +2880,7 @@ export class Message {
                 Base.addRight(msg.metadata, user._id, user.name, [Rights.full_control]);
             }
             Base.addRight(msg.metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
-            if (!DatabaseConnection.hasAuthorization(user, msg.metadata, Rights.update)) { throw new Error("Access denied, no authorization to update file"); }
+            if (!NoderedUtil.hasAuthorization(user, msg.metadata, Rights.update)) { throw new Error("Access denied, no authorization to update file"); }
 
             msg.metadata = Config.db.ensureResource(msg.metadata);
             const fsc = Config.db.db.collection("fs.files");
@@ -3378,53 +3378,53 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(billing.stripeid)) {
                 customer = await this.Stripe<stripe_customer>("GET", "customers", billing.stripeid, null, null);
             }
-            const payload: any = { name: billing.name, email: billing.email, metadata: { userid: msg.userid }, description: user.name };
+            let payload: any = { name: billing.name, email: billing.email, metadata: { userid: msg.userid }, description: user.name };
             if (customer == null) {
                 customer = await this.Stripe<stripe_customer>("POST", "customers", null, payload, null);
                 billing.stripeid = customer.id;
                 billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt, span);
             }
             if (customer != null && !NoderedUtil.IsNullEmpty(billing.vattype) && !NoderedUtil.IsNullEmpty(billing.vatnumber)) {
-                if (customer.tax_ids.total_count == 0) {
-                    (payload as any) = { value: billing.vatnumber, type: billing.vattype };
-                    await this.Stripe<stripe_customer>("POST", "tax_ids", null, payload, customer.id);
-                    dirty = true;
-                }
+                // if (customer.tax_ids.total_count == 0) {
+                //     (payload as any) = { value: billing.vatnumber, type: billing.vattype };
+                //     await this.Stripe<stripe_customer>("POST", "tax_ids", null, payload, customer.id);
+                //     dirty = true;
+                // }
             }
 
-            if ((billing.tax != 1 || billing.taxrate != "") && customer.tax_ids.total_count > 0) {
-                if (customer.tax_ids.data[0].verification.status == 'verified' || customer.tax_ids.data[0].verification.status == 'unavailable') {
-                    if (customer.tax_ids.data[0].verification.status == 'verified') {
-                        if (billing.name != customer.tax_ids.data[0].verification.verified_name ||
-                            billing.address != customer.tax_ids.data[0].verification.verified_address) {
-                            billing.name = customer.tax_ids.data[0].verification.verified_name;
-                            billing.address = customer.tax_ids.data[0].verification.verified_address;
-                            dirty = true;
-                        }
-                    }
-                    if ((billing.tax != 1 || billing.taxrate != "") && customer.tax_ids.data[0].country != "DK") {
-                        billing.tax = 1;
-                        billing.taxrate = "";
-                        dirty = true;
-                    }
-                    if (dirty == true) {
-                        billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt, span);
-                    }
-                }
-            } else if (billing.tax == 1 && customer.tax_ids.total_count == 0) {
-                const tax_rates = await this.Stripe<stripe_list<stripe_base>>("GET", "tax_rates", null, null, null);
-                if (tax_rates == null || tax_rates.total_count == 0) throw new Error("Failed getting tax_rates from stripe");
-                billing.taxrate = tax_rates.data[0].id;
-                billing.tax = 1 + ((tax_rates.data[0] as any).percentage / 100);
-                billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt, span);
-            } else if (customer.tax_ids.total_count > 0 && (customer.tax_ids.data[0].verification.status != 'verified' &&
-                customer.tax_ids.data[0].verification.status != 'unavailable') && billing.tax == 1) {
-                const tax_rates = await this.Stripe<stripe_list<stripe_base>>("GET", "tax_rates", null, null, null);
-                if (tax_rates == null || tax_rates.total_count == 0) throw new Error("Failed getting tax_rates from stripe");
-                billing.taxrate = tax_rates.data[0].id;
-                billing.tax = 1 + ((tax_rates.data[0] as any).percentage / 100);
-                billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt, span);
-            }
+            // if ((billing.tax != 1 || billing.taxrate != "") && customer.tax_ids.total_count > 0) {
+            //     if (customer.tax_ids.data[0].verification.status == 'verified' || customer.tax_ids.data[0].verification.status == 'unavailable') {
+            //         if (customer.tax_ids.data[0].verification.status == 'verified') {
+            //             if (billing.name != customer.tax_ids.data[0].verification.verified_name ||
+            //                 billing.address != customer.tax_ids.data[0].verification.verified_address) {
+            //                 billing.name = customer.tax_ids.data[0].verification.verified_name;
+            //                 billing.address = customer.tax_ids.data[0].verification.verified_address;
+            //                 dirty = true;
+            //             }
+            //         }
+            //         if ((billing.tax != 1 || billing.taxrate != "") && customer.tax_ids.data[0].country != "DK") {
+            //             billing.tax = 1;
+            //             billing.taxrate = "";
+            //             dirty = true;
+            //         }
+            //         if (dirty == true) {
+            //             billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt, span);
+            //         }
+            //     }
+            // } else if (billing.tax == 1 && customer.tax_ids.total_count == 0) {
+            //     const tax_rates = await this.Stripe<stripe_list<stripe_base>>("GET", "tax_rates", null, null, null);
+            //     if (tax_rates == null || tax_rates.total_count == 0) throw new Error("Failed getting tax_rates from stripe");
+            //     billing.taxrate = tax_rates.data[0].id;
+            //     billing.tax = 1 + ((tax_rates.data[0] as any).percentage / 100);
+            //     billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt, span);
+            // } else if (customer.tax_ids.total_count > 0 && (customer.tax_ids.data[0].verification.status != 'verified' &&
+            //     customer.tax_ids.data[0].verification.status != 'unavailable') && billing.tax == 1) {
+            //     const tax_rates = await this.Stripe<stripe_list<stripe_base>>("GET", "tax_rates", null, null, null);
+            //     if (tax_rates == null || tax_rates.total_count == 0) throw new Error("Failed getting tax_rates from stripe");
+            //     billing.taxrate = tax_rates.data[0].id;
+            //     billing.tax = 1 + ((tax_rates.data[0] as any).percentage / 100);
+            //     billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt, span);
+            // }
             if (dirty) {
                 if (!NoderedUtil.IsNullEmpty(billing.stripeid)) {
                     customer = await this.Stripe<stripe_customer>("GET", "customers", null, null, billing.stripeid);

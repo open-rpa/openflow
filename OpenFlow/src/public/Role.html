@@ -19,7 +19,6 @@
     }
 </style>
 
-<pre ng-show="ErrorMessage!=null">{{ ErrorMessage }}</pre>
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <form ng-submit="ctrl.submit()" class="form-horizontal" role="form" autocomplete="off">
 
@@ -56,8 +55,8 @@
                 <li class="list-group-item" ng-repeat="item in ctrl.searchFilteredList"
                     ng-click="ctrl.fillTextbox(item.name)"
                     ng-class="{listgroupitemselected: ctrl.searchSelectedItem._id==item._id}">
-                    ({{item._type}}) {{item.name}} <span
-                        ng-show="item.name != item.username">{{" " + item.username}}</span>
+                    ({{item._type}}) {{item.name}} <span ng-show="item.name != item.username">{{" " +
+                        item.username}}</span>
                 </li>
             </ul>
         </div>
