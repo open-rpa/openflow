@@ -1616,3 +1616,36 @@ you can set filename using msg.filename<br>
         }
     });
 </script>
+
+
+
+<script type="text/x-red" data-template-name="api housekeeping">
+    <div class="form-row">
+        <label><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>
+<script type="text/x-red" data-help-name="api housekeeping">
+    <p>Do openflow housekeeping <br>
+    </p>
+</script>
+<script type="text/javascript">
+    // https://fontawesome.com/v4.7/icon/list
+    RED.nodes.registerType('api housekeeping', {
+        category: 'api',
+        color: "#E9967A",
+        paletteLabel: 'housekeeping',
+        icon: "font-awesome/fa-list",
+        defaults: {
+            name: { value: "" },
+        },
+        inputs: 1,
+        outputs: 1,
+        label: function () {
+            return this.name || "housekeeping";
+        },
+        labelStyle: function () {
+            return this.name ? "node_label_italic" : "";
+        },
+    });
+</script>

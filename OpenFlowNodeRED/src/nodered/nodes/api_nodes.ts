@@ -1357,3 +1357,38 @@ export class list_collections {
     onclose() {
     }
 }
+
+
+
+
+
+export interface Ihousekeeping {
+    name: string;
+    results: string;
+}
+export class housekeeping {
+    public node: Red = null;
+    public name: string;
+    constructor(public config: Ihousekeeping) {
+        RED.nodes.createNode(this, config);
+        this.node = this;
+        this.name = config.name;
+        this.node.on("input", this.oninput);
+        this.node.on("close", this.onclose);
+    }
+    async oninput(msg: any) {
+        try {
+            let priority: number = 1;
+            if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
+
+            this.node.status({ fill: "blue", shape: "dot", text: "Running house keeping" });
+            await NoderedUtil.HouseKeeping(null, priority);
+            this.node.send(msg);
+            this.node.status({ fill: "green", shape: "dot", text: "Complete" });
+        } catch (error) {
+            NoderedUtil.HandleError(this, error, msg);
+        }
+    }
+    onclose() {
+    }
+}

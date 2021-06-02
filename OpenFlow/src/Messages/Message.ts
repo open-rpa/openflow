@@ -139,6 +139,9 @@ export class Message {
                 case "getnoderedinstance":
                     await this.GetNoderedInstance(span);
                     break;
+                case "housekeeping":
+                    await this.Housekeeping(false, false, false, span);
+                    break;
                 default:
                     span.recordException("Unknown command " + this.command);
                     this.UnknownCommand();
@@ -497,7 +500,13 @@ export class Message {
                 case "ensurecustomer":
                     await this.EnsureCustomer(cli, span);
                 case "housekeeping":
-                    await this.Housekeeping(span);
+                    this.EnsureJWT(cli);
+                    if (Config.enable_openflow_amqp) {
+                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                    } else {
+                        await this.DeleteNoderedPod(span);
+                        cli.Send(this);
+                    }
                     break;
                 default:
                     span.recordException("Unknown command " + command);
@@ -742,14 +751,17 @@ export class Message {
                 span.setAttribute("cache size", keys.length + 1);
                 msg.result = result;
             }
-            if (Config.enable_entity_restriction) {
+            const _tuser = Crypt.verityToken(this.jwt);
+            if (Config.enable_entity_restriction && !_tuser.HasRoleId("admins")) {
                 await Config.db.loadEntityRestrictions(span);
-                const tuser = Crypt.verityToken(this.jwt);
-                const authorized = Config.db.EntityRestrictions.filter(x => x.IsAuthorized(tuser));
-                const allall = authorized.filter(x => x.collection == "");
-                if (allall.length == 0) {
-                    const names = authorized.map(x => x.collection);
-                    msg.result = msg.result.filter(x => names.indexOf(x.name) > -1);
+                if (Config.db.EntityRestrictions.length > 1) {
+                    const tuser = Crypt.verityToken(this.jwt);
+                    const authorized = Config.db.EntityRestrictions.filter(x => x.IsAuthorized(tuser));
+                    const allall = authorized.filter(x => x.collection == "");
+                    if (allall.length == 0) {
+                        const names = authorized.map(x => x.collection);
+                        msg.result = msg.result.filter(x => names.indexOf(x.name) > -1);
+                    }
                 }
             } else {
                 var b = true;
@@ -3813,95 +3825,171 @@ export class Message {
         }
         Logger.otel.endSpan(span);
         this.Send(cli);
-    private async Housekeeping(parent: Span): Promise<void> {
+    }
+    formatBytes(bytes, decimals = 2) {
+        if (bytes === 0) return '0 Bytes';
+
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+    public async Housekeeping(skipNodered: boolean, skipCalculateSize: boolean, skipUpdateUserSize: boolean, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.QueueMessage", parent);
         try {
-            await this.GetNoderedInstance(span)
+            if (!skipNodered) await this.GetNoderedInstance(span)
         } catch (error) {
         }
         try {
             await Config.db.ensureindexes(span);
         } catch (error) {
         }
+        const timestamp = new Date(new Date().toISOString());
+        timestamp.setUTCHours(0, 0, 0, 0);
         try {
-            const jwt: string = Crypt.rootToken();
-            const timestamp = new Date(new Date().toISOString());
-            timestamp.setUTCHours(0, 0, 0, 0);
-            const collections = await Config.db.ListCollections(jwt);
-            for (let col of collections) {
-                Config.db.db.collection("dbusage").deleteMany({ timestamp: timestamp, collection: col.name });
-                let aggregates: any = [
-                    {
-                        "$project": {
-                            "_modifiedbyid": 1,
-                            "_modifiedby": 1,
-                            "object_size": { "$bsonSize": "$$ROOT" }
-                        }
-                    },
-                    {
-                        "$group": {
-                            "_id": "$_modifiedbyid",
-                            "size": { "$sum": "$object_size" },
-                            "name": { "$max": "$_modifiedby" }
-                        }
-                    },
-                    { $addFields: { "userid": "$_id" } },
-                    { $unset: "_id" },
-                    { $addFields: { "collection": col.name } },
-                    { $addFields: { timestamp: timestamp.toISOString() } },
-                ];
-                if (col.name == "fs.files") {
-                    aggregates = [
+            if (!skipCalculateSize) {
+
+                const user = Crypt.rootUser();
+                const tuser = TokenUser.From(user);
+                const jwt: string = Crypt.rootToken();
+                const collections = await Config.db.ListCollections(jwt);
+                let totalusage = 0;
+                let index = 0;
+                for (let col of collections) {
+                    if (col.name == "fs.chunks") continue;
+                    index++;
+                    Config.db.db.collection("dbusage").deleteMany({ timestamp: timestamp, collection: col.name });
+                    let aggregates: any = [
                         {
                             "$project": {
-                                "_modifiedbyid": "$metadata._modifiedbyid",
-                                "_modifiedby": "$metadata._modifiedby",
-                                "object_size": "$length"
+                                "_modifiedbyid": 1,
+                                "_modifiedby": 1,
+                                "object_size": { "$bsonSize": "$$ROOT" }
                             }
                         },
                         {
                             "$group": {
                                 "_id": "$_modifiedbyid",
                                 "size": { "$sum": "$object_size" },
-                                "name": { "$max": "$_modifiedby" }
+                                "name": { "$first": "$_modifiedby" }
                             }
                         },
                         { $addFields: { "userid": "$_id" } },
                         { $unset: "_id" },
                         { $addFields: { "collection": col.name } },
                         { $addFields: { timestamp: timestamp.toISOString() } },
-                    ]
-                }
-                if (col.name == "fs.files") {
-                    aggregates = [
-                        {
-                            "$project": {
-                                "userid": 1,
-                                "name": 1,
-                                "object_size": { "$bsonSize": "$$ROOT" }
-                            }
-                        },
-                        {
-                            "$group": {
-                                "_id": "$userid",
-                                "size": { "$sum": "$object_size" },
-                                "name": { "$max": "$name" }
-                            }
-                        },
-                        { $addFields: { "userid": "$_id" } },
-                        { $unset: "_id" },
-                        { $addFields: { "collection": col.name } },
-                        { $addFields: { timestamp: timestamp.toISOString() } },
-                    ]
-                }
+                    ];
+                    if (col.name == "fs.files") {
+                        aggregates = [
+                            {
+                                "$project": {
+                                    "_modifiedbyid": "$metadata._modifiedbyid",
+                                    "_modifiedby": "$metadata._modifiedby",
+                                    "object_size": "$length"
+                                }
+                            },
+                            {
+                                "$group": {
+                                    "_id": "$_modifiedbyid",
+                                    "size": { "$sum": "$object_size" },
+                                    "name": { "$first": "$_modifiedby" }
+                                }
+                            },
+                            { $addFields: { "userid": "$_id" } },
+                            { $unset: "_id" },
+                            { $addFields: { "collection": col.name } },
+                            { $addFields: { timestamp: timestamp.toISOString() } },
+                        ]
+                    }
+                    if (col.name == "audit") {
+                        aggregates = [
+                            {
+                                "$project": {
+                                    "userid": 1,
+                                    "name": 1,
+                                    "object_size": { "$bsonSize": "$$ROOT" }
+                                }
+                            },
+                            {
+                                "$group": {
+                                    "_id": "$userid",
+                                    "size": { "$sum": "$object_size" },
+                                    "name": { "$first": "$name" }
+                                }
+                            },
+                            { $addFields: { "userid": "$_id" } },
+                            { $unset: "_id" },
+                            { $addFields: { "collection": col.name } },
+                            { $addFields: { timestamp: timestamp.toISOString() } },
+                        ]
+                    }
 
-                const items: any[] = await Config.db.db.collection(col.name).aggregate(aggregates).toArray();
-                let bulkInsert = Config.db.db.collection("dbusage").initializeUnorderedBulkOp();
-                items.forEach(item => bulkInsert.insert(item));
-                bulkInsert.execute();
+                    const items: any[] = await Config.db.db.collection(col.name).aggregate(aggregates).toArray();
+                    let usage = 0;
+                    if (items.length > 0) {
+                        let bulkInsert = Config.db.db.collection("dbusage").initializeUnorderedBulkOp();
+                        for (var _item of items) {
+                            let item = Config.db.ensureResource(_item);
+                            item = await Config.db.CleanACL(item, tuser, span);
+                            delete item._id;
+                            item._type = "usage";
+                            item._createdby = "root";
+                            item._createdbyid = WellknownIds.root;
+                            item._created = new Date(new Date().toISOString());
+                            item._modifiedby = "root";
+                            item._modifiedbyid = WellknownIds.root;
+                            item._modified = item._created;
+                            usage += item.size;
+                            DatabaseConnection.traversejsonencode(item);
+
+                            bulkInsert.insert(item);
+                        }
+
+                        totalusage += usage;
+                        try {
+                            await bulkInsert.execute();
+                            if (items.length > 0) Logger.instanse.debug("[housekeeping][" + col.name + "][" + index + "/" + collections.length + "] add " + items.length + " items with a usage of " + this.formatBytes(usage));
+
+                        } catch (error) {
+                            Logger.instanse.error(error);
+                            span.recordException(error);
+                        }
+                    }
+                }
+                Logger.instanse.debug("[housekeeping] Add stats from " + collections.length + " collections with a total usage of " + this.formatBytes(totalusage));
+            }
+
+        } catch (error) {
+            Logger.instanse.error(error);
+            span.recordException(error);
+        }
+        try {
+            if (!skipUpdateUserSize) {
+                let index = 0;
+                const usercount = await Config.db.db.collection("users").aggregate([{ "$match": { "_type": "user" } }, { $count: "userCount" }]).toArray();
+                Logger.instanse.debug("[housekeeping] Begin updating all users (" + usercount[0].userCount + ") dbusage field");
+
+                const cursor = Config.db.db.collection("users").find({ "_type": "user" })
+                for await (const u of cursor) {
+                    index++;
+                    const pipe = [
+                        { "$match": { "userid": u._id, timestamp: timestamp } },
+                        { "$group": { "_id": "$userid", "size": { "$sum": "$size" } } }
+                    ]
+                    const items: any[] = await Config.db.db.collection("dbusage").aggregate(pipe).toArray();
+                    if (items.length > 0) {
+                        await Config.db.db.collection("users").updateOne({ _id: u._id }, { $set: { "dbusage": items[0].size } });
+                    }
+                    if (index % 100 == 0) Logger.instanse.debug("[housekeeping][" + index + "/" + usercount[0].userCount + "] Processing");
+                }
+                Logger.instanse.debug("[housekeeping] Completed updating all users dbusage field");
             }
         } catch (error) {
-
+            Logger.instanse.error(error);
+            span.recordException(error);
         }
         Logger.otel.endSpan(span);
     }

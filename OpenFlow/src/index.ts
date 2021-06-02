@@ -11,6 +11,7 @@ import { DBHelper } from "./DBHelper";
 import { OAuthProvider } from "./OAuthProvider";
 import { Span } from "@opentelemetry/api";
 import { QueueClient } from "./QueueClient";
+import { Message } from "./Messages/Message";
 
 Logger.configure();
 
@@ -298,6 +299,24 @@ async function initDatabase(): Promise<boolean> {
         await Config.db.ensureindexes(span);
         Logger.otel.endSpan(span);
 
+        if (Config.auto_hourly_housekeeping) {
+            housekeeping = setInterval(async () => {
+                try {
+                    var dt = new Date(new Date().toISOString());
+                    var msg = new Message(); msg.jwt = Crypt.rootToken();
+                    var updateUsage: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
+                    await msg.Housekeeping(false, updateUsage, updateUsage, null);
+                } catch (error) {
+                }
+            }, 3600000);
+            setTimeout(async () => {
+                var dt = new Date(new Date().toISOString());
+                var msg = new Message(); msg.jwt = Crypt.rootToken();
+                var updateUsage: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
+                updateUsage = false;
+                await msg.Housekeeping(false, updateUsage, updateUsage, null);
+            }, 5000);
+        }
         return true;
     } catch (error) {
         span.recordException(error);
@@ -350,9 +369,16 @@ var signals = {
     'SIGINT': 2,
     'SIGTERM': 15
 };
+var housekeeping = null;
 function handle(signal, value) {
     console.trace(`process received a ${signal} signal with value ${value}`);
     try {
+        if (housekeeping != null) {
+            try {
+                clearInterval(housekeeping);
+            } catch (error) {
+            }
+        }
         setTimeout(() => {
             process.exit(128 + value);
         }, 1000);

@@ -1249,7 +1249,6 @@ export class DatabaseConnection {
                         }
                     }
                 }
-
                 if (q.collectionname != "fs.files") {
                     q.item._modifiedby = user.name;
                     q.item._modifiedbyid = user._id;
@@ -1266,6 +1265,12 @@ export class DatabaseConnection {
                                 q.item[key] = original[key];
                             }
                         }
+                        if (key == "dbusage" && q.collectionname == "users" && q.item._type == "user") {
+                            if (!user.HasRoleName("admins")) {
+                                q.item[key] = original[key];
+                            }
+                        }
+
                         if (key === "_created") {
                             q.item[key] = new Date(original[key]);
                         } else if (key === "_createdby" || key === "_createdbyid") {
@@ -1446,6 +1451,14 @@ export class DatabaseConnection {
                     (q.item["$set"])._modified = new Date(new Date().toISOString());
                     if ((q.item["$inc"]) === undefined) { (q.item["$inc"]) = {} };
                     (q.item["$inc"])._version = 1;
+                    if (q.collectionname == "users") {
+                        ['$inc', '$mul', '$set', '$unset'].forEach(t => {
+                            if (q.item[t] !== undefined) {
+                                delete q.item[t].username;
+                                delete q.item[t].dbusage;
+                            }
+                        })
+                    }
                     const ot_end = Logger.otel.startTimer();
                     const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.updateOne", span);
                     q.opresult = await this.db.collection(q.collectionname).updateOne(_query, q.item, options);
@@ -1545,6 +1558,14 @@ export class DatabaseConnection {
             (q.item["$set"])._modifiedbyid = user._id;
             (q.item["$set"])._modified = new Date(new Date().toISOString());
 
+            if (q.collectionname == "users") {
+                ['$inc', '$mul', '$set', '$unset'].forEach(t => {
+                    if (q.item[t] !== undefined) {
+                        delete q.item[t].username;
+                        delete q.item[t].dbusage;
+                    }
+                })
+            }
 
             Logger.instanse.silly("[" + user.username + "][" + q.collectionname + "] UpdateMany " + (q.item.name || q.item._name) + " in database");
 
