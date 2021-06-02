@@ -136,6 +136,9 @@ export class Message {
                 case "deletenoderedpod":
                     await this.DeleteNoderedPod(span);
                     break;
+                case "getnoderedinstance":
+                    await this.GetNoderedInstance(span);
+                    break;
                 default:
                     span.recordException("Unknown command " + this.command);
                     this.UnknownCommand();
@@ -431,7 +434,13 @@ export class Message {
                     await this.GetKubeNodeLabels(cli);
                     break;
                 case "getnoderedinstance":
-                    await this.GetNoderedInstance(cli, span);
+                    this.EnsureJWT(cli);
+                    if (Config.enable_openflow_amqp) {
+                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                    } else {
+                        await this.RestartNoderedInstance(span);
+                        cli.Send(this);
+                    }
                     break;
                 case "getnoderedinstancelog":
                     await this.GetNoderedInstanceLog(cli, span);
@@ -484,6 +493,9 @@ export class Message {
                 case "deleterabbitmqqueue":
                     break;
                 case "pushmetrics":
+                    break;
+                case "housekeeping":
+                    await this.Housekeeping(span);
                     break;
                 default:
                     span.recordException("Unknown command " + command);
@@ -2364,22 +2376,24 @@ export class Message {
     }
     private static detectdocker: boolean = true;
     private static usedocker: boolean = false;
-    private async GetNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    private async GetNoderedInstance(parent: Span): Promise<void> {
         await this.DetectDocker();
         if (Message.usedocker) {
-            this.dockerGetNoderedInstance(cli, parent);
+            this.dockerGetNoderedInstance(parent);
         } else {
-            this.KubeGetNoderedInstance(cli, parent);
+            this.KubeGetNoderedInstance(parent);
         }
     }
-    private async dockerGetNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    private async dockerGetNoderedInstance(parent: Span): Promise<void> {
         this.Reply();
         let msg: GetNoderedInstanceMessage;
         const span: Span = Logger.otel.startSubSpan("message.GetNoderedInstance", parent);
         try {
-            Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstance");
+            const _tuser = Crypt.verityToken(this.jwt);
+
+            Logger.instanse.debug("[" + _tuser.username + "] GetNoderedInstance");
             msg = GetNoderedInstanceMessage.assign(this.data);
-            const name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt, span);
+            const name = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
 
             span.addEvent("init Docker()");
             const docker = new Docker();
@@ -2415,7 +2429,7 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error
         }
         try {
@@ -2423,19 +2437,19 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
         }
         Logger.otel.endSpan(span);
-        this.Send(cli);
     }
-    private async KubeGetNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    private async KubeGetNoderedInstance(parent: Span): Promise<void> {
         this.Reply();
         let msg: GetNoderedInstanceMessage;
         const span: Span = Logger.otel.startSubSpan("message.GetNoderedInstance", parent);
         try {
-            Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstance");
+            const _tuser = Crypt.verityToken(this.jwt);
+            Logger.instanse.debug("[" + _tuser.username + "] GetNoderedInstance");
             msg = GetNoderedInstanceMessage.assign(this.data);
-            const name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt, span);
+            const name = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
             const namespace = Config.namespace;
             const list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
             msg.result = null;
@@ -2459,7 +2473,7 @@ export class Message {
                         if ((image.indexOf("openflownodered") > -1 || image.indexOf("openiap/nodered") > -1) && !NoderedUtil.IsNullEmpty(userid)) {
                             try {
                                 if (billed != "true" && diffhours > 24) {
-                                    Logger.instanse.debug("[" + cli.user.username + "] Remove un billed nodered instance " + itemname + " that has been running for " + diffhours + " hours");
+                                    Logger.instanse.debug("[" + _tuser.username + "] Remove un billed nodered instance " + itemname + " that has been running for " + diffhours + " hours");
                                     await this._DeleteNoderedInstance(userid, rootjwt, span);
                                 }
                             } catch (error) {
@@ -2472,7 +2486,7 @@ export class Message {
                             }
                         }
                     }
-                    if (!NoderedUtil.IsNullEmpty(msg.name) && item.metadata.name == msg.name && cli.user.HasRoleName("admins")) {
+                    if (!NoderedUtil.IsNullEmpty(msg.name) && item.metadata.name == msg.name && _tuser.HasRoleName("admins")) {
                         found = item;
                         var metrics: any = null;
                         try {
@@ -2485,7 +2499,7 @@ export class Message {
                         found = item;
                         if (item.status.phase != "Failed") {
                             msg.result = item;
-                            Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstance: " + name + " found one");
+                            Logger.instanse.debug("[" + _tuser.username + "] GetNoderedInstance: " + name + " found one");
                         }
                         var metrics: any = null;
                         try {
@@ -2498,12 +2512,12 @@ export class Message {
                 }
                 if (msg.result == null) msg.result = found;
             } else {
-                Logger.instanse.warn("[" + cli.user.username + "] GetNoderedInstance: found NO Namespaced Pods ???");
+                Logger.instanse.warn("[" + _tuser.username + "] GetNoderedInstance: found NO Namespaced Pods ???");
             }
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error
         }
         try {
@@ -2511,10 +2525,9 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
         }
         Logger.otel.endSpan(span);
-        this.Send(cli);
     }
     private async GetNoderedInstanceLog(cli: WebSocketServerClient, parent: Span): Promise<void> {
         await this.DetectDocker();
@@ -3483,6 +3496,98 @@ export class Message {
             await handleError(cli, error);
         }
         this.Send(cli);
+    }
+    private async Housekeeping(parent: Span): Promise<void> {
+        const span: Span = Logger.otel.startSubSpan("message.QueueMessage", parent);
+        try {
+            await this.GetNoderedInstance(span)
+        } catch (error) {
+        }
+        try {
+            await Config.db.ensureindexes(span);
+        } catch (error) {
+        }
+        try {
+            const jwt: string = Crypt.rootToken();
+            const timestamp = new Date(new Date().toISOString());
+            timestamp.setUTCHours(0, 0, 0, 0);
+            const collections = await Config.db.ListCollections(jwt);
+            for (let col of collections) {
+                Config.db.db.collection("dbusage").deleteMany({ timestamp: timestamp, collection: col.name });
+                let aggregates: any = [
+                    {
+                        "$project": {
+                            "_modifiedbyid": 1,
+                            "_modifiedby": 1,
+                            "object_size": { "$bsonSize": "$$ROOT" }
+                        }
+                    },
+                    {
+                        "$group": {
+                            "_id": "$_modifiedbyid",
+                            "size": { "$sum": "$object_size" },
+                            "name": { "$max": "$_modifiedby" }
+                        }
+                    },
+                    { $addFields: { "userid": "$_id" } },
+                    { $unset: "_id" },
+                    { $addFields: { "collection": col.name } },
+                    { $addFields: { timestamp: timestamp.toISOString() } },
+                ];
+                if (col.name == "fs.files") {
+                    aggregates = [
+                        {
+                            "$project": {
+                                "_modifiedbyid": "$metadata._modifiedbyid",
+                                "_modifiedby": "$metadata._modifiedby",
+                                "object_size": "$length"
+                            }
+                        },
+                        {
+                            "$group": {
+                                "_id": "$_modifiedbyid",
+                                "size": { "$sum": "$object_size" },
+                                "name": { "$max": "$_modifiedby" }
+                            }
+                        },
+                        { $addFields: { "userid": "$_id" } },
+                        { $unset: "_id" },
+                        { $addFields: { "collection": col.name } },
+                        { $addFields: { timestamp: timestamp.toISOString() } },
+                    ]
+                }
+                if (col.name == "fs.files") {
+                    aggregates = [
+                        {
+                            "$project": {
+                                "userid": 1,
+                                "name": 1,
+                                "object_size": { "$bsonSize": "$$ROOT" }
+                            }
+                        },
+                        {
+                            "$group": {
+                                "_id": "$userid",
+                                "size": { "$sum": "$object_size" },
+                                "name": { "$max": "$name" }
+                            }
+                        },
+                        { $addFields: { "userid": "$_id" } },
+                        { $unset: "_id" },
+                        { $addFields: { "collection": col.name } },
+                        { $addFields: { timestamp: timestamp.toISOString() } },
+                    ]
+                }
+
+                const items: any[] = await Config.db.db.collection(col.name).aggregate(aggregates).toArray();
+                let bulkInsert = Config.db.db.collection("dbusage").initializeUnorderedBulkOp();
+                items.forEach(item => bulkInsert.insert(item));
+                bulkInsert.execute();
+            }
+        } catch (error) {
+
+        }
+        Logger.otel.endSpan(span);
     }
 }
 
