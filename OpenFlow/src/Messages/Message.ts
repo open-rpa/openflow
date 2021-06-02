@@ -13,7 +13,7 @@ import { Readable, Stream } from "stream";
 import { GridFSBucket, ObjectID, Cursor } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
-import { StripeMessage, EnsureStripeCustomerMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, GetKubeNodeLabels, RegisterExchangeMessage } from "@openiap/openflow-api";
+import { StripeMessage, EnsureStripeCustomerMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, GetKubeNodeLabels, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id } from "@openiap/openflow-api";
 import { Billing, stripe_customer, stripe_base, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription, stripe_subscription_item, stripe_plan, stripe_coupon } from "@openiap/openflow-api";
 import { V1ResourceRequirements, V1Deployment } from "@kubernetes/client-node";
 import { amqpwrapper } from "../amqpwrapper";
@@ -485,6 +485,9 @@ export class Message {
                     break;
                 case "pushmetrics":
                     break;
+                case "ensurecustomer":
+                    await this.EnsureCustomer(cli, span);
+                    break;
                 default:
                     span.recordException("Unknown command " + command);
                     this.UnknownCommand();
@@ -727,6 +730,18 @@ export class Message {
                 Message.collectionCache[msg.jwt] = result;
                 span.setAttribute("cache size", keys.length + 1);
                 msg.result = result;
+            }
+            if (Config.enable_entity_restriction) {
+                await Config.db.loadEntityRestrictions(span);
+                const tuser = Crypt.verityToken(this.jwt);
+                const authorized = Config.db.EntityRestrictions.filter(x => x.IsAuthorized(tuser));
+                const allall = authorized.filter(x => x.collection == "");
+                if (allall.length == 0) {
+                    const names = authorized.map(x => x.collection);
+                    msg.result = msg.result.filter(x => names.indexOf(x.name) > -1);
+                }
+            } else {
+                var b = true;
             }
         } catch (error) {
             span.recordException(error);
@@ -2903,7 +2918,7 @@ export class Message {
 
     async CreateWorkflowInstance(cli: WebSocketServerClient, parent: Span) {
         this.Reply();
-        const span: Span = Logger.otel.startSubSpan("message.StartNoderedInstance", parent);
+        const span: Span = Logger.otel.startSubSpan("message.CreateWorkflowInstance", parent);
         let msg: CreateWorkflowInstanceMessage
         try {
             msg = CreateWorkflowInstanceMessage.assign(this.data);
@@ -3337,7 +3352,7 @@ export class Message {
     }
     async EnsureStripeCustomer(cli: WebSocketServerClient, parent: Span) {
         this.Reply();
-        const span: Span = Logger.otel.startSubSpan("message.StartNoderedInstance", parent);
+        const span: Span = Logger.otel.startSubSpan("message.EnsureStripeCustomer", parent);
         let msg: EnsureStripeCustomerMessage;
         const rootjwt = Crypt.rootToken();
         try {
@@ -3645,6 +3660,146 @@ export class Message {
             this.data = "";
             await handleError(cli, error);
         }
+        this.Send(cli);
+    }
+
+
+    // https://dominik.sumer.dev/blog/stripe-checkout-eu-vat
+    async EnsureCustomer(cli: WebSocketServerClient, parent: Span) {
+        this.Reply();
+        const span: Span = Logger.otel.startSubSpan("message.EnsureCustomer", parent);
+        let msg: EnsureCustomerMessage;
+        const rootjwt = Crypt.rootToken();
+        try {
+            msg = EnsureCustomerMessage.assign(this.data);
+            if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+            if (NoderedUtil.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
+            let user: User;
+            if (msg.userid != cli.user._id) {
+                const users = await Config.db.query({ _id: msg.userid, _type: "user" }, null, 1, 0, null, "users", msg.jwt, undefined, undefined, span);
+                if (users.length == 0) throw new Error("Unknown userid");
+                user = users[0] as any;
+            } else {
+                user = cli.user;
+            }
+
+            const customers = await Config.db.query<Customer>({ userid: msg.userid, _type: "customer" }, null, 1, 0, null, "users", rootjwt, undefined, undefined, span);
+            if (customers.length == 0) {
+                if (msg.customer != null) msg.customer = Customer.assign(msg.customer);
+                if (msg.customer == null) msg.customer = new Customer(user._id);
+                msg.customer.userid = user._id;
+                if (NoderedUtil.IsNullEmpty(msg.customer.name)) {
+                    if (!NoderedUtil.IsNullEmpty((user as any).customer)) {
+                        msg.customer.name = (user as any).customer;
+                    } else {
+                        msg.customer.name = user.name;
+                    }
+                }
+                if (NoderedUtil.IsNullEmpty(msg.customer.email)) {
+                    if (!NoderedUtil.IsNullEmpty((user as any).email)) {
+                        msg.customer.email = (user as any).email;
+                    } else {
+                        msg.customer.email = user.username;
+                    }
+                }
+                Base.addRight(msg.customer, user._id, user.name, [Rights.read]);
+                Base.addRight(msg.customer, WellknownIds.admins, "admins", [Rights.full_control]);
+            } else {
+                let customer: Customer = customers[0];
+                // msg.customer = customers[0];
+                if (customer.name != msg.customer.name || customer.email != msg.customer.email || customer.vatnumber != msg.customer.vatnumber || customer.vattype != msg.customer.vattype || customer.coupon != msg.customer.coupon) {
+                    customer.email = msg.customer.email;
+                    customer.name = msg.customer.name;
+                    customer.vatnumber = msg.customer.vatnumber;
+                    customer.vattype = msg.customer.vattype;
+                    customer.coupon = msg.customer.coupon;
+                }
+                msg.customer = customer;
+            }
+            if (!NoderedUtil.IsNullEmpty(msg.customer.stripeid)) {
+                msg.stripecustomer = await this.Stripe<stripe_customer>("GET", "customers", msg.customer.stripeid, null, null);
+            } else {
+                let payload: any = { name: msg.customer.name, email: msg.customer.email, metadata: { userid: msg.userid }, description: user.name };
+                msg.stripecustomer = await this.Stripe<stripe_customer>("POST", "customers", null, payload, null);
+                msg.customer.stripeid = msg.stripecustomer.id;
+            }
+            if (msg.stripecustomer.email != msg.customer.email || msg.stripecustomer.name != msg.customer.name) {
+                const payload: any = { email: msg.customer.email, name: msg.customer.name };
+                msg.stripecustomer = await this.Stripe<stripe_customer>("POST", "customers", msg.customer.stripeid, payload, null);
+            }
+            if (msg.customer.vatnumber) {
+                if (msg.stripecustomer.tax_ids.total_count == 0) {
+                    const payload: any = { value: msg.customer.vatnumber, type: msg.customer.vattype };
+                    await this.Stripe<stripe_customer>("POST", "tax_ids", null, payload, msg.customer.stripeid);
+                } else if (msg.stripecustomer.tax_ids.data[0].value != msg.customer.vatnumber) {
+                    const payload: any = { value: msg.customer.vatnumber, type: msg.customer.vattype };
+                    await this.Stripe<stripe_tax_id>("PUT", "tax_ids", msg.stripecustomer.tax_ids.data[0].id, payload, msg.customer.stripeid);
+                }
+            }
+
+            if (!NoderedUtil.IsNullUndefinded(msg.stripecustomer.discount) && !NoderedUtil.IsNullEmpty(msg.stripecustomer.discount.coupon.name)) {
+                if (msg.customer.coupon != msg.stripecustomer.discount.coupon.name) {
+                    const payload: any = { coupon: "" };
+                    msg.stripecustomer = await this.Stripe<stripe_customer>("POST", "customers", msg.customer.stripeid, payload, null);
+
+                    if (!NoderedUtil.IsNullEmpty(msg.customer.coupon)) {
+                        const coupons: stripe_list<stripe_coupon> = await this.Stripe<stripe_list<stripe_coupon>>("GET", "coupons", null, null, null);
+                        const isvalid = coupons.data.filter(c => c.name == msg.customer.coupon);
+                        if (isvalid.length == 0) throw new Error("Unknown coupons '" + msg.customer.coupon + "'");
+
+                        const payload2: any = { coupon: coupons.data[0].id };
+                        msg.stripecustomer = await this.Stripe<stripe_customer>("POST", "customers", msg.customer.stripeid, payload2, null);
+                    }
+                }
+            } else if (!NoderedUtil.IsNullEmpty(msg.customer.coupon)) {
+                const coupons: stripe_list<stripe_coupon> = await this.Stripe<stripe_list<stripe_coupon>>("GET", "coupons", null, null, null);
+                const isvalid = coupons.data.filter(c => c.name == msg.customer.coupon);
+                if (isvalid.length == 0) throw new Error("Unknown coupons '" + msg.customer.coupon + "'");
+
+                const payload2: any = { coupon: coupons.data[0].id };
+                msg.stripecustomer = await this.Stripe<stripe_customer>("POST", "customers", msg.customer.stripeid, payload2, null);
+            }
+            if (NoderedUtil.IsNullEmpty(msg.customer._id)) {
+                await Config.db.InsertOne(msg.customer, "users", 3, true, rootjwt, span);
+            } else {
+                await Config.db._UpdateOne(null, msg.customer, "users", 3, true, rootjwt, span);
+            }
+            if (user._hasbilling != true || user.customerid != msg.customer._id) {
+                user._hasbilling = true;
+                user.customerid = msg.customer._id;
+                user.selectedcustomerid = msg.customer._id;
+
+                const UpdateDoc: any = { "$set": {} };
+                UpdateDoc.$set["customerid"] = msg.customer._id;
+                UpdateDoc.$set["selectedcustomerid"] = msg.customer._id;
+                UpdateDoc.$set["_hasbilling"] = true;
+                await Config.db._UpdateOne({ "_id": user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), span)
+            }
+            if (cli.user.selectedcustomerid != msg.customer._id && cli.user._id != msg.userid) {
+                cli.user.selectedcustomerid = msg.customer._id;
+                const UpdateDoc: any = { "$set": {} };
+                UpdateDoc.$set["selectedcustomerid"] = msg.customer._id;
+                await Config.db._UpdateOne({ "_id": cli.user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), span)
+            }
+        } catch (error) {
+            span.recordException(error);
+            await handleError(cli, error);
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) {
+                msg.error = (error.message ? error.message : error);
+                if (error.response && error.response.body) {
+                    msg.error = error.response.body;
+                }
+            }
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            span.recordException(error);
+            this.data = "";
+            await handleError(cli, error);
+        }
+        Logger.otel.endSpan(span);
         this.Send(cli);
     }
 }

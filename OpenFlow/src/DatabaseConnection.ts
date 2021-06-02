@@ -186,7 +186,8 @@ export class DatabaseConnection {
         WellknownIds.robot_admins,
         WellknownIds.personal_nodered_users,
         WellknownIds.robot_agent_users,
-        '5a1702fa245d9013697656fc'
+        WellknownIds.customer_admins,
+        WellknownIds.resellers
     ]
     WellknownNamesArray: string[] = [
         "root",
@@ -207,6 +208,7 @@ export class DatabaseConnection {
         "robot_admins",
         "personal_nodered_users",
         "robot_agent_users",
+        "customer_admins",
 
         "nodered users",
         "nodered admins",
@@ -217,8 +219,8 @@ export class DatabaseConnection {
         "robot admins",
         "personal nodered users",
         "robot agent users",
-        "customer admins"
-
+        "customer admins",
+        "reseller", "resellers"
     ]
 
     async CleanACL<T extends Base>(item: T, user: TokenUser, parent: Span): Promise<T> {
@@ -1246,6 +1248,9 @@ export class DatabaseConnection {
                     q.item._modifiedby = user.name;
                     q.item._modifiedbyid = user._id;
                     q.item._modified = new Date(new Date().toISOString());
+                    if (original["_type"] == "user" || original["_type"] == "role") {
+                        q.item._type = original["_type"];
+                    }
                     // now add all _ fields to the new object
                     const keys: string[] = Object.keys(original);
                     for (let i: number = 0; i < keys.length; i++) {
@@ -2011,8 +2016,7 @@ export class DatabaseConnection {
         return item;
     }
     public EntityRestrictions: EntityRestriction[] = null;
-    async CheckEntityRestriction(user: TokenUser, collection: string, item: Base, parent: Span): Promise<boolean> {
-        if (!Config.enable_entity_restriction) return true;
+    async loadEntityRestrictions(parent: Span) {
         if (this.EntityRestrictions == null) {
             const rootjwt = Crypt.rootToken()
             this.EntityRestrictions = await this.query<EntityRestriction>({ "_type": "restriction" }, null, 1000, 0, null, "config", rootjwt, null, null, parent);
@@ -2024,6 +2028,10 @@ export class DatabaseConnection {
                 this.EntityRestrictions[i] = EntityRestriction.assign(this.EntityRestrictions[i]);
             }
         }
+    }
+    async CheckEntityRestriction(user: TokenUser, collection: string, item: Base, parent: Span): Promise<boolean> {
+        if (!Config.enable_entity_restriction) return true;
+        await this.loadEntityRestrictions(parent);
         const defaultAllow: boolean = false;
         let result: boolean = false;
         const authorized = this.EntityRestrictions.filter(x => x.IsAuthorized(user) && (x.collection == collection || x.collection == ""));
@@ -2557,9 +2565,19 @@ export class EntityRestriction extends Base {
         return Object.assign(new EntityRestriction(), o);
     }
     public IsMatch(object: object): boolean {
+        if (NoderedUtil.IsNullUndefinded(object)) {
+            return false;
+        }
         for (let path of this.paths) {
-            const result = JSONPath({ path, json: { a: object } });
-            if (result && result.length > 0) return true;
+            if (!NoderedUtil.IsNullEmpty(path)) {
+                try {
+                    const result = JSONPath({ path, json: { a: object } });
+                    if (result && result.length > 0) return true;
+                } catch (error) {
+                }
+            } else {
+                var b = true;
+            }
         }
         return false;
     }

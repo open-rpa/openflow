@@ -154,7 +154,7 @@
     </div>
     <div class="row">
         <div class="col">
-            $.[?(@._type == 'test')]
+            $.[?(@ && @._type == 'test')]
         </div>
         <div class="col">
             _type is test

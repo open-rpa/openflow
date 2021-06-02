@@ -228,10 +228,17 @@ async function initDatabase(): Promise<boolean> {
 
         if (Config.multi_tenant) {
             try {
-                const customer_admins: Role = await DBHelper.EnsureRole(jwt, "customer admins", '5a1702fa245d9013697656fc', span);
+                const resellers: Role = await DBHelper.EnsureRole(jwt, "resellers", WellknownIds.resellers, span);
+                Base.addRight(resellers, WellknownIds.admins, "admins", [Rights.full_control]);
+                Base.removeRight(resellers, WellknownIds.admins, [Rights.delete]);
+                Base.removeRight(resellers, WellknownIds.resellers, [Rights.full_control]);
+                resellers.AddMember(admins);
+                await DBHelper.Save(resellers, jwt, span);
+
+                const customer_admins: Role = await DBHelper.EnsureRole(jwt, "customer admins", WellknownIds.customer_admins, span);
                 Base.addRight(customer_admins, WellknownIds.admins, "admins", [Rights.full_control]);
                 Base.removeRight(customer_admins, WellknownIds.admins, [Rights.delete]);
-                Base.removeRight(customer_admins, '5a1702fa245d9013697656fc', [Rights.full_control]);
+                Base.removeRight(customer_admins, WellknownIds.customer_admins, [Rights.full_control]);
                 await DBHelper.Save(customer_admins, jwt, span);
             } catch (error) {
                 console.error(error);

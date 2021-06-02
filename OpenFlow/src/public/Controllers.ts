@@ -1,5 +1,5 @@
 import { userdata, api, entityCtrl, entitiesCtrl } from "./CommonControllers";
-import { TokenUser, QueueMessage, SigninMessage, Ace, NoderedUser, Billing, stripe_customer, stripe_list, stripe_base, stripe_plan, stripe_subscription_item, Base, NoderedUtil, WebSocketClient, Role, NoderedConfig, Resources, ResourceValues, stripe_invoice, Message } from "@openiap/openflow-api";
+import { TokenUser, QueueMessage, SigninMessage, Ace, NoderedUser, Billing, stripe_customer, stripe_list, stripe_base, stripe_plan, stripe_subscription_item, Base, NoderedUtil, WebSocketClient, Role, NoderedConfig, Resources, ResourceValues, stripe_invoice, Message, Customer } from "@openiap/openflow-api";
 import { RPAWorkflow, Provider, Form, WorkflowInstance, Workflow, unattendedclient } from "./Entities";
 import { WebSocketClientService } from "./WebSocketClientService";
 
@@ -107,6 +107,10 @@ export class MenuCtrl {
             if (this.customers.length > 1 && data.customerid != null) {
                 for (let cust of this.customers)
                     if (cust._id == data.customerid) this.customer = cust;
+            }
+            if (this.customers.length > 1 && data.selectedcustomerid != null) {
+                for (let cust of this.customers)
+                    if (cust._id == data.selectedcustomerid) this.customer = cust;
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         });
@@ -4854,7 +4858,27 @@ export class DeletedCtrl extends entitiesCtrl<Base> {
     }
 }
 
-export class CustomerCtrl extends entityCtrl<Base> {
+export class CustomersCtrl extends entitiesCtrl<Provider> {
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api,
+        public userdata: userdata
+    ) {
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        console.debug("CustomersCtrl");
+        this.basequery = { _type: "customer" };
+        this.collection = "users";
+        WebSocketClientService.onSignedin((user: TokenUser) => {
+            this.loadData();
+        });
+    }
+}
+export class CustomerCtrl extends entityCtrl<Customer> {
     public stripe_customer: stripe_customer;
     constructor(
         public $rootScope: ng.IRootScopeService,
@@ -4869,26 +4893,45 @@ export class CustomerCtrl extends entityCtrl<Base> {
         console.debug("CustomerCtrl");
         this.collection = "users";
         this.postloadData = this.processdata;
-        WebSocketClientService.onSignedin((user: TokenUser) => {
+        WebSocketClientService.onSignedin(async (user: TokenUser) => {
             if (this.id !== null && this.id !== undefined) {
                 this.loadData();
             } else {
-                try {
-                    this.model = new Base();
+                if (!NoderedUtil.IsNullEmpty(user.customerid)) {
+                    var results = await NoderedUtil.Query(this.collection, { "_type": "customer", "_id": user.customerid }, null, null, 1, 0, null, null, null, 2);
+                    if (results.length > 0) {
+                        this.model = results[0];
+                        console.debug("Loaded customer " + this.model._id);
+                    }
+                }
+                if (NoderedUtil.IsNullUndefinded(this.model)) {
+                    this.model = {} as any;
                     this.model.name = (WebSocketClientService.user as any).company;
                     if (this.model.name == null || this.model.name == "") this.model.name = WebSocketClientService.user.name;
                     this.model._type = "customer";
-                } catch (error) {
+
+                    var results = await NoderedUtil.Query(this.collection, { "_type": "billing", "userid": user._id }, null, null, 1, 0, null, null, null, 2);
+                    if (results.length > 0) {
+                        console.debug("Reuse billing id " + results[0]._id + " with stribeid " + results[0].stripeid);
+                        this.model.name = results[0].name;
+                        this.model.stripeid = results[0].stripeid;
+                        this.model.vatnumber = results[0].vatnumber;
+                        this.model.vattype = results[0].vattype;
+                    }
+                    console.debug("Create new customer");
                 }
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
         });
     }
     async submit(): Promise<void> {
         try {
             if (this.model._id) {
-                await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null, 2);
+                await NoderedUtil.EnsureCustomer(this.model, this.model.userid, null, 2);
+                // await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null, 2);
             } else {
-                await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
+                await NoderedUtil.EnsureCustomer(this.model, this.model.userid, null, 2);
+                // await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
             }
             this.$rootScope.$broadcast("menurefresh");
             this.$location.path("/");
@@ -4910,7 +4953,7 @@ export class CustomerCtrl extends entityCtrl<Base> {
     async OpenPortal() {
         try {
             var payload: stripe_base = {} as any;
-            (payload as any).customer = this.stripe_customer.id;
+            (payload as any).customer = this.model.stripeid;
             var session: any = await NoderedUtil.Stripe("POST", "billing_portal/sessions", null, null, payload, null, 2);
             if (session && session.url) {
                 window.open(session.url, '_blank');
@@ -4980,40 +5023,71 @@ export class EntityRestrictionsCtrl extends entitiesCtrl<Base> {
         console.debug("EntityRestrictionsCtrl");
         this.basequery = { _type: "restriction" };
         this.collection = "config";
+        this.postloadData = this.processData;
+        if (this.userdata.data.EntityRestrictionsCtrl) {
+            this.basequery = this.userdata.data.EntityRestrictionsCtrl.basequery;
+            this.collection = this.userdata.data.EntityRestrictionsCtrl.collection;
+            this.baseprojection = this.userdata.data.EntityRestrictionsCtrl.baseprojection;
+            this.orderby = this.userdata.data.EntityRestrictionsCtrl.orderby;
+            this.searchstring = this.userdata.data.EntityRestrictionsCtrl.searchstring;
+            this.basequeryas = this.userdata.data.EntityRestrictionsCtrl.basequeryas;
+        }
+
         WebSocketClientService.onSignedin((user: TokenUser) => {
             this.loadData();
         });
     }
-    async AddCommon() {
+    async processData(): Promise<void> {
+        if (!this.userdata.data.EntityRestrictionsCtrl) this.userdata.data.EntityRestrictionsCtrl = {};
+        this.userdata.data.EntityRestrictionsCtrl.basequery = this.basequery;
+        this.userdata.data.EntityRestrictionsCtrl.collection = this.collection;
+        this.userdata.data.EntityRestrictionsCtrl.baseprojection = this.baseprojection;
+        this.userdata.data.EntityRestrictionsCtrl.orderby = this.orderby;
+        this.userdata.data.EntityRestrictionsCtrl.searchstring = this.searchstring;
+        this.userdata.data.EntityRestrictionsCtrl.basequeryas = this.basequeryas;
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async EnsureCommon() {
         try {
-            this.newRestriction("Add to entities", "entities", ["$."]);
-            this.newRestriction("Create form in forms", "forms", ["$.[?(@._type == 'form')]"]);
-            this.newRestriction("Create workflow in openrpa", "openrpa", ["$.[?(@._type == 'workflow')]"]);
-            this.newRestriction("Create project in openrpa", "openrpa", ["$.[?(@._type == 'project')]"]);
-            this.newRestriction("Create detector in openrpa", "openrpa", ["$.[?(@._type == 'detector')]"]);
-            this.newRestriction("Create credential in openrpa", "openrpa", ["$.[?(@._type == 'credential')]"]);
-            this.newRestriction("Create unattendedserver in openrpa", "openrpa", ["$.[?(@._type == 'unattendedserver')]"]);
-            this.newRestriction("Create unattendedclient in openrpa", "openrpa", ["$.[?(@._type == 'unattendedclient')]"]);
-            this.newRestriction("Create workflowinstance in openrpa_instances", "openrpa_instances", ["$.[?(@._type == 'workflowinstance')]"]);
-            this.newRestriction("Create workflow in workflows", "workflows", ["$.[?(@._type == 'workflow')]"]);
-            this.newRestriction("Create setting in nodered", "nodered", ["$.[?(@._type == 'setting')]"]);
-            this.newRestriction("Create session in nodered", "nodered", ["$.[?(@._type == 'session')]"]);
-            this.newRestriction("Create npmrc in nodered", "nodered", ["$.[?(@._type == 'npmrc')]"]);
-            this.newRestriction("Create flow in nodered", "nodered", ["$.[?(@._type == 'flow')]"]);
-            this.newRestriction("Create credential in nodered", "nodered", ["$.[?(@._type == 'credential')]"]);
+            await this.newRestriction("Add any", "entities", ["$."], false);
+            await this.newRestriction("Create form", "forms", ["$.[?(@ && @._type == 'form')]"], false);
+            await this.newRestriction("Create workflow", "openrpa", ["$.[?(@ && @._type == 'workflow')]"], false);
+            await this.newRestriction("Create project", "openrpa", ["$.[?(@ && @._type == 'project')]"], false);
+            await this.newRestriction("Create detector", "openrpa", ["$.[?(@ && @._type == 'detector')]"], false);
+            await this.newRestriction("Create credential", "openrpa", ["$.[?(@ && @._type == 'credential')]"], false);
+            await this.newRestriction("Create unattendedserver", "openrpa", ["$.[?(@ && @._type == 'unattendedserver')]"], false);
+            await this.newRestriction("Create unattendedclient", "openrpa", ["$.[?(@ && @._type == 'unattendedclient')]"], false);
+            await this.newRestriction("Create workflowinstance", "openrpa_instances", ["$.[?(@ && @._type == 'workflowinstance')]"], false);
+            await this.newRestriction("Create workflow", "workflow", ["$.[?(@ && @._type == 'workflow')]"], false);
+            await this.newRestriction("Create setting", "nodered", ["$.[?(@ && @._type == 'setting')]"], false);
+            await this.newRestriction("Create session", "nodered", ["$.[?(@ && @._type == 'session')]"], false);
+            await this.newRestriction("Create npmrc", "nodered", ["$.[?(@ && @._type == 'npmrc')]"], false);
+            await this.newRestriction("Create flow", "nodered", ["$.[?(@ && @._type == 'flow')]"], false);
+            await this.newRestriction("Create credential", "nodered", ["$.[?(@ && @._type == 'credential')]"], false);
+            await this.newRestriction("Create insance", "workflow_instances", ["$.[?(@ && @._type == 'insance')]"], false);
+            await this.newRestriction("Create test or unknown", "test", ["$.[?(@ && (@._type == 'test' || @._type == 'unknown'))]"], false);
+
+            await this.newRestriction("Create role", "users", ["$.[?(@ && @._type == 'role')]"], true);
+            await this.newRestriction("Create user", "users", ["$.[?(@ && @._type == 'user')]"], true);
+
             this.loadData();
         } catch (error) {
             this.errormessage = error;
         }
     }
-    async newRestriction(name: string, collection: string, paths: string[]) {
-        var results = await NoderedUtil.Query(this.collection, { "name": name }, null, null, 1, 0, null, null, null, 2);
+    async newRestriction(name: string, collection: string, paths: string[], customeradmins: boolean) {
+        var results = await NoderedUtil.Query(this.collection, { "name": name, "collection": collection }, null, null, 1, 0, null, null, null, 2);
         const model: Base = (results.length == 1 ? results[0] : {} as any);
         model.name = name;
         model._type = "restriction";
         model._acl = [];
         Base.addRight(model, "5a1702fa245d9013697656fb", "admins", [-1]);
-        Base.addRight(model, "5a17f157c4815318c8536c21", "users", [1]);
+        if (customeradmins) {
+            Base.addRight(model, "5a1702fa245d9013697656fc", "customer admins", [1]);
+        } else {
+            Base.addRight(model, "5a17f157c4815318c8536c21", "users", [1]);
+        }
         (model as any).copyperm = false;
         (model as any).collection = collection;
         (model as any).paths = paths;
