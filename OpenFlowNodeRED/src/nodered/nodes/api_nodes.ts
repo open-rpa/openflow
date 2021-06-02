@@ -4,8 +4,7 @@ import { Crypt } from "../../nodeclient/Crypt";
 import { Config } from "../../Config";
 import { Logger } from "../../Logger";
 import { NoderedUtil, SigninMessage, TokenUser, Message, WebSocketClient, Base, mapFunc, reduceFunc, finalizeFunc, UpdateOneMessage } from "@openiap/openflow-api";
-import * as path from "path";
-import { FileSystemCache } from "@openiap/openflow-api";
+import { Util } from "./Util";
 
 export interface Iapi_credentials {
     name: string;
@@ -314,10 +313,14 @@ export class api_add {
 
 
 export interface Iapi_addmany {
-    entitytype: string;
     collection: string;
-    inputfield: string;
-    resultfield: string;
+    collectiontype: string;
+    entitytype: string;
+    entitytypetype: string;
+    entities: Base[];
+    entitiestype: string;
+    results: string;
+    resultstype: string;
     writeconcern: number;
     skipresults: boolean;
     journal: boolean;
@@ -340,48 +343,46 @@ export class api_addmany {
             this.node.status({});
             // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
 
-            let entitytype = this.config.entitytype;
-            let collection = this.config.collection;
-            let inputfield = this.config.inputfield;
-            let resultfield = this.config.resultfield;
             let writeconcern = this.config.writeconcern;
             let journal = this.config.journal;
             let skipresults = this.config.skipresults;
             let priority: number = 1;
             if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
-            if (!NoderedUtil.IsNullEmpty(msg.entitytype)) { entitytype = msg.entitytype; }
-            if (!NoderedUtil.IsNullEmpty(msg.collection)) { collection = msg.collection; }
-            if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { inputfield = msg.inputfield; }
-            if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { resultfield = msg.resultfield; }
             if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { writeconcern = msg.writeconcern; }
             if (!NoderedUtil.IsNullEmpty(msg.journal)) { journal = msg.journal; }
             if (!NoderedUtil.IsNullEmpty(msg.skipresults)) { skipresults = msg.skipresults; }
             if ((writeconcern as any) === undefined || (writeconcern as any) === null) writeconcern = 0;
             if ((journal as any) === undefined || (journal as any) === null) journal = false;
+            const collection = await Util.EvaluateNodeProperty<string>(this, msg, "collection");
+            const entitytype = await Util.EvaluateNodeProperty<string>(this, msg, "entitytype");
+            const entities = await Util.EvaluateNodeProperty<Base[]>(this, msg, "entities");
 
             let data: any[] = [];
-            const _data = NoderedUtil.FetchFromObject(msg, inputfield);
-            if (!NoderedUtil.IsNullUndefinded(_data)) {
-                if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
+            if (!NoderedUtil.IsNullUndefinded(entities)) {
+                if (!Array.isArray(entities)) { data.push(entities); } else { data = entities; }
                 if (data.length === 0) { this.node.warn("input array is empty"); }
             } else { this.node.warn("Input data is null"); }
 
-            this.node.status({ fill: "blue", shape: "dot", text: "processing " + data.length + " items" });
-            let results: any[] = [];
-            for (let y: number = 0; y < data.length; y += 50) {
-                let subitems: any[] = [];
-                for (let i: number = y; i < (y + 50) && i < data.length; i++) {
-                    const element: any = data[i];
-                    if (!NoderedUtil.IsNullEmpty(entitytype)) {
-                        element._type = entitytype;
+            if (data.length > 0) {
+                this.node.status({ fill: "blue", shape: "dot", text: "processing " + data.length + " items" });
+                let results: any[] = [];
+                for (let y: number = 0; y < data.length; y += 50) {
+                    let subitems: any[] = [];
+                    for (let i: number = y; i < (y + 50) && i < data.length; i++) {
+                        const element: any = data[i];
+                        if (!NoderedUtil.IsNullEmpty(entitytype)) {
+                            element._type = entitytype;
+                        }
+                        subitems.push(element);
                     }
-                    subitems.push(element);
+                    this.node.status({ fill: "blue", shape: "dot", text: y + " to " + (y + 49) + " of " + data.length });
+                    results = results.concat(await NoderedUtil.InsertMany(collection, subitems, writeconcern, journal, skipresults, msg.jwt, priority));
                 }
-                this.node.status({ fill: "blue", shape: "dot", text: y + " to " + (y + 49) + " of " + data.length });
-                results = results.concat(await NoderedUtil.InsertMany(collection, subitems, writeconcern, journal, skipresults, msg.jwt, priority));
+                data = results;
             }
-            data = results;
-            NoderedUtil.saveToObject(msg, resultfield, data);
+            if (!NoderedUtil.IsNullEmpty(this.config.results)) {
+                Util.SetMessageProperty(msg, this.config.results, data);
+            }
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
@@ -644,15 +645,16 @@ export class api_delete {
 
 
 export interface Iapi_deletemany {
-    collection: string;
     inputfield: string;
     query: string;
+    querytype: string;
+    collection: string;
+    collectiontype: string;
     name: string;
 }
 export class api_deletemany {
     public node: Red = null;
     public name: string;
-
     constructor(public config: Iapi_deletemany) {
         RED.nodes.createNode(this, config);
         this.node = this;
@@ -664,39 +666,23 @@ export class api_deletemany {
     async oninput(msg: any) {
         try {
             this.node.status({});
-            let collection = this.config.collection;
-            let query = this.config.query;
-            let inputfield = this.config.inputfield;
             let priority: number = 1;
             if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
-            if (!NoderedUtil.IsNullEmpty(msg.collection)) collection = msg.collection;
-            if (!NoderedUtil.IsNullEmpty(msg.query)) query = msg.query;
-            if (!NoderedUtil.IsNullEmpty(msg.inputfield)) inputfield = msg.inputfield;
 
-            let data: any[] = [];
-            const _data = NoderedUtil.FetchFromObject(msg, inputfield);
-            // if (NoderedUtil.IsNullUndefinded(query)) {
-            if (!NoderedUtil.IsNullEmpty(query) && !NoderedUtil.IsNullUndefinded(_data)) {
-                throw new Error("Received both data and a query, ending to avoid mistakes!");
-            }
-            if (NoderedUtil.IsNullEmpty(query)) {
-                if (!NoderedUtil.IsNullUndefinded(_data)) {
-                    if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
-                    // if (data.length === 0) { this.node.warn("input array is empty"); }
-                } else { this.node.warn("Input data is null and no query"); }
-            } else {
-                if (NoderedUtil.IsString(query)) {
-                    query = JSON.parse(query);
-                }
-            }
+            const collection = await Util.EvaluateNodeProperty<string>(this, msg, "collection");
+            let query = await Util.EvaluateNodeProperty<string | any[]>(this, msg, "query");
+
+
             let ids: string[] = null;
-            if (!NoderedUtil.IsNullUndefinded(_data)) {
-                ids = []; query = null;
+            if (Array.isArray(query)) {
+                var _data: any[] = query;
+                ids = [];
                 for (let i: number = 0; i < _data.length; i++) {
                     let id: string = _data[i];
                     if (NoderedUtil.isObject(_data[i])) { id = _data[i]._id; }
                     ids.push(id);
                 }
+                query = null;
             }
             this.node.status({ fill: "blue", shape: "dot", text: "processing ..." });
             const affectedrows = await NoderedUtil.DeleteMany(collection, query, ids, msg.jwt, priority);
@@ -1211,7 +1197,9 @@ export class upload_file {
 
 export interface Iapi_aggregate {
     collection: string;
+    collectiontype: string;
     aggregates: object[];
+    aggregatestype: string;
     name: string;
 }
 export class api_aggregate {
@@ -1230,12 +1218,11 @@ export class api_aggregate {
             this.node.status({});
             // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
 
-            let collection = this.config.collection;
-            let aggregates = this.config.aggregates;
+            const collection = await Util.EvaluateNodeProperty<string>(this, msg, "collection");
+            const aggregates = await Util.EvaluateNodeProperty<object[]>(this, msg, "aggregates");
+
             let priority: number = 1;
             if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
-            if (!NoderedUtil.IsNullEmpty(msg.collection)) { collection = msg.collection; }
-            if (!NoderedUtil.IsNullEmpty(msg.aggregates)) { aggregates = msg.aggregates; }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Running aggregate" });
             const result = await NoderedUtil.Aggregate(collection, aggregates, msg.jwt, null, priority);
@@ -1330,5 +1317,43 @@ export class api_watch {
         WebSocketClient.instance.events.removeListener("onsignedin", this._onsignedin);
         WebSocketClient.instance.events.removeListener("onclose", this._onsocketclose);
         if (done != null) done();
+    }
+}
+
+
+
+export interface Ilist_collections {
+    name: string;
+    results: string;
+}
+export class list_collections {
+    public node: Red = null;
+    public name: string;
+    constructor(public config: Ilist_collections) {
+        RED.nodes.createNode(this, config);
+        this.node = this;
+        this.name = config.name;
+        this.node.on("input", this.oninput);
+        this.node.on("close", this.onclose);
+    }
+    async oninput(msg: any) {
+        try {
+            this.node.status({});
+
+            // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
+            let priority: number = 1;
+            if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
+
+            const collections = await NoderedUtil.ListCollections(null);
+            if (!NoderedUtil.IsNullEmpty(this.config.results)) {
+                NoderedUtil.saveToObject(msg, this.config.results, collections);
+            }
+            this.node.send(msg);
+            this.node.status({});
+        } catch (error) {
+            NoderedUtil.HandleError(this, error, msg);
+        }
+    }
+    onclose() {
     }
 }

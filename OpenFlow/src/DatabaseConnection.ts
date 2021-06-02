@@ -625,6 +625,7 @@ export class DatabaseConnection {
                     return value;
             });
         }
+        if (collectionname == "files") collectionname = "fs.files";
         let myhint: Object = {};
         if (hint) {
             if (typeof hint === "string" || hint instanceof String) {
@@ -660,7 +661,12 @@ export class DatabaseConnection {
         const aggregatesjson = JSON.stringify(aggregates, null, 2)
 
         span.addEvent("getbasequery");
-        const base = this.getbasequery(jwt, "_acl", [Rights.read]);
+        let base: object;
+        if (collectionname == "fs.files") {
+            base = this.getbasequery(jwt, "metadata._acl", [Rights.read]);
+        } else {
+            base = this.getbasequery(jwt, "_acl", [Rights.read]);
+        }
         if (Array.isArray(aggregates)) {
             aggregates.unshift({ $match: base });
         } else {
@@ -1858,8 +1864,8 @@ export class DatabaseConnection {
                 }
                 const ot_end = Logger.otel.startTimer();
                 const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.bulkexecute", span);
-                bulkInsert.execute()
-                bulkRemove.execute()
+                if (bulkInsert.length > 0) bulkInsert.execute()
+                if (bulkRemove.length > 0) bulkRemove.execute()
                 Logger.otel.endSpan(mongodbspan);
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });
                 if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] deleted " + counter + " items in database");
