@@ -146,10 +146,23 @@ export class LoginProvider {
         app.use(passport.initialize());
         app.use(passport.session());
         passport.serializeUser(async function (user: any, done: any): Promise<void> {
-            done(null, user);
+            const tuser: TokenUser = TokenUser.From(user);
+            await Auth.AddUser(tuser as any, tuser._id, "passport");
+            done(null, user._id);
         });
-        passport.deserializeUser(function (user: any, done: any): void {
-            done(null, user);
+        passport.deserializeUser(async function (userid: string, done: any): Promise<void> {
+            if (NoderedUtil.IsNullEmpty(userid)) return done('missing userid', null);
+            if (typeof userid !== 'string') userid = (userid as any)._id
+            if (NoderedUtil.IsNullEmpty(userid)) return done('missing userid', null);
+            const _user = await Auth.getUser(userid, "passport");
+            if (_user == null) {
+                const user = await DBHelper.FindByUsernameOrId(null, userid, null);
+                const tuser = TokenUser.From(user);
+                await Auth.AddUser(tuser as any, tuser._id, "passport");
+                done(null, tuser);
+            } else {
+                done(null, _user);
+            }
         });
 
         app.use(function (req, res, next) {
@@ -1023,6 +1036,7 @@ export class LoginProvider {
                 }
                 const tuser: TokenUser = TokenUser.From(user);
                 Audit.LoginSuccess(tuser, "weblogin", "local", remoteip, "browser", "unknown", span);
+                // tuser.roles.splice(40, tuser.roles.length)
                 Logger.otel.endSpan(span);
                 return done(null, tuser);
             } catch (error) {

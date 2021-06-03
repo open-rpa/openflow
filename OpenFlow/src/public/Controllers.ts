@@ -88,9 +88,17 @@ export class MenuCtrl {
 
             this.customers = await NoderedUtil.Query("users", { _type: "customer" }, null, null, 100, 0, null, null, null, 2);
             if (this.customers.length == 1) this.customer = this.customers[0];
-            if (this.customers.length > 1 && data.customerid != null) {
-                for (let cust of this.customers)
-                    if (cust._id == data.customerid) this.customer = cust;
+            if (this.customers.length > 1 && (data.customerid != null || data.selectedcustomerid != null)) {
+                this.customer = null;
+                if (data.selectedcustomerid != null) {
+                    for (let cust of this.customers)
+                        if (cust._id == data.selectedcustomerid) this.customer = cust;
+                }
+                if (this.customer == null) {
+                    for (let cust of this.customers)
+                        if (cust._id == data.customerid) this.customer = cust;
+
+                }
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             // cleanup();
