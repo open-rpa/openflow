@@ -278,6 +278,7 @@ export class entitiesCtrl<T> {
     public searchfields: string[] = ["name"];
     public basequeryas: string = null;
     public errormessage: string = "";
+    public skipcustomerfilter: boolean = false;
 
     public static $inject = [
         "$rootScope",
@@ -362,7 +363,18 @@ export class entitiesCtrl<T> {
             if (this.preloadData != null) {
                 this.preloadData();
             }
-            let query: object = this.basequery;
+            let query: object = Object.assign({}, this.basequery);
+            if (this.collection == "users" && (this.basequery._type == "user" || this.basequery._type == "role") && !this.skipcustomerfilter) {
+                // if (this.WebSocketClientService.user.selectedcustomerid != null) {
+                //     query["customerid"] = this.WebSocketClientService.user.selectedcustomerid;
+                // } else if (this.WebSocketClientService.user.customerid != null) {
+                //     query["customerid"] = this.WebSocketClientService.user.customerid;
+                // }
+            }
+            let basequeryas = this.basequeryas;
+            if (!NoderedUtil.IsNullUndefinded(this.WebSocketClientService.customer) && !this.skipcustomerfilter) {
+                basequeryas = this.WebSocketClientService.customer._id;
+            }
             if (this.searchstring !== "" && this.searchstring != null) {
                 if ((this.searchstring as string).indexOf("{") == 0) {
                     if ((this.searchstring as string).lastIndexOf("}") == ((this.searchstring as string).length - 1)) {
@@ -394,7 +406,7 @@ export class entitiesCtrl<T> {
 
                 }
             }
-            this.models = await NoderedUtil.Query(this.collection, query, this.baseprojection, this.orderby, this.pagesize, 0, null, this.basequeryas,
+            this.models = await NoderedUtil.Query(this.collection, query, this.baseprojection, this.orderby, this.pagesize, 0, null, basequeryas,
                 null, 2);
             this.loading = false;
             if (this.autorefresh) {

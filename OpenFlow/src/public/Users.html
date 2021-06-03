@@ -1,7 +1,10 @@
 <div class="row">
   <h1 translate lib="web">users</h1>
 </div>
+
 <div class="col-sm-12 text-right">
+  <input type="checkbox" id="checkbox-1" ng-model="ctrl.skipcustomerfilter" ng-change="ctrl.Search()">
+  <label for="checkbox-1"><span translate lib="web">show all</span></label>
   <a href="#/User" class="btn btn-info" translate lib="web">Adduser</a>
 </div>
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>

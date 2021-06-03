@@ -1,4 +1,4 @@
-import { WebSocketClient, TokenUser, NoderedUtil } from "@openiap/openflow-api";
+import { WebSocketClient, TokenUser, NoderedUtil, Customer } from "@openiap/openflow-api";
 
 interface IHashTable<T> {
     [key: string]: T;
@@ -144,6 +144,7 @@ export class WebSocketClientService {
         debug(msg) { console.debug(msg); },
         silly(msg) { console.debug(msg); }
     }
+    public customer: Customer = null;
     public user: TokenUser = null;
     public jwt: string = null;
     public version: string = "";

@@ -885,7 +885,7 @@ export class DatabaseConnection {
                     }
                 }
                 if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
-                    if (!user.HasRoleName("customer admins")) throw new Error("Access denied (not admin) to customer with id " + user2.customerid);
+                    if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) throw new Error("Access denied (not admin) to customer with id " + user2.customerid);
                     customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, span)
                     if (customer == null) throw new Error("Access denied to customer with id " + user2.customerid);
                 } if (Config.multi_tenant && !user.HasRoleName("admins")) {
@@ -1245,6 +1245,7 @@ export class DatabaseConnection {
     }
     async UpdateOne<T extends Base>(q: UpdateOneMessage, parent: Span): Promise<UpdateOneMessage> {
         const span: Span = Logger.otel.startSubSpan("db.UpdateOne", parent);
+        let customer: Customer = null;
         try {
             let itemReplace: boolean = true;
             if (q === null || q === undefined) { throw Error("UpdateOneMessage cannot be null"); }
@@ -1279,6 +1280,21 @@ export class DatabaseConnection {
                         }
                     }
                 }
+                if (q.collectionname === "users" && (q.item._type === "user" || q.item._type === "role")) {
+                    let user2: User = q.item as any;
+                    if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
+                        if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) throw new Error("Access denied (not admin) to customer with id " + user2.customerid);
+                        customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span)
+                        if (customer == null) throw new Error("Access denied to customer with id " + user2.customerid);
+                    } if (Config.multi_tenant && !user.HasRoleName("admins")) {
+                        throw new Error("Access denied (not admin or customer admin)");
+                    }
+                    if (customer != null) {
+                        const custadmins = await this.getbyid<Role>(customer.admins, "users", q.jwt, span);
+                        Base.addRight(q.item, custadmins._id, custadmins.name, [Rights.full_control]);
+                    }
+                }
+
                 if (q.collectionname != "fs.files") {
                     q.item._modifiedby = user.name;
                     q.item._modifiedbyid = user._id;
@@ -2047,9 +2063,19 @@ export class DatabaseConnection {
         return { $or: finalor.concat() };
     }
     private async getbasequeryuserid(userid: string, field: string, bits: number[], parent: Span): Promise<Object> {
-        const user = await DBHelper.FindByUsernameOrId(null, userid, parent);
-        const jwt = Crypt.createToken(user, Config.shorttoken_expires_in);
-        return this.getbasequery(jwt, field, bits);
+        // const user = await DBHelper.FindByUsernameOrId(null, userid, parent);
+        let user: User = await this.getbyid(userid, "users", Crypt.rootToken(), parent);
+        if (user._type == "user") {
+            user = await DBHelper.DecorateWithRoles(user as any, parent);
+            const jwt = Crypt.createToken(user as any, Config.shorttoken_expires_in);
+            return this.getbasequery(jwt, field, bits);
+        } else if (user._type == "customer") {
+            user = await DBHelper.DecorateWithRoles(user as any, parent);
+            user.roles.push(new Rolemember(user.name + " users", (user as any).users))
+            user.roles.push(new Rolemember(user.name + " admins", (user as any).admins))
+            const jwt = Crypt.createToken(user as any, Config.shorttoken_expires_in);
+            return this.getbasequery(jwt, field, bits);
+        }
     }
     /**
      * Ensure _type and _acs on object

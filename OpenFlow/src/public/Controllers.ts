@@ -87,19 +87,14 @@ export class MenuCtrl {
             this.signedin = true;
 
             this.customers = await NoderedUtil.Query("users", { _type: "customer" }, null, null, 100, 0, null, null, null, 2);
-            if (this.customers.length == 1) this.customer = this.customers[0];
-            if (this.customers.length > 1 && (data.customerid != null || data.selectedcustomerid != null)) {
-                this.customer = null;
-                if (data.selectedcustomerid != null) {
+            this.customer = null;
+            if (this.customers.length > 0 && (this.user.selectedcustomerid != null)) {
+                if (this.user.selectedcustomerid != null) {
                     for (let cust of this.customers)
-                        if (cust._id == data.selectedcustomerid) this.customer = cust;
-                }
-                if (this.customer == null) {
-                    for (let cust of this.customers)
-                        if (cust._id == data.customerid) this.customer = cust;
-
+                        if (cust._id == this.user.selectedcustomerid) this.customer = cust;
                 }
             }
+            this.WebSocketClientService.customer = this.customer as any;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             // cleanup();
         });
@@ -111,15 +106,11 @@ export class MenuCtrl {
         this.$scope.$on('menurefresh', async (event, data) => {
             if (event && data) { }
             this.customers = await NoderedUtil.Query("users", { _type: "customer" }, null, null, 100, 0, null, null, null, 2);
-            if (this.customers.length == 1) this.customer = this.customers[0];
-            if (this.customers.length > 1 && data.customerid != null) {
+            if (this.customers.length > 0 && this.user.selectedcustomerid != null) {
                 for (let cust of this.customers)
-                    if (cust._id == data.customerid) this.customer = cust;
+                    if (cust._id == this.user.selectedcustomerid) this.customer = cust;
             }
-            if (this.customers.length > 1 && data.selectedcustomerid != null) {
-                for (let cust of this.customers)
-                    if (cust._id == data.selectedcustomerid) this.customer = cust;
-            }
+            this.WebSocketClientService.customer = this.customer as any;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         });
     }
@@ -149,6 +140,27 @@ export class MenuCtrl {
     }
     Search() {
         this.$rootScope.$broadcast("search", this.searchstring);
+    }
+    SelectCustomer(customer) {
+        if (customer != null) {
+            if (this.WebSocketClientService.user.customerid == customer._id) {
+                this.WebSocketClientService.user.selectedcustomerid = null;
+            } else {
+                this.WebSocketClientService.user.selectedcustomerid = customer._id;
+            }
+            this.WebSocketClientService.customer = customer as any;
+            this.$rootScope.$broadcast("menurefresh");
+            this.$rootScope.$broadcast("search", this.searchstring);
+            if (this.PathIs("/Customer")) {
+                this.$location.path("/Customer/" + customer._id);
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            }
+        } else {
+            this.WebSocketClientService.user.selectedcustomerid = null;
+            this.WebSocketClientService.customer = null;
+            this.$rootScope.$broadcast("menurefresh");
+            this.$rootScope.$broadcast("search", this.searchstring);
+        }
     }
 }
 export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
@@ -1128,6 +1140,7 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
             this.orderby = this.userdata.data.UsersCtrl.orderby;
             this.searchstring = this.userdata.data.UsersCtrl.searchstring;
             this.basequeryas = this.userdata.data.UsersCtrl.basequeryas;
+            this.skipcustomerfilter = this.userdata.data.UsersCtrl.skipcustomerfilter;
         }
 
         WebSocketClientService.onSignedin((user: TokenUser) => {
@@ -1142,6 +1155,7 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
         this.userdata.data.UsersCtrl.orderby = this.orderby;
         this.userdata.data.UsersCtrl.searchstring = this.searchstring;
         this.userdata.data.UsersCtrl.basequeryas = this.basequeryas;
+        this.userdata.data.UsersCtrl.skipcustomerfilter = this.skipcustomerfilter;
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
@@ -1297,6 +1311,7 @@ export class RolesCtrl extends entitiesCtrl<Role> {
             this.orderby = this.userdata.data.RolesCtrl.orderby;
             this.searchstring = this.userdata.data.RolesCtrl.searchstring;
             this.basequeryas = this.userdata.data.RolesCtrl.basequeryas;
+            this.skipcustomerfilter = this.userdata.data.RolesCtrl.skipcustomerfilter;
         }
         WebSocketClientService.onSignedin((user: TokenUser) => {
             this.loadData();
@@ -1310,6 +1325,7 @@ export class RolesCtrl extends entitiesCtrl<Role> {
         this.userdata.data.RolesCtrl.orderby = this.orderby;
         this.userdata.data.RolesCtrl.searchstring = this.searchstring;
         this.userdata.data.RolesCtrl.basequeryas = this.basequeryas;
+        this.userdata.data.RolesCtrl.skipcustomerfilter = this.skipcustomerfilter;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 }
@@ -4951,6 +4967,12 @@ export class CustomerCtrl extends entityCtrl<Customer> {
     async processdata() {
         try {
             // this.stripe_customer = await NoderedUtil.EnsureStripeCustomer(this.model, this.userid, null, 2);
+            if (this.model != null) {
+                if (this.WebSocketClientService.user.selectedcustomerid != this.model._id) {
+                    this.WebSocketClientService.user.selectedcustomerid = this.model._id;
+                    this.$rootScope.$broadcast("menurefresh");
+                }
+            }
 
         } catch (error) {
 
