@@ -3,6 +3,7 @@ import { User, Role, Rolemember, WellknownIds, Rights, NoderedUtil, Base, TokenU
 import { Config } from "./Config";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
+import { Exception } from "handlebars";
 
 export class DBHelper {
     public static async FindByUsername(username: string, jwt: string, parent: Span): Promise<User> {
@@ -25,8 +26,9 @@ export class DBHelper {
     public static async FindById(_id: string, jwt: string, parent: Span): Promise<User> {
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
+            if (NoderedUtil.IsNullEmpty(_id)) throw new Exception("_id cannot be null");
             if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
-            const items: User[] = await Config.db.query<User>({ _id: _id }, null, 1, 0, null, "users", jwt, undefined, undefined, span);
+            const items: User[] = await Config.db.query<User>({ _id }, null, 1, 0, null, "users", jwt, undefined, undefined, span);
             if (items === null || items === undefined || items.length === 0) { return null; }
             return await this.DecorateWithRoles(User.assign(items[0]), span);
         } catch (error) {
@@ -39,7 +41,9 @@ export class DBHelper {
     public static async FindByUsernameOrId(username: string, id: string, parent: Span): Promise<User> {
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindByUsernameOrId", parent);
         try {
-            const items: User[] = await Config.db.query<User>({ $or: [{ username: new RegExp(["^", username, "$"].join(""), "i") }, { _id: id }] },
+            var _id = id;
+            if (NoderedUtil.IsNullEmpty(_id)) _id = null;
+            const items: User[] = await Config.db.query<User>({ $or: [{ username: new RegExp(["^", username, "$"].join(""), "i") }, { _id }] },
                 null, 1, 0, null, "users", Crypt.rootToken(), undefined, undefined, span);
             if (items === null || items === undefined || items.length === 0) { return null; }
             return await this.DecorateWithRoles(User.assign(items[0]), span);
@@ -142,10 +146,17 @@ export class DBHelper {
         return Role.assign(items[0]);
     }
     public static async FindRoleByNameOrId(name: string, id: string, parent: Span): Promise<Role> {
-        const jwt = Crypt.rootToken();
-        const items: Role[] = await Config.db.query<Role>({ $or: [{ name: name }, { _id: id }] }, null, 1, 0, null, "users", jwt, undefined, undefined, parent);
-        if (items === null || items === undefined || items.length === 0) { return null; }
-        return Role.assign(items[0]);
+        try {
+            var _id = id;
+            if (NoderedUtil.IsNullEmpty(_id)) _id = null; // undefined is bad here
+            const jwt = Crypt.rootToken();
+            const items: Role[] = await Config.db.query<Role>({ $or: [{ name }, { _id }], "_type": "role" }, null, 5, 0, null, "users", jwt, undefined, undefined, parent);
+            if (items === null || items === undefined || items.length === 0) { return null; }
+            return Role.assign(items[0]);
+        } catch (error) {
+            console.error(error);
+            return null;
+        }
     }
     public static async Save(item: User | Role, jwt: string, parent: Span): Promise<void> {
         await Config.db._UpdateOne(null, item, "users", 0, false, jwt, parent);
@@ -154,7 +165,7 @@ export class DBHelper {
         const span: Span = Logger.otel.startSubSpan("dbhelper.EnsureRole", parent);
         try {
             let role: Role = await this.FindRoleByNameOrId(name, id, span);
-            if (role !== null && (role._id === id || id === null)) { return role; }
+            if (role !== null && (role._id === id || NoderedUtil.IsNullEmpty(id))) { return role; }
             if (role !== null && !NoderedUtil.IsNullEmpty(role._id)) { await Config.db.DeleteOne(role._id, "users", jwt, span); }
             role = new Role(); role.name = name; role._id = id;
             role = await Config.db.InsertOne(role, "users", 0, false, jwt, span);

@@ -13,7 +13,7 @@ import { Readable, Stream } from "stream";
 import { GridFSBucket, ObjectID, Cursor } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
-import { StripeMessage, EnsureStripeCustomerMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, GetKubeNodeLabels, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id } from "@openiap/openflow-api";
+import { StripeMessage, EnsureStripeCustomerMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, GetKubeNodeLabels, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role } from "@openiap/openflow-api";
 import { Billing, stripe_customer, stripe_base, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription, stripe_subscription_item, stripe_plan, stripe_coupon } from "@openiap/openflow-api";
 import { V1ResourceRequirements, V1Deployment } from "@kubernetes/client-node";
 import { amqpwrapper } from "../amqpwrapper";
@@ -499,6 +499,7 @@ export class Message {
                     break;
                 case "ensurecustomer":
                     await this.EnsureCustomer(cli, span);
+                    break;
                 case "housekeeping":
                     this.EnsureJWT(cli);
                     if (Config.enable_openflow_amqp) {
@@ -509,9 +510,13 @@ export class Message {
                     }
                     break;
                 default:
-                    span.recordException("Unknown command " + command);
-                    this.UnknownCommand();
-                    cli.Send(this);
+                    if (command != "error") {
+                        span.recordException("Unknown command " + command);
+                        this.UnknownCommand();
+                        cli.Send(this);
+                    } else {
+                        var b = true;
+                    }
                     break;
             }
             if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
@@ -2405,9 +2410,9 @@ export class Message {
     private async GetNoderedInstance(parent: Span): Promise<void> {
         await this.DetectDocker();
         if (Message.usedocker) {
-            this.dockerGetNoderedInstance(parent);
+            await this.dockerGetNoderedInstance(parent);
         } else {
-            this.KubeGetNoderedInstance(parent);
+            await this.KubeGetNoderedInstance(parent);
         }
     }
     private async dockerGetNoderedInstance(parent: Span): Promise<void> {
@@ -3797,14 +3802,41 @@ export class Message {
                 UpdateDoc.$set["customerid"] = msg.customer._id;
                 UpdateDoc.$set["selectedcustomerid"] = msg.customer._id;
                 UpdateDoc.$set["_hasbilling"] = true;
-                await Config.db._UpdateOne({ "_id": user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), span)
+                await Config.db._UpdateOne({ "_id": user._id }, UpdateDoc, "users", 1, false, rootjwt, span)
             }
             if (cli.user.selectedcustomerid != msg.customer._id && cli.user._id != msg.userid) {
                 cli.user.selectedcustomerid = msg.customer._id;
                 const UpdateDoc: any = { "$set": {} };
                 UpdateDoc.$set["selectedcustomerid"] = msg.customer._id;
-                await Config.db._UpdateOne({ "_id": cli.user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), span)
+                await Config.db._UpdateOne({ "_id": cli.user._id }, UpdateDoc, "users", 1, false, rootjwt, span)
             }
+
+            const customeradmins: Role = await DBHelper.EnsureRole(rootjwt, msg.customer.name + " admins", msg.customer.admins, span);
+            customeradmins.name = msg.customer.name + " admins";
+            Base.addRight(customeradmins, WellknownIds.admins, "admins", [Rights.full_control]);
+            // Base.removeRight(customeradmins, WellknownIds.admins, [Rights.delete]);
+            customeradmins.AddMember(user);
+            customeradmins.customerid = msg.customer._id;
+            await DBHelper.Save(customeradmins, rootjwt, span);
+
+            const customer_admins: Role = await DBHelper.EnsureRole(rootjwt, "customer admins", WellknownIds.customer_admins, span);
+            customer_admins.AddMember(customeradmins);
+            await DBHelper.Save(customer_admins, rootjwt, span);
+
+            const customerusers: Role = await DBHelper.EnsureRole(rootjwt, msg.customer.name + " users", msg.customer.users, span);
+            customerusers.name = msg.customer.name + " users";
+            customerusers.customerid = msg.customer._id;
+            Base.addRight(customerusers, customeradmins._id, customeradmins.name, [Rights.full_control]);
+            Base.removeRight(customerusers, customeradmins._id, [Rights.delete]);
+            customerusers.AddMember(customeradmins);
+            await DBHelper.Save(customerusers, rootjwt, span);
+
+            if (msg.customer.admins != customeradmins._id || msg.customer.users != customerusers._id) {
+                msg.customer.admins = customeradmins._id;
+                msg.customer.users = customerusers._id;
+                await Config.db._UpdateOne(null, msg.customer, "users", 3, true, rootjwt, span);
+            }
+
         } catch (error) {
             span.recordException(error);
             await handleError(cli, error);

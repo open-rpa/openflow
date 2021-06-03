@@ -1,7 +1,7 @@
 import { MongoClient, ObjectID, Db, Binary, InsertOneWriteOpResult, MapReduceOptions, CollectionInsertOneOptions, GridFSBucket, ChangeStream, CollectionAggregationOptions, MongoClientOptions } from "mongodb";
 import { Crypt } from "./Crypt";
 import { Config } from "./Config";
-import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User } from "@openiap/openflow-api";
+import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User, Customer } from "@openiap/openflow-api";
 import { DBHelper } from "./DBHelper";
 import { OAuthProvider } from "./OAuthProvider";
 import { ValueRecorder } from "@opentelemetry/api-metrics"
@@ -293,7 +293,7 @@ export class DatabaseConnection {
         let doadd: boolean = true;
         const multi_tenant_skip: string[] = [WellknownIds.users, WellknownIds.filestore_users,
         WellknownIds.nodered_api_users, WellknownIds.nodered_users, WellknownIds.personal_nodered_users,
-        WellknownIds.robot_users, WellknownIds.robots];
+        WellknownIds.robot_users, WellknownIds.robots, WellknownIds.customer_admins, WellknownIds.resellers];
         if (item._id === WellknownIds.users && Config.multi_tenant) {
             doadd = false;
         }
@@ -828,6 +828,7 @@ export class DatabaseConnection {
      */
     async InsertOne<T extends Base>(item: T, collectionname: string, w: number, j: boolean, jwt: string, parent: Span): Promise<T> {
         const span: Span = Logger.otel.startSubSpan("db.InsertOne", parent);
+        let customer: Customer = null;
         try {
             if (item === null || item === undefined) { throw Error("Cannot create null item"); }
             if (NoderedUtil.IsNullEmpty(jwt)) {
@@ -872,6 +873,27 @@ export class DatabaseConnection {
                     if (this.WellknownIdsArray.indexOf(item._id) == -1) {
                         throw new Error("Access denied");
                     }
+                }
+            }
+            if (collectionname === "users" && (item._type === "user" || item._type === "role")) {
+                let user2: User = item as any;
+                if (NoderedUtil.IsNullEmpty(user2.customerid)) {
+                    if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) {
+                        user2.customerid = user.selectedcustomerid;
+                    } else if (!NoderedUtil.IsNullEmpty(user.customerid)) {
+                        user2.customerid = user.selectedcustomerid;
+                    }
+                }
+                if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
+                    if (!user.HasRoleName("customer admins")) throw new Error("Access denied (not admin) to customer with id " + user2.customerid);
+                    customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, span)
+                    if (customer == null) throw new Error("Access denied to customer with id " + user2.customerid);
+                } if (Config.multi_tenant && !user.HasRoleName("admins")) {
+                    throw new Error("Access denied (not admin or customer admin)");
+                }
+                if (customer != null) {
+                    const custadmins = await this.getbyid<Role>(customer.admins, "users", jwt, span);
+                    Base.addRight(item, custadmins._id, custadmins.name, [Rights.full_control]);
                 }
             }
             j = ((j as any) === 'true' || j === true);
@@ -963,7 +985,15 @@ export class DatabaseConnection {
                 item = await this.CleanACL(item, user, span);
                 span.addEvent("Save");
                 await DBHelper.Save(users, Crypt.rootToken(), span);
-                const user2: TokenUser = item as any;
+                let user2: TokenUser = item as any;
+
+                if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
+                    // TODO: Check user has permission to this customer
+                    const custusers = await this.getbyid<Role>(customer.users, "users", jwt, span);
+                    custusers.AddMember(item);
+                    await DBHelper.Save(custusers, Crypt.rootToken(), span);
+                }
+
                 DBHelper.EnsureNoderedRoles(user2, Crypt.rootToken(), false, span);
             }
             if (collectionname === "users" && item._type === "role") {
