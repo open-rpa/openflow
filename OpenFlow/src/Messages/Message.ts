@@ -13,7 +13,7 @@ import { Readable, Stream } from "stream";
 import { GridFSBucket, ObjectID, Cursor } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
-import { StripeMessage, EnsureStripeCustomerMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, GetKubeNodeLabels, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role } from "@openiap/openflow-api";
+import { StripeMessage, EnsureStripeCustomerMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, GetKubeNodeLabels, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage } from "@openiap/openflow-api";
 import { Billing, stripe_customer, stripe_base, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription, stripe_subscription_item, stripe_plan, stripe_coupon } from "@openiap/openflow-api";
 import { V1ResourceRequirements, V1Deployment } from "@kubernetes/client-node";
 import { amqpwrapper } from "../amqpwrapper";
@@ -499,6 +499,9 @@ export class Message {
                     break;
                 case "ensurecustomer":
                     await this.EnsureCustomer(cli, span);
+                    break;
+                case "selectcustomer":
+                    await this.SelectCustomer(cli, span);
                     break;
                 case "housekeeping":
                     this.EnsureJWT(cli);
@@ -3691,8 +3694,6 @@ export class Message {
         }
         this.Send(cli);
     }
-
-
     // https://dominik.sumer.dev/blog/stripe-checkout-eu-vat
     async EnsureCustomer(cli: WebSocketServerClient, parent: Span) {
         this.Reply();
@@ -4025,6 +4026,44 @@ export class Message {
         }
         Logger.otel.endSpan(span);
     }
+    async SelectCustomer(cli: WebSocketServerClient, parent: Span) {
+        this.Reply();
+        let msg: SelectCustomerMessage;
+        try {
+            msg = SelectCustomerMessage.assign(this.data);
+            if (!NoderedUtil.IsNullEmpty(msg.customerid)) {
+                var customer = await Config.db.getbyid<Customer>(msg.customerid, "users", cli.jwt, parent)
+                if (customer == null) msg.customerid = null;
+            }
+            const UpdateDoc: any = { "$set": {} };
+            UpdateDoc.$set["selectedcustomerid"] = msg.customerid;
+            await Config.db._UpdateOne({ "_id": cli.user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), parent);
+            cli.user.selectedcustomerid = msg.customerid;
+            const tuser: TokenUser = TokenUser.From(cli.user);
+            cli.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
+
+            const l: SigninMessage = new SigninMessage();
+            l.jwt = cli.jwt;
+            l.user = tuser;
+            const m: Message = new Message(); m.command = "refreshtoken";
+            m.data = JSON.stringify(l);
+            cli.Send(m);
+        } catch (error) {
+            await handleError(cli, error);
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) {
+                msg.error = (error.message ? error.message : error);
+            }
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            await handleError(cli, error);
+        }
+        this.Send(cli);
+    }
+
 }
 
 export class JSONfn {

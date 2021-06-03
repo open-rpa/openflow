@@ -100,7 +100,6 @@ export class MenuCtrl {
         });
         this.$scope.$on('setsearch', (event, data) => {
             if (event && data) { }
-            console.log("setsearch", data)
             this.searchstring = data;
         });
         this.$scope.$on('menurefresh', async (event, data) => {
@@ -141,26 +140,33 @@ export class MenuCtrl {
     Search() {
         this.$rootScope.$broadcast("search", this.searchstring);
     }
-    SelectCustomer(customer) {
+    async SelectCustomer(customer) {
         if (customer != null) {
-            if (this.WebSocketClientService.user.customerid == customer._id) {
-                this.WebSocketClientService.user.selectedcustomerid = null;
-            } else {
-                this.WebSocketClientService.user.selectedcustomerid = customer._id;
-            }
-            this.WebSocketClientService.customer = customer as any;
-            this.$rootScope.$broadcast("menurefresh");
-            this.$rootScope.$broadcast("search", this.searchstring);
-            if (this.PathIs("/Customer")) {
-                this.$location.path("/Customer/" + customer._id);
-                if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            }
+            console.log("SelectCustomer " + customer.name, customer)
         } else {
-            this.WebSocketClientService.user.selectedcustomerid = null;
-            this.WebSocketClientService.customer = null;
-            this.$rootScope.$broadcast("menurefresh");
-            this.$rootScope.$broadcast("search", this.searchstring);
+            console.log("SelectCustomer null", customer)
         }
+        try {
+            this.customer = customer;
+            if (customer != null) {
+                this.WebSocketClientService.user.selectedcustomerid = customer._id;
+                await NoderedUtil.SelectCustomer(this.WebSocketClientService.user.selectedcustomerid, null, 2);
+                this.WebSocketClientService.customer = customer as any;
+                if (this.PathIs("/Customer")) {
+                    this.$location.path("/Customer/" + customer._id);
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                }
+            } else {
+                this.WebSocketClientService.user.selectedcustomerid = null;
+                await NoderedUtil.SelectCustomer(this.WebSocketClientService.user.selectedcustomerid, null, 2);
+                this.WebSocketClientService.customer = null;
+            }
+            // this.$rootScope.$broadcast("menurefresh");
+            this.$rootScope.$broadcast("search", this.searchstring);
+        } catch (error) {
+            console.error(error);
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 }
 export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {

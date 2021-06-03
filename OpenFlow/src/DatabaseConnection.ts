@@ -888,7 +888,11 @@ export class DatabaseConnection {
                     if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) throw new Error("Access denied (not admin) to customer with id " + user2.customerid);
                     customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, span)
                     if (customer == null) throw new Error("Access denied to customer with id " + user2.customerid);
-                } if (Config.multi_tenant && !user.HasRoleName("admins")) {
+                } else if (user.HasRoleName("customer admins") && !NoderedUtil.IsNullEmpty(user.customerid)) {
+                    user2.customerid = user.customerid;
+                    if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
+                    customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, span);
+                } else if (Config.multi_tenant && !user.HasRoleName("admins")) {
                     throw new Error("Access denied (not admin or customer admin)");
                 }
                 if (customer != null) {
@@ -1286,7 +1290,11 @@ export class DatabaseConnection {
                         if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) throw new Error("Access denied (not admin) to customer with id " + user2.customerid);
                         customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span)
                         if (customer == null) throw new Error("Access denied to customer with id " + user2.customerid);
-                    } if (Config.multi_tenant && !user.HasRoleName("admins")) {
+                    } else if (user.HasRoleName("customer admins") && !NoderedUtil.IsNullEmpty(user.customerid)) {
+                        user2.customerid = user.customerid;
+                        if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
+                        customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span);
+                    } else if (Config.multi_tenant && !user.HasRoleName("admins")) {
                         throw new Error("Access denied (not admin or customer admin)");
                     }
                     if (customer != null) {
