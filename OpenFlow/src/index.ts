@@ -308,17 +308,17 @@ async function initDatabase(): Promise<boolean> {
                 try {
                     var dt = new Date(new Date().toISOString());
                     var msg = new Message(); msg.jwt = Crypt.rootToken();
-                    var updateUsage: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
-                    await msg.Housekeeping(false, updateUsage, updateUsage, null);
+                    var skipUpdateUsage: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
+                    await msg.Housekeeping(false, skipUpdateUsage, skipUpdateUsage, null);
                 } catch (error) {
                 }
             }, 3600000);
             setTimeout(async () => {
                 var dt = new Date(new Date().toISOString());
                 var msg = new Message(); msg.jwt = Crypt.rootToken();
-                var updateUsage: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
-                updateUsage = false;
-                await msg.Housekeeping(false, updateUsage, updateUsage, null);
+                var skipUpdateUsage: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
+                // skipUpdateUsage = false;
+                await msg.Housekeeping(false, skipUpdateUsage, skipUpdateUsage, null);
             }, 5000);
         }
         return true;

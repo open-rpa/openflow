@@ -1,5 +1,5 @@
 import { userdata, api, entityCtrl, entitiesCtrl } from "./CommonControllers";
-import { TokenUser, QueueMessage, SigninMessage, Ace, NoderedUser, Billing, stripe_customer, stripe_list, stripe_base, stripe_plan, stripe_subscription_item, Base, NoderedUtil, WebSocketClient, Role, NoderedConfig, Resources, ResourceValues, stripe_invoice, Message, Customer } from "@openiap/openflow-api";
+import { TokenUser, QueueMessage, SigninMessage, Ace, NoderedUser, Billing, stripe_customer, stripe_list, stripe_base, stripe_plan, stripe_subscription_item, Base, NoderedUtil, WebSocketClient, Role, NoderedConfig, stripe_invoice, Message, Customer, KubeResources, KubeResourceValues, Resource, ResourceVariant, ResourceUsage } from "@openiap/openflow-api";
 import { RPAWorkflow, Provider, Form, WorkflowInstance, Workflow, unattendedclient } from "./Entities";
 import { WebSocketClientService } from "./WebSocketClientService";
 
@@ -1122,6 +1122,7 @@ export class ProviderCtrl extends entityCtrl<Provider> {
     }
 }
 export class UsersCtrl extends entitiesCtrl<TokenUser> {
+    public stripe: any = null;
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -1148,8 +1149,18 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
             this.basequeryas = this.userdata.data.UsersCtrl.basequeryas;
             this.skipcustomerfilter = this.userdata.data.UsersCtrl.skipcustomerfilter;
         }
-
-        WebSocketClientService.onSignedin((user: TokenUser) => {
+        WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            let haderror: boolean = false;
+            try {
+                this.stripe = Stripe(this.WebSocketClientService.stripe_api_key);
+            } catch (error) {
+                haderror = true;
+            }
+            if (haderror) {
+                console.debug("loading stripe script")
+                await jsutil.loadScript('//js.stripe.com/v3/');
+                this.stripe = Stripe(this.WebSocketClientService.stripe_api_key);
+            }
             this.loadData();
         });
     }
@@ -1190,6 +1201,115 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
         for (var i = 0; i < list.length; i++) {
             console.debug("Deleting " + list[i].name)
             await NoderedUtil.DeleteOne("users", list[i]._id, null, 2);
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    public Resources: Resource[];
+    public Assigned: ResourceUsage[];
+    public user: TokenUser;
+    async ShowPlans(user: TokenUser) {
+        try {
+            this.user = user;
+            var modal = document.getElementById("resourceModal");
+            modal.classList.toggle("show");
+            this.Resources = await NoderedUtil.Query("config", { "_type": "resource", "target": "user" }, null, { _created: -1 }, 100, 0, null, null, null, 2);
+            this.Assigned = await NoderedUtil.Query("config", { "_type": "resourceusage", "userid": user._id }, null, { _created: -1 }, 100, 0, null, null, null, 2);
+            for (var res of this.Resources) {
+                for (var prod of res.products) {
+                    (prod as any).count = this.AssignCount(prod);
+                }
+            }
+
+        } catch (error) {
+            this.errormessage = error;
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    AssignCount(Product: ResourceVariant) {
+        const assigned = this.Assigned.filter(x => x.resource.stripeprice == Product.stripeprice && x.quantity > 0);
+        return assigned.length;
+    }
+    async RemovePlan(resource: Resource, product: ResourceVariant) {
+        try {
+            const assigned = this.Assigned.filter(x => x.resource.stripeprice == product.stripeprice);
+            if (assigned.length > 0) {
+                await NoderedUtil.StripeCancelPlan(assigned[0]._id, null, 2);
+            }
+            var modal = document.getElementById("resourceModal");
+            modal.classList.toggle("show");
+            this.loadData();
+
+        } catch (error) {
+            this.errormessage = error;
+            try {
+                var modal = document.getElementById("resourceModal");
+                modal.classList.toggle("show");
+            } catch (error) {
+            }
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async AddPlan(resource: Resource, product: ResourceVariant) {
+        // const tax_ids = await NoderedUtil.Stripe<any>("GET", "tax_rates", null, null, null, null, 2);
+        // let dynamic_tax_rates = [];
+        // if (tax_ids && tax_ids.data && tax_ids.data.length > 0) {
+        //     dynamic_tax_rates = tax_ids.data.filter(x => x.active && x.country != null).map(x => x.id);
+        // }
+        // // Work around until stripe enables dynamic_tax_rates
+        // // if (this.WebSocketClientService.customer.vatnumber == null || !this.WebSocketClientService.customer.vatnumber.toUpperCase().startsWith("DK")) {
+        // if (this.WebSocketClientService.customer.country == null || this.WebSocketClientService.customer.country.toUpperCase() != "DK") {
+        //     dynamic_tax_rates = [];
+        // }
+        // const baseurl = top.location.href.split("/")[0] + "//" + top.location.href.split("/")[2] + "/#/Customer/" + this.WebSocketClientService.customer._id;
+        // const payload: any = {
+        //     success_url: baseurl + "/refresh", cancel_url: baseurl,
+        //     customer: this.WebSocketClientService.customer.stripeid,
+        //     payment_method_types: ["card"], mode: "subscription",
+        //     line_items: [{ price: plan.stripeprice, quantity: 1, dynamic_tax_rates: dynamic_tax_rates }],
+        // };
+        // var checkout = await NoderedUtil.Stripe("POST", "checkout.sessions", null, null, payload, null, 2);
+        try {
+            var result = await NoderedUtil.StripeAddPlan(this.user._id, this.WebSocketClientService.customer._id,
+                resource._id, product.stripeprice, null, 2);
+            debugger;
+            var checkout = result.checkout;
+            if (checkout) {
+                const stripe = Stripe(this.WebSocketClientService.stripe_api_key);
+                stripe
+                    .redirectToCheckout({
+                        sessionId: checkout.id,
+                    })
+                    .then(function (event) {
+                        if (event.complete) {
+                            // enable payment button
+                        } else if (event.error) {
+                            console.error(event.error);
+                            if (event.error && event.error.message) {
+                                this.cardmessage = event.error.message;
+                            } else {
+                                this.cardmessage = event.error;
+                            }
+                            console.error(event.error);
+
+                            // show validation to customer
+                        } else {
+                        }
+                    }).catch((error) => {
+                        console.error(error);
+                        this.errormessage = error;
+                    });
+            } else {
+                var modal = document.getElementById("resourceModal");
+                modal.classList.toggle("show");
+                this.loadData();
+            }
+        } catch (error) {
+            this.errormessage = error;
+            try {
+                var modal = document.getElementById("resourceModal");
+                modal.classList.toggle("show");
+            } catch (error) {
+            }
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
@@ -1716,8 +1836,12 @@ export class EntitiesCtrl extends entitiesCtrl<Base> {
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
-            this.loadData();
-            this.collections = await NoderedUtil.ListCollections(null);
+            try {
+                this.loadData();
+                this.collections = await NoderedUtil.ListCollections(null);
+            } catch (error) {
+                this.errormessage = error;
+            }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         });
     }
@@ -3112,8 +3236,8 @@ export class NoderedCtrl {
             this.errormessage = "";
             if (this.limitsmemory != "") {
                 if (this.user.nodered == null) this.user.nodered = new NoderedConfig();
-                if (this.user.nodered.resources == null) this.user.nodered.resources = new Resources();
-                if (this.user.nodered.resources.limits == null) this.user.nodered.resources.limits = new ResourceValues();
+                if (this.user.nodered.resources == null) this.user.nodered.resources = new KubeResources();
+                if (this.user.nodered.resources.limits == null) this.user.nodered.resources.limits = new KubeResourceValues();
                 if (this.user.nodered.resources.limits.memory != this.limitsmemory) {
                     this.user.nodered.resources.limits.memory = this.limitsmemory;
                 }
@@ -3831,7 +3955,7 @@ export class PaymentCtrl extends entityCtrl<Billing> {
                     // (payload as any) = { subscription: subscription.id, plan: this.supporthoursplan.id, quantity: 1 };
                     // const payload:any = { subscription: subscription.id, plan: this.supporthoursplan.id };
                     // await NoderedUtil.Stripe("POST", "subscription_items", null, null, payload);
-                    const result = await NoderedUtil.StripeAddPlan(this.userid, this.supporthoursplan.id, null, null, 2);
+                    // const result = await NoderedUtil.StripeAddPlan(this.userid, this.supporthoursplan.id, null, null, 2);
                     // this.loadData();
                 }
             }
@@ -3873,7 +3997,7 @@ export class PaymentCtrl extends entityCtrl<Billing> {
     }
     async CancelPlan(planid: string) {
         try {
-            const result = await NoderedUtil.StripeCancelPlan(this.userid, planid, null, 2);
+            // const result = await NoderedUtil.StripeCancelPlan(this.userid, planid, null, 2);
             this.loadData();
         } catch (error) {
             console.error(error);
@@ -3916,35 +4040,35 @@ export class PaymentCtrl extends entityCtrl<Billing> {
     }
     async CheckOut(planid: string, subplanid: string) {
         try {
-            const result = await NoderedUtil.StripeAddPlan(this.userid, planid, subplanid, null, 2);
-            if (result.checkout) {
-                const stripe = Stripe(this.WebSocketClientService.stripe_api_key);
-                stripe
-                    .redirectToCheckout({
-                        sessionId: result.checkout.id,
-                    })
-                    .then(function (event) {
-                        if (event.complete) {
-                            // enable payment button
-                        } else if (event.error) {
-                            console.error(event.error);
-                            if (event.error && event.error.message) {
-                                this.cardmessage = event.error.message;
-                            } else {
-                                this.cardmessage = event.error;
-                            }
-                            console.error(event.error);
+            // const result = await NoderedUtil.StripeAddPlan(this.userid, planid, subplanid, null, 2);
+            // if (result.checkout) {
+            //     const stripe = Stripe(this.WebSocketClientService.stripe_api_key);
+            //     stripe
+            //         .redirectToCheckout({
+            //             sessionId: result.checkout.id,
+            //         })
+            //         .then(function (event) {
+            //             if (event.complete) {
+            //                 // enable payment button
+            //             } else if (event.error) {
+            //                 console.error(event.error);
+            //                 if (event.error && event.error.message) {
+            //                     this.cardmessage = event.error.message;
+            //                 } else {
+            //                     this.cardmessage = event.error;
+            //                 }
+            //                 console.error(event.error);
 
-                            // show validation to customer
-                        } else {
-                        }
-                    }).catch((error) => {
-                        console.error(error);
-                        this.cardmessage = error;
-                    });
-            } else {
-                this.loadData();
-            }
+            //                 // show validation to customer
+            //             } else {
+            //             }
+            //         }).catch((error) => {
+            //             console.error(error);
+            //             this.cardmessage = error;
+            //         });
+            // } else {
+            //     this.loadData();
+            // }
         } catch (error) {
             console.error(error);
             this.cardmessage = error;
@@ -4969,7 +5093,7 @@ export class CustomerCtrl extends entityCtrl<Customer> {
 
                     var results = await NoderedUtil.Query(this.collection, { "_type": "billing", "userid": user._id }, null, null, 1, 0, null, null, null, 2);
                     if (results.length > 0) {
-                        console.debug("Reuse billing id " + results[0]._id + " with stribeid " + results[0].stripeid);
+                        console.debug("Reuse billing id " + results[0]._id + " with stripeid " + results[0].stripeid);
                         this.model.name = results[0].name;
                         this.model.stripeid = results[0].stripeid;
                         this.model.vatnumber = results[0].vatnumber;
@@ -5007,6 +5131,10 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                     this.WebSocketClientService.user.selectedcustomerid = this.model._id;
                     this.$rootScope.$broadcast("menurefresh");
                 }
+            }
+
+            if (this.$routeParams.action != null) {
+                await NoderedUtil.EnsureCustomer(this.model, null, 2);
             }
 
         } catch (error) {
@@ -5444,4 +5572,104 @@ export class EntityRestrictionCtrl extends entityCtrl<Base> {
         });
     }
 
+}
+
+
+
+export class ResourcesCtrl extends entitiesCtrl<Resource> {
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api,
+        public userdata: userdata
+    ) {
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        console.debug("ResourcesCtrl");
+        this.basequery = { _type: "resource" };
+        this.collection = "config";
+        this.postloadData = this.processData;
+        if (this.userdata.data.ResourcesCtrl) {
+            this.basequery = this.userdata.data.ResourcesCtrl.basequery;
+            this.collection = this.userdata.data.ResourcesCtrl.collection;
+            this.baseprojection = this.userdata.data.ResourcesCtrl.baseprojection;
+            this.orderby = this.userdata.data.ResourcesCtrl.orderby;
+            this.searchstring = this.userdata.data.ResourcesCtrl.searchstring;
+            this.basequeryas = this.userdata.data.ResourcesCtrl.basequeryas;
+        }
+
+        WebSocketClientService.onSignedin((user: TokenUser) => {
+            this.loadData();
+        });
+    }
+    async processData(): Promise<void> {
+        if (!this.userdata.data.ResourcesCtrl) this.userdata.data.ResourcesCtrl = {};
+        this.userdata.data.ResourcesCtrl.basequery = this.basequery;
+        this.userdata.data.ResourcesCtrl.collection = this.collection;
+        this.userdata.data.ResourcesCtrl.baseprojection = this.baseprojection;
+        this.userdata.data.ResourcesCtrl.orderby = this.orderby;
+        this.userdata.data.ResourcesCtrl.searchstring = this.searchstring;
+        this.userdata.data.ResourcesCtrl.basequeryas = this.basequeryas;
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async EnsureCommon() {
+        try {
+            await this.newResource("Nodered Instance", "user", "singlevariant", "singlevariant", { "memory": "128Mi" },
+                [
+                    this.newProduct("Basic", "prod_HEC6rB2wRUwviG", "plan_HECATxbGlff4Pv", "single", "single", null, { "memory": "256Mi" }),
+                    this.newProduct("Plus", "prod_HEDSUIZLD7rfgh", "plan_HEDSUl6qdOE4ru", "single", "single", null, { "memory": "512Mb" }),
+                    this.newProduct("Premium", "prod_HEDTI7YBbwEzVX", "plan_HEDTJQBGaVGnvl", "single", "single", null, { "memory": "1Gi" }),
+                    this.newProduct("Premium+", "prod_IERLqCwV7BV8zy", "price_1HdySLC2vUMc6gvh3H1pgG7A", "single", "single", null, { "memory": "1Gi" }),
+                ], true);
+
+            this.loadData();
+        } catch (error) {
+            this.errormessage = error;
+        }
+    }
+    newProduct(name: string, stripeproduct: string, stripeprice: string, customerassign: "single" | "multiple" | "usage",
+        userassign: "single" | "multiple" | "usage", added_stripeprice: string, metadata: any): ResourceVariant {
+        const result: ResourceVariant = new ResourceVariant();
+        result.name = name;
+        result.stripeproduct = stripeproduct;
+        result.stripeprice = stripeprice;
+        result.customerassign = customerassign;
+        result.userassign = userassign;
+        result.added_stripeprice = added_stripeprice;
+        result.metadata = metadata;
+        return result;
+    }
+    async newResource(name: string,
+        target: "customer" | "user" | "both",
+        customerassign: "singlevariant" | "multiplevariants",
+        userassign: "singlevariant" | "multiplevariants",
+        defaultmetadata: any,
+        products: ResourceVariant[], customeradmins: boolean) {
+        var results = await NoderedUtil.Query(this.collection, { "name": name }, null, null, 1, 0, null, null, null, 2);
+        const model: Resource = (results.length == 1 ? results[0] : new Resource());
+        model.name = name;
+        model.target = target;
+        model.customerassign = customerassign;
+        model.userassign = userassign;
+        model.defaultmetadata = defaultmetadata;
+        model.products = products;
+        model._acl = [];
+        Base.addRight(model, "5a1702fa245d9013697656fb", "admins", [-1]);
+        if (customeradmins) {
+            Base.addRight(model, "5a1702fa245d9013697656fc", "customer admins", [1]);
+        } else {
+            Base.addRight(model, "5a17f157c4815318c8536c21", "users", [1]);
+        }
+        if (model._id) {
+            console.log("updating " + name);
+            await NoderedUtil.UpdateOne(this.collection, null, model, 1, false, null, 2);
+        } else {
+            console.log("adding " + name);
+            await NoderedUtil.InsertOne(this.collection, model, 1, false, null, 2);
+        }
+    }
 }

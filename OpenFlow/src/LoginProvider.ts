@@ -157,9 +157,14 @@ export class LoginProvider {
             const _user = await Auth.getUser(userid, "passport");
             if (_user == null) {
                 const user = await DBHelper.FindByUsernameOrId(null, userid, null);
-                const tuser = TokenUser.From(user);
-                await Auth.AddUser(tuser as any, tuser._id, "passport");
-                done(null, tuser);
+                if (user != null) {
+                    const tuser = TokenUser.From(user);
+                    await Auth.AddUser(tuser as any, tuser._id, "passport");
+                    done(null, tuser);
+                } else {
+                    done(null, null);
+                }
+
             } else {
                 done(null, _user);
             }

@@ -34,9 +34,8 @@
       <td>
         <timesince ng-model="model.lastseen" />
       </td>
-      <td ng-show="ctrl.WebSocketClientService.stripe_api_key != ''">
-        <a ng-href="#/Payment/{{model._id}}" class="btn"
-          ng-show="menuctrl.hasrole('admins') && model._hasbilling == true">
+      <td ng-show="menuctrl.user.customerid != null">
+        <a href ng-click="ctrl.ShowPlans(model)" class="btn" role="button">
           <em class="fas fa-money-bill-wave"></em></a>
       </td>
       <td ng-show="ctrl.WebSocketClientService.validate_user_form != ''">
@@ -54,3 +53,40 @@
     </tr>
   </tbody>
 </table>
+
+
+
+<div class="modal modal-full" id="resourceModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">{{ctrl.model.name}} </h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div ng-repeat="Resource in ctrl.Resources">
+          <div class="row" ng-repeat="Product in Resource.products">
+            <div class="col">{{Product.name}}</div>
+            <div class="col">{{ Product.count }}
+            </div>
+            <div class="col">
+
+              <a href ng-click="ctrl.AddPlan(Resource, Product)" class="btn" role="button" ng-show="Product.count == 0">
+                <em class="fas fa-money-bill-wave"></em></a>
+              <a href ng-click="ctrl.RemovePlan(Resource, Product)" class="btn" role="button"
+                ng-show="Product.count > 0">
+                <em class="fas fa-trash"></em></a>
+
+            </div>
+          </div>
+        </div>
+        <hr />
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
