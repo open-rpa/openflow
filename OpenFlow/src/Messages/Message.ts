@@ -3744,6 +3744,12 @@ export class Message {
                     customer.vattype = msg.customer.vattype;
                     customer.coupon = msg.customer.coupon;
                 }
+                customer.customattr1 = msg.customer.customattr1;
+                customer.customattr2 = msg.customer.customattr2;
+                customer.customattr3 = msg.customer.customattr3;
+                customer.customattr4 = msg.customer.customattr4;
+                customer.customattr5 = msg.customer.customattr5;
+
                 msg.customer = customer;
             }
             if (!NoderedUtil.IsNullEmpty(msg.customer.stripeid)) {
