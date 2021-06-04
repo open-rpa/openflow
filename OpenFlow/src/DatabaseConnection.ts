@@ -894,7 +894,11 @@ export class DatabaseConnection {
                     if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
                     customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, span);
                 } else if (Config.multi_tenant && !user.HasRoleName("admins")) {
-                    throw new Error("Access denied (not admin or customer admin)");
+                    user2.customerid = user.customerid;
+                    if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
+                    customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, span);
+                    // User needs access to create roles for workflow node and more ... What to do ?
+                    // throw new Error("Access denied (not admin or customer admin)");
                 }
                 if (customer != null) {
                     const custadmins = await this.getbyid<Role>(customer.admins, "users", jwt, span);
@@ -1288,7 +1292,8 @@ export class DatabaseConnection {
                 if (q.collectionname === "users" && (q.item._type === "user" || q.item._type === "role")) {
                     let user2: User = q.item as any;
                     if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
-                        if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) throw new Error("Access denied (not admin) to customer with id " + user2.customerid);
+                        // User can update, just not created ?
+                        // if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) throw new Error("Access denied (not admin) to customer with id " + user2.customerid);
                         customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span)
                         if (customer == null) throw new Error("Access denied to customer with id " + user2.customerid);
                     } else if (user.HasRoleName("customer admins") && !NoderedUtil.IsNullEmpty(user.customerid)) {
@@ -1296,7 +1301,11 @@ export class DatabaseConnection {
                         if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
                         customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span);
                     } else if (Config.multi_tenant && !user.HasRoleName("admins")) {
-                        throw new Error("Access denied (not admin or customer admin)");
+                        // We can update, we just don't want to allow inserts ?
+                        // throw new Error("Access denied (not admin or customer admin)");
+                        user2.customerid = user.customerid;
+                        if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
+                        customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span);
                     }
                     if (customer != null) {
                         const custadmins = await this.getbyid<Role>(customer.admins, "users", q.jwt, span);
@@ -1535,8 +1544,11 @@ export class DatabaseConnection {
                     if (customer != null && !NoderedUtil.IsNullEmpty(user2.customerid) && user2._id != customer.users && user2._id != customer.admins && user2._id != WellknownIds.root) {
                         // TODO: Check user has permission to this customer
                         const custusers: Role = Role.assign(await this.getbyid<Role>(customer.users, "users", q.jwt, span));
-                        custusers.AddMember(q.item);
-                        await DBHelper.Save(custusers, Crypt.rootToken(), span);
+                        if (!custusers.IsMember(q.item._id)) {
+                            custusers.AddMember(q.item);
+                            await DBHelper.Save(custusers, Crypt.rootToken(), span);
+                            Auth.RemoveUser(q.item._id, "passport");
+                        }
                     }
 
                     DBHelper.EnsureNoderedRoles(user2, Crypt.rootToken(), false, span);

@@ -1253,7 +1253,9 @@ export class UserCtrl extends entityCtrl<TokenUser> {
         }
         (this.model as any).federationids.push(this.newid);
     }
+    removedmembers: Role[] = [];
     RemoveMember(model: Role) {
+        this.removedmembers.push(model);
         this.memberof = this.memberof.filter(x => x._id != model._id);
     }
     async submit(): Promise<void> {
@@ -1263,28 +1265,50 @@ export class UserCtrl extends entityCtrl<TokenUser> {
             } else {
                 await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
             }
-            const currentmemberof = await NoderedUtil.Query("users",
-                {
-                    $and: [
-                        { _type: "role" },
-                        { members: { $elemMatch: { _id: this.model._id } } }
-                    ]
-                }, null, { _type: -1, name: 1 }, 5, 0, null, null, null, 2);
-            for (let i = 0; i < currentmemberof.length; i++) {
-                const memberof = currentmemberof[i];
-                if (this.memberof == null || this.memberof == undefined) this.memberof = [];
-                const exists = this.memberof.filter(x => x._id == memberof._id);
-                if (exists.length == 0) {
-                    console.debug("Updating members of " + memberof.name + " " + memberof._id);
-                    console.debug("members: " + memberof.members.length);
-                    memberof.members = memberof.members.filter(x => x._id != this.model._id);
-                    console.debug("members: " + memberof.members.length);
-                    try {
-                        await NoderedUtil.UpdateOne("users", null, memberof, 1, false, null, 2);
-                    } catch (error) {
-                        console.error("Error updating " + memberof.name, error);
+            // const currentmemberof = await NoderedUtil.Query("users",
+            //     {
+            //         $and: [
+            //             { _type: "role" },
+            //             { members: { $elemMatch: { _id: this.model._id } } }
+            //         ]
+            //     }, null, { _type: -1, name: 1 }, 5, 0, null, null, null, 2);
+            // for (let i = 0; i < currentmemberof.length; i++) {
+            //     const memberof = currentmemberof[i];
+            //     if (this.memberof == null || this.memberof == undefined) this.memberof = [];
+            //     const exists = this.memberof.filter(x => x._id == memberof._id);
+            //     if (exists.length == 0) {
+            //         console.debug("Updating members of " + memberof.name + " " + memberof._id);
+            //         console.debug("members: " + memberof.members.length);
+            //         memberof.members = memberof.members.filter(x => x._id != this.model._id);
+            //         console.debug("members: " + memberof.members.length);
+            //         try {
+            //             await NoderedUtil.UpdateOne("users", null, memberof, 1, false, null, 2);
+            //         } catch (error) {
+            //             console.error("Error updating " + memberof.name, error);
+            //         }
+            //     }
+            // }
+            if (this.removedmembers.length > 0) {
+                debugger;
+                for (let i = 0; i < this.removedmembers.length; i++) {
+                    const roles = await NoderedUtil.Query("users", { _type: "role", _id: this.removedmembers[i]._id }, null, { _type: -1, name: 1 }, 5, 0, null, null, null, 2);
+                    if (roles.length > 0) {
+                        const memberof = this.removedmembers[i];
+                        if (this.memberof == null || this.memberof == undefined) this.memberof = [];
+                        const exists = this.memberof.filter(x => x._id == this.model._id);
+                        if (exists.length > 0) {
+                            memberof.members = memberof.members.filter(x => x._id != this.model._id);
+                            try {
+                                await NoderedUtil.UpdateOne("users", null, memberof, 1, false, null, 2);
+                            } catch (error) {
+                                console.error("Error updating " + memberof.name, error);
+                            }
+                        }
+
                     }
+
                 }
+
             }
             this.$location.path("/Users");
         } catch (error) {

@@ -3835,8 +3835,10 @@ export class Message {
             if (msg.customer.admins != customeradmins._id || msg.customer.users != customerusers._id) {
                 msg.customer.admins = customeradmins._id;
                 msg.customer.users = customerusers._id;
-                await Config.db._UpdateOne(null, msg.customer, "users", 3, true, rootjwt, span);
             }
+            Base.addRight(msg.customer, customerusers._id, customerusers.name, [Rights.read]);
+            Base.addRight(msg.customer, customeradmins._id, customeradmins.name, [Rights.read]);
+            await Config.db._UpdateOne(null, msg.customer, "users", 3, true, rootjwt, span);
 
         } catch (error) {
             span.recordException(error);

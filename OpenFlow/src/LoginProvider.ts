@@ -454,7 +454,10 @@ export class LoginProvider {
                     if (req.user) {
                         const user: User = await DBHelper.FindById(req.user._id, undefined, span);
                         const tuser: TokenUser = TokenUser.From(user);
-                        req.session.passport.user.validated = tuser.validated;
+                        if (tuser.validated) {
+                            Auth.RemoveUser(tuser._id, "passport");
+                        }
+                        // req.session.passport.user.validated = tuser.validated;
                         if (!(tuser.validated == true) && Config.validate_user_form != "") {
                         } else {
                             res.cookie("validateurl", "", { expires: new Date(0) });
