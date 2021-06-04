@@ -888,6 +888,7 @@ export class DatabaseConnection {
                     if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) throw new Error("Access denied (not admin) to customer with id " + user2.customerid);
                     customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, span)
                     if (customer == null) throw new Error("Access denied to customer with id " + user2.customerid);
+                    // if (!user.HasRoleName(customer.name + " admins")) throw new Error("Access denied to customer with " + customer.name);
                 } else if (user.HasRoleName("customer admins") && !NoderedUtil.IsNullEmpty(user.customerid)) {
                     user2.customerid = user.customerid;
                     if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
@@ -993,7 +994,7 @@ export class DatabaseConnection {
 
                 if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
                     // TODO: Check user has permission to this customer
-                    const custusers = await this.getbyid<Role>(customer.users, "users", jwt, span);
+                    const custusers: Role = Role.assign(await this.getbyid<Role>(customer.users, "users", jwt, span));
                     custusers.AddMember(item);
                     await DBHelper.Save(custusers, Crypt.rootToken(), span);
                 }
@@ -1528,6 +1529,19 @@ export class DatabaseConnection {
                     this.EntityRestrictions = null;
                 }
                 DatabaseConnection.traversejsondecode(q.item);
+                if (q.collectionname === "users" && q.item._type === "user") {
+                    let user2: TokenUser = q.item as any;
+
+                    if (customer != null && !NoderedUtil.IsNullEmpty(user2.customerid) && user2._id != customer.users && user2._id != customer.admins && user2._id != WellknownIds.root) {
+                        // TODO: Check user has permission to this customer
+                        const custusers: Role = Role.assign(await this.getbyid<Role>(customer.users, "users", q.jwt, span));
+                        custusers.AddMember(q.item);
+                        await DBHelper.Save(custusers, Crypt.rootToken(), span);
+                    }
+
+                    DBHelper.EnsureNoderedRoles(user2, Crypt.rootToken(), false, span);
+                }
+
                 q.result = q.item;
             } catch (error) {
                 throw error;

@@ -364,16 +364,16 @@ export class entitiesCtrl<T> {
                 this.preloadData();
             }
             let query: object = Object.assign({}, this.basequery);
+            let basequeryas = this.basequeryas;
             if (this.collection == "users" && (this.basequery._type == "user" || this.basequery._type == "role") && !this.skipcustomerfilter) {
                 // if (this.WebSocketClientService.user.selectedcustomerid != null) {
                 //     query["customerid"] = this.WebSocketClientService.user.selectedcustomerid;
                 // } else if (this.WebSocketClientService.user.customerid != null) {
                 //     query["customerid"] = this.WebSocketClientService.user.customerid;
                 // }
-            }
-            let basequeryas = this.basequeryas;
-            if (!NoderedUtil.IsNullUndefinded(this.WebSocketClientService.customer) && !this.skipcustomerfilter) {
-                basequeryas = this.WebSocketClientService.customer._id;
+                if (!NoderedUtil.IsNullUndefinded(this.WebSocketClientService.customer) && !this.skipcustomerfilter) {
+                    basequeryas = this.WebSocketClientService.customer._id;
+                }
             }
             if (this.searchstring !== "" && this.searchstring != null) {
                 if ((this.searchstring as string).indexOf("{") == 0) {

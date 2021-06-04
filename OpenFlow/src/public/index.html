@@ -120,17 +120,14 @@
               <div class="col-sm text-left text-nowrap w-100">
                 <a href ng-click="menuctrl.SelectCustomer(null)" class="dropdown-item">No filter</a>
               </div>
-              <div class="col-sm text-right w-90">
-                <a ng-href="#/Customer/{{model._id}}" ng-show="menuctrl.hasrole('customer admins')">
-                  <em class="fas fa-money-bill-wave"></em></a>
-              </div>
             </div>
             <div class="row" ng-repeat="model in menuctrl.customers">
               <div class="col-sm text-left text-nowrap w-100">
                 <a href ng-click="menuctrl.SelectCustomer(model)" class="dropdown-item">{{model.name}}</a>
               </div>
               <div class="col-sm text-right w-90">
-                <a ng-href="#/Customer/{{model._id}}" ng-show="menuctrl.hasrole('customer admins')">
+                <a ng-href="#/Customer/{{model._id}}"
+                  ng-show="menuctrl.hasrole('customer admins') || menuctrl.hasrole('resellers')">
                   <em class="fas fa-money-bill-wave"></em></a>
               </div>
             </div>
