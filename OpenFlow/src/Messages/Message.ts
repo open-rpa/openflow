@@ -3714,10 +3714,10 @@ export class Message {
                 }
             }
             if (customer == null && cli.user.customerid != null) {
-                const customers = await Config.db.query<Customer>({ _type: "customer", "_id": msg.customer._id }, null, 1, 0, null, "users", msg.jwt, undefined, undefined, span);
-                if (customers.length > 0) {
-                    customer = customers[0];
-                }
+                // const customers = await Config.db.query<Customer>({ _type: "customer", "_id": cli.user.customerid }, null, 1, 0, null, "users", msg.jwt, undefined, undefined, span);
+                // if (customers.length > 0) {
+                //     customer = customers[0];
+                // }
             }
 
             if (customer == null) {
@@ -3752,6 +3752,7 @@ export class Message {
                     customer.vattype = msg.customer.vattype;
                     customer.coupon = msg.customer.coupon;
                 }
+                customer.country = msg.customer.country;
                 customer.customattr1 = msg.customer.customattr1;
                 customer.customattr2 = msg.customer.customattr2;
                 customer.customattr3 = msg.customer.customattr3;
@@ -3805,9 +3806,9 @@ export class Message {
                 msg.stripecustomer = await this.Stripe<stripe_customer>("POST", "customers", msg.customer.stripeid, payload2, null);
             }
             if (NoderedUtil.IsNullEmpty(msg.customer._id)) {
-                await Config.db.InsertOne(msg.customer, "users", 3, true, rootjwt, span);
+                msg.customer = await Config.db.InsertOne(msg.customer, "users", 3, true, rootjwt, span);
             } else {
-                await Config.db._UpdateOne(null, msg.customer, "users", 3, true, rootjwt, span);
+                msg.customer = await Config.db._UpdateOne(null, msg.customer, "users", 3, true, rootjwt, span);
             }
             if (user.customerid != msg.customer._id) {
                 if (NoderedUtil.IsNullEmpty(user.customerid)) user.customerid = msg.customer._id;
@@ -3829,13 +3830,13 @@ export class Message {
             Base.addRight(customeradmins, WellknownIds.admins, "admins", [Rights.full_control]);
             // Base.removeRight(customeradmins, WellknownIds.admins, [Rights.delete]);
             customeradmins.AddMember(user);
-            if (!NoderedUtil.IsNullEmpty(user.customerid) && user.customerid != customer._id) {
-                const usercustomer = await Config.db.getbyid<Customer>(user.customerid, "users", msg.jwt, span);
-                if (usercustomer != null) {
-                    const usercustomeradmins = await Config.db.getbyid<Role>(usercustomer.admins, "users", msg.jwt, span);
-                    customeradmins.AddMember(usercustomeradmins);
-                }
-            }
+            // if (!NoderedUtil.IsNullEmpty(user.customerid) && user.customerid != msg.customer._id) {
+            //     const usercustomer = await Config.db.getbyid<Customer>(user.customerid, "users", msg.jwt, span);
+            //     if (usercustomer != null) {
+            //         const usercustomeradmins = await Config.db.getbyid<Role>(usercustomer.admins, "users", msg.jwt, span);
+            //         if (usercustomeradmins != null) customeradmins.AddMember(usercustomeradmins);
+            //     }
+            // }
             customeradmins.customerid = msg.customer._id;
             await DBHelper.Save(customeradmins, rootjwt, span);
 

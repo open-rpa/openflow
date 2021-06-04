@@ -1289,7 +1289,6 @@ export class UserCtrl extends entityCtrl<TokenUser> {
             //     }
             // }
             if (this.removedmembers.length > 0) {
-                debugger;
                 for (let i = 0; i < this.removedmembers.length; i++) {
                     const roles = await NoderedUtil.Query("users", { _type: "role", _id: this.removedmembers[i]._id }, null, { _type: -1, name: 1 }, 5, 0, null, null, null, 2);
                     if (roles.length > 0) {
@@ -4951,12 +4950,16 @@ export class CustomerCtrl extends entityCtrl<Customer> {
             if (this.id !== null && this.id !== undefined) {
                 this.loadData();
             } else {
-                if (!NoderedUtil.IsNullEmpty(user.customerid)) {
-                    var results = await NoderedUtil.Query(this.collection, { "_type": "customer", "_id": user.customerid }, null, null, 1, 0, null, null, null, 2);
-                    if (results.length > 0) {
-                        this.model = results[0];
-                        console.debug("Loaded customer " + this.model._id);
+                user = TokenUser.assign(user);
+                if (!user.HasRoleName("resellers")) {
+                    if (!NoderedUtil.IsNullEmpty(user.customerid)) {
+                        var results = await NoderedUtil.Query(this.collection, { "_type": "customer", "_id": user.customerid }, null, null, 1, 0, null, null, null, 2);
+                        if (results.length > 0) {
+                            this.model = results[0];
+                            console.debug("Loaded customer " + this.model._id);
+                        }
                     }
+
                 }
                 if (NoderedUtil.IsNullUndefinded(this.model)) {
                     this.model = {} as any;
@@ -4972,6 +4975,8 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                         this.model.vatnumber = results[0].vatnumber;
                         this.model.vattype = results[0].vattype;
                     }
+                    this.model.email = (WebSocketClientService.user as any).username;
+                    if ((WebSocketClientService.user as any).email) this.model.email = (WebSocketClientService.user as any).email;
                     console.debug("Create new customer");
                 }
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }

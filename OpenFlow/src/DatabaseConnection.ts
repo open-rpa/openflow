@@ -905,6 +905,10 @@ export class DatabaseConnection {
                 if (customer != null) {
                     const custadmins = await this.getbyid<Role>(customer.admins, "users", jwt, span);
                     Base.addRight(item, custadmins._id, custadmins.name, [Rights.full_control]);
+                    if (item._id == customer.admins || item._id == customer.users) {
+                        Base.removeRight(item, custadmins._id, [Rights.delete]);
+                    }
+
                 }
             }
             j = ((j as any) === 'true' || j === true);
@@ -1314,6 +1318,10 @@ export class DatabaseConnection {
                     if (customer != null && !NoderedUtil.IsNullEmpty(customer.admins)) {
                         const custadmins = await this.getbyid<Role>(customer.admins, "users", q.jwt, span);
                         Base.addRight(q.item, custadmins._id, custadmins.name, [Rights.full_control]);
+                        if (q.item._id == customer.admins || q.item._id == customer.users) {
+                            Base.removeRight(q.item, custadmins._id, [Rights.delete]);
+                        }
+
                     }
                 }
 

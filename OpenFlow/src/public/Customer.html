@@ -298,6 +298,22 @@
         </div>
     </div>
 
+    <div class="form-row row-eq-spacing-sm">
+        <div class="col-sm">
+            <label for="email" class="required">billing email</label>
+            <input type="text" class="form-control" id="email" ng-model="ctrl.model.email" placeholder="Billing email"
+                required="required">
+        </div>
+        <div class="col-sm">
+            <br> <button type="submit" ng-disabled="ctrl.loading==true" class="btn btn-success" translate lib="web">
+                Save</button>
+        </div>
+        <!-- <div class="col-sm">
+            <label for="vatnumber" class="required">TAX/VAT ID</label>
+            <input type="text" class="form-control" id="vatnumber" ng-model="ctrl.model.vatnumber"
+                placeholder="TAX or VAT number" required="required">
+        </div> -->
+    </div>
 
     <div class="form-row row-eq-spacing-sm" ng-show="ctrl.model.stripeid && ctrl.model.stripeid != ''">
         <div class="col-sm">
@@ -308,8 +324,8 @@
 
     </div>
 
-    <div class="text-right">
+    <!-- <div class="text-right">
         <button type="submit" ng-disabled="ctrl.loading==true" class="btn btn-success" translate lib="web">Save</button>
-    </div>
+    </div> -->
 
 </form>
