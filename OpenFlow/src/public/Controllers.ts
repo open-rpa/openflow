@@ -4981,10 +4981,10 @@ export class CustomerCtrl extends entityCtrl<Customer> {
     async submit(): Promise<void> {
         try {
             if (this.model._id) {
-                await NoderedUtil.EnsureCustomer(this.model, this.model.userid, null, 2);
+                await NoderedUtil.EnsureCustomer(this.model, null, 2);
                 // await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null, 2);
             } else {
-                await NoderedUtil.EnsureCustomer(this.model, this.model.userid, null, 2);
+                await NoderedUtil.EnsureCustomer(this.model, null, 2);
                 // await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
             }
             this.$rootScope.$broadcast("menurefresh");
@@ -5128,7 +5128,7 @@ export class EntityRestrictionsCtrl extends entitiesCtrl<Base> {
             await this.newRestriction("Create insance", "workflow_instances", ["$.[?(@ && @._type == 'insance')]"], false);
             await this.newRestriction("Create test or unknown", "test", ["$.[?(@ && (@._type == 'test' || @._type == 'unknown'))]"], false);
 
-            await this.newRestriction("Create role", "users", ["$.[?(@ && @._type == 'role')]"], true);
+            await this.newRestriction("Create role", "users", ["$.[?(@ && @._type == 'role')]"], false);
             await this.newRestriction("Create user", "users", ["$.[?(@ && @._type == 'user')]"], true);
 
             this.loadData();

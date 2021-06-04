@@ -15,9 +15,9 @@
                 ng-model="ctrl.model.name">
         </div>
         <div class="col-sm">
-            <label for="country">country</label>
+            <label for="country" class="required">country</label>
             <select class="form-control" id="country" ng-model="ctrl.model.country" required="required">
-                <option value="  " selected>(please select a country)</option>
+                <option value="" selected>(please select a country)</option>
                 <option value="AF">Afghanistan</option>
                 <option value="AL">Albania</option>
                 <option value="DZ">Algeria</option>
@@ -292,8 +292,9 @@
             </select>
         </div>
         <div class="col-sm">
-            <label for="vatnumber">TAX/VAT ID</label>
-            <input type="text" class="form-control" id="vatnumber" placeholder="TAX or VAT number">
+            <label for="vatnumber" class="required">TAX/VAT ID</label>
+            <input type="text" class="form-control" id="vatnumber" ng-model="ctrl.model.vatnumber"
+                placeholder="TAX or VAT number" required="required">
         </div>
     </div>
 

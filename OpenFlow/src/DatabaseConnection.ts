@@ -896,7 +896,9 @@ export class DatabaseConnection {
                 } else if (Config.multi_tenant && !user.HasRoleName("admins")) {
                     user2.customerid = user.customerid;
                     if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
-                    customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, span);
+                    if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
+                        customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, span);
+                    }
                     // User needs access to create roles for workflow node and more ... What to do ?
                     // throw new Error("Access denied (not admin or customer admin)");
                 }
@@ -1305,9 +1307,11 @@ export class DatabaseConnection {
                         // throw new Error("Access denied (not admin or customer admin)");
                         user2.customerid = user.customerid;
                         if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
-                        customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span);
+                        if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
+                            customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span);
+                        }
                     }
-                    if (customer != null) {
+                    if (customer != null && !NoderedUtil.IsNullEmpty(customer.admins)) {
                         const custadmins = await this.getbyid<Role>(customer.admins, "users", q.jwt, span);
                         Base.addRight(q.item, custadmins._id, custadmins.name, [Rights.full_control]);
                     }
