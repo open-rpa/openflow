@@ -1209,15 +1209,19 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
     public user: TokenUser;
     async ShowPlans(user: TokenUser) {
         try {
+            this.errormessage = "";
             this.user = user;
-            var modal = document.getElementById("resourceModal");
-            modal.classList.toggle("show");
+            this.ToggleModal()
             this.Resources = await NoderedUtil.Query("config", { "_type": "resource", "target": "user" }, null, { _created: -1 }, 100, 0, null, null, null, 2);
             this.Assigned = await NoderedUtil.Query("config", { "_type": "resourceusage", "userid": user._id }, null, { _created: -1 }, 100, 0, null, null, null, 2);
             for (var res of this.Resources) {
                 for (var prod of res.products) {
                     (prod as any).count = this.AssignCount(prod);
+                    if ((prod as any).count > 0) {
+                        (res as any).newproduct = prod;
+                    }
                 }
+
             }
 
         } catch (error) {
@@ -1226,52 +1230,35 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     AssignCount(Product: ResourceVariant) {
-        const assigned = this.Assigned.filter(x => x.resource.stripeprice == Product.stripeprice && x.quantity > 0);
+        const assigned = this.Assigned.filter(x => x.product.stripeprice == Product.stripeprice && x.quantity > 0);
         return assigned.length;
+    }
+    ToggleModal() {
+        var modal = document.getElementById("resourceModal");
+        modal.classList.toggle("show");
     }
     async RemovePlan(resource: Resource, product: ResourceVariant) {
         try {
-            const assigned = this.Assigned.filter(x => x.resource.stripeprice == product.stripeprice);
+            const assigned = this.Assigned.filter(x => x.product.stripeprice == product.stripeprice);
             if (assigned.length > 0) {
                 await NoderedUtil.StripeCancelPlan(assigned[0]._id, null, 2);
             }
-            var modal = document.getElementById("resourceModal");
-            modal.classList.toggle("show");
+            this.ToggleModal()
             this.loadData();
 
         } catch (error) {
             this.errormessage = error;
             try {
-                var modal = document.getElementById("resourceModal");
-                modal.classList.toggle("show");
+                this.ToggleModal()
             } catch (error) {
             }
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     async AddPlan(resource: Resource, product: ResourceVariant) {
-        // const tax_ids = await NoderedUtil.Stripe<any>("GET", "tax_rates", null, null, null, null, 2);
-        // let dynamic_tax_rates = [];
-        // if (tax_ids && tax_ids.data && tax_ids.data.length > 0) {
-        //     dynamic_tax_rates = tax_ids.data.filter(x => x.active && x.country != null).map(x => x.id);
-        // }
-        // // Work around until stripe enables dynamic_tax_rates
-        // // if (this.WebSocketClientService.customer.vatnumber == null || !this.WebSocketClientService.customer.vatnumber.toUpperCase().startsWith("DK")) {
-        // if (this.WebSocketClientService.customer.country == null || this.WebSocketClientService.customer.country.toUpperCase() != "DK") {
-        //     dynamic_tax_rates = [];
-        // }
-        // const baseurl = top.location.href.split("/")[0] + "//" + top.location.href.split("/")[2] + "/#/Customer/" + this.WebSocketClientService.customer._id;
-        // const payload: any = {
-        //     success_url: baseurl + "/refresh", cancel_url: baseurl,
-        //     customer: this.WebSocketClientService.customer.stripeid,
-        //     payment_method_types: ["card"], mode: "subscription",
-        //     line_items: [{ price: plan.stripeprice, quantity: 1, dynamic_tax_rates: dynamic_tax_rates }],
-        // };
-        // var checkout = await NoderedUtil.Stripe("POST", "checkout.sessions", null, null, payload, null, 2);
         try {
             var result = await NoderedUtil.StripeAddPlan(this.user._id, this.WebSocketClientService.customer._id,
                 resource._id, product.stripeprice, null, 2);
-            debugger;
             var checkout = result.checkout;
             if (checkout) {
                 const stripe = Stripe(this.WebSocketClientService.stripe_api_key);
@@ -3029,15 +3016,12 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
         this.models = await NoderedUtil.Query(this.collection + "_hist", { id: this.id }, { name: 1, _createdby: 1, _modified: 1, _deleted: 1, _version: 1, _type: 1 }, this.orderby, 100, 0, null, null, null, 2);
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
+    ToggleModal() {
+        var modal = document.getElementById("exampleModal");
+        modal.classList.toggle("show");
+    }
     async CompareNow(model) {
-        const modal: any = $("#exampleModal");
-        try {
-            modal.modal();
-        } catch (error) {
-            await jsutil.loadScript("bootstrap.js");
-            modal.modal();
-        }
-
+        this.ToggleModal();
 
         if (model.item == null) {
             const item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null, 2);
@@ -3056,14 +3040,7 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
         document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(delta, this.model);
     }
     async ShowVersion(model) {
-        const modal: any = $("#exampleModal");
-        try {
-            modal.modal();
-        } catch (error) {
-            await jsutil.loadScript("bootstrap.js");
-            modal.modal();
-        }
-
+        this.ToggleModal();
 
         if (model.item == null) {
             const item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null, 2);
@@ -3095,54 +3072,65 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
         document.body.removeChild(element);
     }
     async DownloadVersion(model, asXAML) {
-        if (model.item == null) {
-            const item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null, 2);
-            if (item != null) model.item = item;
+        try {
+            this.errormessage = "";
+            if (model.item == null) {
+                const item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null, 2);
+                if (item != null) model.item = item;
+            }
+            if (model.item == null) {
+                this.errormessage = "Failed loading item version " + model._version;
+                return;
+            }
+            console.log(model);
+            if (asXAML == true) {
+                var xaml = model.item.Xaml;
+                this.download(model.item.Filename, xaml);
+            } else {
+                this.download(this.id + ".json", JSON.stringify(model.item, null, 2));
+            }
+        } catch (error) {
+            this.errormessage = error;
         }
-        if (model.item == null) {
-            document.getElementById('visual').innerHTML = "Failed loading item version " + model._version;
-        }
-        console.log(model);
-        if (asXAML == true) {
-            var xaml = model.item.Xaml;
-            this.download(model.item.Filename, xaml);
-        } else {
-            this.download(this.id + ".json", JSON.stringify(model.item, null, 2));
-        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     async CompareThen(model) {
-        if (model.delta == null) {
-            const items = await NoderedUtil.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby, 100, 0, null, null, null, 2);
-            if (items.length > 0) {
-                model.item = items[0].item;
-                model.delta = items[0].delta;
-            }
-        }
-        const modal: any = $("#exampleModal");
         try {
-            modal.modal();
+            if (model.delta == null) {
+                const items = await NoderedUtil.Query(this.collection + "_hist", { _id: model._id }, null, this.orderby, 100, 0, null, null, null, 2);
+                if (items.length > 0) {
+                    model.item = items[0].item;
+                    model.delta = items[0].delta;
+                }
+            }
+            this.ToggleModal();
+            document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(model.delta, {});
         } catch (error) {
-            await jsutil.loadScript("bootstrap.js");
-            modal.modal();
+            this.errormessage = error;
         }
-        document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(model.delta, {});
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     async RevertTo(model) {
-        if (model.item == null) {
-            const item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null, 2);
-            if (item != null) model.item = item;
-        }
-        let result = window.confirm("Overwrite current version with version " + model._version + "?");
-        if (result) {
-            if (this.isNew) {
-                await NoderedUtil.InsertOne(this.collection, model.item, 1, false, null, 2);
-            } else {
-                jsondiffpatch.patch(model.item, model.delta);
-                model.item._id = this.id;
-                await NoderedUtil.UpdateOne(this.collection, null, model.item, 1, false, null, 2);
+        try {
+            if (model.item == null) {
+                const item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null, 2);
+                if (item != null) model.item = item;
             }
-            this.loadData();
+            let result = window.confirm("Overwrite current version with version " + model._version + "?");
+            if (result) {
+                if (this.isNew) {
+                    await NoderedUtil.InsertOne(this.collection, model.item, 1, false, null, 2);
+                } else {
+                    jsondiffpatch.patch(model.item, model.delta);
+                    model.item._id = this.id;
+                    await NoderedUtil.UpdateOne(this.collection, null, model.item, 1, false, null, 2);
+                }
+                this.loadData();
+            }
+        } catch (error) {
+            this.errormessage = error;
         }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 }
 export class NoderedCtrl {
@@ -5605,6 +5593,7 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
             this.loadData();
         });
     }
+    public Assigned: ResourceUsage[];
     async processData(): Promise<void> {
         if (!this.userdata.data.ResourcesCtrl) this.userdata.data.ResourcesCtrl = {};
         this.userdata.data.ResourcesCtrl.basequery = this.basequery;
@@ -5614,7 +5603,12 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
         this.userdata.data.ResourcesCtrl.searchstring = this.searchstring;
         this.userdata.data.ResourcesCtrl.basequeryas = this.basequeryas;
         this.loading = false;
+        this.Assigned = await NoderedUtil.Query("config", { "_type": "resourceusage", "customerid": this.WebSocketClientService.customer._id }, null, { _created: -1 }, 100, 0, null, null, null, 2);
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    AssignCount(resource: Resource) {
+        const assigned = this.Assigned.filter(x => x.resourceid == resource._id && x.quantity > 0);
+        return assigned.length;
     }
     async EnsureCommon() {
         try {
@@ -5671,5 +5665,46 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
             console.log("adding " + name);
             await NoderedUtil.InsertOne(this.collection, model, 1, false, null, 2);
         }
+    }
+}
+export class ResourceCtrl extends entityCtrl<Resource> {
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api
+    ) {
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        console.debug("ResourceCtrl");
+        this.collection = "config";
+        WebSocketClientService.onSignedin((user: TokenUser) => {
+            if (this.id !== null && this.id !== undefined) {
+                this.loadData();
+            } else {
+                try {
+                    this.model = new Resource()
+                } catch (error) {
+                    this.model = {} as any;
+                    this.model.name = "";
+                    this.model._type = "resource";
+                }
+            }
+        });
+    }
+    async submit(): Promise<void> {
+        try {
+            if (this.model._id) {
+                await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null, 2);
+            } else {
+                await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
+            }
+            this.$location.path("/Resources");
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error;
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 }

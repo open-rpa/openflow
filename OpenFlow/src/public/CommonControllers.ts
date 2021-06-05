@@ -366,11 +366,6 @@ export class entitiesCtrl<T> {
             let query: object = Object.assign({}, this.basequery);
             let basequeryas = this.basequeryas;
             if (this.collection == "users" && (this.basequery._type == "user" || this.basequery._type == "role") && !this.skipcustomerfilter) {
-                // if (this.WebSocketClientService.user.selectedcustomerid != null) {
-                //     query["customerid"] = this.WebSocketClientService.user.selectedcustomerid;
-                // } else if (this.WebSocketClientService.user.customerid != null) {
-                //     query["customerid"] = this.WebSocketClientService.user.customerid;
-                // }
                 if (!NoderedUtil.IsNullUndefinded(this.WebSocketClientService.customer) && !this.skipcustomerfilter) {
                     basequeryas = this.WebSocketClientService.customer._id;
                 }

@@ -3076,17 +3076,23 @@ export class Message {
             if (usage == null) throw new Error("Unknown usage or Access Denied");
             const customer: Customer = await Config.db.getbyid(usage.customerid, "users", msg.jwt, span);
 
+            if (msg.quantity < 1) msg.quantity = 1;
+
             const total_usage = await Config.db.query<ResourceUsage>({ "_type": "resourceusage", "customerid": usage.customerid, "siid": usage.siid }, null, 1000, 0, null, "config", msg.jwt, null, null, span);
             let quantity: number = 0;
             total_usage.forEach(x => quantity += x.quantity);
 
-            quantity -= usage.quantity;
+            quantity -= msg.quantity;
 
             const payload: any = { quantity };
             const res = await this.Stripe("POST", "subscription_items", usage.siid, payload, customer.stripeid);
 
-            usage.quantity = 0;
-            await Config.db._UpdateOne(null, usage, "config", 1, false, Crypt.rootToken(), span);
+            usage.quantity -= msg.quantity;
+            if (usage.quantity > 0) {
+                await Config.db._UpdateOne(null, usage, "config", 1, false, Crypt.rootToken(), span);
+            } else {
+                await Config.db.DeleteOne(usage._id, "config", Crypt.rootToken(), span);
+            }
         } catch (error) {
             span.recordException(error);
             await handleError(cli, error);
@@ -3134,27 +3140,62 @@ export class Message {
                 if (user == null) throw new Error("Unknown user or Access Denied");
             }
 
-            const total_usage = await Config.db.query<ResourceUsage>({ "_type": "resourceusage", "customerid": msg.customerid, "resource.stripeprice": msg.stripeprice }, null, 1000, 0, null, "config", cli.jwt, null, null, span);
-            let quantity: number = 0;
+            const total_usage = await Config.db.query<ResourceUsage>({ "_type": "resourceusage", "customerid": msg.customerid }, null, 1000, 0, null, "config", cli.jwt, null, null, span);
+
+            // Ensure assign does not conflict with resource assign limit
+            if (resource.target == "customer") {
+                if (resource.customerassign == "singlevariant") {
+                    const notsame = total_usage.filter(x => x.product.stripeprice != msg.stripeprice);
+                    if (notsame.length > 0 && notsame[0].quantity > 0) throw new Error("Cannot assign, customer already have " + notsame[0].product.name);
+                }
+            } else {
+                if (resource.userassign == "singlevariant") {
+                    const notsame = total_usage.filter(x => x.product.stripeprice != msg.stripeprice && x.userid == user._id);
+                    if (notsame.length > 0 && notsame[0].quantity > 0) throw new Error("Cannot assign, user already have " + notsame[0].product.name);
+                }
+            }
             let usage: ResourceUsage = new ResourceUsage();
-            usage.resource = product;
+            usage.product = product;
+            usage.resourceid = resource._id;
             // Assume we don not have one
             usage.quantity = 0;
-            // Count what we have already bought
-            total_usage.forEach(x => {
-                quantity += x.quantity;
-                if (resource.target == "user") {
-                    if (x.userid == msg.userid) usage = x;
-                    if (!NoderedUtil.IsNullEmpty(x.siid)) {
-                        usage.siid = x.siid;
-                        usage.subid = x.subid;
-                    }
-                } else {
-                    usage = x;
+
+            let filter: ResourceUsage[] = [];
+            // Ensure assign does not conflict with product assign limit
+            if (resource.target == "customer" && (product.customerassign == "single" || product.customerassign == "usage")) {
+                filter = total_usage.filter(x => x.product.stripeprice == msg.stripeprice);
+                if (filter.length == 1) {
+                    usage = filter[0];
+                    if (usage.quantity > 0) throw new Error("Cannot assign, customer already have " + product.name);
+                } else if (filter.length > 1) {
+                    throw new Error("Cannot assign (error multiple found), customer already have " + product.name);
                 }
-            });
+            } else if (resource.target == "user" && (product.userassign == "single" || product.userassign == "usage")) {
+                filter = total_usage.filter(x => x.product.stripeprice == msg.stripeprice && x.userid == user._id);
+                if (filter.length == 1) {
+                    usage = filter[0];
+                    if (usage.quantity > 0) throw new Error("Cannot assign, user already have " + product.name);
+                } else if (filter.length > 1) {
+                    throw new Error("Cannot assign (error multiple found), user already have " + product.name);
+                }
+            }
+            if (resource.target == "customer") {
+                filter = total_usage.filter(x => x.product.stripeprice == msg.stripeprice);
+                if (filter.length > 0) usage = filter[0];
+            } else {
+                filter = total_usage.filter(x => x.product.stripeprice == msg.stripeprice && x.userid == user._id);
+                if (filter.length > 0) usage = filter[0];
+            }
+            if (total_usage.length > 0) {
+                usage.subid = total_usage[0].subid;
+            }
+            filter = total_usage.filter(x => x.product.stripeprice == msg.stripeprice);
+            if (filter.length > 0) {
+                usage.siid = filter[0].siid;
+                usage.subid = filter[0].subid;
+            }
+            // Backward compatability and/or pick up after deleting customer object 
             if (NoderedUtil.IsNullEmpty(usage.siid)) {
-                // Backward compatability and/or pick up after deleting customer object 
                 const stripecustomer = await this.Stripe<stripe_customer>("GET", "customers", customer.stripeid, null, null);
                 for (let sub of stripecustomer.subscriptions.data) {
                     if (sub.id == customer.subscriptionid) {
@@ -3167,12 +3208,29 @@ export class Message {
                     }
                 }
             }
-            // Add one, now we have our target count
-            usage.quantity += 1;
+
+            let quantity: number = 0;
+            // Count what we have already bought
+            total_usage.forEach(x => {
+                if (x.product.stripeprice == msg.stripeprice) quantity += x.quantity;
+            });
+            // Add requested quantity, now we have our target count
+            quantity += msg.quantity;
+
+            usage.quantity += msg.quantity;
             usage.customerid = customer._id;
             if (user != null) usage.userid = user._id;
-            quantity += usage.quantity;
             if (usage._id == null) {
+                let tax_rates = [];
+                if (NoderedUtil.IsNullEmpty(customer.country)) customer.country = "";
+                customer.country = customer.country.toUpperCase();
+                if (NoderedUtil.IsNullEmpty(customer.vattype) || NoderedUtil.IsNullEmpty(customer.vattype) || customer.country == "DK") {
+                    const tax_ids = await this.Stripe<stripe_list<any>>("GET", "tax_rates", null, null, null);
+                    if (tax_ids && tax_ids.data && tax_ids.data.length > 0) {
+                        tax_rates = tax_ids.data.filter(x => x.active && x.country != customer.country).map(x => x.id);
+                    }
+                }
+
                 // https://stripe.com/docs/payments/checkout/taxes
                 Base.addRight(usage, customer.admins, customer.name + " admin", [Rights.read]);
                 if (NoderedUtil.IsNullEmpty(customer.subscriptionid)) {
@@ -3185,16 +3243,22 @@ export class Message {
                         customer: customer.stripeid,
                         line_items: []
                     };
-                    payload.line_items.push({ price: product.stripeprice, quantity: 1 });
+                    let line_item: any = { price: product.stripeprice, tax_rates };
+                    if ((resource.target == "user" && product.userassign != "usage") ||
+                        (resource.target == "customer" && product.customerassign != "usage")) {
+                        line_item.quantity = quantity
+                    }
+                    payload.line_items.push(line_item);
                     msg.checkout = await this.Stripe("POST", "checkout.sessions", null, payload, null);
                 } else {
-                    const payload: any = { price: product.stripeprice };
-                    if (NoderedUtil.IsNullEmpty(usage.siid)) payload["subscription"] = customer.subscriptionid;
-                    payload.quantity = quantity;
-                    // if (plan.usage_type != "metered") {
-                    //     payload.quantity = 1;
-                    // }
-                    const res = await this.Stripe<stripe_subscription_item>("POST", "subscription_items", usage.siid, payload, customer.stripeid);
+                    let line_item: any = { price: product.stripeprice, tax_rates };
+                    if ((resource.target == "user" && product.userassign != "usage") ||
+                        (resource.target == "customer" && product.customerassign != "usage")) {
+                        line_item.quantity = quantity
+                    }
+                    if (NoderedUtil.IsNullEmpty(usage.siid)) line_item["subscription"] = customer.subscriptionid;
+                    // Add new if usage.siid is null / updates if we have usage.siid
+                    const res = await this.Stripe<stripe_subscription_item>("POST", "subscription_items", usage.siid, line_item, customer.stripeid);
                     usage.siid = res.id;
                     usage.subid = customer.subscriptionid;
                     await Config.db.InsertOne(usage, "config", 1, false, cli.jwt, span);
@@ -3760,7 +3824,7 @@ export class Message {
                 const total_usage = await Config.db.query<ResourceUsage>({ "_type": "resourceusage", "customerid": msg.customer._id, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }] }, null, 1000, 0, null, "config", msg.jwt, null, null, span);
 
                 for (let usage of total_usage) {
-                    const items = sub.items.data.filter(x => ((x.price && x.price.id == usage.resource.stripeprice) || (x.plan && x.plan.id == usage.resource.stripeprice)));
+                    const items = sub.items.data.filter(x => ((x.price && x.price.id == usage.product.stripeprice) || (x.plan && x.plan.id == usage.product.stripeprice)));
                     if (items.length > 0) {
                         usage.siid = items[0].id;
                         usage.subid = sub.id;
