@@ -72,18 +72,19 @@
               <a class="dropdown-item" ng-href="#/User/{{menuctrl.user._id}}"> {{menuctrl.user.name ||
                 menuctrl.user.username }} </a>
             </div>
-            <a href="#/Payment" class="dropdown-item" ng-show="menuctrl.WebSocketClientService.stripe_api_key != ''">
-              <span translate lib="web">billing</span></a>
             <a class="dropdown-item" href="#/Customers"
               ng-show="menuctrl.WebSocketClientService.multi_tenant && menuctrl.hasrole('resellers')">
               <span translate lib="web">customers</span></a>
+            <a class="dropdown-item" href="#/Resources"
+              ng-show="menuctrl.WebSocketClientService.multi_tenant && menuctrl.hasrole('admins')">
+              <span translate lib="web">Resources</span></a>
           </div>
         </div>
       </ul>
       <form class="form-inline d-none d-md-flex ml-auto">
         <!-- remove -->
         <div ng-class="{active: menuctrl.PathIs('/Customer')}"
-          ng-show="menuctrl.WebSocketClientService.multi_tenant && menuctrl.user.customerid == null">
+          ng-show="menuctrl.WebSocketClientService.multi_tenant && menuctrl.customer == null">
           <a href="#/Customer" class="nav-link">
             <span translate lib="web">create customer</span></a>
         </div>
@@ -159,8 +160,6 @@
             <a href="#/Nodered" class="dropdown-item"
               ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')">
               <span translate lib="web">nodered</span></a>
-            <a href="#/Payment" class="dropdown-item" ng-show="menuctrl.WebSocketClientService.stripe_api_key != ''">
-              <span translate lib="web">billing</span></a>
             <div class="dropdown-divider"></div>
             <div class="dropdown-content">
               <a href="/Signout" class="btn btn-primary"><span translate lib="web">logout</span></a>

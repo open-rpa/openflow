@@ -1,5 +1,5 @@
 <div class="row">
-  <h1 translate lib="web">Resources</h1>
+  <h1 translate lib="web">resources</h1>
 </div>
 <div class="col-sm-12 text-right">
   <a class="btn btn-info" ng-click="ctrl.EnsureCommon()" translate lib="web"
@@ -24,6 +24,9 @@
       <td>{{model.products.length}}</td>
       <td>
         {{ctrl.AssignCount(model)}}
+      </td>
+      <td>
+        <timesince ng-model="model._created" />
       </td>
       <td>
         <timesince ng-model="model._modified" />

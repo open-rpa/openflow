@@ -34,12 +34,14 @@
       <td>
         <timesince ng-model="model.lastseen" />
       </td>
-      <td ng-show="menuctrl.user.customerid != null">
-        <a href ng-click="ctrl.ShowPlans(model)" class="btn" role="button">
+      <td>
+        <a href ng-click="ctrl.ShowPlans(model)" class="btn" role="button"
+          ng-show="menuctrl.user.customerid != null && menuctrl.customer.stripeid != null">
           <em class="fas fa-money-bill-wave"></em></a>
       </td>
-      <td ng-show="ctrl.WebSocketClientService.validate_user_form != ''">
-        <em ng-show="model.validated" class="fas fa-check"></em>
+      <td>
+        <em ng-show="model.validated" class="fas fa-check"
+          ng-show="ctrl.WebSocketClientService.validate_user_form != ''"></em>
       </td>
       <td>
         <a ng-href ng-click="ctrl.Impersonate(model)" class="btn"
@@ -71,9 +73,10 @@
           <div class="col">
 
             <a href ng-click="ctrl.AddPlan(Resource, Product)" class="btn" role="button"
-              ng-show="Product.count == 0 || Product.userassign == 'multiple'">
+              ng-show="(Product.count == 0 || Product.userassign == 'multiple') && ctrl.loading==false">
               <em class="fas fa-money-bill-wave"></em></a>
-            <a href ng-click="ctrl.RemovePlan(Resource, Product)" class="btn" role="button" ng-show="Product.count > 0">
+            <a href ng-click="ctrl.RemovePlan(Resource, Product)" class="btn" role="button"
+              ng-show="Product.count > 0 && ctrl.loading==false">
               <em class="fas fa-trash"></em></a>
 
           </div>
@@ -81,20 +84,21 @@
         <div class="row" ng-show="Resource.userassign == 'singlevariant'">
           <div class="col">{{Resource.name}}</div>
           <div class="col">
-            <select ng-model="Resource.newproduct" ng-options="item as item.name for item in Resource.products">
+            <select ng-model="Resource.newproduct" ng-options="item as item.name for item in Resource.products"
+              ng-disabled="ctrl.loading==true">
             </select>
           </div>
           <div class="col">
             <a href ng-click="ctrl.AddPlan(Resource, Resource.newproduct)" class="btn" role="button"
-              ng-show="Resource.newproduct.count == 0 || Resource.newproduct.userassign == 'multiple'">
+              ng-show="(Resource.newproduct.count == 0 || Resource.newproduct.userassign == 'multiple') && ctrl.loading==false">
               <em class="fas fa-money-bill-wave"></em></a>
             <em class="fas fa-money-bill-wave disabled btn"
-              ng-show="(Resource.newproduct.count > 0 && Resource.newproduct.userassign != 'multiple') || Resource.newproduct == null"></em>
+              ng-show="(Resource.newproduct.count > 0 && Resource.newproduct.userassign != 'multiple') || Resource.newproduct == null || ctrl.loading==true"></em>
             <a href ng-click="ctrl.RemovePlan(Resource, Resource.newproduct)" class="btn" role="button"
-              ng-show="Resource.newproduct.count > 0">
+              ng-show="Resource.newproduct.count > 0 && ctrl.loading==false">
               <em class="fas fa-trash"></em></a>
             <em class="fas fa-trash disabled btn"
-              ng-show="(Resource.newproduct.count == 0) || Resource.newproduct == null"></em>
+              ng-show="(Resource.newproduct.count == 0) || Resource.newproduct == null || ctrl.loading==true"></em>
 
           </div>
         </div>

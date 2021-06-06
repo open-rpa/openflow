@@ -257,7 +257,6 @@ export class DatabaseConnection {
             }
             if (Config.force_add_admins) {
                 Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control], false);
-                this.ensureResource(item);
             }
             let addself: boolean = true;
             item._acl.forEach(ace => {
@@ -270,8 +269,8 @@ export class DatabaseConnection {
             })
             if (addself) {
                 Base.addRight(item, user._id, user.name, [Rights.full_control], false);
-                this.ensureResource(item);
             }
+            item = this.ensureResource(item);
         } catch (error) {
             span.recordException(error);
         }
@@ -317,10 +316,11 @@ export class DatabaseConnection {
                                 // when multi tenant don't allow members of common user groups to see each other
                                 Logger.instanse.info("Running in multi tenant mode, skip adding permissions for " + item.name);
                             } else if (arr[0]._type === "user") {
-                                const u: User = User.assign(arr[0]);
+                                let u: User = User.assign(arr[0]);
                                 if (!Base.hasRight(u, item._id, Rights.read)) {
                                     Logger.instanse.debug("Assigning " + item.name + " read permission to " + u.name);
                                     Base.addRight(u, item._id, item.name, [Rights.read], false);
+                                    u = this.ensureResource(u);
                                     const _ot_end1 = Logger.otel.startTimer();
                                     await this.db.collection("users").updateOne({ _id: u._id }, { $set: { _acl: u._acl } });
                                     Logger.otel.endTimer(_ot_end1, DatabaseConnection.mongodb_update, { collection: "users" });
@@ -328,10 +328,11 @@ export class DatabaseConnection {
                                     Logger.instanse.debug(item.name + " allready exists on " + u.name);
                                 }
                             } else if (arr[0]._type === "role") {
-                                const r: Role = Role.assign(arr[0]);
+                                let r: Role = Role.assign(arr[0]);
                                 if (r._id !== WellknownIds.admins && r._id !== WellknownIds.users && !Base.hasRight(r, item._id, Rights.read)) {
                                     Logger.instanse.debug("Assigning " + item.name + " read permission to " + r.name);
                                     Base.addRight(r, item._id, item.name, [Rights.read], false);
+                                    r = this.ensureResource(r);
                                     const _ot_end2 = Logger.otel.startTimer();
                                     await this.db.collection("users").updateOne({ _id: r._id }, { $set: { _acl: r._acl } });
                                     Logger.otel.endTimer(_ot_end2, DatabaseConnection.mongodb_update, { collection: "users" });
@@ -357,13 +358,14 @@ export class DatabaseConnection {
                         // when multi tenant don't allow members of common user groups to see each other
                         Logger.instanse.info("Running in multi tenant mode, skip removing permissions for " + item.name);
                     } else if (arr[0]._type === "user") {
-                        const u: User = User.assign(arr[0]);
+                        let u: User = User.assign(arr[0]);
                         if (Base.hasRight(u, item._id, Rights.read)) {
                             Base.removeRight(u, item._id, [Rights.read]);
 
                             // was read the only right ? then remove it
                             const right = Base.getRight(u, item._id, false);
                             if (NoderedUtil.IsNullUndefinded(right)) {
+                                u = this.ensureResource(u);
                                 Logger.instanse.debug("Removing " + item.name + " read permissions from " + u.name);
                                 const _ot_end1 = Logger.otel.startTimer();
                                 await this.db.collection("users").updateOne({ _id: u._id }, { $set: { _acl: u._acl } });
@@ -374,13 +376,14 @@ export class DatabaseConnection {
                             Logger.instanse.debug("No need to remove " + item.name + " read permissions from " + u.name);
                         }
                     } else if (arr[0]._type === "role") {
-                        const r: Role = Role.assign(arr[0]);
+                        let r: Role = Role.assign(arr[0]);
                         if (Base.hasRight(r, item._id, Rights.read)) {
                             Base.removeRight(r, item._id, [Rights.read]);
 
                             // was read the only right ? then remove it
                             const right = Base.getRight(r, item._id, false);
                             if (NoderedUtil.IsNullUndefinded(right)) {
+                                r = this.ensureResource(r);
                                 Logger.instanse.debug("Removing " + item.name + " read permissions from " + r.name);
                                 const _ot_end2 = Logger.otel.startTimer();
                                 await this.db.collection("users").updateOne({ _id: r._id }, { $set: { _acl: r._acl } });
@@ -856,6 +859,7 @@ export class DatabaseConnection {
             const hasUser: Ace = item._acl.find(e => e._id === user._id);
             if ((hasUser === null || hasUser === undefined)) {
                 Base.addRight(item, user._id, user.name, [Rights.full_control]);
+                item = this.ensureResource(item);
             }
             if (collectionname != "audit") { Logger.instanse.silly("[" + user.username + "][" + collectionname + "] Adding " + item._type + " " + name + " to database"); }
             if (!DatabaseConnection.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
@@ -908,7 +912,7 @@ export class DatabaseConnection {
                     if (item._id == customer.admins || item._id == customer.users) {
                         Base.removeRight(item, custadmins._id, [Rights.delete]);
                     }
-
+                    item = this.ensureResource(item);
                 }
             }
             j = ((j as any) === 'true' || j === true);
@@ -1079,6 +1083,7 @@ export class DatabaseConnection {
                 const hasUser: Ace = item._acl.find(e => e._id === user._id);
                 if ((hasUser === null || hasUser === undefined)) {
                     Base.addRight(item, user._id, user.name, [Rights.full_control]);
+                    item = this.ensureResource(item);
                 }
                 if (collectionname != "audit") { Logger.instanse.silly("[" + user.username + "][" + collectionname + "] Adding " + item._type + " " + name + " to database"); }
                 if (!DatabaseConnection.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
@@ -1321,7 +1326,7 @@ export class DatabaseConnection {
                         if (q.item._id == customer.admins || q.item._id == customer.users) {
                             Base.removeRight(q.item, custadmins._id, [Rights.delete]);
                         }
-
+                        q.item = this.ensureResource(q.item);
                     }
                 }
 
@@ -1376,9 +1381,11 @@ export class DatabaseConnection {
                     const hasUser: Ace = q.item._acl.find(e => e._id === user._id);
                     if (NoderedUtil.IsNullUndefinded(hasUser) && q.item._acl.length === 0) {
                         Base.addRight(q.item, user._id, user.name, [Rights.full_control]);
+                        q.item = this.ensureResource(q.item);
                     }
                     if (q.collectionname === "users" && q.item._type === "user") {
                         Base.addRight(q.item, q.item._id, q.item.name, [Rights.read, Rights.update, Rights.invoke]);
+                        q.item = this.ensureResource(q.item);
                     }
                 } else {
                     (q.item as any).metadata = Base.assign((q.item as any).metadata);
@@ -1417,6 +1424,7 @@ export class DatabaseConnection {
                     const hasUser: Ace = (q.item as any).metadata._acl.find(e => e._id === user._id);
                     if ((hasUser === null || hasUser === undefined) && (q.item as any).metadata._acl.length === 0) {
                         Base.addRight((q.item as any).metadata, user._id, user.name, [Rights.full_control]);
+                        q.item = this.ensureResource(q.item);
                     }
                 }
 

@@ -12,11 +12,12 @@
         <div class="col-sm">
             <label for="name" class="required">name</label>
             <input type="text" class="form-control" id="name" placeholder="Company name" required="required"
-                ng-model="ctrl.model.name">
+                ng-model="ctrl.model.name" ng-disabled="ctrl.loading==true">
         </div>
         <div class="col-sm">
             <label for="country" class="required">country</label>
-            <select class="form-control" id="country" ng-model="ctrl.model.country" required="required">
+            <select class="form-control" id="country" ng-model="ctrl.model.country" required="required"
+                ng-disabled="ctrl.loading==true" ng-change="ctrl.CountryUpdate()">
                 <option value="" selected>(please select a country)</option>
                 <option value="AF">Afghanistan</option>
                 <option value="AL">Albania</option>
@@ -264,7 +265,8 @@
     <div class="form-row row-eq-spacing-sm">
         <div class="col-sm">
             <label for="vattype" class="required">vat type</label>
-            <select class="form-control" id="vattype" ng-model="ctrl.model.vattype" required="required">
+            <select class="form-control" id="vattype" ng-model="ctrl.model.vattype" required="required"
+                ng-disabled="ctrl.loading==true">
                 <option value="au_abn">Australian Business Number (AU ABN)</option>
                 <option value="br_cnpj">Brazilian CNPJ number</option>
                 <option value="br_cpf">Brazilian CPF number</option>
@@ -294,7 +296,7 @@
         <div class="col-sm">
             <label for="vatnumber" class="required">TAX/VAT ID</label>
             <input type="text" class="form-control" id="vatnumber" ng-model="ctrl.model.vatnumber"
-                placeholder="TAX or VAT number">
+                placeholder="TAX or VAT number" ng-disabled="ctrl.loading==true">
         </div>
     </div>
 
@@ -302,17 +304,17 @@
         <div class="col-sm">
             <label for="email" class="required">billing email</label>
             <input type="text" class="form-control" id="email" ng-model="ctrl.model.email" placeholder="Billing email"
-                required="required">
+                required="required" ng-disabled="ctrl.loading==true">
         </div>
         <div class="col-sm">
             <br> <button type="submit" ng-disabled="ctrl.loading==true" class="btn btn-success" translate lib="web">
                 Save</button>
+
+            <button ng-click="ctrl.AddHours(support)" ng-repeat="support in ctrl.support"
+                ng-disabled="ctrl.loading==true" ng-show="menuctrl.hasrole('admins') && ctrl.loading==false"
+                class="btn btn-secondary" translate lib="web">
+                Add hours({{ support.product.name }})</button>
         </div>
-        <!-- <div class="col-sm">
-            <label for="vatnumber" class="required">TAX/VAT ID</label>
-            <input type="text" class="form-control" id="vatnumber" ng-model="ctrl.model.vatnumber"
-                placeholder="TAX or VAT number" required="required">
-        </div> -->
     </div>
 
     <div class="form-row row-eq-spacing-sm" ng-show="ctrl.model.stripeid && ctrl.model.stripeid != ''">
@@ -324,8 +326,57 @@
 
     </div>
 
-    <!-- <div class="text-right">
-        <button type="submit" ng-disabled="ctrl.loading==true" class="btn btn-success" translate lib="web">Save</button>
-    </div> -->
-
 </form>
+
+
+<div ng-repeat="Resource in ctrl.Resources" ng-show="ctrl.model.stripeid">
+    <div class="row" ng-repeat="Product in Resource.products" ng-show="Resource.customerassign == 'multiplevariants'">
+        <div class="col">{{Product.name}}</div>
+        <div class="col">{{ Product.count }}</div>
+        <div class="col">
+
+            <a href ng-click="ctrl.AddPlan(Resource, Product)" class="btn" role="button"
+                ng-disabled="ctrl.loading==true" ng-show="Product.count == 0 || Product.customerassign == 'multiple'">
+                <em class="fas fa-money-bill-wave"></em></a>
+            <a href ng-click="ctrl.RemovePlan(Resource, Product)" class="btn" role="button" ng-show="Product.count > 0"
+                ng-disabled="ctrl.loading==true">
+                <em class="fas fa-trash"></em></a>
+
+        </div>
+    </div>
+    <div class="row" ng-show="Resource.customerassign == 'singlevariant'">
+        <div class="col">{{Resource.name}}</div>
+        <div class="col">
+            <select ng-model="Resource.newproduct" ng-options="item as item.name for item in Resource.products"
+                ng-disabled="ctrl.loading==true">
+            </select>
+        </div>
+        <div class="col">
+            {{Resource.newproduct.count}}
+        </div>
+        <div class="col">
+            <a href ng-click="ctrl.AddPlan(Resource, Resource.newproduct)" class="btn" role="button"
+                ng-show="(Resource.newproduct.count == 0 || Resource.newproduct.customerassign == 'multiple') && ctrl.loading==false">
+                <em class="fas fa-money-bill-wave"></em></a>
+            <em class="fas fa-money-bill-wave disabled btn"
+                ng-show="(Resource.newproduct.count > 0 && Resource.newproduct.customerassign != 'multiple') || Resource.newproduct == null || ctrl.loading==true"></em>
+            <a href ng-click="ctrl.RemovePlan(Resource, Resource.newproduct)" class="btn" role="button"
+                ng-show="Resource.newproduct.count > 0 && ctrl.loading==false">
+                <em class="fas fa-trash"></em></a>
+            <em class="fas fa-trash disabled btn"
+                ng-show="(Resource.newproduct.count == 0) || Resource.newproduct == null || ctrl.loading==true"></em>
+
+        </div>
+    </div>
+</div>
+
+
+<h1 ng-show="ctrl.model.stripeid">User assigned plans</h1>
+
+<div ng-repeat="Resource in ctrl.UserResources" ng-show="ctrl.model.stripeid">
+    <h4>{{Resource.name}}</h4>
+    <div class="row" ng-repeat="Product in Resource.products" ng-show="Product.count > 0">
+        <div class="col">{{Product.name}}</div>
+        <div class="col">{{ Product.count }}</div>
+    </div>
+</div>

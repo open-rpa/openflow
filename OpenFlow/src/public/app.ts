@@ -1,6 +1,6 @@
 import { WebSocketClientService } from "./WebSocketClientService";
 import angular = require("angular");
-import { timesince, translate, textarea, fileread, userdata, api, copytext } from "./CommonControllers";
+import { timesince, translate, textarea, fileread, userdata, api, copytext, jsonText } from "./CommonControllers";
 import { MenuCtrl, ProvidersCtrl, MainCtrl, LoginCtrl, ProviderCtrl, UsersCtrl, UserCtrl, RolesCtrl, RoleCtrl, RPAWorkflowsCtrl, RPAWorkflowCtrl, WorkflowsCtrl, ReportsCtrl, jslogCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, SocketCtrl, NoderedCtrl, hdrobotsCtrl, ClientsCtrl, AuditlogsCtrl, SignupCtrl, PaymentCtrl, QueuesCtrl, SocketsCtrl, QueueCtrl, CredentialsCtrl, CredentialCtrl, DuplicatesCtrl, OAuthClientsCtrl, OAuthClientCtrl, DeletedCtrl, CustomerCtrl, EntityRestrictionsCtrl, EntityRestrictionCtrl, CustomersCtrl, ResourcesCtrl, ResourceCtrl } from "./Controllers";
 
 require('angular-route');
@@ -33,6 +33,7 @@ module openflow {
         .directive("textarea", textarea.factory())
         .directive("fileread", fileread.factory())
         .directive("copytext", copytext.factory())
+        .directive("jsonText", jsonText.factory())
         .service("userdata", userdata)
         .service("WebSocketClientService", WebSocketClientService)
 
@@ -128,6 +129,7 @@ module openflow {
 
                 .when('/Resources', { templateUrl: 'Resources.html', controller: ResourcesCtrl, controllerAs: 'ctrl' })
                 .when('/Resource', { templateUrl: 'Resource.html', controller: ResourceCtrl, controllerAs: 'ctrl' })
+                .when('/Resource/:id', { templateUrl: 'Resource.html', controller: ResourceCtrl, controllerAs: 'ctrl' })
 
                 .otherwise({ redirectTo: '/main' });
         }

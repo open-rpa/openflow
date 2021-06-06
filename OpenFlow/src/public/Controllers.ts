@@ -86,15 +86,8 @@ export class MenuCtrl {
             this.user = data;
             this.signedin = true;
 
+            this.customer = this.WebSocketClientService.customer;
             this.customers = await NoderedUtil.Query("users", { _type: "customer" }, null, null, 100, 0, null, null, null, 2);
-            this.customer = null;
-            if (this.customers.length > 0 && (this.user.selectedcustomerid != null)) {
-                if (this.user.selectedcustomerid != null) {
-                    for (let cust of this.customers)
-                        if (cust._id == this.user.selectedcustomerid) this.customer = cust;
-                }
-            }
-            this.WebSocketClientService.customer = this.customer as any;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             // cleanup();
         });
@@ -104,12 +97,13 @@ export class MenuCtrl {
         });
         this.$scope.$on('menurefresh', async (event, data) => {
             if (event && data) { }
+            this.customer = this.WebSocketClientService.customer;
             this.customers = await NoderedUtil.Query("users", { _type: "customer" }, null, null, 100, 0, null, null, null, 2);
             if (this.customers.length > 0 && this.user.selectedcustomerid != null) {
                 for (let cust of this.customers)
                     if (cust._id == this.user.selectedcustomerid) this.customer = cust;
             }
-            this.WebSocketClientService.customer = this.customer as any;
+            if (this.customer != null) this.WebSocketClientService.customer = this.customer as any;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         });
     }
@@ -1180,6 +1174,7 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
         try {
             this.loading = true;
             await this.WebSocketClientService.impersonate(model._id);
+            this.loading = false;
             this.loadData();
         } catch (error) {
             this.errormessage = JSON.stringify(error);
@@ -1212,9 +1207,10 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
             this.errormessage = "";
             this.user = user;
             this.ToggleModal()
-            this.Resources = await NoderedUtil.Query("config", { "_type": "resource", "target": "user" }, null, { _created: -1 }, 100, 0, null, null, null, 2);
+            this.Resources = await NoderedUtil.Query("config", { "_type": "resource", "target": "user", "allowdirectassign": true }, null, { _created: -1 }, 100, 0, null, null, null, 2);
             this.Assigned = await NoderedUtil.Query("config", { "_type": "resourceusage", "userid": user._id }, null, { _created: -1 }, 100, 0, null, null, null, 2);
             for (var res of this.Resources) {
+                res.products = res.products.filter(x => x.allowdirectassign == true);
                 for (var prod of res.products) {
                     (prod as any).count = this.AssignCount(prod);
                     if ((prod as any).count > 0) {
@@ -1230,7 +1226,7 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     AssignCount(Product: ResourceVariant) {
-        const assigned = this.Assigned.filter(x => x.product.stripeprice == Product.stripeprice && x.quantity > 0);
+        const assigned = this.Assigned.filter(x => x.product.stripeprice == Product.stripeprice && x.quantity > 0 && x.siid != null);
         return assigned.length;
     }
     ToggleModal() {
@@ -1239,14 +1235,19 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
     }
     async RemovePlan(resource: Resource, product: ResourceVariant) {
         try {
+            this.loading = true;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
             const assigned = this.Assigned.filter(x => x.product.stripeprice == product.stripeprice);
             if (assigned.length > 0) {
                 await NoderedUtil.StripeCancelPlan(assigned[0]._id, null, 2);
             }
-            this.ToggleModal()
+            this.ToggleModal();
+            this.loading = false;
             this.loadData();
+            this.loading = false;
 
         } catch (error) {
+            this.loading = false;
             this.errormessage = error;
             try {
                 this.ToggleModal()
@@ -1257,6 +1258,8 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
     }
     async AddPlan(resource: Resource, product: ResourceVariant) {
         try {
+            this.loading = true;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
             var result = await NoderedUtil.StripeAddPlan(this.user._id, this.WebSocketClientService.customer._id,
                 resource._id, product.stripeprice, null, 2);
             var checkout = result.checkout;
@@ -1288,9 +1291,11 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
             } else {
                 var modal = document.getElementById("resourceModal");
                 modal.classList.toggle("show");
+                this.loading = false;
                 this.loadData();
             }
         } catch (error) {
+            this.loading = false;
             this.errormessage = error;
             try {
                 var modal = document.getElementById("resourceModal");
@@ -2713,6 +2718,9 @@ export class EntityCtrl extends entityCtrl<Base> {
         if (this.model._encrypt == null) { this.model._encrypt = []; }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         this.fixtextarea();
+    }
+    isobject(object: any) {
+        return typeof object === 'object';
     }
     fixtextarea() {
         setTimeout(() => {
@@ -5044,7 +5052,7 @@ export class CustomersCtrl extends entitiesCtrl<Provider> {
     }
 }
 export class CustomerCtrl extends entityCtrl<Customer> {
-    public stripe_customer: stripe_customer;
+    public stripe: any = null;
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -5059,6 +5067,18 @@ export class CustomerCtrl extends entityCtrl<Customer> {
         this.collection = "users";
         this.postloadData = this.processdata;
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            let haderror: boolean = false;
+            try {
+                this.stripe = Stripe(this.WebSocketClientService.stripe_api_key);
+            } catch (error) {
+                haderror = true;
+            }
+            if (haderror) {
+                console.debug("loading stripe script")
+                await jsutil.loadScript('//js.stripe.com/v3/');
+                this.stripe = Stripe(this.WebSocketClientService.stripe_api_key);
+            }
+
             if (this.id !== null && this.id !== undefined) {
                 this.loadData();
             } else {
@@ -5089,6 +5109,9 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                     }
                     this.model.email = (WebSocketClientService.user as any).username;
                     if ((WebSocketClientService.user as any).email) this.model.email = (WebSocketClientService.user as any).email;
+                    if (this.model.email && this.model.email.indexOf("@") == -1) {
+                        this.model.email = (WebSocketClientService.user as any).username + "@domain.com";
+                    }
                     console.debug("Create new customer");
                 }
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -5097,22 +5120,40 @@ export class CustomerCtrl extends entityCtrl<Customer> {
     }
     async submit(): Promise<void> {
         try {
+            this.loading = true;
+            this.errormessage = "";
             if (this.model._id) {
                 await NoderedUtil.EnsureCustomer(this.model, null, 2);
-                // await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null, 2);
+                this.$rootScope.$broadcast("menurefresh");
+                this.loadData();
             } else {
-                await NoderedUtil.EnsureCustomer(this.model, null, 2);
-                // await NoderedUtil.InsertOne(this.collection, this.model, 1, false, null, 2);
+                const res = await NoderedUtil.EnsureCustomer(this.model, null, 2);
+                this.WebSocketClientService.loadToken();
+                this.WebSocketClientService.customer = res.customer;
+                this.loading = false;
+                this.$rootScope.$broadcast("menurefresh");
+                try {
+                    this.$location.path("/" + res.customer._id);
+                } catch (error) {
+                    this.$location.path("/");
+                }
             }
-            this.$rootScope.$broadcast("menurefresh");
-            this.$location.path("/");
         } catch (error) {
+            this.loading = false;
             this.errormessage = error.message ? error.message : error;
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
+    public Resources: Resource[];
+    public Assigned: ResourceUsage[];
+    public UserResources: Resource[];
+    public UserAssigned: ResourceUsage[];
+    public support: ResourceUsage[] = [];
     async processdata() {
         try {
+            console.debug("processdata");
+            this.loading = true;
+            this.errormessage = "";
             // this.stripe_customer = await NoderedUtil.EnsureStripeCustomer(this.model, this.userid, null, 2);
             if (this.model != null) {
                 if (this.WebSocketClientService.user.selectedcustomerid != this.model._id) {
@@ -5120,13 +5161,141 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                     this.$rootScope.$broadcast("menurefresh");
                 }
             }
-
             if (this.$routeParams.action != null) {
                 await NoderedUtil.EnsureCustomer(this.model, null, 2);
             }
+            this.Resources = await NoderedUtil.Query("config", { "_type": "resource", "target": "customer", "allowdirectassign": true }, null, { _created: -1 }, 100, 0, null, null, null, 2);
+            this.Assigned = await NoderedUtil.Query("config", { "_type": "resourceusage", "customerid": this.model._id, "userid": { "$exists": false } }, null, { _created: -1 }, 100, 0, null, null, null, 2);
+            for (var res of this.Resources) {
+                res.products = res.products.filter(x => x.allowdirectassign == true);
+                for (var prod of res.products) {
+                    (prod as any).count = this.AssignCount(prod);
+                    if ((prod as any).count > 0) {
+                        (res as any).newproduct = prod;
+                    }
+                }
+            }
+            this.UserResources = await NoderedUtil.Query("config", { "_type": "resource", "target": "user", "allowdirectassign": true }, null, { _created: -1 }, 100, 0, null, null, null, 2);
+            this.UserAssigned = await NoderedUtil.Query("config", { "_type": "resourceusage", "customerid": this.model._id, "userid": { "$exists": true } }, null, { _created: -1 }, 100, 0, null, null, null, 2);
+            for (var res of this.UserResources) {
+                res.products = res.products.filter(x => x.allowdirectassign == true);
+                for (var prod of res.products) {
+                    (prod as any).count = this.UserAssignCount(prod);
+                    if ((prod as any).count > 0) {
+                        (res as any).newproduct = prod;
+                    }
+                }
+            }
+            this.support = [];
+            for (let a of this.Assigned) {
+                if (a.resource == "Support Hours" && a.quantity > 0) {
+                    this.support.push(a);
+                }
+            }
+        } catch (error) {
+            this.errormessage = error;
+        }
+        this.loading = false;
+        console.debug("processdata::end");
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    AssignCount(Product: ResourceVariant) {
+        const assigned = this.Assigned.filter(x => x.product.stripeprice == Product.stripeprice && x.quantity > 0 && x.siid != null);
+        let quantity: number = 0;
+        assigned.forEach(x => {
+            quantity += x.quantity;
+        });
+        return quantity;
+    }
+    UserAssignCount(Product: ResourceVariant) {
+        const assigned = this.UserAssigned.filter(x => x.product.stripeprice == Product.stripeprice && x.quantity > 0 && x.siid != null);
+        let quantity: number = 0;
+        assigned.forEach(x => {
+            quantity += x.quantity;
+        });
+        return quantity;
+    }
+
+    async RemovePlan(resource: Resource, product: ResourceVariant) {
+        try {
+            this.loading = true;
+            this.errormessage = "";
+            const assigned = this.Assigned.filter(x => x.product.stripeprice == product.stripeprice);
+            if (assigned.length > 0) {
+                await NoderedUtil.StripeCancelPlan(assigned[0]._id, null, 2);
+            }
+            this.loading = false;
+            this.loadData();
 
         } catch (error) {
+            this.loading = false;
+            this.errormessage = error;
+            try {
+            } catch (error) {
+            }
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async AddPlan(resource: Resource, product: ResourceVariant) {
+        try {
+            this.loading = true;
+            this.errormessage = "";
+            var result = await NoderedUtil.StripeAddPlan(null, this.WebSocketClientService.customer._id,
+                resource._id, product.stripeprice, null, 2);
+            var checkout = result.checkout;
+            if (checkout) {
+                this.stripe
+                    .redirectToCheckout({
+                        sessionId: checkout.id,
+                    })
+                    .then(function (event) {
+                        if (event.complete) {
+                            // enable payment button
+                        } else if (event.error) {
+                            console.error(event.error);
+                            if (event.error && event.error.message) {
+                                this.cardmessage = event.error.message;
+                            } else {
+                                this.cardmessage = event.error;
+                            }
+                            console.error(event.error);
 
+                            // show validation to customer
+                        } else {
+                        }
+                    }).catch((error) => {
+                        console.error(error);
+                        this.errormessage = error;
+                    });
+            } else {
+                this.loading = false;
+                this.loadData();
+            }
+        } catch (error) {
+            this.loading = false;
+            this.errormessage = error;
+            try {
+            } catch (error) {
+            }
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async AddHours(support: ResourceUsage) {
+        try {
+            this.loading = true;
+            if (support == null) return;
+            const hours: number = parseInt(window.prompt("Number of hours", "1"));
+            if (hours > 0) {
+                const dt = parseInt((new Date().getTime() / 1000).toFixed(0))
+                const payload: any = { "quantity": hours, "timestamp": dt };
+                const res = await NoderedUtil.Stripe("POST", "usage_records", null, support.siid, payload, null, 2);
+            }
+            this.loading = false;
+            this.loadData();
+        } catch (error) {
+            this.loading = false;
+            console.error(error);
+            this.errormessage = error;
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
@@ -5184,6 +5353,15 @@ export class CustomerCtrl extends entityCtrl<Customer> {
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
+    }
+
+    CountryUpdate() {
+        const eu: string[] = ['AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT',
+            'RO', 'SK', 'SI', 'ES', 'SE'];
+        if (eu.indexOf(this.model.country) > -1) {
+            this.model.vattype = "eu_vat";
+            if (this.model.vatnumber == null || this.model.vatnumber == "") this.model.vatnumber = this.model.country;
+        }
     }
 }
 
@@ -5607,42 +5785,60 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     AssignCount(resource: Resource) {
-        const assigned = this.Assigned.filter(x => x.resourceid == resource._id && x.quantity > 0);
+        const assigned = this.Assigned.filter(x => x.resourceid == resource._id && x.quantity > 0 && x.subid != null);
         return assigned.length;
     }
     async EnsureCommon() {
         try {
-            await this.newResource("Nodered Instance", "user", "singlevariant", "singlevariant", { "memory": "128Mi" },
+            const nodered: Resource = await this.newResource("Nodered Instance", "user", "singlevariant", "singlevariant", { "memory": "128Mi" },
                 [
-                    this.newProduct("Basic", "prod_HEC6rB2wRUwviG", "plan_HECATxbGlff4Pv", "single", "single", null, { "memory": "256Mi" }),
-                    this.newProduct("Plus", "prod_HEDSUIZLD7rfgh", "plan_HEDSUl6qdOE4ru", "single", "single", null, { "memory": "512Mb" }),
-                    this.newProduct("Premium", "prod_HEDTI7YBbwEzVX", "plan_HEDTJQBGaVGnvl", "single", "single", null, { "memory": "1Gi" }),
-                    this.newProduct("Premium+", "prod_IERLqCwV7BV8zy", "price_1HdySLC2vUMc6gvh3H1pgG7A", "single", "single", null, { "memory": "1Gi" }),
-                ], true);
+                    this.newProduct("Basic", "prod_HEC6rB2wRUwviG", "plan_HECATxbGlff4Pv", "single", "single", null, null, 0, { "memory": "256Mi" }, true),
+                    this.newProduct("Plus", "prod_HEDSUIZLD7rfgh", "plan_HEDSUl6qdOE4ru", "single", "single", null, null, 0, { "memory": "512Mb" }, true),
+                    this.newProduct("Premium", "prod_HEDTI7YBbwEzVX", "plan_HEDTJQBGaVGnvl", "single", "single", null, null, 0, { "memory": "1Gi" }, true),
+                    this.newProduct("Premium+", "prod_IERLqCwV7BV8zy", "price_1HdySLC2vUMc6gvh3H1pgG7A", "single", "single", null, null, 0, { "memory": "2Gi" }, true),
+                ], true, true);
+            const supporthours: Resource = await this.newResource("Support Hours", "customer", "multiplevariants", "multiplevariants", {},
+                [
+                    this.newProduct("Premium Hours", "prod_HEZnir2GdKX5Jm", "plan_HEZp4Q4In2XcXe", "metered", "metered", null, null, 0, {}, false),
+                    this.newProduct("Basic Hours", "prod_HEGjSQ9M6wiYiP", "plan_HEZAsA1DfkiQ6k", "metered", "metered", null, null, 0, {}, false),
+                ], false, true);
+
+            const support = await this.newResource("Support Agreement", "customer", "singlevariant", "singlevariant", {},
+                [
+                    this.newProduct("Basic Support", "prod_HEGjSQ9M6wiYiP", "plan_HEGjLCtwsVbIx8", "single", "single", supporthours._id, "plan_HEZAsA1DfkiQ6k", 1, {}, true),
+                ], true, true);
+
+            const premium: Resource = await this.newResource("Openflow License", "customer", "singlevariant", "singlevariant", {},
+                [
+                    this.newProduct("Premium License", "prod_JcXS2AvXfwk1Lv", "price_1IzISoC2vUMc6gvhMtqTq2Ef", "multiple", "multiple", supporthours._id, "plan_HEZp4Q4In2XcXe", 1, {}, true),
+                ], true, true);
 
             this.loadData();
         } catch (error) {
             this.errormessage = error;
         }
     }
-    newProduct(name: string, stripeproduct: string, stripeprice: string, customerassign: "single" | "multiple" | "usage",
-        userassign: "single" | "multiple" | "usage", added_stripeprice: string, metadata: any): ResourceVariant {
+    newProduct(name: string, stripeproduct: string, stripeprice: string, customerassign: "single" | "multiple" | "metered",
+        userassign: "single" | "multiple" | "metered", added_resourceid: string, added_stripeprice: string, added_quantity_multiplier: number, metadata: any, allowdirectassign: boolean): ResourceVariant {
         const result: ResourceVariant = new ResourceVariant();
         result.name = name;
         result.stripeproduct = stripeproduct;
         result.stripeprice = stripeprice;
         result.customerassign = customerassign;
         result.userassign = userassign;
+        result.added_resourceid = added_resourceid;
         result.added_stripeprice = added_stripeprice;
+        result.added_quantity_multiplier = added_quantity_multiplier;
         result.metadata = metadata;
+        result.allowdirectassign = allowdirectassign;
         return result;
     }
     async newResource(name: string,
-        target: "customer" | "user" | "both",
+        target: "customer" | "user",
         customerassign: "singlevariant" | "multiplevariants",
         userassign: "singlevariant" | "multiplevariants",
         defaultmetadata: any,
-        products: ResourceVariant[], customeradmins: boolean) {
+        products: ResourceVariant[], allowdirectassign: boolean, customeradmins: boolean) {
         var results = await NoderedUtil.Query(this.collection, { "name": name }, null, null, 1, 0, null, null, null, 2);
         const model: Resource = (results.length == 1 ? results[0] : new Resource());
         model.name = name;
@@ -5651,19 +5847,20 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
         model.userassign = userassign;
         model.defaultmetadata = defaultmetadata;
         model.products = products;
+        model.allowdirectassign = allowdirectassign;
         model._acl = [];
         Base.addRight(model, "5a1702fa245d9013697656fb", "admins", [-1]);
         if (customeradmins) {
-            Base.addRight(model, "5a1702fa245d9013697656fc", "customer admins", [1]);
+            Base.addRight(model, "5a1702fa245d9013697656fc", "customer admins", [2]);
         } else {
-            Base.addRight(model, "5a17f157c4815318c8536c21", "users", [1]);
+            Base.addRight(model, "5a17f157c4815318c8536c21", "users", [2]);
         }
         if (model._id) {
             console.log("updating " + name);
-            await NoderedUtil.UpdateOne(this.collection, null, model, 1, false, null, 2);
+            return await NoderedUtil.UpdateOne(this.collection, null, model, 1, false, null, 2);
         } else {
             console.log("adding " + name);
-            await NoderedUtil.InsertOne(this.collection, model, 1, false, null, 2);
+            return await NoderedUtil.InsertOne(this.collection, model, 1, false, null, 2);
         }
     }
 }

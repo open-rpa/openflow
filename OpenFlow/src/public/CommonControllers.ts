@@ -228,6 +228,30 @@ export class copytext implements ng.IDirective {
         return directive;
     }
 }
+export class jsonText implements ng.IDirective {
+    restrict = 'A';
+    require = '?ngModel';
+    constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService, public locale) {
+    }
+    link: ng.IDirectiveLinkFn = (scope: ng.IScope, element: ng.IAugmentedJQuery, attr: ng.IAttributes, ngModelCtrl: any) => {
+
+        function into(input) {
+            return JSON.parse(input);
+        }
+        function out(data) {
+            return JSON.stringify(data, null, 2);
+        }
+        ngModelCtrl.$parsers.push(into);
+        ngModelCtrl.$formatters.push(out);
+
+    }
+    static factory(): ng.IDirectiveFactory {
+        const directive = ($location: ng.ILocationService, $timeout: ng.ITimeoutService, locale) => new jsonText($location, $timeout, locale);
+        directive.$inject = ['$location', '$timeout', 'locale'];
+        return directive;
+    }
+}
+
 export class fileread implements ng.IDirective {
     restrict = 'A';
     require = '?ngModel';
