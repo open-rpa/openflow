@@ -5125,6 +5125,7 @@ export class CustomerCtrl extends entityCtrl<Customer> {
             if (this.model._id) {
                 await NoderedUtil.EnsureCustomer(this.model, null, 2);
                 this.$rootScope.$broadcast("menurefresh");
+                this.loading = false;
                 this.loadData();
             } else {
                 const res = await NoderedUtil.EnsureCustomer(this.model, null, 2);
@@ -5186,6 +5187,8 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                     }
                 }
             }
+            console.log(this.Assigned)
+            console.log(this.UserAssigned)
             this.support = [];
             for (let a of this.Assigned) {
                 if (a.resource == "Support Hours" && a.quantity > 0) {
@@ -5780,8 +5783,12 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
         this.userdata.data.ResourcesCtrl.orderby = this.orderby;
         this.userdata.data.ResourcesCtrl.searchstring = this.searchstring;
         this.userdata.data.ResourcesCtrl.basequeryas = this.basequeryas;
+        if (!this.WebSocketClientService.customer || NoderedUtil.IsNullEmpty(this.WebSocketClientService.customer._id)) {
+            this.Assigned = await NoderedUtil.Query("config", { "_type": "resourceusage" }, null, { _created: -1 }, 100, 0, null, null, null, 2);
+        } else {
+            this.Assigned = await NoderedUtil.Query("config", { "_type": "resourceusage", "customerid": this.WebSocketClientService.customer._id }, null, { _created: -1 }, 100, 0, null, null, null, 2);
+        }
         this.loading = false;
-        this.Assigned = await NoderedUtil.Query("config", { "_type": "resourceusage", "customerid": this.WebSocketClientService.customer._id }, null, { _created: -1 }, 100, 0, null, null, null, 2);
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     AssignCount(resource: Resource) {
@@ -5789,6 +5796,7 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
         return assigned.length;
     }
     async EnsureCommon() {
+        this.loading = true;
         try {
             const nodered: Resource = await this.newResource("Nodered Instance", "user", "singlevariant", "singlevariant", { "memory": "128Mi" },
                 [
@@ -5813,8 +5821,15 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
                     this.newProduct("Premium License", "prod_JcXS2AvXfwk1Lv", "price_1IzISoC2vUMc6gvhMtqTq2Ef", "multiple", "multiple", supporthours._id, "plan_HEZp4Q4In2XcXe", 1, {}, true),
                 ], true, true);
 
+            const databaseusage: Resource = await this.newResource("Database Usage", "customer", "singlevariant", "singlevariant", { dbusage: (1048576 * 25) },
+                [
+                    this.newProduct("50Mb quota", "prod_JccNQXT636UNhG", "price_1IzQBRC2vUMc6gvh3Er9QaO8", "multiple", "multiple", null, null, 0, { dbusage: (1048576 * 50) }, true),
+                    this.newProduct("Metered Monthly", "prod_JccNQXT636UNhG", "price_1IzNEZC2vUMc6gvhAWQbEBHm", "metered", "metered", null, null, 0, { dbusage: (1048576 * 50) }, true),
+                ], true, true);
+            this.loading = false;
             this.loadData();
         } catch (error) {
+            this.loading = false;
             this.errormessage = error;
         }
     }

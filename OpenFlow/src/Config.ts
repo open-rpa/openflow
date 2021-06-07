@@ -31,7 +31,7 @@ export class Config {
         Config.amqp_prefetch = parseInt(Config.getEnv("amqp_prefetch", "50"));
         Config.trace_dashboardauth = Config.parseBoolean(Config.getEnv("trace_dashboardauth", "true"));
         Config.enable_entity_restriction = Config.parseBoolean(Config.getEnv("enable_entity_restriction", "false"));
-        Config.auto_hourly_housekeeping = Config.parseBoolean(Config.getEnv("auto_hourly_housekeeping", "true"));
+        Config.auto_hourly_housekeeping = Config.parseBoolean(Config.getEnv("auto_hourly_housekeeping", "false"));
 
 
         Config.getting_started_url = Config.getEnv("getting_started_url", "");

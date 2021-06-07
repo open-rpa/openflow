@@ -834,13 +834,12 @@ export class DatabaseConnection {
         let customer: Customer = null;
         try {
             if (item === null || item === undefined) { throw Error("Cannot create null item"); }
-            if (NoderedUtil.IsNullEmpty(jwt)) {
-                throw new Error("jwt is null");
-            }
+            if (NoderedUtil.IsNullEmpty(jwt)) throw new Error("jwt is null");
             await this.connect(span);
             span.addEvent("ensureResource");
             span.addEvent("verityToken");
             const user: TokenUser = Crypt.verityToken(jwt);
+            if (user.dblocked) throw new Error("Access denied (db locked) could be due to hitting quota limit");
             item = this.ensureResource(item);
             if (!await this.CheckEntityRestriction(user, collectionname, item, span)) {
                 throw Error("Create " + item._type + " access denied");
@@ -887,6 +886,9 @@ export class DatabaseConnection {
                     } else if (!NoderedUtil.IsNullEmpty(user.customerid)) {
                         user2.customerid = user.selectedcustomerid;
                     }
+                }
+                if (this.WellknownIdsArray.indexOf(user2._id) > -1) {
+                    delete user2.customerid;
                 }
                 if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
                     if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) throw new Error("Access denied (not admin) to customer with id " + user2.customerid);
@@ -1055,6 +1057,7 @@ export class DatabaseConnection {
             }
             await this.connect(span);
             const user = Crypt.verityToken(jwt);
+            if (user.dblocked) throw new Error("Access denied (db locked) could be due to hitting quota limit");
             span.setAttribute("collection", collectionname);
             span.setAttribute("username", user.username);
             let bulkInsert = this.db.collection(collectionname).initializeUnorderedBulkOp();
@@ -1272,6 +1275,7 @@ export class DatabaseConnection {
             if (q.item === null || q.item === undefined) { throw Error("Cannot update null item"); }
             await this.connect(span);
             const user: TokenUser = Crypt.verityToken(q.jwt);
+            if (user.dblocked) throw new Error("Access denied (db locked) could be due to hitting quota limit");
             if (!DatabaseConnection.hasAuthorization(user, (q.item as Base), Rights.update)) {
                 throw new Error("Access denied, no authorization to UpdateOne");
             }
@@ -1288,7 +1292,7 @@ export class DatabaseConnection {
                 if (NoderedUtil.IsNullEmpty(name)) name = (q.item as any)._name;
                 if (NoderedUtil.IsNullEmpty(name)) name = "Unknown";
                 original = await this.getbyid<T>(q.item._id, q.collectionname, q.jwt, span);
-                if (!original) { throw Error("item not found!"); }
+                if (!original) { throw Error("item not found or Access Denied"); }
                 if (!DatabaseConnection.hasAuthorization(user, original, Rights.update)) {
                     throw new Error("Access denied, no authorization to UpdateOne " + q.item._type + " " + name + " to database");
                 }
@@ -1302,15 +1306,24 @@ export class DatabaseConnection {
                 }
                 if (q.collectionname === "users" && (q.item._type === "user" || q.item._type === "role")) {
                     let user2: User = q.item as any;
+                    if (this.WellknownIdsArray.indexOf(q.item._id) > -1) {
+                        delete user2.customerid;
+                    }
                     if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
                         // User can update, just not created ?
                         // if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) throw new Error("Access denied (not admin) to customer with id " + user2.customerid);
                         customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span)
                         if (customer == null) throw new Error("Access denied to customer with id " + user2.customerid);
                     } else if (user.HasRoleName("customer admins") && !NoderedUtil.IsNullEmpty(user.customerid)) {
-                        user2.customerid = user.customerid;
-                        if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
-                        customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span);
+
+                        if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) {
+                            user2.customerid = user.selectedcustomerid;
+                            customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span);
+                        }
+
+                        // user2.customerid = user.customerid;
+                        // if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
+                        // customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span);
                     } else if (Config.multi_tenant && !user.HasRoleName("admins")) {
                         // We can update, we just don't want to allow inserts ?
                         // throw new Error("Access denied (not admin or customer admin)");
@@ -1346,7 +1359,7 @@ export class DatabaseConnection {
                                 q.item[key] = original[key];
                             }
                         }
-                        if (key == "dbusage" && q.collectionname == "users" && q.item._type == "user") {
+                        if ((key == "dbusage" || key == "dblocked") && q.collectionname == "users") {
                             if (!user.HasRoleName("admins")) {
                                 q.item[key] = original[key];
                             }
@@ -1388,6 +1401,12 @@ export class DatabaseConnection {
                         q.item = this.ensureResource(q.item);
                     }
                 } else {
+                    if (!DatabaseConnection.hasAuthorization(user, (q.item as any).metadata, Rights.update)) {
+                        throw new Error("Access denied, no authorization to UpdateOne file " + (q.item as any).filename + " to database");
+                    }
+                    if (!DatabaseConnection.hasAuthorization(user, (original as any).metadata, Rights.update)) {
+                        throw new Error("Access denied, no authorization to UpdateOne file " + (original as any).filename + " to database");
+                    }
                     (q.item as any).metadata = Base.assign((q.item as any).metadata);
                     (q.item as any).metadata._modifiedby = user.name;
                     (q.item as any).metadata._modifiedbyid = user._id;
@@ -1540,6 +1559,7 @@ export class DatabaseConnection {
                             if (q.item[t] !== undefined) {
                                 delete q.item[t].username;
                                 delete q.item[t].dbusage;
+                                delete q.item[t].dblocked;
                             }
                         })
                     }
@@ -1604,6 +1624,7 @@ export class DatabaseConnection {
             if (q.item === null || q.item === undefined) { throw Error("Cannot update null item"); }
             await this.connect();
             const user: TokenUser = Crypt.verityToken(q.jwt);
+            if (user.dblocked) throw new Error("Access denied (db locked) could be due to hitting quota limit");
             if (!DatabaseConnection.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to UpdateMany"); }
 
             if (q.collectionname === "users" && q.item._type === "user" && q.item.hasOwnProperty("newpassword")) {
@@ -1663,6 +1684,7 @@ export class DatabaseConnection {
                     if (q.item[t] !== undefined) {
                         delete q.item[t].username;
                         delete q.item[t].dbusage;
+                        delete q.item[t].dblocked;
                     }
                 })
             }
@@ -1722,6 +1744,7 @@ export class DatabaseConnection {
                 }
             }
             const user: TokenUser = Crypt.verityToken(q.jwt);
+            if (user.dblocked) throw new Error("Access denied (db locked) could be due to hitting quota limit");
             let exists: Base[] = [];
             if (query != null) {
                 // exists = await this.query(query, { name: 1 }, 2, 0, null, q.collectionname, q.jwt);
@@ -1825,7 +1848,7 @@ export class DatabaseConnection {
                     Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, { collection: collectionname });
                     return;
                 } else {
-                    throw Error("item not found!");
+                    throw Error("item not found, or Access Denied");
                 }
             }
             // if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] Deleting " + id + " in database");
@@ -1835,6 +1858,16 @@ export class DatabaseConnection {
             const docs = await this.db.collection(collectionname).find(_query).toArray();
             for (let i = 0; i < docs.length; i++) {
                 let doc = docs[i];
+                if (collectionname == "users" && doc._type == "user") {
+                    const usagedocs = await this.db.collection("config").find({ "userid": doc._id, "_type": "resourceusage", "quantity": { "$gt": 0 } }).toArray();
+                    if (usagedocs.length > 0) throw new Error("Access Denied, cannot delete user with active resourceusage");
+                }
+                if (collectionname == "users" && doc._type == "customer") {
+                    const usagedocs = await this.db.collection("config").find({ "customerid": doc._id, "_type": "resourceusage", "quantity": { "$gt": 0 } }).toArray();
+                    if (usagedocs.length > 0) throw new Error("Access Denied, cannot delete customer with active resourceusage");
+                    const userdocs = await this.db.collection("users").find({ "customerid": doc._id }).toArray();
+                    if (userdocs.length > 0) throw new Error("Access Denied, cannot delete customer with active user or roles");
+                }
                 doc._deleted = new Date(new Date().toISOString());
                 doc._deletedby = user.name;
                 doc._deletedbyid = user._id;
@@ -1862,6 +1895,20 @@ export class DatabaseConnection {
                 await this.db.collection(collectionname).deleteOne({ _id: doc._id });
                 Logger.otel.endSpan(mongodbspan);
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, { collection: collectionname });
+                if (collectionname == "users" && doc._type == "user") {
+                    const names: string[] = [];
+                    names.push(doc.name + "noderedadmins"); names.push(doc.name + "noderedusers"); names.push(doc.name + "nodered api users")
+                    const subdocs = await this.db.collection("users").find({ "name": { "$in": names }, "_type": "role" }).toArray();
+                    for (var r of subdocs) {
+                        this.DeleteOne(r._id, "users", jwt, span);
+                    }
+                }
+                if (collectionname == "users" && doc._type == "customer") {
+                    const subdocs = await this.db.collection("config").find({ "customerid": doc._id }).toArray();
+                    for (var r of subdocs) {
+                        this.DeleteOne(r._id, "config", jwt, span);
+                    }
+                }
             }
         } catch (error) {
             span.recordException(error);

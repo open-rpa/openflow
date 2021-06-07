@@ -1192,6 +1192,7 @@ export class Message {
             let type: string = "local";
             try {
                 msg = SigninMessage.assign(this.data);
+                const originialjwt = msg.jwt;
                 let tuser: TokenUser = null;
                 let user: User = null;
                 if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
@@ -1310,9 +1311,9 @@ export class Message {
                         user = await DBHelper.DecorateWithRoles(user, span);
                         // Check we have update rights
                         try {
-                            await DBHelper.Save(user, msg.jwt, span);
+                            await DBHelper.Save(user, originialjwt, span);
                             if (Config.persist_user_impersonation) {
-                                await Config.db._UpdateOne({ _id: tuserimpostor._id }, { "$set": { "impersonating": user._id } } as any, "users", 1, false, msg.jwt, span);
+                                await Config.db._UpdateOne({ _id: tuserimpostor._id }, { "$set": { "impersonating": user._id } } as any, "users", 1, false, originialjwt, span);
                             }
                         } catch (error) {
                             const impostors = await Config.db.query<User>({ _id: msg.impersonate }, null, 1, 0, null, "users", Crypt.rootToken(), undefined, undefined, span);
@@ -3372,6 +3373,14 @@ export class Message {
                         product.added_resourceid, product.added_stripeprice, product.added_quantity_multiplier * usage.quantity, true, jwt, span);
                 }
             }
+
+            if (resource.name == "Database Usage") {
+                const UpdateDoc: any = { "$set": {} };
+                UpdateDoc.$set["dblocked"] = false;
+                await Config.db.db.collection("users").updateMany({ "_type": "user", "customerid": customer._id }, UpdateDoc);
+            }
+
+
             return [customer, checkout];
         } catch (error) {
             span.recordException(error);
@@ -3499,7 +3508,6 @@ export class Message {
                 if (msg.object != "plans" && msg.object != "subscription_items" && msg.object != "invoices_upcoming" && msg.object != "billing_portal/sessions") {
                     throw new Error("Access to " + msg.object + " is not allowed");
                 }
-
                 if (msg.object == "subscription_items" && msg.method != "POST") throw new Error("Access to " + msg.object + " is not allowed");
                 if (msg.object == "plans" && msg.method != "GET") throw new Error("Access to " + msg.object + " is not allowed");
                 if (msg.object == "invoices_upcoming" && msg.method != "GET") throw new Error("Access to " + msg.object + " is not allowed");
@@ -3541,6 +3549,9 @@ export class Message {
                 }
             }
             if (customer == null) {
+                if (!NoderedUtil.IsNullEmpty(user.customerid) && !user.HasRoleName("resellers")) {
+                    throw new Error("Access denied creating customer");
+                }
                 if (msg.customer != null) msg.customer = Customer.assign(msg.customer);
                 if (msg.customer == null) msg.customer = new Customer(user._id);
                 msg.customer.userid = user._id;
@@ -3562,8 +3573,8 @@ export class Message {
                 Base.addRight(msg.customer, WellknownIds.admins, "admins", [Rights.full_control]);
                 customer = msg.customer;
             } else {
-                if (!user.HasRoleName(customer.name + " admins")) {
-                    // throw new Error("Access denied updating customer (admins)");
+                if (!user.HasRoleName(customer.name + " admins") && !user.HasRoleName("admins")) {
+                    throw new Error("Access denied updating customer (admins)");
                 }
                 // msg.customer = customers[0];
                 if (customer.name != msg.customer.name || customer.email != msg.customer.email || customer.vatnumber != msg.customer.vatnumber || customer.vattype != msg.customer.vattype || customer.coupon != msg.customer.coupon) {
@@ -3586,6 +3597,12 @@ export class Message {
             let tax_exempt: string = "none";
             if (Config.stripe_force_vat && (NoderedUtil.IsNullEmpty(customer.vattype) || NoderedUtil.IsNullEmpty(customer.vatnumber))) {
                 throw new Error("Only business can buy, please fill out vattype and vatnumber");
+            }
+
+            if (msg.customer.vatnumber) {
+                if (!NoderedUtil.IsNullEmpty(msg.customer.vatnumber) && msg.customer.vattype == "eu_vat" && msg.customer.vatnumber.substring(0, 2) != msg.customer.country) {
+                    throw new Error("Country and VAT number does not match (eu vat numbers must be prefixed with country code)");
+                }
             }
 
             if (!NoderedUtil.IsNullEmpty(msg.customer.vatnumber) || !Config.stripe_force_vat) {
@@ -3632,7 +3649,7 @@ export class Message {
                     } else if (msg.stripecustomer.tax_ids.data[0].value != msg.customer.vatnumber) {
                         await this.Stripe<stripe_tax_id>("DELETE", "tax_ids", msg.stripecustomer.tax_ids.data[0].id, null, msg.customer.stripeid);
                         const payload: any = { value: msg.customer.vatnumber, type: msg.customer.vattype };
-                        await this.Stripe<stripe_tax_id>("PUT", "tax_ids", msg.stripecustomer.tax_ids.data[0].id, payload, msg.customer.stripeid);
+                        await this.Stripe<stripe_customer>("POST", "tax_ids", null, payload, msg.customer.stripeid);
                     }
                 } else {
                     if (msg.stripecustomer.tax_ids.data.length > 0) {
@@ -3784,6 +3801,11 @@ export class Message {
         }
         const timestamp = new Date(new Date().toISOString());
         timestamp.setUTCHours(0, 0, 0, 0);
+
+        const yesterday = new Date(new Date().toISOString());;
+        yesterday.setUTCHours(0, 0, 0, 0);
+        yesterday.setDate(yesterday.getDate() - 1);
+
         try {
             if (!skipCalculateSize) {
 
@@ -3903,27 +3925,26 @@ export class Message {
         }
         try {
             if (!skipUpdateUserSize) {
-
-                // yesterday
-                timestamp.setDate(timestamp.getDate() - 1);
-
-
                 var dt = new Date();
                 let index = 0;
-                const usercount = await Config.db.db.collection("users").aggregate([{ "$match": { "_type": "user", lastseen: { "$gte": timestamp } } }, { $count: "userCount" }]).toArray();
-                Logger.instanse.debug("[housekeeping] Begin updating all users (" + usercount[0].userCount + ") dbusage field");
+                const usercount = await Config.db.db.collection("users").aggregate([{ "$match": { "_type": "user", lastseen: { "$gte": yesterday } } }, { $count: "userCount" }]).toArray();
+                if (usercount.length > 0) {
+                    Logger.instanse.debug("[housekeeping] Begin updating all users (" + usercount[0].userCount + ") dbusage field");
+                }
 
-                const cursor = Config.db.db.collection("users").find({ "_type": "user", lastseen: { "$gte": timestamp } })
+                const cursor = Config.db.db.collection("users").find({ "_type": "user", lastseen: { "$gte": yesterday } })
                 for await (const u of cursor) {
+                    if (u.dbusage == null) u.dbusage = 0;
                     index++;
                     const pipe = [
-                        { "$match": { "userid": u._id, timestamp: timestamp } },
+                        { "$match": { "userid": u._id, timestamp: yesterday } },
                         { "$group": { "_id": "$userid", "size": { "$sum": "$size" } } }
                     ]
                     const items: any[] = await Config.db.db.collection("dbusage").aggregate(pipe).toArray();
                     if (items.length > 0) {
                         await Config.db.db.collection("users").updateOne({ _id: u._id }, { $set: { "dbusage": items[0].size } });
                     }
+                    Logger.instanse.debug("[housekeeping][" + index + "/" + usercount[0].userCount + "] " + u.name + " " + this.formatBytes(u.dbusage));
                     if (index % 100 == 0) Logger.instanse.debug("[housekeeping][" + index + "/" + usercount[0].userCount + "] Processing");
                 }
                 Logger.instanse.debug("[housekeeping] Completed updating all users dbusage field");
@@ -3931,6 +3952,226 @@ export class Message {
         } catch (error) {
             Logger.instanse.error(error);
             span.recordException(error);
+        }
+        if (Config.multi_tenant) {
+            try {
+                let index = 0;
+                const usercount = await Config.db.db.collection("users").aggregate([{ "$match": { "_type": "customer" } }, { $count: "userCount" }]).toArray();
+                if (usercount.length > 0) {
+                    Logger.instanse.debug("[housekeeping] Begin updating all customers (" + usercount[0].userCount + ") dbusage field");
+                }
+                const pipe = [
+                    { "$match": { "_type": "customer" } },
+                    { "$project": { "name": 1, "dbusage": 1, "stripeid": 1, "dblocked": 1 } },
+                    {
+                        "$lookup": {
+                            "from": "users",
+                            "let": {
+                                "id": "$_id"
+                            },
+                            "pipeline": [
+                                {
+                                    "$match": {
+                                        "$expr": {
+                                            "$and": [
+                                                {
+                                                    "$eq": [
+                                                        "$customerid",
+                                                        "$$id"
+                                                    ]
+                                                },
+                                                {
+                                                    "$eq": [
+                                                        "$_type",
+                                                        "user"
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    }
+                                },
+                                {
+                                    $project:
+                                    {
+                                        "name": 1, "dbusage": 1, "_id": 0
+                                    }
+                                }
+                            ],
+                            "as": "users"
+                        }
+
+                    }
+                ]
+                const cursor = await Config.db.db.collection("users").aggregate(pipe)
+                for await (const c of cursor) {
+                    let dbusage: number = 0;
+                    for (let u of c.users) dbusage += (u.dbusage ? u.dbusage : 0);
+                    await Config.db.db.collection("users").updateOne({ _id: c._id }, { $set: { "dbusage": dbusage } });
+                    Logger.instanse.debug("[housekeeping] " + c.name + " using " + this.formatBytes(dbusage));
+                    index++;
+                }
+                var sleep = (ms) => {
+                    return new Promise(resolve => {
+                        setTimeout(resolve, ms)
+                    })
+                }
+                await sleep(2000);
+
+            } catch (error) {
+                Logger.instanse.error(error);
+                span.recordException(error);
+            }
+        }
+        if (Config.multi_tenant) {
+            try {
+                let index = 0;
+                const usercount = await Config.db.db.collection("users").aggregate([{ "$match": { "_type": "customer" } }, { $count: "userCount" }]).toArray();
+                if (usercount.length > 0) {
+                    Logger.instanse.debug("[housekeeping] Begin updating all customers (" + usercount[0].userCount + ") dbusage field");
+                }
+
+                const pipe = [
+                    { "$match": { "_type": "customer" } },
+                    { "$project": { "name": 1, "dbusage": 1, "stripeid": 1, "dblocked": 1 } },
+                    {
+                        "$lookup": {
+                            "from": "config",
+                            "let": {
+                                "id": "$_id"
+                            },
+                            "pipeline": [
+                                {
+                                    "$match": {
+                                        "$expr": {
+                                            "$and": [
+                                                {
+                                                    "$eq": [
+                                                        "$customerid",
+                                                        "$$id"
+                                                    ]
+                                                },
+                                                {
+                                                    "$eq": [
+                                                        "$_type",
+                                                        "resourceusage"
+                                                    ]
+                                                },
+                                                {
+                                                    "$eq": [
+                                                        "$resource",
+                                                        "Database Usage"
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    }
+                                },
+                                {
+                                    $project:
+                                    {
+                                        "name": 1, "quantity": 1, "siid": 1, "product": 1, "_id": 0
+                                    }
+                                }
+                            ],
+                            "as": "config"
+                        }
+
+                    }
+                ]
+                // ,
+                // {
+                //     "$match": { config: { $not: { $size: 0 } } }
+                // }
+                const cursor = await Config.db.db.collection("users").aggregate(pipe)
+                let resources: Resource[] = await Config.db.db.collection("config").find({ "_type": "resource", "name": "Database Usage" }).toArray();
+                if (resources.length > 0) {
+                    let resource: Resource = resources[0];
+
+                    for await (const c of cursor) {
+                        if (c.dbusage == null) c.dbusage = 0;
+                        const config: ResourceUsage = c.config[0];
+                        index++;
+                        if (config == null) {
+                            if (c.dbusage > resource.defaultmetadata.dbusage) {
+                                await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": true } });
+                                if (!c.dblocked || c.dblocked) {
+                                    Logger.instanse.debug("[housekeeping] dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allows is " + this.formatBytes(resource.defaultmetadata.dbusage));
+                                    await Config.db.db.collection("users").updateMany({ customerid: c._id }, { $set: { "dblocked": true } });
+                                }
+                            } else if (c.dbusage <= resource.defaultmetadata.dbusage) {
+                                await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
+                                if (c.dblocked || !c.dblocked) {
+                                    Logger.instanse.debug("[housekeeping] unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allows is " + this.formatBytes(resource.defaultmetadata.dbusage));
+                                    await Config.db.db.collection("users").updateMany({ customerid: c._id }, { $set: { "dblocked": false } });
+                                }
+                            }
+                        } else if (config.product.customerassign == "single") {
+                            let quota: number = resource.defaultmetadata.dbusage + (c.quantity * c.config.metadata.dbusage);
+                            if (c.dbusage > quota) {
+                                await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": true } });
+                                if (!c.dblocked || c.dblocked) {
+                                    Logger.instanse.debug("[housekeeping] dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allows is " + this.formatBytes(quota));
+                                    await Config.db.db.collection("users").updateMany({ customerid: c._id }, { $set: { "dblocked": true } });
+                                }
+                            } else if (c.dbusage <= quota) {
+                                await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
+                                if (c.dblocked || !c.dblocked) {
+                                    Logger.instanse.debug("[housekeeping] unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allows is " + this.formatBytes(quota));
+                                    await Config.db.db.collection("users").updateMany({ customerid: c._id }, { $set: { "dblocked": false } });
+                                }
+                            }
+                        } else if (config.product.customerassign == "metered") {
+                            let billabledbusage: number = c.dbusage - resource.defaultmetadata.dbusage;
+                            if (billabledbusage > 0) {
+                                const billablecount = Math.ceil(billabledbusage / config.product.metadata.dbusage);
+
+                                Logger.instanse.debug("[housekeeping] Add usage_record for " + c.name + " using " + this.formatBytes(billabledbusage) + " equal to " + billablecount + " units of " + this.formatBytes(config.product.metadata.dbusage));
+                                const dt = parseInt((new Date().getTime() / 1000).toFixed(0))
+                                const payload: any = { "quantity": billablecount, "timestamp": dt };
+                                if (!NoderedUtil.IsNullEmpty(config.siid) && !NoderedUtil.IsNullEmpty(c.stripeid)) {
+                                    await this.Stripe("POST", "usage_records", config.siid, payload, c.stripeid);
+                                }
+                            }
+                            if (c.dblocked || !c.dblocked) {
+                                await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
+                                await Config.db.db.collection("users").updateMany({ customerid: c._id }, { $set: { "dblocked": false } });
+                            }
+                        }
+                        // await Config.db.db.collection("users").updateOne({ _id: c._id }, { $set: { "dbusage": c.dbusage } });
+                        if (index % 100 == 0) Logger.instanse.debug("[housekeeping][" + index + "/" + usercount[0].userCount + "] Processing");
+                    }
+                    Logger.instanse.debug("[housekeeping] Completed updating all customers dbusage field");
+
+
+                    const pipe2 = [
+                        { "$match": { "_type": "user", "$or": [{ "customerid": { $exists: false } }, { "customerid": "" }] } },
+                        { "$project": { "name": 1, "dbusage": 1, "dblocked": 1 } }];
+                    const cursor2 = await Config.db.db.collection("users").aggregate(pipe2);
+                    for await (const c of cursor2) {
+                        if (Config.db.WellknownIdsArray.indexOf(c._id) > -1) continue;
+                        if (c.dbusage == null) c.dbusage = 0;
+                        if (c.dbusage > resource.defaultmetadata.dbusage) {
+                            Logger.instanse.debug("[housekeeping] dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allows is " + this.formatBytes(resource.defaultmetadata.dbusage));
+                            await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": true } });
+                        } else {
+                            if (c.dblocked) {
+                                await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
+                                Logger.instanse.debug("[housekeeping] unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allows is " + this.formatBytes(resource.defaultmetadata.dbusage));
+                            }
+
+                        }
+                    }
+                    Logger.instanse.debug("[housekeeping] Completed updating all users without a customer dbusage field");
+                }
+            } catch (error) {
+                if (error.response && error.response.body) {
+                    Logger.instanse.error(error.response.body);
+                    span.recordException(error.response.body);
+                } else {
+                    Logger.instanse.error(error);
+                    span.recordException(error);
+                }
+            }
         }
         Logger.otel.endSpan(span);
     }

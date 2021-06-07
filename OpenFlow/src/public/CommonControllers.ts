@@ -470,6 +470,7 @@ export class entitiesCtrl<T> {
     }
     async DeleteOne(model: any): Promise<any> {
         this.loading = true;
+        this.errormessage = "";
         try {
             await NoderedUtil.DeleteOne(this.collection, model._id, null, 2);
             this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });

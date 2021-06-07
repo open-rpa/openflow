@@ -317,8 +317,9 @@ async function initDatabase(): Promise<boolean> {
                 var dt = new Date(new Date().toISOString());
                 var msg = new Message(); msg.jwt = Crypt.rootToken();
                 var skipUpdateUsage: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
-                skipUpdateUsage = false;
-                await msg.Housekeeping(false, skipUpdateUsage, skipUpdateUsage, null);
+                var skipUpdateUserSize: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
+                skipUpdateUserSize = false;
+                await msg.Housekeeping(false, skipUpdateUsage, skipUpdateUserSize, null);
             }, 5000);
         }
         return true;
