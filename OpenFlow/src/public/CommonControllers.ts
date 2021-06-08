@@ -55,6 +55,44 @@ export class timesince implements ng.IDirective {
 }
 
 
+export class formatBytes implements ng.IDirective {
+    // restrict = 'E';
+    require = 'ngModel';
+    replace = true;
+
+    constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService) {
+
+    }
+    formatBytes(bytes, decimals = 2) {
+        if (bytes === 0) return '0 Bytes';
+
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+
+    link: ng.IDirectiveLinkFn = (scope: ng.IScope, element: ng.IAugmentedJQuery, attr: ng.IAttributes, ngModelCtrl: any) => {
+        scope.$watch(() => {
+            if (ngModelCtrl.$viewValue === null || ngModelCtrl.$viewValue === undefined) { return; }
+            const size = ngModelCtrl.$viewValue;
+            try {
+                element.text(this.formatBytes(size));
+            } catch (error) {
+                console.error(error);
+            }
+        });
+    }
+    static factory(): ng.IDirectiveFactory {
+        const directive = ($location: ng.ILocationService, $timeout: ng.ITimeoutService) => new formatBytes($location, $timeout);
+        directive.$inject = ['$location', '$timeout'];
+        return directive;
+    }
+}
+
 export class textarea implements ng.IDirective {
     // restrict = 'E';
     // require = 'ngModel';
@@ -391,8 +429,11 @@ export class entitiesCtrl<T> {
             let exactquery: object = null;
             let basequeryas = this.basequeryas;
             if (this.collection == "users" && (this.basequery._type == "user" || this.basequery._type == "role") && !this.skipcustomerfilter) {
-                if (!NoderedUtil.IsNullUndefinded(this.WebSocketClientService.customer) && !this.skipcustomerfilter) {
-                    basequeryas = this.WebSocketClientService.customer._id;
+                // if (!NoderedUtil.IsNullUndefinded(this.WebSocketClientService.customer) && !this.skipcustomerfilter) {
+                //     basequeryas = this.WebSocketClientService.customer._id;
+                // }
+                if (this.WebSocketClientService.customer && !NoderedUtil.IsNullEmpty(this.WebSocketClientService.customer._id)) {
+                    query["customerid"] = this.WebSocketClientService.customer._id;
                 }
             }
             if (this.searchstring !== "" && this.searchstring != null) {
@@ -431,13 +472,14 @@ export class entitiesCtrl<T> {
 
                 }
             }
-            this.models = await NoderedUtil.Query(this.collection, query, this.baseprojection, this.orderby, this.pagesize, 0, null, basequeryas,
-                null, 2);
+            this.models = await NoderedUtil.Query(this.collection, query, this.baseprojection, this.orderby, this.pagesize, 0, null, basequeryas, null, 2);
             if (exactquery != null) {
                 var temp = await NoderedUtil.Query(this.collection, exactquery, this.baseprojection, this.orderby, 1, 0, null, basequeryas, null, 2);
-                this.models = temp.concat(this.models);
+                if (temp.length > 0) {
+                    this.models = this.models.filter(x => (x as any)._id != temp[0]._id);
+                    this.models = temp.concat(this.models);
+                }
             }
-
             this.loading = false;
             if (this.autorefresh) {
                 if (this.models.length >= this.pagesize) {

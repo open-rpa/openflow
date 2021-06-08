@@ -5174,6 +5174,17 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                     if ((prod as any).count > 0) {
                         (res as any).newproduct = prod;
                     }
+                    if (prod.customerassign == "metered" && res.name == 'Database Usage') {
+
+                        let billabledbusage: number = this.model.dbusage - res.defaultmetadata.dbusage;
+                        if (billabledbusage > 0) {
+                            const billablecount = Math.ceil(billabledbusage / prod.metadata.dbusage);
+                            (prod as any).packagecount = billablecount;
+                        } else {
+                            (prod as any).packagecount = 0;
+                        }
+                    }
+
                 }
             }
             this.UserResources = await NoderedUtil.Query("config", { "_type": "resource", "target": "user", "allowdirectassign": true }, null, { _created: -1 }, 100, 0, null, null, null, 2);

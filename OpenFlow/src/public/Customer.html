@@ -328,11 +328,15 @@
 
 </form>
 
-
+<div ng-show="!ctrl.model.stripeid || ctrl.model.stripeid == ''">
+    Current database usage:
+    <format-bytes ng-model="ctrl.model.dbusage" />
+</div>
 <div ng-repeat="Resource in ctrl.Resources" ng-show="ctrl.model.stripeid">
     <div class="row" ng-repeat="Product in Resource.products" ng-show="Resource.customerassign == 'multiplevariants'">
         <div class="col">{{Product.name}}</div>
         <div class="col">{{ Product.count }}</div>
+
         <div class="col">
 
             <a href ng-click="ctrl.AddPlan(Resource, Product)" class="btn" role="button"
@@ -345,7 +349,11 @@
         </div>
     </div>
     <div class="row" ng-show="Resource.customerassign == 'singlevariant'">
-        <div class="col">{{Resource.name}}</div>
+        <div class="col">
+            {{Resource.name}} :
+            <format-bytes ng-model="ctrl.model.dbusage" ng-show="Resource.name == 'Database Usage'" />
+        </div>
+
         <div class="col">
             <select ng-model="Resource.newproduct" ng-options="item as item.name for item in Resource.products"
                 ng-disabled="ctrl.loading==true">
@@ -353,6 +361,8 @@
         </div>
         <div class="col">
             {{Resource.newproduct.count}}
+            <span ng-show="Resource.name == 'Database Usage' && Resource.newproduct.customerassign == 'metered'"> /
+                aprox: {{Resource.newproduct.packagecount}}</span>
         </div>
         <div class="col">
             <a href ng-click="ctrl.AddPlan(Resource, Resource.newproduct)" class="btn" role="button"

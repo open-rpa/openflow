@@ -839,7 +839,7 @@ export class DatabaseConnection {
             span.addEvent("ensureResource");
             span.addEvent("verityToken");
             const user: TokenUser = Crypt.verityToken(jwt);
-            if (user.dblocked) throw new Error("Access denied (db locked) could be due to hitting quota limit");
+            if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit");
             item = this.ensureResource(item);
             if (!await this.CheckEntityRestriction(user, collectionname, item, span)) {
                 throw Error("Create " + item._type + " access denied");
@@ -1057,7 +1057,7 @@ export class DatabaseConnection {
             }
             await this.connect(span);
             const user = Crypt.verityToken(jwt);
-            if (user.dblocked) throw new Error("Access denied (db locked) could be due to hitting quota limit");
+            if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit");
             span.setAttribute("collection", collectionname);
             span.setAttribute("username", user.username);
             let bulkInsert = this.db.collection(collectionname).initializeUnorderedBulkOp();
@@ -1275,7 +1275,7 @@ export class DatabaseConnection {
             if (q.item === null || q.item === undefined) { throw Error("Cannot update null item"); }
             await this.connect(span);
             const user: TokenUser = Crypt.verityToken(q.jwt);
-            if (user.dblocked) throw new Error("Access denied (db locked) could be due to hitting quota limit");
+            if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit");
             if (!DatabaseConnection.hasAuthorization(user, (q.item as Base), Rights.update)) {
                 throw new Error("Access denied, no authorization to UpdateOne");
             }
@@ -1624,7 +1624,7 @@ export class DatabaseConnection {
             if (q.item === null || q.item === undefined) { throw Error("Cannot update null item"); }
             await this.connect();
             const user: TokenUser = Crypt.verityToken(q.jwt);
-            if (user.dblocked) throw new Error("Access denied (db locked) could be due to hitting quota limit");
+            if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit");
             if (!DatabaseConnection.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to UpdateMany"); }
 
             if (q.collectionname === "users" && q.item._type === "user" && q.item.hasOwnProperty("newpassword")) {
@@ -1744,7 +1744,7 @@ export class DatabaseConnection {
                 }
             }
             const user: TokenUser = Crypt.verityToken(q.jwt);
-            if (user.dblocked) throw new Error("Access denied (db locked) could be due to hitting quota limit");
+            if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit");
             let exists: Base[] = [];
             if (query != null) {
                 // exists = await this.query(query, { name: 1 }, 2, 0, null, q.collectionname, q.jwt);
@@ -1902,6 +1902,12 @@ export class DatabaseConnection {
                     for (var r of subdocs) {
                         this.DeleteOne(r._id, "users", jwt, span);
                     }
+                    // await this.db.collection("audit").deleteMany({ "userid": doc._id });
+                    // await this.db.collection("openrpa_instances").deleteMany({ "_modifiedbyid": doc._id });
+                    // await this.db.collection("workflow_instances").deleteMany({ "_modifiedbyid": doc._id });
+                    // await this.db.collection("oauthtokens").deleteMany({ "userId": doc._id });
+                    // this.db.collection("nodered").deleteMany({"_modifiedbyid": doc._id});
+                    // this.db.collection("openrpa").deleteMany({"_modifiedbyid": doc._id});
                 }
                 if (collectionname == "users" && doc._type == "customer") {
                     const subdocs = await this.db.collection("config").find({ "customerid": doc._id }).toArray();
@@ -2166,6 +2172,7 @@ export class DatabaseConnection {
     private async getbasequeryuserid(userid: string, field: string, bits: number[], parent: Span): Promise<Object> {
         // const user = await DBHelper.FindByUsernameOrId(null, userid, parent);
         let user: User = await this.getbyid(userid, "users", Crypt.rootToken(), parent);
+        if (NoderedUtil.IsNullUndefinded(user)) return null;
         if (user._type == "user") {
             user = await DBHelper.DecorateWithRoles(user as any, parent);
             const jwt = Crypt.createToken(user as any, Config.shorttoken_expires_in);

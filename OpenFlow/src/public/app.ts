@@ -1,6 +1,6 @@
 import { WebSocketClientService } from "./WebSocketClientService";
 import angular = require("angular");
-import { timesince, translate, textarea, fileread, userdata, api, copytext, jsonText } from "./CommonControllers";
+import { timesince, translate, textarea, fileread, userdata, api, copytext, jsonText, formatBytes } from "./CommonControllers";
 import { MenuCtrl, ProvidersCtrl, MainCtrl, LoginCtrl, ProviderCtrl, UsersCtrl, UserCtrl, RolesCtrl, RoleCtrl, RPAWorkflowsCtrl, RPAWorkflowCtrl, WorkflowsCtrl, ReportsCtrl, jslogCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, SocketCtrl, NoderedCtrl, hdrobotsCtrl, ClientsCtrl, AuditlogsCtrl, SignupCtrl, PaymentCtrl, QueuesCtrl, SocketsCtrl, QueueCtrl, CredentialsCtrl, CredentialCtrl, DuplicatesCtrl, OAuthClientsCtrl, OAuthClientCtrl, DeletedCtrl, CustomerCtrl, EntityRestrictionsCtrl, EntityRestrictionCtrl, CustomersCtrl, ResourcesCtrl, ResourceCtrl } from "./Controllers";
 
 require('angular-route');
@@ -34,6 +34,7 @@ module openflow {
         .directive("fileread", fileread.factory())
         .directive("copytext", copytext.factory())
         .directive("jsonText", jsonText.factory())
+        .directive("formatBytes", formatBytes.factory())
         .service("userdata", userdata)
         .service("WebSocketClientService", WebSocketClientService)
 

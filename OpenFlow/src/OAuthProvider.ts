@@ -107,6 +107,13 @@ export class OAuthProvider {
                 formats: {
                     AccessToken: 'jwt',
                 },
+                ttl: {
+                    AccessToken: 28800, // 8 hours
+                    AuthorizationCode: 28800, // 8 hours
+                    ClientCredentials: 28800, // 8 hours
+                    RefreshToken: 14 * 24 * 60 * 60, // 14 days in seconds
+                    Session: 1209600 // 14 days in seconds
+                },
                 jwks: jwks,
                 features: {
                     encryption: { enabled: true },
