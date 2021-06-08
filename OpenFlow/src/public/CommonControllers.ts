@@ -388,6 +388,7 @@ export class entitiesCtrl<T> {
                 this.preloadData();
             }
             let query: object = Object.assign({}, this.basequery);
+            let exactquery: object = null;
             let basequeryas = this.basequeryas;
             if (this.collection == "users" && (this.basequery._type == "user" || this.basequery._type == "role") && !this.skipcustomerfilter) {
                 if (!NoderedUtil.IsNullUndefinded(this.WebSocketClientService.customer) && !this.skipcustomerfilter) {
@@ -405,28 +406,38 @@ export class entitiesCtrl<T> {
                     }
                 } else {
                     const finalor = [];
+                    const finalexactor = [];
                     for (let i = 0; i < this.searchfields.length; i++) {
                         const newq: any = {};
+                        const newexactq: any = {};
                         // exact match case sensitive
                         // newq[this.searchfields[i]] = this.searchstring;
                         // exact match case insensitive
-                        newq[this.searchfields[i]] = new RegExp(["^", this.searchstring, "$"].join(""), "i");
+                        newexactq[this.searchfields[i]] = new RegExp(["^", this.searchstring, "$"].join(""), "i");
 
                         // exact match string contains
                         newq[this.searchfields[i]] = new RegExp([this.searchstring].join(""), "i");
 
                         finalor.push(newq);
+                        finalexactor.push(newexactq);
                     }
                     if (Object.keys(query).length == 0) {
                         query = { $or: finalor.concat() };
+                        exactquery = { $or: finalexactor.concat() };
                     } else {
                         query = { $and: [query, { $or: finalor.concat() }] };
+                        exactquery = { $and: [query, { $or: finalexactor.concat() }] };
                     }
 
                 }
             }
             this.models = await NoderedUtil.Query(this.collection, query, this.baseprojection, this.orderby, this.pagesize, 0, null, basequeryas,
                 null, 2);
+            if (exactquery != null) {
+                var temp = await NoderedUtil.Query(this.collection, exactquery, this.baseprojection, this.orderby, 1, 0, null, basequeryas, null, 2);
+                this.models = temp.concat(this.models);
+            }
+
             this.loading = false;
             if (this.autorefresh) {
                 if (this.models.length >= this.pagesize) {

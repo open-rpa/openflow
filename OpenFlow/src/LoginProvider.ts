@@ -543,7 +543,9 @@ export class LoginProvider {
                         });
                         var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), span);
                         const user: TokenUser = Object.assign(tuser, req.body.data);
-                        req.session.passport.user.validated = true;
+                        Auth.RemoveUser(user._id, "passport");
+                        // req.session.passport.user.validated = true;
+                        // wewfefwewe
 
 
                         if (!(user.validated == true) && Config.validate_user_form != "") {

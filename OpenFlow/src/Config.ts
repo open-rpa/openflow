@@ -32,6 +32,8 @@ export class Config {
         Config.trace_dashboardauth = Config.parseBoolean(Config.getEnv("trace_dashboardauth", "true"));
         Config.enable_entity_restriction = Config.parseBoolean(Config.getEnv("enable_entity_restriction", "false"));
         Config.auto_hourly_housekeeping = Config.parseBoolean(Config.getEnv("auto_hourly_housekeeping", "false"));
+        Config.housekeeping_update_usage_hourly = Config.parseBoolean(Config.getEnv("housekeeping_update_usage_hourly", "false"));
+        Config.housekeeping_update_usersize_hourly = Config.parseBoolean(Config.getEnv("housekeeping_update_usersize_hourly", "true"));
 
 
         Config.getting_started_url = Config.getEnv("getting_started_url", "");
@@ -41,6 +43,7 @@ export class Config {
         Config.stripe_api_key = Config.getEnv("stripe_api_key", "");
         Config.stripe_api_secret = Config.getEnv("stripe_api_secret", "");
         Config.stripe_force_vat = Config.parseBoolean(Config.getEnv("stripe_force_vat", "true"));
+        Config.stripe_force_checkout = Config.parseBoolean(Config.getEnv("stripe_force_checkout", "true"));
 
         Config.supports_watch = Config.parseBoolean(Config.getEnv("supports_watch", "false"));
         Config.ensure_indexes = Config.parseBoolean(Config.getEnv("ensure_indexes", "true"));
@@ -167,6 +170,8 @@ export class Config {
     public static trace_dashboardauth: boolean = Config.parseBoolean(Config.getEnv("trace_dashboardauth", "true"));
     public static enable_entity_restriction: boolean = Config.parseBoolean(Config.getEnv("enable_entity_restriction", "false"));
     public static auto_hourly_housekeeping: boolean = Config.parseBoolean(Config.getEnv("auto_hourly_housekeeping", "true"));
+    public static housekeeping_update_usage_hourly: boolean = Config.parseBoolean(Config.getEnv("housekeeping_update_usage_hourly", "false"));
+    public static housekeeping_update_usersize_hourly: boolean = Config.parseBoolean(Config.getEnv("housekeeping_update_usersize_hourly", "true"));
 
     public static getting_started_url: string = Config.getEnv("getting_started_url", "");
 
@@ -175,6 +180,7 @@ export class Config {
     public static stripe_api_key: string = Config.getEnv("stripe_api_key", "");
     public static stripe_api_secret: string = Config.getEnv("stripe_api_secret", "");
     public static stripe_force_vat: boolean = Config.parseBoolean(Config.getEnv("stripe_force_vat", "true"));
+    public static stripe_force_checkout: boolean = Config.parseBoolean(Config.getEnv("stripe_force_checkout", "true"));
 
     public static supports_watch: boolean = Config.parseBoolean(Config.getEnv("supports_watch", "false"));
     public static ensure_indexes: boolean = Config.parseBoolean(Config.getEnv("ensure_indexes", "true"));

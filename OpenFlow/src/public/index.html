@@ -118,18 +118,18 @@
           </button>
           <div class="dropdown-menu dropdown-menu-right w-200" aria-labelledby="navbar-dropdown-toggle-btn-1">
             <div class="row">
-              <div class="col-sm text-left text-nowrap w-100">
+              <div class="col-sm text-left text-nowrap w-150">
                 <a href ng-click="menuctrl.SelectCustomer(null)" class="dropdown-item">No filter</a>
               </div>
             </div>
             <div class="row" ng-repeat="model in menuctrl.customers">
-              <div class="col-sm text-left text-nowrap w-100">
+              <div class="col-sm text-left text-truncate w-100">
                 <a href ng-click="menuctrl.SelectCustomer(model)" class="dropdown-item">{{model.name}}</a>
               </div>
-              <div class="col-sm text-right w-90">
+              <div class="col-sm text-right w-90 z-10">
                 <a ng-href="#/Customer/{{model._id}}"
                   ng-show="menuctrl.hasrole('customer admins') || menuctrl.hasrole('resellers')">
-                  <em class="fas fa-money-bill-wave"></em></a>
+                  <em class="fas fa-money-bill-wave z-20"></em></a>
               </div>
             </div>
             <!-- <a class="dropdown-item" ng-href="#/Customer/{{model._id}}"

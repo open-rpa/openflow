@@ -3302,7 +3302,7 @@ export class Message {
 
                 // https://stripe.com/docs/payments/checkout/taxes
                 Base.addRight(usage, customer.admins, customer.name + " admin", [Rights.read]);
-                if (NoderedUtil.IsNullEmpty(customer.subscriptionid)) {
+                if (NoderedUtil.IsNullEmpty(customer.subscriptionid) || Config.stripe_force_checkout) {
                     if (NoderedUtil.IsNullEmpty(usage._id)) {
                         const res = await Config.db.InsertOne(usage, "config", 1, false, rootjwt, span);
                         usage._id = res._id;
@@ -3592,10 +3592,11 @@ export class Message {
                 customer.customattr5 = msg.customer.customattr5;
 
                 msg.customer = customer;
-                if (!NoderedUtil.IsNullEmpty(customer.vatnumber)) customer.vatnumber = customer.vatnumber.toUpperCase();
+                if (!NoderedUtil.IsNullEmpty(customer.vatnumber)) msg.customer.vatnumber = msg.customer.vatnumber.toUpperCase();
             }
+            msg.customer._type = "customer";
             let tax_exempt: string = "none";
-            if (Config.stripe_force_vat && (NoderedUtil.IsNullEmpty(customer.vattype) || NoderedUtil.IsNullEmpty(customer.vatnumber))) {
+            if (Config.stripe_force_vat && (NoderedUtil.IsNullEmpty(msg.customer.vattype) || NoderedUtil.IsNullEmpty(msg.customer.vatnumber))) {
                 throw new Error("Only business can buy, please fill out vattype and vatnumber");
             }
 
@@ -3706,13 +3707,13 @@ export class Message {
             Base.addRight(customeradmins, WellknownIds.admins, "admins", [Rights.full_control]);
             // Base.removeRight(customeradmins, WellknownIds.admins, [Rights.delete]);
             customeradmins.AddMember(user);
-            // if (!NoderedUtil.IsNullEmpty(user.customerid) && user.customerid != msg.customer._id) {
-            //     const usercustomer = await Config.db.getbyid<Customer>(user.customerid, "users", msg.jwt, span);
-            //     if (usercustomer != null) {
-            //         const usercustomeradmins = await Config.db.getbyid<Role>(usercustomer.admins, "users", msg.jwt, span);
-            //         if (usercustomeradmins != null) customeradmins.AddMember(usercustomeradmins);
-            //     }
-            // }
+            if (!NoderedUtil.IsNullEmpty(user.customerid) && user.customerid != msg.customer._id) {
+                const usercustomer = await Config.db.getbyid<Customer>(user.customerid, "users", msg.jwt, span);
+                if (usercustomer != null) {
+                    const usercustomeradmins = await Config.db.getbyid<Role>(usercustomer.admins, "users", msg.jwt, span);
+                    if (usercustomeradmins != null) customeradmins.AddMember(usercustomeradmins);
+                }
+            }
             customeradmins.customerid = msg.customer._id;
             await DBHelper.Save(customeradmins, rootjwt, span);
 
@@ -3892,6 +3893,8 @@ export class Message {
                             let item = Config.db.ensureResource(_item);
                             item = await Config.db.CleanACL(item, tuser, span);
                             delete item._id;
+                            item.username = item.name;
+                            item.name = item.name + " / " + col.name + " / " + this.formatBytes(_item.size);
                             item._type = "metered";
                             item._createdby = "root";
                             item._createdbyid = WellknownIds.root;
@@ -3937,14 +3940,24 @@ export class Message {
                     if (u.dbusage == null) u.dbusage = 0;
                     index++;
                     const pipe = [
-                        { "$match": { "userid": u._id, timestamp: yesterday } },
-                        { "$group": { "_id": "$userid", "size": { "$sum": "$size" } } }
-                    ]
+                        { "$match": { "userid": u._id, timestamp: { "$gte": yesterday } } },
+                        {
+                            "$group":
+                            {
+                                "_id": "$userid",
+                                "size": { "$sum": "$size" },
+                                "count": { "$sum": 1 }
+
+                            }
+                        }
+                    ]// "items": { "$push": "$$ROOT" }
                     const items: any[] = await Config.db.db.collection("dbusage").aggregate(pipe).toArray();
+
+
                     if (items.length > 0) {
+                        Logger.instanse.debug("[housekeeping][" + index + "/" + usercount[0].userCount + "] " + u.name + " " + this.formatBytes(items[0].size) + " from " + items[0].count + " collections");
                         await Config.db.db.collection("users").updateOne({ _id: u._id }, { $set: { "dbusage": items[0].size } });
                     }
-                    Logger.instanse.debug("[housekeeping][" + index + "/" + usercount[0].userCount + "] " + u.name + " " + this.formatBytes(u.dbusage));
                     if (index % 100 == 0) Logger.instanse.debug("[housekeeping][" + index + "/" + usercount[0].userCount + "] Processing");
                 }
                 Logger.instanse.debug("[housekeeping] Completed updating all users dbusage field");

@@ -318,7 +318,8 @@ async function initDatabase(): Promise<boolean> {
                 var msg = new Message(); msg.jwt = Crypt.rootToken();
                 var skipUpdateUsage: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
                 var skipUpdateUserSize: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
-                skipUpdateUserSize = false;
+                if (Config.housekeeping_update_usage_hourly) skipUpdateUsage = false;
+                if (Config.housekeeping_update_usersize_hourly) skipUpdateUserSize = false;
                 await msg.Housekeeping(false, skipUpdateUsage, skipUpdateUserSize, null);
             }, 5000);
         }
