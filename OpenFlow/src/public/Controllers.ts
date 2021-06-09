@@ -3596,10 +3596,12 @@ export class AuditlogsCtrl extends entitiesCtrl<Role> {
         this.baseprojection = { name: 1, type: 1, _type: 1, impostorname: 1, clientagent: 1, clientversion: 1, _created: 1, success: 1, remoteip: 1 };
         this.searchfields = ["name", "impostorname", "clientagent", "type"];
         console.debug("AuditlogsCtrl");
+        // this.pagesize = 20;
         // this.basequery = { _type: "role" };
         this.collection = "audit";
         this.postloadData = this.processdata;
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            this.basequery = { "userid": user._id };
             await jsutil.ensureJQuery();
             this.loadData();
         });

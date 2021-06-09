@@ -409,7 +409,7 @@ export class entitiesCtrl<T> {
     public baseprojection: any = {};
     public collection: string = "entities";
     public models: T[] = [];
-    public orderby: any = null;
+    public orderby: any = { _id: -1 };
     public autorefresh: boolean = false;
     public autorefreshinterval: number = 30 * 1000;
     public pagesize: number = 100;
@@ -600,6 +600,7 @@ export class entitiesCtrl<T> {
         this.loadData();
     }
     ToggleOrder(field: string) {
+        if (this.orderby == null) this.orderby = {};
         if (this.orderby[field] == undefined) {
             this.orderby = {};
         }
@@ -611,6 +612,7 @@ export class entitiesCtrl<T> {
         if (field === '_type') {
             this.orderby["type"] = this.orderby[field];
         }
+        this.page = 0;
         this.loadData();
     }
     async DeleteOne(model: any): Promise<any> {
