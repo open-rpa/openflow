@@ -428,7 +428,7 @@ export class entitiesCtrl<T> {
             let query: object = Object.assign({}, this.basequery);
             let exactquery: object = null;
             let basequeryas = this.basequeryas;
-            if (this.collection == "users" && (this.basequery._type == "user" || this.basequery._type == "role") && !this.skipcustomerfilter) {
+            if (this.collection == "users" && (this.basequery._type == "user" || this.basequery._type == "role") && !this.skipcustomerfilter && this.WebSocketClientService.multi_tenant) {
                 // if (!NoderedUtil.IsNullUndefinded(this.WebSocketClientService.customer) && !this.skipcustomerfilter) {
                 //     basequeryas = this.WebSocketClientService.customer._id;
                 // }

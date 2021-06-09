@@ -3,8 +3,10 @@
 </div>
 
 <div class="col-sm-12 text-right">
-  <input type="checkbox" id="checkbox-1" ng-model="ctrl.skipcustomerfilter" ng-change="ctrl.Search()">
-  <label for="checkbox-1"><span translate lib="web">show all</span></label>
+  <input type="checkbox" id="checkbox-1" ng-model="ctrl.skipcustomerfilter" ng-change="ctrl.Search()"
+    ng-show="menuctrl.WebSocketClientService.multi_tenant">
+  <label for="checkbox-1" ng-show="menuctrl.WebSocketClientService.multi_tenant"><span translate lib="web">show
+      all</span></label>
   <a href="#/User" class="btn btn-info" translate lib="web">Adduser</a>
 </div>
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
@@ -43,7 +45,7 @@
         </div>
 
       </td>
-      <td>
+      <td ng-show="ctrl.WebSocketClientService.stripe_api_key != ''">
         <a href ng-click="ctrl.ShowPlans(model)" class="btn" role="button"
           ng-show="menuctrl.user.customerid != null && menuctrl.customer.stripeid != null">
           <em class="fas fa-money-bill-wave"></em></a>

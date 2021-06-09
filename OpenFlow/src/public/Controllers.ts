@@ -1145,15 +1145,17 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
         }
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
             let haderror: boolean = false;
-            try {
-                this.stripe = Stripe(this.WebSocketClientService.stripe_api_key);
-            } catch (error) {
-                haderror = true;
-            }
-            if (haderror) {
-                console.debug("loading stripe script")
-                await jsutil.loadScript('//js.stripe.com/v3/');
-                this.stripe = Stripe(this.WebSocketClientService.stripe_api_key);
+            if (!NoderedUtil.IsNullEmpty(this.WebSocketClientService.stripe_api_key)) {
+                try {
+                    this.stripe = Stripe(this.WebSocketClientService.stripe_api_key);
+                } catch (error) {
+                    haderror = true;
+                }
+                if (haderror) {
+                    console.debug("loading stripe script")
+                    await jsutil.loadScript('//js.stripe.com/v3/');
+                    this.stripe = Stripe(this.WebSocketClientService.stripe_api_key);
+                }
             }
             this.loadData();
         });
@@ -3624,16 +3626,14 @@ export class AuditlogsCtrl extends entitiesCtrl<Role> {
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
+    ToggleModal() {
+        var modal = document.getElementById("exampleModal");
+        modal.classList.toggle("show");
+    }
 
     async ShowAudit(model: any): Promise<any> {
         this.model = null;
-        const modal: any = $("#exampleModal");
-        try {
-            modal.modal();
-        } catch (error) {
-            await jsutil.loadScript("bootstrap.js");
-            modal.modal();
-        }
+        this.ToggleModal();
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         const arr = await NoderedUtil.Query(this.collection, { _id: model._id }, null, null, 1, 0, null, null, null, 2);
         if (arr.length == 1) {
@@ -4837,18 +4837,15 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         this.loadData();
     }
     async ShowData(model) {
-        const modal: any = $("#exampleModal");
-        try {
-            modal.modal();
-        } catch (error) {
-            await jsutil.loadScript("bootstrap.js");
-            modal.modal();
-        }
+        this.ToggleModal();
         this.model = model;
     }
     async CloseModal() {
-        const modal: any = $("#exampleModal");
-        modal.modal('hide');
+        this.ToggleModal();
+    }
+    ToggleModal() {
+        var modal = document.getElementById("resourceModal");
+        modal.classList.toggle("show");
     }
     OpenEntity(model) {
         const modal: any = $("#exampleModal");
