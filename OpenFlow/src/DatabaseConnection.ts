@@ -1015,7 +1015,7 @@ export class DatabaseConnection {
                     await DBHelper.Save(custusers, Crypt.rootToken(), span);
                 }
 
-                DBHelper.EnsureNoderedRoles(user2, Crypt.rootToken(), false, span);
+                // DBHelper.EnsureNoderedRoles(user2, Crypt.rootToken(), false, span);
             }
             if (collectionname === "users" && item._type === "role") {
                 Base.addRight(item, item._id, item.name, [Rights.read]);

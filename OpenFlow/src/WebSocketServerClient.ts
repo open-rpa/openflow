@@ -419,7 +419,7 @@ export class WebSocketServerClient {
         this._sendQueue.forEach(msg => {
             let id: string = msg.id;
             try {
-                this._socketObject.send(JSON.stringify(msg));
+                if (this._socketObject != null) this._socketObject.send(JSON.stringify(msg));
             } catch (error) {
                 Logger.instanse.error("WebSocket error encountered " + error);
             }

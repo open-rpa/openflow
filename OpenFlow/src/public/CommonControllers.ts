@@ -93,6 +93,86 @@ export class formatBytes implements ng.IDirective {
     }
 }
 
+
+export class whenScrolled implements ng.IDirective {
+    constructor(public $rootScope: ng.IRootScopeService, public $window: ng.IWindowService, public $timeout: ng.ITimeoutService) {
+    }
+    link: ng.IDirectiveLinkFn = (scope: ng.IScope, elem: ng.IAugmentedJQuery, attrs: ng.IAttributes, ngModelCtrl: any) => {
+        var checkWhenEnabled, handler, scrollDistance, scrollEnabled;
+        // var $window = angular.element(this.$window);
+        scrollDistance = 1;
+        if (attrs.whenScrolledDistance != null) {
+            scope.$watch(attrs.whenScrolledDistance, (value: any) => {
+                return scrollDistance = parseInt(value, 10);
+            });
+        }
+        scrollEnabled = true;
+        checkWhenEnabled = false;
+        if (attrs.whenScrolledDisabled != null) {
+            scope.$watch(attrs.whenScrolledDisabled, (value) => {
+                scrollEnabled = !value;
+                if (scrollEnabled && checkWhenEnabled) {
+                    checkWhenEnabled = false;
+                    return handler();
+                }
+            });
+        }
+        handler = (e) => {
+            var ele = elem[0].getBoundingClientRect();
+            var scrollTop = window.scrollY || window.pageYOffset || document.body.scrollTop + (document.documentElement && document.documentElement.scrollTop || 0)
+
+
+
+            var elementBottom, remaining, shouldScroll, windowBottom;
+            windowBottom = window.innerHeight + scrollTop;
+            elementBottom = ele.top + ele.height;
+            remaining = elementBottom - windowBottom;
+            shouldScroll = remaining <= this.$window.innerHeight * scrollDistance;
+            if (shouldScroll && scrollEnabled && ele.height > 300) {
+                if (this.$rootScope.$$phase) {
+                    return scope.$eval(attrs.whenScrolled);
+                } else {
+                    return scope.$apply(attrs.whenScrolled);
+                }
+            } else if (shouldScroll) {
+                return checkWhenEnabled = true;
+            }
+        };
+        var mousewheelevt = (/Firefox/i.test(navigator.userAgent)) ? "DOMMouseScroll" : "mousewheel" //FF doesn't recognize mousewheel as of FF3.x
+
+        var doc = document as any;
+        if (doc.attachEvent)
+            doc.attachEvent("on" + mousewheelevt, handler)
+        else if (document.addEventListener) //WC3 browsers
+            document.addEventListener(mousewheelevt, handler, false)
+
+        // angular.element(this.$window).on('scroll', handler);
+        scope.$on('$destroy', () => {
+            var doc = document as any;
+            if (doc.detachEvent)
+                doc.detachEvent("on" + mousewheelevt, handler)
+            else if (document.removeEventListener) //WC3 browsers
+                document.removeEventListener(mousewheelevt, handler, false)
+            // return this.$window.off('scroll', handler);
+        });
+        return this.$timeout((() => {
+            if (attrs.whenScrolledImmediateCheck) {
+                if (scope.$eval(attrs.whenScrolledImmediateCheck)) {
+                    return handler();
+                }
+            } else {
+                return handler();
+            }
+        }))
+    }
+    static factory(): ng.IDirectiveFactory {
+        const directive = ($rootScope: ng.IRootScopeService, $window: ng.IWindowService, $timeout: ng.ITimeoutService) => new whenScrolled($rootScope, $window, $timeout);
+        directive.$inject = ['$rootScope', '$window', '$timeout'];
+        return directive;
+    }
+}
+
+
 export class textarea implements ng.IDirective {
     // restrict = 'E';
     // require = 'ngModel';
@@ -329,7 +409,7 @@ export class entitiesCtrl<T> {
     public baseprojection: any = {};
     public collection: string = "entities";
     public models: T[] = [];
-    public orderby: any = { _id: -1 };
+    public orderby: any = null;
     public autorefresh: boolean = false;
     public autorefreshinterval: number = 30 * 1000;
     public pagesize: number = 100;
@@ -341,6 +421,7 @@ export class entitiesCtrl<T> {
     public basequeryas: string = null;
     public errormessage: string = "";
     public skipcustomerfilter: boolean = false;
+    public page: number = 0;
 
     public static $inject = [
         "$rootScope",
@@ -472,8 +553,13 @@ export class entitiesCtrl<T> {
 
                 }
             }
-            this.models = await NoderedUtil.Query(this.collection, query, this.baseprojection, this.orderby, this.pagesize, 0, null, basequeryas, null, 2);
-            if (exactquery != null) {
+            if (this.page == 0) {
+                this.models = await NoderedUtil.Query(this.collection, query, this.baseprojection, this.orderby, this.pagesize, 0, null, basequeryas, null, 2);
+            } else {
+                var temp = await NoderedUtil.Query(this.collection, query, this.baseprojection, this.orderby, this.pagesize, this.pagesize * this.page, null, basequeryas, null, 2);
+                this.models = this.models.concat(temp);
+            }
+            if (exactquery != null && this.page == 0) {
                 var temp = await NoderedUtil.Query(this.collection, exactquery, this.baseprojection, this.orderby, 1, 0, null, basequeryas, null, 2);
                 if (temp.length > 0) {
                     this.models = this.models.filter(x => (x as any)._id != temp[0]._id);
@@ -506,6 +592,12 @@ export class entitiesCtrl<T> {
             this.errormessage = JSON.stringify(error);
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
+    }
+    more() {
+        if (this.loading == true) { console.debug("allready loading data, exit"); return; }
+        this.page++;
+        console.log("loading more ... page: " + (this.page + 1))
+        this.loadData();
     }
     ToggleOrder(field: string) {
         if (this.orderby[field] == undefined) {

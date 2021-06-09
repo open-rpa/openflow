@@ -226,7 +226,7 @@ export class DBHelper {
             await this.Save(user, jwt, span);
             const users: Role = await this.FindRoleByName("users", span);
             users.AddMember(user);
-            this.EnsureNoderedRoles(user, jwt, false, span);
+            // this.EnsureNoderedRoles(user, jwt, false, span);
             await this.Save(users, jwt, span)
             user = await this.DecorateWithRoles(user, span);
             return user;
