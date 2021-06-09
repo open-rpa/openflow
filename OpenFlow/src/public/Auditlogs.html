@@ -1,14 +1,15 @@
-<div class="row">
+<div class="row" id="title">
   <h1 translate lib="web">auditlogs</h1>
 </div>
 <style>
   .failed {
-    border-color: red;
-    border: width 2;
+    border-color: red !important;
+    border: width 1;
     border-style: solid
   }
 </style>
-<div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
+<div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}
+</div>
 <table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;">
   <thead class="thead-dark">
     <tr>
@@ -103,7 +104,7 @@
       </p>
       <div class="text-right mt-20">
         <!-- text-right = text-align: right, mt-20 = margin-top: 2rem (20px) -->
-        <a href="#" class="btn mr-5" role="button">Close</a>
+        <a href class="btn mr-5" role="button" ng-click="ctrl.ToggleModal()">Close</a>
       </div>
     </div>
   </div>

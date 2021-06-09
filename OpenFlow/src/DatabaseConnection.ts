@@ -1589,8 +1589,9 @@ export class DatabaseConnection {
                             await DBHelper.Save(custusers, Crypt.rootToken(), span);
                             Auth.RemoveUser(q.item._id, "passport");
                         }
+                    } else {
+                        Auth.RemoveUser(q.item._id, "passport");
                     }
-
                     DBHelper.EnsureNoderedRoles(user2, Crypt.rootToken(), false, span);
                 }
 

@@ -1,4 +1,4 @@
-<div class="row">
+<div id="title" class="row">
   <h1 translate lib="web">users</h1>
 </div>
 
@@ -17,10 +17,8 @@
       <th ng-click="ctrl.ToggleOrder('username')"><b translate lib="web">username</b></th>
       <th ng-click="ctrl.ToggleOrder('_created')"><b translate lib="web">created</b></th>
       <th ng-click="ctrl.ToggleOrder('lastseen')"><b translate lib="web">lastseen</b></th>
-      <th ng-click="ctrl.ToggleOrder('dbusage')"
-        ng-show="menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins') || menuctrl.hasrole('resellers')"><b
-          translate lib="web">dbusage</b></th>
-      <th ng-show="ctrl.WebSocketClientService.stripe_api_key != ''">
+      <th ng-click="ctrl.ToggleOrder('dbusage')"><b translate lib="web">dbusage</b></th>
+      <th ng-show="ctrl.WebSocketClientService.stripe_api_key != ''" ng-click="ctrl.ToggleOrder('customerid')">
         <i class="fas fa-money-bill-wave"></i>
       </th>
       <th ng-show="ctrl.WebSocketClientService.validate_user_form != ''" ng-click="ctrl.ToggleOrder('validated')">
@@ -39,15 +37,16 @@
       <td>
         <timesince ng-model="model.lastseen" />
       </td>
-      <td ng-show="menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins') || menuctrl.hasrole('resellers')">
+      <td>
         <div class="w-100">
           <format-bytes ng-model="model.dbusage" />
         </div>
 
       </td>
       <td ng-show="ctrl.WebSocketClientService.stripe_api_key != ''">
-        <a href ng-click="ctrl.ShowPlans(model)" class="btn" role="button"
-          ng-show="menuctrl.user.customerid != null && menuctrl.customer.stripeid != null">
+        <a href ng-click="ctrl.ShowPlans(model)" class="btn" role="button" ng-show="menuctrl.user.customerid != null && menuctrl.customer.stripeid != null && model.customerid && model.customerid != '' &&
+          (menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins') || menuctrl.hasrole('resellers'))          
+          ">
           <em class="fas fa-money-bill-wave"></em></a>
       </td>
       <td ng-show="ctrl.WebSocketClientService.validate_user_form != ''">

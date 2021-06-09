@@ -180,7 +180,7 @@ export class Config {
     public static stripe_api_key: string = Config.getEnv("stripe_api_key", "");
     public static stripe_api_secret: string = Config.getEnv("stripe_api_secret", "");
     public static stripe_force_vat: boolean = Config.parseBoolean(Config.getEnv("stripe_force_vat", "true"));
-    public static stripe_force_checkout: boolean = Config.parseBoolean(Config.getEnv("stripe_force_checkout", "true"));
+    public static stripe_force_checkout: boolean = Config.parseBoolean(Config.getEnv("stripe_force_checkout", "false"));
 
     public static supports_watch: boolean = Config.parseBoolean(Config.getEnv("supports_watch", "false"));
     public static ensure_indexes: boolean = Config.parseBoolean(Config.getEnv("ensure_indexes", "true"));

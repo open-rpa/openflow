@@ -13,7 +13,7 @@ import { Readable, Stream } from "stream";
 import { GridFSBucket, ObjectID, Cursor } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
-import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, GetKubeNodeLabels, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant } from "@openiap/openflow-api";
+import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, GetKubeNodeLabels, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice } from "@openiap/openflow-api";
 import { Billing, stripe_customer, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription_item, stripe_coupon } from "@openiap/openflow-api";
 import { V1ResourceRequirements, V1Deployment } from "@kubernetes/client-node";
 import { amqpwrapper } from "../amqpwrapper";
@@ -477,6 +477,9 @@ export class Message {
                     break;
                 case "stripeaddplan":
                     await this.StripeAddPlan(cli, span);
+                    break;
+                case "getnextinvoice":
+                    await this.GetNextInvoice(cli, span);
                     break;
                 case "stripecancelplan":
                     await this.StripeCancelPlan(cli, span);
@@ -1769,8 +1772,6 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(Config.nodered_limits_memory)) resources.limits.memory = Config.nodered_limits_memory;
             if (!NoderedUtil.IsNullEmpty(Config.nodered_limits_cpu)) resources.limits.cpu = Config.nodered_limits_cpu;
 
-
-
             let nodered_image_name = Config.nodered_images[0].name;
             if (user.nodered) {
                 try {
@@ -1787,8 +1788,9 @@ export class Message {
             let nodered_image = Config.nodered_images[0].image;
             if (_nodered_image.length == 1) { nodered_image = _nodered_image[0].image; }
 
-            if (user.nodered && user.nodered.resources) {
-                if (NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
+
+            if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret) && !Config.multi_tenant) {
+                if (user.nodered && user.nodered.resources) {
                     if (user.nodered.resources.limits) {
                         resources.limits.memory = user.nodered.resources.limits.memory;
                         resources.limits.cpu = user.nodered.resources.limits.cpu;
@@ -1799,36 +1801,83 @@ export class Message {
                         resources.requests.memory = user.nodered.resources.requests.memory;
                         resources.requests.cpu = user.nodered.resources.requests.cpu;
                     }
-                } else {
-                    const billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt, undefined, undefined, span);
-                    if (billings.length > 0) {
-                        const billing: Billing = billings[0];
-                        if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.limits.memory = billing.memory;
-                        if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.cpu = (billing as any).cpu;
-                        if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.requests.memory = billing.memory;
-                        if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.cpu = (billing as any).cpu;
-
-                        if (!NoderedUtil.IsNullEmpty(billing.openflowuserplan)) {
-                            hasbilling = true;
-                        }
-                    }
-
                 }
             } else {
-                if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
-                    const billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt, undefined, undefined, span);
-                    if (billings.length > 0) {
-                        const billing: Billing = billings[0];
-                        if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.limits.memory = billing.memory;
-                        if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.cpu = (billing as any).cpu;
-                        if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.requests.memory = billing.memory;
-                        if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.cpu = (billing as any).cpu;
-                        if (!NoderedUtil.IsNullEmpty(billing.openflowuserplan)) {
+                let _resources: Resource[] = await Config.db.db.collection("config").find({ "_type": "resource", "name": "Nodered Instance" }).toArray();
+                if (_resources.length > 0) {
+                    let resource: Resource = _resources[0];
+
+                    if (resource.defaultmetadata.resources) {
+                        if (resource.defaultmetadata.resources.limits) {
+                            if (resource.defaultmetadata.resources.limits.memory) resources.limits.memory = resource.defaultmetadata.resources.limits.memory;
+                            if (resource.defaultmetadata.resources.limits.cpu) resources.limits.cpu = resource.defaultmetadata.resources.limits.cpu;
+                        }
+                        if (resource.defaultmetadata.resources.requests) {
+                            if (resource.defaultmetadata.resources.requests.memory) resources.requests.memory = resource.defaultmetadata.resources.requests.memory;
+                            if (resource.defaultmetadata.resources.requests.cpu) resources.requests.cpu = resource.defaultmetadata.resources.requests.cpu;
+                        }
+                    }
+                    let assigned: ResourceUsage[] = await Config.db.db.collection("config").find({ "_type": "resourceusage", "userid": user._id, "resource": "Nodered Instance" }).toArray();
+                    if (assigned.length > 0) {
+                        let usage: ResourceUsage = assigned[0];
+                        if (usage.quantity > 0 && !NoderedUtil.IsNullEmpty(usage.siid)) {
                             hasbilling = true;
+                            if (usage.product.metadata.resources) {
+                                if (usage.product.metadata.resources.limits) {
+                                    if (usage.product.metadata.resources.limits.memory) resources.limits.memory = usage.product.metadata.resources.limits.memory;
+                                    if (usage.product.metadata.resources.limits.cpu) resources.limits.cpu = usage.product.metadata.resources.limits.cpu;
+                                }
+                                if (usage.product.metadata.resources.requests) {
+                                    if (usage.product.metadata.resources.requests.memory) resources.requests.memory = usage.product.metadata.resources.requests.memory;
+                                    if (usage.product.metadata.resources.requests.cpu) resources.requests.cpu = usage.product.metadata.resources.requests.cpu;
+                                }
+                            }
                         }
                     }
                 }
             }
+            // if (user.nodered && user.nodered.resources) {
+            //     if (NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
+            //         if (user.nodered.resources.limits) {
+            //             resources.limits.memory = user.nodered.resources.limits.memory;
+            //             resources.limits.cpu = user.nodered.resources.limits.cpu;
+            //             resources.requests.memory = user.nodered.resources.limits.memory;
+            //             resources.requests.cpu = user.nodered.resources.limits.cpu;
+            //         }
+            //         if (user.nodered.resources.requests) {
+            //             resources.requests.memory = user.nodered.resources.requests.memory;
+            //             resources.requests.cpu = user.nodered.resources.requests.cpu;
+            //         }
+            //     } else {
+            //         const billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt, undefined, undefined, span);
+            //         if (billings.length > 0) {
+            //             const billing: Billing = billings[0];
+            //             if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.limits.memory = billing.memory;
+            //             if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.cpu = (billing as any).cpu;
+            //             if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.requests.memory = billing.memory;
+            //             if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.cpu = (billing as any).cpu;
+
+            //             if (!NoderedUtil.IsNullEmpty(billing.openflowuserplan)) {
+            //                 hasbilling = true;
+            //             }
+            //         }
+
+            //     }
+            // } else {
+            //     if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
+            //         const billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt, undefined, undefined, span);
+            //         if (billings.length > 0) {
+            //             const billing: Billing = billings[0];
+            //             if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.limits.memory = billing.memory;
+            //             if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.cpu = (billing as any).cpu;
+            //             if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.requests.memory = billing.memory;
+            //             if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.cpu = (billing as any).cpu;
+            //             if (!NoderedUtil.IsNullEmpty(billing.openflowuserplan)) {
+            //                 hasbilling = true;
+            //             }
+            //         }
+            //     }
+            // }
             // 
             let livenessProbe: any = {
                 httpGet: {
@@ -3113,7 +3162,13 @@ export class Message {
             }
             if (!NoderedUtil.IsNullEmpty(usage.siid)) {
                 if (payload.quantity == 0) {
-                    const res = await this.Stripe("DELETE", "subscription_items", usage.siid, payload, customer.stripeid);
+                    var sub = await this.Stripe<stripe_subscription>("GET", "subscriptions", usage.subid, null, customer.stripeid);
+                    if (sub.items.total_count < 2) {
+                        const res = await this.Stripe("DELETE", "subscriptions", usage.subid, null, customer.stripeid);
+                    } else {
+                        const res = await this.Stripe("DELETE", "subscription_items", usage.siid, payload, customer.stripeid);
+                    }
+
                 } else {
                     const res = await this.Stripe("POST", "subscription_items", usage.siid, payload, customer.stripeid);
                 }
@@ -3247,27 +3302,29 @@ export class Message {
             if (total_usage.length > 0) {
                 usage.subid = total_usage[0].subid;
             }
-            filter = total_usage.filter(x => x.product.stripeprice == stripeprice);
-            if (filter.length > 0) {
-                usage.siid = filter[0].siid;
-                usage.subid = filter[0].subid;
+            if (!Config.stripe_force_checkout) {
+                filter = total_usage.filter(x => x.product.stripeprice == stripeprice);
+                if (filter.length > 0) {
+                    usage.siid = filter[0].siid;
+                    usage.subid = filter[0].subid;
+                }
             }
 
             // Backward compatability and/or pick up after deleting customer object 
-            if (NoderedUtil.IsNullEmpty(usage.siid)) {
-                const stripecustomer = await this.Stripe<stripe_customer>("GET", "customers", customer.stripeid, null, null);
-                if (stripecustomer == null) throw new Error("Failed locating stripe customer " + customer.stripeid);
-                for (let sub of stripecustomer.subscriptions.data) {
-                    if (sub.id == customer.subscriptionid) {
-                        for (let si of sub.items.data) {
-                            if ((si.plan && si.plan.id == stripeprice) || (si.price && si.price.id == stripeprice)) {
-                                usage.siid = si.id;
-                                usage.subid = sub.id;
-                            }
-                        }
-                    }
-                }
-            }
+            // if (NoderedUtil.IsNullEmpty(usage.siid)) {
+            //     const stripecustomer = await this.Stripe<stripe_customer>("GET", "customers", customer.stripeid, null, null);
+            //     if (stripecustomer == null) throw new Error("Failed locating stripe customer " + customer.stripeid);
+            //     for (let sub of stripecustomer.subscriptions.data) {
+            //         if (sub.id == customer.subscriptionid) {
+            //             for (let si of sub.items.data) {
+            //                 if ((si.plan && si.plan.id == stripeprice) || (si.price && si.price.id == stripeprice)) {
+            //                     usage.siid = si.id;
+            //                     usage.subid = sub.id;
+            //                 }
+            //             }
+            //         }
+            //     }
+            // }
 
             let _quantity: number = 0;
             // Count what we have already bought
@@ -3289,7 +3346,7 @@ export class Message {
             } else {
                 usage.name = usage.resource + " / " + product.name + " for " + customer.name;
             }
-            if (NoderedUtil.IsNullEmpty(usage._id) || NoderedUtil.IsNullEmpty(usage.subid)) {
+            if (NoderedUtil.IsNullEmpty(usage._id) || NoderedUtil.IsNullEmpty(usage.subid) || Config.stripe_force_checkout) {
                 let tax_rates = [];
                 if (NoderedUtil.IsNullEmpty(customer.country)) customer.country = "";
                 customer.country = customer.country.toUpperCase();
@@ -3390,6 +3447,72 @@ export class Message {
             Logger.otel.endSpan(span);
         }
     }
+
+    async GetNextInvoice(cli: WebSocketServerClient, parent: Span) {
+        const span: Span = Logger.otel.startSubSpan("message.GetNextInvoice", parent);
+        this.Reply();
+        let msg: GetNextInvoiceMessage;
+        try {
+            msg = GetNextInvoiceMessage.assign(this.data);
+            if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+
+            let payload: any = {};
+            const customer: Customer = await Config.db.getbyid(msg.customerid, "users", msg.jwt, span);
+            if (NoderedUtil.IsNullUndefinded(customer)) throw new Error("Unknown customer or Access Denied");
+            if (NoderedUtil.IsNullEmpty(customer.stripeid)) throw new Error("Customer has no billing information, please update with vattype and vatnumber");
+
+
+            if (!NoderedUtil.IsNullEmpty(customer.subscriptionid)) {
+                payload.subscription = customer.subscriptionid;
+                msg.invoice = await this.Stripe<stripe_invoice>("GET", "invoices_upcoming", null, payload, customer.stripeid);
+            }
+            if (!NoderedUtil.IsNullEmpty(msg.subscriptionid)) payload.subscription = msg.subscriptionid;
+            if (!NoderedUtil.IsNullUndefinded(msg.subscription_items) && msg.subscription_items.length > 0) {
+                if (!NoderedUtil.IsNullEmpty(customer.subscriptionid)) {
+                    const proration_date = Math.floor(Date.now() / 1000);
+                    payload.subscription_proration_date = proration_date;
+                }
+                if (msg.invoice != null) {
+                    for (var item of msg.subscription_items) {
+                        var exists = msg.invoice.lines.data.filter(x => (x.price.id == item.price || x.plan.id == item.price));
+                        if (exists.length > 0) {
+                            item.id = exists[0].subscription_item;
+                            item.quantity += exists[0].quantity;
+                        }
+                    }
+                }
+                payload.subscription_items = msg.subscription_items;
+            }
+            if (!NoderedUtil.IsNullEmpty(customer.subscriptionid) && msg.subscription_items != null) {
+                if (!NoderedUtil.IsNullEmpty(msg.proration_date) && msg.proration_date > 0) payload.subscription_proration_date = msg.proration_date;
+                payload.subscription = customer.subscriptionid;
+            } else if (NoderedUtil.IsNullEmpty(customer.subscriptionid)) {
+                payload.customer = customer.stripeid;
+            }
+
+            msg.invoice = await this.Stripe<stripe_invoice>("GET", "invoices_upcoming", null, payload, customer.stripeid);
+
+        } catch (error) {
+            span.recordException(error);
+            await handleError(null, error);
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) {
+                msg.error = (error.message ? error.message : error);
+                if (error.response && error.response.body) {
+                    msg.error = error.response.body;
+                }
+            }
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            span.recordException(error);
+            this.data = "";
+            await handleError(cli, error);
+        }
+        Logger.otel.endSpan(span);
+        this.Send(cli);
+    }
     async StripeAddPlan(cli: WebSocketServerClient, parent: Span) {
         const span: Span = Logger.otel.startSubSpan("message.StripeAddPlan", parent);
         this.Reply();
@@ -3459,6 +3582,20 @@ export class Message {
         if (object == "invoices_upcoming") {
             if (NoderedUtil.IsNullEmpty(customerid)) throw new Error("Need customer to work with invoices_upcoming");
             url = "https://api.stripe.com/v1/invoices/upcoming?customer=" + customerid;
+            if (payload != null && payload.subscription_items) {
+                let index = 0;
+                for (let item of payload.subscription_items) {
+                    if (item.id) url += "&subscription_items[" + index + "][id]=" + item.id;
+                    if (item.price) url += "&subscription_items[" + index + "][price]=" + item.price;
+                    if (item.quantity) url += "&subscription_items[" + index + "][quantity]=" + item.quantity;
+                }
+            }
+            if (payload != null && payload.subscription_proration_date) {
+                url += "&subscription_proration_date=" + payload.subscription_proration_date;
+            }
+            if (payload != null && payload.subscription) {
+                url += "&subscription=" + payload.subscription;
+            }
         }
 
         const auth = "Basic " + Buffer.from(Config.stripe_api_secret + ":").toString("base64");
@@ -3553,7 +3690,7 @@ export class Message {
                     throw new Error("Access denied creating customer");
                 }
                 if (msg.customer != null) msg.customer = Customer.assign(msg.customer);
-                if (msg.customer == null) msg.customer = new Customer(user._id);
+                if (msg.customer == null) msg.customer = new Customer();
                 msg.customer.userid = user._id;
                 if (NoderedUtil.IsNullEmpty(msg.customer.name)) {
                     if (!NoderedUtil.IsNullEmpty((user as any).customer)) {
@@ -3606,7 +3743,7 @@ export class Message {
                 }
             }
 
-            if (!NoderedUtil.IsNullEmpty(msg.customer.vatnumber) || !Config.stripe_force_vat) {
+            if ((!NoderedUtil.IsNullEmpty(msg.customer.vatnumber) && msg.customer.vatnumber.length > 2) || !Config.stripe_force_vat) {
 
                 if (NoderedUtil.IsNullUndefinded(msg.stripecustomer) && !NoderedUtil.IsNullEmpty(msg.customer.stripeid)) {
                     msg.stripecustomer = await this.Stripe<stripe_customer>("GET", "customers", msg.customer.stripeid, null, null);
@@ -3688,11 +3825,12 @@ export class Message {
                 msg.customer = await Config.db._UpdateOne(null, msg.customer, "users", 3, true, rootjwt, span);
             }
             if (user.customerid != msg.customer._id) {
-                if (NoderedUtil.IsNullEmpty(user.customerid)) user.customerid = msg.customer._id;
-                user.selectedcustomerid = msg.customer._id;
-
                 const UpdateDoc: any = { "$set": {} };
-                UpdateDoc.$set["customerid"] = msg.customer._id;
+                if (NoderedUtil.IsNullEmpty(user.customerid)) {
+                    user.customerid = msg.customer._id;
+                    UpdateDoc.$set["customerid"] = msg.customer._id;
+                }
+                user.selectedcustomerid = msg.customer._id;
                 UpdateDoc.$set["selectedcustomerid"] = msg.customer._id;
                 await Config.db._UpdateOne({ "_id": user._id }, UpdateDoc, "users", 1, false, rootjwt, span)
             } else if (cli.user.selectedcustomerid != msg.customer._id) {

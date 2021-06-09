@@ -87,7 +87,7 @@ export class MenuCtrl {
             this.signedin = true;
 
             this.customer = this.WebSocketClientService.customer;
-            this.customers = await NoderedUtil.Query("users", { _type: "customer" }, null, null, 100, 0, null, null, null, 2);
+            this.customers = await NoderedUtil.Query("users", { _type: "customer" }, null, { "name": 1 }, 100, 0, null, null, null, 2);
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             // cleanup();
         });
@@ -98,7 +98,7 @@ export class MenuCtrl {
         this.$scope.$on('menurefresh', async (event, data) => {
             if (event && data) { }
             this.customer = this.WebSocketClientService.customer;
-            this.customers = await NoderedUtil.Query("users", { _type: "customer" }, null, null, 100, 0, null, null, null, 2);
+            this.customers = await NoderedUtil.Query("users", { _type: "customer" }, null, { "name": 1 }, 100, 0, null, null, null, 2);
             if (this.customers.length > 0 && this.user.selectedcustomerid != null) {
                 for (let cust of this.customers)
                     if (cust._id == this.user.selectedcustomerid) this.customer = cust;
@@ -1208,6 +1208,8 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
         try {
             this.errormessage = "";
             this.user = user;
+            var title = document.getElementById("title");
+            title.scrollIntoView();
             this.ToggleModal()
             this.Resources = await NoderedUtil.Query("config", { "_type": "resource", "target": "user", "allowdirectassign": true }, null, { _created: -1 }, 100, 0, null, null, null, 2);
             this.Assigned = await NoderedUtil.Query("config", { "_type": "resourceusage", "userid": user._id }, null, { _created: -1 }, 100, 0, null, null, null, 2);
@@ -1262,7 +1264,7 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
         try {
             this.loading = true;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            var result = await NoderedUtil.StripeAddPlan(this.user._id, this.WebSocketClientService.customer._id,
+            var result = await NoderedUtil.StripeAddPlan(this.user._id, this.user.customerid,
                 resource._id, product.stripeprice, null, 2);
             var checkout = result.checkout;
             if (checkout) {
@@ -3631,8 +3633,10 @@ export class AuditlogsCtrl extends entitiesCtrl<Role> {
         modal.classList.toggle("show");
     }
 
-    async ShowAudit(model: any): Promise<any> {
+    async ShowAudit(model: any): Promise<void> {
         this.model = null;
+        var title = document.getElementById("title");
+        title.scrollIntoView();
         this.ToggleModal();
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         const arr = await NoderedUtil.Query(this.collection, { _id: model._id }, null, null, 1, 0, null, null, null, 2);
@@ -3640,6 +3644,7 @@ export class AuditlogsCtrl extends entitiesCtrl<Role> {
             this.model = arr[0];
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
+
     }
 }
 export class SignupCtrl extends entityCtrl<Base> {
@@ -4844,12 +4849,11 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         this.ToggleModal();
     }
     ToggleModal() {
-        var modal = document.getElementById("resourceModal");
+        var modal = document.getElementById("exampleModal");
         modal.classList.toggle("show");
     }
     OpenEntity(model) {
-        const modal: any = $("#exampleModal");
-        modal.modal('hide');
+        this.ToggleModal()
         this.$location.path("/Entity/" + this.collection + "/" + model._id);
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         return;
@@ -5195,8 +5199,8 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                     }
                 }
             }
-            console.log(this.Assigned)
-            console.log(this.UserAssigned)
+            console.debug("Assigned", this.Assigned);
+            console.debug("UserAssigned", this.UserAssigned);
             this.support = [];
             for (let a of this.Assigned) {
                 if (a.resource == "Support Hours" && a.quantity > 0) {
@@ -5251,8 +5255,43 @@ export class CustomerCtrl extends entityCtrl<Customer> {
         try {
             this.loading = true;
             this.errormessage = "";
-            var result = await NoderedUtil.StripeAddPlan(null, this.WebSocketClientService.customer._id,
-                resource._id, product.stripeprice, null, 2);
+
+            let items = [];
+            items.push({ quantity: 1, price: product.stripeprice });
+
+            let nextinvoice = await NoderedUtil.GetNextInvoice(this.WebSocketClientService.customer._id, null, items, null, null, 2);
+
+            let proration = 0;
+            let prorationcurrency = "";
+            let prorationtext = [];
+            let newtotal = 0;
+            let newquantity = 0;
+            for (var line of nextinvoice.lines.data) {
+                if (line.proration) {
+                    proration += line.amount;
+                    prorationcurrency = line.currency;
+                    prorationtext.push(line.description);
+                }
+                if ((line.plan.id == product.stripeprice || line.price.id == product.stripeprice) && !line.proration) {
+                    newtotal = line.amount;
+                    prorationcurrency = line.currency;
+                    newquantity = line.quantity;
+                }
+            }
+            var message = "";
+            if (proration > 0) {
+                message += "Adds " + (proration / 100) + prorationcurrency + " to your next invoice\n" + prorationtext.join("\n");
+            }
+            if (message != "") {
+                message += "\nhere after your new total for " + newquantity + " x " + product.name + " is " + (newtotal / 100) + prorationcurrency + " per month";
+                if (!confirm(message)) {
+                    this.loading = false;
+                    this.loadData();
+                    return;
+                }
+            }
+            console.log(nextinvoice);
+            var result = await NoderedUtil.StripeAddPlan(null, this.WebSocketClientService.customer._id, resource._id, product.stripeprice, null, 2);
             var checkout = result.checkout;
             if (checkout) {
                 this.stripe
@@ -5806,12 +5845,12 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
     async EnsureCommon() {
         this.loading = true;
         try {
-            const nodered: Resource = await this.newResource("Nodered Instance", "user", "singlevariant", "singlevariant", { "memory": "128Mi" },
+            const nodered: Resource = await this.newResource("Nodered Instance", "user", "singlevariant", "singlevariant", { "resources": { "limits": { "memory": "128Mi" } } },
                 [
-                    this.newProduct("Basic", "prod_HEC6rB2wRUwviG", "plan_HECATxbGlff4Pv", "single", "single", null, null, 0, { "memory": "256Mi" }, true),
-                    this.newProduct("Plus", "prod_HEDSUIZLD7rfgh", "plan_HEDSUl6qdOE4ru", "single", "single", null, null, 0, { "memory": "512Mb" }, true),
-                    this.newProduct("Premium", "prod_HEDTI7YBbwEzVX", "plan_HEDTJQBGaVGnvl", "single", "single", null, null, 0, { "memory": "1Gi" }, true),
-                    this.newProduct("Premium+", "prod_IERLqCwV7BV8zy", "price_1HdySLC2vUMc6gvh3H1pgG7A", "single", "single", null, null, 0, { "memory": "2Gi" }, true),
+                    this.newProduct("Basic", "prod_HEC6rB2wRUwviG", "plan_HECATxbGlff4Pv", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, true),
+                    this.newProduct("Plus", "prod_HEDSUIZLD7rfgh", "plan_HEDSUl6qdOE4ru", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "512Mi" }, "requests": { "memory": "512Mi" } } }, true),
+                    this.newProduct("Premium", "prod_HEDTI7YBbwEzVX", "plan_HEDTJQBGaVGnvl", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "1Gi" }, "requests": { "memory": "1Gi" } } }, true),
+                    this.newProduct("Premium+", "prod_IERLqCwV7BV8zy", "price_1HdySLC2vUMc6gvh3H1pgG7A", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "2Gi" }, "requests": { "memory": "2Gi" } } }, true),
                 ], true, true);
             const supporthours: Resource = await this.newResource("Support Hours", "customer", "multiplevariants", "multiplevariants", {},
                 [
