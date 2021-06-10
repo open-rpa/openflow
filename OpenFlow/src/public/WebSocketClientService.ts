@@ -47,6 +47,10 @@ export class WebSocketClientService {
                         this.logger.info('connected to ' + wsurl);
                         this.loadToken();
                     });
+                    cli.events.on('refreshtoken', (user) => {
+                        console.debug("refreshtoken", user);
+                        this.$rootScope.$broadcast("refreshtoken", user);
+                    });
                     cli.connect();
                 }
             } catch (error) {

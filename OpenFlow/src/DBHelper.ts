@@ -72,7 +72,7 @@ export class DBHelper {
     }
     public static cached_roles: Role[] = [];
     public static cached_at: Date = new Date();
-    public static async DecorateWithRoles(user: User, parent: Span): Promise<User> {
+    public static async DecorateWithRoles<T extends TokenUser | User>(user: T, parent: Span): Promise<T> {
         const span: Span = Logger.otel.startSubSpan("dbhelper.DecorateWithRoles", parent);
         try {
             if (!Config.decorate_roles_fetching_all_roles) {
@@ -162,7 +162,7 @@ export class DBHelper {
         } finally {
             Logger.otel.endSpan(span);
         }
-        return user;
+        return user as any;
     }
     public static async FindRoleByName(name: string, parent: Span): Promise<Role> {
         const items: Role[] = await Config.db.query<Role>({ name: name }, null, 1, 0, null, "users", Crypt.rootToken(), undefined, undefined, parent);

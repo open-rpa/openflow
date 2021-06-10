@@ -91,6 +91,18 @@ export class MenuCtrl {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             // cleanup();
         });
+        const cleanup2 = this.$scope.$on('refreshtoken', async (event, data) => {
+            console.debug("refreshtoken event", event)
+            console.debug("refreshtoken data", data)
+            if (event && data) { }
+            this.user = data;
+            this.signedin = true;
+
+            this.customer = this.WebSocketClientService.customer;
+            this.customers = await NoderedUtil.Query("users", { _type: "customer" }, null, { "name": 1 }, 100, 0, null, null, null, 2);
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            // cleanup();
+        });
         this.$scope.$on('setsearch', (event, data) => {
             if (event && data) { }
             this.searchstring = data;

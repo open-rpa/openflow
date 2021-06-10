@@ -16,7 +16,7 @@ import { DatabaseConnection } from "../DatabaseConnection";
 import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, GetKubeNodeLabels, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice } from "@openiap/openflow-api";
 import { Billing, stripe_customer, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription_item, stripe_coupon } from "@openiap/openflow-api";
 import { V1ResourceRequirements, V1Deployment } from "@kubernetes/client-node";
-import { amqpwrapper } from "../amqpwrapper";
+import { amqpwrapper, QueueMessageOptions } from "../amqpwrapper";
 import { WebSocketServerClient } from "../WebSocketServerClient";
 import { DBHelper } from "../DBHelper";
 import { WebSocketServer } from "../WebSocketServer";
@@ -25,6 +25,7 @@ import { Span } from "@opentelemetry/api";
 import { Logger } from "../Logger";
 import Dockerode = require("dockerode");
 import { QueueClient } from "../QueueClient";
+import { cli } from "winston/lib/winston/config";
 const request = require("request");
 const got = require("got");
 const { RateLimiterMemory } = require('rate-limiter-flexible')
@@ -80,9 +81,11 @@ export class Message {
     public correlationId: string;
     public cb: any;
     public priority: number = 1;
-    public async QueueProcess(cli: QueueClient, parent: Span): Promise<void> {
+    public options: QueueMessageOptions;
+    public async QueueProcess(options: QueueMessageOptions, parent: Span): Promise<void> {
         let span: Span = undefined;
         try {
+            this.options = options;
             const ot_end = Logger.otel.startTimer();
             span = Logger.otel.startSubSpan("QueueProcessMessage " + this.command, parent);
             span.setAttribute("command", this.command);
@@ -414,6 +417,7 @@ export class Message {
                         await this.EnsureNoderedInstance(span);
                         cli.Send(this);
                     }
+                    await this.ReloadUserToken(cli, span);
                     break;
                 case "deletenoderedinstance":
                     this.EnsureJWT(cli);
@@ -1836,49 +1840,6 @@ export class Message {
                     }
                 }
             }
-            // if (user.nodered && user.nodered.resources) {
-            //     if (NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
-            //         if (user.nodered.resources.limits) {
-            //             resources.limits.memory = user.nodered.resources.limits.memory;
-            //             resources.limits.cpu = user.nodered.resources.limits.cpu;
-            //             resources.requests.memory = user.nodered.resources.limits.memory;
-            //             resources.requests.cpu = user.nodered.resources.limits.cpu;
-            //         }
-            //         if (user.nodered.resources.requests) {
-            //             resources.requests.memory = user.nodered.resources.requests.memory;
-            //             resources.requests.cpu = user.nodered.resources.requests.cpu;
-            //         }
-            //     } else {
-            //         const billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt, undefined, undefined, span);
-            //         if (billings.length > 0) {
-            //             const billing: Billing = billings[0];
-            //             if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.limits.memory = billing.memory;
-            //             if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.cpu = (billing as any).cpu;
-            //             if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.requests.memory = billing.memory;
-            //             if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.cpu = (billing as any).cpu;
-
-            //             if (!NoderedUtil.IsNullEmpty(billing.openflowuserplan)) {
-            //                 hasbilling = true;
-            //             }
-            //         }
-
-            //     }
-            // } else {
-            //     if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
-            //         const billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt, undefined, undefined, span);
-            //         if (billings.length > 0) {
-            //             const billing: Billing = billings[0];
-            //             if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.limits.memory = billing.memory;
-            //             if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.cpu = (billing as any).cpu;
-            //             if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.requests.memory = billing.memory;
-            //             if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.cpu = (billing as any).cpu;
-            //             if (!NoderedUtil.IsNullEmpty(billing.openflowuserplan)) {
-            //                 hasbilling = true;
-            //             }
-            //         }
-            //     }
-            // }
-            // 
             let livenessProbe: any = {
                 httpGet: {
                     path: "/livenessprobe",
@@ -3742,8 +3703,7 @@ export class Message {
                     throw new Error("Country and VAT number does not match (eu vat numbers must be prefixed with country code)");
                 }
             }
-
-            if ((!NoderedUtil.IsNullEmpty(msg.customer.vatnumber) && msg.customer.vatnumber.length > 2) || !Config.stripe_force_vat) {
+            if ((!NoderedUtil.IsNullEmpty(msg.customer.vatnumber) && msg.customer.vatnumber.length > 2) || Config.stripe_force_vat) {
 
                 if (NoderedUtil.IsNullUndefinded(msg.stripecustomer) && !NoderedUtil.IsNullEmpty(msg.customer.stripeid)) {
                     msg.stripecustomer = await this.Stripe<stripe_customer>("GET", "customers", msg.customer.stripeid, null, null);
@@ -3883,17 +3843,7 @@ export class Message {
                 cli.user = await DBHelper.DecorateWithRoles(cli.user, span);
                 cli.user.roles.push(new Rolemember(customerusers.name, customerusers._id));
                 cli.user.roles.push(new Rolemember(customeradmins.name, customeradmins._id));
-
-                const tuser: TokenUser = TokenUser.From(cli.user);
-                cli.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
-
-                const l: SigninMessage = new SigninMessage();
-                l.jwt = cli.jwt;
-                l.user = tuser;
-                const m: Message = new Message(); m.command = "refreshtoken";
-                m.data = JSON.stringify(l);
-                cli.Send(m);
-
+                await this.ReloadUserToken(cli, span);
             }
 
         } catch (error) {
@@ -3927,6 +3877,23 @@ export class Message {
         const i = Math.floor(Math.log(bytes) / Math.log(k));
 
         return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+    sleep(ms) {
+        return new Promise(resolve => {
+            setTimeout(resolve, ms)
+        })
+    }
+    public async ReloadUserToken(cli: WebSocketServerClient, parent: Span) {
+        await this.sleep(1000);
+        const l: SigninMessage = new SigninMessage();
+        Auth.RemoveUser(cli.user._id, "passport");
+        cli.user = await DBHelper.DecorateWithRoles(cli.user, parent);
+        cli.jwt = Crypt.createToken(cli.user, Config.shorttoken_expires_in);
+        l.jwt = cli.jwt;
+        l.user = TokenUser.From(cli.user);
+        const m: Message = new Message(); m.command = "refreshtoken";
+        m.data = JSON.stringify(l);
+        cli.Send(m);
     }
     public async Housekeeping(skipNodered: boolean, skipCalculateSize: boolean, skipUpdateUserSize: boolean, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.QueueMessage", parent);

@@ -36,7 +36,7 @@ export class QueueClient {
                 if (!NoderedUtil.IsNullEmpty(options.replyTo)) {
                     span = Logger.otel.startSpan("QueueClient.QueueMessage");
                     if (Config.log_openflow_amqp) Logger.instanse.debug("[queue] Process command: " + msg.command + " id: " + msg.id + " correlationId: " + options.correlationId);
-                    await msg.QueueProcess(msg, span);
+                    await msg.QueueProcess(options, span);
                     ack();
                     await amqpwrapper.Instance().send(options.exchange, options.replyTo, msg, Config.openflow_amqp_expiration, options.correlationId, options.routingKey);
                 } else {
