@@ -259,10 +259,10 @@ export class rpa_workflow_node {
             let killallexisting = this.config.killallexisting;
             let priority: number = 1;
             if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
-            // if (!NoderedUtil.IsNullEmpty(msg.queue)) { queue = msg.queue; }
-            if (!NoderedUtil.IsNullEmpty(msg.targetid)) { queue = msg.targetid; }
             if (queue == "none") queue = "";
-            if (!NoderedUtil.IsNullEmpty(msg.workflowid)) { workflowid = msg.workflowid; }
+            if (NoderedUtil.IsNullEmpty(queue) && !NoderedUtil.IsNullEmpty(msg.targetid)) { queue = msg.targetid; }
+            if (NoderedUtil.IsNullEmpty(workflowid) && !NoderedUtil.IsNullEmpty(msg.workflowid)) { workflowid = msg.workflowid; }
+
             if (!NoderedUtil.IsNullEmpty(msg.killexisting)) { killexisting = msg.killexisting; }
             if (!NoderedUtil.IsNullEmpty(msg.killallexisting)) { killallexisting = msg.killallexisting; }
 
@@ -468,10 +468,10 @@ export class rpa_killworkflows_node {
             }
             let queue = this.config.queue;
 
-            if (!NoderedUtil.IsNullEmpty(msg.targetid)) { queue = msg.targetid; }
+            if (queue == "none") queue = "";
+            if (NoderedUtil.IsNullEmpty(queue) && !NoderedUtil.IsNullEmpty(msg.targetid)) { queue = msg.targetid; }
             let priority: number = 1;
             if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
-            if (queue == "none") queue = "";
 
             const correlationId = msg._msgid || NoderedUtil.GetUniqueIdentifier();
             rpa_killworkflows_node.messages[correlationId] = msg;

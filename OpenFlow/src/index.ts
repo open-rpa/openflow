@@ -139,7 +139,13 @@ async function initamqp() {
 //     }, 5000);
 // }
 
-
+async function ValidateValidateUserForm() {
+    var forms = await Config.db.query<Base>({ _id: Config.validate_user_form, _type: "form" }, null, 1, 0, null, "forms", Crypt.rootToken(), undefined, undefined, null);
+    if (forms.length == 0) {
+        Logger.instanse.error("validate_user_form " + Config.validate_user_form + " does not exists!");
+        Config.validate_user_form = "";
+    }
+}
 async function initDatabase(): Promise<boolean> {
     const span: Span = Logger.otel.startSpan("initDatabase");
     try {
@@ -458,6 +464,7 @@ var server: http.Server = null;
         await QueueClient.configure();
         Logger.instanse.info("listening on " + Config.baseurl());
         Logger.instanse.info("namespace: " + Config.namespace);
+        await ValidateValidateUserForm();
         if (!await initDatabase()) {
             process.exit(404);
         }

@@ -3126,6 +3126,11 @@ export class Message {
                     var sub = await this.Stripe<stripe_subscription>("GET", "subscriptions", usage.subid, null, customer.stripeid);
                     if (sub.items.total_count < 2) {
                         const res = await this.Stripe("DELETE", "subscriptions", usage.subid, null, customer.stripeid);
+                        if (customer.subscriptionid == usage.subid) {
+                            const UpdateDoc: any = { "$set": {} };
+                            UpdateDoc.$set["subscriptionid"] = null;
+                            await Config.db.db.collection("users").updateMany({ "_id": customer._id }, UpdateDoc);
+                        }
                     } else {
                         const res = await this.Stripe("DELETE", "subscription_items", usage.siid, payload, customer.stripeid);
                     }
@@ -3180,6 +3185,106 @@ export class Message {
         Logger.otel.endSpan(span);
         this.Send(cli);
     }
+
+    async GetNextInvoice(cli: WebSocketServerClient, parent: Span) {
+        const span: Span = Logger.otel.startSubSpan("message.GetNextInvoice", parent);
+        this.Reply();
+        let msg: GetNextInvoiceMessage;
+        try {
+            msg = GetNextInvoiceMessage.assign(this.data);
+            if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+
+            let payload: any = {};
+            const customer: Customer = await Config.db.getbyid(msg.customerid, "users", msg.jwt, span);
+            if (NoderedUtil.IsNullUndefinded(customer)) throw new Error("Unknown customer or Access Denied");
+            if (NoderedUtil.IsNullEmpty(customer.stripeid)) throw new Error("Customer has no billing information, please update with vattype and vatnumber");
+
+
+            if (!NoderedUtil.IsNullEmpty(customer.subscriptionid)) {
+                payload.subscription = customer.subscriptionid;
+                msg.invoice = await this.Stripe<stripe_invoice>("GET", "invoices_upcoming", null, payload, customer.stripeid);
+            }
+            if (!NoderedUtil.IsNullEmpty(msg.subscriptionid)) payload.subscription = msg.subscriptionid;
+            if (!NoderedUtil.IsNullUndefinded(msg.subscription_items) && msg.subscription_items.length > 0) {
+                if (!NoderedUtil.IsNullEmpty(customer.subscriptionid)) {
+                    const proration_date = Math.floor(Date.now() / 1000);
+                    payload.subscription_proration_date = proration_date;
+                }
+                if (msg.invoice != null) {
+                    for (var item of msg.subscription_items) {
+                        var exists = msg.invoice.lines.data.filter(x => (x.price.id == item.price || x.plan.id == item.price));
+                        if (exists.length > 0) {
+                            item.id = exists[0].subscription_item;
+                            item.quantity += exists[0].quantity;
+                        }
+                    }
+                }
+                payload.subscription_items = msg.subscription_items;
+            }
+            if (!NoderedUtil.IsNullEmpty(customer.subscriptionid) && msg.subscription_items != null) {
+                if (!NoderedUtil.IsNullEmpty(msg.proration_date) && msg.proration_date > 0) payload.subscription_proration_date = msg.proration_date;
+                payload.subscription = customer.subscriptionid;
+            } else if (NoderedUtil.IsNullEmpty(customer.subscriptionid)) {
+                payload.customer = customer.stripeid;
+            }
+
+            msg.invoice = await this.Stripe<stripe_invoice>("GET", "invoices_upcoming", null, payload, customer.stripeid);
+
+        } catch (error) {
+            span.recordException(error);
+            await handleError(null, error);
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) {
+                msg.error = (error.message ? error.message : error);
+                if (error.response && error.response.body) {
+                    msg.error = error.response.body;
+                }
+            }
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            span.recordException(error);
+            this.data = "";
+            await handleError(cli, error);
+        }
+        Logger.otel.endSpan(span);
+        this.Send(cli);
+    }
+    async StripeAddPlan(cli: WebSocketServerClient, parent: Span) {
+        const span: Span = Logger.otel.startSubSpan("message.StripeAddPlan", parent);
+        this.Reply();
+        let msg: StripeAddPlanMessage;
+        try {
+            msg = StripeAddPlanMessage.assign(this.data);
+            if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+            if (NoderedUtil.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
+            const [customer, checkout] = await this._StripeAddPlan(msg.customerid, msg.userid, msg.resourceid, msg.stripeprice,
+                msg.quantity, false, msg.jwt, span);
+            msg.checkout = checkout;
+
+        } catch (error) {
+            span.recordException(error);
+            await handleError(null, error);
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) {
+                msg.error = (error.message ? error.message : error);
+                if (error.response && error.response.body) {
+                    msg.error = error.response.body;
+                }
+            }
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            span.recordException(error);
+            this.data = "";
+            await handleError(cli, error);
+        }
+        Logger.otel.endSpan(span);
+        this.Send(cli);
+    }
+
     async _StripeAddPlan(customerid: string, userid: string, resourceid: string, stripeprice: string, quantity: number, skipSession: boolean, jwt: string, parent: Span) {
         const span: Span = Logger.otel.startSubSpan("message.StripeAddPlan", parent);
         const rootjwt = Crypt.rootToken();
@@ -3409,104 +3514,6 @@ export class Message {
         }
     }
 
-    async GetNextInvoice(cli: WebSocketServerClient, parent: Span) {
-        const span: Span = Logger.otel.startSubSpan("message.GetNextInvoice", parent);
-        this.Reply();
-        let msg: GetNextInvoiceMessage;
-        try {
-            msg = GetNextInvoiceMessage.assign(this.data);
-            if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
-
-            let payload: any = {};
-            const customer: Customer = await Config.db.getbyid(msg.customerid, "users", msg.jwt, span);
-            if (NoderedUtil.IsNullUndefinded(customer)) throw new Error("Unknown customer or Access Denied");
-            if (NoderedUtil.IsNullEmpty(customer.stripeid)) throw new Error("Customer has no billing information, please update with vattype and vatnumber");
-
-
-            if (!NoderedUtil.IsNullEmpty(customer.subscriptionid)) {
-                payload.subscription = customer.subscriptionid;
-                msg.invoice = await this.Stripe<stripe_invoice>("GET", "invoices_upcoming", null, payload, customer.stripeid);
-            }
-            if (!NoderedUtil.IsNullEmpty(msg.subscriptionid)) payload.subscription = msg.subscriptionid;
-            if (!NoderedUtil.IsNullUndefinded(msg.subscription_items) && msg.subscription_items.length > 0) {
-                if (!NoderedUtil.IsNullEmpty(customer.subscriptionid)) {
-                    const proration_date = Math.floor(Date.now() / 1000);
-                    payload.subscription_proration_date = proration_date;
-                }
-                if (msg.invoice != null) {
-                    for (var item of msg.subscription_items) {
-                        var exists = msg.invoice.lines.data.filter(x => (x.price.id == item.price || x.plan.id == item.price));
-                        if (exists.length > 0) {
-                            item.id = exists[0].subscription_item;
-                            item.quantity += exists[0].quantity;
-                        }
-                    }
-                }
-                payload.subscription_items = msg.subscription_items;
-            }
-            if (!NoderedUtil.IsNullEmpty(customer.subscriptionid) && msg.subscription_items != null) {
-                if (!NoderedUtil.IsNullEmpty(msg.proration_date) && msg.proration_date > 0) payload.subscription_proration_date = msg.proration_date;
-                payload.subscription = customer.subscriptionid;
-            } else if (NoderedUtil.IsNullEmpty(customer.subscriptionid)) {
-                payload.customer = customer.stripeid;
-            }
-
-            msg.invoice = await this.Stripe<stripe_invoice>("GET", "invoices_upcoming", null, payload, customer.stripeid);
-
-        } catch (error) {
-            span.recordException(error);
-            await handleError(null, error);
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) {
-                msg.error = (error.message ? error.message : error);
-                if (error.response && error.response.body) {
-                    msg.error = error.response.body;
-                }
-            }
-        }
-        try {
-            this.data = JSON.stringify(msg);
-        } catch (error) {
-            span.recordException(error);
-            this.data = "";
-            await handleError(cli, error);
-        }
-        Logger.otel.endSpan(span);
-        this.Send(cli);
-    }
-    async StripeAddPlan(cli: WebSocketServerClient, parent: Span) {
-        const span: Span = Logger.otel.startSubSpan("message.StripeAddPlan", parent);
-        this.Reply();
-        let msg: StripeAddPlanMessage;
-        try {
-            msg = StripeAddPlanMessage.assign(this.data);
-            if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
-            if (NoderedUtil.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
-            const [customer, checkout] = await this._StripeAddPlan(msg.customerid, msg.userid, msg.resourceid, msg.stripeprice,
-                msg.quantity, false, msg.jwt, span);
-            msg.checkout = checkout;
-
-        } catch (error) {
-            span.recordException(error);
-            await handleError(null, error);
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) {
-                msg.error = (error.message ? error.message : error);
-                if (error.response && error.response.body) {
-                    msg.error = error.response.body;
-                }
-            }
-        }
-        try {
-            this.data = JSON.stringify(msg);
-        } catch (error) {
-            span.recordException(error);
-            this.data = "";
-            await handleError(cli, error);
-        }
-        Logger.otel.endSpan(span);
-        this.Send(cli);
-    }
     async Stripe<T>(method: string, object: string, id: string, payload: any, customerid: string): Promise<T> {
         let url = "https://api.stripe.com/v1/" + object;
         if (!NoderedUtil.IsNullEmpty(id)) url = url + "/" + id;

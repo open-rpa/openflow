@@ -882,9 +882,13 @@ export class DatabaseConnection {
                 let user2: User = item as any;
                 if (NoderedUtil.IsNullEmpty(user2.customerid)) {
                     if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) {
-                        user2.customerid = user.selectedcustomerid;
-                    } else if (!NoderedUtil.IsNullEmpty(user.customerid)) {
-                        user2.customerid = user.selectedcustomerid;
+                        customer = await this.getbyid<Customer>(user.selectedcustomerid, "users", jwt, span)
+                        if (customer != null) {
+                            user2.customerid = user.selectedcustomerid;
+                        }
+                    }
+                    if (NoderedUtil.IsNullEmpty(user2.customerid) && !NoderedUtil.IsNullEmpty(user.customerid)) {
+                        user2.customerid = user.customerid;
                     }
                 }
                 if (this.WellknownIdsArray.indexOf(user2._id) > -1) {
@@ -1315,12 +1319,17 @@ export class DatabaseConnection {
                         customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span)
                         if (customer == null) throw new Error("Access denied to customer with id " + user2.customerid);
                     } else if (user.HasRoleName("customer admins") && !NoderedUtil.IsNullEmpty(user.customerid)) {
-
+                        customer = null;
                         if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) {
-                            user2.customerid = user.selectedcustomerid;
-                            customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span);
+                            customer = await this.getbyid<Customer>(user.selectedcustomerid, "users", q.jwt, span);
+                            if (customer != null) user2.customerid = user.selectedcustomerid;
                         }
-
+                        if (customer == null) {
+                            customer = await this.getbyid<Customer>(user.customerid, "users", q.jwt, span);
+                            if (customer != null) user2.customerid = user.customerid;
+                        } else {
+                            throw new Error("Access denied to customer with id " + user.customerid);
+                        }
                         // user2.customerid = user.customerid;
                         // if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
                         // customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span);

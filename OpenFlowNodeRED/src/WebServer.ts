@@ -340,6 +340,26 @@ export class WebServer {
                     name: 'session', secret: Config.cookie_secret, httpOnly: true
                 }))
 
+
+
+                const events = require("@node-red/util").events;
+                events.on("runtime-event", (e) => {
+                    // {id: node.id, status:statusMessage }
+                    console.log(e);
+                    if (e.id == "runtime-state" && e.payload == null) {
+                        setTimeout(() => {
+                            RED.nodes.eachNode(function (node) {
+                                RED.editor.validateNode(node)
+                            });
+
+                        }, 1000);
+                    }
+                });
+                events.on("node-status", (e, e2, e3) => {
+                    // {id:"runtime-unsupported-version",type:"error",text:"message.id"}
+                    // console.log(e);
+                });
+
                 Logger.instanse.debug("WebServer.configure::init nodered");
                 // initialise the runtime with a server and settings
                 await (RED as any).init(server, this.settings);

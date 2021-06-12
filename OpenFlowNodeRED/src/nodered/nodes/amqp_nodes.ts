@@ -3,6 +3,7 @@ import { Red } from "node-red";
 import { Config } from "../../Config";
 import { WebSocketClient, NoderedUtil, SigninMessage, Message, QueueMessage } from "@openiap/openflow-api";
 import { Logger } from "../../Logger";
+import { Util } from "./Util";
 
 export interface Iamqp_connection {
     name: string;
@@ -194,7 +195,6 @@ export class amqp_publisher_node {
             this.node.status({});
             this.node.on("input", this.oninput);
             this.node.on("close", this.onclose);
-
             this.connection = RED.nodes.getNode(this.config.config);
             this._onsignedin = this.onsignedin.bind(this);
             this._onsocketclose = this.onsocketclose.bind(this);
@@ -278,16 +278,13 @@ export class amqp_publisher_node {
             if (NoderedUtil.IsNullEmpty(this.localqueue)) {
                 throw new Error("Queue not registered yet");
             }
+            const queue = await Util.EvaluateNodeProperty<string>(this, msg, "queue");
+            const exchange = await Util.EvaluateNodeProperty<string>(this, msg, "exchange");
+            const routingkey = await Util.EvaluateNodeProperty<string>(this, msg, "routingkey");
 
-            let queue = this.config.queue;
-            let exchange = this.config.exchange;
-            let routingkey = this.config.routingkey;
             let striptoken = this.config.striptoken;
             let priority: number = 1;
             if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
-            if (!NoderedUtil.IsNullEmpty(msg.queue)) { queue = msg.queue; }
-            if (!NoderedUtil.IsNullEmpty(msg.exchange)) { exchange = msg.exchange; }
-            if (!NoderedUtil.IsNullEmpty(msg.routingkey)) { routingkey = msg.routingkey; }
             if (!NoderedUtil.IsNullEmpty(msg.striptoken)) { striptoken = msg.striptoken; }
 
             const data: any = {};

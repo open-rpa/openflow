@@ -3613,7 +3613,9 @@ export class AuditlogsCtrl extends entitiesCtrl<Role> {
         this.collection = "audit";
         this.postloadData = this.processdata;
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
-            this.basequery = { "userid": user._id };
+            if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) {
+                this.basequery = { "userid": user._id };
+            }
             await jsutil.ensureJQuery();
             this.loadData();
         });
@@ -5858,7 +5860,7 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
     async EnsureCommon() {
         this.loading = true;
         try {
-            const nodered: Resource = await this.newResource("Nodered Instance", "user", "singlevariant", "singlevariant", { "resources": { "limits": { "memory": "128Mi" } } },
+            const nodered: Resource = await this.newResource("Nodered Instance", "user", "singlevariant", "singlevariant", { "resources": { "limits": { "memory": "225Mi" } } },
                 [
                     this.newProduct("Basic", "prod_HEC6rB2wRUwviG", "plan_HECATxbGlff4Pv", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, true),
                     this.newProduct("Plus", "prod_HEDSUIZLD7rfgh", "plan_HEDSUl6qdOE4ru", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "512Mi" }, "requests": { "memory": "512Mi" } } }, true),

@@ -35,7 +35,6 @@
 
 
 <script type="text/x-red" data-template-name="amqp consumer">
-    <!-- readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" -->
 <div class="form-row">
     <label for="node-input-config"><i class="fa fa-globe"></i> Config</label>
     <input type="text" id="node-input-config">
@@ -82,22 +81,24 @@ Remember that your queue maybe get prefixed with your usename, if amqp_force_que
 
 
 <script type="text/x-red" data-template-name="amqp publisher">
-    <!-- readonly onfocus="this.removeAttribute('readonly');" autocomplete="off" -->
 <div class="form-row">
     <label for="node-input-config"><i class="fa fa-globe"></i> Config</label>
     <input type="text" id="node-input-config">
 </div>
 <div class="form-row">
     <label><i class="fa fa-tag"></i> Queue name</label>
-    <input type="text" id="node-input-queue" placeholder="Queue name">
+    <input type="hidden" id="node-input-queuetype">
+    <input style="width:70%" type="text" id="node-input-queue" placeholder="Queue name">
 </div>
 <div class="form-row">
     <label><i class="fa fa-tag"></i> Exchange name</label>
-    <input type="text" id="node-input-exchange" placeholder="Queue name">
+    <input type="hidden" id="node-input-exchangetype">
+    <input style="width:70%" type="text" id="node-input-exchange" placeholder="Queue name">
 </div>
 <div class="form-row">
     <label><i class="fa fa-tag"></i> Routing key</label>
-    <input type="text" id="node-input-routingkey" placeholder="Routing key">
+    <input type="hidden" id="node-input-routingkeytype">
+    <input style="width:70%" type="text" id="node-input-routingkey" placeholder="Routing key">
 </div>
 <div class="form-row">
     <label><i class="fa fa-tag"></i> Local queue name</label>
@@ -121,13 +122,26 @@ can add a connection to another openflow and send/receive message queue message 
 Remember that your <b>consumer queue</b> maybe get prefixed with your usename, if amqp_force_queue_prefix is enabled in the openflow api<br>
 </script>
 <script type="text/javascript">
+    function isValid() {
+        const queue = this.queue == null || this.queue == "";
+        const exchange = this.exchange == null || this.exchange == "";
+        const routingkey = this.routingkey == null || this.routingkey == "";
+        if (queue == false) return true;
+        if (exchange == false) return true;
+        // if (!exchange && !routingkey) return true;
+        return false;
+    }
+
     RED.nodes.registerType('amqp publisher', {
         category: 'amqp',
         color: "#a6bbcf",
         defaults: {
-            queue: { value: "" },
-            exchange: { value: "" },
-            routingkey: { value: "" },
+            queue: { value: "", validate: RED.validators.typedInput("queuetype"), validate: isValid },
+            queuetype: { value: "" },
+            exchange: { value: "", validate: RED.validators.typedInput("exchangetype"), validate: isValid },
+            exchangetype: { value: "" },
+            routingkey: { value: "", validate: RED.validators.typedInput("routingkeytype") },
+            routingkeytype: { value: "" },
             localqueue: { value: "" },
             striptoken: { value: false },
             config: { value: "", type: "amqp-connection", required: false },
@@ -143,7 +157,26 @@ Remember that your <b>consumer queue</b> maybe get prefixed with your usename, i
         labelStyle: function () {
             return this.name ? "node_label_italic" : "";
         },
-
+        oneditprepare: function () {
+            if (this.queuetype === 'val') $("#node-input-queuetype").val('str');
+            $("#node-input-queue").typedInput({
+                default: 'str',
+                typeField: $("#node-input-queuetype"),
+                types: ['msg', 'str', 'flow', 'global', 'json']
+            });
+            if (this.exchangetype === 'val') $("#node-input-exchangetype").val('str');
+            $("#node-input-exchange").typedInput({
+                default: 'str',
+                typeField: $("#node-input-exchangetype"),
+                types: ['msg', 'str', 'flow', 'global', 'json']
+            });
+            if (this.routingkeytype === 'val') $("#node-input-routingkeytype").val('str');
+            $("#node-input-routingkey").typedInput({
+                default: 'str',
+                typeField: $("#node-input-routingkeytype"),
+                types: ['msg', 'str', 'flow', 'global', 'json']
+            });
+        },
     });
 </script>
 
