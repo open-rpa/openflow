@@ -3,7 +3,10 @@
         return function () {
             if (this[name] == null || this[name] == "") {
                 console.log(this.type, name + " false: value null");
-                if (name == "entities" && this.inputfield != null) { this[name] = this.inputfield; return true; }
+                if (name == "entities" && this.inputfield != null) {
+                    this[name] = this.inputfield; return true;
+                    this[name + "type"] = "msg";
+                }
                 return false;
             }
             // if (this[name + "type"] == null || this[name + "type"] == "") {
