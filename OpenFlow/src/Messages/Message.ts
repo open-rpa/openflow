@@ -3646,6 +3646,13 @@ export class Message {
                 if (msg.object != "plans" && msg.object != "subscription_items" && msg.object != "invoices_upcoming" && msg.object != "billing_portal/sessions") {
                     throw new Error("Access to " + msg.object + " is not allowed");
                 }
+                if (msg.object == "billing_portal/sessions") {
+                    const tuser = Crypt.verityToken(cli.jwt);
+                    const customer = await Config.db.getbyid(msg.customerid, "users", cli.jwt, null);
+                    if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
+                        throw new Error("Access denied, adding plan (admins)");
+                    }
+                }
                 if (msg.object == "subscription_items" && msg.method != "POST") throw new Error("Access to " + msg.object + " is not allowed");
                 if (msg.object == "plans" && msg.method != "GET") throw new Error("Access to " + msg.object + " is not allowed");
                 if (msg.object == "invoices_upcoming" && msg.method != "GET") throw new Error("Access to " + msg.object + " is not allowed");
