@@ -3613,10 +3613,10 @@ export class AuditlogsCtrl extends entitiesCtrl<Role> {
         this.collection = "audit";
         this.postloadData = this.processdata;
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            user = TokenUser.From(user);
             if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) {
                 this.basequery = { "userid": user._id };
             }
-            await jsutil.ensureJQuery();
             this.loadData();
         });
     }
@@ -4794,7 +4794,6 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
-            await jsutil.ensureJQuery();
             this.loadData();
         });
     }
