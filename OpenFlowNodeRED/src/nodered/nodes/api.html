@@ -1,16 +1,15 @@
 <script type="text/javascript">
     function validate(name) {
         return function () {
-
             if (this[name] == null || this[name] == "") {
-                console.log(this.type, "false: value null");
+                console.log(this.type, name + " false: value null");
                 if (name == "entities" && this.inputfield != null) { this[name] = this.inputfield; return true; }
                 return false;
             }
-            if (this[name + "type"] == null || this[name + "type"] == "") {
-                console.log(this.type, "false: type null");
-                return false;
-            }
+            // if (this[name + "type"] == null || this[name + "type"] == "") {
+            //     console.log(this.type, name + " false: type null");
+            //     return false;
+            // }
             return RED.validators.typedInput(name);
         }
     }
@@ -142,7 +141,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             name: { value: "" },
             query: { value: "", validate: validate("querytype") },
             querytype: { value: "" },
-            projection: { value: "", validate: RED.validators.typedInput("projectiontype") },
+            projection: { value: "", validate: validate("projectiontype") },
             projectiontype: { value: "" },
             top: { value: 500, validate: validate("toptype"), required: true },
             toptype: { value: "" },
@@ -162,43 +161,43 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             return this.name ? "node_label_italic" : "";
         },
         oneditprepare: function () {
-            if (this.skipquerytype === 'val') $("#node-input-querytype").val('str');
+            if (this.querytype === null) $("#node-input-querytype").val('str');
             $("#node-input-query").typedInput({
                 default: 'str',
                 typeField: $("#node-input-querytype"),
                 types: ['msg', 'str', 'flow', 'global', 'json']
             });
-            if (this.projectiontype === 'val') $("#node-input-projectiontype").val('str');
+            if (this.projectiontype === null) $("#node-input-projectiontype").val('str');
             $("#node-input-projection").typedInput({
                 default: 'str',
                 typeField: $("#node-input-projectiontype"),
                 types: ['msg', 'str', 'flow', 'global', 'json']
             });
-            if (this.orderbytype === 'val') $("#node-input-orderbytype").val('str');
+            if (this.orderbytype === null) $("#node-input-orderbytype").val('str');
             $("#node-input-orderby").typedInput({
                 default: 'str',
                 typeField: $("#node-input-orderbytype"),
                 types: ['msg', 'str', 'flow', 'global', 'json']
             });
-            if (this.collectiontype === 'val') $("#node-input-collectiontype").val('str');
+            if (this.collectiontype === null) $("#node-input-collectiontype").val('str');
             $("#node-input-collection").typedInput({
                 default: 'str',
                 typeField: $("#node-input-collectiontype"),
                 types: ['msg', 'str', 'flow', 'global', 'json']
             });
-            if (this.toptype === 'val') $("#node-input-toptype").val('str');
+            if (this.toptype === null) $("#node-input-toptype").val('num');
             $("#node-input-top").typedInput({
                 default: 'num',
                 typeField: $("#node-input-toptype"),
                 types: ['msg', 'num', 'flow', 'global']
             });
-            if (this.skiptype === 'val') $("#node-input-skiptype").val('str');
+            if (this.skiptype === null) $("#node-input-skiptype").val('num');
             $("#node-input-skip").typedInput({
                 default: 'num',
                 typeField: $("#node-input-skiptype"),
                 types: ['msg', 'num', 'flow', 'global']
             });
-            if (this.resultfieldtype === 'val') $("#node-input-resultfieldtype").val('str');
+            if (this.resultfieldtype === null) $("#node-input-resultfieldtype").val('msg');
             $("#node-input-resultfield").typedInput({
                 default: 'msg',
                 typeField: $("#node-input-resultfieldtype"),
@@ -266,11 +265,9 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             writeconcern: { value: "0", required: true },
             journal: { value: "false", required: true },
             collection: { value: "entities", validate: validate("collection") },
-            // collection: { value: "entities", validate: RED.validators.typedInput("collection"), required: true },
             collectiontype: { value: "" },
             entitiestype: { value: "" },
             entities: { value: "payload", validate: validate("entities") },
-            // entities: { value: "payload", validate: RED.validators.typedInput("entities"), required: true },
             entitiestype: { value: "" },
             entitytype: { value: "" },
             entitytypetype: { value: "" },
@@ -473,6 +470,9 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             entitiestype: { value: "" },
             writeconcern: { value: "0", required: true },
             journal: { value: "false", required: true },
+
+            inputfield: { value: "" },
+            resultfield: { value: "" }
         },
         inputs: 1,
         outputs: 1,
@@ -579,6 +579,9 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             entitiestype: { value: "" },
             uniqeness: { value: "", validate: validate("uniqenesstype") },
             uniqenesstype: { value: "" },
+
+            resultfield: { value: "" },
+            inputfield: { value: "" },
         },
         inputs: 1,
         outputs: 1,
@@ -652,10 +655,13 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         icon: "font-awesome/fa-trash",
         defaults: {
             name: { value: "" },
-            collection: { value: "entities", validate: RED.validators.typedInput("collection"), required: true },
+            collection: { value: "entities", validate: validate("collection"), required: true },
             collectiontype: { value: "" },
-            entities: { value: "payload", validate: RED.validators.typedInput("entities"), required: true },
+            entities: { value: "payload", validate: validate("entities"), required: true },
             entitiestype: { value: "" },
+
+            resultfield: { value: "" },
+            inputfield: { value: "" },
         },
         inputs: 1,
         outputs: 1,
@@ -673,10 +679,10 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
                 types: ['msg', 'str', 'flow', 'global']
             });
 
-            if (this.inputfieldtype === 'val') $("#node-input-inputfieldtype").val('str');
-            $("#node-input-inputfield").typedInput({
+            if (this.entitiestype === 'val') $("#node-input-entitiestype").val('str');
+            $("#node-input-entities").typedInput({
                 default: 'msg',
-                typeField: $("#node-input-inputfieldtype"),
+                typeField: $("#node-input-entitiestype"),
                 types: ['msg']
             });
 
@@ -718,9 +724,9 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         icon: "font-awesome/fa-trash",
         defaults: {
             name: { value: "" },
-            query: { value: "payload", validate: RED.validators.typedInput("querytype"), required: true },
+            query: { value: "payload", validate: validate("querytype"), required: true },
             querytype: { value: "" },
-            collection: { value: "entities", validate: RED.validators.typedInput("collectiontype"), required: true },
+            collection: { value: "entities", validate: validate("collectiontype"), required: true },
             collectiontype: { value: "" },
         },
         inputs: 1,
@@ -1315,12 +1321,12 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             writeconcern: { value: "0", required: true },
             journal: { value: "false", required: true },
             action: { value: "updateOne", required: true },
-            collection: { value: "entities", validate: RED.validators.typedInput("collectiontype"), required: true },
+            collection: { value: "entities", validate: validate("collectiontype"), required: true },
             collectiontype: { value: "" },
-            query: { value: "", validate: RED.validators.typedInput("querytype"), required: true },
+            query: { value: "", validate: validate("querytype"), required: true },
             querytype: { value: "" },
 
-            updatedocument: { value: "{ \"$inc\": { \"count\": 1}}", validate: RED.validators.typedInput("updatedocumenttype"), required: true },
+            updatedocument: { value: "{ \"$inc\": { \"count\": 1}}", validate: validate("updatedocumenttype"), required: true },
             updatedocumenttype: { value: "" },
         },
         inputs: 1,
@@ -1396,10 +1402,10 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         icon: "font-awesome/fa-bar-chart",
         defaults: {
             name: { value: "" },
-            aggregates: { value: "[ {\"$group\" : {\"_id\":\"$_type\", \"count\":{\"$sum\":1}} } ]", validate: RED.validators.typedInput("aggregatestype"), required: true },
+            aggregates: { value: "[ {\"$group\" : {\"_id\":\"$_type\", \"count\":{\"$sum\":1}} } ]", validate: validate("aggregatestype"), required: true },
             aggregatestype: { value: "" },
 
-            collection: { value: "entities", validate: RED.validators.typedInput("collectiontype"), required: true },
+            collection: { value: "entities", validate: validate("collectiontype"), required: true },
             collectiontype: { value: "" },
 
         },
@@ -1462,9 +1468,9 @@ you can set filename using msg.filename<br>
         paletteLabel: 'download',
         icon: "font-awesome/fa-download",
         defaults: {
-            fileid: { value: "", validate: RED.validators.typedInput("fileidtype") },
+            fileid: { value: "", validate: validate("fileidtype") },
             fileidtype: { value: "" },
-            filename: { value: "", validate: RED.validators.typedInput("filenametype"), required: true },
+            filename: { value: "", validate: validate("filenametype"), required: true },
             filenametype: { value: "" },
             name: { value: "" }
         },
@@ -1528,9 +1534,9 @@ you can set filename using msg.filename<br>
         paletteLabel: 'upload',
         icon: "font-awesome/fa-upload",
         defaults: {
-            filename: { value: "", validate: RED.validators.typedInput("filenametype"), required: true },
+            filename: { value: "", validate: validate("filenametype"), required: true },
             filenametype: { value: "" },
-            mimeType: { value: "", validate: RED.validators.typedInput("mimeTypetype"), required: true },
+            mimeType: { value: "", validate: validate("mimeTypetype"), required: true },
             mimeTypetype: { value: "" },
             name: { value: "" }
         },
@@ -1702,7 +1708,7 @@ you can set filename using msg.filename<br>
         icon: "font-awesome/fa-list",
         defaults: {
             name: { value: "" },
-            results: { value: "payload", validate: RED.validators.typedInput("resultstype"), required: true },
+            results: { value: "payload", validate: validate("resultstype"), required: true },
             resultstype: { value: "", required: true },
         },
         inputs: 1,
