@@ -13,7 +13,7 @@ import { Readable, Stream } from "stream";
 import { GridFSBucket, ObjectID, Cursor } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
-import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, GetKubeNodeLabels, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice } from "@openiap/openflow-api";
+import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, GetKubeNodeLabels, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice, stripe_price, stripe_plan } from "@openiap/openflow-api";
 import { Billing, stripe_customer, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription_item, stripe_coupon } from "@openiap/openflow-api";
 import { V1ResourceRequirements, V1Deployment } from "@kubernetes/client-node";
 import { amqpwrapper, QueueMessageOptions } from "../amqpwrapper";
@@ -3200,8 +3200,14 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(customer.stripeid)) throw new Error("Customer has no billing information, please update with vattype and vatnumber");
 
 
+            let subscription: stripe_subscription;
             if (!NoderedUtil.IsNullEmpty(customer.subscriptionid)) {
-                payload.subscription = customer.subscriptionid;
+                subscription = await this.Stripe<stripe_subscription>("GET", "subscriptions", customer.subscriptionid, payload, customer.stripeid);
+                if (subscription != null) {
+                    payload.subscription = customer.subscriptionid;
+                }
+            }
+            if (!NoderedUtil.IsNullEmpty(customer.subscriptionid)) {
                 msg.invoice = await this.Stripe<stripe_invoice>("GET", "invoices_upcoming", null, payload, customer.stripeid);
             }
             if (!NoderedUtil.IsNullEmpty(msg.subscriptionid)) payload.subscription = msg.subscriptionid;
@@ -3212,11 +3218,24 @@ export class Message {
                 }
                 if (msg.invoice != null) {
                     for (var item of msg.subscription_items) {
-                        var exists = msg.invoice.lines.data.filter(x => (x.price.id == item.price || x.plan.id == item.price));
+                        let price: stripe_price = null;
+                        let plan: stripe_plan = null;
+                        let metered: boolean = false;
+                        if (item.price && item.price.startsWith("price_")) {
+                            price = await this.Stripe<stripe_price>("GET", "prices", item.price, payload, customer.stripeid);
+                            metered = (price.recurring.usage_type == "metered");
+
+                        } else if (item.price && item.price.startsWith("plan_")) {
+                            plan = await this.Stripe<stripe_plan>("GET", "plans", item.price, payload, customer.stripeid);
+                            // metered = (plan.recurring.usage_type == "metered");
+                        }
+                        var exists = msg.invoice.lines.data.filter(x => (x.price.id == item.price || x.plan.id == item.price) && !x.proration);
                         if (exists.length > 0) {
                             item.id = exists[0].subscription_item;
+                            payload.subscription = (exists[0] as any).subscription;
                             item.quantity += exists[0].quantity;
                         }
+                        if (metered) delete item.quantity;
                     }
                 }
                 payload.subscription_items = msg.subscription_items;
@@ -3377,20 +3396,20 @@ export class Message {
             }
 
             // Backward compatability and/or pick up after deleting customer object 
-            // if (NoderedUtil.IsNullEmpty(usage.siid)) {
-            //     const stripecustomer = await this.Stripe<stripe_customer>("GET", "customers", customer.stripeid, null, null);
-            //     if (stripecustomer == null) throw new Error("Failed locating stripe customer " + customer.stripeid);
-            //     for (let sub of stripecustomer.subscriptions.data) {
-            //         if (sub.id == customer.subscriptionid) {
-            //             for (let si of sub.items.data) {
-            //                 if ((si.plan && si.plan.id == stripeprice) || (si.price && si.price.id == stripeprice)) {
-            //                     usage.siid = si.id;
-            //                     usage.subid = sub.id;
-            //                 }
-            //             }
-            //         }
-            //     }
-            // }
+            if (NoderedUtil.IsNullEmpty(usage.siid)) {
+                const stripecustomer = await this.Stripe<stripe_customer>("GET", "customers", customer.stripeid, null, null);
+                if (stripecustomer == null) throw new Error("Failed locating stripe customer " + customer.stripeid);
+                for (let sub of stripecustomer.subscriptions.data) {
+                    if (sub.id == customer.subscriptionid) {
+                        for (let si of sub.items.data) {
+                            if ((si.plan && si.plan.id == stripeprice) || (si.price && si.price.id == stripeprice)) {
+                                usage.siid = si.id;
+                                usage.subid = sub.id;
+                            }
+                        }
+                    }
+                }
+            }
 
             let _quantity: number = 0;
             // Count what we have already bought

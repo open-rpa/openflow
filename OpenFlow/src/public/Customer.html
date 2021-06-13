@@ -323,6 +323,11 @@
             <button type="button" ng-click="ctrl.OpenPortal()" ng-disabled="ctrl.loading==true" class="btn btn-success"
                 translate lib="web">Portal</button>
         </div>
+        <div class="col-sm">
+            <label for="vatnumber">Next Invoice</label>
+            <button type="button" ng-click="ctrl.NextInvoice()" ng-disabled="ctrl.loading==true" class="btn btn-success"
+                translate lib="web">Next Invoice</button>
+        </div>
 
     </div>
 
@@ -388,5 +393,47 @@
     <div class="row" ng-repeat="Product in Resource.products" ng-show="Product.count > 0">
         <div class="col">{{Product.name}}</div>
         <div class="col">{{ Product.count }}</div>
+    </div>
+</div>
+
+
+
+
+<div class="modal modal-full" id="NextInvoiceModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <a href="#" class="close" role="button" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </a>
+            <h5 class="modal-title">Next Invoice for {{ctrl.WebSocketClientService.customer.name}}</h5>
+            <p>
+            <div class="row" ng-repeat="line in ctrl.nextinvoice.lines.data">
+                <div class="col">{{line.description}}</div>
+                <div class="col">{{ line.quantity }}</div>
+                <div class="col">{{ line.amount / 100 }} {{ line.currency }}</div>
+            </div>
+            <hr
+                ng-show="(ctrl.nextinvoice.tax && ctrl.nextinvoice.tax > 0) || (ctrl.nextinvoice.total_discount_amounts && ctrl.nextinvoice.total_discount_amounts.length > 0)">
+            <div class="row" ng-show="ctrl.nextinvoice.tax && ctrl.nextinvoice.tax > 0">
+                <div class="col">Tax</div>
+                <div class="col"></div>
+                <div class="col">{{ ctrl.nextinvoice.tax / 100 }} {{ ctrl.nextinvoice.currency }}</div>
+            </div>
+            <div class="row" ng-repeat="item in ctrl.nextinvoice.total_discount_amounts">
+                <div class="col">Discount</div>
+                <div class="col"></div>
+                <div class="col">{{ item.amount / 100 }} {{ ctrl.nextinvoice.currency }}</div>
+            </div>
+            <hr>
+            <div class="row">
+                <div class="col">Total</div>
+                <div class="col"></div>
+                <div class="col">{{ ctrl.nextinvoice.amount_due / 100 }} {{ ctrl.nextinvoice.currency }}</div>
+            </div>
+            </p>
+            <div class="text-right mt-20">
+                <a href class="btn mr-5" role="button" ng-click="ctrl.ToggleNextInvoiceModal()">Close</a>
+            </div>
+        </div>
     </div>
 </div>

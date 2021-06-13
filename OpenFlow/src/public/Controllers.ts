@@ -1274,6 +1274,48 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
     }
     async AddPlan(resource: Resource, product: ResourceVariant) {
         try {
+
+            this.loading = true;
+            this.errormessage = "";
+
+            let items = [];
+            items.push({ quantity: 1, price: product.stripeprice });
+
+            let nextinvoice = await NoderedUtil.GetNextInvoice(this.WebSocketClientService.customer._id, null, items, null, null, 2);
+
+            let proration = 0;
+            let prorationcurrency = "";
+            let prorationtext = [];
+            let newtotal = 0;
+            let newquantity = 0;
+            for (var line of nextinvoice.lines.data) {
+                if (line.proration) {
+                    proration += line.amount;
+                    prorationcurrency = line.currency;
+                    prorationtext.push(line.description);
+                }
+                if ((line.plan.id == product.stripeprice || line.price.id == product.stripeprice) && !line.proration) {
+                    newtotal = line.amount;
+                    prorationcurrency = line.currency;
+                    newquantity = line.quantity;
+                }
+            }
+            var message = "";
+            if (proration > 0) {
+                message += "Adds " + (proration / 100) + prorationcurrency + " to your next invoice\n" + prorationtext.join("\n");
+            }
+            if (message != "") {
+                message += "\nhere after your new total for " + newquantity + " x " + product.name + " is " + (newtotal / 100) + prorationcurrency + " per month";
+                if (!confirm(message)) {
+                    this.loading = false;
+                    this.loadData();
+                    return;
+                }
+            }
+            console.log(nextinvoice);
+
+
+
             this.loading = true;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             var result = await NoderedUtil.StripeAddPlan(this.user._id, this.user.customerid,
@@ -5068,6 +5110,7 @@ export class CustomersCtrl extends entitiesCtrl<Provider> {
 }
 export class CustomerCtrl extends entityCtrl<Customer> {
     public stripe: any = null;
+    public nextinvoice: stripe_invoice = null;
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -5227,6 +5270,21 @@ export class CustomerCtrl extends entityCtrl<Customer> {
         this.loading = false;
         console.debug("processdata::end");
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
+
+        try {
+            this.nextinvoice = await NoderedUtil.GetNextInvoice(this.WebSocketClientService.customer._id, null, null, null, null, 2);
+            console.log(this.nextinvoice);
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        } catch (error) {
+            console.debug(error);
+        }
+    }
+    ToggleNextInvoiceModal() {
+        var modal = document.getElementById("NextInvoiceModal");
+        modal.classList.toggle("show");
+    }
+    NextInvoice() {
+        this.ToggleNextInvoiceModal();
     }
     AssignCount(Product: ResourceVariant) {
         const assigned = this.Assigned.filter(x => x.product.stripeprice == Product.stripeprice && x.quantity > 0 && x.siid != null);
