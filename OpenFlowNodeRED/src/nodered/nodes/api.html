@@ -727,7 +727,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         icon: "font-awesome/fa-trash",
         defaults: {
             name: { value: "" },
-            query: { value: "payload", validate: validate("querytype"), required: true },
+            query: { value: "query", validate: validate("querytype"), required: true },
             querytype: { value: "" },
             collection: { value: "entities", validate: validate("collectiontype"), required: true },
             collectiontype: { value: "" },

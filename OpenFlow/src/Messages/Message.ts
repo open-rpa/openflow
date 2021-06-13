@@ -3087,6 +3087,10 @@ export class Message {
                 user = await Config.db.getbyid(usage.userid, "users", jwt, span) as any;
                 if (user == null) throw new Error("Unknown usage or Access Denied (user)");
             }
+            const tuser = Crypt.verityToken(jwt);
+            if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
+                throw new Error("Access denied, adding plan (admins)");
+            }
 
 
             if (!NoderedUtil.IsNullEmpty(usage.product.added_resourceid) && !NoderedUtil.IsNullEmpty(usage.product.added_stripeprice)) {
@@ -3199,6 +3203,10 @@ export class Message {
             if (NoderedUtil.IsNullUndefinded(customer)) throw new Error("Unknown customer or Access Denied");
             if (NoderedUtil.IsNullEmpty(customer.stripeid)) throw new Error("Customer has no billing information, please update with vattype and vatnumber");
 
+            const user = Crypt.verityToken(cli.jwt);
+            if (!user.HasRoleName(customer.name + " admins") && !user.HasRoleName("admins")) {
+                throw new Error("Access denied, getting invoice (admins)");
+            }
 
             let subscription: stripe_subscription;
             if (!NoderedUtil.IsNullEmpty(customer.subscriptionid)) {
@@ -3317,6 +3325,12 @@ export class Message {
             if (Config.stripe_force_vat && (NoderedUtil.IsNullEmpty(customer.vattype) || NoderedUtil.IsNullEmpty(customer.vatnumber))) {
                 throw new Error("Only business can buy, please fill out vattype and vatnumber");
             }
+
+            const tuser = Crypt.verityToken(jwt);
+            if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
+                throw new Error("Access denied, adding plan (admins)");
+            }
+
             if (NoderedUtil.IsNullEmpty(customer.vattype)) customer.vattype = "";
             if (NoderedUtil.IsNullEmpty(customer.vatnumber)) customer.vatnumber = "";
             customer.vatnumber = customer.vatnumber.toUpperCase();

@@ -895,7 +895,9 @@ export class DatabaseConnection {
                     delete user2.customerid;
                 }
                 if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
-                    if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) throw new Error("Access denied (not admin) to customer with id " + user2.customerid);
+                    if (user2._type == "user") {
+                        if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) throw new Error("Access denied (not admin) to customer with id " + user2.customerid);
+                    }
                     customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, span)
                     if (customer == null) throw new Error("Access denied to customer with id " + user2.customerid);
                     // if (!user.HasRoleName(customer.name + " admins")) throw new Error("Access denied to customer with " + customer.name);
