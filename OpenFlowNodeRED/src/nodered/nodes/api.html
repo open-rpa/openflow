@@ -1516,6 +1516,16 @@ you can set filename using msg.filename<br>
         <input style="width:70%" type="text" id="node-input-mimeType" placeholder="Mimetype of file">
     </div>
     <div class="form-row">
+        <label><i class="fa fa-tag"></i> File Content</label>
+        <input type="hidden" id="node-input-contenttype">
+        <input style="width:70%" type="text" id="node-input-content" placeholder="Base64 encoded file content">
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-list"></i> DB Entity</label>
+        <input type="hidden" id="node-input-entitytype">
+        <input style="width:70%" type="text" id="node-input-entity">
+    </div>
+    <div class="form-row">
         <label><i class="fa fa-tag"></i> Name</label>
         <input type="text" id="node-input-name" placeholder="Node name">
     </div>
@@ -1523,8 +1533,6 @@ you can set filename using msg.filename<br>
 <script type="text/x-red" data-help-name="api upload file">
     Upload a file to API/GridFS<br>
     msg.payload should be a base64 encode string of the file.<br>
-    you can set filename using msg.filename<br>
-    you can set mimeType using msg.mimeType<br>
     to save data with the file set msg.metadata to and javascript object<br>
     </script>
 <script type="text/javascript">
@@ -1534,10 +1542,14 @@ you can set filename using msg.filename<br>
         paletteLabel: 'upload',
         icon: "font-awesome/fa-upload",
         defaults: {
-            filename: { value: "", validate: validate("filenametype"), required: true },
+            filename: { value: "filename", validate: validate("filename"), required: true },
             filenametype: { value: "" },
-            mimeType: { value: "", validate: validate("mimeTypetype"), required: true },
+            content: { value: "payload", validate: validate("content"), required: true },
+            contenttype: { value: "" },
+            mimeType: { value: "", validate: RED.validators.typedInput("mimeTypetype") },
             mimeTypetype: { value: "" },
+            entity: { value: "result", validate: RED.validators.typedInput("mimeTypetype") },
+            entitytype: { value: "" },
             name: { value: "" }
         },
         inputs: 1,
@@ -1551,15 +1563,27 @@ you can set filename using msg.filename<br>
         oneditprepare: function () {
             if (this.filenametype === 'val') $("#node-input-filenametype").val('str');
             $("#node-input-filename").typedInput({
-                default: 'str',
+                default: 'msg',
                 typeField: $("#node-input-filenametype"),
                 types: ['msg', 'str', 'flow', 'global', 'json']
+            });
+            if (this.contenttype === 'val') $("#node-input-contenttype").val('str');
+            $("#node-input-content").typedInput({
+                default: 'msg',
+                typeField: $("#node-input-contenttype"),
+                types: ['msg']
             });
             if (this.mimeTypetype === 'val') $("#node-input-mimeTypetype").val('str');
             $("#node-input-mimeType").typedInput({
                 default: 'str',
                 typeField: $("#node-input-mimeTypetype"),
                 types: ['msg', 'str', 'flow', 'global', 'json']
+            });
+            if (this.entitytype === 'val') $("#node-input-entitytype").val('str');
+            $("#node-input-entity").typedInput({
+                default: 'msg',
+                typeField: $("#node-input-entitytype"),
+                types: ['msg']
             });
         },
     });

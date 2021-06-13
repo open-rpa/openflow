@@ -1169,6 +1169,7 @@ export interface Iuploadload_file {
     filename: string;
     mimeType: string;
     name: string;
+    content: string;
 }
 export class upload_file {
     public node: Red = null;
@@ -1187,18 +1188,17 @@ export class upload_file {
             const jwt = msg.jwt;
             const filename = await Util.EvaluateNodeProperty<string>(this, msg, "filename");
             const mimeType = await Util.EvaluateNodeProperty<string>(this, msg, "mimeType");
+            const filecontent = await Util.EvaluateNodeProperty<string>(this, msg, "content");
             let priority: number = 1;
             if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Saving file" });
-            const file = await NoderedUtil.SaveFile(filename, mimeType, msg.metadata, msg.payload, jwt, priority);
+            const file = await NoderedUtil.SaveFile(filename, mimeType, msg.metadata, filecontent, jwt, priority);
             if (!NoderedUtil.IsNullEmpty(file.error)) { throw new Error(file.error); }
-            msg.filename = file.filename;
-            msg.id = file.id;
-            msg.mimeType = file.mimeType;
-            msg.metadata = file.metadata;
-            msg.payload = file;
 
+            if (!NoderedUtil.IsNullEmpty(this.config.filename)) Util.SetMessageProperty(msg, this.config.filename, file.filename);
+            if (!NoderedUtil.IsNullEmpty(this.config.mimeType)) Util.SetMessageProperty(msg, this.config.mimeType, file.mimeType);
+            if (!NoderedUtil.IsNullEmpty(this.config.content)) Util.SetMessageProperty(msg, this.config.content, file);
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
