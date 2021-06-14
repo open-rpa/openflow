@@ -48,7 +48,6 @@ export class WebSocketClientService {
                         this.loadToken();
                     });
                     cli.events.on('refreshtoken', (user) => {
-                        console.debug("refreshtoken", user);
                         this.$rootScope.$broadcast("refreshtoken", user);
                     });
                     cli.connect();
@@ -85,7 +84,7 @@ export class WebSocketClientService {
                 this.jwt = result.jwt;
 
                 this.customer = null;
-                if (!NoderedUtil.IsNullEmpty(this.user.customerid)) {
+                if (!NoderedUtil.IsNullEmpty(this.user.selectedcustomerid)) {
                     const customers = await NoderedUtil.Query("users", { _type: "customer", "$or": [{ "_id": this.user.selectedcustomerid }, { "_id": this.user.customerid }] }, null, null, 100, 0, null, null, null, 2);
                     if (customers.length > 0 && (this.user.selectedcustomerid != null)) {
                         if (this.user.selectedcustomerid != null) {
@@ -93,11 +92,11 @@ export class WebSocketClientService {
                                 if (cust._id == this.user.selectedcustomerid) this.customer = cust;
                         }
                     }
-                    if (this.customer == null && customers.length > 0) {
-                        for (let cust of customers)
-                            if (cust._id == this.user.customerid) this.customer = cust;
+                    // if (this.customer == null && customers.length > 0) {
+                    //     for (let cust of customers)
+                    //         if (cust._id == this.user.customerid) this.customer = cust;
 
-                    }
+                    // }
                 }
 
                 this.$rootScope.$broadcast("signin", result.user);

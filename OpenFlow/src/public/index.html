@@ -4,6 +4,8 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="description"
+    content="OpenFlow, the leading Open Source Enterprise integratd automation platform, read more at https://github.com/open-rpa/openflow">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
   <meta name="viewport" content="width=device-width" />
   <title>OpenFlow</title>
@@ -91,7 +93,7 @@
         </div>
         <div ng-class="{active: menuctrl.PathIs('/Customer')}"
           ng-show="menuctrl.WebSocketClientService.multi_tenant && menuctrl.customers.length == 1">
-          <a ng-href="#/Customer/{{menuctrl.customer._id}}" class="nav-link">{{menuctrl.customer.name}}</a>
+          <a href ng-click="menuctrl.EditCustomer(menuctrl.customer)" class="nav-link">{{menuctrl.customer.name}}</a>
         </div>
         <!-- remove -->
 
@@ -126,7 +128,7 @@
                 <a href ng-click="menuctrl.SelectCustomer(model)" class="dropdown-item">{{model.name}}</a>
               </div>
               <div class="col-sm text-right">
-                <a ng-href="#/Customer/{{model._id}}"
+                <a href ng-click="menuctrl.EditCustomer(model)"
                   ng-show="menuctrl.hasrole('customer admins') || menuctrl.hasrole('resellers')">
                   <em class="fas fa-money-bill-wave z-20"></em></a>
               </div>

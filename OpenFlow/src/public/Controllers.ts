@@ -92,14 +92,24 @@ export class MenuCtrl {
             // cleanup();
         });
         const cleanup2 = this.$scope.$on('refreshtoken', async (event, data) => {
-            console.debug("refreshtoken event", event)
-            console.debug("refreshtoken data", data)
             if (event && data) { }
             this.user = data;
             this.signedin = true;
 
-            this.customer = this.WebSocketClientService.customer;
-            this.customers = await NoderedUtil.Query("users", { _type: "customer" }, null, { "name": 1 }, 100, 0, null, null, null, 2);
+            if (this.user.selectedcustomerid == null) {
+                this.customer = null;
+            } else {
+                this.customer = this.WebSocketClientService.customer;
+                this.customers = await NoderedUtil.Query("users", { _type: "customer" }, null, { "name": 1 }, 100, 0, null, null, null, 2);
+                if (this.customers && this.customers.length > 0) {
+                    for (let cust of this.customers) {
+                        if (cust._id == this.user.selectedcustomerid) {
+                            this.customer = cust;
+                            this.WebSocketClientService.customer = cust as any;
+                        }
+                    }
+                }
+            }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             // cleanup();
         });
@@ -115,6 +125,7 @@ export class MenuCtrl {
                 for (let cust of this.customers)
                     if (cust._id == this.user.selectedcustomerid) this.customer = cust;
             }
+            console.log(this.customer);
             if (this.customer != null) this.WebSocketClientService.customer = this.customer as any;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         });
@@ -146,12 +157,20 @@ export class MenuCtrl {
     Search() {
         this.$rootScope.$broadcast("search", this.searchstring);
     }
+    async EditCustomer(customer) {
+        if (customer == null) return;
+        this.WebSocketClientService.user.selectedcustomerid = customer._id;
+        this.WebSocketClientService.customer = customer as any;
+        await NoderedUtil.SelectCustomer(this.WebSocketClientService.user.selectedcustomerid, null, 2);
+        this.$location.path("/Customer/" + customer._id);
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
     async SelectCustomer(customer) {
-        if (customer != null) {
-            console.log("SelectCustomer " + customer.name, customer)
-        } else {
-            console.log("SelectCustomer null", customer)
-        }
+        // if (customer != null) {
+        //     console.debug("SelectCustomer " + customer.name, customer)
+        // } else {
+        //     console.debug("SelectCustomer null", customer)
+        // }
         try {
             this.customer = customer;
             if (customer != null) {
@@ -1129,6 +1148,7 @@ export class ProviderCtrl extends entityCtrl<Provider> {
 }
 export class UsersCtrl extends entitiesCtrl<TokenUser> {
     public stripe: any = null;
+    public proration: boolean = false;
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -1220,20 +1240,21 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
         try {
             this.errormessage = "";
             this.user = user;
+            this.proration = false;
             var title = document.getElementById("title");
             title.scrollIntoView();
             this.ToggleModal()
             this.Resources = await NoderedUtil.Query("config", { "_type": "resource", "target": "user", "allowdirectassign": true }, null, { _created: -1 }, 100, 0, null, null, null, 2);
             this.Assigned = await NoderedUtil.Query("config", { "_type": "resourceusage", "userid": user._id }, null, { _created: -1 }, 100, 0, null, null, null, 2);
-            for (var res of this.Resources) {
-                res.products = res.products.filter(x => x.allowdirectassign == true);
+            for (var i = this.Resources.length - 1; i >= 0; i--) {
+                var res = this.Resources[i];
                 for (var prod of res.products) {
                     (prod as any).count = this.AssignCount(prod);
                     if ((prod as any).count > 0) {
                         (res as any).newproduct = prod;
                     }
                 }
-
+                res.products = res.products.filter(x => x.allowdirectassign == true || (x as any).count > 0);
             }
 
         } catch (error) {
@@ -1249,16 +1270,29 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
         var modal = document.getElementById("resourceModal");
         modal.classList.toggle("show");
     }
+    CloseModal() {
+        var modal = document.getElementById("resourceModal");
+        modal.classList.remove("show");
+    }
+    ToggleNextInvoiceModal() {
+        var modal = document.getElementById("NextInvoiceModal");
+        modal.classList.toggle("show");
+    }
+    CloseNextInvoiceModal() {
+        var modal = document.getElementById("NextInvoiceModal");
+        modal.classList.remove("show");
+    }
     async RemovePlan(resource: Resource, product: ResourceVariant) {
         try {
+            this.CloseNextInvoiceModal();
             this.loading = true;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             const assigned = this.Assigned.filter(x => x.product.stripeprice == product.stripeprice);
             if (assigned.length > 0) {
                 await NoderedUtil.StripeCancelPlan(assigned[0]._id, null, 2);
             }
-            this.ToggleModal();
             this.loading = false;
+            this.CloseModal();
             this.loadData();
             this.loading = false;
 
@@ -1266,14 +1300,60 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
             this.loading = false;
             this.errormessage = error;
             try {
-                this.ToggleModal()
+                this.CloseNextInvoiceModal();
+                this.CloseModal();
             } catch (error) {
             }
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
+    async AddPlan2() {
+        this.loading = true;
+        this.CloseNextInvoiceModal();
+        this.CloseModal();
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        var result = await NoderedUtil.StripeAddPlan(this.user._id, this.user.customerid,
+            this.resource._id, this.product.stripeprice, null, 2);
+        var checkout = result.checkout;
+        if (checkout) {
+            const stripe = Stripe(this.WebSocketClientService.stripe_api_key);
+            stripe
+                .redirectToCheckout({
+                    sessionId: checkout.id,
+                })
+                .then(function (event) {
+                    if (event.complete) {
+                        // enable payment button
+                    } else if (event.error) {
+                        console.error(event.error);
+                        if (event.error && event.error.message) {
+                            this.cardmessage = event.error.message;
+                        } else {
+                            this.cardmessage = event.error;
+                        }
+                        console.error(event.error);
+
+                        // show validation to customer
+                    } else {
+                    }
+                }).catch((error) => {
+                    console.error(error);
+                    this.errormessage = error;
+                });
+        } else {
+            this.loading = false;
+            this.loadData();
+        }
+    }
+    private resource: Resource;
+    private product: ResourceVariant;
+    public nextinvoice: stripe_invoice;
+    public period_start: string;
+    public period_end: string;
     async AddPlan(resource: Resource, product: ResourceVariant) {
         try {
+            this.resource = resource;
+            this.product = product;
 
             this.loading = true;
             this.errormessage = "";
@@ -1281,76 +1361,20 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
             let items = [];
             items.push({ quantity: 1, price: product.stripeprice });
 
-            let nextinvoice = await NoderedUtil.GetNextInvoice(this.WebSocketClientService.customer._id, null, items, null, null, 2);
+            this.nextinvoice = await NoderedUtil.GetNextInvoice(this.WebSocketClientService.customer._id, null, items, null, null, 2);
+            if (this.nextinvoice != null) {
+                const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                const period_start = new Date(this.nextinvoice.period_start * 1000);
+                const period_end = new Date(this.nextinvoice.period_end * 1000);
+                this.period_start = period_start.getDate() + " " + monthNames[period_start.getMonth()] + " " + period_start.getFullYear();
+                this.period_end = period_end.getDate() + " " + monthNames[period_end.getMonth()] + " " + period_end.getFullYear();
 
-            let proration = 0;
-            let prorationcurrency = "";
-            let prorationtext = [];
-            let newtotal = 0;
-            let newquantity = 0;
-            for (var line of nextinvoice.lines.data) {
-                if (line.proration) {
-                    proration += line.amount;
-                    prorationcurrency = line.currency;
-                    prorationtext.push(line.description);
-                }
-                if ((line.plan.id == product.stripeprice || line.price.id == product.stripeprice) && !line.proration) {
-                    newtotal = line.amount;
-                    prorationcurrency = line.currency;
-                    newquantity = line.quantity;
-                }
-            }
-            var message = "";
-            if (proration > 0) {
-                message += "Adds " + (proration / 100) + prorationcurrency + " to your next invoice\n" + prorationtext.join("\n");
-            }
-            if (message != "") {
-                message += "\nhere after your new total for " + newquantity + " x " + product.name + " is " + (newtotal / 100) + prorationcurrency + " per month";
-                if (!confirm(message)) {
-                    this.loading = false;
-                    this.loadData();
-                    return;
-                }
-            }
-            console.log(nextinvoice);
-
-
-
-            this.loading = true;
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            var result = await NoderedUtil.StripeAddPlan(this.user._id, this.user.customerid,
-                resource._id, product.stripeprice, null, 2);
-            var checkout = result.checkout;
-            if (checkout) {
-                const stripe = Stripe(this.WebSocketClientService.stripe_api_key);
-                stripe
-                    .redirectToCheckout({
-                        sessionId: checkout.id,
-                    })
-                    .then(function (event) {
-                        if (event.complete) {
-                            // enable payment button
-                        } else if (event.error) {
-                            console.error(event.error);
-                            if (event.error && event.error.message) {
-                                this.cardmessage = event.error.message;
-                            } else {
-                                this.cardmessage = event.error;
-                            }
-                            console.error(event.error);
-
-                            // show validation to customer
-                        } else {
-                        }
-                    }).catch((error) => {
-                        console.error(error);
-                        this.errormessage = error;
-                    });
-            } else {
-                var modal = document.getElementById("resourceModal");
-                modal.classList.toggle("show");
+                this.proration = true;
+                this.ToggleNextInvoiceModal();
                 this.loading = false;
-                this.loadData();
+                console.log(this.nextinvoice);
+            } else {
+                this.AddPlan2();
             }
         } catch (error) {
             this.loading = false;
@@ -3742,7 +3766,6 @@ export class SignupCtrl extends entityCtrl<Base> {
 declare const Stripe: any;
 export class PaymentCtrl extends entityCtrl<Billing> {
     public messages: string = "";
-    public cardmessage: string = "";
     public errormessage: string = "";
     public stripe: any = null;
     public stripe_customer: stripe_customer;
@@ -3820,7 +3843,6 @@ export class PaymentCtrl extends entityCtrl<Billing> {
             this.hastaxinfo = false;
 
             this.messages = "";
-            this.cardmessage = "";
             this.errormessage = "";
             this.stripe = null;
             this.stripe_products = null;
@@ -3839,7 +3861,6 @@ export class PaymentCtrl extends entityCtrl<Billing> {
             this.supportsubscription = null;
             this.supporthourssubscription = null;
 
-            this.cardmessage = "";
             if (this.model == null) {
                 this.model = new Billing(this.WebSocketClientService.user._id);
                 this.model.name = this.WebSocketClientService.user.name;
@@ -4034,7 +4055,7 @@ export class PaymentCtrl extends entityCtrl<Billing> {
 
         } catch (error) {
             console.error(error);
-            this.cardmessage = error;
+            this.errormessage = error;
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
@@ -4049,7 +4070,7 @@ export class PaymentCtrl extends entityCtrl<Billing> {
             this.loadData();
         } catch (error) {
             console.error(error);
-            this.cardmessage = error;
+            this.errormessage = error;
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
@@ -4059,7 +4080,7 @@ export class PaymentCtrl extends entityCtrl<Billing> {
             this.loadData();
         } catch (error) {
             console.error(error);
-            this.cardmessage = error;
+            this.errormessage = error;
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
@@ -4076,7 +4097,7 @@ export class PaymentCtrl extends entityCtrl<Billing> {
             this.loadData();
         } catch (error) {
             console.error(error);
-            this.cardmessage = error;
+            this.errormessage = error;
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
@@ -4089,47 +4110,18 @@ export class PaymentCtrl extends entityCtrl<Billing> {
                 window.open(session.url, '_blank');
                 // window.location.href = session.url;
             } else {
-                this.cardmessage = "Failed getting portal session url";
+                this.errormessage = "Failed getting portal session url";
             }
         } catch (error) {
             console.error(error);
-            this.cardmessage = error;
+            this.errormessage = error;
         }
     }
     async CheckOut(planid: string, subplanid: string) {
         try {
-            // const result = await NoderedUtil.StripeAddPlan(this.userid, planid, subplanid, null, 2);
-            // if (result.checkout) {
-            //     const stripe = Stripe(this.WebSocketClientService.stripe_api_key);
-            //     stripe
-            //         .redirectToCheckout({
-            //             sessionId: result.checkout.id,
-            //         })
-            //         .then(function (event) {
-            //             if (event.complete) {
-            //                 // enable payment button
-            //             } else if (event.error) {
-            //                 console.error(event.error);
-            //                 if (event.error && event.error.message) {
-            //                     this.cardmessage = event.error.message;
-            //                 } else {
-            //                     this.cardmessage = event.error;
-            //                 }
-            //                 console.error(event.error);
-
-            //                 // show validation to customer
-            //             } else {
-            //             }
-            //         }).catch((error) => {
-            //             console.error(error);
-            //             this.cardmessage = error;
-            //         });
-            // } else {
-            //     this.loadData();
-            // }
         } catch (error) {
             console.error(error);
-            this.cardmessage = error;
+            this.errormessage = error;
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
@@ -5111,6 +5103,7 @@ export class CustomersCtrl extends entitiesCtrl<Provider> {
 export class CustomerCtrl extends entityCtrl<Customer> {
     public stripe: any = null;
     public nextinvoice: stripe_invoice = null;
+    public proration: boolean = false;
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -5271,20 +5264,41 @@ export class CustomerCtrl extends entityCtrl<Customer> {
         console.debug("processdata::end");
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
-        try {
-            this.nextinvoice = await NoderedUtil.GetNextInvoice(this.WebSocketClientService.customer._id, null, null, null, null, 2);
-            console.log(this.nextinvoice);
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
-        } catch (error) {
-            console.debug(error);
-        }
     }
     ToggleNextInvoiceModal() {
         var modal = document.getElementById("NextInvoiceModal");
         modal.classList.toggle("show");
     }
-    NextInvoice() {
-        this.ToggleNextInvoiceModal();
+    CloseNextInvoiceModal() {
+        var modal = document.getElementById("NextInvoiceModal");
+        modal.classList.remove("show");
+    }
+    public period_start: string;
+    public period_end: string;
+
+    async NextInvoice() {
+        try {
+            this.proration = false;
+            this.loading = true;
+            this.nextinvoice = await NoderedUtil.GetNextInvoice(this.WebSocketClientService.customer._id, null, null, null, null, 2);
+
+            if (this.nextinvoice != null) {
+                const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                const period_start = new Date(this.nextinvoice.period_start * 1000);
+                const period_end = new Date(this.nextinvoice.period_end * 1000);
+                this.period_start = period_start.getDate() + " " + monthNames[period_start.getMonth()] + " " + period_start.getFullYear();
+                this.period_end = period_end.getDate() + " " + monthNames[period_end.getMonth()] + " " + period_end.getFullYear();
+            }
+
+            this.ToggleNextInvoiceModal();
+            this.loading = false;
+            console.log(this.nextinvoice);
+        } catch (error) {
+            console.debug(error);
+            this.loading = false;
+            this.errormessage = error;
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     AssignCount(Product: ResourceVariant) {
         const assigned = this.Assigned.filter(x => x.product.stripeprice == Product.stripeprice && x.quantity > 0 && x.siid != null);
@@ -5306,6 +5320,7 @@ export class CustomerCtrl extends entityCtrl<Customer> {
     async RemovePlan(resource: Resource, product: ResourceVariant) {
         try {
             this.loading = true;
+            this.CloseNextInvoiceModal();
             this.errormessage = "";
             const assigned = this.Assigned.filter(x => x.product.stripeprice == product.stripeprice);
             if (assigned.length > 0) {
@@ -5317,82 +5332,106 @@ export class CustomerCtrl extends entityCtrl<Customer> {
         } catch (error) {
             this.loading = false;
             this.errormessage = error;
-            try {
-            } catch (error) {
-            }
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
+    async AddPlan2() {
+        this.loading = true;
+        this.CloseNextInvoiceModal();
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        var result = await NoderedUtil.StripeAddPlan(null, this.WebSocketClientService.customer._id, this.resource._id, this.product.stripeprice, null, 2);
+        var checkout = result.checkout;
+        if (checkout) {
+            this.stripe
+                .redirectToCheckout({
+                    sessionId: checkout.id,
+                })
+                .then(function (event) {
+                    if (event.complete) {
+                        // enable payment button
+                    } else if (event.error) {
+                        console.error(event.error);
+                        if (event.error && event.error.message) {
+                            this.cardmessage = event.error.message;
+                        } else {
+                            this.cardmessage = event.error;
+                        }
+                        console.error(event.error);
+
+                        // show validation to customer
+                    } else {
+                    }
+                }).catch((error) => {
+                    console.error(error);
+                    this.errormessage = error;
+                });
+        } else {
+            this.loading = false;
+            this.loadData();
+        }
+    }
+    private resource: Resource;
+    private product: ResourceVariant
     async AddPlan(resource: Resource, product: ResourceVariant) {
         try {
             this.loading = true;
             this.errormessage = "";
 
+            this.resource = resource;
+            this.product = product;
+
             let items = [];
             items.push({ quantity: 1, price: product.stripeprice });
 
-            let nextinvoice = await NoderedUtil.GetNextInvoice(this.WebSocketClientService.customer._id, null, items, null, null, 2);
+            this.nextinvoice = await NoderedUtil.GetNextInvoice(this.WebSocketClientService.customer._id, null, items, null, null, 2);
+            if (this.nextinvoice != null) {
+                const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                const period_start = new Date(this.nextinvoice.period_start * 1000);
+                const period_end = new Date(this.nextinvoice.period_end * 1000);
+                this.period_start = period_start.getDate() + " " + monthNames[period_start.getMonth()] + " " + period_start.getFullYear();
+                this.period_end = period_end.getDate() + " " + monthNames[period_end.getMonth()] + " " + period_end.getFullYear();
 
-            let proration = 0;
-            let prorationcurrency = "";
-            let prorationtext = [];
-            let newtotal = 0;
-            let newquantity = 0;
-            for (var line of nextinvoice.lines.data) {
-                if (line.proration) {
-                    proration += line.amount;
-                    prorationcurrency = line.currency;
-                    prorationtext.push(line.description);
-                }
-                if ((line.plan.id == product.stripeprice || line.price.id == product.stripeprice) && !line.proration) {
-                    newtotal = line.amount;
-                    prorationcurrency = line.currency;
-                    newquantity = line.quantity;
-                }
-            }
-            var message = "";
-            if (proration > 0) {
-                message += "Adds " + (proration / 100) + prorationcurrency + " to your next invoice\n" + prorationtext.join("\n");
-            }
-            if (message != "") {
-                message += "\nhere after your new total for " + newquantity + " x " + product.name + " is " + (newtotal / 100) + prorationcurrency + " per month";
-                if (!confirm(message)) {
-                    this.loading = false;
-                    this.loadData();
-                    return;
-                }
-            }
-            console.log(nextinvoice);
-            var result = await NoderedUtil.StripeAddPlan(null, this.WebSocketClientService.customer._id, resource._id, product.stripeprice, null, 2);
-            var checkout = result.checkout;
-            if (checkout) {
-                this.stripe
-                    .redirectToCheckout({
-                        sessionId: checkout.id,
-                    })
-                    .then(function (event) {
-                        if (event.complete) {
-                            // enable payment button
-                        } else if (event.error) {
-                            console.error(event.error);
-                            if (event.error && event.error.message) {
-                                this.cardmessage = event.error.message;
-                            } else {
-                                this.cardmessage = event.error;
-                            }
-                            console.error(event.error);
-
-                            // show validation to customer
-                        } else {
-                        }
-                    }).catch((error) => {
-                        console.error(error);
-                        this.errormessage = error;
-                    });
-            } else {
+                this.proration = true;
+                this.ToggleNextInvoiceModal();
                 this.loading = false;
-                this.loadData();
+                console.log(this.nextinvoice);
+            } else {
+                this.AddPlan2();
             }
+
+
+
+            // let proration = 0;
+            // let prorationcurrency = "";
+            // let prorationtext = [];
+            // let newtotal = 0;
+            // let newquantity = 0;
+            // for (var line of nextinvoice.lines.data) {
+            //     if (line.proration && (line.plan.id == product.stripeprice || line.price.id == product.stripeprice)) {
+            //         proration += line.amount;
+            //         prorationcurrency = line.currency;
+            //         // prorationtext.push(line.description);
+            //     }
+            //     if ((line.plan.id == product.stripeprice || line.price.id == product.stripeprice) && !line.proration) {
+            //         newtotal = line.amount;
+            //         prorationcurrency = line.currency;
+            //         newquantity = line.quantity;
+            //     }
+            // }
+            // var message = "";
+            // if (proration > 0) {
+            //     message += "Adds " + (proration / 100) + prorationcurrency + " to your next invoice\n" + prorationtext.join("\n");
+            // }
+            // console.log(nextinvoice);
+            // if (message != "") {
+            //     message += "\nhere after your new total for " + newquantity + " x " + product.name + " is " + (newtotal / 100) + prorationcurrency + " per month";
+            //     if (!confirm(message)) {
+            //         this.loading = false;
+            //         this.loadData();
+            //         return;
+            //     }
+            // }
+
         } catch (error) {
             this.loading = false;
             this.errormessage = error;
@@ -5437,46 +5476,8 @@ export class CustomerCtrl extends entityCtrl<Customer> {
             console.error(error);
             this.errormessage = error;
         }
-    }
-    async CheckOut(planid: string, subplanid: string) {
-        try {
-            // const result = await NoderedUtil.StripeAddPlan(this.userid, planid, subplanid, null, 2);
-            // if (result.checkout) {
-            //     const stripe = Stripe(this.WebSocketClientService.stripe_api_key);
-            //     stripe
-            //         .redirectToCheckout({
-            //             sessionId: result.checkout.id,
-            //         })
-            //         .then(function (event) {
-            //             if (event.complete) {
-            //                 // enable payment button
-            //             } else if (event.error) {
-            //                 console.error(event.error);
-            //                 if (event.error && event.error.message) {
-            //                     this.cardmessage = event.error.message;
-            //                 } else {
-            //                     this.cardmessage = event.error;
-            //                 }
-            //                 console.error(event.error);
-
-            //                 // show validation to customer
-            //             } else {
-            //             }
-            //         }).catch((error) => {
-            //             console.error(error);
-            //             this.errormessage = error;
-            //         });
-            // } else {
-            //     this.loadData();
-            // }
-        } catch (error) {
-            console.error(error);
-            this.errormessage = error;
-        }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
-
     }
-
     CountryUpdate() {
         const eu: string[] = ['AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT',
             'RO', 'SK', 'SI', 'ES', 'SE'];
@@ -5911,42 +5912,80 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     AssignCount(resource: Resource) {
+        if (!this.Assigned || this.Assigned.length == 0) return 0;
         const assigned = this.Assigned.filter(x => x.resourceid == resource._id && x.quantity > 0 && x.subid != null);
         return assigned.length;
     }
     async EnsureCommon() {
         this.loading = true;
         try {
-            const nodered: Resource = await this.newResource("Nodered Instance", "user", "singlevariant", "singlevariant", { "resources": { "limits": { "memory": "225Mi" } } },
-                [
-                    this.newProduct("Basic", "prod_HEC6rB2wRUwviG", "plan_HECATxbGlff4Pv", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, true),
-                    this.newProduct("Plus", "prod_HEDSUIZLD7rfgh", "plan_HEDSUl6qdOE4ru", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "512Mi" }, "requests": { "memory": "512Mi" } } }, true),
-                    this.newProduct("Premium", "prod_HEDTI7YBbwEzVX", "plan_HEDTJQBGaVGnvl", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "1Gi" }, "requests": { "memory": "1Gi" } } }, true),
-                    this.newProduct("Premium+", "prod_IERLqCwV7BV8zy", "price_1HdySLC2vUMc6gvh3H1pgG7A", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "2Gi" }, "requests": { "memory": "2Gi" } } }, true),
-                ], true, true);
-            const supporthours: Resource = await this.newResource("Support Hours", "customer", "multiplevariants", "multiplevariants", {},
-                [
-                    this.newProduct("Premium Hours", "prod_HEZnir2GdKX5Jm", "plan_HEZp4Q4In2XcXe", "metered", "metered", null, null, 0, {}, false),
-                    this.newProduct("Basic Hours", "prod_HEGjSQ9M6wiYiP", "plan_HEZAsA1DfkiQ6k", "metered", "metered", null, null, 0, {}, false),
-                ], false, true);
+            if (this.WebSocketClientService.stripe_api_key == "pk_test_DNS5WyEjThYBdjaTgwuyGeVV00KqiCvf99") {
+                const nodered: Resource = await this.newResource("Nodered Instance", "user", "singlevariant", "singlevariant", { "resources": { "limits": { "memory": "225Mi" } } },
+                    [
+                        this.newProduct("Basic", "prod_HEC6rB2wRUwviG", "plan_HECATxbGlff4Pv", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, true),
+                        this.newProduct("Plus", "prod_HEDSUIZLD7rfgh", "plan_HEDSUl6qdOE4ru", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "512Mi" }, "requests": { "memory": "512Mi" } } }, true),
+                        this.newProduct("Premium", "prod_HEDTI7YBbwEzVX", "plan_HEDTJQBGaVGnvl", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "1Gi" }, "requests": { "memory": "1Gi" } } }, true),
+                        this.newProduct("Premium+", "prod_IERLqCwV7BV8zy", "price_1HdySLC2vUMc6gvh3H1pgG7A", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "2Gi" }, "requests": { "memory": "2Gi" } } }, true),
+                    ], true, true);
+                const supporthours: Resource = await this.newResource("Support Hours", "customer", "multiplevariants", "multiplevariants", {},
+                    [
+                        this.newProduct("Premium Hours", "prod_HEZnir2GdKX5Jm", "plan_HEZp4Q4In2XcXe", "metered", "metered", null, null, 0, {}, false),
+                        this.newProduct("Basic Hours", "prod_HEGjSQ9M6wiYiP", "plan_HEZAsA1DfkiQ6k", "metered", "metered", null, null, 0, {}, false),
+                    ], false, true);
 
-            const support = await this.newResource("Support Agreement", "customer", "singlevariant", "singlevariant", {},
-                [
-                    this.newProduct("Basic Support", "prod_HEGjSQ9M6wiYiP", "plan_HEGjLCtwsVbIx8", "single", "single", supporthours._id, "plan_HEZAsA1DfkiQ6k", 1, {}, true),
-                ], true, true);
+                const support = await this.newResource("Support Agreement", "customer", "singlevariant", "singlevariant", {},
+                    [
+                        this.newProduct("Basic Support", "prod_HEGjSQ9M6wiYiP", "plan_HEGjLCtwsVbIx8", "single", "single", supporthours._id, "plan_HEZAsA1DfkiQ6k", 1, {}, true),
+                    ], true, true);
 
-            const premium: Resource = await this.newResource("Openflow License", "customer", "singlevariant", "singlevariant", {},
-                [
-                    this.newProduct("Premium License", "prod_JcXS2AvXfwk1Lv", "price_1IzISoC2vUMc6gvhMtqTq2Ef", "multiple", "multiple", supporthours._id, "plan_HEZp4Q4In2XcXe", 1, {}, true),
-                ], true, true);
+                const premium: Resource = await this.newResource("Openflow License", "customer", "singlevariant", "singlevariant", {},
+                    [
+                        this.newProduct("Premium License", "prod_JcXS2AvXfwk1Lv", "price_1IzISoC2vUMc6gvhMtqTq2Ef", "multiple", "multiple", supporthours._id, "plan_HEZp4Q4In2XcXe", 1, {}, true),
+                    ], true, true);
 
-            const databaseusage: Resource = await this.newResource("Database Usage", "customer", "singlevariant", "singlevariant", { dbusage: (1048576 * 25) },
-                [
-                    this.newProduct("50Mb quota", "prod_JccNQXT636UNhG", "price_1IzQBRC2vUMc6gvh3Er9QaO8", "multiple", "multiple", null, null, 0, { dbusage: (1048576 * 50) }, true),
-                    this.newProduct("Metered Monthly", "prod_JccNQXT636UNhG", "price_1IzNEZC2vUMc6gvhAWQbEBHm", "metered", "metered", null, null, 0, { dbusage: (1048576 * 50) }, true),
-                ], true, true);
-            this.loading = false;
-            this.loadData();
+                const databaseusage: Resource = await this.newResource("Database Usage", "customer", "singlevariant", "singlevariant", { dbusage: (1048576 * 25) },
+                    [
+                        this.newProduct("50Mb quota", "prod_JccNQXT636UNhG", "price_1IzQBRC2vUMc6gvh3Er9QaO8", "multiple", "multiple", null, null, 0, { dbusage: (1048576 * 50) }, true),
+                        this.newProduct("Metered Monthly", "prod_JccNQXT636UNhG", "price_1IzNEZC2vUMc6gvhAWQbEBHm", "metered", "metered", null, null, 0, { dbusage: (1048576 * 50) }, true),
+                    ], true, true);
+
+                this.loading = false;
+                this.loadData();
+            } if (this.WebSocketClientService.stripe_api_key == "pk_live_0XOJdv1fPLPnOnRn40CSdBsh009Ge1B2yI") {
+                const nodered: Resource = await this.newResource("Nodered Instance", "user", "singlevariant", "singlevariant", { "resources": { "limits": { "memory": "225Mi" } } },
+                    [
+                        this.newProduct("Basic Legacy", "prod_HIhT9WksWx9Fxv", "price_1HY8P0C2vUMc6gvhRJrLcLW0", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, false),
+                        this.newProduct("Basic", "prod_Jfg1JU7byqHYs9", "price_1J2KglC2vUMc6gvh3JGredpM", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, true),
+                        this.newProduct("Plus", "prod_Jfg1JU7byqHYs9", "price_1J2KhPC2vUMc6gvhIwTNUWAk", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "512Mi" }, "requests": { "memory": "512Mi" } } }, true),
+                        this.newProduct("Premium", "prod_Jfg1JU7byqHYs9", "price_1J2KhuC2vUMc6gvhRcs1mdUr", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "1Gi" }, "requests": { "memory": "1Gi" } } }, true),
+                        this.newProduct("Premium+", "prod_Jfg1JU7byqHYs9", "price_1J2KiFC2vUMc6gvhGy0scDB5", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "2Gi" }, "requests": { "memory": "2Gi" } } }, true),
+                    ], true, true);
+                const supporthours: Resource = await this.newResource("Support Hours", "customer", "multiplevariants", "multiplevariants", {},
+                    [
+                        this.newProduct("Premium Hours", "prod_HFkZ8lKn7GtFQU", "plan_HFkbfsAs1Yvcly", "metered", "metered", null, null, 0, {}, false),
+                        this.newProduct("Basic Hours", "prod_HG1vTqU4c7EaV5", "plan_HG1wBF6yq1O15C", "metered", "metered", null, null, 0, {}, false),
+                    ], false, true);
+
+                const support = await this.newResource("Support Agreement", "customer", "singlevariant", "singlevariant", {},
+                    [
+                        this.newProduct("Basic Support", "prod_HG1vTqU4c7EaV5", "plan_HG1vb53VlOu46y", "single", "single", supporthours._id, "plan_HG1wBF6yq1O15C", 1, {}, true),
+                    ], true, true);
+
+                const premium: Resource = await this.newResource("Openflow License", "customer", "singlevariant", "singlevariant", {},
+                    [
+                        this.newProduct("Premium License", "prod_JcXS2AvXfwk1Lv", "price_1J2KcMC2vUMc6gvhmmsAGo35", "multiple", "multiple", supporthours._id, "plan_HFkbfsAs1Yvcly", 1, {}, true),
+                        this.newProduct("Premium License Legacy", "prod_HFkZ8lKn7GtFQU", "plan_HFka1sgovtAQ7k", "single", "single", supporthours._id, "plan_HFkbfsAs1Yvcly", 1, {}, true),
+                    ], true, true);
+
+                const databaseusage: Resource = await this.newResource("Database Usage", "customer", "singlevariant", "singlevariant", { dbusage: (1048576 * 25) },
+                    [
+                        this.newProduct("50Mb quota", "prod_JffpwKLldz2QWN", "price_1J2KWFC2vUMc6gvheg4kFzjI", "multiple", "multiple", null, null, 0, { dbusage: (1048576 * 50) }, true),
+                        this.newProduct("Metered Monthly", "prod_JffpwKLldz2QWN", "price_1J2KXMC2vUMc6gvhIhBFBKW6", "metered", "metered", null, null, 0, { dbusage: (1048576 * 50) }, true),
+                    ], true, true);
+
+                this.loading = false;
+                this.loadData();
+            }
         } catch (error) {
             this.loading = false;
             this.errormessage = error;

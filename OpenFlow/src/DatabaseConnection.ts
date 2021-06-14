@@ -887,9 +887,9 @@ export class DatabaseConnection {
                             user2.customerid = user.selectedcustomerid;
                         }
                     }
-                    if (NoderedUtil.IsNullEmpty(user2.customerid) && !NoderedUtil.IsNullEmpty(user.customerid)) {
-                        user2.customerid = user.customerid;
-                    }
+                    // if (NoderedUtil.IsNullEmpty(user2.customerid) && !NoderedUtil.IsNullEmpty(user.customerid)) {
+                    //     user2.customerid = user.customerid;
+                    // }
                 }
                 if (this.WellknownIdsArray.indexOf(user2._id) > -1) {
                     delete user2.customerid;
@@ -902,11 +902,11 @@ export class DatabaseConnection {
                     if (customer == null) throw new Error("Access denied to customer with id " + user2.customerid);
                     // if (!user.HasRoleName(customer.name + " admins")) throw new Error("Access denied to customer with " + customer.name);
                 } else if (user.HasRoleName("customer admins") && !NoderedUtil.IsNullEmpty(user.customerid)) {
-                    user2.customerid = user.customerid;
+                    // user2.customerid = user.customerid;
                     if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
                     customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, span);
                 } else if (Config.multi_tenant && !user.HasRoleName("admins")) {
-                    user2.customerid = user.customerid;
+                    // user2.customerid = user.customerid;
                     if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
                     if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
                         customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, span);
@@ -1327,10 +1327,14 @@ export class DatabaseConnection {
                             if (customer != null) user2.customerid = user.selectedcustomerid;
                         }
                         if (customer == null) {
-                            customer = await this.getbyid<Customer>(user.customerid, "users", q.jwt, span);
-                            if (customer != null) user2.customerid = user.customerid;
-                        } else {
-                            throw new Error("Access denied to customer with id " + user.customerid);
+                            if (!user.HasRoleName("admins") && !user.HasRoleName("resellers")) {
+                                user2.customerid = user.customerid;
+                                customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span);
+                                if (customer != null) user2.customerid = user.customerid;
+                                if (customer == null) {
+                                    throw new Error("Access denied to customer with id " + user2.customerid);
+                                }
+                            }
                         }
                         // user2.customerid = user.customerid;
                         // if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
@@ -1338,7 +1342,7 @@ export class DatabaseConnection {
                     } else if (Config.multi_tenant && !user.HasRoleName("admins")) {
                         // We can update, we just don't want to allow inserts ?
                         // throw new Error("Access denied (not admin or customer admin)");
-                        user2.customerid = user.customerid;
+                        // user2.customerid = user.customerid;
                         if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
                         if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
                             customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span);

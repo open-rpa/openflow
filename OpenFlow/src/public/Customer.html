@@ -317,7 +317,8 @@
         </div>
     </div>
 
-    <div class="form-row row-eq-spacing-sm" ng-show="ctrl.model.stripeid && ctrl.model.stripeid != ''">
+    <div class="form-row row-eq-spacing-sm"
+        ng-show="ctrl.model.stripeid && ctrl.model.stripeid != '' && (menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins'))">
         <div class="col-sm">
             <label for="vatnumber">billing portal</label>
             <button type="button" ng-click="ctrl.OpenPortal()" ng-disabled="ctrl.loading==true" class="btn btn-success"
@@ -405,7 +406,11 @@
             <a href="#" class="close" role="button" aria-label="Close">
                 <span aria-hidden="true">&times;</span>
             </a>
-            <h5 class="modal-title">Next Invoice for {{ctrl.WebSocketClientService.customer.name}}</h5>
+            <h5 class="modal-title" ng-show="!ctrl.proration">Next Invoice for
+                {{ctrl.WebSocketClientService.customer.name}}</h5>
+            <h5 class="modal-title" ng-show="ctrl.proration">Accept next Invoice for
+                {{ctrl.WebSocketClientService.customer.name}}</h5>
+            <h6>{{ ctrl.period_start }} to {{ ctrl.period_end }}</h6>
             <p>
             <div class="row" ng-repeat="line in ctrl.nextinvoice.lines.data">
                 <div class="col">{{line.description}}</div>
@@ -432,6 +437,9 @@
             </div>
             </p>
             <div class="text-right mt-20">
+
+                <a href ng-show="ctrl.proration" class="btn mr-5 btn-success" role="button"
+                    ng-click="ctrl.AddPlan2()">Accept</a>
                 <a href class="btn mr-5" role="button" ng-click="ctrl.ToggleNextInvoiceModal()">Close</a>
             </div>
         </div>

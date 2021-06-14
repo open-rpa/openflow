@@ -13,7 +13,7 @@ import { Readable, Stream } from "stream";
 import { GridFSBucket, ObjectID, Cursor } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
-import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, GetKubeNodeLabels, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice, stripe_price, stripe_plan } from "@openiap/openflow-api";
+import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, GetKubeNodeLabels, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice, stripe_price, stripe_plan, stripe_invoice_line } from "@openiap/openflow-api";
 import { Billing, stripe_customer, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription_item, stripe_coupon } from "@openiap/openflow-api";
 import { V1ResourceRequirements, V1Deployment } from "@kubernetes/client-node";
 import { amqpwrapper, QueueMessageOptions } from "../amqpwrapper";
@@ -1338,6 +1338,7 @@ export class Message {
 
                         tuser = TokenUser.From(user);
                         tuser.impostor = userid;
+                        (user as any).impostor = userid;
                         if (msg.longtoken) {
                             msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
                         } else {
@@ -3214,9 +3215,34 @@ export class Message {
                 if (subscription != null) {
                     payload.subscription = customer.subscriptionid;
                 }
-            }
-            if (!NoderedUtil.IsNullEmpty(customer.subscriptionid)) {
-                msg.invoice = await this.Stripe<stripe_invoice>("GET", "invoices_upcoming", null, payload, customer.stripeid);
+
+
+
+                if (msg.subscription_items && msg.subscription_items.length > 0 && msg.subscription_items[0].price && !msg.subscription_items[0].id) {
+                    var price = msg.subscription_items[0].price;
+                    msg.invoice = await this.Stripe<stripe_invoice>("GET", "invoices_upcoming", null, payload, customer.stripeid);
+
+                    if (msg.invoice.lines.has_more) {
+                        payload.limit = 100;
+                        payload.starting_after = msg.invoice.lines.data[msg.invoice.lines.data.length - 1].id;
+                        do {
+                            var test = await this.Stripe<stripe_list<stripe_invoice_line>>("GET", "invoices_upcoming_lines", customer.subscriptionid, payload, customer.stripeid);
+                            msg.invoice.lines.data = msg.invoice.lines.data.concat(test.data);
+                            if (test.has_more) {
+                                payload.starting_after = test.data[msg.invoice.lines.data.length - 1].id;
+                            }
+                        } while (test.has_more);
+
+                        delete payload.starting_after;
+                        delete payload.limit;
+                    }
+
+                    var exits = msg.invoice.lines.data.filter(x => (x.price.id == price || x.plan.id == price) && !x.proration);
+                    if (exits.length == 1) {
+                        msg.subscription_items[0].id = exits[0].id;
+                        // msg.subscription_items[0].quantity += exits[0].quantity;
+                    }
+                }
             }
             if (!NoderedUtil.IsNullEmpty(msg.subscriptionid)) payload.subscription = msg.subscriptionid;
             if (!NoderedUtil.IsNullUndefinded(msg.subscription_items) && msg.subscription_items.length > 0) {
@@ -3237,11 +3263,28 @@ export class Message {
                             plan = await this.Stripe<stripe_plan>("GET", "plans", item.price, payload, customer.stripeid);
                             // metered = (plan.recurring.usage_type == "metered");
                         }
+
+                        let quantity: number = item.quantity;
+                        if (quantity < 1) quantity = 1;
+
+
                         var exists = msg.invoice.lines.data.filter(x => (x.price.id == item.price || x.plan.id == item.price) && !x.proration);
                         if (exists.length > 0) {
-                            item.id = exists[0].subscription_item;
-                            payload.subscription = (exists[0] as any).subscription;
-                            item.quantity += exists[0].quantity;
+                            for (let i = 0; i < exists.length; i++) {
+                                item.id = exists[i].subscription_item;
+                                payload.subscription = (exists[i] as any).subscription;
+
+
+                                const total_usage = await Config.db.query<ResourceUsage>({ "_type": "resourceusage", "customerid": customer._id, "siid": exists[i].subscription_item }, null, 1000, 0, null, "config", msg.jwt, null, null, span);
+                                let _quantity: number = 0;
+                                total_usage.forEach(x => _quantity += x.quantity);
+                                _quantity += quantity;
+
+                                var currentquantity = exists[i].quantity;
+                                item.quantity = _quantity;
+
+                                // item.quantity += exists[i].quantity;
+                            }
                         }
                         if (metered) delete item.quantity;
                     }
@@ -3255,8 +3298,38 @@ export class Message {
                 payload.customer = customer.stripeid;
             }
 
+
+            if (msg.subscription_items) {
+                let tax_rates = [];
+                if (NoderedUtil.IsNullEmpty(customer.country)) customer.country = "";
+                customer.country = customer.country.toUpperCase();
+                if (NoderedUtil.IsNullEmpty(customer.vattype) || NoderedUtil.IsNullEmpty(customer.vattype) || customer.country == "DK") {
+                    const tax_ids = await this.Stripe<stripe_list<any>>("GET", "tax_rates", null, null, null);
+                    if (tax_ids && tax_ids.data && tax_ids.data.length > 0) {
+                        tax_rates = tax_ids.data.filter(x => x.active && x.country == customer.country).map(x => x.id);
+                    }
+                }
+                if (tax_rates.length > 0) {
+                    for (let i = 0; i < msg.subscription_items.length; i++) {
+                        (msg.subscription_items[0] as any).tax_rates = tax_rates;
+                    }
+                }
+
+            }
+
             msg.invoice = await this.Stripe<stripe_invoice>("GET", "invoices_upcoming", null, payload, customer.stripeid);
 
+            if (msg.invoice.lines.has_more) {
+                payload.limit = 100;
+                payload.starting_after = msg.invoice.lines.data[msg.invoice.lines.data.length - 1].id;
+                do {
+                    var test = await this.Stripe<stripe_list<stripe_invoice_line>>("GET", "invoices_upcoming_lines", customer.subscriptionid, payload, customer.stripeid);
+                    msg.invoice.lines.data = msg.invoice.lines.data.concat(test.data);
+                    if (test.has_more) {
+                        payload.starting_after = test.data[msg.invoice.lines.data.length - 1].id;
+                    }
+                } while (test.has_more);
+            }
         } catch (error) {
             span.recordException(error);
             await handleError(null, error);
@@ -3265,6 +3338,7 @@ export class Message {
                 msg.error = (error.message ? error.message : error);
                 if (error.response && error.response.body) {
                     msg.error = error.response.body;
+                    console.error(msg.error);
                 }
             }
         }
@@ -3589,6 +3663,16 @@ export class Message {
                     if (item.id) url += "&subscription_items[" + index + "][id]=" + item.id;
                     if (item.price) url += "&subscription_items[" + index + "][price]=" + item.price;
                     if (item.quantity) url += "&subscription_items[" + index + "][quantity]=" + item.quantity;
+
+                    let taxindex = 0;
+                    if ((item as any).tax_rates && (item as any).tax_rates.length > 0) {
+                        for (let tax of (item as any).tax_rates) {
+                            url += "&subscription_items[" + index + "][tax_rates[" + taxindex + "]]=" + tax;
+
+                            taxindex++;
+                        }
+                    }
+                    index++;
                 }
             }
             if (payload != null && payload.subscription_proration_date) {
@@ -3598,7 +3682,21 @@ export class Message {
                 url += "&subscription=" + payload.subscription;
             }
         }
+        if (object == "invoices_upcoming_lines") {
+            url = "https://api.stripe.com/v1/invoices/upcoming/lines?customer=" + customerid;
+            if (payload != null && payload.subscription) {
+                url += "&subscription=" + payload.subscription;
+            } else if (!NoderedUtil.IsNullEmpty(id)) {
+                url += "&subscription=" + id;
+            }
+        }
 
+        if (payload && payload.starting_after) {
+            url += "&starting_after=" + payload.starting_after;
+        }
+        if (payload && payload.limit) {
+            url += "&limit=" + payload.limit;
+        }
         const auth = "Basic " + Buffer.from(Config.stripe_api_secret + ":").toString("base64");
 
         const options = {
@@ -3648,7 +3746,10 @@ export class Message {
                 }
                 if (msg.object == "billing_portal/sessions") {
                     const tuser = Crypt.verityToken(cli.jwt);
-                    const customer = await Config.db.getbyid(msg.customerid, "users", cli.jwt, null);
+                    let customer: Customer;
+                    if (!NoderedUtil.IsNullEmpty(tuser.selectedcustomerid)) customer = await Config.db.getbyid(tuser.selectedcustomerid, "users", cli.jwt, null);
+                    if (!NoderedUtil.IsNullEmpty(tuser.selectedcustomerid) && customer == null) customer = await Config.db.getbyid(tuser.customerid, "users", cli.jwt, null);
+                    if (customer == null) throw new Error("Access denied, or customer not found");
                     if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
                         throw new Error("Access denied, adding plan (admins)");
                     }
@@ -4349,6 +4450,15 @@ export class Message {
                 var customer = await Config.db.getbyid<Customer>(msg.customerid, "users", cli.jwt, parent)
                 if (customer == null) msg.customerid = null;
             }
+            if (NoderedUtil.IsNullEmpty(msg.customerid)) {
+                {
+                    if (!cli.user.HasRoleName("resellers") && !cli.user.HasRoleName("admins")) {
+                        msg.customerid = cli.user.customerid;
+                    }
+                }
+            }
+
+            const impostor = (cli.user as any).impostor;
             const UpdateDoc: any = { "$set": {} };
             UpdateDoc.$set["selectedcustomerid"] = msg.customerid;
             await Config.db._UpdateOne({ "_id": cli.user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), parent);
