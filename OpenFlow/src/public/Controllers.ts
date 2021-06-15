@@ -3349,6 +3349,7 @@ export class NoderedCtrl {
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
+    public refreshtimer: NodeJS.Timeout = null;
     async GetNoderedInstance() {
         try {
             this.errormessage = "";
@@ -3392,9 +3393,15 @@ export class NoderedCtrl {
 
             reload = true;
             if (reload) {
-                setTimeout(() => {
-                    this.GetNoderedInstance();
-                }, 2000);
+                if (!this.refreshtimer) {
+                    this.refreshtimer = setTimeout(() => {
+                        this.refreshtimer = null;
+                        var path = this.$location.path();
+                        if (path == null && path == undefined) { console.debug("getnodered, path is null"); return false; }
+                        if (!path.toLowerCase().startsWith("/nodered")) { console.debug("getnodered, path is no longer /Nodered"); return false; }
+                        this.GetNoderedInstance();
+                    }, 2000);
+                }
             }
         } catch (error) {
             this.errormessage = error.message ? error.message : error;
@@ -5548,7 +5555,7 @@ export class EntityRestrictionsCtrl extends entitiesCtrl<Base> {
             await this.newRestriction("Create npmrc", "nodered", ["$.[?(@ && @._type == 'npmrc')]"], false);
             await this.newRestriction("Create flow", "nodered", ["$.[?(@ && @._type == 'flow')]"], false);
             await this.newRestriction("Create credential", "nodered", ["$.[?(@ && @._type == 'credential')]"], false);
-            await this.newRestriction("Create insance", "workflow_instances", ["$.[?(@ && @._type == 'insance')]"], false);
+            await this.newRestriction("Create instance", "workflow_instances", ["$.[?(@ && @._type == 'instance')]"], false);
             await this.newRestriction("Create test or unknown", "test", ["$.[?(@ && (@._type == 'test' || @._type == 'unknown'))]"], false);
 
             await this.newRestriction("Create role", "users", ["$.[?(@ && @._type == 'role')]"], false);
