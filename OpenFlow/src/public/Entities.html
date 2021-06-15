@@ -6,14 +6,14 @@
   <div class="col-md-6">
     <div className="btn-group-justified">
       <div class="btn-group" role="group">
-        <select ng-model="ctrl.collection" ng-options="item.name as item.name for item in ctrl.collections"
-          ng-change="ctrl.SelectCollection()">
+        <select id="menucollections" ng-model="ctrl.collection"
+          ng-options="item.name as item.name for item in ctrl.collections" ng-change="ctrl.SelectCollection()">
         </select>
       </div>
 
     </div>
   </div>
-  <div class=" col-md-6 text-right">
+  <div class=" col-md-6 text-right" id="entitiestools">
     <a ng-href="#/Deleted/{{ctrl.collection}}" class="btn btn-info"><em class="fas fa-undo"></em></a>
     <a ng-href="#/Duplicates/{{ctrl.collection}}" class="btn btn-info"><em class="fas fa-clone"></em></a>
     <a ng-href="#/Entity/{{ctrl.collection}}" class="btn btn-info"><em class="fas fa-plus"></em></a>

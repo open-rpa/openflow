@@ -17,16 +17,12 @@
     <div class="sticky-alerts"></div>
 
     <nav class="navbar navbar-expand-md fixed-top" ng-show="menuctrl.signedin">
-
-
-
-
       <a href="#" class="navbar-brand">
         <span translate lib="web">sitename</span>
       </a>
       <span class="navbar-text text-monospace">v{{menuctrl.WebSocketClientService.version}}</span>
       <ul class="navbar-nav d-none d-md-flex">
-        <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Entities')}">
+        <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Entities')}" id="menuentities">
           <a href="#/Entities" class="nav-link" ng-show="menuctrl.hasrole('users')"><span translate
               lib="web">entities</span></a>
         </li>
@@ -42,33 +38,36 @@
               lib="web">clients</span></a>
         </li>
         <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Nodered')}">
-          <a href="#/Nodered" class="nav-link"
+          <a href="#/Nodered" class="nav-link" id="menunodered"
             ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')">
             <span translate lib="web">nodered</span></a>
         </li>
-        <div class="dropdown with-arrow">
+        <div class="dropdown with-arrow" id="menuadminmenu">
           <button class="btn" data-toggle="dropdown" type="button" id="navbar-dropdown-toggle-btn-1">
             <span translate lib="web">admin</span>
             <i class="fa fa-angle-down" aria-hidden="true"></i>
           </button>
-          <div class="dropdown-menu dropdown-menu-right w-200" aria-labelledby="navbar-dropdown-toggle-btn-1">
-            <a class="dropdown-item" href="#/Users"
+          <div class="dropdown-menu dropdown-menu-right w-200" aria-labelledby="navbar-dropdown-toggle-btn-1"
+            id="navbar-dropdown-toggle-btn-1">
+            <a class="dropdown-item" href="#/Users" id="menuadminusers"
               ng-show="!menuctrl.WebSocketClientService.multi_tenant || (menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins'))"><span
                 translate lib="web">users</span></a>
-            <a class="dropdown-item" href="#/Roles"
+            <a class="dropdown-item" href="#/Roles" id="menuadminroles"
               ng-show="!menuctrl.WebSocketClientService.multi_tenant || (menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins'))"><span
                 translate lib="web">roles</span></a>
-            <a class="dropdown-item" href="#/Credentials"><span translate lib="web">credentials</span></a>
-            <a class="dropdown-item" href="#/Auditlogs"><span translate lib="web">auditlogs</span></a>
+            <a class="dropdown-item" href="#/Credentials" id="menuadmincredentials"><span translate
+                lib="web">credentials</span></a>
+            <a class="dropdown-item" href="#/Auditlogs" id="menuadminauditlogs"><span translate
+                lib="web">auditlogs</span></a>
             <a class="dropdown-item" href="#/EntityRestrictions"
               ng-show="menuctrl.WebSocketClientService.enable_entity_restriction && menuctrl.hasrole('admins')"><span
                 translate lib="web">entityrestrictions</span></a>
-            <a class="dropdown-item" href="#/Forms"><span translate lib="web">forms</span></a>
+            <a class="dropdown-item" href="#/Forms" id="menuadminforms"><span translate lib="web">forms</span></a>
             <a class="dropdown-item" href="#/Providers" ng-show="menuctrl.hasrole('admins')"><span translate
                 lib="web">providers</span></a>
             <a class="dropdown-item" href="#/OAuthClients" ng-show="menuctrl.hasrole('admins')"><span translate
                 lib="web">oauthclients</span></a>
-            <a class="dropdown-item" href="#/Files"><span translate lib="web">files</span></a>
+            <a class="dropdown-item" href="#/Files" id="menuadminfiles"><span translate lib="web">files</span></a>
             <a class="dropdown-item" href="#/hdrobots"><span translate lib="web">hdrobots</span></a>
             <div class="dropdown-divider"></div>
             <div class="dropdown-content">
@@ -86,23 +85,34 @@
       </ul>
       <form class="form-inline d-none d-md-flex ml-auto">
         <!-- remove -->
-        <div ng-class="{active: menuctrl.PathIs('/Customer')}"
+        <!-- <div ng-class="{active: menuctrl.PathIs('/Customer')}" id="menumultitenant"
           ng-show="menuctrl.WebSocketClientService.multi_tenant && menuctrl.customer == null">
           <a href="#/Customer" class="nav-link">
-            <span translate lib="web">create customer</span></a>
+            <span translate lib="web">Enable multi tenancy</span></a>
+        </div> -->
+        <div id="menumultitenant" ng-class="{active: menuctrl.PathIs('/Customer')}"
+          ng-show="menuctrl.WebSocketClientService.multi_tenant && menuctrl.customer == null">
+          <a href="#/Customer" class="nav-link">
+            <span translate lib="web">Enable multi tenancy</span></a>
         </div>
-        <div ng-class="{active: menuctrl.PathIs('/Customer')}"
+
+        <div id="menumanagecustomer" ng-class="{active: menuctrl.PathIs('/Customer')}"
           ng-show="menuctrl.WebSocketClientService.multi_tenant && menuctrl.customers.length == 1">
-          <a href ng-click="menuctrl.EditCustomer(menuctrl.customer)" class="nav-link">{{menuctrl.customer.name}}</a>
+          <a href ng-click="menuctrl.EditCustomer(menuctrl.customer)" class="nav-link">Manage
+            {{menuctrl.customer.name}}</a>
         </div>
         <!-- remove -->
 
         <input type="text" class="form-control" placeholder="Search" ng-model="menuctrl.searchstring"
-          ng-change="menuctrl.Search()"
-          ng-show="!menuctrl.PathIs('/Nodered') && !menuctrl.PathIs('/Payment')&& !menuctrl.PathIs('/Customer')">
+          ng-change="menuctrl.Search()" id="menusearch"
+          ng-show="!menuctrl.PathIs('/Nodered') && !menuctrl.PathIs('/Payment') && !menuctrl.PathIs('/Customer')">
         <button class="btn btn-action mr-5" type="button" ng-click="menuctrl.toggleDarkMode()"
-          aria-label="Toggle dark mode" zn_id="16">
-          <i class="fa fa-moon" aria-hidden="true" zn_id="17"></i>
+          aria-label="Toggle dark mode" id="menudarkmode">
+          <i class="fa fa-moon" aria-hidden="true"></i>
+        </button>
+        <button id="menutour" class="btn btn-action mr-5" type="button" ng-click="menuctrl.ListTours()"
+          aria-label="Start tour">
+          <i class="fa fa-question" aria-hidden="true"></i>
         </button>
 
 
@@ -110,8 +120,8 @@
           ng-show="menuctrl.user.impostor != undefined && menuctrl.user.impostor != null && menuctrl.user.impostor != ''">
           <em class="fas fa-user-secret" style="color: red;"></em></button>
 
-        <a href="/Signout" class="btn btn-primary"><span translate lib="web">logout</span></a>
-        <div class="dropdown with-arrow"
+        <a href="/Signout" class="btn btn-primary" id="signoutbutton"><span translate lib="web">logout</span></a>
+        <div class="dropdown with-arrow" id="menuresellermenu"
           ng-show="menuctrl.WebSocketClientService.multi_tenant && menuctrl.customers != null && menuctrl.customers.length > 1">
           <button class="btn" data-toggle="dropdown" type="button" id="navbar-dropdown-toggle-btn-1">
             <span>{{menuctrl.customer.name || "No filter"}}</span>
@@ -146,7 +156,7 @@
             Menu
             <i class="fa fa-angle-down" aria-hidden="true"></i>
           </button>
-          <div class="dropdown-menu dropdown-menu-right w-200" aria-labelledby="navbar-dropdown-toggle-btn-1">
+          <div class="dropdown-menu dropdown-menu-right w-200" aria-labelledby="navbar-dropdown-toggle-btn-1" id="">
 
             <a href="#/Entities" class="dropdown-item" ng-show="menuctrl.hasrole('users')"><span translate
                 lib="web">entities</span></a>
@@ -159,7 +169,7 @@
               ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')">
               <span translate lib="web">nodered</span></a>
             <div class="dropdown-divider"></div>
-            <div class="dropdown-content">
+            <div class="dropdown-content" id="signoutbutton2">
               <a href="/Signout" class="btn btn-primary"><span translate lib="web">logout</span></a>
             </div>
           </div>

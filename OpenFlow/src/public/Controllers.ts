@@ -58,30 +58,53 @@ export class MenuCtrl {
     public signedin: boolean = false;
     public path: string = "";
     public searchstring: string = "";
+    public halfmoon: any;
     public static $inject = [
         "$rootScope",
         "$scope",
         "$location",
         "$routeParams",
         "WebSocketClientService",
-        "api"
+        "api",
+        "userdata"
     ];
     public customer: Base;
     public customers: Base[];
+    public allowclick: boolean = true;
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
         public WebSocketClientService: WebSocketClientService,
-        public api: api
+        public api: api,
+        public userdata: userdata
     ) {
+
+        document.addEventListener(
+            "click",
+            (event) => {
+                console.log("click", event);
+                console.log("allowclick", this.allowclick);
+                try {
+                    if (!this.allowclick) {
+                        // event.cancelBubble = true;
+                        event.stopImmediatePropagation();
+                        return event.preventDefault();
+                    }
+                } catch (error) {
+                    console.error(error);
+                }
+            });
+        this.halfmoon = require("halfmoon");
         console.debug("MenuCtrl::constructor");
         $scope.$root.$on('$routeChangeStart', (...args) => { this.routeChangeStart.apply(this, args); });
         this.path = this.$location.path();
-        const halfmoon = require("halfmoon");
-        halfmoon.onDOMContentLoaded();
+
+        this.halfmoon.onDOMContentLoaded();
         const cleanup = this.$scope.$on('signin', async (event, data) => {
+
+
             if (event && data) { }
             this.user = data;
             this.signedin = true;
@@ -89,6 +112,7 @@ export class MenuCtrl {
             this.customer = this.WebSocketClientService.customer;
             this.customers = await NoderedUtil.Query("users", { _type: "customer" }, null, { "name": 1 }, 100, 0, null, null, null, 2);
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            this.StartNewFeaturesTour(null)
             // cleanup();
         });
         const cleanup2 = this.$scope.$on('refreshtoken', async (event, data) => {
@@ -111,6 +135,7 @@ export class MenuCtrl {
                 }
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            this.StartNewFeaturesTour(null)
             // cleanup();
         });
         this.$scope.$on('setsearch', (event, data) => {
@@ -151,8 +176,7 @@ export class MenuCtrl {
         return this.path.toLowerCase().startsWith(path.toLowerCase());
     }
     toggleDarkMode() {
-        const halfmoon = require("halfmoon");
-        halfmoon.toggleDarkMode();
+        this.halfmoon.toggleDarkMode();
     }
     Search() {
         this.$rootScope.$broadcast("search", this.searchstring);
@@ -192,6 +216,705 @@ export class MenuCtrl {
             console.error(error);
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+
+    setCookie(cname, cvalue, exdays) {
+        const d = new Date();
+        d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
+        const expires = "expires=" + d.toUTCString();
+        document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+    }
+    getCookie(cname) {
+        const name = cname + "=";
+        const decodedCookie = decodeURIComponent(document.cookie);
+        const ca = decodedCookie.split(';');
+        for (let i = 0; i < ca.length; i++) {
+            let c = ca[i];
+            while (c.charAt(0) == ' ') {
+                c = c.substring(1);
+            }
+            if (c.indexOf(name) == 0) {
+                return c.substring(name.length, c.length);
+            }
+        }
+        return "";
+    }
+    StartNewFeaturesTour(startfrom) {
+        try {
+            var me = this;
+            const Shepherd = require("shepherd.js");
+            const tour = new Shepherd.Tour({
+                useModalOverlay: true,
+                tourName: 'featuretour',
+                exitOnEsc: true,
+                defaultStepOptions: {
+                    cancelIcon: {
+                        enabled: true
+                    },
+                    scrollTo: { behavior: 'smooth', block: 'center' }
+                },
+            });
+            let step: number = this.getCookie("newfeatures") as any;
+            if (NoderedUtil.IsNullEmpty(step)) step = 0;
+            if (!NoderedUtil.IsNullEmpty(startfrom)) {
+                step = startfrom;
+            }
+            step = parseInt(step as any);
+            console.log('beginning step', step);
+
+            tour.on("show", (e) => {
+                const currentstep = parseInt(e.step.id);
+                if (currentstep < 0) {
+                    step = step + 1;
+                    console.log('-1 set current step', step);
+                    this.setCookie("newfeatures", step, 365);
+                } else {
+                    step = currentstep;
+                    console.log('set current step', currentstep);
+                    this.setCookie("newfeatures", currentstep, 365);
+                }
+            });
+            const defaultbuttons = [
+                {
+                    action() {
+                        return this.back();
+                    },
+                    classes: 'shepherd-button-secondary',
+                    text: 'Back'
+                },
+                {
+                    action() {
+                        return this.next();
+                    },
+                    text: 'Next'
+                }
+            ]
+
+            tour.addStep({
+                title: 'New User Interface in OpenFlow',
+                text: `The new UI in Openflow, allows for using darkmode, you can toogle darkmode on this button or you can use the keyboard shortcut Shift+D.`,
+                attachTo: {
+                    element: '#menudarkmode'
+                },
+                buttons: [{
+                    action() {
+                        return this.next();
+                    },
+                    text: 'Next'
+                }
+                ],
+                id: '0'
+            });
+
+            if (this.WebSocketClientService.multi_tenant && this.customer == null) tour.addStep({
+                title: 'Enable multi tenancy',
+                text: `Per default OpenFlow is running in a single user mode, where users cannot share information. Click here to create a new Customer, and enable access to multiple user, roles, control access to data and workflows and to buy additional services`,
+                attachTo: {
+                    element: '#menumultitenant'
+                },
+                buttons: defaultbuttons,
+                id: '1'
+            });
+            if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length < 2) tour.addStep({
+                title: 'Manage you company',
+                text: `Click here to manage you company details, this is also where you can check your next Invoice and how many services you have added`,
+                attachTo: {
+                    element: '#menumanagecustomer'
+                },
+                buttons: defaultbuttons,
+                id: '50'
+            });
+            if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length < 2) tour.addStep({
+                title: 'Manage you users ',
+                text: `Click here to manage your users. You can create, edit and delete new users, and you can purchase and assign new services to users here`,
+                attachTo: {
+                    element: '#menuadminusers'
+                },
+                when: {
+                    show() {
+                        me.OpenAdminsMenu();
+                    }
+                },
+                buttons: [{
+                    action() {
+                        me.CloseAllMenus();
+                        return this.back();
+                    },
+                    classes: 'shepherd-button-secondary',
+                    text: 'Back'
+                },
+                {
+                    action() {
+                        me.CloseAllMenus();
+                        return this.next();
+                    },
+                    text: 'Next'
+                }],
+                id: '51'
+            });
+
+            if (tour.steps.length > 0) {
+                const laststepid = parseInt(tour.steps[tour.steps.length - 1].id);
+                console.log(step, laststepid);
+                if (step <= laststepid) {
+                    tour.addStep({
+                        title: 'Thank you for using OpenIAP',
+                        text: `We hope you will enjoy the power of the leading open Source Integrated Automation Platform, click here to see different help tours.`,
+                        attachTo: {
+                            element: '#menutour'
+                        },
+                        buttons: [
+                            {
+                                action() {
+                                    return this.back();
+                                },
+                                classes: 'shepherd-button-secondary',
+                                text: 'Back'
+                            },
+                            {
+                                action() {
+                                    return this.cancel();
+                                },
+                                text: 'Exit'
+                            }
+                        ],
+                        id: '-1'
+                    });
+                    for (let i = 0; i < tour.steps.length; i++) {
+                        const _stepid = parseInt(tour.steps[i].id);
+                        if (_stepid < step) continue;
+                        tour.show(_stepid.toString())
+                        break;
+                    }
+                }
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    }
+    ListTours() {
+        var me = this;
+        try {
+            const Shepherd = require("shepherd.js");
+            const tour = new Shepherd.Tour({
+                useModalOverlay: true,
+                tourName: 'listoftour',
+                exitOnEsc: true,
+                defaultStepOptions: {
+                    cancelIcon: {
+                        enabled: true
+                    },
+                    scrollTo: { behavior: 'smooth', block: 'center' }
+                },
+            });
+            let bottons: any[] = [];
+            bottons.push({
+                action() {
+                    me.StartNewFeaturesTour(0);
+                    return this.cancel();
+                },
+                text: 'New Features'
+            });
+            if (this.WebSocketClientService.multi_tenant && this.customer != null && (this.hasrole("admins") ||
+                this.hasrole("resellers") || this.hasrole("customer admins"))) {
+                bottons.push({
+                    action() {
+                        me.StartManageCompanyTour();
+                        return this.cancel();
+                    },
+                    text: 'Manage Company'
+                });
+            }
+            bottons.push({
+                action() {
+                    me.StartManageDataTour();
+                    return this.cancel();
+                },
+                text: 'Manage Data'
+            });
+
+
+            tour.addStep({
+                title: 'What do you want to explorer ?',
+                text: `Select from one of the below guided tours to learn more. Use your keyboard arror keys to move back and forward and Esc to exit the tour`,
+                buttons: bottons,
+                id: 'tourlist'
+            });
+            tour.start();
+        } catch (error) {
+            console.error(error);
+        }
+    }
+    OpenAdminsMenu() {
+        var me = this;
+        this.allowclick = false;
+        console.log('OpenAdminsMenu');
+        var target = document.getElementById("navbar-dropdown-toggle-btn-1");
+        this.halfmoon.deactivateAllDropdownToggles();
+        target.classList.add("active");
+        target.closest(".dropdown").classList.add("show");
+        setTimeout(() => {
+            me.allowclick = true;
+        }, 250);
+    }
+    CloseAllMenus() {
+        console.log('CloseAllMenus');
+        this.halfmoon.deactivateAllDropdownToggles();
+    }
+    StartManageCompanyTour() {
+        try {
+            var me = this;
+            const Shepherd = require("shepherd.js");
+            const tour = new Shepherd.Tour({
+                useModalOverlay: false,
+                tourName: 'managecompanyour',
+                exitOnEsc: true,
+                defaultStepOptions: {
+                    cancelIcon: {
+                        enabled: true
+                    },
+                    scrollTo: { behavior: 'smooth', block: 'center' }
+                },
+            });
+            let step: number = 0;
+            tour.on("show", (e) => {
+                const currentstep = parseInt(e.step.id);
+                if (currentstep == 0 || currentstep == 2 || currentstep == 4) {
+                    me.OpenAdminsMenu();
+                }
+                if (currentstep < 0) {
+                    step = step + 1;
+                } else {
+                    step = currentstep;
+                }
+            });
+            const defaultbuttons = [
+                {
+                    action() {
+                        return this.back();
+                    },
+                    classes: 'shepherd-button-secondary',
+                    text: 'Back'
+                },
+                {
+                    action() {
+                        return this.next();
+                    },
+                    text: 'Next'
+                }
+            ]
+
+            tour.addStep({
+                title: 'User management',
+                text: `You manage users by clicking Users in the admin menu`,
+                beforeShowPromise: function () {
+                    return new Promise((resolve) => setTimeout(resolve, 250));
+                },
+                when: {
+                    show() {
+                    }
+                },
+                attachTo: {
+                    element: '#menuadminusers',
+                    on: 'bottom'
+                },
+                popperOptions: {
+                    modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
+                },
+                buttons: [{
+                    action() {
+                        me.$location.path("/Users");
+                        if (!me.$scope.$$phase) { me.$scope.$apply(); }
+                        return this.next();
+                    },
+                    text: 'Next'
+                }
+                ],
+                id: '0'
+            });
+
+            tour.addStep({
+                title: 'User management',
+                text: `You assign new services to your users by clicking the <em class="fas fa-money-bill-wave"></em> icon. This require a valid vat number to have been added on the company page`,
+                beforeShowPromise: function () {
+                    return new Promise((resolve) => setTimeout(resolve, 250));
+                },
+                when: {
+                    show() {
+                    }
+                },
+                buttons: [{
+                    action() {
+                        return this.next();
+                    },
+                    text: 'Next'
+                }
+                ],
+                id: '1'
+            });
+
+
+            tour.addStep({
+                title: 'Roles management',
+                text: `You manage roles by clicking Roles in the admin menu. It is more efficent to use roles as a way to control access to resources and data. Many features will auto generate roles you can use to control access to these, like NodeRED workflows`,
+                beforeShowPromise: function () {
+                    return new Promise((resolve) => setTimeout(resolve, 250));
+                },
+                when: {
+                    show() {
+                    }
+                },
+                attachTo: {
+                    element: '#menuadminroles',
+                    on: 'bottom'
+                },
+                popperOptions: {
+                    modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
+                },
+                buttons: [{
+                    action() {
+                        me.$location.path("/Roles");
+                        if (!me.$scope.$$phase) { me.$scope.$apply(); }
+                        return this.next();
+                    },
+                    text: 'Next'
+                }
+                ],
+                id: '2'
+            });
+
+            tour.addStep({
+                title: 'Roles management',
+                text: `Roles is also how we load balance workload across multiple robots. Simply check RPA on the edit role page to allow assigning workflows to that role. Any robot that is only and not busy, will then pick up that workitem `,
+                attachTo: {
+                },
+                buttons: defaultbuttons,
+                id: '3'
+            });
+            tour.addStep({
+                title: 'Audit logs',
+                text: `This is the log of security events related to you and users you manage, this combined with the built in version control and on-the-fly encryption, makes it easy to comply with various regulatory demands like GDRP, FedRAMP, HIPAA etc. By default only your own entries are shown`,
+                beforeShowPromise: function () {
+                    return new Promise((resolve) => setTimeout(resolve, 250));
+                },
+                when: {
+                    show() {
+                        me.$location.path("/Auditlogs");
+                        if (!me.$scope.$$phase) { me.$scope.$apply(); }
+                    }
+                },
+                attachTo: {
+                    element: '#menuadminauditlogs',
+                    on: 'bottom'
+                },
+                popperOptions: {
+                    modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
+                },
+                buttons: [
+                    {
+                        action() {
+                            return this.cancel();
+                        },
+                        text: 'Exit'
+                    }
+                ],
+                id: '4'
+            });
+
+            // tour.addStep({
+            //     title: 'Manage credentials',
+            //     text: `For a more secure envoriment, it is a good practice to use encrypted credentials added here and not save those as plaintext in a robot workflow. Remember to give all robots access to the credentials.`,
+            //     attachTo: {
+            //         element: '#menuadmincredentials'
+            //     },
+            //     buttons: defaultbuttons,
+            //     id: '3'
+            // });
+            // tour.addStep({
+            //     title: 'Workflow forms',
+            //     text: `Nodered Workflows allows you to design forms with an endless combination of different form elements to interact with users as part of a process`,
+            //     attachTo: {
+            //         element: '#menuadminforms'
+            //     },
+            //     buttons: defaultbuttons,
+            //     id: '5'
+            // });
+            // tour.addStep({
+            //     title: 'Files',
+            //     text: `Files associated with robot workflows, forms and files you use as part of a Nodered workflow gets stored here. You can upload, download, delete and manage permissions on all files here. Remember to clean up, as a free user you only get 25 megabyte of storage`,
+            //     attachTo: {
+            //         element: '#menuadminfiles'
+            //     },
+            //     buttons: defaultbuttons,
+            //     id: '6'
+            // });
+
+            // if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length > 1) tour.addStep({
+            //     title: 'Enable multi tenancy',
+            //     text: `Per default OpenFlow is running in a single user mode, where users cannot share information. Click here to create a new Customer, and enable access to multiple user, roles, control access to data and workflows and to buy additional services`,
+            //     attachTo: {
+            //         element: '#menumultitenant'
+            //     },
+            //     buttons: defaultbuttons,
+            //     id: '7'
+            // });
+            // if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length < 2) tour.addStep({
+            //     title: 'Manage you users ',
+            //     text: `Click here to manage your users. You can create, edit and delete new users, and you can purchase and assign new services to users here`,
+            //     attachTo: {
+            //         element: '#menuadminusers'
+            //     },
+            //     buttons: defaultbuttons,
+            //     id: '8'
+            // });
+            // if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length < 2) tour.addStep({
+            //     title: 'Manage you roles',
+            //     text: `Click here to manage your roles. It is much more efficent to use a role when assigning permissons`,
+            //     attachTo: {
+            //         element: '#menuadminroles'
+            //     },
+            //     buttons: defaultbuttons,
+            //     id: '9'
+            // });
+            // if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length < 2) tour.addStep({
+            //     title: 'Manage you company',
+            //     text: `Click here to manage you company details, this is also where you can check your next Invoice and how many services you have added`,
+            //     attachTo: {
+            //         element: '#menumanagecustomer'
+            //     },
+            //     buttons: defaultbuttons,
+            //     id: '10'
+            // });
+
+            // tour.addStep({
+            //     title: 'Rerun tour',
+            //     text: `We hope you will enjoy the power on the leading opensource automation platform, click here to restart all tour steps.`,
+            //     attachTo: {
+            //         element: '#menutour'
+            //     },
+            //     buttons: [
+            //         {
+            //             action() {
+            //                 return this.back();
+            //             },
+            //             classes: 'shepherd-button-secondary',
+            //             text: 'Back'
+            //         },
+            //         {
+            //             action() {
+            //                 return this.cancel();
+            //             },
+            //             text: 'Exit'
+            //         }
+            //     ],
+            //     id: '-1'
+            // });
+            for (let i = 0; i < tour.steps.length; i++) {
+                const _stepid = parseInt(tour.steps[i].id);
+                if (_stepid < step) continue;
+                tour.show(_stepid.toString())
+                break;
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    StartManageDataTour() {
+        try {
+            var me = this;
+            const Shepherd = require("shepherd.js");
+            const tour = new Shepherd.Tour({
+                useModalOverlay: false,
+                tourName: 'managecompanyour',
+                exitOnEsc: true,
+                defaultStepOptions: {
+                    cancelIcon: {
+                        enabled: true
+                    },
+                    scrollTo: { behavior: 'smooth', block: 'center' }
+                },
+            });
+            let step: number = 0;
+            tour.on("show", (e) => {
+                const currentstep = parseInt(e.step.id);
+                // if (currentstep == 0 || currentstep == 2 || currentstep == 4) {
+                //     me.OpenAdminsMenu();
+                // }
+                if (currentstep < 0) {
+                    step = step + 1;
+                } else {
+                    step = currentstep;
+                }
+            });
+            const backbutton = {
+                action() {
+                    return this.back();
+                },
+                classes: 'shepherd-button-secondary',
+                text: 'Back'
+            };
+            const nextbutton = {
+                action() {
+                    return this.next();
+                },
+                text: 'Next'
+            };
+            const defaultbuttons = [backbutton, nextbutton];
+
+            tour.addStep({
+                title: 'Managing Data',
+                text: `OpenFlow is primarily a database with an security layer, and an api to orchestrate multiple NodeRED and OpenRPA robots. Data is there for a central element of understanding and getting the ful benefit of the platform`,
+                buttons: [nextbutton],
+                id: '0'
+            });
+
+            tour.addStep({
+                title: 'Managing Data',
+                text: `Most pages is a "view" on the data, but you can access ALL data inside the database, by clicking entities in the menu`,
+                attachTo: {
+                    element: '#menuentities',
+                    on: 'bottom'
+                },
+                when: {
+                    hide() {
+                        delete me.userdata.data.EntitiesCtrl;
+                        me.$location.path("/Entities/entities");
+                        if (!me.$scope.$$phase) { me.$scope.$apply(); }
+                    }
+                },
+                popperOptions: {
+                    modifiers: [{ name: 'offset', options: { offset: [50, 10] } }]
+                },
+                buttons: [backbutton, nextbutton],
+                id: '1'
+            });
+
+            tour.addStep({
+                title: 'Managing Data',
+                text: `The database contains a list of collections, similar to tables in an traditional relational database. We can store different kinds of data in the same collection, and there for group, and search our data in a more meaningful way`,
+                beforeShowPromise: function () {
+                    return new Promise((resolve) => setTimeout(resolve, 250));
+                },
+                attachTo: {
+                    element: '#menucollections',
+                    on: 'bottom'
+                },
+                when: {
+                    hide() {
+                        delete me.userdata.data.EntitiesCtrl;
+                        me.$location.path("/Entities/users");
+                        if (!me.$scope.$$phase) { me.$scope.$apply(); }
+                    }
+                },
+                popperOptions: {
+                    modifiers: [{ name: 'offset', options: { offset: [50, 20] } }]
+                },
+
+                buttons: [backbutton, nextbutton],
+                id: '2'
+            });
+
+
+            tour.addStep({
+                title: 'Managing Data',
+                text: `I selected the "users" collection, and as you can see it contains both user and role objects.<br>
+                Clicking <em class="fas fa-notes-medical"></em> will open the history for that object, allowing you to see different versions of the object<br>
+                <em class="fas fa-edit"></em> to edit and set permissions, <em
+                class="fas fa-trash"></em> to delete the entity`,
+                buttons: [backbutton, nextbutton],
+                id: '3'
+            });
+
+
+            tour.addStep({
+                title: 'Managing Data',
+                text: `Up here we have access to Undelete <em class="fas fa-undo"></em> to restore deleted object, <em class="fas fa-clone"></em> clone tool, that allows us to group all data by different keys and <em class="fas fa-plus"></em> to add a new entity to this collection`,
+                attachTo: {
+                    element: '#entitiestools',
+                    on: 'bottom'
+                },
+                when: {
+                    hide() {
+                        me.$location.path("/Entity/entities");
+                        delete me.userdata.data.EntitiesCtrl;
+                        if (!me.$scope.$$phase) { me.$scope.$apply(); }
+                    }
+                },
+                popperOptions: {
+                    modifiers: [{ name: 'offset', options: { offset: [0, 20] } }]
+                },
+
+                buttons: [backbutton, nextbutton],
+                id: '4'
+            });
+
+
+
+            tour.addStep({
+                title: 'Managing Data',
+                text: `When adding data, either from the webpage, a robot, NodeRED, PowerShell or the API, you need to comply with the entity restrictions setup for this OpenFlow instance, you will get an Access Denied if you do not have the right create permissions.`,
+                popperOptions: {
+                    modifiers: [{ name: 'offset', options: { offset: [50, 20] } }]
+                },
+
+                buttons: [backbutton, nextbutton],
+                id: '5'
+            });
+
+
+            tour.addStep({
+                title: 'Managing Data',
+                text: `Every entity in the database has an Access Control List that defines who can read, edit, delete or invoke this entity. Invoke will have different meanings for different types of entities`,
+                attachTo: {
+                    element: '#entitypermissions',
+                    on: 'bottom'
+                },
+                popperOptions: {
+                    modifiers: [{ name: 'offset', options: { offset: [50, 40] } }]
+                },
+                buttons: [backbutton, nextbutton],
+                id: '6'
+            });
+
+            tour.addStep({
+                title: 'Managing Data',
+                text: `Hear you can search for, and then add any user or role. You define what right you want to assign them. As a rule of thumb use roles, and not users unless absolutely necessary. Even with a low number of users it is often much more effecient to use roles to control permissions, than having to go back and update the permissions on all objects later to add/remove a user.`,
+                attachTo: {
+                    element: '#addusergroup',
+                    on: 'bottom'
+                },
+                popperOptions: {
+                    modifiers: [{ name: 'offset', options: { offset: [50, 20] } }]
+                },
+                buttons: [backbutton, nextbutton],
+                id: '7'
+            });
+            tour.addStep({
+                title: 'Managing Data',
+                text: `By default you get an structured view that allows adding or removing properties, but you are free to click the "show json" button to edit the object directly`,
+                attachTo: {
+                    element: '#enableshowjson',
+                    on: 'bottom'
+                },
+                popperOptions: {
+                    modifiers: [{ name: 'offset', options: { offset: [50, 20] } }]
+                },
+                buttons: [backbutton, nextbutton],
+                id: '8'
+            });
+
+
+
+            for (let i = 0; i < tour.steps.length; i++) {
+                const _stepid = parseInt(tour.steps[i].id);
+                if (_stepid < step) continue;
+                tour.show(_stepid.toString())
+                break;
+            }
+        } catch (error) {
+            console.error(error);
+        }
     }
 }
 export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
@@ -3688,7 +4411,8 @@ export class AuditlogsCtrl extends entitiesCtrl<Role> {
         this.postloadData = this.processdata;
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
             user = TokenUser.From(user);
-            if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) {
+            // if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) {
+            if (!user.HasRoleName("admins")) {
                 this.basequery = { "userid": user._id };
             }
             this.loadData();
@@ -5154,17 +5878,22 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                 }
                 if (NoderedUtil.IsNullUndefinded(this.model)) {
                     this.model = {} as any;
-                    this.model.name = (WebSocketClientService.user as any).company;
+
                     if (this.model.name == null || this.model.name == "") this.model.name = WebSocketClientService.user.name;
                     this.model._type = "customer";
-
                     var results = await NoderedUtil.Query(this.collection, { "_type": "billing", "userid": user._id }, null, null, 1, 0, null, null, null, 2);
+
                     if (results.length > 0) {
                         console.debug("Reuse billing id " + results[0]._id + " with stripeid " + results[0].stripeid);
                         this.model.name = results[0].name;
                         this.model.stripeid = results[0].stripeid;
                         this.model.vatnumber = results[0].vatnumber;
                         this.model.vattype = results[0].vattype;
+                    } else {
+                        var results = await NoderedUtil.Query(this.collection, { "_type": "user", "_id": WebSocketClientService.user._id }, null, null, 1, 0, null, null, null, 2);
+                        if (results.length > 0 && !NoderedUtil.IsNullEmpty((results[0] as any).company)) {
+                            this.model.name = (results[0] as any).company;
+                        }
                     }
                     this.model.email = (WebSocketClientService.user as any).username;
                     if ((WebSocketClientService.user as any).email) this.model.email = (WebSocketClientService.user as any).email;

@@ -4,13 +4,20 @@
     </div>
 </div>
 
+<div class="row"
+    ng-show="ctrl.WebSocketClientService.customer == null && menuctrl.WebSocketClientService.stripe_api_key && menuctrl.WebSocketClientService.stripe_api_key != ''">
+    <div class="col-sm-7">
+        To enable multitenancy and purchase options, you need to fill out the form below.<br><br>
+    </div>
+</div>
+
 <pre ng-show="ErrorMessage!=null">{{ ErrorMessage }}</pre>
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <form ng-submit="ctrl.submit()" class="form-horizontal" role="form" autocomplete="off">
 
     <div class="form-row row-eq-spacing-sm">
         <div class="col-sm">
-            <label for="name" class="required">name</label>
+            <label for="name" class="required">company name</label>
             <input type="text" class="form-control" id="name" placeholder="Company name" required="required"
                 ng-model="ctrl.model.name" ng-disabled="ctrl.loading==true">
         </div>
@@ -336,7 +343,8 @@
 
 <div ng-show="!ctrl.model.stripeid || ctrl.model.stripeid == ''">
     Current database usage:
-    <format-bytes ng-model="ctrl.model.dbusage" />
+    <format-bytes ng-model="ctrl.model.dbusage" ng-show="ctrl.model.dbusage" />
+    <format-bytes ng-model="WebSocketClientService.user.dbusage" ng-show="!ctrl.model.dbusage" />
 </div>
 <div ng-repeat="Resource in ctrl.Resources" ng-show="ctrl.model.stripeid">
     <div class="row" ng-repeat="Product in Resource.products" ng-show="Resource.customerassign == 'multiplevariants'">
