@@ -594,6 +594,7 @@ export class entitiesCtrl<T> {
     }
     more() {
         if (this.loading == true) { console.debug("allready loading data, exit"); return; }
+        if (this.models.length < (this.pagesize - 15)) { console.debug("Seems there are no more data, exit"); return; }
         this.page++;
         console.log("loading more ... page: " + (this.page + 1))
         this.loadData();

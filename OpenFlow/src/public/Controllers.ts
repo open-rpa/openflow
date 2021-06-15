@@ -3388,8 +3388,9 @@ export class NoderedCtrl {
                 }
             });
 
-            this.messages = "GetNoderedInstance completed, status " + this.instancestatus + "\n" + this.messages;
+            // this.messages = "GetNoderedInstance completed, status " + this.instancestatus + "\n" + this.messages;
 
+            reload = true;
             if (reload) {
                 setTimeout(() => {
                     this.GetNoderedInstance();

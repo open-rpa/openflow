@@ -920,6 +920,7 @@ export class DatabaseConnection {
                     if (item._id == customer.admins || item._id == customer.users) {
                         Base.removeRight(item, custadmins._id, [Rights.delete]);
                     }
+                    (item as any).company = customer.name;
                     item = this.ensureResource(item);
                 }
             }
@@ -1354,6 +1355,7 @@ export class DatabaseConnection {
                         if (q.item._id == customer.admins || q.item._id == customer.users) {
                             Base.removeRight(q.item, custadmins._id, [Rights.delete]);
                         }
+                        (q.item as any).company = customer.name;
                         q.item = this.ensureResource(q.item);
                     }
                 }
