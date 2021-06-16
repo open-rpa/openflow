@@ -2705,7 +2705,6 @@ export class DatabaseConnection {
                                 if (indexnames.indexOf("userid_1") === -1) {
                                     await this.createIndex(collection.name, "userid_1", { "userid": 1 }, null, span)
                                 }
-
                                 break;
                             case "users":
                                 if (indexnames.indexOf("workflowid_1") === -1) {

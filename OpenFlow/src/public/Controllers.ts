@@ -84,8 +84,6 @@ export class MenuCtrl {
         document.addEventListener(
             "click",
             (event) => {
-                console.log("click", event);
-                console.log("allowclick", this.allowclick);
                 try {
                     if (!this.allowclick) {
                         // event.cancelBubble = true;
@@ -103,8 +101,6 @@ export class MenuCtrl {
 
         this.halfmoon.onDOMContentLoaded();
         const cleanup = this.$scope.$on('signin', async (event, data) => {
-
-
             if (event && data) { }
             this.user = data;
             this.signedin = true;
@@ -112,7 +108,8 @@ export class MenuCtrl {
             this.customer = this.WebSocketClientService.customer;
             this.customers = await NoderedUtil.Query("users", { _type: "customer" }, null, { "name": 1 }, 100, 0, null, null, null, 2);
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            this.StartNewFeaturesTour(null)
+            this.StartNewFeaturesTour(null);
+            // this.StartManageRobotsAndNoderedTour();
             // cleanup();
         });
         const cleanup2 = this.$scope.$on('refreshtoken', async (event, data) => {
@@ -150,7 +147,6 @@ export class MenuCtrl {
                 for (let cust of this.customers)
                     if (cust._id == this.user.selectedcustomerid) this.customer = cust;
             }
-            console.log(this.customer);
             if (this.customer != null) this.WebSocketClientService.customer = this.customer as any;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         });
@@ -239,11 +235,13 @@ export class MenuCtrl {
         }
         return "";
     }
+    public NewFeaturesTour: any;
+    public Shepherd = require("shepherd.js");
     StartNewFeaturesTour(startfrom) {
         try {
+            if (this.NewFeaturesTour != null) return;
             var me = this;
-            const Shepherd = require("shepherd.js");
-            const tour = new Shepherd.Tour({
+            this.NewFeaturesTour = new this.Shepherd.Tour({
                 useModalOverlay: true,
                 tourName: 'featuretour',
                 exitOnEsc: true,
@@ -260,71 +258,71 @@ export class MenuCtrl {
                 step = startfrom;
             }
             step = parseInt(step as any);
-            console.log('beginning step', step);
 
-            tour.on("show", (e) => {
+            this.NewFeaturesTour.on("show", (e) => {
                 const currentstep = parseInt(e.step.id);
                 if (currentstep < 0) {
                     step = step + 1;
-                    console.log('-1 set current step', step);
                     this.setCookie("newfeatures", step, 365);
                 } else {
                     step = currentstep;
-                    console.log('set current step', currentstep);
                     this.setCookie("newfeatures", currentstep, 365);
                 }
             });
-            const defaultbuttons = [
-                {
-                    action() {
-                        return this.back();
-                    },
-                    classes: 'shepherd-button-secondary',
-                    text: 'Back'
+            this.NewFeaturesTour.on("complete", (e) => {
+                this.NewFeaturesTour = null;
+            });
+            this.NewFeaturesTour.on("cancel", (e) => {
+                this.NewFeaturesTour = null;
+            });
+            const backbutton = {
+                action() {
+                    return this.back();
                 },
-                {
-                    action() {
-                        return this.next();
-                    },
-                    text: 'Next'
-                }
-            ]
-
-            tour.addStep({
+                classes: 'shepherd-button-secondary',
+                text: 'Back'
+            };
+            const nextbutton = {
+                action() {
+                    return this.next();
+                },
+                text: 'Next'
+            };
+            const completebutton = {
+                action() {
+                    return this.complete();
+                },
+                text: 'Complete'
+            };
+            this.NewFeaturesTour.addStep({
                 title: 'New User Interface in OpenFlow',
                 text: `The new UI in Openflow, allows for using darkmode, you can toogle darkmode on this button or you can use the keyboard shortcut Shift+D.`,
                 attachTo: {
                     element: '#menudarkmode'
                 },
-                buttons: [{
-                    action() {
-                        return this.next();
-                    },
-                    text: 'Next'
-                }
-                ],
+                buttons: [nextbutton],
                 id: '0'
             });
 
-            if (this.WebSocketClientService.multi_tenant && this.customer == null) tour.addStep({
+            if (this.WebSocketClientService.multi_tenant && this.customer == null) this.NewFeaturesTour.addStep({
                 title: 'Enable multi tenancy',
                 text: `Per default OpenFlow is running in a single user mode, where users cannot share information. Click here to create a new Customer, and enable access to multiple user, roles, control access to data and workflows and to buy additional services`,
                 attachTo: {
                     element: '#menumultitenant'
                 },
-                buttons: defaultbuttons,
+                buttons: [backbutton, nextbutton],
                 id: '1'
             });
-            if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length < 2) tour.addStep({
+            if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length < 2) this.NewFeaturesTour.addStep({
                 title: 'Manage you company',
                 text: `Click here to manage you company details, this is also where you can check your next Invoice and how many services you have added`,
                 attachTo: {
                     element: '#menumanagecustomer'
                 },
-                buttons: defaultbuttons,
+                buttons: [backbutton, nextbutton],
                 id: '50'
             });
-            if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length < 2) tour.addStep({
+            if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length < 2) this.NewFeaturesTour.addStep({
                 title: 'Manage you users ',
                 text: `Click here to manage your users. You can create, edit and delete new users, and you can purchase and assign new services to users here`,
                 attachTo: {
@@ -333,61 +331,36 @@ export class MenuCtrl {
                 when: {
                     show() {
                         me.OpenAdminsMenu();
+                    },
+                    hide() {
+                        me.CloseAllMenus();
                     }
                 },
-                buttons: [{
-                    action() {
-                        me.CloseAllMenus();
-                        return this.back();
-                    },
-                    classes: 'shepherd-button-secondary',
-                    text: 'Back'
-                },
-                {
-                    action() {
-                        me.CloseAllMenus();
-                        return this.next();
-                    },
-                    text: 'Next'
-                }],
+                buttons: [backbutton, nextbutton],
                 id: '51'
             });
 
-            if (tour.steps.length > 0) {
-                const laststepid = parseInt(tour.steps[tour.steps.length - 1].id);
-                console.log(step, laststepid);
+            if (this.NewFeaturesTour.steps.length > 0) {
+                const laststepid = parseInt(this.NewFeaturesTour.steps[this.NewFeaturesTour.steps.length - 1].id);
                 if (step <= laststepid) {
-                    tour.addStep({
+                    this.NewFeaturesTour.addStep({
                         title: 'Thank you for using OpenIAP',
                         text: `We hope you will enjoy the power of the leading open Source Integrated Automation Platform, click here to see different help tours.`,
                         attachTo: {
                             element: '#menutour'
                         },
-                        buttons: [
-                            {
-                                action() {
-                                    return this.back();
-                                },
-                                classes: 'shepherd-button-secondary',
-                                text: 'Back'
-                            },
-                            {
-                                action() {
-                                    return this.cancel();
-                                },
-                                text: 'Exit'
-                            }
-                        ],
+                        buttons: [backbutton, completebutton],
                         id: '-1'
                     });
-                    for (let i = 0; i < tour.steps.length; i++) {
-                        const _stepid = parseInt(tour.steps[i].id);
+                    for (let i = 0; i < this.NewFeaturesTour.steps.length; i++) {
+                        const _stepid = parseInt(this.NewFeaturesTour.steps[i].id);
                         if (_stepid < step) continue;
-                        tour.show(_stepid.toString())
-                        break;
+                        this.NewFeaturesTour.show(_stepid.toString())
+                        return;
                     }
                 }
             }
+            this.NewFeaturesTour = null;
         } catch (error) {
             console.error(error);
         }
@@ -395,8 +368,7 @@ export class MenuCtrl {
     ListTours() {
         var me = this;
         try {
-            const Shepherd = require("shepherd.js");
-            const tour = new Shepherd.Tour({
+            const tour = new this.Shepherd.Tour({
                 useModalOverlay: true,
                 tourName: 'listoftour',
                 exitOnEsc: true,
@@ -411,7 +383,7 @@ export class MenuCtrl {
             bottons.push({
                 action() {
                     me.StartNewFeaturesTour(0);
-                    return this.cancel();
+                    return this.complete();
                 },
                 text: 'New Features'
             });
@@ -420,7 +392,7 @@ export class MenuCtrl {
                 bottons.push({
                     action() {
                         me.StartManageCompanyTour();
-                        return this.cancel();
+                        return this.complete();
                     },
                     text: 'Manage Company'
                 });
@@ -428,12 +400,17 @@ export class MenuCtrl {
             bottons.push({
                 action() {
                     me.StartManageDataTour();
-                    return this.cancel();
+                    return this.complete();
                 },
                 text: 'Manage Data'
             });
-
-
+            // bottons.push({
+            //     action() {
+            //         me.StartManageRobotsAndNoderedTour();
+            //         return this.complete();
+            //     },
+            //     text: 'Manage Robots and Nodered'
+            // });
             tour.addStep({
                 title: 'What do you want to explorer ?',
                 text: `Select from one of the below guided tours to learn more. Use your keyboard arror keys to move back and forward and Esc to exit the tour`,
@@ -448,7 +425,6 @@ export class MenuCtrl {
     OpenAdminsMenu() {
         var me = this;
         this.allowclick = false;
-        console.log('OpenAdminsMenu');
         var target = document.getElementById("navbar-dropdown-toggle-btn-1");
         this.halfmoon.deactivateAllDropdownToggles();
         target.classList.add("active");
@@ -458,16 +434,14 @@ export class MenuCtrl {
         }, 250);
     }
     CloseAllMenus() {
-        console.log('CloseAllMenus');
         this.halfmoon.deactivateAllDropdownToggles();
     }
     StartManageCompanyTour() {
         try {
             var me = this;
-            const Shepherd = require("shepherd.js");
-            const tour = new Shepherd.Tour({
+            const tour = new this.Shepherd.Tour({
                 useModalOverlay: false,
-                tourName: 'managecompanyour',
+                tourName: 'managecompanytour',
                 exitOnEsc: true,
                 defaultStepOptions: {
                     cancelIcon: {
@@ -488,21 +462,25 @@ export class MenuCtrl {
                     step = currentstep;
                 }
             });
-            const defaultbuttons = [
-                {
-                    action() {
-                        return this.back();
-                    },
-                    classes: 'shepherd-button-secondary',
-                    text: 'Back'
+            const backbutton = {
+                action() {
+                    return this.back();
                 },
-                {
-                    action() {
-                        return this.next();
-                    },
-                    text: 'Next'
-                }
-            ]
+                classes: 'shepherd-button-secondary',
+                text: 'Back'
+            };
+            const nextbutton = {
+                action() {
+                    return this.next();
+                },
+                text: 'Next'
+            };
+            const completebutton = {
+                action() {
+                    return this.complete();
+                },
+                text: 'Complete'
+            };
 
             tour.addStep({
                 title: 'User management',
@@ -512,6 +490,8 @@ export class MenuCtrl {
                 },
                 when: {
                     show() {
+                        me.$location.path("/Users");
+                        if (!me.$scope.$$phase) { me.$scope.$apply(); }
                     }
                 },
                 attachTo: {
@@ -521,15 +501,7 @@ export class MenuCtrl {
                 popperOptions: {
                     modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
                 },
-                buttons: [{
-                    action() {
-                        me.$location.path("/Users");
-                        if (!me.$scope.$$phase) { me.$scope.$apply(); }
-                        return this.next();
-                    },
-                    text: 'Next'
-                }
-                ],
+                buttons: [nextbutton],
                 id: '0'
             });
 
@@ -543,13 +515,7 @@ export class MenuCtrl {
                     show() {
                     }
                 },
-                buttons: [{
-                    action() {
-                        return this.next();
-                    },
-                    text: 'Next'
-                }
-                ],
+                buttons: [backbutton, nextbutton],
                 id: '1'
             });
 
@@ -571,15 +537,7 @@ export class MenuCtrl {
                 popperOptions: {
                     modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
                 },
-                buttons: [{
-                    action() {
-                        me.$location.path("/Roles");
-                        if (!me.$scope.$$phase) { me.$scope.$apply(); }
-                        return this.next();
-                    },
-                    text: 'Next'
-                }
-                ],
+                buttons: [backbutton, nextbutton],
                 id: '2'
             });
 
@@ -588,7 +546,7 @@ export class MenuCtrl {
                 text: `Roles is also how we load balance workload across multiple robots. Simply check RPA on the edit role page to allow assigning workflows to that role. Any robot that is only and not busy, will then pick up that workitem `,
                 attachTo: {
                 },
-                buttons: defaultbuttons,
+                buttons: [backbutton, nextbutton],
                 id: '3'
             });
             tour.addStep({
@@ -610,14 +568,7 @@ export class MenuCtrl {
                 popperOptions: {
                     modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
                 },
-                buttons: [
-                    {
-                        action() {
-                            return this.cancel();
-                        },
-                        text: 'Exit'
-                    }
-                ],
+                buttons: [backbutton, completebutton],
                 id: '4'
             });
 
@@ -723,10 +674,9 @@ export class MenuCtrl {
     StartManageDataTour() {
         try {
             var me = this;
-            const Shepherd = require("shepherd.js");
-            const tour = new Shepherd.Tour({
+            const tour = new this.Shepherd.Tour({
                 useModalOverlay: false,
-                tourName: 'managecompanyour',
+                tourName: 'managedatatour',
                 exitOnEsc: true,
                 defaultStepOptions: {
                     cancelIcon: {
@@ -760,7 +710,6 @@ export class MenuCtrl {
                 },
                 text: 'Next'
             };
-            const defaultbuttons = [backbutton, nextbutton];
 
             tour.addStep({
                 title: 'Managing Data',
@@ -916,6 +865,290 @@ export class MenuCtrl {
             console.error(error);
         }
     }
+
+    StartManageRobotsAndNoderedTour() {
+        try {
+            var me = this;
+            const tour = new this.Shepherd.Tour({
+                useModalOverlay: false,
+                tourName: 'managerobotnoderedtour',
+                exitOnEsc: true,
+                defaultStepOptions: {
+                    cancelIcon: {
+                        enabled: true
+                    },
+                    scrollTo: { behavior: 'smooth', block: 'center' }
+                },
+            });
+            let step: number = 0;
+            tour.on("show", (e) => {
+                const currentstep = parseInt(e.step.id);
+                if (currentstep == 0 || currentstep == 1) {
+                    me.OpenAdminsMenu();
+                }
+                if (currentstep < 0) {
+                    step = step + 1;
+                } else {
+                    step = currentstep;
+                }
+            });
+            const backbutton = {
+                action() {
+                    return this.back();
+                },
+                classes: 'shepherd-button-secondary',
+                text: 'Back'
+            };
+            const nextbutton = {
+                action() {
+                    return this.next();
+                },
+                text: 'Next'
+            };
+            const completebutton = {
+                action() {
+                    return this.complete();
+                },
+                text: 'Complete'
+            };
+
+            tour.addStep({
+                title: 'Managing Robots',
+                text: `Robots run as a User. Normaly you will run a robot as your own user, but once you start to scale it makes sense to create dedicated bot accounts. 
+                Keep in mind you cannot run multiply robots with the same user account, so create meaning full names when adding new users`,
+                beforeShowPromise: function () {
+                    return new Promise((resolve) => setTimeout(resolve, 250));
+                },
+                when: {
+                    show() {
+                        me.$location.path("/Users");
+                        if (!me.$scope.$$phase) { me.$scope.$apply(); }
+                    }
+                },
+                attachTo: {
+                    element: '#menuadminusers',
+                    on: 'bottom'
+                },
+                popperOptions: {
+                    modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
+                },
+                buttons: [nextbutton],
+                id: '0'
+            });
+
+            tour.addStep({
+                title: 'Managing Robots',
+                text: `When scaling to many robots, you will need to spread out the workload to many robots. You can create a role, and add all the robots user accounts to that role.`,
+                beforeShowPromise: function () {
+                    return new Promise((resolve) => setTimeout(resolve, 250));
+                },
+                when: {
+                    show() {
+                        me.$location.path("/Roles");
+                        if (!me.$scope.$$phase) { me.$scope.$apply(); }
+                    }
+                },
+                attachTo: {
+                    element: '#menuadminroles',
+                    on: 'bottom'
+                },
+                popperOptions: {
+                    modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
+                },
+                buttons: [nextbutton],
+                id: '1'
+            });
+
+
+            tour.addStep({
+                title: 'Managing Robots',
+                text: `On the new role make sure to check the RPA role. This tell the robots that is member of this role, to wait for work sent to this role. When you send work to a role, any robot that is online and is not busy with other workflows will take the job. If no robots pick up the message it will be queue up and retry automatically`,
+                beforeShowPromise: function () {
+                    return new Promise((resolve) => setTimeout(resolve, 250));
+                },
+                when: {
+                    show() {
+                        me.$location.path("/Roles");
+                        if (!me.$scope.$$phase) { me.$scope.$apply(); }
+                    }
+                },
+                attachTo: {
+                    element: '#menuadminroles',
+                    on: 'bottom'
+                },
+                popperOptions: {
+                    modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
+                },
+                buttons: [nextbutton],
+                id: '2'
+            });
+
+            tour.addStep({
+                title: 'User management',
+                text: `You assign new services to your users by clicking the <em class="fas fa-money-bill-wave"></em> icon. This require a valid vat number to have been added on the company page`,
+                beforeShowPromise: function () {
+                    return new Promise((resolve) => setTimeout(resolve, 250));
+                },
+                when: {
+                    show() {
+                    }
+                },
+                buttons: [backbutton, nextbutton],
+                id: '1'
+            });
+
+
+            tour.addStep({
+                title: 'Roles management',
+                text: `You manage roles by clicking Roles in the admin menu. It is more efficent to use roles as a way to control access to resources and data. Many features will auto generate roles you can use to control access to these, like NodeRED workflows`,
+                beforeShowPromise: function () {
+                    return new Promise((resolve) => setTimeout(resolve, 250));
+                },
+                when: {
+                    show() {
+                    }
+                },
+                attachTo: {
+                    element: '#menuadminroles',
+                    on: 'bottom'
+                },
+                popperOptions: {
+                    modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
+                },
+                buttons: [backbutton, nextbutton],
+                id: '2'
+            });
+
+            tour.addStep({
+                title: 'Roles management',
+                text: `Roles is also how we load balance workload across multiple robots. Simply check RPA on the edit role page to allow assigning workflows to that role. Any robot that is only and not busy, will then pick up that workitem `,
+                attachTo: {
+                },
+                buttons: [backbutton, nextbutton],
+                id: '3'
+            });
+            tour.addStep({
+                title: 'Audit logs',
+                text: `This is the log of security events related to you and users you manage, this combined with the built in version control and on-the-fly encryption, makes it easy to comply with various regulatory demands like GDRP, FedRAMP, HIPAA etc. By default only your own entries are shown`,
+                beforeShowPromise: function () {
+                    return new Promise((resolve) => setTimeout(resolve, 250));
+                },
+                when: {
+                    show() {
+                        me.$location.path("/Auditlogs");
+                        if (!me.$scope.$$phase) { me.$scope.$apply(); }
+                    }
+                },
+                attachTo: {
+                    element: '#menuadminauditlogs',
+                    on: 'bottom'
+                },
+                popperOptions: {
+                    modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
+                },
+                buttons: [backbutton, completebutton],
+                id: '4'
+            });
+
+            // tour.addStep({
+            //     title: 'Manage credentials',
+            //     text: `For a more secure envoriment, it is a good practice to use encrypted credentials added here and not save those as plaintext in a robot workflow. Remember to give all robots access to the credentials.`,
+            //     attachTo: {
+            //         element: '#menuadmincredentials'
+            //     },
+            //     buttons: defaultbuttons,
+            //     id: '3'
+            // });
+            // tour.addStep({
+            //     title: 'Workflow forms',
+            //     text: `Nodered Workflows allows you to design forms with an endless combination of different form elements to interact with users as part of a process`,
+            //     attachTo: {
+            //         element: '#menuadminforms'
+            //     },
+            //     buttons: defaultbuttons,
+            //     id: '5'
+            // });
+            // tour.addStep({
+            //     title: 'Files',
+            //     text: `Files associated with robot workflows, forms and files you use as part of a Nodered workflow gets stored here. You can upload, download, delete and manage permissions on all files here. Remember to clean up, as a free user you only get 25 megabyte of storage`,
+            //     attachTo: {
+            //         element: '#menuadminfiles'
+            //     },
+            //     buttons: defaultbuttons,
+            //     id: '6'
+            // });
+
+            // if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length > 1) tour.addStep({
+            //     title: 'Enable multi tenancy',
+            //     text: `Per default OpenFlow is running in a single user mode, where users cannot share information. Click here to create a new Customer, and enable access to multiple user, roles, control access to data and workflows and to buy additional services`,
+            //     attachTo: {
+            //         element: '#menumultitenant'
+            //     },
+            //     buttons: defaultbuttons,
+            //     id: '7'
+            // });
+            // if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length < 2) tour.addStep({
+            //     title: 'Manage you users ',
+            //     text: `Click here to manage your users. You can create, edit and delete new users, and you can purchase and assign new services to users here`,
+            //     attachTo: {
+            //         element: '#menuadminusers'
+            //     },
+            //     buttons: defaultbuttons,
+            //     id: '8'
+            // });
+            // if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length < 2) tour.addStep({
+            //     title: 'Manage you roles',
+            //     text: `Click here to manage your roles. It is much more efficent to use a role when assigning permissons`,
+            //     attachTo: {
+            //         element: '#menuadminroles'
+            //     },
+            //     buttons: defaultbuttons,
+            //     id: '9'
+            // });
+            // if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length < 2) tour.addStep({
+            //     title: 'Manage you company',
+            //     text: `Click here to manage you company details, this is also where you can check your next Invoice and how many services you have added`,
+            //     attachTo: {
+            //         element: '#menumanagecustomer'
+            //     },
+            //     buttons: defaultbuttons,
+            //     id: '10'
+            // });
+
+            // tour.addStep({
+            //     title: 'Rerun tour',
+            //     text: `We hope you will enjoy the power on the leading opensource automation platform, click here to restart all tour steps.`,
+            //     attachTo: {
+            //         element: '#menutour'
+            //     },
+            //     buttons: [
+            //         {
+            //             action() {
+            //                 return this.back();
+            //             },
+            //             classes: 'shepherd-button-secondary',
+            //             text: 'Back'
+            //         },
+            //         {
+            //             action() {
+            //                 return this.cancel();
+            //             },
+            //             text: 'Exit'
+            //         }
+            //     ],
+            //     id: '-1'
+            // });
+            for (let i = 0; i < tour.steps.length; i++) {
+                const _stepid = parseInt(tour.steps[i].id);
+                if (_stepid < step) continue;
+                tour.show(_stepid.toString())
+                break;
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
 }
 export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
     public arguments: any;
@@ -999,7 +1232,6 @@ export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
                 workflowid: this.model._id,
                 data: this.arguments
             }
-            console.log('test');
             if (this.arguments === null || this.arguments === undefined) { this.arguments = {}; }
             const result: any = await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", this.user._id, this.queuename, rpacommand, null, parseInt(this.timeout), true,
                 2);
@@ -2790,7 +3022,6 @@ export class EditFormCtrl extends entityCtrl<Form> {
 
                 const Provider = Providers.getProvider('storage', storage);
                 const provider = new Provider(this);
-                // console.log(provider);
             } catch (error) {
                 console.error(error);
             }
@@ -2833,22 +3064,16 @@ export class EditFormCtrl extends entityCtrl<Form> {
                     },
                     hooks: {
                         customValidation: function (submission, next) {
-                            console.log("customValidation");
-                            console.log(submission);
                         }
                     }
 
                 });
             // this.Formiobuilder.hook('customValidation', { ...submission, component: options.component }, (err) => {
             this.Formiobuilder.options.hooks.beforeSubmit = (submission, callback) => {
-                console.log("beforeSubmit");
-                console.log(submission);
-
             };
 
             this.Formiobuilder.url = "/formio";
             this.Formiobuilder.on('change', form => {
-                console.log("change");
                 this.model.schema = form;
             })
             this.Formiobuilder.on('submit', submission => {
@@ -3242,7 +3467,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 item.storage = "url";
                 item.url = "/upload"
             }
-            console.log(item);
         }
     }
     sleep(ms) {
@@ -3252,7 +3476,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         next();
     }
     async renderform() {
-        console.log('renderform');
         if (this.form.fbeditor == null || this.form.fbeditor == undefined) this.form.fbeditor = true;
         if ((this.form.fbeditor as any) == "true") this.form.fbeditor = true;
         if ((this.form.fbeditor as any) == "false") this.form.fbeditor = false;
@@ -3371,8 +3594,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                     hooks: {
                         beforeSubmit: this.beforeSubmit.bind(this),
                         customValidation: async (submission, next) => {
-                            console.log("customValidation");
-                            console.log(submission);
                             $(".alert-success").hide();
                             setTimeout(() => {
                                 // just to be safe
@@ -3894,7 +4115,6 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
                 this.errormessage = "Failed loading item version " + model._version;
                 return;
             }
-            console.log(model);
             if (asXAML == true) {
                 var xaml = model.item.Xaml;
                 this.download(model.item.Filename, xaml);
@@ -6135,40 +6355,6 @@ export class CustomerCtrl extends entityCtrl<Customer> {
             } else {
                 this.AddPlan2();
             }
-
-
-
-            // let proration = 0;
-            // let prorationcurrency = "";
-            // let prorationtext = [];
-            // let newtotal = 0;
-            // let newquantity = 0;
-            // for (var line of nextinvoice.lines.data) {
-            //     if (line.proration && (line.plan.id == product.stripeprice || line.price.id == product.stripeprice)) {
-            //         proration += line.amount;
-            //         prorationcurrency = line.currency;
-            //         // prorationtext.push(line.description);
-            //     }
-            //     if ((line.plan.id == product.stripeprice || line.price.id == product.stripeprice) && !line.proration) {
-            //         newtotal = line.amount;
-            //         prorationcurrency = line.currency;
-            //         newquantity = line.quantity;
-            //     }
-            // }
-            // var message = "";
-            // if (proration > 0) {
-            //     message += "Adds " + (proration / 100) + prorationcurrency + " to your next invoice\n" + prorationtext.join("\n");
-            // }
-            // console.log(nextinvoice);
-            // if (message != "") {
-            //     message += "\nhere after your new total for " + newquantity + " x " + product.name + " is " + (newtotal / 100) + prorationcurrency + " per month";
-            //     if (!confirm(message)) {
-            //         this.loading = false;
-            //         this.loadData();
-            //         return;
-            //     }
-            // }
-
         } catch (error) {
             this.loading = false;
             this.errormessage = error;
@@ -6311,10 +6497,10 @@ export class EntityRestrictionsCtrl extends entitiesCtrl<Base> {
         (model as any).collection = collection;
         (model as any).paths = paths;
         if (model._id) {
-            console.log("updating " + name);
+            console.debug("updating " + name);
             await NoderedUtil.UpdateOne(this.collection, null, model, 1, false, null, 2);
         } else {
-            console.log("adding " + name);
+            console.debug("adding " + name);
             await NoderedUtil.InsertOne(this.collection, model, 1, false, null, 2);
         }
     }
@@ -6766,10 +6952,10 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
             Base.addRight(model, "5a17f157c4815318c8536c21", "users", [2]);
         }
         if (model._id) {
-            console.log("updating " + name);
+            console.debug("updating " + name);
             return await NoderedUtil.UpdateOne(this.collection, null, model, 1, false, null, 2);
         } else {
-            console.log("adding " + name);
+            console.debug("adding " + name);
             return await NoderedUtil.InsertOne(this.collection, model, 1, false, null, 2);
         }
     }
