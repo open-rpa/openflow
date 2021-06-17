@@ -2729,6 +2729,9 @@ export class DatabaseConnection {
                                     await this.createIndex(collection.name, "unique_username_1", { "username": 1 },
                                         { "unique": true, "name": "unique_username_1", "partialFilterExpression": { "_type": "user" } }, span)
                                 }
+                                if (indexnames.indexOf("members._id_1") === -1) {
+                                    await this.createIndex(collection.name, "members._id_1", { "members._id": 1 }, null, span)
+                                }
                                 break;
                             case "openrpa":
                                 if (indexnames.indexOf("_created_1") === -1) {
@@ -2736,6 +2739,14 @@ export class DatabaseConnection {
                                 }
                                 if (indexnames.indexOf("_type_projectid_name_1") === -1) {
                                     await this.createIndex(collection.name, "_type_projectid_name_1", { _type: 1, "{projectid:-1,name:-1}": 1 }, null, span)
+                                }
+                                break;
+                            case "dbusage":
+                                if (indexnames.indexOf("_created_1") === -1) {
+                                    await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
+                                }
+                                if (indexnames.indexOf("collection_1_timestamp_1") === -1) {
+                                    await this.createIndex(collection.name, "collection_1_timestamp_1", { _type: 1, "{collection:1,timestamp:1}": 1 }, null, span)
                                 }
                                 break;
                             default:

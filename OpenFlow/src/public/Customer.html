@@ -346,8 +346,9 @@
     <format-bytes ng-model="ctrl.model.dbusage" ng-show="ctrl.model.dbusage" />
     <format-bytes ng-model="WebSocketClientService.user.dbusage" ng-show="!ctrl.model.dbusage" />
 </div>
-<div ng-repeat="Resource in ctrl.Resources" ng-show="ctrl.model.stripeid">
-    <div class="row" ng-repeat="Product in Resource.products" ng-show="Resource.customerassign == 'multiplevariants'">
+<div ng-repeat="Resource in ctrl.Resources | orderBy: 'order'" ng-show="ctrl.model.stripeid">
+    <div class="row" ng-repeat="Product in Resource.products | orderBy: 'order'"
+        ng-show="Resource.customerassign == 'multiplevariants'">
         <div class="col">{{Product.name}}</div>
         <div class="col">{{ Product.count }}</div>
 
@@ -369,7 +370,8 @@
         </div>
 
         <div class="col">
-            <select ng-model="Resource.newproduct" ng-options="item as item.name for item in Resource.products"
+            <select ng-model="Resource.newproduct"
+                ng-options="item as item.name for item in Resource.products | orderBy: 'order'"
                 ng-disabled="ctrl.loading==true">
             </select>
         </div>
@@ -397,9 +399,9 @@
 
 <h1 ng-show="ctrl.model.stripeid">User assigned plans</h1>
 
-<div ng-repeat="Resource in ctrl.UserResources" ng-show="ctrl.model.stripeid">
+<div ng-repeat="Resource in ctrl.UserResources | orderBy: 'order'" ng-show="ctrl.model.stripeid">
     <h4>{{Resource.name}}</h4>
-    <div class="row" ng-repeat="Product in Resource.products" ng-show="Product.count > 0">
+    <div class="row" ng-repeat="Product in Resource.products | orderBy: 'order'" ng-show="Product.count > 0">
         <div class="col">{{Product.name}}</div>
         <div class="col">{{ Product.count }}</div>
     </div>

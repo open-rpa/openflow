@@ -26,19 +26,19 @@
           <a href="#/Entities" class="nav-link" ng-show="menuctrl.hasrole('users')"><span translate
               lib="web">entities</span></a>
         </li>
-        <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Workflows')}">
+        <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Workflows')}" id="menuworkflows">
           <a href="#/Workflows" class="nav-link"><span translate lib="web">workflows</span></a>
         </li>
-        <li class="nav-item" ng-class="{active: menuctrl.PathIs('/RPAWorkflows')}">
+        <li class="nav-item" ng-class="{active: menuctrl.PathIs('/RPAWorkflows')}" id="menurpaworkflows">
           <a href="#/RPAWorkflows" class="nav-link" ng-show="menuctrl.hasrole('users')"><span translate
               lib="web">rpaworkflows</span></a>
         </li>
-        <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Clients')}">
+        <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Clients')}" id="menuclients">
           <a href="#/Clients" class="nav-link" ng-show="menuctrl.hasrole('users')"><span translate
               lib="web">clients</span></a>
         </li>
-        <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Nodered')}">
-          <a href="#/Nodered" class="nav-link" id="menunodered"
+        <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Nodered')}" id="menunodered">
+          <a href="#/Nodered" class="nav-link"
             ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')">
             <span translate lib="web">nodered</span></a>
         </li>
@@ -84,24 +84,17 @@
         </div>
       </ul>
       <form class="form-inline d-none d-md-flex ml-auto">
-        <!-- remove -->
-        <!-- <div ng-class="{active: menuctrl.PathIs('/Customer')}" id="menumultitenant"
-          ng-show="menuctrl.WebSocketClientService.multi_tenant && menuctrl.customer == null">
-          <a href="#/Customer" class="nav-link">
-            <span translate lib="web">Enable multi tenancy</span></a>
-        </div> -->
         <div id="menumultitenant" ng-class="{active: menuctrl.PathIs('/Customer')}"
-          ng-show="menuctrl.WebSocketClientService.multi_tenant && menuctrl.customer == null">
+          ng-show="menuctrl.WebSocketClientService.multi_tenant && menuctrl.customer == null && menuctrl.customers.length == 0">
           <a href="#/Customer" class="nav-link">
             <span translate lib="web">Enable multi tenancy</span></a>
         </div>
 
         <div id="menumanagecustomer" ng-class="{active: menuctrl.PathIs('/Customer')}"
-          ng-show="menuctrl.WebSocketClientService.multi_tenant && menuctrl.customers.length == 1">
+          ng-show="menuctrl.WebSocketClientService.multi_tenant && menuctrl.customer != null && menuctrl.customers.length == 1">
           <a href ng-click="menuctrl.EditCustomer(menuctrl.customer)" class="nav-link">Manage
             {{menuctrl.customer.name}}</a>
         </div>
-        <!-- remove -->
 
         <input type="text" class="form-control" placeholder="Search" ng-model="menuctrl.searchstring"
           ng-change="menuctrl.Search()" id="menusearch"

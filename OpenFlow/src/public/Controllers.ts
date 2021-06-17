@@ -109,8 +109,6 @@ export class MenuCtrl {
             this.customers = await NoderedUtil.Query("users", { _type: "customer" }, null, { "name": 1 }, 100, 0, null, null, null, 2);
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             this.StartNewFeaturesTour(null);
-            // this.StartManageRobotsAndNoderedTour();
-            // cleanup();
         });
         const cleanup2 = this.$scope.$on('refreshtoken', async (event, data) => {
             if (event && data) { }
@@ -129,6 +127,10 @@ export class MenuCtrl {
                             this.WebSocketClientService.customer = cust as any;
                         }
                     }
+                    if (this.customers.length == 1) {
+                        this.customer = this.customers[0];
+                        this.WebSocketClientService.customer = this.customers[0] as any;
+                    }
                 }
             }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -143,9 +145,14 @@ export class MenuCtrl {
             if (event && data) { }
             this.customer = this.WebSocketClientService.customer;
             this.customers = await NoderedUtil.Query("users", { _type: "customer" }, null, { "name": 1 }, 100, 0, null, null, null, 2);
-            if (this.customers.length > 0 && this.user.selectedcustomerid != null) {
+            if (this.customers.length > 0) {
                 for (let cust of this.customers)
                     if (cust._id == this.user.selectedcustomerid) this.customer = cust;
+
+                if (this.customers.length == 1) {
+                    this.customer = this.customers[0];
+                    this.WebSocketClientService.customer = this.customers[0] as any;
+                }
             }
             if (this.customer != null) this.WebSocketClientService.customer = this.customer as any;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -304,7 +311,7 @@ export class MenuCtrl {
                 id: '0'
             });
 
-            if (this.WebSocketClientService.multi_tenant && this.customer == null) this.NewFeaturesTour.addStep({
+            if (this.WebSocketClientService.multi_tenant && this.customer == null && this.customers.length == 0) this.NewFeaturesTour.addStep({
                 title: 'Enable multi tenancy',
                 text: `Per default OpenFlow is running in a single user mode, where users cannot share information. Click here to create a new Customer, and enable access to multiple user, roles, control access to data and workflows and to buy additional services`,
                 attachTo: {
@@ -313,33 +320,45 @@ export class MenuCtrl {
                 buttons: [backbutton, nextbutton],
                 id: '1'
             });
-            if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length < 2) this.NewFeaturesTour.addStep({
-                title: 'Manage you company',
-                text: `Click here to manage you company details, this is also where you can check your next Invoice and how many services you have added`,
-                attachTo: {
-                    element: '#menumanagecustomer'
-                },
-                buttons: [backbutton, nextbutton],
-                id: '50'
-            });
-            if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length < 2) this.NewFeaturesTour.addStep({
-                title: 'Manage you users ',
-                text: `Click here to manage your users. You can create, edit and delete new users, and you can purchase and assign new services to users here`,
-                attachTo: {
-                    element: '#menuadminusers'
-                },
-                when: {
-                    show() {
-                        me.OpenAdminsMenu();
+            if (this.hasrole("customer admins") || this.hasrole("resellers") || this.hasrole("admins")) {
+                if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length == 1) this.NewFeaturesTour.addStep({
+                    title: 'Manage your company',
+                    text: `Click here to manage you company details, this is also where you can check your next Invoice and how many services you have added`,
+                    attachTo: {
+                        element: '#menumanagecustomer'
                     },
-                    hide() {
-                        me.CloseAllMenus();
-                    }
-                },
-                buttons: [backbutton, nextbutton],
-                id: '51'
-            });
+                    buttons: [backbutton, nextbutton],
+                    id: '50'
+                });
+                if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length > 0) this.NewFeaturesTour.addStep({
+                    title: 'Manage your users ',
+                    text: `Click here to manage your users. You can create, edit and delete new users, and you can purchase and assign new services to users here`,
+                    attachTo: {
+                        element: '#menuadminusers'
+                    },
+                    when: {
+                        show() {
+                            me.OpenAdminsMenu();
+                        },
+                        hide() {
+                            me.CloseAllMenus();
+                        }
+                    },
+                    buttons: [backbutton, nextbutton],
+                    id: '51'
+                });
 
+                if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length > 1) this.NewFeaturesTour.addStep({
+                    title: 'Select a company',
+                    text: `Click here to select a company to work with. This will filter the users and roles list, and control what customer to add new items too`,
+                    attachTo: {
+                        element: '#menuresellermenu'
+                    },
+                    buttons: [backbutton, nextbutton],
+                    id: '52'
+                });
+
+            }
             if (this.NewFeaturesTour.steps.length > 0) {
                 const laststepid = parseInt(this.NewFeaturesTour.steps[this.NewFeaturesTour.steps.length - 1].id);
                 if (step <= laststepid) {
@@ -387,7 +406,7 @@ export class MenuCtrl {
                 },
                 text: 'New Features'
             });
-            if (this.WebSocketClientService.multi_tenant && this.customer != null && (this.hasrole("admins") ||
+            if (this.WebSocketClientService.multi_tenant && this.customers.length > 0 && (this.hasrole("admins") ||
                 this.hasrole("resellers") || this.hasrole("customer admins"))) {
                 bottons.push({
                     action() {
@@ -404,16 +423,16 @@ export class MenuCtrl {
                 },
                 text: 'Manage Data'
             });
-            // bottons.push({
-            //     action() {
-            //         me.StartManageRobotsAndNoderedTour();
-            //         return this.complete();
-            //     },
-            //     text: 'Manage Robots and Nodered'
-            // });
+            bottons.push({
+                action() {
+                    me.StartManageRobotsAndNoderedTour();
+                    return this.complete();
+                },
+                text: 'Manage Robots and Nodered'
+            });
             tour.addStep({
                 title: 'What do you want to explorer ?',
-                text: `Select from one of the below guided tours to learn more. Use your keyboard arror keys to move back and forward and Esc to exit the tour`,
+                text: `Select from one of the below guided tours to learn more. Use your keyboard arror keys to move back and forward and Esc to exit the tour. <br><small><i>For billing questions and sales support feel free to reach out on support@openiap.io, for all other questions use the <a class="text-primary" href="https://bb.openiap.io/" target="_blank" rel="noopener">forum</a> or <a class="text-primary" href="https://rocket.openiap.io/" target="_blank" rel="noopener">rocket</a> chat</i></small>`,
                 buttons: bottons,
                 id: 'tourlist'
             });
@@ -869,6 +888,7 @@ export class MenuCtrl {
     StartManageRobotsAndNoderedTour() {
         try {
             var me = this;
+
             const tour = new this.Shepherd.Tour({
                 useModalOverlay: false,
                 tourName: 'managerobotnoderedtour',
@@ -883,7 +903,7 @@ export class MenuCtrl {
             let step: number = 0;
             tour.on("show", (e) => {
                 const currentstep = parseInt(e.step.id);
-                if (currentstep == 0 || currentstep == 1) {
+                if (currentstep == 0 || currentstep == 1 || currentstep == 3 || currentstep == 6) {
                     me.OpenAdminsMenu();
                 }
                 if (currentstep < 0) {
@@ -919,6 +939,8 @@ export class MenuCtrl {
                 beforeShowPromise: function () {
                     return new Promise((resolve) => setTimeout(resolve, 250));
                 },
+                classes: 'shepherd shepherd-open shepherd-theme-arrows shepherd-transparent-text',
+
                 when: {
                     show() {
                         me.$location.path("/Users");
@@ -938,13 +960,18 @@ export class MenuCtrl {
 
             tour.addStep({
                 title: 'Managing Robots',
-                text: `When scaling to many robots, you will need to spread out the workload to many robots. You can create a role, and add all the robots user accounts to that role.`,
+                text: `When scaling to many robots, you will need to spread out the workload to many robots. You can create a role, and add all the robot user accounts to that role.`,
                 beforeShowPromise: function () {
                     return new Promise((resolve) => setTimeout(resolve, 250));
                 },
                 when: {
                     show() {
                         me.$location.path("/Roles");
+                        if (!me.$scope.$$phase) { me.$scope.$apply(); }
+                    },
+                    hide() {
+                        me.CloseAllMenus();
+                        me.$location.path("/Role");
                         if (!me.$scope.$$phase) { me.$scope.$apply(); }
                     }
                 },
@@ -955,7 +982,7 @@ export class MenuCtrl {
                 popperOptions: {
                     modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
                 },
-                buttons: [nextbutton],
+                buttons: [backbutton, nextbutton],
                 id: '1'
             });
 
@@ -968,106 +995,182 @@ export class MenuCtrl {
                 },
                 when: {
                     show() {
-                        me.$location.path("/Roles");
+                        me.$location.path("/Role");
                         if (!me.$scope.$$phase) { me.$scope.$apply(); }
                     }
                 },
                 attachTo: {
-                    element: '#menuadminroles',
-                    on: 'bottom'
+                    element: '#rparole',
+                    on: 'right'
                 },
                 popperOptions: {
-                    modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
-                },
-                buttons: [nextbutton],
-                id: '2'
-            });
-
-            tour.addStep({
-                title: 'User management',
-                text: `You assign new services to your users by clicking the <em class="fas fa-money-bill-wave"></em> icon. This require a valid vat number to have been added on the company page`,
-                beforeShowPromise: function () {
-                    return new Promise((resolve) => setTimeout(resolve, 250));
-                },
-                when: {
-                    show() {
-                    }
-                },
-                buttons: [backbutton, nextbutton],
-                id: '1'
-            });
-
-
-            tour.addStep({
-                title: 'Roles management',
-                text: `You manage roles by clicking Roles in the admin menu. It is more efficent to use roles as a way to control access to resources and data. Many features will auto generate roles you can use to control access to these, like NodeRED workflows`,
-                beforeShowPromise: function () {
-                    return new Promise((resolve) => setTimeout(resolve, 250));
-                },
-                when: {
-                    show() {
-                    }
-                },
-                attachTo: {
-                    element: '#menuadminroles',
-                    on: 'bottom'
-                },
-                popperOptions: {
-                    modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
+                    modifiers: [{ name: 'offset', options: { offset: [0, 120] } }]
                 },
                 buttons: [backbutton, nextbutton],
                 id: '2'
             });
 
+
             tour.addStep({
-                title: 'Roles management',
-                text: `Roles is also how we load balance workload across multiple robots. Simply check RPA on the edit role page to allow assigning workflows to that role. Any robot that is only and not busy, will then pick up that workitem `,
+                title: 'Credentials',
+                text: `For a more secure envoriment, it is a good practice to use encrypted credentials added here and not save those as plaintext in a robot workflow. Remember to give all robots access to the credentials.`,
+                beforeShowPromise: function () {
+                    return new Promise((resolve) => setTimeout(resolve, 250));
+                },
+                when: {
+                    show() {
+                        me.$location.path("/Credentials");
+                        if (!me.$scope.$$phase) { me.$scope.$apply(); }
+                    },
+                    hide() {
+                        me.CloseAllMenus();
+                    }
+                },
                 attachTo: {
+                    element: '#menuadmincredentials',
+                    on: 'bottom'
+                },
+                popperOptions: {
+                    modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
                 },
                 buttons: [backbutton, nextbutton],
                 id: '3'
             });
+
+
             tour.addStep({
-                title: 'Audit logs',
-                text: `This is the log of security events related to you and users you manage, this combined with the built in version control and on-the-fly encryption, makes it easy to comply with various regulatory demands like GDRP, FedRAMP, HIPAA etc. By default only your own entries are shown`,
+                title: 'Clients',
+                text: `On the clients page you can see all online users, and filter on the type of client used.`,
                 beforeShowPromise: function () {
                     return new Promise((resolve) => setTimeout(resolve, 250));
                 },
                 when: {
                     show() {
-                        me.$location.path("/Auditlogs");
+                        me.$location.path("/Clients");
                         if (!me.$scope.$$phase) { me.$scope.$apply(); }
+                    },
+                    hide() {
+                        me.CloseAllMenus();
                     }
                 },
                 attachTo: {
-                    element: '#menuadminauditlogs',
+                    element: '#menuclients',
                     on: 'bottom'
                 },
                 popperOptions: {
                     modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
                 },
-                buttons: [backbutton, completebutton],
+                buttons: [backbutton, nextbutton],
+                id: '3'
+            });
+
+
+            tour.addStep({
+                title: 'RPA Workflows',
+                text: `On the rpa workflows page, you can see a list of all the RPA workflows you have access too, if you click invoke <em
+                class="fas fa-play-circle"></em>, you can even start them from this webpage, given the robot is online`,
+                beforeShowPromise: function () {
+                    return new Promise((resolve) => setTimeout(resolve, 250));
+                },
+                when: {
+                    show() {
+                        me.$location.path("/RPAWorkflows");
+                        if (!me.$scope.$$phase) { me.$scope.$apply(); }
+                    },
+                    hide() {
+                        me.CloseAllMenus();
+                    }
+                },
+                attachTo: {
+                    element: '#menurpaworkflows',
+                    on: 'bottom'
+                },
+                popperOptions: {
+                    modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
+                },
+                buttons: [backbutton, nextbutton],
                 id: '4'
             });
 
-            // tour.addStep({
-            //     title: 'Manage credentials',
-            //     text: `For a more secure envoriment, it is a good practice to use encrypted credentials added here and not save those as plaintext in a robot workflow. Remember to give all robots access to the credentials.`,
-            //     attachTo: {
-            //         element: '#menuadmincredentials'
-            //     },
-            //     buttons: defaultbuttons,
-            //     id: '3'
-            // });
-            // tour.addStep({
-            //     title: 'Workflow forms',
-            //     text: `Nodered Workflows allows you to design forms with an endless combination of different form elements to interact with users as part of a process`,
-            //     attachTo: {
-            //         element: '#menuadminforms'
-            //     },
-            //     buttons: defaultbuttons,
-            //     id: '5'
-            // });
+            tour.addStep({
+                title: 'Nodered',
+                text: `On the NodeRED page, you can start your personal NodeRED instance. The free version will stop after 24 hours and have limited amount of ram. This is where you can schedule robots, and install modules that allows easy integration to more than 3500 IT systems. This is also where you create workflow, that can involve humans using different channels like email, chat, voice or the forms you design in OpenFlow`,
+                beforeShowPromise: function () {
+                    return new Promise((resolve) => setTimeout(resolve, 250));
+                },
+                when: {
+                    show() {
+                        me.$location.path("/Nodered");
+                        if (!me.$scope.$$phase) { me.$scope.$apply(); }
+                    },
+                    hide() {
+                        me.CloseAllMenus();
+                    }
+                },
+                attachTo: {
+                    element: '#menunodered',
+                    on: 'bottom'
+                },
+                popperOptions: {
+                    modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
+                },
+                buttons: [backbutton, nextbutton],
+                id: '5'
+            });
+
+
+            tour.addStep({
+                title: 'Forms',
+                text: `This is where you can create forms, used by workflows in NodeRED. You can combine this with other channels as well, and then automated based on the input you get and/or present the results`,
+                beforeShowPromise: function () {
+                    return new Promise((resolve) => setTimeout(resolve, 250));
+                },
+                when: {
+                    show() {
+                        me.$location.path("/Forms");
+                        if (!me.$scope.$$phase) { me.$scope.$apply(); }
+                    },
+                    hide() {
+                        me.CloseAllMenus();
+                    }
+                },
+                attachTo: {
+                    element: '#menuadminforms',
+                    on: 'bottom'
+                },
+                popperOptions: {
+                    modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
+                },
+                buttons: [backbutton, nextbutton],
+                id: '6'
+            });
+
+
+            tour.addStep({
+                title: 'Workflows',
+                text: `Once you created a Workflow in NodeRED, this is where you and your users can start the workflow. Each workflow will have a corrosponding role created, that you need to add the users too, in order to see and invoke the workflow. You can "chain" many workflows, so triggering one workflow will create one or more sub workflows and wait for the results. This is handy when working with complex swim lanes or process that span multiple departments.`,
+                beforeShowPromise: function () {
+                    return new Promise((resolve) => setTimeout(resolve, 250));
+                },
+                when: {
+                    show() {
+                        me.$location.path("/Workflows");
+                        if (!me.$scope.$$phase) { me.$scope.$apply(); }
+                    },
+                    hide() {
+                        me.CloseAllMenus();
+                    }
+                },
+                attachTo: {
+                    element: '#menuworkflows',
+                    on: 'bottom'
+                },
+                popperOptions: {
+                    modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
+                },
+                buttons: [backbutton, nextbutton],
+                id: '7'
+            });
             // tour.addStep({
             //     title: 'Files',
             //     text: `Files associated with robot workflows, forms and files you use as part of a Nodered workflow gets stored here. You can upload, download, delete and manage permissions on all files here. Remember to clean up, as a free user you only get 25 megabyte of storage`,
@@ -1076,67 +1179,6 @@ export class MenuCtrl {
             //     },
             //     buttons: defaultbuttons,
             //     id: '6'
-            // });
-
-            // if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length > 1) tour.addStep({
-            //     title: 'Enable multi tenancy',
-            //     text: `Per default OpenFlow is running in a single user mode, where users cannot share information. Click here to create a new Customer, and enable access to multiple user, roles, control access to data and workflows and to buy additional services`,
-            //     attachTo: {
-            //         element: '#menumultitenant'
-            //     },
-            //     buttons: defaultbuttons,
-            //     id: '7'
-            // });
-            // if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length < 2) tour.addStep({
-            //     title: 'Manage you users ',
-            //     text: `Click here to manage your users. You can create, edit and delete new users, and you can purchase and assign new services to users here`,
-            //     attachTo: {
-            //         element: '#menuadminusers'
-            //     },
-            //     buttons: defaultbuttons,
-            //     id: '8'
-            // });
-            // if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length < 2) tour.addStep({
-            //     title: 'Manage you roles',
-            //     text: `Click here to manage your roles. It is much more efficent to use a role when assigning permissons`,
-            //     attachTo: {
-            //         element: '#menuadminroles'
-            //     },
-            //     buttons: defaultbuttons,
-            //     id: '9'
-            // });
-            // if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length < 2) tour.addStep({
-            //     title: 'Manage you company',
-            //     text: `Click here to manage you company details, this is also where you can check your next Invoice and how many services you have added`,
-            //     attachTo: {
-            //         element: '#menumanagecustomer'
-            //     },
-            //     buttons: defaultbuttons,
-            //     id: '10'
-            // });
-
-            // tour.addStep({
-            //     title: 'Rerun tour',
-            //     text: `We hope you will enjoy the power on the leading opensource automation platform, click here to restart all tour steps.`,
-            //     attachTo: {
-            //         element: '#menutour'
-            //     },
-            //     buttons: [
-            //         {
-            //             action() {
-            //                 return this.back();
-            //             },
-            //             classes: 'shepherd-button-secondary',
-            //             text: 'Back'
-            //         },
-            //         {
-            //             action() {
-            //                 return this.cancel();
-            //             },
-            //             text: 'Exit'
-            //         }
-            //     ],
-            //     id: '-1'
             // });
             for (let i = 0; i < tour.steps.length; i++) {
                 const _stepid = parseInt(tour.steps[i].id);
@@ -2199,7 +2241,7 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
             var title = document.getElementById("title");
             title.scrollIntoView();
             this.ToggleModal()
-            this.Resources = await NoderedUtil.Query("config", { "_type": "resource", "target": "user", "allowdirectassign": true }, null, { _created: -1 }, 100, 0, null, null, null, 2);
+            this.Resources = await NoderedUtil.Query("config", { "_type": "resource", "target": "user", "allowdirectassign": true }, null, { _created: -1, "order": 1 }, 100, 0, null, null, null, 2);
             this.Assigned = await NoderedUtil.Query("config", { "_type": "resourceusage", "userid": user._id }, null, { _created: -1 }, 100, 0, null, null, null, 2);
             for (var i = this.Resources.length - 1; i >= 0; i--) {
                 var res = this.Resources[i];
@@ -6070,6 +6112,8 @@ export class CustomerCtrl extends entityCtrl<Customer> {
         this.collection = "users";
         this.postloadData = this.processdata;
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            this.loading = true;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
             let haderror: boolean = false;
             try {
                 this.stripe = Stripe(this.WebSocketClientService.stripe_api_key);
@@ -6083,6 +6127,7 @@ export class CustomerCtrl extends entityCtrl<Customer> {
             }
 
             if (this.id !== null && this.id !== undefined) {
+                this.loading = false;
                 this.loadData();
             } else {
                 user = TokenUser.assign(user);
@@ -6122,6 +6167,7 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                     }
                     console.debug("Create new customer");
                 }
+                this.loading = false;
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
         });
@@ -6129,6 +6175,7 @@ export class CustomerCtrl extends entityCtrl<Customer> {
     async submit(): Promise<void> {
         try {
             this.loading = true;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
             this.errormessage = "";
             if (this.model._id) {
                 await NoderedUtil.EnsureCustomer(this.model, null, 2);
@@ -6162,6 +6209,7 @@ export class CustomerCtrl extends entityCtrl<Customer> {
         try {
             console.debug("processdata");
             this.loading = true;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
             this.errormessage = "";
             // this.stripe_customer = await NoderedUtil.EnsureStripeCustomer(this.model, this.userid, null, 2);
             if (this.model != null) {
@@ -6210,7 +6258,7 @@ export class CustomerCtrl extends entityCtrl<Customer> {
             console.debug("UserAssigned", this.UserAssigned);
             this.support = [];
             for (let a of this.Assigned) {
-                if (a.resource == "Support Hours" && a.quantity > 0) {
+                if (a.product.metadata.supportplan) {
                     this.support.push(a);
                 }
             }
@@ -6845,66 +6893,74 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
             if (this.WebSocketClientService.stripe_api_key == "pk_test_DNS5WyEjThYBdjaTgwuyGeVV00KqiCvf99") {
                 const nodered: Resource = await this.newResource("Nodered Instance", "user", "singlevariant", "singlevariant", { "resources": { "limits": { "memory": "225Mi" } } },
                     [
-                        this.newProduct("Basic", "prod_HEC6rB2wRUwviG", "plan_HECATxbGlff4Pv", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, true),
-                        this.newProduct("Plus", "prod_HEDSUIZLD7rfgh", "plan_HEDSUl6qdOE4ru", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "512Mi" }, "requests": { "memory": "512Mi" } } }, true),
-                        this.newProduct("Premium", "prod_HEDTI7YBbwEzVX", "plan_HEDTJQBGaVGnvl", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "1Gi" }, "requests": { "memory": "1Gi" } } }, true),
-                        this.newProduct("Premium+", "prod_IERLqCwV7BV8zy", "price_1HdySLC2vUMc6gvh3H1pgG7A", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "2Gi" }, "requests": { "memory": "2Gi" } } }, true),
-                    ], true, true);
+                        this.newProduct("Basic", "prod_HEC6rB2wRUwviG", "plan_HECATxbGlff4Pv", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, true, 0),
+                        this.newProduct("Plus", "prod_HEDSUIZLD7rfgh", "plan_HEDSUl6qdOE4ru", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "512Mi" }, "requests": { "memory": "512Mi" } } }, true, 1),
+                        this.newProduct("Premium", "prod_HEDTI7YBbwEzVX", "plan_HEDTJQBGaVGnvl", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "1Gi" }, "requests": { "memory": "1Gi" } } }, true, 2),
+                        this.newProduct("Premium+", "prod_IERLqCwV7BV8zy", "price_1HdySLC2vUMc6gvh3H1pgG7A", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "2Gi" }, "requests": { "memory": "2Gi" } } }, true, 3),
+                    ], true, true, 0);
                 const supporthours: Resource = await this.newResource("Support Hours", "customer", "multiplevariants", "multiplevariants", {},
                     [
-                        this.newProduct("Premium Hours", "prod_HEZnir2GdKX5Jm", "plan_HEZp4Q4In2XcXe", "metered", "metered", null, null, 0, {}, false),
-                        this.newProduct("Basic Hours", "prod_HEGjSQ9M6wiYiP", "plan_HEZAsA1DfkiQ6k", "metered", "metered", null, null, 0, {}, false),
-                    ], false, true);
+                        this.newProduct("Premium Hours", "prod_HEZnir2GdKX5Jm", "plan_HEZp4Q4In2XcXe", "metered", "metered", null, null, 0, { "supportplan": true }, false, 1),
+                        this.newProduct("Basic Hours", "prod_HEGjSQ9M6wiYiP", "plan_HEZAsA1DfkiQ6k", "metered", "metered", null, null, 0, { "supportplan": true }, false, 0),
+                    ], false, true, 0);
 
                 const support = await this.newResource("Support Agreement", "customer", "singlevariant", "singlevariant", {},
                     [
-                        this.newProduct("Basic Support", "prod_HEGjSQ9M6wiYiP", "plan_HEGjLCtwsVbIx8", "single", "single", supporthours._id, "plan_HEZAsA1DfkiQ6k", 1, {}, true),
-                    ], true, true);
+                        this.newProduct("Basic Support", "prod_HEGjSQ9M6wiYiP", "plan_HEGjLCtwsVbIx8", "single", "single", supporthours._id, "plan_HEZAsA1DfkiQ6k", 1, {}, true, 0),
+                    ], true, true, 0);
 
                 const premium: Resource = await this.newResource("Openflow License", "customer", "singlevariant", "singlevariant", {},
                     [
-                        this.newProduct("Premium License", "prod_JcXS2AvXfwk1Lv", "price_1IzISoC2vUMc6gvhMtqTq2Ef", "multiple", "multiple", supporthours._id, "plan_HEZp4Q4In2XcXe", 1, {}, true),
-                    ], true, true);
+                        this.newProduct("Premium License", "prod_JcXS2AvXfwk1Lv", "price_1IzISoC2vUMc6gvhMtqTq2Ef", "multiple", "multiple", supporthours._id, "plan_HEZp4Q4In2XcXe", 1, {}, true, 0),
+                    ], true, true, 2);
 
                 const databaseusage: Resource = await this.newResource("Database Usage", "customer", "singlevariant", "singlevariant", { dbusage: (1048576 * 25) },
                     [
-                        this.newProduct("50Mb quota", "prod_JccNQXT636UNhG", "price_1IzQBRC2vUMc6gvh3Er9QaO8", "multiple", "multiple", null, null, 0, { dbusage: (1048576 * 50) }, true),
-                        this.newProduct("Metered Monthly", "prod_JccNQXT636UNhG", "price_1IzNEZC2vUMc6gvhAWQbEBHm", "metered", "metered", null, null, 0, { dbusage: (1048576 * 50) }, true),
-                    ], true, true);
+                        this.newProduct("50Mb quota", "prod_JccNQXT636UNhG", "price_1IzQBRC2vUMc6gvh3Er9QaO8", "multiple", "multiple", null, null, 0, { dbusage: (1048576 * 50) }, true, 1),
+                        this.newProduct("Metered Monthly", "prod_JccNQXT636UNhG", "price_1IzNEZC2vUMc6gvhAWQbEBHm", "metered", "metered", null, null, 0, { dbusage: (1048576 * 50) }, true, 0),
+                    ], true, true, 1);
 
                 this.loading = false;
                 this.loadData();
             } if (this.WebSocketClientService.stripe_api_key == "pk_live_0XOJdv1fPLPnOnRn40CSdBsh009Ge1B2yI") {
                 const nodered: Resource = await this.newResource("Nodered Instance", "user", "singlevariant", "singlevariant", { "resources": { "limits": { "memory": "225Mi" } } },
                     [
-                        this.newProduct("Basic Legacy", "prod_HIhT9WksWx9Fxv", "price_1HY8P0C2vUMc6gvhRJrLcLW0", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, false),
-                        this.newProduct("Basic", "prod_Jfg1JU7byqHYs9", "price_1J2KglC2vUMc6gvh3JGredpM", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, true),
-                        this.newProduct("Plus", "prod_Jfg1JU7byqHYs9", "price_1J2KhPC2vUMc6gvhIwTNUWAk", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "512Mi" }, "requests": { "memory": "512Mi" } } }, true),
-                        this.newProduct("Premium", "prod_Jfg1JU7byqHYs9", "price_1J2KhuC2vUMc6gvhRcs1mdUr", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "1Gi" }, "requests": { "memory": "1Gi" } } }, true),
-                        this.newProduct("Premium+", "prod_Jfg1JU7byqHYs9", "price_1J2KiFC2vUMc6gvhGy0scDB5", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "2Gi" }, "requests": { "memory": "2Gi" } } }, true),
-                    ], true, true);
+                        this.newProduct("Basic Legacy", "prod_HIhT9WksWx9Fxv", "price_1HY8P0C2vUMc6gvhRJrLcLW0", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, false, 0),
+                        this.newProduct("Basic", "prod_Jfg1JU7byqHYs9", "price_1J2KglC2vUMc6gvh3JGredpM", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, true, 1),
+                        this.newProduct("Plus", "prod_Jfg1JU7byqHYs9", "price_1J2KhPC2vUMc6gvhIwTNUWAk", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "512Mi" }, "requests": { "memory": "512Mi" } } }, true, 2),
+                        this.newProduct("Premium", "prod_Jfg1JU7byqHYs9", "price_1J2KhuC2vUMc6gvhRcs1mdUr", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "1Gi" }, "requests": { "memory": "1Gi" } } }, true, 3),
+                        this.newProduct("Premium+", "prod_Jfg1JU7byqHYs9", "price_1J2KiFC2vUMc6gvhGy0scDB5", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "2Gi" }, "requests": { "memory": "2Gi" } } }, true, 4),
+                    ], true, true, 0);
                 const supporthours: Resource = await this.newResource("Support Hours", "customer", "multiplevariants", "multiplevariants", {},
                     [
-                        this.newProduct("Premium Hours", "prod_HFkZ8lKn7GtFQU", "plan_HFkbfsAs1Yvcly", "metered", "metered", null, null, 0, {}, false),
-                        this.newProduct("Basic Hours", "prod_HG1vTqU4c7EaV5", "plan_HG1wBF6yq1O15C", "metered", "metered", null, null, 0, {}, false),
-                    ], false, true);
+                        this.newProduct("Premium Hours", "prod_HFkZ8lKn7GtFQU", "plan_HFkbfsAs1Yvcly", "metered", "metered", null, null, 0, { "supportplan": true }, false, 1),
+                        this.newProduct("Basic Hours", "prod_HG1vTqU4c7EaV5", "plan_HG1wBF6yq1O15C", "metered", "metered", null, null, 0, { "supportplan": true }, false, 0),
+                    ], false, true, 0);
 
                 const support = await this.newResource("Support Agreement", "customer", "singlevariant", "singlevariant", {},
                     [
-                        this.newProduct("Basic Support", "prod_HG1vTqU4c7EaV5", "plan_HG1vb53VlOu46y", "single", "single", supporthours._id, "plan_HG1wBF6yq1O15C", 1, {}, true),
-                    ], true, true);
+                        this.newProduct("Basic Support", "prod_HG1vTqU4c7EaV5", "plan_HG1vb53VlOu46y", "single", "single", supporthours._id, "plan_HG1wBF6yq1O15C", 1, {}, true, 0),
+                    ], true, true, 0);
 
                 const premium: Resource = await this.newResource("Openflow License", "customer", "singlevariant", "singlevariant", {},
                     [
-                        this.newProduct("Premium License", "prod_JcXS2AvXfwk1Lv", "price_1J2KcMC2vUMc6gvhmmsAGo35", "multiple", "multiple", supporthours._id, "plan_HFkbfsAs1Yvcly", 1, {}, true),
-                        this.newProduct("Premium License Legacy", "prod_HFkZ8lKn7GtFQU", "plan_HFka1sgovtAQ7k", "single", "single", supporthours._id, "plan_HFkbfsAs1Yvcly", 1, {}, true),
-                    ], true, true);
+                        this.newProduct("Premium License", "prod_JcXS2AvXfwk1Lv", "price_1J2KcMC2vUMc6gvhmmsAGo35", "multiple", "multiple", supporthours._id, "plan_HFkbfsAs1Yvcly", 1, {}, true, 0),
+                        this.newProduct("Premium License Legacy", "prod_HFkZ8lKn7GtFQU", "plan_HFka1sgovtAQ7k", "single", "single", supporthours._id, "plan_HFkbfsAs1Yvcly", 1, {}, true, 1),
+                    ], true, true, 2);
 
                 const databaseusage: Resource = await this.newResource("Database Usage", "customer", "singlevariant", "singlevariant", { dbusage: (1048576 * 25) },
                     [
-                        this.newProduct("50Mb quota", "prod_JffpwKLldz2QWN", "price_1J2KWFC2vUMc6gvheg4kFzjI", "multiple", "multiple", null, null, 0, { dbusage: (1048576 * 50) }, true),
-                        this.newProduct("Metered Monthly", "prod_JffpwKLldz2QWN", "price_1J2KXMC2vUMc6gvhIhBFBKW6", "metered", "metered", null, null, 0, { dbusage: (1048576 * 50) }, true),
-                    ], true, true);
+                        this.newProduct("50Mb quota", "prod_JffpwKLldz2QWN", "price_1J2KWFC2vUMc6gvheg4kFzjI", "multiple", "multiple", null, null, 0, { dbusage: (1048576 * 50) }, true, 1),
+                        this.newProduct("Metered Monthly", "prod_JffpwKLldz2QWN", "price_1J2KXMC2vUMc6gvhIhBFBKW6", "metered", "metered", null, null, 0, { dbusage: (1048576 * 50) }, true, 0),
+                    ], true, true, 1);
+
+                const poc = await this.newResource("Proff of Concept", "customer", "multiplevariants", "multiplevariants", {},
+                    [
+                        this.newProduct("POC adhoc Hours", "prod_Jgk2LqELt4QFwB", "price_1J3MZ3C2vUMc6gvhhWdgSqjW", "single", "single", "", "", 1, { "supportplan": true }, true, 0)
+                    ], true, true, 3);
+                poc.products.push(this.newProduct("POC Starter pack", "prod_Jgk2LqELt4QFwB", "price_1J3MZZC2vUMc6gvhh0sOq19z", "single", "single", poc._id, "prod_Jgk2LqELt4QFwB", 1, {}, true, 1));
+                await NoderedUtil.UpdateOne(this.collection, null, poc, 1, false, null, 2);
+
 
                 this.loading = false;
                 this.loadData();
@@ -6915,7 +6971,8 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
         }
     }
     newProduct(name: string, stripeproduct: string, stripeprice: string, customerassign: "single" | "multiple" | "metered",
-        userassign: "single" | "multiple" | "metered", added_resourceid: string, added_stripeprice: string, added_quantity_multiplier: number, metadata: any, allowdirectassign: boolean): ResourceVariant {
+        userassign: "single" | "multiple" | "metered", added_resourceid: string, added_stripeprice: string, added_quantity_multiplier: number, metadata: any,
+        allowdirectassign: boolean, order: number): ResourceVariant {
         const result: ResourceVariant = new ResourceVariant();
         result.name = name;
         result.stripeproduct = stripeproduct;
@@ -6927,6 +6984,7 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
         result.added_quantity_multiplier = added_quantity_multiplier;
         result.metadata = metadata;
         result.allowdirectassign = allowdirectassign;
+        (result as any).order = order;
         return result;
     }
     async newResource(name: string,
@@ -6934,7 +6992,7 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
         customerassign: "singlevariant" | "multiplevariants",
         userassign: "singlevariant" | "multiplevariants",
         defaultmetadata: any,
-        products: ResourceVariant[], allowdirectassign: boolean, customeradmins: boolean) {
+        products: ResourceVariant[], allowdirectassign: boolean, customeradmins: boolean, order: number): Promise<Resource> {
         var results = await NoderedUtil.Query(this.collection, { "name": name }, null, null, 1, 0, null, null, null, 2);
         const model: Resource = (results.length == 1 ? results[0] : new Resource());
         model.name = name;
@@ -6944,6 +7002,7 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
         model.defaultmetadata = defaultmetadata;
         model.products = products;
         model.allowdirectassign = allowdirectassign;
+        (model as any).order = order;
         model._acl = [];
         Base.addRight(model, "5a1702fa245d9013697656fb", "admins", [-1]);
         if (customeradmins) {

@@ -79,8 +79,9 @@
       </a>
       <h5 class="modal-title">Services for {{ctrl.user.name}}</h5>
       <p>
-      <div ng-repeat="Resource in ctrl.Resources">
-        <div class="row" ng-repeat="Product in Resource.products" ng-show="Resource.userassign == 'multiplevariants'">
+      <div ng-repeat="Resource in ctrl.Resources | orderBy: 'order'">
+        <div class="row" ng-repeat="Product in Resource.products | orderBy: 'order'"
+          ng-show="Resource.userassign == 'multiplevariants'">
           <div class="col">{{Product.name}}</div>
           <div class="col">{{ Product.count }}</div>
           <div class="col">
@@ -97,7 +98,8 @@
         <div class="row" ng-show="Resource.userassign == 'singlevariant'">
           <div class="col">{{Resource.name}}</div>
           <div class="col">
-            <select ng-model="Resource.newproduct" ng-options="item as item.name for item in Resource.products"
+            <select ng-model="Resource.newproduct"
+              ng-options="item as item.name for item in Resource.products | orderBy: 'order'"
               ng-disabled="ctrl.loading==true">
             </select>
           </div>

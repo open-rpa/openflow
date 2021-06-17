@@ -30,8 +30,16 @@
 } */
 
 
-
-
+// shepherd-arrow {
+//   background: #bababc !important;
+// }
+// .shepherd-arrow:before {
+//   background: #bababc !important;
+//   z-index: 1!important;
+// }
+// .shepherd-element {
+//   z-index: 500 !important;
+// }
 
 .dark-mode #shepherdModalOverlayContainer {
 -ms-filter:"progid:dximagetransform.microsoft.gradient.alpha(Opacity=50)";filter:alpha(opacity=50);height:100vh;left:0;opacity:.5;position:fixed;top:0;transition:all .3s ease-out;width:100vw;z-index:9997}

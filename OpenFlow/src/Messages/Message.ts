@@ -3251,14 +3251,19 @@ export class Message {
                     payload.subscription_proration_date = proration_date;
                 }
                 if (msg.invoice != null) {
-                    for (var item of msg.subscription_items) {
+                    for (var i = msg.subscription_items.length - 1; i >= 0; i--) {
+                        var item = msg.subscription_items[i];
                         let price: stripe_price = null;
                         let plan: stripe_plan = null;
                         let metered: boolean = false;
                         if (item.price && item.price.startsWith("price_")) {
                             price = await this.Stripe<stripe_price>("GET", "prices", item.price, payload, customer.stripeid);
-                            metered = (price.recurring.usage_type == "metered");
-
+                            metered = (price.recurring && price.recurring.usage_type == "metered");
+                            if (!price.recurring) {
+                                if (!payload.invoice_items) payload.invoice_items = [];
+                                payload.invoice_items.push(item);
+                                msg.subscription_items.splice(i, 1);
+                            }
                         } else if (item.price && item.price.startsWith("plan_")) {
                             plan = await this.Stripe<stripe_plan>("GET", "plans", item.price, payload, customer.stripeid);
                             // metered = (plan.recurring.usage_type == "metered");
@@ -3668,6 +3673,24 @@ export class Message {
                     if ((item as any).tax_rates && (item as any).tax_rates.length > 0) {
                         for (let tax of (item as any).tax_rates) {
                             url += "&subscription_items[" + index + "][tax_rates[" + taxindex + "]]=" + tax;
+
+                            taxindex++;
+                        }
+                    }
+                    index++;
+                }
+            }
+            if (payload != null && payload.invoice_items) {
+                let index = 0;
+                for (let item of payload.invoice_items) {
+                    if (item.id) url += "&invoice_items[" + index + "][id]=" + item.id;
+                    if (item.price) url += "&invoice_items[" + index + "][price]=" + item.price;
+                    if (item.quantity) url += "&invoice_items[" + index + "][quantity]=" + item.quantity;
+
+                    let taxindex = 0;
+                    if ((item as any).tax_rates && (item as any).tax_rates.length > 0) {
+                        for (let tax of (item as any).tax_rates) {
+                            url += "&invoice_items[" + index + "][tax_rates[" + taxindex + "]]=" + tax;
 
                             taxindex++;
                         }
