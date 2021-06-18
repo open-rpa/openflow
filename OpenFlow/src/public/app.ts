@@ -9,7 +9,7 @@ require('@fortawesome/fontawesome-free');
 require('chart.js');
 require('angular-chart.js');
 
-require('./formio.full.js');
+// require('./formio.full.js');
 // var css = require('./app.css');
 
 var css = require('./app.css');

@@ -14,7 +14,7 @@ import { GridFSBucket, ObjectID, Cursor } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
 import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, GetKubeNodeLabels, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice, stripe_price, stripe_plan, stripe_invoice_line } from "@openiap/openflow-api";
-import { Billing, stripe_customer, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription_item, stripe_coupon } from "@openiap/openflow-api";
+import { stripe_customer, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription_item, stripe_coupon } from "@openiap/openflow-api";
 import { V1ResourceRequirements, V1Deployment } from "@kubernetes/client-node";
 import { amqpwrapper, QueueMessageOptions } from "../amqpwrapper";
 import { WebSocketServerClient } from "../WebSocketServerClient";
@@ -25,8 +25,6 @@ import { Span } from "@opentelemetry/api";
 import { Logger } from "../Logger";
 import Dockerode = require("dockerode");
 import { QueueClient } from "../QueueClient";
-import { cli } from "winston/lib/winston/config";
-const request = require("request");
 const got = require("got");
 const { RateLimiterMemory } = require('rate-limiter-flexible')
 const BaseRateLimiter = new RateLimiterMemory({
@@ -1298,6 +1296,8 @@ export class Message {
                             msg.impersonate = null;
                         } else {
                             msg.impersonate = user.impersonating;
+                            user.selectedcustomerid = null;
+                            tuser.selectedcustomerid = null;
                         }
                     }
                     if (msg.impersonate !== undefined && msg.impersonate !== null && msg.impersonate !== "" && tuser._id != msg.impersonate) {
@@ -1313,6 +1313,8 @@ export class Message {
                             Audit.ImpersonateFailed(imp, tuser, cli.clientagent, cli.clientversion, span);
                             throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " view and impersonating " + msg.impersonate);
                         }
+                        user.selectedcustomerid = null;
+                        tuser.selectedcustomerid = null;
                         const tuserimpostor = tuser;
                         user = User.assign(items[0] as User);
                         user = await DBHelper.DecorateWithRoles(user, span);
@@ -3030,22 +3032,6 @@ export class Message {
         this.Send(cli);
     }
 
-    async async_request(options: any) {
-        return new Promise<any>(async (resolve, reject) => {
-            try {
-                request(options, (error, response, body) => {
-                    if (error) return reject(error);
-                    if (response.statusCode != 200) {
-                        if (body != null) return reject(body);
-                        return reject(response.statusText);
-                    }
-                    resolve(body);
-                });
-            } catch (error) {
-                reject(error);
-            }
-        });
-    }
     isObject(obj) {
         const type = typeof obj;
         return (type === 'function' || type === 'object') && !!obj;
@@ -3843,7 +3829,7 @@ export class Message {
                 customer = msg.customer;
             } else {
                 if (!user.HasRoleName(customer.name + " admins") && !user.HasRoleName("admins")) {
-                    throw new Error("Access denied updating customer (admins)");
+                    throw new Error("You are not logged in as a customer admin, so you cannot update");
                 }
                 // msg.customer = customers[0];
                 if (customer.name != msg.customer.name || customer.email != msg.customer.email || customer.vatnumber != msg.customer.vatnumber || customer.vattype != msg.customer.vattype || customer.coupon != msg.customer.coupon) {

@@ -58,6 +58,54 @@ gulp.task('sass', function () {
 
 
 let bfi = null;
+
+
+gulp.task("deps", function () {
+    if (bfi != null) return gulp.src('.');
+    const config = {
+        entries: ['./OpenFlow/src/public/app.ts'],
+        cache: {},
+        packageCache: {},
+        debug: true,
+        basedir: '.',
+        plugin: []
+    }
+    bfi = browserify(config)
+        .plugin(tsify, { noImplicitAny: false });
+    bfi.pipeline.get('deps').push(require('through2').obj(
+        function (row, enc, next) {
+            var wasok = false;
+            try {
+                var stats = fs.statSync(row.file || row.id);
+                var fileSizeInBytes = stats.size
+                var fileSizeInMegabytes = fileSizeInBytes / (1024 * 1024);
+                fileSizeInMegabytes = parseFloat(fileSizeInMegabytes).toFixed(2);
+                console.log((row.file || row.id) + " " + fileSizeInMegabytes + "mb");
+                wasok = true;
+            } catch (error) {
+                console.log(error)
+            }
+            if (!wasok) {
+                console.log(row.file || row.id);
+            }
+
+            next();
+        }
+    ));
+    function bundle() {
+        console.log('browserify bundle::begin()');
+        const result = bfi.bundle()
+            .on('error', function (error) {
+                console.log(error.message ? error.message : error);
+                this.emit('end');
+            })
+            .pipe(exorcist(mapfile))
+            .pipe(fs.createWriteStream('./dist/public/bundle.js'));
+        return result;
+    };
+    return bundle();
+});
+
 gulp.task("browserify", function () {
     console.log("browserify")
     if (bfi != null) return gulp.src('.');
@@ -74,16 +122,6 @@ gulp.task("browserify", function () {
         config.plugin.push(watchify);
     }
     bfi = browserify(config)
-        // .transform('browserify-shim', {
-        //     global: true,
-        //     shim: {
-        //         jQuery: {
-        //             path: './node_modules/jquery/dist/jquery.min.js',
-        //             exports: '$'
-        //         }
-        //     }
-        // })
-        // .transform('exposify', { expose: { jquery: '$', three: 'THREE' } })
         .plugin(tsify, { noImplicitAny: false });
     if (minify) bfi.plugin('tinyify', {})
     bfi.transform('browserify-css', {
@@ -102,9 +140,6 @@ gulp.task("browserify", function () {
                 var relativePath = stripQueryStringAndHashFromPath(relativeUrl);
                 var queryStringAndHash = relativeUrl.substring(relativePath.length);
 
-                //
-                // Copying files from '../node_modules/bootstrap/' to 'dist/vendor/bootstrap/'
-                //
                 // var prefix = '../node_modules/';
                 var prefix = '..\\..\\..\\node_modules\\';
                 if (relativeUrl.startsWith(relativePath, prefix)) {
