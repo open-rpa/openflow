@@ -247,6 +247,7 @@ export class MenuCtrl {
     StartNewFeaturesTour(startfrom) {
         try {
             if (this.NewFeaturesTour != null) return;
+            if (!this.WebSocketClientService.enable_web_tours) return;
             var me = this;
             this.NewFeaturesTour = new this.Shepherd.Tour({
                 useModalOverlay: true,

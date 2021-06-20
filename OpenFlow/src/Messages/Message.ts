@@ -507,7 +507,8 @@ export class Message {
                     await this.EnsureCustomer(cli, span);
                     break;
                 case "selectcustomer":
-                    await this.SelectCustomer(cli, span);
+                    await this.SelectCustomer(span);
+                    this.ReloadUserToken(cli, span)
                     break;
                 case "housekeeping":
                     this.EnsureJWT(cli);
@@ -1725,7 +1726,6 @@ export class Message {
             span.recordException(error);
             this.data = "";
             await handleError(null, error);
-            //msg.error = JSON.stringify(error, null, 2);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
         try {
@@ -1744,7 +1744,6 @@ export class Message {
 
             const _tuser = Crypt.verityToken(this.jwt);
 
-            // Logger.instanse.debug("[" + tuser.username + "] EnsureNoderedInstance");
             if (_id === null || _id === undefined || _id === "") _id = _tuser._id;
             const name = await this.GetInstanceName(_id, _tuser._id, _tuser.username, this.jwt, span);
 
@@ -1796,7 +1795,7 @@ export class Message {
             if (_nodered_image.length == 1) { nodered_image = _nodered_image[0].image; }
 
 
-            if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret) && !Config.multi_tenant) {
+            if (NoderedUtil.IsNullEmpty(Config.stripe_api_secret) && !Config.multi_tenant) {
                 if (user.nodered && user.nodered.resources) {
                     if (user.nodered.resources.limits) {
                         resources.limits.memory = user.nodered.resources.limits.memory;
@@ -2548,7 +2547,6 @@ export class Message {
                         found = item;
                         if (item.status.phase != "Failed") {
                             msg.result = item;
-                            Logger.instanse.debug("[" + _tuser.username + "] GetNoderedInstance: " + name + " found one");
                         }
                         var metrics: any = null;
                         try {
@@ -4450,39 +4448,31 @@ export class Message {
         }
         Logger.otel.endSpan(span);
     }
-    async SelectCustomer(cli: WebSocketServerClient, parent: Span) {
+    async SelectCustomer(parent: Span) {
         this.Reply();
         let msg: SelectCustomerMessage;
         try {
             msg = SelectCustomerMessage.assign(this.data);
             if (!NoderedUtil.IsNullEmpty(msg.customerid)) {
-                var customer = await Config.db.getbyid<Customer>(msg.customerid, "users", cli.jwt, parent)
+                var customer = await Config.db.getbyid<Customer>(msg.customerid, "users", this.jwt, parent)
                 if (customer == null) msg.customerid = null;
             }
+            const user: TokenUser = User.assign(Crypt.verityToken(this.jwt));
+
             if (NoderedUtil.IsNullEmpty(msg.customerid)) {
                 {
-                    if (!cli.user.HasRoleName("resellers") && !cli.user.HasRoleName("admins")) {
-                        msg.customerid = cli.user.customerid;
+                    if (!user.HasRoleName("resellers") && !user.HasRoleName("admins")) {
+                        msg.customerid = user.customerid;
                     }
                 }
             }
 
-            const impostor = (cli.user as any).impostor;
             const UpdateDoc: any = { "$set": {} };
             UpdateDoc.$set["selectedcustomerid"] = msg.customerid;
-            await Config.db._UpdateOne({ "_id": cli.user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), parent);
-            cli.user.selectedcustomerid = msg.customerid;
-            const tuser: TokenUser = TokenUser.From(cli.user);
-            cli.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
-
-            const l: SigninMessage = new SigninMessage();
-            l.jwt = cli.jwt;
-            l.user = tuser;
-            const m: Message = new Message(); m.command = "refreshtoken";
-            m.data = JSON.stringify(l);
-            cli.Send(m);
+            await Config.db._UpdateOne({ "_id": user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), parent);
+            user.selectedcustomerid = msg.customerid;
         } catch (error) {
-            await handleError(cli, error);
+            await handleError(null, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
                 msg.error = (error.message ? error.message : error);
@@ -4492,9 +4482,8 @@ export class Message {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
         }
-        this.Send(cli);
     }
 
 }

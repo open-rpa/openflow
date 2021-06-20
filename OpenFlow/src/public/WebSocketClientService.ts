@@ -38,6 +38,7 @@ export class WebSocketClientService {
 
                 this.nodered_images = data.nodered_images;
                 this.enable_entity_restriction = data.enable_entity_restriction;
+                this.enable_web_tours = data.enable_web_tours;
 
                 if (WebSocketClient.instance == null) {
                     const cli: WebSocketClient = new WebSocketClient(this.logger, wsurl);
@@ -183,6 +184,7 @@ export class WebSocketClientService {
     public nodered_images: nodered_image[];
     public multi_tenant: boolean;
     public enable_entity_restriction: boolean;
+    public enable_web_tours: boolean;
 
     getJSON(url: string, callback: any): void {
         const xhr: XMLHttpRequest = new XMLHttpRequest();

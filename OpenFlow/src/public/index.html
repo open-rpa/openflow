@@ -104,7 +104,7 @@
           <i class="fa fa-moon" aria-hidden="true"></i>
         </button>
         <button id="menutour" class="btn btn-action mr-5" type="button" ng-click="menuctrl.ListTours()"
-          aria-label="Start tour">
+          ng-show="menuctrl.WebSocketClientService.enable_web_tours" aria-label="Start tour">
           <i class="fa fa-question" aria-hidden="true"></i>
         </button>
 

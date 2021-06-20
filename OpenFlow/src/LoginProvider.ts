@@ -437,6 +437,7 @@ export class LoginProvider {
                     amqp_enabled_exchange: Config.amqp_enabled_exchange,
                     multi_tenant: Config.multi_tenant,
                     enable_entity_restriction: Config.enable_entity_restriction,
+                    enable_web_tours: Config.enable_web_tours
                 }
                 res.end(JSON.stringify(res2));
             } catch (error) {
