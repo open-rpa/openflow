@@ -183,7 +183,7 @@ export class DBHelper {
         }
     }
     public static async Save(item: User | Role, jwt: string, parent: Span): Promise<void> {
-        await Config.db._UpdateOne(null, item, "users", 0, false, jwt, parent);
+        await Config.db._UpdateOne(null, item, "users", 2, false, jwt, parent);
     }
     public static async EnsureRole(jwt: string, name: string, id: string, parent: Span): Promise<Role> {
         const span: Span = Logger.otel.startSubSpan("dbhelper.EnsureRole", parent);

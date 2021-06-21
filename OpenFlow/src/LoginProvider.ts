@@ -10,7 +10,9 @@ import { Crypt } from "./Crypt";
 import { Audit } from "./Audit";
 import * as saml from "saml20";
 const multer = require('multer');
-const GridFsStorage = require('multer-gridfs-storage');
+// const GridFsStorage = require('multer-gridfs-storage');
+import { Multer } from "multer";
+import { GridFsStorage } from "multer-gridfs-storage";
 import { GridFSBucket, ObjectID, Binary } from "mongodb";
 import { Base, User, NoderedUtil, TokenUser, WellknownIds, Rights, Role } from "@openiap/openflow-api";
 import { DBHelper } from "./DBHelper";
@@ -625,7 +627,7 @@ export class LoginProvider {
             }
         });
         try {
-            const storage = GridFsStorage({
+            const storage = new GridFsStorage({
                 db: Config.db,
                 file: (req, file) => {
                     return new Promise((resolve, reject) => {
@@ -647,7 +649,7 @@ export class LoginProvider {
                                 jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
                             }
                             else if (req.user) {
-                                user = TokenUser.From(req.user);
+                                user = TokenUser.From(req.user as any);
                                 jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
                             }
                             const { query, headers } = req;

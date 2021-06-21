@@ -992,10 +992,8 @@ export class DatabaseConnection {
 
             span.setAttribute("collection", collectionname);
             span.setAttribute("username", user.username);
-            const options: CollectionInsertOneOptions = {};
-            options.WriteConcern = {}; // new WriteConcern();
-            options.WriteConcern.w = w;
-            options.WriteConcern.j = j;
+            const options: CollectionInsertOneOptions = { writeConcern: { w, j } };
+            (options as any).WriteConcern = { w, j };
 
             span.addEvent("do insert");
             const ot_end = Logger.otel.startTimer();
@@ -1261,6 +1259,7 @@ export class DatabaseConnection {
     async _UpdateOne<T extends Base>(query: any, item: T, collectionname: string, w: number, j: boolean, jwt: string, parent: Span): Promise<T> {
         let q = new UpdateOneMessage();
         q.query = query; q.item = item; q.collectionname = collectionname; q.w = w; q.j = j; q.jwt = jwt;
+        if (q.w < 1) q.w = 1; // set minimu, to avoid "More than one item was updated !!!"
         q = await this.UpdateOne(q, parent);
         if (!NoderedUtil.IsNullUndefinded(q.opresult) && q.opresult.result.ok === 1) {
             if (q.opresult.modifiedCount === 0) {
@@ -1529,13 +1528,8 @@ export class DatabaseConnection {
             q.j = ((q.j as any) === 'true' || q.j === true);
             if ((q.w as any) !== "majority") q.w = parseInt((q.w as any));
 
-            // const options: CollectionInsertOneOptions = { w: q.w, j: q.j };
-            const options: CollectionInsertOneOptions = {};
-            options.WriteConcern = {}; // new WriteConcern();
-            options.WriteConcern.w = q.w;
-            options.WriteConcern.j = q.j;
-
-            // const options: CollectionInsertOneOptions = { };
+            const options: CollectionInsertOneOptions = { writeConcern: { w: q.w, j: q.j } };
+            (options as any).WriteConcern = { w: q.w, j: q.j };
 
             q.opresult = null;
             try {
@@ -1711,10 +1705,8 @@ export class DatabaseConnection {
 
             q.j = ((q.j as any) === 'true' || q.j === true);
             if ((q.w as any) !== "majority") q.w = parseInt((q.w as any));
-            const options: CollectionInsertOneOptions = {};
-            options.WriteConcern = {}; // new WriteConcern();
-            options.WriteConcern.w = q.w;
-            options.WriteConcern.j = q.j;
+            const options: CollectionInsertOneOptions = { writeConcern: { w: q.w, j: q.j } };
+            (options as any).WriteConcern = { w: q.w, j: q.j };
             try {
                 const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.updateMany", span);
                 q.opresult = await this.db.collection(q.collectionname).updateMany(_query, q.item, options);
