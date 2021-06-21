@@ -1,17 +1,6 @@
 <div class="row">
-  <h1 translate lib="web">robots</h1>
-  <p class="col-md-5 lead"></p>
-  <div class="form-group col-sm-3 form-horizontal">
-    <label class="sr-only">Filter</label>
-    <div class="input-group unframed-addons">
-      <div class="input-group-addon"><em class="fas fa-search"></em></div>
-      <input ng-model="ctrl.searchstring" ng-change="ctrl.Search()" class="form-control input-md"
-        ng-model-options="{debounce: 400}" />
-    </div>
-  </div>
+  <h1 translate lib="web">clients</h1>
 </div>
-
-
 <div class="row">
   <div class="col-md-6">
   </div>
@@ -40,11 +29,6 @@
           lib="web">lastclientversion</b>
       </th>
       <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
     </tr>
   </thead>
   <tbody>
@@ -65,28 +49,22 @@
         <div ng-show="ctrl.show == 'webapp'">{{model._lastwebappclientversion}}</div>
         <div ng-show="ctrl.show == 'all'">{{model._lastclientversion}}</div>
       </td>
-      <td class="btn-cell">
-        <a href ng-click="ctrl.ShowWorkflows(model)" class="table-btn">workflows</a>
-      </td>
-      <td class="btn-cell">
-        <a ng-href ng-click="ctrl.Impersonate(model)" ng-show="model._id != ctrl.WebSocketClientService.user._id"><i
-            class="fas fa-user-secret" style="color: #007bff;"></i></a>
-      </td>
-      <td class="btn-cell">
-        <a href ng-click="ctrl.OpenNodered(model)" ng-show="model.hasnodered==true" class="table-btn"><i
-            class="fas fa-project-diagram"></i></a>
-      </td>
-      <td class="btn-cell">
-        <a ng-href="#/Payment/{{model._id}}" class="table-btn"
-          ng-show="menuctrl.WebSocketClientService.stripe_api_key != '' && menuctrl.hasrole('admins') && model._hasbilling == true"><i
-            class="fas fa-money-bill-wave"></i></a>
-      </td>
-      <td class="btn-cell">
-        <a ng-href="#/Nodered/{{model._id}}" class="table-btn"
-          ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true"><i class="fas fa-tools"></i></a>
-      </td>
-      <td class="btn-cell">
-        <a ng-href="#/Entity/{{ctrl.collection}}/{{model._id}}" class="table-btn"><i class="az-edit"></i></a>
+      <td>
+        <a href ng-click="ctrl.ShowWorkflows(model)" class="btn">workflows</a>
+        <a ng-href ng-click="model._id == ctrl.WebSocketClientService.user._id || ctrl.Impersonate(model)" class="btn"
+          ng-class="{disabled: model._id == ctrl.WebSocketClientService.user._id}">
+          <em class="fas fa-user-secret"></em></a>
+        <a href ng-click="model.hasnodered!=true || ctrl.OpenNodered(model)" ng-disabled="model.hasnodered==true"
+          class="btn" ng-class="{disabled: model.hasnodered!=true}">
+          <em class="fas fa-project-diagram"></em></a>
+        <a ng-href="#/Payment/{{model._id}}" class="btn" ng-disabled=""
+          ng-class="{disabled: !(menuctrl.WebSocketClientService.stripe_api_key != '' && menuctrl.hasrole('admins') && model._hasbilling == true)}">
+          <em class="fas fa-money-bill-wave"></em></a>
+        <a ng-href="#/Nodered/{{model._id}}" class="btn" ng-disabled=""
+          ng-class="{disabled: menuctrl.WebSocketClientService.allow_personal_nodered != true}">
+          <em class="fas fa-tools"></em></a>
+        <a ng-href="#/Entity/{{ctrl.collection}}/{{model._id}}" class="btn">
+          <em class="fas fa-edit"></em></a>
       </td>
     </tr>
   </tbody>

@@ -315,9 +315,17 @@ Lastly you need to allow powershell scripts to run, i don't know what is the rec
 
 Now you can run this by going to run ( Ctrl+Shit+D) and selecting OpenFlow in the dropdown box and press play button, select OpenFlowNodeRed in the dropdown and press play again
 
-Lastly we need to start a background job that copies asserts to the dist folder, go to Terminal tab and add a new shelll, then type
+Now, this will serve an empty webpage, so we need to build the stylesheets and copy the compiled files to the dist folder, so go to the Terminal tab and add a new shelll, then type
+
+`gulp sass`
+
+Lastly we can bundle and minify the asserts to the dist folder, by typing
 
 `gulp`
+
+doing developerment, you can run the bundle without the minifyer by typing
+
+`gulp watch`
 
 You can now access openflow web on [http://localhost.openiap.io](http://localhost.openiap.io) and nodered on [http://localhost.openiap.io:1880](http://localhost.openiap.io:1880)
 

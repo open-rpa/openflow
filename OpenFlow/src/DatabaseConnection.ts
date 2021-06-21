@@ -1,13 +1,18 @@
 import { MongoClient, ObjectID, Db, Binary, InsertOneWriteOpResult, MapReduceOptions, CollectionInsertOneOptions, GridFSBucket, ChangeStream, CollectionAggregationOptions, MongoClientOptions } from "mongodb";
 import { Crypt } from "./Crypt";
 import { Config } from "./Config";
-import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User } from "@openiap/openflow-api";
+import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User, Customer } from "@openiap/openflow-api";
 import { DBHelper } from "./DBHelper";
 import { OAuthProvider } from "./OAuthProvider";
 import { ValueRecorder } from "@opentelemetry/api-metrics"
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { Auth } from "./Auth";
+import { flush } from "pm2";
+const { JSONPath } = require('jsonpath-plus');
+
+
+
 // tslint:disable-next-line: typedef
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 const isoDatePattern = new RegExp(/\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z)/);
@@ -180,7 +185,9 @@ export class DatabaseConnection {
         WellknownIds.robot_users,
         WellknownIds.robot_admins,
         WellknownIds.personal_nodered_users,
-        WellknownIds.robot_agent_users
+        WellknownIds.robot_agent_users,
+        WellknownIds.customer_admins,
+        WellknownIds.resellers
     ]
     WellknownNamesArray: string[] = [
         "root",
@@ -201,6 +208,7 @@ export class DatabaseConnection {
         "robot_admins",
         "personal_nodered_users",
         "robot_agent_users",
+        "customer_admins",
 
         "nodered users",
         "nodered admins",
@@ -210,8 +218,9 @@ export class DatabaseConnection {
         "robot users",
         "robot admins",
         "personal nodered users",
-        "robot agent users"
-
+        "robot agent users",
+        "customer admins",
+        "reseller", "resellers"
     ]
 
     async CleanACL<T extends Base>(item: T, user: TokenUser, parent: Span): Promise<T> {
@@ -248,7 +257,6 @@ export class DatabaseConnection {
             }
             if (Config.force_add_admins) {
                 Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control], false);
-                this.ensureResource(item);
             }
             let addself: boolean = true;
             item._acl.forEach(ace => {
@@ -261,8 +269,8 @@ export class DatabaseConnection {
             })
             if (addself) {
                 Base.addRight(item, user._id, user.name, [Rights.full_control], false);
-                this.ensureResource(item);
             }
+            item = this.ensureResource(item);
         } catch (error) {
             span.recordException(error);
         }
@@ -284,7 +292,7 @@ export class DatabaseConnection {
         let doadd: boolean = true;
         const multi_tenant_skip: string[] = [WellknownIds.users, WellknownIds.filestore_users,
         WellknownIds.nodered_api_users, WellknownIds.nodered_users, WellknownIds.personal_nodered_users,
-        WellknownIds.robot_users, WellknownIds.robots];
+        WellknownIds.robot_users, WellknownIds.robots, WellknownIds.customer_admins, WellknownIds.resellers];
         if (item._id === WellknownIds.users && Config.multi_tenant) {
             doadd = false;
         }
@@ -308,10 +316,11 @@ export class DatabaseConnection {
                                 // when multi tenant don't allow members of common user groups to see each other
                                 Logger.instanse.info("Running in multi tenant mode, skip adding permissions for " + item.name);
                             } else if (arr[0]._type === "user") {
-                                const u: User = User.assign(arr[0]);
+                                let u: User = User.assign(arr[0]);
                                 if (!Base.hasRight(u, item._id, Rights.read)) {
                                     Logger.instanse.debug("Assigning " + item.name + " read permission to " + u.name);
                                     Base.addRight(u, item._id, item.name, [Rights.read], false);
+                                    u = this.ensureResource(u);
                                     const _ot_end1 = Logger.otel.startTimer();
                                     await this.db.collection("users").updateOne({ _id: u._id }, { $set: { _acl: u._acl } });
                                     Logger.otel.endTimer(_ot_end1, DatabaseConnection.mongodb_update, { collection: "users" });
@@ -319,10 +328,11 @@ export class DatabaseConnection {
                                     Logger.instanse.debug(item.name + " allready exists on " + u.name);
                                 }
                             } else if (arr[0]._type === "role") {
-                                const r: Role = Role.assign(arr[0]);
+                                let r: Role = Role.assign(arr[0]);
                                 if (r._id !== WellknownIds.admins && r._id !== WellknownIds.users && !Base.hasRight(r, item._id, Rights.read)) {
                                     Logger.instanse.debug("Assigning " + item.name + " read permission to " + r.name);
                                     Base.addRight(r, item._id, item.name, [Rights.read], false);
+                                    r = this.ensureResource(r);
                                     const _ot_end2 = Logger.otel.startTimer();
                                     await this.db.collection("users").updateOne({ _id: r._id }, { $set: { _acl: r._acl } });
                                     Logger.otel.endTimer(_ot_end2, DatabaseConnection.mongodb_update, { collection: "users" });
@@ -348,13 +358,14 @@ export class DatabaseConnection {
                         // when multi tenant don't allow members of common user groups to see each other
                         Logger.instanse.info("Running in multi tenant mode, skip removing permissions for " + item.name);
                     } else if (arr[0]._type === "user") {
-                        const u: User = User.assign(arr[0]);
+                        let u: User = User.assign(arr[0]);
                         if (Base.hasRight(u, item._id, Rights.read)) {
                             Base.removeRight(u, item._id, [Rights.read]);
 
                             // was read the only right ? then remove it
                             const right = Base.getRight(u, item._id, false);
                             if (NoderedUtil.IsNullUndefinded(right)) {
+                                u = this.ensureResource(u);
                                 Logger.instanse.debug("Removing " + item.name + " read permissions from " + u.name);
                                 const _ot_end1 = Logger.otel.startTimer();
                                 await this.db.collection("users").updateOne({ _id: u._id }, { $set: { _acl: u._acl } });
@@ -365,13 +376,14 @@ export class DatabaseConnection {
                             Logger.instanse.debug("No need to remove " + item.name + " read permissions from " + u.name);
                         }
                     } else if (arr[0]._type === "role") {
-                        const r: Role = Role.assign(arr[0]);
+                        let r: Role = Role.assign(arr[0]);
                         if (Base.hasRight(r, item._id, Rights.read)) {
                             Base.removeRight(r, item._id, [Rights.read]);
 
                             // was read the only right ? then remove it
                             const right = Base.getRight(r, item._id, false);
                             if (NoderedUtil.IsNullUndefinded(right)) {
+                                r = this.ensureResource(r);
                                 Logger.instanse.debug("Removing " + item.name + " read permissions from " + r.name);
                                 const _ot_end2 = Logger.otel.startTimer();
                                 await this.db.collection("users").updateOne({ _id: r._id }, { $set: { _acl: r._acl } });
@@ -616,6 +628,7 @@ export class DatabaseConnection {
                     return value;
             });
         }
+        if (collectionname == "files") collectionname = "fs.files";
         let myhint: Object = {};
         if (hint) {
             if (typeof hint === "string" || hint instanceof String) {
@@ -651,7 +664,12 @@ export class DatabaseConnection {
         const aggregatesjson = JSON.stringify(aggregates, null, 2)
 
         span.addEvent("getbasequery");
-        const base = this.getbasequery(jwt, "_acl", [Rights.read]);
+        let base: object;
+        if (collectionname == "fs.files") {
+            base = this.getbasequery(jwt, "metadata._acl", [Rights.read]);
+        } else {
+            base = this.getbasequery(jwt, "_acl", [Rights.read]);
+        }
         if (Array.isArray(aggregates)) {
             aggregates.unshift({ $match: base });
         } else {
@@ -813,17 +831,19 @@ export class DatabaseConnection {
      */
     async InsertOne<T extends Base>(item: T, collectionname: string, w: number, j: boolean, jwt: string, parent: Span): Promise<T> {
         const span: Span = Logger.otel.startSubSpan("db.InsertOne", parent);
+        let customer: Customer = null;
         try {
             if (item === null || item === undefined) { throw Error("Cannot create null item"); }
-            if (NoderedUtil.IsNullEmpty(jwt)) {
-                throw new Error("jwt is null");
-            }
+            if (NoderedUtil.IsNullEmpty(jwt)) throw new Error("jwt is null");
             await this.connect(span);
             span.addEvent("ensureResource");
             span.addEvent("verityToken");
             const user: TokenUser = Crypt.verityToken(jwt);
-
+            if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit");
             item = this.ensureResource(item);
+            if (!await this.CheckEntityRestriction(user, collectionname, item, span)) {
+                throw Error("Create " + item._type + " access denied");
+            }
             span.addEvent("traversejsonencode");
             DatabaseConnection.traversejsonencode(item);
             let name = item.name;
@@ -838,9 +858,10 @@ export class DatabaseConnection {
             const hasUser: Ace = item._acl.find(e => e._id === user._id);
             if ((hasUser === null || hasUser === undefined)) {
                 Base.addRight(item, user._id, user.name, [Rights.full_control]);
+                item = this.ensureResource(item);
             }
             if (collectionname != "audit") { Logger.instanse.silly("[" + user.username + "][" + collectionname + "] Adding " + item._type + " " + name + " to database"); }
-            if (!this.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
+            if (!DatabaseConnection.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
 
             span.addEvent("encryptentity");
             item = this.encryptentity(item) as T;
@@ -857,6 +878,52 @@ export class DatabaseConnection {
                     }
                 }
             }
+            if (collectionname === "users" && (item._type === "user" || item._type === "role")) {
+                let user2: User = item as any;
+                if (NoderedUtil.IsNullEmpty(user2.customerid)) {
+                    if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) {
+                        customer = await this.getbyid<Customer>(user.selectedcustomerid, "users", jwt, span)
+                        if (customer != null) {
+                            user2.customerid = user.selectedcustomerid;
+                        }
+                    }
+                    // if (NoderedUtil.IsNullEmpty(user2.customerid) && !NoderedUtil.IsNullEmpty(user.customerid)) {
+                    //     user2.customerid = user.customerid;
+                    // }
+                }
+                if (this.WellknownIdsArray.indexOf(user2._id) > -1) {
+                    delete user2.customerid;
+                }
+                if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
+                    if (user2._type == "user") {
+                        if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) throw new Error("Access denied (not admin) to customer with id " + user2.customerid);
+                    }
+                    customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, span)
+                    if (customer == null) throw new Error("Access denied to customer with id " + user2.customerid);
+                    // if (!user.HasRoleName(customer.name + " admins")) throw new Error("Access denied to customer with " + customer.name);
+                } else if (user.HasRoleName("customer admins") && !NoderedUtil.IsNullEmpty(user.customerid)) {
+                    // user2.customerid = user.customerid;
+                    if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
+                    customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, span);
+                } else if (Config.multi_tenant && !user.HasRoleName("admins")) {
+                    // user2.customerid = user.customerid;
+                    if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
+                    if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
+                        customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, span);
+                    }
+                    // User needs access to create roles for workflow node and more ... What to do ?
+                    // throw new Error("Access denied (not admin or customer admin)");
+                }
+                if (customer != null) {
+                    const custadmins = await this.getbyid<Role>(customer.admins, "users", jwt, span);
+                    Base.addRight(item, custadmins._id, custadmins.name, [Rights.full_control]);
+                    if (item._id == customer.admins || item._id == customer.users) {
+                        Base.removeRight(item, custadmins._id, [Rights.delete]);
+                    }
+                    (item as any).company = customer.name;
+                    item = this.ensureResource(item);
+                }
+            }
             j = ((j as any) === 'true' || j === true);
             w = parseInt((w as any));
             item._version = 0;
@@ -866,7 +933,12 @@ export class DatabaseConnection {
                     item._version = basehist[0]._version;
                 }
                 if (basehist.length > 0) {
-                    const org = await this.GetDocumentVersion(collectionname, item._id, item._version, Crypt.rootToken(), span)
+                    let org: any = null;
+                    try {
+                        org = await this.GetDocumentVersion(collectionname, item._id, item._version, Crypt.rootToken(), span)
+                    } catch (error) {
+
+                    }
                     if (org != null) {
                         item._createdby = org._createdby;
                         item._createdbyid = org._createdbyid;
@@ -941,8 +1013,16 @@ export class DatabaseConnection {
                 item = await this.CleanACL(item, user, span);
                 span.addEvent("Save");
                 await DBHelper.Save(users, Crypt.rootToken(), span);
-                const user2: TokenUser = item as any;
-                DBHelper.EnsureNoderedRoles(user2, Crypt.rootToken(), false, span);
+                let user2: TokenUser = item as any;
+
+                if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
+                    // TODO: Check user has permission to this customer
+                    const custusers: Role = Role.assign(await this.getbyid<Role>(customer.users, "users", jwt, span));
+                    custusers.AddMember(item);
+                    await DBHelper.Save(custusers, Crypt.rootToken(), span);
+                }
+
+                // DBHelper.EnsureNoderedRoles(user2, Crypt.rootToken(), false, span);
             }
             if (collectionname === "users" && item._type === "role") {
                 Base.addRight(item, item._id, item.name, [Rights.read]);
@@ -958,6 +1038,9 @@ export class DatabaseConnection {
                 if (user.HasRoleName("admins")) {
                     setTimeout(() => OAuthProvider.LoadClients(), 1000);
                 }
+            }
+            if (collectionname === "config" && item._type === "restriction") {
+                this.EntityRestrictions = null;
             }
             span.addEvent("traversejsondecode");
             DatabaseConnection.traversejsondecode(item);
@@ -981,6 +1064,7 @@ export class DatabaseConnection {
             }
             await this.connect(span);
             const user = Crypt.verityToken(jwt);
+            if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit");
             span.setAttribute("collection", collectionname);
             span.setAttribute("username", user.username);
             let bulkInsert = this.db.collection(collectionname).initializeUnorderedBulkOp();
@@ -992,6 +1076,11 @@ export class DatabaseConnection {
             for (let i = 0; i < items.length; i++) {
                 let item = this.ensureResource(items[i]);
                 DatabaseConnection.traversejsonencode(item);
+
+                if (!await this.CheckEntityRestriction(user, collectionname, item, span)) {
+                    continue;
+                }
+
                 let name = item.name;
                 if (NoderedUtil.IsNullEmpty(name)) name = item._name;
                 if (NoderedUtil.IsNullEmpty(name)) name = "Unknown";
@@ -1004,9 +1093,10 @@ export class DatabaseConnection {
                 const hasUser: Ace = item._acl.find(e => e._id === user._id);
                 if ((hasUser === null || hasUser === undefined)) {
                     Base.addRight(item, user._id, user.name, [Rights.full_control]);
+                    item = this.ensureResource(item);
                 }
                 if (collectionname != "audit") { Logger.instanse.silly("[" + user.username + "][" + collectionname + "] Adding " + item._type + " " + name + " to database"); }
-                if (!this.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
+                if (!DatabaseConnection.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
 
                 item = this.encryptentity(item) as T;
 
@@ -1185,14 +1275,15 @@ export class DatabaseConnection {
     }
     async UpdateOne<T extends Base>(q: UpdateOneMessage, parent: Span): Promise<UpdateOneMessage> {
         const span: Span = Logger.otel.startSubSpan("db.UpdateOne", parent);
+        let customer: Customer = null;
         try {
             let itemReplace: boolean = true;
             if (q === null || q === undefined) { throw Error("UpdateOneMessage cannot be null"); }
             if (q.item === null || q.item === undefined) { throw Error("Cannot update null item"); }
             await this.connect(span);
             const user: TokenUser = Crypt.verityToken(q.jwt);
-            if (!this.hasAuthorization(user, (q.item as Base), Rights.update)) {
-                const again = this.hasAuthorization(user, (q.item as Base), Rights.update);
+            if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit");
+            if (!DatabaseConnection.hasAuthorization(user, (q.item as Base), Rights.update)) {
                 throw new Error("Access denied, no authorization to UpdateOne");
             }
             if (q.collectionname === "files") { q.collectionname = "fs.files"; }
@@ -1208,9 +1299,8 @@ export class DatabaseConnection {
                 if (NoderedUtil.IsNullEmpty(name)) name = (q.item as any)._name;
                 if (NoderedUtil.IsNullEmpty(name)) name = "Unknown";
                 original = await this.getbyid<T>(q.item._id, q.collectionname, q.jwt, span);
-                if (!original) { throw Error("item not found!"); }
-                if (!this.hasAuthorization(user, original, Rights.update)) {
-                    const again = this.hasAuthorization(user, original, Rights.update);
+                if (!original) { throw Error("item not found or Access Denied"); }
+                if (!DatabaseConnection.hasAuthorization(user, original, Rights.update)) {
                     throw new Error("Access denied, no authorization to UpdateOne " + q.item._type + " " + name + " to database");
                 }
                 if (q.collectionname === "users" && !NoderedUtil.IsNullEmpty(q.item._type) && !NoderedUtil.IsNullEmpty(q.item.name)) {
@@ -1221,15 +1311,77 @@ export class DatabaseConnection {
                         }
                     }
                 }
+                if (q.collectionname === "users" && (q.item._type === "user" || q.item._type === "role")) {
+                    let user2: User = q.item as any;
+                    if (this.WellknownIdsArray.indexOf(q.item._id) > -1) {
+                        delete user2.customerid;
+                    }
+                    if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
+                        // User can update, just not created ?
+                        // if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) throw new Error("Access denied (not admin) to customer with id " + user2.customerid);
+                        customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span)
+                        if (customer == null) throw new Error("Access denied to customer with id " + user2.customerid);
+                    } else if (user.HasRoleName("customer admins") && !NoderedUtil.IsNullEmpty(user.customerid)) {
+                        customer = null;
+                        if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) {
+                            customer = await this.getbyid<Customer>(user.selectedcustomerid, "users", q.jwt, span);
+                            if (customer != null) user2.customerid = user.selectedcustomerid;
+                        }
+                        if (customer == null) {
+                            if (!user.HasRoleName("admins") && !user.HasRoleName("resellers")) {
+                                user2.customerid = user.customerid;
+                                customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span);
+                                if (customer != null) user2.customerid = user.customerid;
+                                if (customer == null) {
+                                    throw new Error("Access denied to customer with id " + user2.customerid);
+                                }
+                            }
+                        }
+                        // user2.customerid = user.customerid;
+                        // if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
+                        // customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span);
+                    } else if (Config.multi_tenant && !user.HasRoleName("admins")) {
+                        // We can update, we just don't want to allow inserts ?
+                        // throw new Error("Access denied (not admin or customer admin)");
+                        // user2.customerid = user.customerid;
+                        if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
+                        if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
+                            customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span);
+                        }
+                    }
+                    if (customer != null && !NoderedUtil.IsNullEmpty(customer.admins)) {
+                        const custadmins = await this.getbyid<Role>(customer.admins, "users", q.jwt, span);
+                        Base.addRight(q.item, custadmins._id, custadmins.name, [Rights.full_control]);
+                        if (q.item._id == customer.admins || q.item._id == customer.users) {
+                            Base.removeRight(q.item, custadmins._id, [Rights.delete]);
+                        }
+                        (q.item as any).company = customer.name;
+                        q.item = this.ensureResource(q.item);
+                    }
+                }
 
                 if (q.collectionname != "fs.files") {
                     q.item._modifiedby = user.name;
                     q.item._modifiedbyid = user._id;
                     q.item._modified = new Date(new Date().toISOString());
+                    if (original["_type"] == "user" || original["_type"] == "role") {
+                        q.item._type = original["_type"];
+                    }
                     // now add all _ fields to the new object
                     const keys: string[] = Object.keys(original);
                     for (let i: number = 0; i < keys.length; i++) {
                         let key: string = keys[i];
+                        if (key == "username" && q.collectionname == "users" && q.item._type == "user") {
+                            if (!user.HasRoleName("admins")) {
+                                q.item[key] = original[key];
+                            }
+                        }
+                        if ((key == "dbusage" || key == "dblocked") && q.collectionname == "users") {
+                            if (!user.HasRoleName("admins")) {
+                                q.item[key] = original[key];
+                            }
+                        }
+
                         if (key === "_created") {
                             q.item[key] = new Date(original[key]);
                         } else if (key === "_createdby" || key === "_createdbyid") {
@@ -1251,16 +1403,27 @@ export class DatabaseConnection {
                         q.item._version = original._version;
                     }
                     q.item = this.ensureResource(q.item);
+                    if (original._type != q.item._type && !await this.CheckEntityRestriction(user, q.collectionname, q.item, span)) {
+                        throw Error("Create " + q.item._type + " access denied");
+                    }
                     DatabaseConnection.traversejsonencode(q.item);
                     q.item = this.encryptentity(q.item);
                     const hasUser: Ace = q.item._acl.find(e => e._id === user._id);
                     if (NoderedUtil.IsNullUndefinded(hasUser) && q.item._acl.length === 0) {
                         Base.addRight(q.item, user._id, user.name, [Rights.full_control]);
+                        q.item = this.ensureResource(q.item);
                     }
                     if (q.collectionname === "users" && q.item._type === "user") {
                         Base.addRight(q.item, q.item._id, q.item.name, [Rights.read, Rights.update, Rights.invoke]);
+                        q.item = this.ensureResource(q.item);
                     }
                 } else {
+                    if (!DatabaseConnection.hasAuthorization(user, (q.item as any).metadata, Rights.update)) {
+                        throw new Error("Access denied, no authorization to UpdateOne file " + (q.item as any).filename + " to database");
+                    }
+                    if (!DatabaseConnection.hasAuthorization(user, (original as any).metadata, Rights.update)) {
+                        throw new Error("Access denied, no authorization to UpdateOne file " + (original as any).filename + " to database");
+                    }
                     (q.item as any).metadata = Base.assign((q.item as any).metadata);
                     (q.item as any).metadata._modifiedby = user.name;
                     (q.item as any).metadata._modifiedbyid = user._id;
@@ -1271,6 +1434,8 @@ export class DatabaseConnection {
                         let key: string = keys[i];
                         if (key === "_created") {
                             (q.item as any).metadata[key] = new Date((original as any).metadata[key]);
+                        } else if (key === "_type") {
+                            (q.item as any).metadata[key] = (original as any).metadata[key];
                         } else if (key === "_createdby" || key === "_createdbyid") {
                             (q.item as any).metadata[key] = (original as any).metadata[key];
                         } else if (key === "_modifiedby" || key === "_modifiedbyid" || key === "_modified") {
@@ -1295,6 +1460,7 @@ export class DatabaseConnection {
                     const hasUser: Ace = (q.item as any).metadata._acl.find(e => e._id === user._id);
                     if ((hasUser === null || hasUser === undefined) && (q.item as any).metadata._acl.length === 0) {
                         Base.addRight((q.item as any).metadata, user._id, user.name, [Rights.full_control]);
+                        q.item = this.ensureResource(q.item);
                     }
                 }
 
@@ -1405,6 +1571,15 @@ export class DatabaseConnection {
                     (q.item["$set"])._modified = new Date(new Date().toISOString());
                     if ((q.item["$inc"]) === undefined) { (q.item["$inc"]) = {} };
                     (q.item["$inc"])._version = 1;
+                    if (q.collectionname == "users") {
+                        ['$inc', '$mul', '$set', '$unset'].forEach(t => {
+                            if (q.item[t] !== undefined) {
+                                delete q.item[t].username;
+                                delete q.item[t].dbusage;
+                                delete q.item[t].dblocked;
+                            }
+                        })
+                    }
                     const ot_end = Logger.otel.startTimer();
                     const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.updateOne", span);
                     q.opresult = await this.db.collection(q.collectionname).updateOne(_query, q.item, options);
@@ -1416,7 +1591,27 @@ export class DatabaseConnection {
                 } else {
                     (q.item as any).metadata = this.decryptentity<T>((q.item as any).metadata);
                 }
+                if (q.collectionname === "config" && q.item._type === "restriction") {
+                    this.EntityRestrictions = null;
+                }
                 DatabaseConnection.traversejsondecode(q.item);
+                if (q.collectionname === "users" && q.item._type === "user") {
+                    let user2: TokenUser = q.item as any;
+
+                    if (customer != null && !NoderedUtil.IsNullEmpty(user2.customerid) && user2._id != customer.users && user2._id != customer.admins && user2._id != WellknownIds.root) {
+                        // TODO: Check user has permission to this customer
+                        const custusers: Role = Role.assign(await this.getbyid<Role>(customer.users, "users", q.jwt, span));
+                        if (!custusers.IsMember(q.item._id)) {
+                            custusers.AddMember(q.item);
+                            await DBHelper.Save(custusers, Crypt.rootToken(), span);
+                            Auth.RemoveUser(q.item._id, "passport");
+                        }
+                    } else {
+                        Auth.RemoveUser(q.item._id, "passport");
+                    }
+                    DBHelper.EnsureNoderedRoles(user2, Crypt.rootToken(), false, span);
+                }
+
                 q.result = q.item;
             } catch (error) {
                 throw error;
@@ -1447,7 +1642,8 @@ export class DatabaseConnection {
             if (q.item === null || q.item === undefined) { throw Error("Cannot update null item"); }
             await this.connect();
             const user: TokenUser = Crypt.verityToken(q.jwt);
-            if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to UpdateMany"); }
+            if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit");
+            if (!DatabaseConnection.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to UpdateMany"); }
 
             if (q.collectionname === "users" && q.item._type === "user" && q.item.hasOwnProperty("newpassword")) {
                 (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
@@ -1496,10 +1692,20 @@ export class DatabaseConnection {
             }
 
             if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };
+            if (q.item["$set"]._type) delete q.item["$set"]._type;
             (q.item["$set"])._modifiedby = user.name;
             (q.item["$set"])._modifiedbyid = user._id;
             (q.item["$set"])._modified = new Date(new Date().toISOString());
 
+            if (q.collectionname == "users") {
+                ['$inc', '$mul', '$set', '$unset'].forEach(t => {
+                    if (q.item[t] !== undefined) {
+                        delete q.item[t].username;
+                        delete q.item[t].dbusage;
+                        delete q.item[t].dblocked;
+                    }
+                })
+            }
 
             Logger.instanse.silly("[" + user.username + "][" + q.collectionname + "] UpdateMany " + (q.item.name || q.item._name) + " in database");
 
@@ -1556,6 +1762,7 @@ export class DatabaseConnection {
                 }
             }
             const user: TokenUser = Crypt.verityToken(q.jwt);
+            if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit");
             let exists: Base[] = [];
             if (query != null) {
                 // exists = await this.query(query, { name: 1 }, 2, 0, null, q.collectionname, q.jwt);
@@ -1567,7 +1774,7 @@ export class DatabaseConnection {
             else if (exists.length > 1) {
                 throw JSON.stringify(query) + " is not uniqe, more than 1 item in collection matches this";
             }
-            if (!this.hasAuthorization(user, q.item, Rights.update)) {
+            if (!DatabaseConnection.hasAuthorization(user, q.item, Rights.update)) {
                 Base.addRight(q.item, user._id, user.name, [Rights.full_control], false);
                 this.ensureResource(q.item);
             }
@@ -1659,7 +1866,7 @@ export class DatabaseConnection {
                     Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, { collection: collectionname });
                     return;
                 } else {
-                    throw Error("item not found!");
+                    throw Error("item not found, or Access Denied");
                 }
             }
             // if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] Deleting " + id + " in database");
@@ -1669,6 +1876,16 @@ export class DatabaseConnection {
             const docs = await this.db.collection(collectionname).find(_query).toArray();
             for (let i = 0; i < docs.length; i++) {
                 let doc = docs[i];
+                if (collectionname == "users" && doc._type == "user") {
+                    const usagedocs = await this.db.collection("config").find({ "userid": doc._id, "_type": "resourceusage", "quantity": { "$gt": 0 } }).toArray();
+                    if (usagedocs.length > 0) throw new Error("Access Denied, cannot delete user with active resourceusage");
+                }
+                if (collectionname == "users" && doc._type == "customer") {
+                    const usagedocs = await this.db.collection("config").find({ "customerid": doc._id, "_type": "resourceusage", "quantity": { "$gt": 0 } }).toArray();
+                    if (usagedocs.length > 0) throw new Error("Access Denied, cannot delete customer with active resourceusage");
+                    const userdocs = await this.db.collection("users").find({ "customerid": doc._id }).toArray();
+                    if (userdocs.length > 0) throw new Error("Access Denied, cannot delete customer with active user or roles");
+                }
                 doc._deleted = new Date(new Date().toISOString());
                 doc._deletedby = user.name;
                 doc._deletedbyid = user._id;
@@ -1696,6 +1913,26 @@ export class DatabaseConnection {
                 await this.db.collection(collectionname).deleteOne({ _id: doc._id });
                 Logger.otel.endSpan(mongodbspan);
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, { collection: collectionname });
+                if (collectionname == "users" && doc._type == "user") {
+                    const names: string[] = [];
+                    names.push(doc.name + "noderedadmins"); names.push(doc.name + "noderedusers"); names.push(doc.name + "nodered api users")
+                    const subdocs = await this.db.collection("users").find({ "name": { "$in": names }, "_type": "role" }).toArray();
+                    for (var r of subdocs) {
+                        this.DeleteOne(r._id, "users", jwt, span);
+                    }
+                    // await this.db.collection("audit").deleteMany({ "userid": doc._id });
+                    // await this.db.collection("openrpa_instances").deleteMany({ "_modifiedbyid": doc._id });
+                    // await this.db.collection("workflow_instances").deleteMany({ "_modifiedbyid": doc._id });
+                    // await this.db.collection("oauthtokens").deleteMany({ "userId": doc._id });
+                    // this.db.collection("nodered").deleteMany({"_modifiedbyid": doc._id});
+                    // this.db.collection("openrpa").deleteMany({"_modifiedbyid": doc._id});
+                }
+                if (collectionname == "users" && doc._type == "customer") {
+                    const subdocs = await this.db.collection("config").find({ "customerid": doc._id }).toArray();
+                    for (var r of subdocs) {
+                        this.DeleteOne(r._id, "config", jwt, span);
+                    }
+                }
             }
         } catch (error) {
             span.recordException(error);
@@ -1819,8 +2056,8 @@ export class DatabaseConnection {
                 }
                 const ot_end = Logger.otel.startTimer();
                 const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.bulkexecute", span);
-                bulkInsert.execute()
-                bulkRemove.execute()
+                if (bulkInsert.length > 0) bulkInsert.execute()
+                if (bulkRemove.length > 0) bulkRemove.execute()
                 Logger.otel.endSpan(mongodbspan);
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });
                 if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] deleted " + counter + " items in database");
@@ -1951,9 +2188,20 @@ export class DatabaseConnection {
         return { $or: finalor.concat() };
     }
     private async getbasequeryuserid(userid: string, field: string, bits: number[], parent: Span): Promise<Object> {
-        const user = await DBHelper.FindByUsernameOrId(null, userid, parent);
-        const jwt = Crypt.createToken(user, Config.shorttoken_expires_in);
-        return this.getbasequery(jwt, field, bits);
+        // const user = await DBHelper.FindByUsernameOrId(null, userid, parent);
+        let user: User = await this.getbyid(userid, "users", Crypt.rootToken(), parent);
+        if (NoderedUtil.IsNullUndefinded(user)) return null;
+        if (user._type == "user") {
+            user = await DBHelper.DecorateWithRoles(user as any, parent);
+            const jwt = Crypt.createToken(user as any, Config.shorttoken_expires_in);
+            return this.getbasequery(jwt, field, bits);
+        } else if (user._type == "customer") {
+            user = await DBHelper.DecorateWithRoles(user as any, parent);
+            user.roles.push(new Rolemember(user.name + " users", (user as any).users))
+            user.roles.push(new Rolemember(user.name + " admins", (user as any).admins))
+            const jwt = Crypt.createToken(user as any, Config.shorttoken_expires_in);
+            return this.getbasequery(jwt, field, bits);
+        }
     }
     /**
      * Ensure _type and _acs on object
@@ -1976,6 +2224,43 @@ export class DatabaseConnection {
         }
         return item;
     }
+    public EntityRestrictions: EntityRestriction[] = null;
+    async loadEntityRestrictions(parent: Span) {
+        if (this.EntityRestrictions == null) {
+            const rootjwt = Crypt.rootToken()
+            this.EntityRestrictions = await this.query<EntityRestriction>({ "_type": "restriction" }, null, 1000, 0, null, "config", rootjwt, null, null, parent);
+            let allowadmins = new EntityRestriction();
+            allowadmins.copyperm = false; allowadmins.collection = ""; allowadmins.paths = ["$."];
+            Base.addRight(allowadmins, WellknownIds.admins, "admins", [Rights.create]);
+            this.EntityRestrictions.push(allowadmins);
+            for (let i = 0; i < this.EntityRestrictions.length; i++) {
+                this.EntityRestrictions[i] = EntityRestriction.assign(this.EntityRestrictions[i]);
+            }
+        }
+    }
+    async CheckEntityRestriction(user: TokenUser, collection: string, item: Base, parent: Span): Promise<boolean> {
+        if (!Config.enable_entity_restriction) return true;
+        await this.loadEntityRestrictions(parent);
+        const defaultAllow: boolean = false;
+        let result: boolean = false;
+        const authorized = this.EntityRestrictions.filter(x => x.IsAuthorized(user) && (x.collection == collection || x.collection == ""));
+        const matches = authorized.filter(x => x.IsMatch(item) && (x.collection == collection || x.collection == ""));
+        const copyperm = matches.filter(x => x.copyperm && (x.collection == collection || x.collection == ""));
+        if (!defaultAllow && matches.length == 0) return false; // no hits, if not allowed return false
+        if (matches.length > 0) result = true;
+
+        for (let cr of copyperm) {
+            for (let a of cr._acl) {
+                let bits = [];
+                for (let i = 0; i < 10; i++) {
+                    if (Ace.isBitSet(a, i)) bits.push(i);
+
+                }
+                Base.addRight(item, a._id, a.name, bits, false);
+            }
+        }
+        return result;
+    }
     /**
      * Validated user has rights to perform the requested action ( create is missing! )
      * @param  {TokenUser} user User requesting permission
@@ -1983,7 +2268,7 @@ export class DatabaseConnection {
      * @param  {Rights} action Permission wanted (create, update, delete)
      * @returns boolean Is allowed
      */
-    hasAuthorization(user: TokenUser, item: Base, action: number): boolean {
+    static hasAuthorization(user: TokenUser, item: Base, action: number): boolean {
         if (Config.api_bypass_perm_check) { return true; }
         if (user._id === WellknownIds.root) { return true; }
         if (action === Rights.create || action === Rights.delete) {
@@ -2417,6 +2702,9 @@ export class DatabaseConnection {
                                 if (indexnames.indexOf("username_1") === -1) {
                                     await this.createIndex(collection.name, "username_1", { "username": 1 }, null, span)
                                 }
+                                if (indexnames.indexOf("userid_1") === -1) {
+                                    await this.createIndex(collection.name, "userid_1", { "userid": 1 }, null, span)
+                                }
                                 break;
                             case "users":
                                 if (indexnames.indexOf("workflowid_1") === -1) {
@@ -2441,6 +2729,9 @@ export class DatabaseConnection {
                                     await this.createIndex(collection.name, "unique_username_1", { "username": 1 },
                                         { "unique": true, "name": "unique_username_1", "partialFilterExpression": { "_type": "user" } }, span)
                                 }
+                                if (indexnames.indexOf("members._id_1") === -1) {
+                                    await this.createIndex(collection.name, "members._id_1", { "members._id": 1 }, null, span)
+                                }
                                 break;
                             case "openrpa":
                                 if (indexnames.indexOf("_created_1") === -1) {
@@ -2448,6 +2739,14 @@ export class DatabaseConnection {
                                 }
                                 if (indexnames.indexOf("_type_projectid_name_1") === -1) {
                                     await this.createIndex(collection.name, "_type_projectid_name_1", { _type: 1, "{projectid:-1,name:-1}": 1 }, null, span)
+                                }
+                                break;
+                            case "dbusage":
+                                if (indexnames.indexOf("_created_1") === -1) {
+                                    await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
+                                }
+                                if (indexnames.indexOf("collection_1_timestamp_1") === -1) {
+                                    await this.createIndex(collection.name, "collection_1_timestamp_1", { _type: 1, "{collection:1,timestamp:1}": 1 }, null, span)
                                 }
                                 break;
                             default:
@@ -2473,3 +2772,43 @@ export class DatabaseConnection {
     }
 }
 
+export class EntityRestriction extends Base {
+    public collection: string;
+    public copyperm: boolean;
+    public paths: string[];
+    constructor(
+    ) {
+        super();
+        this._type = "restriction";
+    }
+    static assign<EntityRestriction>(o: any): EntityRestriction {
+        if (typeof o === 'string' || o instanceof String) {
+            return Object.assign(new EntityRestriction(), JSON.parse(o.toString()));
+        }
+        return Object.assign(new EntityRestriction(), o);
+    }
+    public IsMatch(object: object): boolean {
+        if (NoderedUtil.IsNullUndefinded(object)) {
+            return false;
+        }
+        for (let path of this.paths) {
+            if (!NoderedUtil.IsNullEmpty(path)) {
+                try {
+                    const result = JSONPath({ path, json: { a: object } });
+                    if (result && result.length > 0) return true;
+                } catch (error) {
+                }
+            } else {
+                var b = true;
+            }
+        }
+        return false;
+    }
+    public IsAuthorized(user: TokenUser | User): boolean {
+        return DatabaseConnection.hasAuthorization(user as TokenUser, this, Rights.create);
+    }
+    //     public IsAllowed(user: TokenUser | User, object: object, NoMatchValue: boolean) {
+    //         if (!this.IsMatch(object)) return NoMatchValue;
+    //         return this.IsAuthorized(user);
+    //     }
+}

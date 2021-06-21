@@ -24,15 +24,14 @@
     <div class="form-group">
         <label for="newpassword" class="col-sm-2 control-label" translate lib="web">password</label>
         <div class="col-sm-4">
-            <input ng-model="ctrl.model.newpassword" type="password" class="form-control input-md"
+            <input ng-model="ctrl.model.newpassword" class="form-control input-md" style="-webkit-text-security: disc;"
                 ng-disabled="ctrl.loading==true" />
         </div>
     </div>
     <div class="form-group">
         <label for="name" class="col-sm-2 control-label" translate lib="web">disabled</label>
         <div class="col-sm-6">
-            <input type="checkbox" ng-model="ctrl.model.disabled" class="form-control input-md"
-                ng-disabled="ctrl.loading==true" />
+            <input type="checkbox" ng-model="ctrl.model.disabled" class="input-md" ng-disabled="ctrl.loading==true" />
         </div>
     </div>
     <div class="form-group" ng-show="ctrl.model.sid != '' && ctrl.model.sid != null && ctrl.model.sid != undefined">
@@ -103,8 +102,28 @@
             <button ng-click=" ctrl.RemoveMember(m)" type="button" ng-disabled="ctrl.loading==true"
                 class="btn btn-success" translate lib="web">remove</button>
         </div>
+        <div class="col-sm-3">
+            {{ m._id }}
+        </div>
     </div>
-
-
-
 </form>
+
+<br>
+<hr class="row" ng-show="ctrl.model._id == menuctrl.user._id">
+<div class="row" ng-show="ctrl.model._id == menuctrl.user._id">
+    <div class="col">admins</div>
+    <div class="col">{{menuctrl.hasrole('admins')}}</div>
+</div>
+<div class="row" ng-show="ctrl.model._id == menuctrl.user._id">
+    <div class="col">resellers</div>
+    <div class="col">{{menuctrl.hasrole('resellers')}}</div>
+</div>
+<div class="row" ng-show="ctrl.model._id == menuctrl.user._id">
+    <div class="col">customer admins</div>
+    <div class="col">{{menuctrl.hasrole('customer admins')}}</div>
+</div>
+<hr class="row" ng-show="ctrl.model._id == menuctrl.user._id">
+<div class="row" ng-repeat="role in menuctrl.user.roles" ng-show="ctrl.model._id == menuctrl.user._id">
+    <div class="col">{{role._id}}</div>
+    <div class="col">{{role.name}}</div>
+</div>

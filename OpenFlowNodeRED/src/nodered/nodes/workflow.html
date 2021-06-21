@@ -153,7 +153,7 @@ If you have buttons on the form, you can get the name of the button clicked in m
 <script type="text/x-red" data-template-name="assign workflow">
     <div class="form-row">
         <label ><i class="fa fa-tag"></i> Queue name</label>
-        <input type="text" id="node-input-queue" placeholder="Queue name">
+        <input type="text" id="node-input-queue" placeholder="Name">
     </div>
     <div class="form-row">
         <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
@@ -184,8 +184,8 @@ If you have buttons on the form, you can get the name of the button clicked in m
     </div>
     <div class="form-row">
         <label for="node-input-initialrun"><i class="fa fa-tasks"></i> Initial Run</label>
-        <input type="checkbox" id="node-input-initialrun">
-
+        <input type="hidden" id="node-input-initialruntype">
+        <input style="width:70%" type="text" id="node-input-initialrun">
     </div>
 </script>
 <script type="text/x-red" data-help-name="assign workflow">
@@ -212,9 +212,11 @@ If you have buttons on the form, you can get the name of the button clicked in m
         defaults: {
             name: { value: "" },
             queue: { value: "", required: true },
+            initialrun: { value: false, validate: RED.validators.typedInput("initialruntype"), required: true },
+            initialruntype: { value: "" },
+
             targetid: { value: "" },
             workflowid: { value: "" },
-            initialrun: { value: false, required: true }
         },
         inputs: 1,
         outputs: 2,
@@ -243,7 +245,7 @@ If you have buttons on the form, you can get the name of the button clicked in m
                     $('#node-input-targetid-select').empty();
                     $('#node-input-targetid-select').append($('<option>', {
                         value: "",
-                        text: "None"
+                        text: "from msg.targetid"
                     }));
 
                     $.each(data, function (i, ele) {
@@ -280,9 +282,8 @@ If you have buttons on the form, you can get the name of the button clicked in m
                     $('#node-input-workflowid-select').empty();
                     $('#node-input-workflowid-select').append($('<option>', {
                         value: "",
-                        text: "None"
+                        text: "from msg.workflowid"
                     }));
-
                     $.each(data, function (i, ele) {
                         $('#node-input-workflowid-select').append($('<option>', {
                             value: ele._id,
@@ -307,6 +308,12 @@ If you have buttons on the form, you can get the name of the button clicked in m
         oneditsave: function () {
             $('#node-input-targetid').val($('#node-input-targetid-select').val());
             $('#node-input-workflowid').val($('#node-input-workflowid-select').val());
+            if (this.initialruntype === 'val') $("#node-input-initialruntype").val('str');
+            $("#node-input-initialrun").typedInput({
+                default: 'bool',
+                typeField: $("#node-input-initialruntype"),
+                types: ['msg', 'bool', 'flow', 'global']
+            });
         }
 
     });

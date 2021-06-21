@@ -19,7 +19,6 @@
     }
 </style>
 
-<pre ng-show="ErrorMessage!=null">{{ ErrorMessage }}</pre>
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <form ng-submit="ctrl.submit()" class="form-horizontal" role="form" autocomplete="off">
 
@@ -32,8 +31,10 @@
     <div class="form-group">
         <label for="name" class="col-sm-2 control-label" translate lib="web">rparole</label>
         <div class="col-sm-6">
-            <input type="checkbox" ng-model="ctrl.model.rparole" class="form-control input-md"
-                ng-disabled="ctrl.loading==true" />
+            <div class="custom-switch">
+                <input type="checkbox" id="rparole" ng-model="ctrl.model.rparole">
+                <label for="rparole">rparole</label>
+            </div>
         </div>
     </div>
     <div class="form-group ">
@@ -56,8 +57,8 @@
                 <li class="list-group-item" ng-repeat="item in ctrl.searchFilteredList"
                     ng-click="ctrl.fillTextbox(item.name)"
                     ng-class="{listgroupitemselected: ctrl.searchSelectedItem._id==item._id}">
-                    ({{item._type}}) {{item.name}} <span
-                        ng-show="item.name != item.username">{{" " + item.username}}</span>
+                    ({{item._type}}) {{item.name}} <span ng-show="item.name != item.username">{{" " +
+                        item.username}}</span>
                 </li>
             </ul>
         </div>

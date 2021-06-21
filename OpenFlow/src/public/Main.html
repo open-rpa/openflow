@@ -1,16 +1,15 @@
 <div class="row">
   <h1 translate lib="web">sitename</h1>
   <p class="col-md-5 lead"></p>
-  <div class="form-group col-sm-3 form-horizontal">
-    <label class="sr-only">Filter</label>
-    <div class="input-group unframed-addons">
-      <div class="input-group-addon"><em class="fas fa-search"></em></div>
-      <input ng-model="ctrl.searchstring" ng-change="ctrl.Search()" class="form-control input-md"
-        ng-model-options="{debounce: 400}" />
-      <input type="checkbox" class="form-control " ng-model="ctrl.showcompleted" ng-change="ctrl.Search()" />
-    </div>
-  </div>
 </div>
+</div>
+
+
+<div class="text-right">
+  <input type="checkbox" id="checkbox-1" ng-model="ctrl.showcompleted" ng-change="ctrl.Search()">
+  <label for="checkbox-1"><span translate lib="web">completed</span></label>
+</div>
+
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;">
   <thead class="thead-dark">
@@ -35,8 +34,8 @@
       </td>
       <td>{{model._createdby}}</td>
       <td class="btn-cell">
-        <a ng-href="#/Form/{{model.workflow}}/{{model._id}}" ng-hide="ctrl.loading==true || model.form == 'none'"
-          translate lib="web">open</a>
+        <a ng-href="#/Form/{{model.workflow}}/{{model._id}}" ng-hide="ctrl.loading==true || model.form == 'none'"><em
+            class="fas fa-book-open"></em></a>
       </td>
     </tr>
   </tbody>

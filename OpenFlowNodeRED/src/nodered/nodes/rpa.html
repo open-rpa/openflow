@@ -123,7 +123,7 @@ killallexisting is only aviable for robots version >=1.3.1<br>
                 $('#node-input-queue-select').empty();
                 $('#node-input-queue-select').append($('<option>', {
                     value: null,
-                    text: "none"
+                    text: "from msg.targetid"
                 }));
                 $.each(data, function (i, ele) {
                     $('#node-input-queue-select').append($('<option>', {
@@ -148,6 +148,10 @@ killallexisting is only aviable for robots version >=1.3.1<br>
                 }));
                 $.getJSON('rpa_workflows', { queue: $('#node-input-queue-select').val() }, function (data) {
                     $('#node-input-workflow-select').empty();
+                    $('#node-input-workflow-select').append($('<option>', {
+                        value: null,
+                        text: "from msg.workflowid"
+                    }));
                     $.each(data, function (i, ele) {
                         if (ele.projectandname != null && ele.projectandname != undefined && ele.projectandname != "") {
                             $('#node-input-workflow-select').append($('<option>', {
@@ -220,7 +224,7 @@ Active everytime a trigger gets triggered on a robot.
                 $('#node-input-queue-select').empty();
                 $('#node-input-queue-select').append($('<option>', {
                     value: null,
-                    text: "none"
+                    text: "from msg.targetid"
                 }));
                 $.each(data, function (i, ele) {
                     $('#node-input-queue-select').append($('<option>', {

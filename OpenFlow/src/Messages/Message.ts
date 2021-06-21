@@ -13,10 +13,10 @@ import { Readable, Stream } from "stream";
 import { GridFSBucket, ObjectID, Cursor } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
-import { StripeMessage, EnsureStripeCustomerMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, GetKubeNodeLabels, RegisterExchangeMessage } from "@openiap/openflow-api";
-import { Billing, stripe_customer, stripe_base, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription, stripe_subscription_item, stripe_plan, stripe_coupon } from "@openiap/openflow-api";
+import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, GetKubeNodeLabels, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice, stripe_price, stripe_plan, stripe_invoice_line } from "@openiap/openflow-api";
+import { stripe_customer, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription_item, stripe_coupon } from "@openiap/openflow-api";
 import { V1ResourceRequirements, V1Deployment } from "@kubernetes/client-node";
-import { amqpwrapper } from "../amqpwrapper";
+import { amqpwrapper, QueueMessageOptions } from "../amqpwrapper";
 import { WebSocketServerClient } from "../WebSocketServerClient";
 import { DBHelper } from "../DBHelper";
 import { WebSocketServer } from "../WebSocketServer";
@@ -25,7 +25,6 @@ import { Span } from "@opentelemetry/api";
 import { Logger } from "../Logger";
 import Dockerode = require("dockerode");
 import { QueueClient } from "../QueueClient";
-const request = require("request");
 const got = require("got");
 const { RateLimiterMemory } = require('rate-limiter-flexible')
 const BaseRateLimiter = new RateLimiterMemory({
@@ -80,9 +79,11 @@ export class Message {
     public correlationId: string;
     public cb: any;
     public priority: number = 1;
-    public async QueueProcess(cli: QueueClient, parent: Span): Promise<void> {
+    public options: QueueMessageOptions;
+    public async QueueProcess(options: QueueMessageOptions, parent: Span): Promise<void> {
         let span: Span = undefined;
         try {
+            this.options = options;
             const ot_end = Logger.otel.startTimer();
             span = Logger.otel.startSubSpan("QueueProcessMessage " + this.command, parent);
             span.setAttribute("command", this.command);
@@ -135,6 +136,12 @@ export class Message {
                     break;
                 case "deletenoderedpod":
                     await this.DeleteNoderedPod(span);
+                    break;
+                case "getnoderedinstance":
+                    await this.GetNoderedInstance(span);
+                    break;
+                case "housekeeping":
+                    await this.Housekeeping(false, false, false, span);
                     break;
                 default:
                     span.recordException("Unknown command " + this.command);
@@ -203,9 +210,9 @@ export class Message {
 
             if (!NoderedUtil.IsNullEmpty(this.command)) { this.command = this.command.toLowerCase(); }
             let command: string = this.command;
+            cli.lastheartbeat = new Date();
             if (command == "ping" || command == "pong") {
                 if (command == "ping") this.Ping(cli);
-                cli.lastheartbeat = new Date();
                 return;
             }
             try {
@@ -408,6 +415,7 @@ export class Message {
                         await this.EnsureNoderedInstance(span);
                         cli.Send(this);
                     }
+                    await this.ReloadUserToken(cli, span);
                     break;
                 case "deletenoderedinstance":
                     this.EnsureJWT(cli);
@@ -431,7 +439,13 @@ export class Message {
                     await this.GetKubeNodeLabels(cli);
                     break;
                 case "getnoderedinstance":
-                    await this.GetNoderedInstance(cli, span);
+                    this.EnsureJWT(cli);
+                    if (Config.enable_openflow_amqp) {
+                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                    } else {
+                        await this.RestartNoderedInstance(span);
+                        cli.Send(this);
+                    }
                     break;
                 case "getnoderedinstancelog":
                     await this.GetNoderedInstanceLog(cli, span);
@@ -466,11 +480,15 @@ export class Message {
                 case "stripeaddplan":
                     await this.StripeAddPlan(cli, span);
                     break;
+                case "getnextinvoice":
+                    await this.GetNextInvoice(cli, span);
+                    break;
                 case "stripecancelplan":
                     await this.StripeCancelPlan(cli, span);
                     break;
                 case "ensurestripecustomer":
-                    await this.EnsureStripeCustomer(cli, span);
+                    this.Reply();
+                    this.Send(cli);
                     break;
                 case "stripemessage":
                     await this.StripeMessage(cli);
@@ -485,10 +503,30 @@ export class Message {
                     break;
                 case "pushmetrics":
                     break;
+                case "ensurecustomer":
+                    await this.EnsureCustomer(cli, span);
+                    break;
+                case "selectcustomer":
+                    await this.SelectCustomer(span);
+                    this.ReloadUserToken(cli, span)
+                    break;
+                case "housekeeping":
+                    this.EnsureJWT(cli);
+                    if (Config.enable_openflow_amqp) {
+                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                    } else {
+                        await this.DeleteNoderedPod(span);
+                        cli.Send(this);
+                    }
+                    break;
                 default:
-                    span.recordException("Unknown command " + command);
-                    this.UnknownCommand();
-                    cli.Send(this);
+                    if (command != "error") {
+                        span.recordException("Unknown command " + command);
+                        this.UnknownCommand();
+                        cli.Send(this);
+                    } else {
+                        var b = true;
+                    }
                     break;
             }
             if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
@@ -727,6 +765,21 @@ export class Message {
                 Message.collectionCache[msg.jwt] = result;
                 span.setAttribute("cache size", keys.length + 1);
                 msg.result = result;
+            }
+            const _tuser = Crypt.verityToken(this.jwt);
+            if (Config.enable_entity_restriction && !_tuser.HasRoleId("admins")) {
+                await Config.db.loadEntityRestrictions(span);
+                if (Config.db.EntityRestrictions.length > 1) {
+                    const tuser = Crypt.verityToken(this.jwt);
+                    const authorized = Config.db.EntityRestrictions.filter(x => x.IsAuthorized(tuser));
+                    const allall = authorized.filter(x => x.collection == "");
+                    if (allall.length == 0) {
+                        const names = authorized.map(x => x.collection);
+                        msg.result = msg.result.filter(x => names.indexOf(x.name) > -1);
+                    }
+                }
+            } else {
+                var b = true;
             }
         } catch (error) {
             span.recordException(error);
@@ -1145,6 +1198,7 @@ export class Message {
             let type: string = "local";
             try {
                 msg = SigninMessage.assign(this.data);
+                const originialjwt = msg.jwt;
                 let tuser: TokenUser = null;
                 let user: User = null;
                 if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
@@ -1153,12 +1207,12 @@ export class Message {
                     if (tuser.impostor !== null && tuser.impostor !== undefined && tuser.impostor !== "") {
                         impostor = tuser.impostor;
                     }
-                    user = await DBHelper.FindByUsername(tuser.username, null, span);
+                    user = await DBHelper.FindByUsernameOrId(tuser.username, tuser._id, span);
                     if (user !== null && user !== undefined) {
                         // refresh, for roles and stuff
                         tuser = TokenUser.From(user);
                     } else { // Autocreate user .... safe ?? we use this for autocreating nodered service accounts
-                        if (Config.auto_create_users == true) {
+                        if (Config.auto_create_user_from_jwt) {
                             const jwt: string = Crypt.rootToken();
                             user = await DBHelper.ensureUser(jwt, tuser.name, tuser.username, null, msg.password, span);
                             if (user != null) tuser = TokenUser.From(user);
@@ -1243,6 +1297,8 @@ export class Message {
                             msg.impersonate = null;
                         } else {
                             msg.impersonate = user.impersonating;
+                            user.selectedcustomerid = null;
+                            tuser.selectedcustomerid = null;
                         }
                     }
                     if (msg.impersonate !== undefined && msg.impersonate !== null && msg.impersonate !== "" && tuser._id != msg.impersonate) {
@@ -1258,14 +1314,16 @@ export class Message {
                             Audit.ImpersonateFailed(imp, tuser, cli.clientagent, cli.clientversion, span);
                             throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " view and impersonating " + msg.impersonate);
                         }
+                        user.selectedcustomerid = null;
+                        tuser.selectedcustomerid = null;
                         const tuserimpostor = tuser;
                         user = User.assign(items[0] as User);
                         user = await DBHelper.DecorateWithRoles(user, span);
                         // Check we have update rights
                         try {
-                            await DBHelper.Save(user, msg.jwt, span);
+                            await DBHelper.Save(user, originialjwt, span);
                             if (Config.persist_user_impersonation) {
-                                await Config.db._UpdateOne({ _id: tuserimpostor._id }, { "$set": { "impersonating": user._id } } as any, "users", 1, false, msg.jwt, span);
+                                await Config.db._UpdateOne({ _id: tuserimpostor._id }, { "$set": { "impersonating": user._id } } as any, "users", 1, false, originialjwt, span);
                             }
                         } catch (error) {
                             const impostors = await Config.db.query<User>({ _id: msg.impersonate }, null, 1, 0, null, "users", Crypt.rootToken(), undefined, undefined, span);
@@ -1283,6 +1341,7 @@ export class Message {
 
                         tuser = TokenUser.From(user);
                         tuser.impostor = userid;
+                        (user as any).impostor = userid;
                         if (msg.longtoken) {
                             msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
                         } else {
@@ -1667,7 +1726,6 @@ export class Message {
             span.recordException(error);
             this.data = "";
             await handleError(null, error);
-            //msg.error = JSON.stringify(error, null, 2);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
         try {
@@ -1686,7 +1744,6 @@ export class Message {
 
             const _tuser = Crypt.verityToken(this.jwt);
 
-            // Logger.instanse.debug("[" + tuser.username + "] EnsureNoderedInstance");
             if (_id === null || _id === undefined || _id === "") _id = _tuser._id;
             const name = await this.GetInstanceName(_id, _tuser._id, _tuser.username, this.jwt, span);
 
@@ -1721,8 +1778,6 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(Config.nodered_limits_memory)) resources.limits.memory = Config.nodered_limits_memory;
             if (!NoderedUtil.IsNullEmpty(Config.nodered_limits_cpu)) resources.limits.cpu = Config.nodered_limits_cpu;
 
-
-
             let nodered_image_name = Config.nodered_images[0].name;
             if (user.nodered) {
                 try {
@@ -1739,8 +1794,9 @@ export class Message {
             let nodered_image = Config.nodered_images[0].image;
             if (_nodered_image.length == 1) { nodered_image = _nodered_image[0].image; }
 
-            if (user.nodered && user.nodered.resources) {
-                if (NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
+
+            if (NoderedUtil.IsNullEmpty(Config.stripe_api_secret) && !Config.multi_tenant) {
+                if (user.nodered && user.nodered.resources) {
                     if (user.nodered.resources.limits) {
                         resources.limits.memory = user.nodered.resources.limits.memory;
                         resources.limits.cpu = user.nodered.resources.limits.cpu;
@@ -1751,37 +1807,41 @@ export class Message {
                         resources.requests.memory = user.nodered.resources.requests.memory;
                         resources.requests.cpu = user.nodered.resources.requests.cpu;
                     }
-                } else {
-                    const billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt, undefined, undefined, span);
-                    if (billings.length > 0) {
-                        const billing: Billing = billings[0];
-                        if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.limits.memory = billing.memory;
-                        if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.cpu = (billing as any).cpu;
-                        if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.requests.memory = billing.memory;
-                        if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.cpu = (billing as any).cpu;
-
-                        if (!NoderedUtil.IsNullEmpty(billing.openflowuserplan)) {
-                            hasbilling = true;
-                        }
-                    }
-
                 }
             } else {
-                if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
-                    const billings = await Config.db.query<Billing>({ userid: _id, _type: "billing" }, null, 1, 0, null, "users", rootjwt, undefined, undefined, span);
-                    if (billings.length > 0) {
-                        const billing: Billing = billings[0];
-                        if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.limits.memory = billing.memory;
-                        if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.cpu = (billing as any).cpu;
-                        if (!NoderedUtil.IsNullEmpty(billing.memory)) resources.requests.memory = billing.memory;
-                        if (!NoderedUtil.IsNullEmpty((billing as any).cpu)) resources.limits.cpu = (billing as any).cpu;
-                        if (!NoderedUtil.IsNullEmpty(billing.openflowuserplan)) {
+                let _resources: Resource[] = await Config.db.db.collection("config").find({ "_type": "resource", "name": "Nodered Instance" }).toArray();
+                if (_resources.length > 0) {
+                    let resource: Resource = _resources[0];
+
+                    if (resource.defaultmetadata.resources) {
+                        if (resource.defaultmetadata.resources.limits) {
+                            if (resource.defaultmetadata.resources.limits.memory) resources.limits.memory = resource.defaultmetadata.resources.limits.memory;
+                            if (resource.defaultmetadata.resources.limits.cpu) resources.limits.cpu = resource.defaultmetadata.resources.limits.cpu;
+                        }
+                        if (resource.defaultmetadata.resources.requests) {
+                            if (resource.defaultmetadata.resources.requests.memory) resources.requests.memory = resource.defaultmetadata.resources.requests.memory;
+                            if (resource.defaultmetadata.resources.requests.cpu) resources.requests.cpu = resource.defaultmetadata.resources.requests.cpu;
+                        }
+                    }
+                    let assigned: ResourceUsage[] = await Config.db.db.collection("config").find({ "_type": "resourceusage", "userid": user._id, "resource": "Nodered Instance" }).toArray();
+                    if (assigned.length > 0) {
+                        let usage: ResourceUsage = assigned[0];
+                        if (usage.quantity > 0 && !NoderedUtil.IsNullEmpty(usage.siid)) {
                             hasbilling = true;
+                            if (usage.product.metadata.resources) {
+                                if (usage.product.metadata.resources.limits) {
+                                    if (usage.product.metadata.resources.limits.memory) resources.limits.memory = usage.product.metadata.resources.limits.memory;
+                                    if (usage.product.metadata.resources.limits.cpu) resources.limits.cpu = usage.product.metadata.resources.limits.cpu;
+                                }
+                                if (usage.product.metadata.resources.requests) {
+                                    if (usage.product.metadata.resources.requests.memory) resources.requests.memory = usage.product.metadata.resources.requests.memory;
+                                    if (usage.product.metadata.resources.requests.cpu) resources.requests.cpu = usage.product.metadata.resources.requests.cpu;
+                                }
+                            }
                         }
                     }
                 }
             }
-            // 
             let livenessProbe: any = {
                 httpGet: {
                     path: "/livenessprobe",
@@ -2364,22 +2424,24 @@ export class Message {
     }
     private static detectdocker: boolean = true;
     private static usedocker: boolean = false;
-    private async GetNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    private async GetNoderedInstance(parent: Span): Promise<void> {
         await this.DetectDocker();
         if (Message.usedocker) {
-            this.dockerGetNoderedInstance(cli, parent);
+            await this.dockerGetNoderedInstance(parent);
         } else {
-            this.KubeGetNoderedInstance(cli, parent);
+            await this.KubeGetNoderedInstance(parent);
         }
     }
-    private async dockerGetNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    private async dockerGetNoderedInstance(parent: Span): Promise<void> {
         this.Reply();
         let msg: GetNoderedInstanceMessage;
         const span: Span = Logger.otel.startSubSpan("message.GetNoderedInstance", parent);
         try {
-            Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstance");
+            const _tuser = Crypt.verityToken(this.jwt);
+
+            Logger.instanse.debug("[" + _tuser.username + "] GetNoderedInstance");
             msg = GetNoderedInstanceMessage.assign(this.data);
-            const name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt, span);
+            const name = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
 
             span.addEvent("init Docker()");
             const docker = new Docker();
@@ -2415,7 +2477,7 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error
         }
         try {
@@ -2423,19 +2485,19 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
         }
         Logger.otel.endSpan(span);
-        this.Send(cli);
     }
-    private async KubeGetNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    private async KubeGetNoderedInstance(parent: Span): Promise<void> {
         this.Reply();
         let msg: GetNoderedInstanceMessage;
         const span: Span = Logger.otel.startSubSpan("message.GetNoderedInstance", parent);
         try {
-            Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstance");
+            const _tuser = Crypt.verityToken(this.jwt);
+            Logger.instanse.debug("[" + _tuser.username + "] GetNoderedInstance");
             msg = GetNoderedInstanceMessage.assign(this.data);
-            const name = await this.GetInstanceName(msg._id, cli.user._id, cli.user.username, cli.jwt, span);
+            const name = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
             const namespace = Config.namespace;
             const list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
             msg.result = null;
@@ -2459,7 +2521,7 @@ export class Message {
                         if ((image.indexOf("openflownodered") > -1 || image.indexOf("openiap/nodered") > -1) && !NoderedUtil.IsNullEmpty(userid)) {
                             try {
                                 if (billed != "true" && diffhours > 24) {
-                                    Logger.instanse.debug("[" + cli.user.username + "] Remove un billed nodered instance " + itemname + " that has been running for " + diffhours + " hours");
+                                    Logger.instanse.debug("[" + _tuser.username + "] Remove un billed nodered instance " + itemname + " that has been running for " + diffhours + " hours");
                                     await this._DeleteNoderedInstance(userid, rootjwt, span);
                                 }
                             } catch (error) {
@@ -2472,7 +2534,7 @@ export class Message {
                             }
                         }
                     }
-                    if (!NoderedUtil.IsNullEmpty(msg.name) && item.metadata.name == msg.name && cli.user.HasRoleName("admins")) {
+                    if (!NoderedUtil.IsNullEmpty(msg.name) && item.metadata.name == msg.name && _tuser.HasRoleName("admins")) {
                         found = item;
                         var metrics: any = null;
                         try {
@@ -2485,7 +2547,6 @@ export class Message {
                         found = item;
                         if (item.status.phase != "Failed") {
                             msg.result = item;
-                            Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstance: " + name + " found one");
                         }
                         var metrics: any = null;
                         try {
@@ -2498,12 +2559,12 @@ export class Message {
                 }
                 if (msg.result == null) msg.result = found;
             } else {
-                Logger.instanse.warn("[" + cli.user.username + "] GetNoderedInstance: found NO Namespaced Pods ???");
+                Logger.instanse.warn("[" + _tuser.username + "] GetNoderedInstance: found NO Namespaced Pods ???");
             }
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error
         }
         try {
@@ -2511,10 +2572,9 @@ export class Message {
         } catch (error) {
             span.recordException(error);
             this.data = "";
-            await handleError(cli, error);
+            await handleError(null, error);
         }
         Logger.otel.endSpan(span);
-        this.Send(cli);
     }
     private async GetNoderedInstanceLog(cli: WebSocketServerClient, parent: Span): Promise<void> {
         await this.DetectDocker();
@@ -2757,7 +2817,7 @@ export class Message {
                 Base.addRight(msg.metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
             }
             msg.metadata = Config.db.ensureResource(msg.metadata);
-            if (!Config.db.hasAuthorization(user, msg.metadata, Rights.create)) { throw new Error("Access denied, no authorization to save file"); }
+            if (!NoderedUtil.hasAuthorization(user, msg.metadata, Rights.create)) { throw new Error("Access denied, no authorization to save file"); }
             msg.id = await this._SaveFile(readable, msg.filename, msg.mimeType, msg.metadata);
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -2880,7 +2940,7 @@ export class Message {
                 Base.addRight(msg.metadata, user._id, user.name, [Rights.full_control]);
             }
             Base.addRight(msg.metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
-            if (!Config.db.hasAuthorization(user, msg.metadata, Rights.update)) { throw new Error("Access denied, no authorization to update file"); }
+            if (!NoderedUtil.hasAuthorization(user, msg.metadata, Rights.update)) { throw new Error("Access denied, no authorization to update file"); }
 
             msg.metadata = Config.db.ensureResource(msg.metadata);
             const fsc = Config.db.db.collection("fs.files");
@@ -2903,7 +2963,7 @@ export class Message {
 
     async CreateWorkflowInstance(cli: WebSocketServerClient, parent: Span) {
         this.Reply();
-        const span: Span = Logger.otel.startSubSpan("message.StartNoderedInstance", parent);
+        const span: Span = Logger.otel.startSubSpan("message.CreateWorkflowInstance", parent);
         let msg: CreateWorkflowInstanceMessage
         try {
             msg = CreateWorkflowInstanceMessage.assign(this.data);
@@ -2970,22 +3030,6 @@ export class Message {
         this.Send(cli);
     }
 
-    async async_request(options: any) {
-        return new Promise<any>(async (resolve, reject) => {
-            try {
-                request(options, (error, response, body) => {
-                    if (error) return reject(error);
-                    if (response.statusCode != 200) {
-                        if (body != null) return reject(body);
-                        return reject(response.statusText);
-                    }
-                    resolve(body);
-                });
-            } catch (error) {
-                reject(error);
-            }
-        });
-    }
     isObject(obj) {
         const type = typeof obj;
         return (type === 'function' || type === 'object') && !!obj;
@@ -3016,44 +3060,99 @@ export class Message {
         step(data, undefined);
         return result;
     }
+    async _StripeCancelPlan(resourceusageid: string, quantity: number, jwt: string, parent: Span) {
+        const span: Span = Logger.otel.startSubSpan("message.StripeCancelPlan", parent);
+        try {
+            const usage: ResourceUsage = await Config.db.getbyid(resourceusageid, "config", jwt, span);
+            if (usage == null) throw new Error("Unknown usage or Access Denied");
+            const customer: Customer = await Config.db.getbyid(usage.customerid, "users", jwt, span);
+            if (customer == null) throw new Error("Unknown usage or Access Denied (customer)");
+            let user: TokenUser;
+            if (!NoderedUtil.IsNullEmpty(usage.userid)) {
+                user = await Config.db.getbyid(usage.userid, "users", jwt, span) as any;
+                if (user == null) throw new Error("Unknown usage or Access Denied (user)");
+            }
+            const tuser = Crypt.verityToken(jwt);
+            if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
+                throw new Error("Access denied, adding plan (admins)");
+            }
+
+
+            if (!NoderedUtil.IsNullEmpty(usage.product.added_resourceid) && !NoderedUtil.IsNullEmpty(usage.product.added_stripeprice)) {
+                if (user != null) {
+                    const subusage: ResourceUsage[] = await Config.db.query({ "_type": "resourceusage", "userid": usage.userid, "product.stripeprice": usage.product.added_stripeprice }, null, 2, 0, null, "config", jwt, null, null, span);
+                    if (subusage.length == 1) {
+                        await this._StripeCancelPlan(subusage[0]._id, usage.product.added_quantity_multiplier * subusage[0].quantity, jwt, span);
+                    } else if (subusage.length > 1) {
+                        throw new Error("Error found more than one resourceusage for userid " + usage.userid + " and stripeprice " + usage.product.added_stripeprice);
+                    }
+                } else {
+                    const subusage: ResourceUsage[] = await Config.db.query({ "_type": "resourceusage", "customerid": usage.customerid, "product.stripeprice": usage.product.added_stripeprice }, null, 2, 0, null, "config", jwt, null, null, span);
+                    if (subusage.length == 1) {
+                        await this._StripeCancelPlan(subusage[0]._id, usage.product.added_quantity_multiplier * subusage[0].quantity, jwt, span);
+                    } else if (subusage.length > 1) {
+                        throw new Error("Error found more than one resourceusage for customerid " + usage.customerid + " and stripeprice " + usage.product.added_stripeprice);
+                    }
+                }
+            }
+
+
+            if (quantity < 1) quantity = 1;
+
+            const total_usage = await Config.db.query<ResourceUsage>({ "_type": "resourceusage", "customerid": usage.customerid, "siid": usage.siid }, null, 1000, 0, null, "config", jwt, null, null, span);
+            let _quantity: number = 0;
+            total_usage.forEach(x => _quantity += x.quantity);
+
+            _quantity -= quantity;
+
+            const payload: any = { quantity: _quantity };
+            if ((user != null && usage.product.userassign == "metered") ||
+                (user == null && usage.product.customerassign == "metered")) {
+                delete payload.quantity;
+            }
+            if (!NoderedUtil.IsNullEmpty(usage.siid)) {
+                if (payload.quantity == 0) {
+                    var sub = await this.Stripe<stripe_subscription>("GET", "subscriptions", usage.subid, null, customer.stripeid);
+                    if (sub.items.total_count < 2) {
+                        const res = await this.Stripe("DELETE", "subscriptions", usage.subid, null, customer.stripeid);
+                        if (customer.subscriptionid == usage.subid) {
+                            const UpdateDoc: any = { "$set": {} };
+                            UpdateDoc.$set["subscriptionid"] = null;
+                            await Config.db.db.collection("users").updateMany({ "_id": customer._id }, UpdateDoc);
+                        }
+                    } else {
+                        const res = await this.Stripe("DELETE", "subscription_items", usage.siid, payload, customer.stripeid);
+                    }
+
+                } else {
+                    const res = await this.Stripe("POST", "subscription_items", usage.siid, payload, customer.stripeid);
+                }
+            }
+
+            usage.quantity -= quantity;
+            if (usage.quantity > 0) {
+                await Config.db._UpdateOne(null, usage, "config", 1, false, Crypt.rootToken(), span);
+            } else {
+                await Config.db.DeleteOne(usage._id, "config", Crypt.rootToken(), span);
+            }
+        } catch (error) {
+            span.recordException(error);
+            throw error;
+        }
+        finally {
+            Logger.otel.endSpan(span);
+        }
+    }
     async StripeCancelPlan(cli: WebSocketServerClient, parent: Span) {
         const span: Span = Logger.otel.startSubSpan("message.StripeCancelPlan", parent);
         this.Reply();
         let msg: StripeCancelPlanMessage;
         const rootjwt = Crypt.rootToken();
         try {
-            msg = StripeAddPlanMessage.assign(this.data);
+            msg = StripeCancelPlanMessage.assign(this.data);
             if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
-            if (NoderedUtil.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
+            await this._StripeCancelPlan(msg.resourceusageid, msg.quantity, msg.jwt, span);
 
-            const billings = await Config.db.query<Billing>({ userid: msg.userid, _type: "billing" }, null, 1, 0, null, "users", rootjwt, undefined, undefined, span);
-            if (billings.length == 0) throw new Error("Need billing info and a stripe customer in order to cancel plan");
-            const billing: Billing = billings[0];
-            if (NoderedUtil.IsNullEmpty(billing.stripeid)) throw new Error("Need a stripe customer in order to cancel plan");
-            const customer: stripe_customer = await this.Stripe<stripe_customer>("GET", "customers", billing.stripeid, null, null);
-            if (customer == null) throw new Error("Failed locating stripe customer at stribe");
-
-
-            let subscription: stripe_subscription = null;
-            let subscriptionitem: stripe_base = null; // stripe_subscription_item
-            let hasit = customer.subscriptions.data.filter(s => {
-                const arr = s.items.data.filter(y => y.plan.id == msg.planid);
-                if (arr.length > 0) {
-                    subscription = s;
-                    subscriptionitem = arr[0];
-                }
-                return arr.length > 0;
-            });
-
-
-            hasit = customer.subscriptions.data.filter(s => {
-                const arr = s.items.data.filter(y => y.plan.id == msg.planid);
-                return arr.length > 0;
-            });
-            if (hasit.length == 0) throw new Error("Customer does not have this plan");
-            const payload: any = { quantity: 0 };
-            const res = await this.Stripe("POST", "subscription_items", subscriptionitem.id, payload, customer.id);
-            msg.customer = customer;
         } catch (error) {
             span.recordException(error);
             await handleError(cli, error);
@@ -3062,6 +3161,173 @@ export class Message {
                 msg.error = (error.message ? error.message : error);
                 if (error.response && error.response.body) {
                     msg.error = error.response.body;
+                }
+            }
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            span.recordException(error);
+            this.data = "";
+            await handleError(cli, error);
+        }
+        Logger.otel.endSpan(span);
+        this.Send(cli);
+    }
+
+    async GetNextInvoice(cli: WebSocketServerClient, parent: Span) {
+        const span: Span = Logger.otel.startSubSpan("message.GetNextInvoice", parent);
+        this.Reply();
+        let msg: GetNextInvoiceMessage;
+        try {
+            msg = GetNextInvoiceMessage.assign(this.data);
+            if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+
+            let payload: any = {};
+            const customer: Customer = await Config.db.getbyid(msg.customerid, "users", msg.jwt, span);
+            if (NoderedUtil.IsNullUndefinded(customer)) throw new Error("Unknown customer or Access Denied");
+            if (NoderedUtil.IsNullEmpty(customer.stripeid)) throw new Error("Customer has no billing information, please update with vattype and vatnumber");
+
+            const user = Crypt.verityToken(cli.jwt);
+            if (!user.HasRoleName(customer.name + " admins") && !user.HasRoleName("admins")) {
+                throw new Error("Access denied, getting invoice (admins)");
+            }
+
+            let subscription: stripe_subscription;
+            if (!NoderedUtil.IsNullEmpty(customer.subscriptionid)) {
+                subscription = await this.Stripe<stripe_subscription>("GET", "subscriptions", customer.subscriptionid, payload, customer.stripeid);
+                if (subscription != null) {
+                    payload.subscription = customer.subscriptionid;
+                }
+
+
+
+                if (msg.subscription_items && msg.subscription_items.length > 0 && msg.subscription_items[0].price && !msg.subscription_items[0].id) {
+                    var price = msg.subscription_items[0].price;
+                    msg.invoice = await this.Stripe<stripe_invoice>("GET", "invoices_upcoming", null, payload, customer.stripeid);
+
+                    if (msg.invoice.lines.has_more) {
+                        payload.limit = 100;
+                        payload.starting_after = msg.invoice.lines.data[msg.invoice.lines.data.length - 1].id;
+                        do {
+                            var test = await this.Stripe<stripe_list<stripe_invoice_line>>("GET", "invoices_upcoming_lines", customer.subscriptionid, payload, customer.stripeid);
+                            msg.invoice.lines.data = msg.invoice.lines.data.concat(test.data);
+                            if (test.has_more) {
+                                payload.starting_after = test.data[msg.invoice.lines.data.length - 1].id;
+                            }
+                        } while (test.has_more);
+
+                        delete payload.starting_after;
+                        delete payload.limit;
+                    }
+
+                    var exits = msg.invoice.lines.data.filter(x => (x.price.id == price || x.plan.id == price) && !x.proration);
+                    if (exits.length == 1) {
+                        msg.subscription_items[0].id = exits[0].id;
+                        // msg.subscription_items[0].quantity += exits[0].quantity;
+                    }
+                }
+            }
+            if (!NoderedUtil.IsNullEmpty(msg.subscriptionid)) payload.subscription = msg.subscriptionid;
+            if (!NoderedUtil.IsNullUndefinded(msg.subscription_items) && msg.subscription_items.length > 0) {
+                if (!NoderedUtil.IsNullEmpty(customer.subscriptionid)) {
+                    const proration_date = Math.floor(Date.now() / 1000);
+                    payload.subscription_proration_date = proration_date;
+                }
+                if (msg.invoice != null) {
+                    for (var i = msg.subscription_items.length - 1; i >= 0; i--) {
+                        var item = msg.subscription_items[i];
+                        let price: stripe_price = null;
+                        let plan: stripe_plan = null;
+                        let metered: boolean = false;
+                        if (item.price && item.price.startsWith("price_")) {
+                            price = await this.Stripe<stripe_price>("GET", "prices", item.price, payload, customer.stripeid);
+                            metered = (price.recurring && price.recurring.usage_type == "metered");
+                            if (!price.recurring) {
+                                if (!payload.invoice_items) payload.invoice_items = [];
+                                payload.invoice_items.push(item);
+                                msg.subscription_items.splice(i, 1);
+                            }
+                        } else if (item.price && item.price.startsWith("plan_")) {
+                            plan = await this.Stripe<stripe_plan>("GET", "plans", item.price, payload, customer.stripeid);
+                            // metered = (plan.recurring.usage_type == "metered");
+                        }
+
+                        let quantity: number = item.quantity;
+                        if (quantity < 1) quantity = 1;
+
+
+                        var exists = msg.invoice.lines.data.filter(x => (x.price.id == item.price || x.plan.id == item.price) && !x.proration);
+                        if (exists.length > 0) {
+                            for (let i = 0; i < exists.length; i++) {
+                                item.id = exists[i].subscription_item;
+                                payload.subscription = (exists[i] as any).subscription;
+
+
+                                const total_usage = await Config.db.query<ResourceUsage>({ "_type": "resourceusage", "customerid": customer._id, "siid": exists[i].subscription_item }, null, 1000, 0, null, "config", msg.jwt, null, null, span);
+                                let _quantity: number = 0;
+                                total_usage.forEach(x => _quantity += x.quantity);
+                                _quantity += quantity;
+
+                                var currentquantity = exists[i].quantity;
+                                item.quantity = _quantity;
+
+                                // item.quantity += exists[i].quantity;
+                            }
+                        }
+                        if (metered) delete item.quantity;
+                    }
+                }
+                payload.subscription_items = msg.subscription_items;
+            }
+            if (!NoderedUtil.IsNullEmpty(customer.subscriptionid) && msg.subscription_items != null) {
+                if (!NoderedUtil.IsNullEmpty(msg.proration_date) && msg.proration_date > 0) payload.subscription_proration_date = msg.proration_date;
+                payload.subscription = customer.subscriptionid;
+            } else if (NoderedUtil.IsNullEmpty(customer.subscriptionid)) {
+                payload.customer = customer.stripeid;
+            }
+
+
+            if (msg.subscription_items) {
+                let tax_rates = [];
+                if (NoderedUtil.IsNullEmpty(customer.country)) customer.country = "";
+                customer.country = customer.country.toUpperCase();
+                if (NoderedUtil.IsNullEmpty(customer.vattype) || NoderedUtil.IsNullEmpty(customer.vattype) || customer.country == "DK") {
+                    const tax_ids = await this.Stripe<stripe_list<any>>("GET", "tax_rates", null, null, null);
+                    if (tax_ids && tax_ids.data && tax_ids.data.length > 0) {
+                        tax_rates = tax_ids.data.filter(x => x.active && x.country == customer.country).map(x => x.id);
+                    }
+                }
+                if (tax_rates.length > 0) {
+                    for (let i = 0; i < msg.subscription_items.length; i++) {
+                        (msg.subscription_items[0] as any).tax_rates = tax_rates;
+                    }
+                }
+
+            }
+
+            msg.invoice = await this.Stripe<stripe_invoice>("GET", "invoices_upcoming", null, payload, customer.stripeid);
+
+            if (msg.invoice.lines.has_more) {
+                payload.limit = 100;
+                payload.starting_after = msg.invoice.lines.data[msg.invoice.lines.data.length - 1].id;
+                do {
+                    var test = await this.Stripe<stripe_list<stripe_invoice_line>>("GET", "invoices_upcoming_lines", customer.subscriptionid, payload, customer.stripeid);
+                    msg.invoice.lines.data = msg.invoice.lines.data.concat(test.data);
+                    if (test.has_more) {
+                        payload.starting_after = test.data[msg.invoice.lines.data.length - 1].id;
+                    }
+                } while (test.has_more);
+            }
+        } catch (error) {
+            span.recordException(error);
+            await handleError(null, error);
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) {
+                msg.error = (error.message ? error.message : error);
+                if (error.response && error.response.body) {
+                    msg.error = error.response.body;
+                    console.error(msg.error);
                 }
             }
         }
@@ -3079,84 +3345,17 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.StripeAddPlan", parent);
         this.Reply();
         let msg: StripeAddPlanMessage;
-        const rootjwt = Crypt.rootToken();
         try {
             msg = StripeAddPlanMessage.assign(this.data);
             if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
             if (NoderedUtil.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
+            const [customer, checkout] = await this._StripeAddPlan(msg.customerid, msg.userid, msg.resourceid, msg.stripeprice,
+                msg.quantity, false, msg.jwt, span);
+            msg.checkout = checkout;
 
-            const billings = await Config.db.query<Billing>({ userid: msg.userid, _type: "billing" }, null, 1, 0, null, "users", rootjwt, undefined, undefined, span);
-            if (billings.length == 0) throw new Error("Need billing info and a stripe customer in order to add plan");
-            const billing: Billing = billings[0];
-            if (NoderedUtil.IsNullEmpty(billing.stripeid)) throw new Error("Need a stripe customer in order to add plan");
-            const customer: stripe_customer = await this.Stripe<stripe_customer>("GET", "customers", billing.stripeid, null, null);
-            if (customer == null) throw new Error("Failed locating stripe customer at stribe");
-
-            let subscription: stripe_subscription = null;
-            let subscription_item: stripe_subscription_item = null;
-
-            const hasPlan = customer.subscriptions.data.filter(s => {
-                const arr = s.items.data.filter(y => y.plan.id == msg.planid);
-                if (arr.length == 1) {
-                    subscription = s;
-                    subscription_item = arr[0];
-                    if (arr[0].quantity > 0) {
-                        return true;
-                    }
-                } else if (subscription == null) { subscription = s; }
-                return false;
-            });
-
-            if (subscription != null && subscription.default_tax_rates.length == 0 && !NoderedUtil.IsNullEmpty(billing.taxrate)) {
-                const payload: any = { default_tax_rates: [billing.taxrate] };
-                await this.Stripe("POST", "subscriptions", subscription.id, payload, customer.id);
-            } else if (subscription != null && subscription.default_tax_rates.length != 0 && NoderedUtil.IsNullEmpty(billing.taxrate)) {
-                const payload: any = { default_tax_rates: [] };
-                await this.Stripe("POST", "subscriptions", subscription.id, payload, customer.id);
-            }
-
-            if (hasPlan.length > 0) throw new Error("Customer already has this plan");
-
-            const plan = await this.Stripe<stripe_plan>("GET", "plans", msg.planid, null, null);
-
-
-            if (subscription == null) {
-                const baseurl = Config.baseurl() + "/#/Payment";
-                const payload: any = {
-                    success_url: baseurl + "/success", cancel_url: baseurl + "/cancel",
-                    payment_method_types: ["card"], customer: customer.id, mode: "subscription",
-                    subscription_data: {
-                        items: [],
-                    }
-                };
-
-                if (!NoderedUtil.IsNullEmpty(billing.taxrate)) {
-                    payload.subscription_data.default_tax_rates = [billing.taxrate]
-                    //payload.subscription_data.items.push({ plan: msg.planid });
-                } else {
-                    //payload.subscription_data.items.push({ plan: msg.planid, tax_rates: [billing.taxrate] });
-                }
-                payload.subscription_data.items.push({ plan: msg.planid });
-                msg.checkout = await this.Stripe("POST", "checkout.sessions", null, payload, null);
-            } else {
-                if (subscription_item != null) {
-                    const payload: any = { quantity: 1 };
-                    if (plan.usage_type != "metered") {
-                        const res = await this.Stripe("POST", "subscription_items", subscription_item.id, payload, customer.id);
-                    }
-                } else {
-                    const payload: any = { subscription: subscription.id, plan: msg.planid };
-                    if (plan.usage_type != "metered") {
-                        payload.quantity = 1;
-                    }
-                    const res = await this.Stripe("POST", "subscription_items", null, payload, customer.id);
-                }
-
-            }
-            msg.customer = customer;
         } catch (error) {
             span.recordException(error);
-            await handleError(cli, error);
+            await handleError(null, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
                 msg.error = (error.message ? error.message : error);
@@ -3175,209 +3374,242 @@ export class Message {
         Logger.otel.endSpan(span);
         this.Send(cli);
     }
-    async EnsureStripeCustomer(cli: WebSocketServerClient, parent: Span) {
-        this.Reply();
-        const span: Span = Logger.otel.startSubSpan("message.StartNoderedInstance", parent);
-        let msg: EnsureStripeCustomerMessage;
+
+    async _StripeAddPlan(customerid: string, userid: string, resourceid: string, stripeprice: string, quantity: number, skipSession: boolean, jwt: string, parent: Span) {
+        const span: Span = Logger.otel.startSubSpan("message.StripeAddPlan", parent);
         const rootjwt = Crypt.rootToken();
+        var checkout: any = null;
         try {
-            msg = EnsureStripeCustomerMessage.assign(this.data);
-            if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
-            if (NoderedUtil.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
-            const users = await Config.db.query({ _id: msg.userid, _type: "user" }, null, 1, 0, null, "users", msg.jwt, undefined, undefined, span);
-            if (users.length == 0) throw new Error("Unknown userid");
-            const user: User = users[0] as any;
-            let dirty: boolean = false;
-            let hasbilling: boolean = false;
 
-            const billings = await Config.db.query<Billing>({ userid: msg.userid, _type: "billing" }, null, 1, 0, null, "users", rootjwt, undefined, undefined, span);
-            let billing: Billing;
-            if (billings.length == 0) {
-                const tax_rates = await this.Stripe<stripe_list<stripe_base>>("GET", "tax_rates", null, null, null);
-                if (tax_rates == null || tax_rates.data.length == 0) throw new Error("Failed getting tax_rates from stripe");
 
-                billing = Billing.assign(msg.billing);
-                billing.taxrate = tax_rates.data[0].id;
-                billing.tax = 1 + ((tax_rates.data[0] as any).percentage / 100);
-                if (NoderedUtil.IsNullEmpty(billing.name)) throw new Error("Name is mandatory");
-                if (NoderedUtil.IsNullEmpty(billing.email)) throw new Error("Email is mandatory");
-                Base.addRight(billing, user._id, user.name, [Rights.read]);
-                Base.addRight(billing, WellknownIds.admins, "admins", [Rights.full_control]);
-                billing = await Config.db.InsertOne(billing, "users", 3, true, rootjwt, span);
+
+            const customer: Customer = await Config.db.getbyid(customerid, "users", jwt, span);
+            if (customer == null) throw new Error("Unknown customer or Access Denied");
+            if (Config.stripe_force_vat && (NoderedUtil.IsNullEmpty(customer.vattype) || NoderedUtil.IsNullEmpty(customer.vatnumber))) {
+                throw new Error("Only business can buy, please fill out vattype and vatnumber");
+            }
+
+            const tuser = Crypt.verityToken(jwt);
+            if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
+                throw new Error("Access denied, adding plan (admins)");
+            }
+
+            if (NoderedUtil.IsNullEmpty(customer.vattype)) customer.vattype = "";
+            if (NoderedUtil.IsNullEmpty(customer.vatnumber)) customer.vatnumber = "";
+            customer.vatnumber = customer.vatnumber.toUpperCase();
+            customer.vattype = customer.vattype.toLocaleLowerCase();
+
+            if (!NoderedUtil.IsNullEmpty(customer.vatnumber) && customer.vattype == "eu_vat" && customer.vatnumber.substring(0, 2) != customer.country) {
+                throw new Error("Country and VAT number does not match (eu vat numbers must be prefixed with country code)");
+            }
+            const resource: Resource = await Config.db.getbyid(resourceid, "config", jwt, span);
+            if (resource == null) throw new Error("Unknown resource or Access Denied");
+            if (resource.products.filter(x => x.stripeprice == stripeprice).length != 1) throw new Error("Unknown resource product");
+            const product: ResourceVariant = resource.products.filter(x => x.stripeprice == stripeprice)[0];
+
+            if (resource.target == "user" && NoderedUtil.IsNullEmpty(userid)) throw new Error("Missing userid for user targeted resource");
+            let user: TokenUser = null
+            if (resource.target == "user") {
+                user = await Config.db.getbyid(userid, "users", jwt, span) as any;
+                if (user == null) throw new Error("Unknown user or Access Denied");
+            }
+
+            const total_usage = await Config.db.query<ResourceUsage>({ "_type": "resourceusage", "customerid": customerid }, null, 1000, 0, null, "config", jwt, null, null, span);
+
+            // Ensure assign does not conflict with resource assign limit
+            if (resource.target == "customer") {
+                if (resource.customerassign == "singlevariant") {
+                    const notsame = total_usage.filter(x => x.resourceid == resource._id && x.product.stripeprice != stripeprice && !NoderedUtil.IsNullEmpty(x.siid) && NoderedUtil.IsNullEmpty(x.userid));
+                    if (notsame.length > 0 && notsame[0].quantity > 0) throw new Error("Cannot assign, customer already have " + notsame[0].product.name);
+                }
             } else {
-                billing = billings[0];
-                if (billing.email != msg.billing.email || billing.vatnumber != msg.billing.vatnumber || billing.vattype != msg.billing.vattype || billing.coupon != msg.billing.coupon) {
-                    billing.email = msg.billing.email;
-                    billing.vatnumber = msg.billing.vatnumber;
-                    billing.vattype = msg.billing.vattype;
-                    billing.coupon = msg.billing.coupon;
-                    billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt, span);
+                if (resource.userassign == "singlevariant") {
+                    const notsame = total_usage.filter(x => x.resourceid == resource._id && x.product.stripeprice != stripeprice && x.userid == user._id && !NoderedUtil.IsNullEmpty(x.siid));
+                    if (notsame.length > 0 && notsame[0].quantity > 0) throw new Error("Cannot assign, user already have " + notsame[0].product.name);
                 }
             }
-            let customer: stripe_customer;
-            if (!NoderedUtil.IsNullEmpty(billing.stripeid)) {
-                customer = await this.Stripe<stripe_customer>("GET", "customers", billing.stripeid, null, null);
+            let usage: ResourceUsage = new ResourceUsage();
+            usage.product = product;
+            usage.resourceid = resource._id;
+            usage.resource = resource.name;
+            // Assume we don not have one
+            usage.quantity = 0;
+
+            let filter: ResourceUsage[] = [];
+            // Ensure assign does not conflict with product assign limit
+            if (resource.target == "customer" && product.customerassign == "single") {
+                filter = total_usage.filter(x => x.product.stripeprice == stripeprice && !NoderedUtil.IsNullEmpty(x.siid) && NoderedUtil.IsNullEmpty(x.userid));
+                if (filter.length == 1) {
+                    usage = filter[0];
+                    if (usage.quantity > 0) throw new Error("Cannot assign, customer already have 1 " + product.name);
+                } else if (filter.length > 1) {
+                    throw new Error("Cannot assign (error multiple found), customer already have 1 " + product.name);
+                }
+            } else if (resource.target == "user" && product.userassign == "single") {
+                filter = total_usage.filter(x => x.product.stripeprice == stripeprice && x.userid == user._id && !NoderedUtil.IsNullEmpty(x.siid));
+                if (filter.length == 1) {
+                    usage = filter[0];
+                    if (usage.quantity > 0) throw new Error("Cannot assign, user already have 1 " + product.name);
+                } else if (filter.length > 1) {
+                    throw new Error("Cannot assign (error multiple found), user already have 1 " + product.name);
+                }
             }
-            const payload: any = { name: billing.name, email: billing.email, metadata: { userid: msg.userid }, description: user.name };
-            if (customer == null) {
-                customer = await this.Stripe<stripe_customer>("POST", "customers", null, payload, null);
-                billing.stripeid = customer.id;
-                billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt, span);
+            if (resource.target == "customer") {
+                filter = total_usage.filter(x => x.product.stripeprice == stripeprice);
+                if (filter.length > 0) usage = filter[0];
+            } else {
+                filter = total_usage.filter(x => x.product.stripeprice == stripeprice && x.userid == user._id);
+                if (filter.length > 0) usage = filter[0];
             }
-            if (customer != null && !NoderedUtil.IsNullEmpty(billing.vattype) && !NoderedUtil.IsNullEmpty(billing.vatnumber)) {
-                if (customer.tax_ids.total_count == 0) {
-                    (payload as any) = { value: billing.vatnumber, type: billing.vattype };
-                    await this.Stripe<stripe_customer>("POST", "tax_ids", null, payload, customer.id);
-                    dirty = true;
+            if (total_usage.length > 0) {
+                usage.subid = total_usage[0].subid;
+            }
+            if (!Config.stripe_force_checkout) {
+                filter = total_usage.filter(x => x.product.stripeprice == stripeprice);
+                if (filter.length > 0) {
+                    usage.siid = filter[0].siid;
+                    usage.subid = filter[0].subid;
                 }
             }
 
-            if ((billing.tax != 1 || billing.taxrate != "") && customer.tax_ids.total_count > 0) {
-                if (customer.tax_ids.data[0].verification.status == 'verified' || customer.tax_ids.data[0].verification.status == 'unavailable') {
-                    if (customer.tax_ids.data[0].verification.status == 'verified') {
-                        if (billing.name != customer.tax_ids.data[0].verification.verified_name ||
-                            billing.address != customer.tax_ids.data[0].verification.verified_address) {
-                            billing.name = customer.tax_ids.data[0].verification.verified_name;
-                            billing.address = customer.tax_ids.data[0].verification.verified_address;
-                            dirty = true;
+            // Backward compatability and/or pick up after deleting customer object 
+            if (NoderedUtil.IsNullEmpty(usage.siid)) {
+                const stripecustomer = await this.Stripe<stripe_customer>("GET", "customers", customer.stripeid, null, null);
+                if (stripecustomer == null) throw new Error("Failed locating stripe customer " + customer.stripeid);
+                for (let sub of stripecustomer.subscriptions.data) {
+                    if (sub.id == customer.subscriptionid) {
+                        for (let si of sub.items.data) {
+                            if ((si.plan && si.plan.id == stripeprice) || (si.price && si.price.id == stripeprice)) {
+                                usage.siid = si.id;
+                                usage.subid = sub.id;
+                            }
                         }
                     }
-                    if ((billing.tax != 1 || billing.taxrate != "") && customer.tax_ids.data[0].country != "DK") {
-                        billing.tax = 1;
-                        billing.taxrate = "";
-                        dirty = true;
-                    }
-                    if (dirty == true) {
-                        billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt, span);
-                    }
-                }
-            } else if (billing.tax == 1 && customer.tax_ids.total_count == 0) {
-                const tax_rates = await this.Stripe<stripe_list<stripe_base>>("GET", "tax_rates", null, null, null);
-                if (tax_rates == null || tax_rates.total_count == 0) throw new Error("Failed getting tax_rates from stripe");
-                billing.taxrate = tax_rates.data[0].id;
-                billing.tax = 1 + ((tax_rates.data[0] as any).percentage / 100);
-                billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt, span);
-            } else if (customer.tax_ids.total_count > 0 && (customer.tax_ids.data[0].verification.status != 'verified' &&
-                customer.tax_ids.data[0].verification.status != 'unavailable') && billing.tax == 1) {
-                const tax_rates = await this.Stripe<stripe_list<stripe_base>>("GET", "tax_rates", null, null, null);
-                if (tax_rates == null || tax_rates.total_count == 0) throw new Error("Failed getting tax_rates from stripe");
-                billing.taxrate = tax_rates.data[0].id;
-                billing.tax = 1 + ((tax_rates.data[0] as any).percentage / 100);
-                billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt, span);
-            }
-            if (dirty) {
-                if (!NoderedUtil.IsNullEmpty(billing.stripeid)) {
-                    customer = await this.Stripe<stripe_customer>("GET", "customers", null, null, billing.stripeid);
                 }
             }
-            if (customer != null && NoderedUtil.IsNullEmpty(billing.coupon) && customer.discount != null) {
-                const payload: any = { coupon: "" };
-                customer = await this.Stripe<stripe_customer>("POST", "customers", billing.stripeid, payload, null);
-            }
-            let newmemory: string = "";
-            if (customer != null && billing != null && customer.subscriptions != null && customer.subscriptions.total_count > 0) {
-                if (customer.subscriptions != null && customer.subscriptions.data != null)
-                    for (let i = 0; i < customer.subscriptions.data.length; i++) {
-                        const sub = customer.subscriptions.data[i];
-                        for (let y = 0; y < sub.items.data.length; y++) {
-                            const subitem = sub.items.data[y];
-                            if (subitem.plan != null && subitem.plan.metadata != null && subitem.plan.metadata.memory != null) {
-                                newmemory = subitem.plan.metadata.memory;
-                            }
 
+            let _quantity: number = 0;
+            // Count what we have already bought
+            total_usage.forEach(x => {
+                if (x.product.stripeprice == stripeprice && !NoderedUtil.IsNullEmpty(x.siid)) _quantity += x.quantity;
+            });
+            // Add requested quantity, now we have our target count
+            _quantity += quantity;
+
+            if (NoderedUtil.IsNullEmpty(usage.subid)) {
+                usage.quantity = quantity;
+            } else {
+                usage.quantity += quantity;
+            }
+            usage.customerid = customer._id;
+            if (user != null) {
+                usage.userid = user._id;
+                usage.name = usage.resource + " / " + product.name + " for " + user.name;
+            } else {
+                usage.name = usage.resource + " / " + product.name + " for " + customer.name;
+            }
+            if (NoderedUtil.IsNullEmpty(usage._id) || NoderedUtil.IsNullEmpty(usage.subid) || Config.stripe_force_checkout) {
+                let tax_rates = [];
+                if (NoderedUtil.IsNullEmpty(customer.country)) customer.country = "";
+                customer.country = customer.country.toUpperCase();
+                if (NoderedUtil.IsNullEmpty(customer.vattype) || NoderedUtil.IsNullEmpty(customer.vattype) || customer.country == "DK") {
+                    const tax_ids = await this.Stripe<stripe_list<any>>("GET", "tax_rates", null, null, null);
+                    if (tax_ids && tax_ids.data && tax_ids.data.length > 0) {
+                        tax_rates = tax_ids.data.filter(x => x.active && x.country == customer.country).map(x => x.id);
+                    }
+                }
+
+                // https://stripe.com/docs/payments/checkout/taxes
+                Base.addRight(usage, customer.admins, customer.name + " admin", [Rights.read]);
+                if (NoderedUtil.IsNullEmpty(customer.subscriptionid) || Config.stripe_force_checkout) {
+                    if (NoderedUtil.IsNullEmpty(usage._id)) {
+                        const res = await Config.db.InsertOne(usage, "config", 1, false, rootjwt, span);
+                        usage._id = res._id;
+                    } else {
+                        await Config.db._UpdateOne(null, usage, "config", 1, false, rootjwt, span);
+                    }
+                    if (!NoderedUtil.IsNullEmpty(product.added_resourceid) && !NoderedUtil.IsNullEmpty(product.added_stripeprice)) {
+                        const [customer2, checkout2] = await this._StripeAddPlan(customerid, userid,
+                            product.added_resourceid, product.added_stripeprice, product.added_quantity_multiplier * usage.quantity, true, jwt, span);
+                    }
+                    if (!skipSession) {
+                        const baseurl = Config.baseurl() + "#/Customer/" + customer._id;
+                        const payload: any = {
+                            client_reference_id: usage._id,
+                            success_url: baseurl + "/refresh", cancel_url: baseurl + "/refresh",
+                            payment_method_types: ["card"], mode: "subscription",
+                            customer: customer.stripeid,
+                            line_items: []
+                        };
+                        let line_item: any = { price: product.stripeprice, tax_rates };
+                        if ((resource.target == "user" && product.userassign != "metered") ||
+                            (resource.target == "customer" && product.customerassign != "metered")) {
+                            line_item.quantity = _quantity
                         }
+                        payload.line_items.push(line_item);
+                        if (!NoderedUtil.IsNullEmpty(product.added_resourceid) && !NoderedUtil.IsNullEmpty(product.added_stripeprice)) {
+                            const addresource: Resource = await Config.db.getbyid(product.added_resourceid, "config", jwt, span);
+                            const addproduct = addresource.products.filter(x => x.stripeprice == product.added_stripeprice)[0];
+                            let line_item: any = { price: addproduct.stripeprice, tax_rates };
+                            if ((resource.target == "user" && addproduct.userassign != "metered") ||
+                                (resource.target == "customer" && addproduct.customerassign != "metered")) {
+                                line_item.quantity = product.added_quantity_multiplier * _quantity
+                            }
+                            payload.line_items.push(line_item);
+                        }
+                        checkout = await this.Stripe("POST", "checkout.sessions", null, payload, null);
                     }
-            }
-            if (billing.memory != newmemory) {
-                billing.memory = newmemory;
-                billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt, span);
-                this._EnsureNoderedInstance(msg.userid, true, span);
-            }
-            if (customer != null && !NoderedUtil.IsNullEmpty(billing.coupon) && customer.discount != null) {
-                if (billing.coupon != customer.discount.coupon.name) {
-                    const payload: any = { coupon: "" };
-                    customer = await this.Stripe<stripe_customer>("POST", "customers", billing.stripeid, payload, null);
-
-                    const coupons: stripe_list<stripe_coupon> = await this.Stripe<stripe_list<stripe_coupon>>("GET", "coupons", null, null, null);
-                    const isvalid = coupons.data.filter(c => c.name == billing.coupon);
-                    if (isvalid.length == 0) throw new Error("Unknown coupons '" + billing.coupon + "'");
-
-                    const payload2: any = { coupon: coupons.data[0].id };
-                    customer = await this.Stripe<stripe_customer>("POST", "customers", billing.stripeid, payload2, null);
-
+                } else {
+                    const siid: string = usage.siid;
+                    let line_item: any = { price: product.stripeprice, tax_rates };
+                    if ((resource.target == "user" && product.userassign != "metered") ||
+                        (resource.target == "customer" && product.customerassign != "metered")) {
+                        line_item.quantity = _quantity
+                    }
+                    if (NoderedUtil.IsNullEmpty(usage.siid)) line_item["subscription"] = customer.subscriptionid;
+                    // Add new if usage.siid is null / updates if we have usage.siid
+                    const res = await this.Stripe<stripe_subscription_item>("POST", "subscription_items", usage.siid, line_item, customer.stripeid);
+                    usage.siid = res.id;
+                    usage.subid = customer.subscriptionid;
+                    await Config.db.InsertOne(usage, "config", 1, false, rootjwt, span);
+                    if (!NoderedUtil.IsNullEmpty(product.added_resourceid) && !NoderedUtil.IsNullEmpty(product.added_stripeprice)) {
+                        const [customer2, checkout2] = await this._StripeAddPlan(customerid, userid,
+                            product.added_resourceid, product.added_stripeprice, product.added_quantity_multiplier * usage.quantity, true, jwt, span);
+                    }
                 }
-            }
-            if (customer != null && !NoderedUtil.IsNullEmpty(billing.coupon) && customer.discount == null) {
-                const coupons: stripe_list<stripe_coupon> = await this.Stripe<stripe_list<stripe_coupon>>("GET", "coupons", null, null, null);
-                const isvalid = coupons.data.filter(c => c.name == billing.coupon);
-                if (isvalid.length == 0) throw new Error("Unknown coupons '" + billing.coupon + "'");
+            } else {
+                const payload: any = {};
+                // Update quantity if not metered
+                if ((resource.target == "user" && product.userassign != "metered") ||
+                    (resource.target == "customer" && product.customerassign != "metered")) {
+                    payload.quantity = _quantity
+                    const res = await this.Stripe("POST", "subscription_items", usage.siid, payload, customer.stripeid);
+                }
 
-                const payload: any = { coupon: coupons.data[0].id };
-                customer = await this.Stripe<stripe_customer>("POST", "customers", billing.stripeid, payload, null);
-            }
-            if (customer != null) {
-                const sources = await this.Stripe<stripe_list<stripe_base>>("GET", "sources", null, null, billing.stripeid);
-                if ((sources.data.length > 0) != billing.hascard) {
-                    billing.hascard = (sources.data.length > 0);
-                    billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt, span);
-                }
-            }
-            if (customer != null && billing != null) {
-                let openflowuserplan: string = "";
-                let supportplan: string = "";
-                let supporthourplan: string = "";
-                if (customer.subscriptions != null && customer.subscriptions.data != null) {
-                    const outarr = customer.subscriptions.data.filter(s => {
-                        const inarr = s.items.data.filter(y => {
-                            if (y.plan.metadata.supporthourplan == "true") {
-                                supporthourplan = y.id;
-                            }
-                            if (y.plan.metadata.supportplan == "true") {
-                                supportplan = y.id;
-                            }
-                            if (y.plan.metadata.openflowuser == "true") {
-                                openflowuserplan = y.id;
-                            }
-                        });
-                        return false;
-                    });
-                }
-                if (billing.openflowuserplan != openflowuserplan || billing.supportplan != supportplan || billing.supporthourplan != supporthourplan) {
-                    billing.openflowuserplan = openflowuserplan;
-                    billing.supportplan = supportplan;
-                    billing.supporthourplan = supporthourplan;
-                    billing = await Config.db._UpdateOne(null, billing, "users", 3, true, rootjwt, span);
+                await Config.db._UpdateOne(null, usage, "config", 1, false, rootjwt, span);
+                if (!NoderedUtil.IsNullEmpty(product.added_resourceid) && !NoderedUtil.IsNullEmpty(product.added_stripeprice)) {
+                    const [customer2, checkout2] = await this._StripeAddPlan(customerid, userid,
+                        product.added_resourceid, product.added_stripeprice, product.added_quantity_multiplier * usage.quantity, true, jwt, span);
                 }
             }
 
-            hasbilling = (customer != null);
-            if (user._hasbilling != hasbilling) {
-                user._hasbilling = hasbilling;
-                await Config.db._UpdateOne(null, user, "users", 3, true, rootjwt, span);
+            if (resource.name == "Database Usage") {
+                const UpdateDoc: any = { "$set": {} };
+                UpdateDoc.$set["dblocked"] = false;
+                await Config.db.db.collection("users").updateMany({ "_type": "user", "customerid": customer._id }, UpdateDoc);
             }
-            msg.customer = customer;
 
+
+            return [customer, checkout];
         } catch (error) {
             span.recordException(error);
-            await handleError(cli, error);
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) {
-                msg.error = (error.message ? error.message : error);
-                if (error.response && error.response.body) {
-                    msg.error = error.response.body;
-                }
-            }
+            throw error;
         }
-        try {
-            this.data = JSON.stringify(msg);
-        } catch (error) {
-            span.recordException(error);
-            this.data = "";
-            await handleError(cli, error);
+        finally {
+            Logger.otel.endSpan(span);
         }
-        Logger.otel.endSpan(span);
-        this.Send(cli);
     }
+
     async Stripe<T>(method: string, object: string, id: string, payload: any, customerid: string): Promise<T> {
         let url = "https://api.stripe.com/v1/" + object;
         if (!NoderedUtil.IsNullEmpty(id)) url = url + "/" + id;
@@ -3400,6 +3632,9 @@ export class Message {
         if (object == "usage_records") {
             url = "https://api.stripe.com/v1/subscription_items/" + id + "/usage_records";
         }
+        if (object == "usage_record_summaries") {
+            url = "https://api.stripe.com/v1/subscription_items/" + id + "/usage_record_summaries";
+        }
         if (object == "sources") {
             if (NoderedUtil.IsNullEmpty(customerid)) throw new Error("Need customer to work with sources");
             url = "https://api.stripe.com/v1/customers/" + customerid + "/sources";
@@ -3411,8 +3646,64 @@ export class Message {
         if (object == "invoices_upcoming") {
             if (NoderedUtil.IsNullEmpty(customerid)) throw new Error("Need customer to work with invoices_upcoming");
             url = "https://api.stripe.com/v1/invoices/upcoming?customer=" + customerid;
+            if (payload != null && payload.subscription_items) {
+                let index = 0;
+                for (let item of payload.subscription_items) {
+                    if (item.id) url += "&subscription_items[" + index + "][id]=" + item.id;
+                    if (item.price) url += "&subscription_items[" + index + "][price]=" + item.price;
+                    if (item.quantity) url += "&subscription_items[" + index + "][quantity]=" + item.quantity;
+
+                    let taxindex = 0;
+                    if ((item as any).tax_rates && (item as any).tax_rates.length > 0) {
+                        for (let tax of (item as any).tax_rates) {
+                            url += "&subscription_items[" + index + "][tax_rates[" + taxindex + "]]=" + tax;
+
+                            taxindex++;
+                        }
+                    }
+                    index++;
+                }
+            }
+            if (payload != null && payload.invoice_items) {
+                let index = 0;
+                for (let item of payload.invoice_items) {
+                    if (item.id) url += "&invoice_items[" + index + "][id]=" + item.id;
+                    if (item.price) url += "&invoice_items[" + index + "][price]=" + item.price;
+                    if (item.quantity) url += "&invoice_items[" + index + "][quantity]=" + item.quantity;
+
+                    let taxindex = 0;
+                    if ((item as any).tax_rates && (item as any).tax_rates.length > 0) {
+                        for (let tax of (item as any).tax_rates) {
+                            url += "&invoice_items[" + index + "][tax_rates[" + taxindex + "]]=" + tax;
+
+                            taxindex++;
+                        }
+                    }
+                    index++;
+                }
+            }
+            if (payload != null && payload.subscription_proration_date) {
+                url += "&subscription_proration_date=" + payload.subscription_proration_date;
+            }
+            if (payload != null && payload.subscription) {
+                url += "&subscription=" + payload.subscription;
+            }
+        }
+        if (object == "invoices_upcoming_lines") {
+            url = "https://api.stripe.com/v1/invoices/upcoming/lines?customer=" + customerid;
+            if (payload != null && payload.subscription) {
+                url += "&subscription=" + payload.subscription;
+            } else if (!NoderedUtil.IsNullEmpty(id)) {
+                url += "&subscription=" + id;
+            }
         }
 
+        if (payload && payload.starting_after) {
+            url += "&starting_after=" + payload.starting_after;
+        }
+        if (payload && payload.limit) {
+            url += "&limit=" + payload.limit;
+        }
         const auth = "Basic " + Buffer.from(Config.stripe_api_secret + ":").toString("base64");
 
         const options = {
@@ -3460,7 +3751,16 @@ export class Message {
                 if (msg.object != "plans" && msg.object != "subscription_items" && msg.object != "invoices_upcoming" && msg.object != "billing_portal/sessions") {
                     throw new Error("Access to " + msg.object + " is not allowed");
                 }
-
+                if (msg.object == "billing_portal/sessions") {
+                    const tuser = Crypt.verityToken(cli.jwt);
+                    let customer: Customer;
+                    if (!NoderedUtil.IsNullEmpty(tuser.selectedcustomerid)) customer = await Config.db.getbyid(tuser.selectedcustomerid, "users", cli.jwt, null);
+                    if (!NoderedUtil.IsNullEmpty(tuser.selectedcustomerid) && customer == null) customer = await Config.db.getbyid(tuser.customerid, "users", cli.jwt, null);
+                    if (customer == null) throw new Error("Access denied, or customer not found");
+                    if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
+                        throw new Error("Access denied, adding plan (admins)");
+                    }
+                }
                 if (msg.object == "subscription_items" && msg.method != "POST") throw new Error("Access to " + msg.object + " is not allowed");
                 if (msg.object == "plans" && msg.method != "GET") throw new Error("Access to " + msg.object + " is not allowed");
                 if (msg.object == "invoices_upcoming" && msg.method != "GET") throw new Error("Access to " + msg.object + " is not allowed");
@@ -3484,6 +3784,708 @@ export class Message {
         }
         this.Send(cli);
     }
+    // https://dominik.sumer.dev/blog/stripe-checkout-eu-vat
+    async EnsureCustomer(cli: WebSocketServerClient, parent: Span) {
+        this.Reply();
+        const span: Span = Logger.otel.startSubSpan("message.EnsureCustomer", parent);
+        let msg: EnsureCustomerMessage;
+        const rootjwt = Crypt.rootToken();
+        try {
+            msg = EnsureCustomerMessage.assign(this.data);
+            if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+            let user: User = cli.user;
+            let customer: Customer = null;
+            if (msg.customer != null && msg.customer._id != null) {
+                const customers = await Config.db.query<Customer>({ _type: "customer", "_id": msg.customer._id }, null, 1, 0, null, "users", msg.jwt, undefined, undefined, span);
+                if (customers.length > 0) {
+                    customer = customers[0];
+                }
+            }
+            if (customer == null) {
+                if (!NoderedUtil.IsNullEmpty(user.customerid) && !user.HasRoleName("resellers")) {
+                    throw new Error("Access denied creating customer");
+                }
+                if (msg.customer != null) msg.customer = Customer.assign(msg.customer);
+                if (msg.customer == null) msg.customer = new Customer();
+                msg.customer.userid = user._id;
+                if (NoderedUtil.IsNullEmpty(msg.customer.name)) {
+                    if (!NoderedUtil.IsNullEmpty((user as any).customer)) {
+                        msg.customer.name = (user as any).customer;
+                    } else {
+                        msg.customer.name = user.name;
+                    }
+                }
+                if (NoderedUtil.IsNullEmpty(msg.customer.email)) {
+                    if (!NoderedUtil.IsNullEmpty((user as any).email)) {
+                        msg.customer.email = (user as any).email;
+                    } else {
+                        msg.customer.email = user.username;
+                    }
+                }
+                Base.addRight(msg.customer, user._id, user.name, [Rights.read]);
+                Base.addRight(msg.customer, WellknownIds.admins, "admins", [Rights.full_control]);
+                customer = msg.customer;
+            } else {
+                if (!user.HasRoleName(customer.name + " admins") && !user.HasRoleName("admins")) {
+                    throw new Error("You are not logged in as a customer admin, so you cannot update");
+                }
+                // msg.customer = customers[0];
+                if (customer.name != msg.customer.name || customer.email != msg.customer.email || customer.vatnumber != msg.customer.vatnumber || customer.vattype != msg.customer.vattype || customer.coupon != msg.customer.coupon) {
+                    customer.email = msg.customer.email;
+                    customer.name = msg.customer.name;
+                    customer.vatnumber = msg.customer.vatnumber;
+                    customer.vattype = msg.customer.vattype;
+                    customer.coupon = msg.customer.coupon;
+                }
+                customer.country = msg.customer.country;
+                customer.customattr1 = msg.customer.customattr1;
+                customer.customattr2 = msg.customer.customattr2;
+                customer.customattr3 = msg.customer.customattr3;
+                customer.customattr4 = msg.customer.customattr4;
+                customer.customattr5 = msg.customer.customattr5;
+
+                msg.customer = customer;
+                if (!NoderedUtil.IsNullEmpty(customer.vatnumber)) msg.customer.vatnumber = msg.customer.vatnumber.toUpperCase();
+            }
+            msg.customer._type = "customer";
+            let tax_exempt: string = "none";
+            if (Config.stripe_force_vat && (NoderedUtil.IsNullEmpty(msg.customer.vattype) || NoderedUtil.IsNullEmpty(msg.customer.vatnumber))) {
+                throw new Error("Only business can buy, please fill out vattype and vatnumber");
+            }
+
+            if (msg.customer.vatnumber) {
+                if (!NoderedUtil.IsNullEmpty(msg.customer.vatnumber) && msg.customer.vattype == "eu_vat" && msg.customer.vatnumber.substring(0, 2) != msg.customer.country) {
+                    throw new Error("Country and VAT number does not match (eu vat numbers must be prefixed with country code)");
+                }
+            }
+            if ((!NoderedUtil.IsNullEmpty(msg.customer.vatnumber) && msg.customer.vatnumber.length > 2) || Config.stripe_force_vat) {
+
+                if (NoderedUtil.IsNullUndefinded(msg.stripecustomer) && !NoderedUtil.IsNullEmpty(msg.customer.stripeid)) {
+                    msg.stripecustomer = await this.Stripe<stripe_customer>("GET", "customers", msg.customer.stripeid, null, null);
+                }
+                if (NoderedUtil.IsNullUndefinded(msg.stripecustomer)) {
+                    let payload: any = { name: msg.customer.name, email: msg.customer.email, metadata: { userid: user._id }, description: user.name, address: { country: msg.customer.country }, tax_exempt: tax_exempt };
+                    msg.stripecustomer = await this.Stripe<stripe_customer>("POST", "customers", null, payload, null);
+                    msg.customer.stripeid = msg.stripecustomer.id;
+                }
+                if (msg.stripecustomer.email != msg.customer.email || msg.stripecustomer.name != msg.customer.name || (msg.stripecustomer.address == null || msg.stripecustomer.address.country != msg.customer.country)) {
+                    const payload: any = { email: msg.customer.email, name: msg.customer.name, address: { country: msg.customer.country }, tax_exempt: tax_exempt };
+                    msg.stripecustomer = await this.Stripe<stripe_customer>("POST", "customers", msg.customer.stripeid, payload, null);
+                }
+                if (msg.stripecustomer.subscriptions.total_count > 0) {
+                    let sub = msg.stripecustomer.subscriptions.data[0];
+                    msg.customer.subscriptionid = sub.id;
+                    const total_usage = await Config.db.query<ResourceUsage>({ "_type": "resourceusage", "customerid": msg.customer._id, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }] }, null, 1000, 0, null, "config", msg.jwt, null, null, span);
+
+                    for (let usage of total_usage) {
+                        const items = sub.items.data.filter(x => ((x.price && x.price.id == usage.product.stripeprice) || (x.plan && x.plan.id == usage.product.stripeprice)));
+                        if (items.length > 0) {
+                            usage.siid = items[0].id;
+                            usage.subid = sub.id;
+                            await Config.db._UpdateOne(null, usage, "config", 1, false, rootjwt, span);
+                        } else {
+                            // Clean up old buy attempts
+                            await Config.db.DeleteOne(usage._id, "config", rootjwt, span);
+                        }
+                    }
+                } else {
+                    msg.customer.subscriptionid = null;
+                    const total_usage = await Config.db.query<ResourceUsage>({ "_type": "resourceusage", "customerid": msg.customer._id, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }] }, null, 1000, 0, null, "config", msg.jwt, null, null, span);
+                    for (let usage of total_usage) {
+                        await Config.db.DeleteOne(usage._id, "config", rootjwt, span);
+                    }
+                }
+                if (msg.customer.vatnumber) {
+                    if (msg.stripecustomer.tax_ids.total_count == 0) {
+                        const payload: any = { value: msg.customer.vatnumber, type: msg.customer.vattype };
+                        await this.Stripe<stripe_customer>("POST", "tax_ids", null, payload, msg.customer.stripeid);
+                    } else if (msg.stripecustomer.tax_ids.data[0].value != msg.customer.vatnumber) {
+                        await this.Stripe<stripe_tax_id>("DELETE", "tax_ids", msg.stripecustomer.tax_ids.data[0].id, null, msg.customer.stripeid);
+                        const payload: any = { value: msg.customer.vatnumber, type: msg.customer.vattype };
+                        await this.Stripe<stripe_customer>("POST", "tax_ids", null, payload, msg.customer.stripeid);
+                    }
+                } else {
+                    if (msg.stripecustomer.tax_ids.data.length > 0) {
+                        await this.Stripe<stripe_tax_id>("DELETE", "tax_ids", msg.stripecustomer.tax_ids.data[0].id, null, msg.customer.stripeid);
+                    }
+                }
+
+                if (!NoderedUtil.IsNullUndefinded(msg.stripecustomer.discount) && !NoderedUtil.IsNullEmpty(msg.stripecustomer.discount.coupon.name)) {
+                    if (msg.customer.coupon != msg.stripecustomer.discount.coupon.name) {
+                        const payload: any = { coupon: "" };
+                        msg.stripecustomer = await this.Stripe<stripe_customer>("POST", "customers", msg.customer.stripeid, payload, null);
+
+                        if (!NoderedUtil.IsNullEmpty(msg.customer.coupon)) {
+                            const coupons: stripe_list<stripe_coupon> = await this.Stripe<stripe_list<stripe_coupon>>("GET", "coupons", null, null, null);
+                            const isvalid = coupons.data.filter(c => c.name == msg.customer.coupon);
+                            if (isvalid.length == 0) throw new Error("Unknown coupons '" + msg.customer.coupon + "'");
+
+                            const payload2: any = { coupon: coupons.data[0].id };
+                            msg.stripecustomer = await this.Stripe<stripe_customer>("POST", "customers", msg.customer.stripeid, payload2, null);
+                        }
+                    }
+                } else if (!NoderedUtil.IsNullEmpty(msg.customer.coupon)) {
+                    const coupons: stripe_list<stripe_coupon> = await this.Stripe<stripe_list<stripe_coupon>>("GET", "coupons", null, null, null);
+                    const isvalid = coupons.data.filter(c => c.name == msg.customer.coupon);
+                    if (isvalid.length == 0) throw new Error("Unknown coupons '" + msg.customer.coupon + "'");
+
+                    const payload2: any = { coupon: coupons.data[0].id };
+                    msg.stripecustomer = await this.Stripe<stripe_customer>("POST", "customers", msg.customer.stripeid, payload2, null);
+                }
+            }  // if(!NoderedUtil.IsNullEmpty(msg.customer.vatnumber) || !Config.stripe_force_vat) {
+
+            if (NoderedUtil.IsNullEmpty(msg.customer._id)) {
+                msg.customer = await Config.db.InsertOne(msg.customer, "users", 3, true, rootjwt, span);
+            } else {
+                msg.customer = await Config.db._UpdateOne(null, msg.customer, "users", 3, true, rootjwt, span);
+            }
+            if (user.customerid != msg.customer._id) {
+                const UpdateDoc: any = { "$set": {} };
+                if (NoderedUtil.IsNullEmpty(user.customerid)) {
+                    user.customerid = msg.customer._id;
+                    UpdateDoc.$set["customerid"] = msg.customer._id;
+                }
+                user.selectedcustomerid = msg.customer._id;
+                UpdateDoc.$set["selectedcustomerid"] = msg.customer._id;
+                await Config.db._UpdateOne({ "_id": user._id }, UpdateDoc, "users", 1, false, rootjwt, span)
+            } else if (cli.user.selectedcustomerid != msg.customer._id) {
+                cli.user.selectedcustomerid = msg.customer._id;
+                const UpdateDoc: any = { "$set": {} };
+                UpdateDoc.$set["selectedcustomerid"] = msg.customer._id;
+                await Config.db._UpdateOne({ "_id": cli.user._id }, UpdateDoc, "users", 1, false, rootjwt, span)
+            }
+
+            const customeradmins: Role = await DBHelper.EnsureRole(rootjwt, msg.customer.name + " admins", msg.customer.admins, span);
+            customeradmins.name = msg.customer.name + " admins";
+            Base.addRight(customeradmins, WellknownIds.admins, "admins", [Rights.full_control]);
+            // Base.removeRight(customeradmins, WellknownIds.admins, [Rights.delete]);
+            customeradmins.AddMember(user);
+            if (!NoderedUtil.IsNullEmpty(user.customerid) && user.customerid != msg.customer._id) {
+                const usercustomer = await Config.db.getbyid<Customer>(user.customerid, "users", msg.jwt, span);
+                if (usercustomer != null) {
+                    const usercustomeradmins = await Config.db.getbyid<Role>(usercustomer.admins, "users", msg.jwt, span);
+                    if (usercustomeradmins != null) customeradmins.AddMember(usercustomeradmins);
+                }
+            }
+            customeradmins.customerid = msg.customer._id;
+            await DBHelper.Save(customeradmins, rootjwt, span);
+
+            const customer_admins: Role = await DBHelper.EnsureRole(rootjwt, "customer admins", WellknownIds.customer_admins, span);
+            customer_admins.AddMember(customeradmins);
+            await DBHelper.Save(customer_admins, rootjwt, span);
+
+            const customerusers: Role = await DBHelper.EnsureRole(rootjwt, msg.customer.name + " users", msg.customer.users, span);
+            customerusers.name = msg.customer.name + " users";
+            customerusers.customerid = msg.customer._id;
+            Base.addRight(customerusers, customeradmins._id, customeradmins.name, [Rights.full_control]);
+            Base.removeRight(customerusers, customeradmins._id, [Rights.delete]);
+            customerusers.AddMember(customeradmins);
+            if (NoderedUtil.IsNullEmpty(cli.user.customerid) || cli.user.customerid == msg.customer._id) {
+                customerusers.AddMember(cli.user);
+            }
+            await DBHelper.Save(customerusers, rootjwt, span);
+
+            if (msg.customer.admins != customeradmins._id || msg.customer.users != customerusers._id) {
+                msg.customer.admins = customeradmins._id;
+                msg.customer.users = customerusers._id;
+            }
+            Base.addRight(msg.customer, customerusers._id, customerusers.name, [Rights.read]);
+            Base.addRight(msg.customer, customeradmins._id, customeradmins.name, [Rights.read]);
+            await Config.db._UpdateOne(null, msg.customer, "users", 3, true, rootjwt, span);
+
+            if (msg.customer._id == cli.user.customerid) {
+                cli.user.selectedcustomerid = msg.customer._id;
+                cli.user = await DBHelper.DecorateWithRoles(cli.user, span);
+                cli.user.roles.push(new Rolemember(customerusers.name, customerusers._id));
+                cli.user.roles.push(new Rolemember(customeradmins.name, customeradmins._id));
+                await this.ReloadUserToken(cli, span);
+            }
+
+        } catch (error) {
+            span.recordException(error);
+            await handleError(cli, error);
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) {
+                msg.error = (error.message ? error.message : error);
+                if (error.response && error.response.body) {
+                    msg.error = error.response.body;
+                }
+            }
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            span.recordException(error);
+            this.data = "";
+            await handleError(cli, error);
+        }
+        Logger.otel.endSpan(span);
+        this.Send(cli);
+    }
+    formatBytes(bytes, decimals = 2) {
+        if (bytes === 0) return '0 Bytes';
+
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+    sleep(ms) {
+        return new Promise(resolve => {
+            setTimeout(resolve, ms)
+        })
+    }
+    public async ReloadUserToken(cli: WebSocketServerClient, parent: Span) {
+        await this.sleep(1000);
+        const l: SigninMessage = new SigninMessage();
+        Auth.RemoveUser(cli.user._id, "passport");
+        cli.user = await DBHelper.DecorateWithRoles(cli.user, parent);
+        cli.jwt = Crypt.createToken(cli.user, Config.shorttoken_expires_in);
+        l.jwt = cli.jwt;
+        l.user = TokenUser.From(cli.user);
+        const m: Message = new Message(); m.command = "refreshtoken";
+        m.data = JSON.stringify(l);
+        cli.Send(m);
+    }
+    public async Housekeeping(skipNodered: boolean, skipCalculateSize: boolean, skipUpdateUserSize: boolean, parent: Span): Promise<void> {
+        const span: Span = Logger.otel.startSubSpan("message.QueueMessage", parent);
+        try {
+            if (!skipNodered) await this.GetNoderedInstance(span)
+        } catch (error) {
+        }
+        try {
+            await Config.db.ensureindexes(span);
+        } catch (error) {
+        }
+        const timestamp = new Date(new Date().toISOString());
+        timestamp.setUTCHours(0, 0, 0, 0);
+
+        const yesterday = new Date(new Date().toISOString());;
+        yesterday.setUTCHours(0, 0, 0, 0);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        try {
+            if (!skipCalculateSize) {
+
+                const user = Crypt.rootUser();
+                const tuser = TokenUser.From(user);
+                const jwt: string = Crypt.rootToken();
+                const collections = await Config.db.ListCollections(jwt);
+                let totalusage = 0;
+                let index = 0;
+                for (let col of collections) {
+                    if (col.name == "fs.chunks") continue;
+                    index++;
+                    let aggregates: any = [
+                        {
+                            "$project": {
+                                "_modifiedbyid": 1,
+                                "_modifiedby": 1,
+                                "object_size": { "$bsonSize": "$$ROOT" }
+                            }
+                        },
+                        {
+                            "$group": {
+                                "_id": "$_modifiedbyid",
+                                "size": { "$sum": "$object_size" },
+                                "name": { "$first": "$_modifiedby" }
+                            }
+                        },
+                        { $addFields: { "userid": "$_id" } },
+                        { $unset: "_id" },
+                        { $addFields: { "collection": col.name } },
+                        { $addFields: { timestamp: timestamp.toISOString() } },
+                    ];
+                    if (col.name == "fs.files") {
+                        aggregates = [
+                            {
+                                "$project": {
+                                    "_modifiedbyid": "$metadata._modifiedbyid",
+                                    "_modifiedby": "$metadata._modifiedby",
+                                    "object_size": "$length"
+                                }
+                            },
+                            {
+                                "$group": {
+                                    "_id": "$_modifiedbyid",
+                                    "size": { "$sum": "$object_size" },
+                                    "name": { "$first": "$_modifiedby" }
+                                }
+                            },
+                            { $addFields: { "userid": "$_id" } },
+                            { $unset: "_id" },
+                            { $addFields: { "collection": col.name } },
+                            { $addFields: { timestamp: timestamp.toISOString() } },
+                        ]
+                    }
+                    if (col.name == "audit") {
+                        aggregates = [
+                            {
+                                "$project": {
+                                    "userid": 1,
+                                    "name": 1,
+                                    "object_size": { "$bsonSize": "$$ROOT" }
+                                }
+                            },
+                            {
+                                "$group": {
+                                    "_id": "$userid",
+                                    "size": { "$sum": "$object_size" },
+                                    "name": { "$first": "$name" }
+                                }
+                            },
+                            { $addFields: { "userid": "$_id" } },
+                            { $unset: "_id" },
+                            { $addFields: { "collection": col.name } },
+                            { $addFields: { timestamp: timestamp.toISOString() } },
+                        ]
+                    }
+
+                    const items: any[] = await Config.db.db.collection(col.name).aggregate(aggregates).toArray();
+                    Config.db.db.collection("dbusage").deleteMany({ timestamp: timestamp, collection: col.name });
+                    let usage = 0;
+                    if (items.length > 0) {
+                        let bulkInsert = Config.db.db.collection("dbusage").initializeUnorderedBulkOp();
+                        for (var _item of items) {
+                            let item = Config.db.ensureResource(_item);
+                            item = await Config.db.CleanACL(item, tuser, span);
+                            delete item._id;
+                            item.username = item.name;
+                            item.name = item.name + " / " + col.name + " / " + this.formatBytes(_item.size);
+                            item._type = "metered";
+                            item._createdby = "root";
+                            item._createdbyid = WellknownIds.root;
+                            item._created = new Date(new Date().toISOString());
+                            item._modifiedby = "root";
+                            item._modifiedbyid = WellknownIds.root;
+                            item._modified = item._created;
+                            usage += item.size;
+                            DatabaseConnection.traversejsonencode(item);
+
+                            bulkInsert.insert(item);
+                        }
+
+                        totalusage += usage;
+                        try {
+                            await bulkInsert.execute();
+                            if (items.length > 0) Logger.instanse.debug("[housekeeping][" + col.name + "][" + index + "/" + collections.length + "] add " + items.length + " items with a usage of " + this.formatBytes(usage));
+
+                        } catch (error) {
+                            Logger.instanse.error(error);
+                            span.recordException(error);
+                        }
+                    }
+                }
+                Logger.instanse.debug("[housekeeping] Add stats from " + collections.length + " collections with a total usage of " + this.formatBytes(totalusage));
+            }
+
+        } catch (error) {
+            Logger.instanse.error(error);
+            span.recordException(error);
+        }
+        try {
+            if (!skipUpdateUserSize) {
+                var dt = new Date();
+                let index = 0;
+                const usercount = await Config.db.db.collection("users").aggregate([{ "$match": { "_type": "user", lastseen: { "$gte": yesterday } } }, { $count: "userCount" }]).toArray();
+                if (usercount.length > 0) {
+                    Logger.instanse.debug("[housekeeping] Begin updating all users (" + usercount[0].userCount + ") dbusage field");
+                }
+
+                const cursor = Config.db.db.collection("users").find({ "_type": "user", lastseen: { "$gte": yesterday } })
+                for await (const u of cursor) {
+                    if (u.dbusage == null) u.dbusage = 0;
+                    index++;
+                    const pipe = [
+                        { "$match": { "userid": u._id, timestamp: { "$gte": yesterday } } },
+                        {
+                            "$group":
+                            {
+                                "_id": "$userid",
+                                "size": { "$sum": "$size" },
+                                "count": { "$sum": 1 }
+
+                            }
+                        }
+                    ]// "items": { "$push": "$$ROOT" }
+                    const items: any[] = await Config.db.db.collection("dbusage").aggregate(pipe).toArray();
+
+
+                    if (items.length > 0) {
+                        Logger.instanse.debug("[housekeeping][" + index + "/" + usercount[0].userCount + "] " + u.name + " " + this.formatBytes(items[0].size) + " from " + items[0].count + " collections");
+                        await Config.db.db.collection("users").updateOne({ _id: u._id }, { $set: { "dbusage": items[0].size } });
+                    }
+                    if (index % 100 == 0) Logger.instanse.debug("[housekeeping][" + index + "/" + usercount[0].userCount + "] Processing");
+                }
+                Logger.instanse.debug("[housekeeping] Completed updating all users dbusage field");
+            }
+        } catch (error) {
+            Logger.instanse.error(error);
+            span.recordException(error);
+        }
+        if (Config.multi_tenant) {
+            try {
+                let index = 0;
+                const usercount = await Config.db.db.collection("users").aggregate([{ "$match": { "_type": "customer" } }, { $count: "userCount" }]).toArray();
+                if (usercount.length > 0) {
+                    Logger.instanse.debug("[housekeeping] Begin updating all customers (" + usercount[0].userCount + ") dbusage field");
+                }
+                const pipe = [
+                    { "$match": { "_type": "customer" } },
+                    { "$project": { "name": 1, "dbusage": 1, "stripeid": 1, "dblocked": 1 } },
+                    {
+                        "$lookup": {
+                            "from": "users",
+                            "let": {
+                                "id": "$_id"
+                            },
+                            "pipeline": [
+                                {
+                                    "$match": {
+                                        "$expr": {
+                                            "$and": [
+                                                {
+                                                    "$eq": [
+                                                        "$customerid",
+                                                        "$$id"
+                                                    ]
+                                                },
+                                                {
+                                                    "$eq": [
+                                                        "$_type",
+                                                        "user"
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    }
+                                },
+                                {
+                                    $project:
+                                    {
+                                        "name": 1, "dbusage": 1, "_id": 0
+                                    }
+                                }
+                            ],
+                            "as": "users"
+                        }
+
+                    }
+                ]
+                const cursor = await Config.db.db.collection("users").aggregate(pipe)
+                for await (const c of cursor) {
+                    let dbusage: number = 0;
+                    for (let u of c.users) dbusage += (u.dbusage ? u.dbusage : 0);
+                    await Config.db.db.collection("users").updateOne({ _id: c._id }, { $set: { "dbusage": dbusage } });
+                    Logger.instanse.debug("[housekeeping] " + c.name + " using " + this.formatBytes(dbusage));
+                    index++;
+                }
+                var sleep = (ms) => {
+                    return new Promise(resolve => {
+                        setTimeout(resolve, ms)
+                    })
+                }
+                await sleep(2000);
+
+            } catch (error) {
+                Logger.instanse.error(error);
+                span.recordException(error);
+            }
+        }
+        if (Config.multi_tenant) {
+            try {
+                let index = 0;
+                const usercount = await Config.db.db.collection("users").aggregate([{ "$match": { "_type": "customer" } }, { $count: "userCount" }]).toArray();
+                if (usercount.length > 0) {
+                    Logger.instanse.debug("[housekeeping] Begin updating all customers (" + usercount[0].userCount + ") dbusage field");
+                }
+
+                const pipe = [
+                    { "$match": { "_type": "customer" } },
+                    { "$project": { "name": 1, "dbusage": 1, "stripeid": 1, "dblocked": 1 } },
+                    {
+                        "$lookup": {
+                            "from": "config",
+                            "let": {
+                                "id": "$_id"
+                            },
+                            "pipeline": [
+                                {
+                                    "$match": {
+                                        "$expr": {
+                                            "$and": [
+                                                {
+                                                    "$eq": [
+                                                        "$customerid",
+                                                        "$$id"
+                                                    ]
+                                                },
+                                                {
+                                                    "$eq": [
+                                                        "$_type",
+                                                        "resourceusage"
+                                                    ]
+                                                },
+                                                {
+                                                    "$eq": [
+                                                        "$resource",
+                                                        "Database Usage"
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    }
+                                },
+                                {
+                                    $project:
+                                    {
+                                        "name": 1, "quantity": 1, "siid": 1, "product": 1, "_id": 0
+                                    }
+                                }
+                            ],
+                            "as": "config"
+                        }
+
+                    }
+                ]
+                // ,
+                // {
+                //     "$match": { config: { $not: { $size: 0 } } }
+                // }
+                const cursor = await Config.db.db.collection("users").aggregate(pipe)
+                let resources: Resource[] = await Config.db.db.collection("config").find({ "_type": "resource", "name": "Database Usage" }).toArray();
+                if (resources.length > 0) {
+                    let resource: Resource = resources[0];
+
+                    for await (const c of cursor) {
+                        if (c.dbusage == null) c.dbusage = 0;
+                        const config: ResourceUsage = c.config[0];
+                        index++;
+                        if (config == null) {
+                            if (c.dbusage > resource.defaultmetadata.dbusage) {
+                                await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": true } });
+                                if (!c.dblocked || c.dblocked) {
+                                    Logger.instanse.debug("[housekeeping] dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
+                                    await Config.db.db.collection("users").updateMany({ customerid: c._id }, { $set: { "dblocked": true } });
+                                }
+                            } else if (c.dbusage <= resource.defaultmetadata.dbusage) {
+                                await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
+                                if (c.dblocked || !c.dblocked) {
+                                    Logger.instanse.debug("[housekeeping] unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
+                                    await Config.db.db.collection("users").updateMany({ customerid: c._id }, { $set: { "dblocked": false } });
+                                }
+                            }
+                        } else if (config.product.customerassign == "single") {
+                            let quota: number = resource.defaultmetadata.dbusage + (c.quantity * c.config.metadata.dbusage);
+                            if (c.dbusage > quota) {
+                                await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": true } });
+                                if (!c.dblocked || c.dblocked) {
+                                    Logger.instanse.debug("[housekeeping] dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(quota));
+                                    await Config.db.db.collection("users").updateMany({ customerid: c._id }, { $set: { "dblocked": true } });
+                                }
+                            } else if (c.dbusage <= quota) {
+                                await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
+                                if (c.dblocked || !c.dblocked) {
+                                    Logger.instanse.debug("[housekeeping] unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(quota));
+                                    await Config.db.db.collection("users").updateMany({ customerid: c._id }, { $set: { "dblocked": false } });
+                                }
+                            }
+                        } else if (config.product.customerassign == "metered") {
+                            let billabledbusage: number = c.dbusage - resource.defaultmetadata.dbusage;
+                            if (billabledbusage > 0) {
+                                const billablecount = Math.ceil(billabledbusage / config.product.metadata.dbusage);
+
+                                Logger.instanse.debug("[housekeeping] Add usage_record for " + c.name + " using " + this.formatBytes(billabledbusage) + " equal to " + billablecount + " units of " + this.formatBytes(config.product.metadata.dbusage));
+                                const dt = parseInt((new Date().getTime() / 1000).toFixed(0))
+                                const payload: any = { "quantity": billablecount, "timestamp": dt };
+                                if (!NoderedUtil.IsNullEmpty(config.siid) && !NoderedUtil.IsNullEmpty(c.stripeid)) {
+                                    await this.Stripe("POST", "usage_records", config.siid, payload, c.stripeid);
+                                }
+                            }
+                            if (c.dblocked || !c.dblocked) {
+                                await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
+                                await Config.db.db.collection("users").updateMany({ customerid: c._id }, { $set: { "dblocked": false } });
+                            }
+                        }
+                        // await Config.db.db.collection("users").updateOne({ _id: c._id }, { $set: { "dbusage": c.dbusage } });
+                        if (index % 100 == 0) Logger.instanse.debug("[housekeeping][" + index + "/" + usercount[0].userCount + "] Processing");
+                    }
+                    Logger.instanse.debug("[housekeeping] Completed updating all customers dbusage field");
+
+
+                    const pipe2 = [
+                        { "$match": { "_type": "user", "$or": [{ "customerid": { $exists: false } }, { "customerid": "" }] } },
+                        { "$project": { "name": 1, "dbusage": 1, "dblocked": 1 } }];
+                    const cursor2 = await Config.db.db.collection("users").aggregate(pipe2);
+                    for await (const c of cursor2) {
+                        if (Config.db.WellknownIdsArray.indexOf(c._id) > -1) continue;
+                        if (c.dbusage == null) c.dbusage = 0;
+                        if (c.dbusage > resource.defaultmetadata.dbusage) {
+                            Logger.instanse.debug("[housekeeping] dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
+                            await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": true } });
+                        } else {
+                            if (c.dblocked) {
+                                await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
+                                Logger.instanse.debug("[housekeeping] unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
+                            }
+
+                        }
+                    }
+                    Logger.instanse.debug("[housekeeping] Completed updating all users without a customer dbusage field");
+                }
+            } catch (error) {
+                if (error.response && error.response.body) {
+                    Logger.instanse.error(error.response.body);
+                    span.recordException(error.response.body);
+                } else {
+                    Logger.instanse.error(error);
+                    span.recordException(error);
+                }
+            }
+        }
+        Logger.otel.endSpan(span);
+    }
+    async SelectCustomer(parent: Span) {
+        this.Reply();
+        let msg: SelectCustomerMessage;
+        try {
+            msg = SelectCustomerMessage.assign(this.data);
+            if (!NoderedUtil.IsNullEmpty(msg.customerid)) {
+                var customer = await Config.db.getbyid<Customer>(msg.customerid, "users", this.jwt, parent)
+                if (customer == null) msg.customerid = null;
+            }
+            const user: TokenUser = User.assign(Crypt.verityToken(this.jwt));
+
+            if (NoderedUtil.IsNullEmpty(msg.customerid)) {
+                {
+                    if (!user.HasRoleName("resellers") && !user.HasRoleName("admins")) {
+                        msg.customerid = user.customerid;
+                    }
+                }
+            }
+
+            const UpdateDoc: any = { "$set": {} };
+            UpdateDoc.$set["selectedcustomerid"] = msg.customerid;
+            await Config.db._UpdateOne({ "_id": user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), parent);
+            user.selectedcustomerid = msg.customerid;
+        } catch (error) {
+            await handleError(null, error);
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) {
+                msg.error = (error.message ? error.message : error);
+            }
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            await handleError(null, error);
+        }
+    }
+
 }
 
 export class JSONfn {

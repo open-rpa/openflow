@@ -6,7 +6,7 @@ import { Span } from "@opentelemetry/api";
 export class Audit {
     public static LoginSuccess(user: TokenUser, type: string, provider: string, remoteip: string, clientagent: string, clientversion: string, parent: Span) {
         const log: Singin = new Singin();
-        Base.addRight(log, user._id, user.name, [Rights.read]);
+        Base.addRight(log, user._id, user.name, [Rights.read, Rights.update, Rights.invoke]);
         log.remoteip = remoteip;
         log.success = true;
         log.type = type;

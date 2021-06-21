@@ -107,6 +107,9 @@ export class Crypt {
         user.name = item.name;
         user.username = item.username;
         user.roles = item.roles;
+        user.customerid = item.customerid;
+        user.selectedcustomerid = item.selectedcustomerid;
+        user.dblocked = item.dblocked;
 
         const key = Crypt.encryption_key;
         if (NoderedUtil.IsNullEmpty(Config.aes_secret)) throw new Exception("Config missing aes_secret");

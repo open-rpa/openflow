@@ -1,3 +1,4 @@
+import { WebSocketClient } from "@openiap/openflow-api";
 import { Red } from "node-red";
 import * as api from "./api_nodes";
 
@@ -31,6 +32,9 @@ export = function (RED: Red) {
 
     RED.nodes.registerType("api download file", api.download_file);
     RED.nodes.registerType("api upload file", api.upload_file);
+
+    RED.nodes.registerType("api list collections", api.list_collections);
+    RED.nodes.registerType("api housekeeping", api.housekeeping);
 
     RED.httpAdmin.get("/api_roles", RED.auth.needsPermission('serial.read'), api.get_api_roles);
     RED.httpAdmin.get("/api_userroles", RED.auth.needsPermission('serial.read'), api.get_api_userroles);

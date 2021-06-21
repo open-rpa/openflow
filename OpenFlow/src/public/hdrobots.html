@@ -45,11 +45,11 @@
         <timesince ng-model="model._modified" />
       </td>
       <td class="btn-cell">
-        <a ng-href="#/Entity/{{ctrl.collection}}/{{model._id}}" class="table-btn"><em class="az-edit"></em></a>
+        <a ng-href="#/Entity/{{ctrl.collection}}/{{model._id}}" class="table-btn"><em class="fas fa-edit"></em></a>
       </td>
       <td class="btn-cell">
         <a href ng-click="ctrl.DeleteOne(model)" ng-disabled="ctrl.loading==true" class="table-btn"><em
-            class="az-trash"></em></a>
+            class="fas fa-trash"></em></a>
       </td>
     </tr>
   </tbody>

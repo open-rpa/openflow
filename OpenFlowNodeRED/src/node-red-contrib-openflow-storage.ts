@@ -170,7 +170,6 @@ export class noderedcontribopenflowstorage {
     }
     DiffObjects(o1, o2) {
         // choose a map() impl.
-        // you may use $.map from jQuery if you wish
         const map = Array.prototype.map ?
             function (a) { return Array.prototype.map.apply(a, Array.prototype.slice.call(arguments, 1)); } :
             function (a, f) {

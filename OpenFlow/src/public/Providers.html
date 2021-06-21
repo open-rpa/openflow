@@ -1,14 +1,5 @@
 <div class="row">
   <h1 translate lib="web">providers</h1>
-  <p class="col-md-5 lead"></p>
-  <div class="form-group col-sm-3 form-horizontal">
-    <label class="sr-only">Filter</label>
-    <div class="input-group unframed-addons">
-      <div class="input-group-addon"><em class="fas fa-search"></em></div>
-      <input ng-model="ctrl.searchstring" ng-change="ctrl.Search()" class="form-control input-md"
-        ng-model-options="{debounce: 400}" />
-    </div>
-  </div>
 </div>
 <div class="col-sm-12 text-right">
   <a href="#/Provider" class="btn btn-info" translate lib="web">addprovider</a>
@@ -18,9 +9,8 @@
   <thead class="thead-dark">
     <tr>
       <th ng-click="ctrl.ToggleOrder('name')"><b translate lib="web">name</b></th>
-      <th ng-click="ctrl.ToggleOrder('_created')"><b translate lib="web">created</b></th>
-      <th></th>
-      <th></th>
+      <th class="w-150" ng-click="ctrl.ToggleOrder('_created')"><b translate lib="web">created</b></th>
+      <th class="w-150"></th>
     </tr>
   </thead>
   <tbody>
@@ -29,11 +19,10 @@
       <td>
         <timesince ng-model="model._created" />
       </td>
-      <td class="btn-cell">
-        <a ng-href="#/Provider/{{model._id}}"><i class="az-edit"></i></a>
-      </td>
-      <td class="btn-cell">
-        <a href ng-click="ctrl.DeleteOne(model)" ng-disabled="ctrl.loading==true"><i class="az-trash"></i></a>
+      <td>
+        <a class="btn" ng-href="#/Provider/{{model._id}}"><em class="fas fa-edit"></em></a>
+        <a class="btn" href ng-click="ctrl.DeleteOne(model)" ng-disabled="ctrl.loading==true"><em
+            class="fas fa-trash"></em></a>
       </td>
     </tr>
   </tbody>

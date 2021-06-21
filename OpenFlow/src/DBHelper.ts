@@ -3,6 +3,7 @@ import { User, Role, Rolemember, WellknownIds, Rights, NoderedUtil, Base, TokenU
 import { Config } from "./Config";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
+import { Exception } from "handlebars";
 
 export class DBHelper {
     public static async FindByUsername(username: string, jwt: string, parent: Span): Promise<User> {
@@ -25,8 +26,9 @@ export class DBHelper {
     public static async FindById(_id: string, jwt: string, parent: Span): Promise<User> {
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
+            if (NoderedUtil.IsNullEmpty(_id)) throw new Exception("_id cannot be null");
             if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
-            const items: User[] = await Config.db.query<User>({ _id: _id }, null, 1, 0, null, "users", jwt, undefined, undefined, span);
+            const items: User[] = await Config.db.query<User>({ _id }, null, 1, 0, null, "users", jwt, undefined, undefined, span);
             if (items === null || items === undefined || items.length === 0) { return null; }
             return await this.DecorateWithRoles(User.assign(items[0]), span);
         } catch (error) {
@@ -39,7 +41,9 @@ export class DBHelper {
     public static async FindByUsernameOrId(username: string, id: string, parent: Span): Promise<User> {
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindByUsernameOrId", parent);
         try {
-            const items: User[] = await Config.db.query<User>({ $or: [{ username: new RegExp(["^", username, "$"].join(""), "i") }, { _id: id }] },
+            var _id = id;
+            if (NoderedUtil.IsNullEmpty(_id)) _id = null;
+            const items: User[] = await Config.db.query<User>({ $or: [{ username: new RegExp(["^", username, "$"].join(""), "i") }, { _id }] },
                 null, 1, 0, null, "users", Crypt.rootToken(), undefined, undefined, span);
             if (items === null || items === undefined || items.length === 0) { return null; }
             return await this.DecorateWithRoles(User.assign(items[0]), span);
@@ -68,10 +72,11 @@ export class DBHelper {
     }
     public static cached_roles: Role[] = [];
     public static cached_at: Date = new Date();
-    public static async DecorateWithRoles(user: User, parent: Span): Promise<User> {
+    public static async DecorateWithRoles<T extends TokenUser | User>(user: T, parent: Span): Promise<T> {
         const span: Span = Logger.otel.startSubSpan("dbhelper.DecorateWithRoles", parent);
         try {
             if (!Config.decorate_roles_fetching_all_roles) {
+                if (!user.roles) user.roles = [];
                 const pipe: any = [{ "$match": { "_id": user._id } },
                 {
                     "$graphLookup": {
@@ -81,12 +86,33 @@ export class DBHelper {
                         connectToField: "members._id",
                         as: "roles",
                         maxDepth: Config.max_recursive_group_depth,
+                        depthField: "depth"
+                        , restrictSearchWithMatch: { "_type": "role" }
+                        // , "_id": { $nin: Config.db.WellknownIdsArray }, "members._id": { $nin: Config.db.WellknownIdsArray }
+                    }
+                }, {
+                    "$graphLookup": {
+                        from: "users",
+                        startWith: "$_id",
+                        connectFromField: "members._id",
+                        connectToField: "members._id",
+                        as: "roles2",
+                        maxDepth: 0,
+                        depthField: "depth",
                         restrictSearchWithMatch: { "_type": "role" }
                     }
-                }]
+                }
+                ]
                 const results = await Config.db.aggregate<User>(pipe, "users", Crypt.rootToken(), null, span);
                 if (results.length > 0) {
-                    user.roles = results[0].roles.map(x => ({ "_id": x._id, "name": x.name })) as any;
+                    let res = { roles: results[0].roles, roles2: (results[0] as any).roles2 }
+                    res.roles = res.roles.map(x => ({ "_id": x._id, "name": x.name, "d": (x as any).depth })) as any;
+                    res.roles2 = res.roles2.map(x => ({ "_id": x._id, "name": x.name, "d": (x as any).depth })) as any;
+                    user.roles = res.roles;
+                    res.roles2.forEach(r => {
+                        const exists = user.roles.filter(x => x._id == r._id);
+                        if (exists.length == 0) user.roles.push(r);
+                    });
                 }
             } else {
                 var end: number = new Date().getTime();
@@ -104,29 +130,31 @@ export class DBHelper {
                     throw new Error("System has no roles !!!!!!");
                 }
                 user.roles = [];
-                this.cached_roles.forEach(role => {
+                for (let role of this.cached_roles) {
                     let isMember: number = -1;
                     if (role.members !== undefined) { isMember = role.members.map(function (e: Rolemember): string { return e._id; }).indexOf(user._id); }
-                    const beenAdded: number = user.roles.map(function (e: Rolemember): string { return e._id; }).indexOf(user._id);
-                    if (isMember > -1 && beenAdded === -1) {
+                    if (isMember > -1) {
                         user.roles.push(new Rolemember(role.name, role._id));
                     }
-                });
-                let foundone: boolean = true;
-                while (foundone) {
-                    foundone = false;
-                    user.roles.forEach(userrole => {
-                        this.cached_roles.forEach(role => {
+                }
+
+                let updated: boolean = false;
+                do {
+                    updated = false;
+                    for (let userrole of user.roles) {
+                        for (let role of this.cached_roles) {
                             let isMember: number = -1;
                             if (role.members !== undefined) { isMember = role.members.map(function (e: Rolemember): string { return e._id; }).indexOf(userrole._id); }
-                            const beenAdded: number = user.roles.map(function (e: Rolemember): string { return e._id; }).indexOf(role._id);
-                            if (isMember > -1 && beenAdded === -1) {
-                                user.roles.push(new Rolemember(role.name, role._id));
-                                foundone = true;
+                            if (isMember > -1) {
+                                const beenAdded: number = user.roles.map(function (e: Rolemember): string { return e._id; }).indexOf(role._id);
+                                if (beenAdded === -1) {
+                                    user.roles.push(new Rolemember(role.name, role._id));
+                                    updated = true;
+                                }
                             }
-                        });
-                    });
-                }
+                        }
+                    }
+                } while (updated)
             }
         } catch (error) {
             span.recordException(error);
@@ -134,7 +162,7 @@ export class DBHelper {
         } finally {
             Logger.otel.endSpan(span);
         }
-        return user;
+        return user as any;
     }
     public static async FindRoleByName(name: string, parent: Span): Promise<Role> {
         const items: Role[] = await Config.db.query<Role>({ name: name }, null, 1, 0, null, "users", Crypt.rootToken(), undefined, undefined, parent);
@@ -142,10 +170,17 @@ export class DBHelper {
         return Role.assign(items[0]);
     }
     public static async FindRoleByNameOrId(name: string, id: string, parent: Span): Promise<Role> {
-        const jwt = Crypt.rootToken();
-        const items: Role[] = await Config.db.query<Role>({ $or: [{ name: name }, { _id: id }] }, null, 1, 0, null, "users", jwt, undefined, undefined, parent);
-        if (items === null || items === undefined || items.length === 0) { return null; }
-        return Role.assign(items[0]);
+        try {
+            var _id = id;
+            if (NoderedUtil.IsNullEmpty(_id)) _id = null; // undefined is bad here
+            const jwt = Crypt.rootToken();
+            const items: Role[] = await Config.db.query<Role>({ $or: [{ name }, { _id }], "_type": "role" }, null, 5, 0, null, "users", jwt, undefined, undefined, parent);
+            if (items === null || items === undefined || items.length === 0) { return null; }
+            return Role.assign(items[0]);
+        } catch (error) {
+            console.error(error);
+            return null;
+        }
     }
     public static async Save(item: User | Role, jwt: string, parent: Span): Promise<void> {
         await Config.db._UpdateOne(null, item, "users", 0, false, jwt, parent);
@@ -154,7 +189,7 @@ export class DBHelper {
         const span: Span = Logger.otel.startSubSpan("dbhelper.EnsureRole", parent);
         try {
             let role: Role = await this.FindRoleByNameOrId(name, id, span);
-            if (role !== null && (role._id === id || id === null)) { return role; }
+            if (role !== null && (role._id === id || NoderedUtil.IsNullEmpty(id))) { return role; }
             if (role !== null && !NoderedUtil.IsNullEmpty(role._id)) { await Config.db.DeleteOne(role._id, "users", jwt, span); }
             role = new Role(); role.name = name; role._id = id;
             role = await Config.db.InsertOne(role, "users", 0, false, jwt, span);
@@ -191,7 +226,7 @@ export class DBHelper {
             await this.Save(user, jwt, span);
             const users: Role = await this.FindRoleByName("users", span);
             users.AddMember(user);
-            this.EnsureNoderedRoles(user, jwt, false, span);
+            // this.EnsureNoderedRoles(user, jwt, false, span);
             await this.Save(users, jwt, span)
             user = await this.DecorateWithRoles(user, span);
             return user;

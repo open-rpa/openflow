@@ -3,7 +3,7 @@
         padding-top: 0px;
     }
 </style>
-<link rel='stylesheet' href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css'> -->
+ -->
 <section>
     <div class="form-inline">
         <label for="sid" class="col-sm-2 control-label" translate lib="web">name</label>
@@ -16,8 +16,8 @@
     <div class="form-inline">
         <label for="sid" class="col-sm-2 control-label" translate lib="web">fbeditor</label>
         <div class="col-sm-4">
-            <input type="checkbox" ng-model="ctrl.model.fbeditor" class="form-control input-md"
-                ng-change="ctrl.renderform()" ng-disabled="ctrl.loading==true" />
+            <input type="checkbox" ng-model="ctrl.model.fbeditor" class="input-md" ng-change="ctrl.renderform()"
+                ng-disabled="ctrl.loading==true" />
         </div>
     </div>
 </section>
@@ -27,10 +27,99 @@
     <div class="form-inline">
         <label for="sid" class="col-sm-2 control-label" translate lib="web">Wizard</label>
         <div class="col-sm-4">
-            <input type="checkbox" ng-model="ctrl.model.wizard" class="form-control input-md"
-                ng-change="ctrl.renderform()" ng-disabled="ctrl.loading==true" />
+            <input type="checkbox" ng-model="ctrl.model.wizard" class="input-md" ng-change="ctrl.renderform()"
+                ng-disabled="ctrl.loading==true" />
         </div>
     </div>
 </div>
+
+<link rel='stylesheet' href='bootstrap.css'>
+
+
+<style>
+    .dark-mode .formio-dialog-content {
+        background-color: var(--dm-card-bg-color) !important;
+    }
+
+
+    .dark-mode .formio-dialog {
+        color: unset !important;
+    }
+
+    .dark-mode .table {
+        color: unset !important;
+    }
+
+    .dark-mode .ace_editor {
+        background-color: var(--dm-card-bg-color) !important;
+    }
+
+    .dark-mode .ace_gutter {
+        background-color: var(--dm-card-bg-color) !important;
+        color: unset !important;
+    }
+
+    .dark-mode .ace-xcode {
+        color: unset !important;
+    }
+
+    .dark-mode .choices__inner {
+        background-color: unset !important;
+    }
+
+    .dark-mode .choices__input {
+        background-color: unset !important;
+    }
+
+    .dark-mode .list-group-item {
+        background-color: unset !important;
+    }
+
+
+    /* .formio-dialog-content {
+        background: unset !important;
+    } */
+
+    /* .formbuilder {
+        min-width: 900px;
+    } */
+
+    /* .builder-sidebar {
+        width: 130px;
+    } */
+
+    .builder-group-button {
+        text-align: left !important;
+    }
+
+    .builder-sidebar_scroll {
+        position: sticky !important;
+        top: 15px !important;
+    }
+
+    .builder-sidebar {
+        width: 130px !important;
+    }
+
+    .form-builder-panel {
+        margin: unset !important;
+        padding: unset !important;
+    }
+
+    .form-builder-panel .btn {
+        padding: unset !important;
+    }
+
+    .form-builder-panel .formcomponent {
+        line-height: unset !important;
+        margin-top: 1px !important;
+        padding: unset !important;
+    }
+</style>
+
+<p>
+    <hr>
+</p>
+<div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <div id="builder" ng-show="ctrl.model.fbeditor==false">
 </div>

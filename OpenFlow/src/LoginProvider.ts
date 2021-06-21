@@ -146,10 +146,28 @@ export class LoginProvider {
         app.use(passport.initialize());
         app.use(passport.session());
         passport.serializeUser(async function (user: any, done: any): Promise<void> {
-            done(null, user);
+            const tuser: TokenUser = TokenUser.From(user);
+            await Auth.AddUser(tuser as any, tuser._id, "passport");
+            done(null, user._id);
         });
-        passport.deserializeUser(function (user: any, done: any): void {
-            done(null, user);
+        passport.deserializeUser(async function (userid: string, done: any): Promise<void> {
+            if (NoderedUtil.IsNullEmpty(userid)) return done('missing userid', null);
+            if (typeof userid !== 'string') userid = (userid as any)._id
+            if (NoderedUtil.IsNullEmpty(userid)) return done('missing userid', null);
+            const _user = await Auth.getUser(userid, "passport");
+            if (_user == null) {
+                const user = await DBHelper.FindByUsernameOrId(null, userid, null);
+                if (user != null) {
+                    const tuser = TokenUser.From(user);
+                    await Auth.AddUser(tuser as any, tuser._id, "passport");
+                    done(null, tuser);
+                } else {
+                    done(null, null);
+                }
+
+            } else {
+                done(null, _user);
+            }
         });
 
         app.use(function (req, res, next) {
@@ -416,7 +434,10 @@ export class LoginProvider {
                     validate_user_form: Config.validate_user_form,
                     supports_watch: Config.supports_watch,
                     nodered_images: Config.nodered_images,
-                    amqp_enabled_exchange: Config.amqp_enabled_exchange
+                    amqp_enabled_exchange: Config.amqp_enabled_exchange,
+                    multi_tenant: Config.multi_tenant,
+                    enable_entity_restriction: Config.enable_entity_restriction,
+                    enable_web_tours: Config.enable_web_tours
                 }
                 res.end(JSON.stringify(res2));
             } catch (error) {
@@ -439,7 +460,10 @@ export class LoginProvider {
                     if (req.user) {
                         const user: User = await DBHelper.FindById(req.user._id, undefined, span);
                         const tuser: TokenUser = TokenUser.From(user);
-                        req.session.passport.user.validated = tuser.validated;
+                        if (tuser.validated) {
+                            Auth.RemoveUser(tuser._id, "passport");
+                        }
+                        // req.session.passport.user.validated = tuser.validated;
                         if (!(tuser.validated == true) && Config.validate_user_form != "") {
                         } else {
                             res.cookie("validateurl", "", { expires: new Date(0) });
@@ -520,7 +544,9 @@ export class LoginProvider {
                         });
                         var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), span);
                         const user: TokenUser = Object.assign(tuser, req.body.data);
-                        req.session.passport.user.validated = true;
+                        Auth.RemoveUser(user._id, "passport");
+                        // req.session.passport.user.validated = true;
+                        // wewfefwewe
 
 
                         if (!(user.validated == true) && Config.validate_user_form != "") {
@@ -1021,6 +1047,7 @@ export class LoginProvider {
                 }
                 const tuser: TokenUser = TokenUser.From(user);
                 Audit.LoginSuccess(tuser, "weblogin", "local", remoteip, "browser", "unknown", span);
+                // tuser.roles.splice(40, tuser.roles.length)
                 Logger.otel.endSpan(span);
                 return done(null, tuser);
             } catch (error) {

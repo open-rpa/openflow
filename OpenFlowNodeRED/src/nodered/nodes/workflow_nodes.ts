@@ -3,6 +3,7 @@ import { Red } from "node-red";
 import { Logger } from "../../Logger";
 import { Config } from "../../Config";
 import { WebSocketClient, NoderedUtil, Base, Role, Rolemember, QueueMessage } from "@openiap/openflow-api";
+import { Util } from "./Util";
 
 export interface Iworkflow_in_node {
     queue: string;
@@ -100,12 +101,14 @@ export class workflow_in_node {
         }
         const res2 = await NoderedUtil.Query("users", { "_type": "role", "$or": [{ "workflowid": this.workflow._id }, { "name": this.localqueue + "users" }] }, null, null, 1, 0, null, null, null, 1);
         let role: Base = null;
+        const who = WebSocketClient.instance.user;
         if (res2.length == 0) {
-            const who = WebSocketClient.instance.user;
             (role as any) = { _type: "role", "name": this.localqueue + "users", members: [{ "_id": who._id, "name": who.name }], "workflowid": this.workflow._id };
+            (role as any).customerid = who.customerid;
             role = await NoderedUtil.InsertOne("users", role, 0, false, null, 1);
         } else {
             role = res2[0];
+            (role as any).customerid = who.customerid;
         }
         Base.addRight(this.workflow, role._id, role.name, [-1]);
         this.workflow.queue = this.localqueue;
@@ -540,6 +543,8 @@ export class assign_workflow_node {
                     const role: Role = res[0];
                     const exists = role.members.filter(x => x._id == this.config.targetid);
                     if (exists.length == 0) {
+                        const who = WebSocketClient.instance.user;
+                        (role as any).customerid = who.customerid;
                         role.members.push(new Rolemember("target", this.config.targetid));
                         await NoderedUtil.UpdateOne("users", null, role, 1, true, null, 1);
                     }
@@ -618,12 +623,14 @@ export class assign_workflow_node {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Processing" });
             const workflowid = (!NoderedUtil.IsNullEmpty(this.config.workflowid) ? this.config.workflowid : msg.workflowid);
+            const targetid = (!NoderedUtil.IsNullEmpty(this.config.targetid) ? this.config.targetid : msg.targetid);
+            const initialrun = await Util.EvaluateNodeProperty<boolean>(this, msg, "initialrun");
+
             let name = this.config.name;
             if (NoderedUtil.IsNullEmpty(name)) name = msg.name;
             if (NoderedUtil.IsNullEmpty(name)) name = this.config.queue;
             let priority: number = 1;
             if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
-            const targetid = (!NoderedUtil.IsNullEmpty(this.config.targetid) ? this.config.targetid : msg.targetid);
 
             if (NoderedUtil.IsNullEmpty(targetid)) {
                 this.node.status({ fill: "red", shape: "dot", text: "targetid is mandatory" });
@@ -634,7 +641,6 @@ export class assign_workflow_node {
                 return;
             }
             let jwt = msg.jwt;
-            const initialrun = (!NoderedUtil.IsNullEmpty(msg.initialrun) ? msg.initialrun : this.config.initialrun);
             if (NoderedUtil.IsNullEmpty(jwt) && !NoderedUtil.IsNullUndefinded(WebSocketClient.instance)
                 && !NoderedUtil.IsNullEmpty(WebSocketClient.instance.jwt)) {
                 jwt = WebSocketClient.instance.jwt;

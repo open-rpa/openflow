@@ -55,6 +55,124 @@ export class timesince implements ng.IDirective {
 }
 
 
+export class formatBytes implements ng.IDirective {
+    // restrict = 'E';
+    require = 'ngModel';
+    replace = true;
+
+    constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService) {
+
+    }
+    formatBytes(bytes, decimals = 2) {
+        if (bytes === 0) return '0 Bytes';
+
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+
+    link: ng.IDirectiveLinkFn = (scope: ng.IScope, element: ng.IAugmentedJQuery, attr: ng.IAttributes, ngModelCtrl: any) => {
+        scope.$watch(() => {
+            if (ngModelCtrl.$viewValue === null || ngModelCtrl.$viewValue === undefined) { return; }
+            const size = ngModelCtrl.$viewValue;
+            try {
+                element.text(this.formatBytes(size));
+            } catch (error) {
+                console.error(error);
+            }
+        });
+    }
+    static factory(): ng.IDirectiveFactory {
+        const directive = ($location: ng.ILocationService, $timeout: ng.ITimeoutService) => new formatBytes($location, $timeout);
+        directive.$inject = ['$location', '$timeout'];
+        return directive;
+    }
+}
+
+
+export class whenScrolled implements ng.IDirective {
+    constructor(public $rootScope: ng.IRootScopeService, public $window: ng.IWindowService, public $timeout: ng.ITimeoutService) {
+    }
+    link: ng.IDirectiveLinkFn = (scope: ng.IScope, elem: ng.IAugmentedJQuery, attrs: ng.IAttributes, ngModelCtrl: any) => {
+        var checkWhenEnabled, handler, scrollDistance, scrollEnabled;
+        // var $window = angular.element(this.$window);
+        scrollDistance = 1;
+        if (attrs.whenScrolledDistance != null) {
+            scope.$watch(attrs.whenScrolledDistance, (value: any) => {
+                return scrollDistance = parseInt(value, 10);
+            });
+        }
+        scrollEnabled = true;
+        checkWhenEnabled = false;
+        if (attrs.whenScrolledDisabled != null) {
+            scope.$watch(attrs.whenScrolledDisabled, (value) => {
+                scrollEnabled = !value;
+                if (scrollEnabled && checkWhenEnabled) {
+                    checkWhenEnabled = false;
+                    return handler();
+                }
+            });
+        }
+        handler = (e) => {
+            var ele = elem[0].getBoundingClientRect();
+            var scrollTop = window.scrollY || window.pageYOffset || document.body.scrollTop + (document.documentElement && document.documentElement.scrollTop || 0)
+
+
+
+            var elementBottom, remaining, shouldScroll, windowBottom;
+            windowBottom = window.innerHeight + scrollTop;
+            elementBottom = ele.top + ele.height;
+            remaining = elementBottom - windowBottom;
+            shouldScroll = remaining <= this.$window.innerHeight * scrollDistance;
+            if (shouldScroll && scrollEnabled && ele.height > 300) {
+                if (this.$rootScope.$$phase) {
+                    return scope.$eval(attrs.whenScrolled);
+                } else {
+                    return scope.$apply(attrs.whenScrolled);
+                }
+            } else if (shouldScroll) {
+                return checkWhenEnabled = true;
+            }
+        };
+        var mousewheelevt = (/Firefox/i.test(navigator.userAgent)) ? "DOMMouseScroll" : "mousewheel" //FF doesn't recognize mousewheel as of FF3.x
+
+        var doc = document as any;
+        if (doc.attachEvent)
+            doc.attachEvent("on" + mousewheelevt, handler)
+        else if (document.addEventListener) //WC3 browsers
+            document.addEventListener(mousewheelevt, handler, false)
+
+        // angular.element(this.$window).on('scroll', handler);
+        scope.$on('$destroy', () => {
+            var doc = document as any;
+            if (doc.detachEvent)
+                doc.detachEvent("on" + mousewheelevt, handler)
+            else if (document.removeEventListener) //WC3 browsers
+                document.removeEventListener(mousewheelevt, handler, false)
+            // return this.$window.off('scroll', handler);
+        });
+        return this.$timeout((() => {
+            if (attrs.whenScrolledImmediateCheck) {
+                if (scope.$eval(attrs.whenScrolledImmediateCheck)) {
+                    return handler();
+                }
+            } else {
+                return handler();
+            }
+        }))
+    }
+    static factory(): ng.IDirectiveFactory {
+        const directive = ($rootScope: ng.IRootScopeService, $window: ng.IWindowService, $timeout: ng.ITimeoutService) => new whenScrolled($rootScope, $window, $timeout);
+        directive.$inject = ['$rootScope', '$window', '$timeout'];
+        return directive;
+    }
+}
+
+
 export class textarea implements ng.IDirective {
     // restrict = 'E';
     // require = 'ngModel';
@@ -228,6 +346,30 @@ export class copytext implements ng.IDirective {
         return directive;
     }
 }
+export class jsonText implements ng.IDirective {
+    restrict = 'A';
+    require = '?ngModel';
+    constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService, public locale) {
+    }
+    link: ng.IDirectiveLinkFn = (scope: ng.IScope, element: ng.IAugmentedJQuery, attr: ng.IAttributes, ngModelCtrl: any) => {
+
+        function into(input) {
+            return JSON.parse(input);
+        }
+        function out(data) {
+            return JSON.stringify(data, null, 2);
+        }
+        ngModelCtrl.$parsers.push(into);
+        ngModelCtrl.$formatters.push(out);
+
+    }
+    static factory(): ng.IDirectiveFactory {
+        const directive = ($location: ng.ILocationService, $timeout: ng.ITimeoutService, locale) => new jsonText($location, $timeout, locale);
+        directive.$inject = ['$location', '$timeout', 'locale'];
+        return directive;
+    }
+}
+
 export class fileread implements ng.IDirective {
     restrict = 'A';
     require = '?ngModel';
@@ -278,8 +420,11 @@ export class entitiesCtrl<T> {
     public searchfields: string[] = ["name"];
     public basequeryas: string = null;
     public errormessage: string = "";
+    public skipcustomerfilter: boolean = false;
+    public page: number = 0;
 
     public static $inject = [
+        "$rootScope",
         "$scope",
         "$location",
         "$routeParams",
@@ -289,6 +434,7 @@ export class entitiesCtrl<T> {
         "userdata"
     ];
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
@@ -304,6 +450,7 @@ export class entitiesCtrl<T> {
             }
             if (this.userdata.data.searchstring != null) {
                 this.searchstring = this.userdata.data.searchstring;
+                this.$rootScope.$broadcast("setsearch", this.searchstring);
                 delete this.userdata.data.searchstring;
             }
             if (this.userdata.data.basequeryas != null) {
@@ -311,6 +458,11 @@ export class entitiesCtrl<T> {
                 delete this.userdata.data.basequeryas;
             }
         }
+        this.$scope.$on('search', (event, data) => {
+            this.searchstring = data;
+            this.loadData();
+        });
+
     }
     public static parseJson(txt, reviver, context) {
         context = context || 20
@@ -348,13 +500,24 @@ export class entitiesCtrl<T> {
     async loadData(): Promise<void> {
         try {
             if (this.loading == true) { console.debug("allready loading data, exit"); return; }
+            this.$rootScope.$broadcast("setsearch", this.searchstring);
             this.errormessage = "";
             this.loading = true;
             if (this.preloadData != null) {
                 this.preloadData();
             }
-            let query: object = this.basequery;
-            if (this.searchstring !== "") {
+            let query: object = Object.assign({}, this.basequery);
+            let exactquery: object = null;
+            let basequeryas = this.basequeryas;
+            if (this.collection == "users" && (this.basequery._type == "user" || this.basequery._type == "role") && !this.skipcustomerfilter && this.WebSocketClientService.multi_tenant) {
+                // if (!NoderedUtil.IsNullUndefinded(this.WebSocketClientService.customer) && !this.skipcustomerfilter) {
+                //     basequeryas = this.WebSocketClientService.customer._id;
+                // }
+                if (this.WebSocketClientService.customer && !NoderedUtil.IsNullEmpty(this.WebSocketClientService.customer._id)) {
+                    query["customerid"] = this.WebSocketClientService.customer._id;
+                }
+            }
+            if (this.searchstring !== "" && this.searchstring != null) {
                 if ((this.searchstring as string).indexOf("{") == 0) {
                     if ((this.searchstring as string).lastIndexOf("}") == ((this.searchstring as string).length - 1)) {
                         try {
@@ -365,35 +528,50 @@ export class entitiesCtrl<T> {
                     }
                 } else {
                     const finalor = [];
+                    const finalexactor = [];
                     for (let i = 0; i < this.searchfields.length; i++) {
                         const newq: any = {};
+                        const newexactq: any = {};
                         // exact match case sensitive
                         // newq[this.searchfields[i]] = this.searchstring;
                         // exact match case insensitive
-                        newq[this.searchfields[i]] = new RegExp(["^", this.searchstring, "$"].join(""), "i");
+                        newexactq[this.searchfields[i]] = new RegExp(["^", this.searchstring, "$"].join(""), "i");
 
                         // exact match string contains
                         newq[this.searchfields[i]] = new RegExp([this.searchstring].join(""), "i");
 
                         finalor.push(newq);
+                        finalexactor.push(newexactq);
                     }
                     if (Object.keys(query).length == 0) {
                         query = { $or: finalor.concat() };
+                        exactquery = { $or: finalexactor.concat() };
                     } else {
                         query = { $and: [query, { $or: finalor.concat() }] };
+                        exactquery = { $and: [query, { $or: finalexactor.concat() }] };
                     }
 
                 }
             }
-            this.models = await NoderedUtil.Query(this.collection, query, this.baseprojection, this.orderby, this.pagesize, 0, null, this.basequeryas,
-                null, 2);
+            if (this.page == 0) {
+                this.models = await NoderedUtil.Query(this.collection, query, this.baseprojection, this.orderby, this.pagesize, 0, null, basequeryas, null, 2);
+            } else {
+                var temp = await NoderedUtil.Query(this.collection, query, this.baseprojection, this.orderby, this.pagesize, this.pagesize * this.page, null, basequeryas, null, 2);
+                this.models = this.models.concat(temp);
+            }
+            if (exactquery != null && this.page == 0) {
+                var temp = await NoderedUtil.Query(this.collection, exactquery, this.baseprojection, this.orderby, 1, 0, null, basequeryas, null, 2);
+                if (temp.length > 0) {
+                    this.models = this.models.filter(x => (x as any)._id != temp[0]._id);
+                    this.models = temp.concat(this.models);
+                }
+            }
             this.loading = false;
             if (this.autorefresh) {
-                if (this.models.length >= this.pagesize) {
+                if (this.models.length >= this.pagesize || this.page > 0) {
                     // console.warn("Disabling auto refresh, result has more than pagesize entries");
                 } else {
                     if (this.autorefreshpromise == null && this.searchstring === "") {
-                        //if (this.autorefreshpromise == null) {
                         this.autorefreshpromise = this.$interval(() => {
                             this.loadData();
                         }, this.autorefreshinterval);
@@ -414,7 +592,15 @@ export class entitiesCtrl<T> {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
     }
+    more() {
+        if (this.loading == true) { console.debug("allready loading data, exit"); return; }
+        if (this.models.length < (this.pagesize - 15)) { console.debug("Seems there are no more data, exit"); return; }
+        this.page++;
+        console.log("loading more ... page: " + (this.page + 1))
+        this.loadData();
+    }
     ToggleOrder(field: string) {
+        if (this.orderby == null) this.orderby = {};
         if (this.orderby[field] == undefined) {
             this.orderby = {};
         }
@@ -426,10 +612,12 @@ export class entitiesCtrl<T> {
         if (field === '_type') {
             this.orderby["type"] = this.orderby[field];
         }
+        this.page = 0;
         this.loadData();
     }
     async DeleteOne(model: any): Promise<any> {
         this.loading = true;
+        this.errormessage = "";
         try {
             await NoderedUtil.DeleteOne(this.collection, model._id, null, 2);
             this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
@@ -475,6 +663,7 @@ export class entityCtrl<T> {
     public errormessage: string = "";
 
     public static $inject = [
+        "$rootScope",
         "$scope",
         "$location",
         "$routeParams",
@@ -483,6 +672,7 @@ export class entityCtrl<T> {
         "api"
     ];
     constructor(
+        public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,

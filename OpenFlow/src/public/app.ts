@@ -1,24 +1,20 @@
 import { WebSocketClientService } from "./WebSocketClientService";
 import angular = require("angular");
-import { timesince, translate, textarea, fileread, userdata, api, copytext } from "./CommonControllers";
-import { MenuCtrl, ProvidersCtrl, MainCtrl, LoginCtrl, ProviderCtrl, UsersCtrl, UserCtrl, RolesCtrl, RoleCtrl, RPAWorkflowsCtrl, RPAWorkflowCtrl, WorkflowsCtrl, ReportsCtrl, jslogCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, SocketCtrl, NoderedCtrl, hdrobotsCtrl, ClientsCtrl, AuditlogsCtrl, SignupCtrl, PaymentCtrl, QueuesCtrl, SocketsCtrl, QueueCtrl, CredentialsCtrl, CredentialCtrl, DuplicatesCtrl, OAuthClientsCtrl, OAuthClientCtrl, DeletedCtrl } from "./Controllers";
+import { timesince, translate, textarea, fileread, userdata, api, copytext, jsonText, formatBytes, whenScrolled } from "./CommonControllers";
+import { MenuCtrl, ProvidersCtrl, MainCtrl, LoginCtrl, ProviderCtrl, UsersCtrl, UserCtrl, RolesCtrl, RoleCtrl, RPAWorkflowsCtrl, RPAWorkflowCtrl, WorkflowsCtrl, ReportsCtrl, jslogCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, SocketCtrl, NoderedCtrl, hdrobotsCtrl, ClientsCtrl, AuditlogsCtrl, SignupCtrl, PaymentCtrl, QueuesCtrl, SocketsCtrl, QueueCtrl, CredentialsCtrl, CredentialCtrl, DuplicatesCtrl, OAuthClientsCtrl, OAuthClientCtrl, DeletedCtrl, CustomerCtrl, EntityRestrictionsCtrl, EntityRestrictionCtrl, CustomersCtrl, ResourcesCtrl, ResourceCtrl } from "./Controllers";
 
-require('bootstrap');
 require('angular-route');
 require('angular-sanitize');
 require('@fortawesome/fontawesome-free');
 require('chart.js');
 require('angular-chart.js');
 
-// require('formBuilder');
-// require('formBuilder/dist/form-render.min.js');
-// require('./angular-localization.min');
-
-// require('./formio.full.min');
+// require('./formio.full.js');
+// var css = require('./app.css');
 
 var css = require('./app.css');
 
-// require('./angular-localization.min')
+
 /**
  * @type {angular.Module}
  */
@@ -37,6 +33,9 @@ module openflow {
         .directive("textarea", textarea.factory())
         .directive("fileread", fileread.factory())
         .directive("copytext", copytext.factory())
+        .directive("jsonText", jsonText.factory())
+        .directive("formatBytes", formatBytes.factory())
+        .directive("whenScrolled", whenScrolled.factory())
         .service("userdata", userdata)
         .service("WebSocketClientService", WebSocketClientService)
 
@@ -119,6 +118,20 @@ module openflow {
                 .when('/OAuthClients', { templateUrl: 'OAuthClients.html', controller: OAuthClientsCtrl, controllerAs: 'ctrl' })
                 .when('/OAuthClient', { templateUrl: 'OAuthClient.html', controller: OAuthClientCtrl, controllerAs: 'ctrl' })
                 .when('/OAuthClient/:id', { templateUrl: 'OAuthClient.html', controller: OAuthClientCtrl, controllerAs: 'ctrl' })
+
+                .when('/Customers', { templateUrl: 'Customers.html', controller: CustomersCtrl, controllerAs: 'ctrl' })
+                .when('/Customer', { templateUrl: 'Customer.html', controller: CustomerCtrl, controllerAs: 'ctrl' })
+                .when('/Customer/:id', { templateUrl: 'Customer.html', controller: CustomerCtrl, controllerAs: 'ctrl' })
+                .when('/Customer/:id/:action', { templateUrl: 'Customer.html', controller: CustomerCtrl, controllerAs: 'ctrl' })
+
+                .when('/EntityRestrictions', { templateUrl: 'EntityRestrictions.html', controller: EntityRestrictionsCtrl, controllerAs: 'ctrl' })
+                .when('/EntityRestriction', { templateUrl: 'EntityRestriction.html', controller: EntityRestrictionCtrl, controllerAs: 'ctrl' })
+                .when('/EntityRestriction/:id', { templateUrl: 'EntityRestriction.html', controller: EntityRestrictionCtrl, controllerAs: 'ctrl' })
+
+
+                .when('/Resources', { templateUrl: 'Resources.html', controller: ResourcesCtrl, controllerAs: 'ctrl' })
+                .when('/Resource', { templateUrl: 'Resource.html', controller: ResourceCtrl, controllerAs: 'ctrl' })
+                .when('/Resource/:id', { templateUrl: 'Resource.html', controller: ResourceCtrl, controllerAs: 'ctrl' })
 
                 .otherwise({ redirectTo: '/main' });
         }

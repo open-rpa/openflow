@@ -4,8 +4,7 @@ import { Crypt } from "../../nodeclient/Crypt";
 import { Config } from "../../Config";
 import { Logger } from "../../Logger";
 import { NoderedUtil, SigninMessage, TokenUser, Message, WebSocketClient, Base, mapFunc, reduceFunc, finalizeFunc, UpdateOneMessage } from "@openiap/openflow-api";
-import * as path from "path";
-import { FileSystemCache } from "@openiap/openflow-api";
+import { Util } from "./Util";
 
 export interface Iapi_credentials {
     name: string;
@@ -139,24 +138,14 @@ export class api_get {
                 throw new Error("Not connected");
             }
             this.node.status({});
-            let collection: string = this.config.collection;
-            let query: any = this.config.query;
-            let projection: any = this.config.projection;
-            let orderby: any = this.config.orderby;
-            let top: number = this.config.top;
-            let skip: number = this.config.skip;
-            let resultfield: string = this.config.resultfield;
+            const collection = await Util.EvaluateNodeProperty<string>(this, msg, "collection");
+            let query = await Util.EvaluateNodeProperty<string>(this, msg, "query");
+            let projection = await Util.EvaluateNodeProperty<string>(this, msg, "projection");
+            let orderby = await Util.EvaluateNodeProperty<any>(this, msg, "orderby");
+            let top = await Util.EvaluateNodeProperty<number>(this, msg, "top");
+            let skip = await Util.EvaluateNodeProperty<number>(this, msg, "skip");
             let priority: number = 1;
             if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
-            if (!NoderedUtil.IsNullEmpty(msg.collection)) { collection = msg.collection; }
-            if (!NoderedUtil.IsNullUndefinded(msg.query)) { query = msg.query; }
-            if (!NoderedUtil.IsNullUndefinded(msg.projection)) { projection = msg.projection; }
-            if (!NoderedUtil.IsNullUndefinded(msg.orderby)) { orderby = msg.orderby; }
-            if (NoderedUtil.IsNullEmpty(top)) { top = 500; }
-            if (NoderedUtil.IsNullEmpty(skip)) { skip = 0; }
-            if (!NoderedUtil.IsNullEmpty(msg.top)) { top = parseInt(msg.top); }
-            if (!NoderedUtil.IsNullEmpty(msg.skip)) { skip = parseInt(msg.skip); }
-            if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { resultfield = msg.resultfield; }
             top = parseInt(top as any);
             skip = parseInt(skip as any);
 
@@ -176,12 +165,12 @@ export class api_get {
                 orderby[field] = -1;
             }
             if (NoderedUtil.IsNullEmpty(query)) {
-                query = {};
+                query = {} as any;
             } else if (NoderedUtil.IsString(query)) {
                 query = JSON.parse(query);
             }
             if (NoderedUtil.IsNullEmpty(projection)) {
-                projection = {};
+                projection = {} as any;
             } else if (NoderedUtil.IsString(projection)) {
                 try {
                     projection = JSON.parse(projection);
@@ -213,9 +202,9 @@ export class api_get {
                 }
             } while (subresult.length == pageby && result.length < top);
 
-            // const result: any[] = await NoderedUtil.Query(collection, query,
-            //     projection, orderby, parseInt(top as any), parseInt(skip as any), msg.jwt)
-            NoderedUtil.saveToObject(msg, resultfield, result);
+            if (!NoderedUtil.IsNullEmpty(this.config.resultfield)) {
+                Util.SetMessageProperty(msg, this.config.resultfield, result);
+            }
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
@@ -229,11 +218,13 @@ export class api_get {
 export interface Iapi_add {
     entitytype: string;
     collection: string;
-    inputfield: string;
-    resultfield: string;
+    entities: string;
     writeconcern: number;
     journal: boolean;
     name: string;
+    // backward compatibility
+    inputfield: string;
+    resultfield: string;
 }
 export class api_add {
     public node: Red = null;
@@ -252,25 +243,27 @@ export class api_add {
             this.node.status({});
             // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
 
-            let entitytype = this.config.entitytype;
-            let collection = this.config.collection;
-            let inputfield = this.config.inputfield;
-            let resultfield = this.config.resultfield;
+            const collection = await Util.EvaluateNodeProperty<string>(this, msg, "collection");
+            const entitytype = await Util.EvaluateNodeProperty<string>(this, msg, "entitytype");
+
             let writeconcern = this.config.writeconcern;
             let journal = this.config.journal;
             let priority: number = 1;
             if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
-            if (!NoderedUtil.IsNullEmpty(msg.entitytype)) { entitytype = msg.entitytype; }
-            if (!NoderedUtil.IsNullEmpty(msg.collection)) { collection = msg.collection; }
-            if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { inputfield = msg.inputfield; }
-            if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { resultfield = msg.resultfield; }
             if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { writeconcern = msg.writeconcern; }
             if (!NoderedUtil.IsNullEmpty(msg.journal)) { journal = msg.journal; }
             if ((writeconcern as any) === undefined || (writeconcern as any) === null) writeconcern = 0;
             if ((journal as any) === undefined || (journal as any) === null) journal = false;
 
             let data: any[] = [];
-            const _data = NoderedUtil.FetchFromObject(msg, inputfield);
+
+            let _data: Base[];
+            if (this.config.entities == null && _data == null && this.config.inputfield != null) {
+                _data = msg[this.config.inputfield];
+            } else {
+                _data = await Util.EvaluateNodeProperty<Base[]>(this, msg, "entities");
+            }
+
             if (!NoderedUtil.IsNullUndefinded(_data)) {
                 if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
                 if (data.length === 0) { this.node.warn("input array is empty"); }
@@ -301,7 +294,12 @@ export class api_add {
                 }
             }
             data = data.filter(result => !NoderedUtil.IsString(result) && !(result instanceof Error));
-            NoderedUtil.saveToObject(msg, resultfield, data);
+
+            if (this.config.entities == null && this.config.resultfield != null) {
+                Util.SetMessageProperty(msg, this.config.resultfield, data);
+            } else {
+                Util.SetMessageProperty(msg, this.config.entities, data);
+            }
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
@@ -314,14 +312,16 @@ export class api_add {
 
 
 export interface Iapi_addmany {
-    entitytype: string;
     collection: string;
-    inputfield: string;
-    resultfield: string;
+    entitytype: string;
+    entities: string;
     writeconcern: number;
     skipresults: boolean;
     journal: boolean;
     name: string;
+    // backward compatibility
+    resultfield: string;
+    inputfield: string;
 }
 export class api_addmany {
     public node: Red = null;
@@ -340,48 +340,61 @@ export class api_addmany {
             this.node.status({});
             // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
 
-            let entitytype = this.config.entitytype;
-            let collection = this.config.collection;
-            let inputfield = this.config.inputfield;
-            let resultfield = this.config.resultfield;
             let writeconcern = this.config.writeconcern;
             let journal = this.config.journal;
             let skipresults = this.config.skipresults;
             let priority: number = 1;
             if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
-            if (!NoderedUtil.IsNullEmpty(msg.entitytype)) { entitytype = msg.entitytype; }
-            if (!NoderedUtil.IsNullEmpty(msg.collection)) { collection = msg.collection; }
-            if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { inputfield = msg.inputfield; }
-            if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { resultfield = msg.resultfield; }
             if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { writeconcern = msg.writeconcern; }
             if (!NoderedUtil.IsNullEmpty(msg.journal)) { journal = msg.journal; }
             if (!NoderedUtil.IsNullEmpty(msg.skipresults)) { skipresults = msg.skipresults; }
             if ((writeconcern as any) === undefined || (writeconcern as any) === null) writeconcern = 0;
             if ((journal as any) === undefined || (journal as any) === null) journal = false;
+            const collection = await Util.EvaluateNodeProperty<string>(this, msg, "collection");
+            const entitytype = await Util.EvaluateNodeProperty<string>(this, msg, "entitytype");
+
+            let _data: Base[];
+            if (this.config.entities == null && _data == null && this.config.inputfield != null) {
+                _data = msg[this.config.inputfield];
+            } else {
+                _data = await Util.EvaluateNodeProperty<Base[]>(this, msg, "entities");
+            }
+
+
+            // let entities: Base[] = await Util.EvaluateNodeProperty<Base[]>(this, msg, "entities");
+            // if (this.config.entities == null && entities == null && this.config.inputfield != null) {
+            //     entities = msg[this.config.inputfield];
+            // }
 
             let data: any[] = [];
-            const _data = NoderedUtil.FetchFromObject(msg, inputfield);
             if (!NoderedUtil.IsNullUndefinded(_data)) {
                 if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
                 if (data.length === 0) { this.node.warn("input array is empty"); }
             } else { this.node.warn("Input data is null"); }
 
-            this.node.status({ fill: "blue", shape: "dot", text: "processing " + data.length + " items" });
-            let results: any[] = [];
-            for (let y: number = 0; y < data.length; y += 50) {
-                let subitems: any[] = [];
-                for (let i: number = y; i < (y + 50) && i < data.length; i++) {
-                    const element: any = data[i];
-                    if (!NoderedUtil.IsNullEmpty(entitytype)) {
-                        element._type = entitytype;
+            if (data.length > 0) {
+                this.node.status({ fill: "blue", shape: "dot", text: "processing " + data.length + " items" });
+                let results: any[] = [];
+                for (let y: number = 0; y < data.length; y += 50) {
+                    let subitems: any[] = [];
+                    for (let i: number = y; i < (y + 50) && i < data.length; i++) {
+                        const element: any = data[i];
+                        if (!NoderedUtil.IsNullEmpty(entitytype)) {
+                            element._type = entitytype;
+                        }
+                        subitems.push(element);
                     }
-                    subitems.push(element);
+                    this.node.status({ fill: "blue", shape: "dot", text: y + " to " + (y + 49) + " of " + data.length });
+                    results = results.concat(await NoderedUtil.InsertMany(collection, subitems, writeconcern, journal, skipresults, msg.jwt, priority));
                 }
-                this.node.status({ fill: "blue", shape: "dot", text: y + " to " + (y + 49) + " of " + data.length });
-                results = results.concat(await NoderedUtil.InsertMany(collection, subitems, writeconcern, journal, skipresults, msg.jwt, priority));
+                data = results;
             }
-            data = results;
-            NoderedUtil.saveToObject(msg, resultfield, data);
+            if (this.config.entities == null && this.config.resultfield != null) {
+                Util.SetMessageProperty(msg, this.config.resultfield, data);
+            } else {
+                Util.SetMessageProperty(msg, this.config.entities, data);
+            }
+
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
@@ -397,11 +410,13 @@ export class api_addmany {
 export interface Iapi_update {
     entitytype: string;
     collection: string;
-    inputfield: string;
-    resultfield: string;
+    entities: string;
     writeconcern: number;
     journal: boolean;
     name: string;
+    // backward compatibility
+    inputfield: string;
+    resultfield: string;
 }
 export class api_update {
     public node: Red = null;
@@ -418,26 +433,27 @@ export class api_update {
     async oninput(msg: any) {
         try {
             this.node.status({});
-            let entitytype = this.config.entitytype;
-            let collection = this.config.collection;
-            let inputfield = this.config.inputfield;
-            let resultfield = this.config.resultfield;
+
+            const entitytype = await Util.EvaluateNodeProperty<string>(this, msg, "entitytype");
+            const collection = await Util.EvaluateNodeProperty<string>(this, msg, "collection");
+
+            let _data: Base[];
+            if (this.config.entities == null && _data == null && this.config.inputfield != null) {
+                _data = msg[this.config.inputfield];
+            } else {
+                _data = await Util.EvaluateNodeProperty<Base[]>(this, msg, "entities");
+            }
+
             let writeconcern = this.config.writeconcern;
             let journal = this.config.journal;
             let priority: number = 1;
             if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
-            if (!NoderedUtil.IsNullEmpty(msg.entitytype)) { entitytype = msg.entitytype; }
-            if (!NoderedUtil.IsNullEmpty(msg.collection)) { collection = msg.collection; }
-            if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { inputfield = msg.inputfield; }
-            if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { resultfield = msg.resultfield; }
             if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { writeconcern = msg.writeconcern; }
             if (!NoderedUtil.IsNullEmpty(msg.journal)) { journal = msg.journal; }
-
             if ((writeconcern as any) === undefined || (writeconcern as any) === null) writeconcern = 0;
             if ((journal as any) === undefined || (journal as any) === null) journal = false;
 
             let data: any[] = [];
-            const _data = NoderedUtil.FetchFromObject(msg, inputfield);
             if (!NoderedUtil.IsNullUndefinded(_data)) {
                 if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
                 if (data.length === 0) { this.node.warn("input array is empty"); }
@@ -469,7 +485,11 @@ export class api_update {
                 }
             }
             data = data.filter(result => !NoderedUtil.IsString(result) && !(result instanceof Error));
-            NoderedUtil.saveToObject(msg, resultfield, data);
+            if (this.config.entities == null && this.config.resultfield != null) {
+                Util.SetMessageProperty(msg, this.config.resultfield, data);
+            } else {
+                Util.SetMessageProperty(msg, this.config.entities, data);
+            }
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
@@ -485,12 +505,14 @@ export class api_update {
 export interface Iapi_addorupdate {
     entitytype: string;
     collection: string;
-    inputfield: string;
-    resultfield: string;
+    entities: string;
     uniqeness: string;
     writeconcern: number;
     journal: boolean;
     name: string;
+    // backward compatibility
+    inputfield: string;
+    resultfield: string;
 }
 export class api_addorupdate {
     public node: Red = null;
@@ -507,28 +529,26 @@ export class api_addorupdate {
     async oninput(msg: any) {
         try {
             this.node.status({});
-            let entitytype = this.config.entitytype;
-            let collection = this.config.collection;
-            let inputfield = this.config.inputfield;
-            let resultfield = this.config.resultfield;
-            let uniqeness = this.config.uniqeness;
+            const collection = await Util.EvaluateNodeProperty<string>(this, msg, "collection");
+            const entitytype = await Util.EvaluateNodeProperty<string>(this, msg, "entitytype");
+            const uniqeness = await Util.EvaluateNodeProperty<string>(this, msg, "uniqeness");
+            let _data: Base[];
+            if (this.config.entities == null && _data == null && this.config.inputfield != null) {
+                _data = msg[this.config.inputfield];
+            } else {
+                _data = await Util.EvaluateNodeProperty<Base[]>(this, msg, "entities");
+            }
+
             let writeconcern = this.config.writeconcern;
             let journal = this.config.journal;
             let priority: number = 1;
             if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
-            if (!NoderedUtil.IsNullEmpty(msg.entitytype)) { entitytype = msg.entitytype; }
-            if (!NoderedUtil.IsNullEmpty(msg.collection)) { collection = msg.collection; }
-            if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { inputfield = msg.inputfield; }
-            if (!NoderedUtil.IsNullEmpty(msg.resultfield)) { resultfield = msg.resultfield; }
-            if (!NoderedUtil.IsNullEmpty(msg.uniqeness)) { uniqeness = msg.uniqeness; }
             if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { writeconcern = msg.writeconcern; }
             if (!NoderedUtil.IsNullEmpty(msg.journal)) { journal = msg.journal; }
-
             if ((writeconcern as any) === undefined || (writeconcern as any) === null) writeconcern = 0;
             if ((journal as any) === undefined || (journal as any) === null) journal = false;
 
             let data: any[] = [];
-            const _data = NoderedUtil.FetchFromObject(msg, inputfield);
             if (!NoderedUtil.IsNullUndefinded(_data)) {
                 if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
                 if (data.length === 0) { this.node.warn("input array is empty"); }
@@ -559,7 +579,11 @@ export class api_addorupdate {
                 }
             }
             data = data.filter(result => !NoderedUtil.IsString(result) && !(result instanceof Error));
-            NoderedUtil.saveToObject(msg, resultfield, data);
+            if (this.config.entities == null && this.config.resultfield != null) {
+                Util.SetMessageProperty(msg, this.config.resultfield, data);
+            } else {
+                Util.SetMessageProperty(msg, this.config.entities, data);
+            }
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
@@ -577,6 +601,7 @@ export class api_addorupdate {
 export interface Iapi_delete {
     collection: string;
     inputfield: string;
+    entities: string;
     name: string;
 }
 export class api_delete {
@@ -594,15 +619,18 @@ export class api_delete {
     async oninput(msg: any) {
         try {
             this.node.status({});
-            let collection = this.config.collection;
-            let inputfield = this.config.inputfield;
+            const collection = await Util.EvaluateNodeProperty<string>(this, msg, "collection");
+            let _data: Base[];
+            if (this.config.entities == null && _data == null && this.config.inputfield != null) {
+                _data = msg[this.config.inputfield];
+            } else {
+                _data = await Util.EvaluateNodeProperty<Base[]>(this, msg, "entities");
+            }
+
             let priority: number = 1;
             if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
-            if (!NoderedUtil.IsNullEmpty(msg.collection)) { collection = msg.collection; }
-            if (!NoderedUtil.IsNullEmpty(msg.inputfield)) { inputfield = msg.inputfield; }
 
             let data: any[] = [];
-            const _data = NoderedUtil.FetchFromObject(msg, inputfield);
             if (!NoderedUtil.IsNullUndefinded(_data)) {
                 if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
                 if (data.length === 0) { this.node.warn("input array is empty"); }
@@ -644,15 +672,16 @@ export class api_delete {
 
 
 export interface Iapi_deletemany {
-    collection: string;
     inputfield: string;
     query: string;
+    querytype: string;
+    collection: string;
+    collectiontype: string;
     name: string;
 }
 export class api_deletemany {
     public node: Red = null;
     public name: string;
-
     constructor(public config: Iapi_deletemany) {
         RED.nodes.createNode(this, config);
         this.node = this;
@@ -664,39 +693,23 @@ export class api_deletemany {
     async oninput(msg: any) {
         try {
             this.node.status({});
-            let collection = this.config.collection;
-            let query = this.config.query;
-            let inputfield = this.config.inputfield;
             let priority: number = 1;
             if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
-            if (!NoderedUtil.IsNullEmpty(msg.collection)) collection = msg.collection;
-            if (!NoderedUtil.IsNullEmpty(msg.query)) query = msg.query;
-            if (!NoderedUtil.IsNullEmpty(msg.inputfield)) inputfield = msg.inputfield;
 
-            let data: any[] = [];
-            const _data = NoderedUtil.FetchFromObject(msg, inputfield);
-            // if (NoderedUtil.IsNullUndefinded(query)) {
-            if (!NoderedUtil.IsNullEmpty(query) && !NoderedUtil.IsNullUndefinded(_data)) {
-                throw new Error("Received both data and a query, ending to avoid mistakes!");
-            }
-            if (NoderedUtil.IsNullEmpty(query)) {
-                if (!NoderedUtil.IsNullUndefinded(_data)) {
-                    if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
-                    // if (data.length === 0) { this.node.warn("input array is empty"); }
-                } else { this.node.warn("Input data is null and no query"); }
-            } else {
-                if (NoderedUtil.IsString(query)) {
-                    query = JSON.parse(query);
-                }
-            }
+            const collection = await Util.EvaluateNodeProperty<string>(this, msg, "collection");
+            let query = await Util.EvaluateNodeProperty<string | any[]>(this, msg, "query");
+
+
             let ids: string[] = null;
-            if (!NoderedUtil.IsNullUndefinded(_data)) {
-                ids = []; query = null;
+            if (Array.isArray(query)) {
+                var _data: any[] = query;
+                ids = [];
                 for (let i: number = 0; i < _data.length; i++) {
                     let id: string = _data[i];
                     if (NoderedUtil.isObject(_data[i])) { id = _data[i]._id; }
                     ids.push(id);
                 }
+                query = null;
             }
             this.node.status({ fill: "blue", shape: "dot", text: "processing ..." });
             const affectedrows = await NoderedUtil.DeleteMany(collection, query, ids, msg.jwt, priority);
@@ -902,19 +915,17 @@ export class api_updatedocument {
         try {
             this.node.status({});
 
+            const collection = await Util.EvaluateNodeProperty<string>(this, msg, "collection");
+            let query = await Util.EvaluateNodeProperty<string>(this, msg, "query");
+            let updatedocument = await Util.EvaluateNodeProperty<string>(this, msg, "updatedocument");
+
             let action = this.config.action;
-            let query = this.config.query;
-            let updatedocument = this.config.updatedocument;
-            let collection = this.config.collection;
             let writeconcern = this.config.writeconcern;
             let journal = this.config.journal;
             const jwt = msg.jwt;
             let priority: number = 1;
             if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
             if (!NoderedUtil.IsNullEmpty(msg.action)) { action = msg.action; }
-            if (!NoderedUtil.IsNullUndefinded(msg.query)) { query = msg.query; }
-            if (!NoderedUtil.IsNullUndefinded(msg.updatedocument)) { updatedocument = msg.updatedocument; }
-            if (!NoderedUtil.IsNullEmpty(msg.collection)) { collection = msg.collection; }
             if (!NoderedUtil.IsNullEmpty(msg.writeconcern)) { writeconcern = msg.writeconcern; }
             if (!NoderedUtil.IsNullEmpty(msg.journal)) { journal = msg.journal; }
 
@@ -937,8 +948,6 @@ export class api_updatedocument {
                 msg.payload = q2.result;
                 msg.opresult = q2.opresult;
             } else {
-                // const result = await NoderedUtil.UpdateMany(collection, query, updatedocument, writeconcern, journal, jwt);
-                // msg.payload = result;
                 const q: UpdateOneMessage = new UpdateOneMessage(); q.collectionname = collection;
                 q.item = (updatedocument as any); q.jwt = jwt;
                 q.w = writeconcern; q.j = journal; q.query = (query as any);
@@ -1128,14 +1137,12 @@ export class download_file {
         try {
             this.node.status({});
 
-            let fileid = this.config.fileid;
-            let filename = this.config.filename;
+            const fileid = await Util.EvaluateNodeProperty<string>(this, msg, "fileid");
+            const filename = await Util.EvaluateNodeProperty<string>(this, msg, "filename");
+
             const jwt = msg.jwt;
             let priority: number = 1;
             if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
-            if (!NoderedUtil.IsNullEmpty(msg.fileid)) { fileid = msg.fileid; }
-            if (!NoderedUtil.IsNullEmpty(msg.filename)) { filename = msg.filename; }
-            if (!NoderedUtil.IsNullEmpty(msg.fileid)) { fileid = msg.fileid; }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Getting file" });
             const file = await NoderedUtil.GetFile(filename, fileid, jwt, priority);
@@ -1162,6 +1169,7 @@ export interface Iuploadload_file {
     filename: string;
     mimeType: string;
     name: string;
+    content: string;
 }
 export class upload_file {
     public node: Red = null;
@@ -1178,22 +1186,19 @@ export class upload_file {
             this.node.status({});
 
             const jwt = msg.jwt;
-            let filename = this.config.filename;
-            let mimeType = this.config.mimeType;
+            const filename = await Util.EvaluateNodeProperty<string>(this, msg, "filename");
+            const mimeType = await Util.EvaluateNodeProperty<string>(this, msg, "mimeType");
+            const filecontent = await Util.EvaluateNodeProperty<string>(this, msg, "content");
             let priority: number = 1;
             if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
-            if (!NoderedUtil.IsNullEmpty(msg.filename)) { filename = msg.filename; }
-            if (!NoderedUtil.IsNullEmpty(msg.mimeType)) { mimeType = msg.mimeType; }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Saving file" });
-            const file = await NoderedUtil.SaveFile(filename, mimeType, msg.metadata, msg.payload, jwt, priority);
+            const file = await NoderedUtil.SaveFile(filename, mimeType, msg.metadata, filecontent, jwt, priority);
             if (!NoderedUtil.IsNullEmpty(file.error)) { throw new Error(file.error); }
-            msg.filename = file.filename;
-            msg.id = file.id;
-            msg.mimeType = file.mimeType;
-            msg.metadata = file.metadata;
-            msg.payload = file;
 
+            if (!NoderedUtil.IsNullEmpty(this.config.filename)) Util.SetMessageProperty(msg, this.config.filename, file.filename);
+            if (!NoderedUtil.IsNullEmpty(this.config.mimeType)) Util.SetMessageProperty(msg, this.config.mimeType, file.mimeType);
+            if (!NoderedUtil.IsNullEmpty(this.config.content)) Util.SetMessageProperty(msg, this.config.content, file);
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
@@ -1211,7 +1216,9 @@ export class upload_file {
 
 export interface Iapi_aggregate {
     collection: string;
+    collectiontype: string;
     aggregates: object[];
+    aggregatestype: string;
     name: string;
 }
 export class api_aggregate {
@@ -1230,12 +1237,11 @@ export class api_aggregate {
             this.node.status({});
             // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
 
-            let collection = this.config.collection;
-            let aggregates = this.config.aggregates;
+            const collection = await Util.EvaluateNodeProperty<string>(this, msg, "collection");
+            const aggregates = await Util.EvaluateNodeProperty<object[]>(this, msg, "aggregates");
+
             let priority: number = 1;
             if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
-            if (!NoderedUtil.IsNullEmpty(msg.collection)) { collection = msg.collection; }
-            if (!NoderedUtil.IsNullEmpty(msg.aggregates)) { aggregates = msg.aggregates; }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Running aggregate" });
             const result = await NoderedUtil.Aggregate(collection, aggregates, msg.jwt, null, priority);
@@ -1330,5 +1336,78 @@ export class api_watch {
         WebSocketClient.instance.events.removeListener("onsignedin", this._onsignedin);
         WebSocketClient.instance.events.removeListener("onclose", this._onsocketclose);
         if (done != null) done();
+    }
+}
+
+
+
+export interface Ilist_collections {
+    name: string;
+    results: string;
+}
+export class list_collections {
+    public node: Red = null;
+    public name: string;
+    constructor(public config: Ilist_collections) {
+        RED.nodes.createNode(this, config);
+        this.node = this;
+        this.name = config.name;
+        this.node.on("input", this.oninput);
+        this.node.on("close", this.onclose);
+    }
+    async oninput(msg: any) {
+        try {
+            this.node.status({});
+
+            // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
+            let priority: number = 1;
+            if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
+
+            const collections = await NoderedUtil.ListCollections(null);
+            if (!NoderedUtil.IsNullEmpty(this.config.results)) {
+                NoderedUtil.saveToObject(msg, this.config.results, collections);
+            }
+            this.node.send(msg);
+            this.node.status({});
+        } catch (error) {
+            NoderedUtil.HandleError(this, error, msg);
+        }
+    }
+    onclose() {
+    }
+}
+
+
+
+
+
+export interface Ihousekeeping {
+    name: string;
+    results: string;
+}
+export class housekeeping {
+    public node: Red = null;
+    public name: string;
+    constructor(public config: Ihousekeeping) {
+        RED.nodes.createNode(this, config);
+        this.node = this;
+        this.name = config.name;
+        this.node.on("input", this.oninput);
+        this.node.on("close", this.onclose);
+    }
+    async oninput(msg: any) {
+        try {
+            let priority: number = 1;
+            if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
+
+            this.node.status({ fill: "blue", shape: "dot", text: "Running house keeping" });
+            await NoderedUtil.HouseKeeping(null, priority);
+            this.node.send(msg);
+            this.node.status({ fill: "green", shape: "dot", text: "Complete" });
+        } catch (error) {
+            NoderedUtil.HandleError(this, error, msg);
+        }
+    }
+    onclose() {
     }
 }

@@ -1,4 +1,4 @@
-import { WebSocketClient, TokenUser, NoderedUtil } from "@openiap/openflow-api";
+import { WebSocketClient, TokenUser, NoderedUtil, Customer } from "@openiap/openflow-api";
 
 interface IHashTable<T> {
     [key: string]: T;
@@ -34,8 +34,11 @@ export class WebSocketClientService {
                 this.websocket_package_size = data.websocket_package_size;
                 this.stripe_api_key = data.stripe_api_key;
                 this.validate_user_form = data.validate_user_form;
+                this.multi_tenant = data.multi_tenant;
 
                 this.nodered_images = data.nodered_images;
+                this.enable_entity_restriction = data.enable_entity_restriction;
+                this.enable_web_tours = data.enable_web_tours;
 
                 if (WebSocketClient.instance == null) {
                     const cli: WebSocketClient = new WebSocketClient(this.logger, wsurl);
@@ -44,6 +47,9 @@ export class WebSocketClientService {
                     cli.events.on('connect', () => {
                         this.logger.info('connected to ' + wsurl);
                         this.loadToken();
+                    });
+                    cli.events.on('refreshtoken', (user) => {
+                        this.$rootScope.$broadcast("refreshtoken", user);
                     });
                     cli.connect();
                 }
@@ -77,6 +83,23 @@ export class WebSocketClientService {
                 const result = await NoderedUtil.SigninWithToken(data.jwt, data.rawAssertion, null);
                 this.user = result.user;
                 this.jwt = result.jwt;
+
+                this.customer = null;
+                if (!NoderedUtil.IsNullEmpty(this.user.selectedcustomerid)) {
+                    const customers = await NoderedUtil.Query("users", { _type: "customer", "$or": [{ "_id": this.user.selectedcustomerid }, { "_id": this.user.customerid }] }, null, null, 100, 0, null, null, null, 2);
+                    if (customers.length > 0 && (this.user.selectedcustomerid != null)) {
+                        if (this.user.selectedcustomerid != null) {
+                            for (let cust of customers)
+                                if (cust._id == this.user.selectedcustomerid) this.customer = cust;
+                        }
+                    }
+                    // if (this.customer == null && customers.length > 0) {
+                    //     for (let cust of customers)
+                    //         if (cust._id == this.user.customerid) this.customer = cust;
+
+                    // }
+                }
+
                 this.$rootScope.$broadcast("signin", result.user);
                 const redirecturl = this.getCookie("weburl");
                 if (!NoderedUtil.IsNullEmpty(redirecturl)) {
@@ -142,6 +165,7 @@ export class WebSocketClientService {
         debug(msg) { console.debug(msg); },
         silly(msg) { console.debug(msg); }
     }
+    public customer: Customer = null;
     public user: TokenUser = null;
     public jwt: string = null;
     public version: string = "";
@@ -158,6 +182,9 @@ export class WebSocketClientService {
     public stripe_api_key: string = "";
     public validate_user_form: string = "";
     public nodered_images: nodered_image[];
+    public multi_tenant: boolean;
+    public enable_entity_restriction: boolean;
+    public enable_web_tours: boolean;
 
     getJSON(url: string, callback: any): void {
         const xhr: XMLHttpRequest = new XMLHttpRequest();

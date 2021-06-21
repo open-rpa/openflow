@@ -1,16 +1,12 @@
-<div class="row">
+<div id="title" class="row">
   <h1 translate lib="web">users</h1>
-  <p class="col-md-5 lead"></p>
-  <div class="form-group col-sm-3 form-horizontal">
-    <label class="sr-only">Filter</label>
-    <div class="input-group unframed-addons">
-      <div class="input-group-addon"><em class="fas fa-search"></em></div>
-      <input ng-model="ctrl.searchstring" ng-change="ctrl.Search()" class="form-control input-md"
-        ng-model-options="{debounce: 400}" />
-    </div>
-  </div>
 </div>
+
 <div class="col-sm-12 text-right">
+  <input type="checkbox" id="checkbox-1" ng-model="ctrl.skipcustomerfilter" ng-change="ctrl.Search()"
+    ng-show="menuctrl.WebSocketClientService.multi_tenant">
+  <label for="checkbox-1" ng-show="menuctrl.WebSocketClientService.multi_tenant"><span translate lib="web">show
+      all</span></label>
   <a href="#/User" class="btn btn-info" translate lib="web">Adduser</a>
 </div>
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
@@ -21,50 +17,161 @@
       <th ng-click="ctrl.ToggleOrder('username')"><b translate lib="web">username</b></th>
       <th ng-click="ctrl.ToggleOrder('_created')"><b translate lib="web">created</b></th>
       <th ng-click="ctrl.ToggleOrder('lastseen')"><b translate lib="web">lastseen</b></th>
-      <th ng-show="ctrl.WebSocketClientService.stripe_api_key != ''" ng-click="ctrl.ToggleOrder('_hasbilling')">
+      <th ng-click="ctrl.ToggleOrder('dbusage')"><b translate lib="web">dbusage</b></th>
+      <th ng-show="ctrl.WebSocketClientService.stripe_api_key != ''" ng-click="ctrl.ToggleOrder('customerid')">
         <i class="fas fa-money-bill-wave"></i>
       </th>
-      <th></th>
       <th ng-show="ctrl.WebSocketClientService.validate_user_form != ''" ng-click="ctrl.ToggleOrder('validated')">
-        <i class="fas fa-check"></i>
+        <em class="fas fa-check"></em>
       </th>
-      <th></th>
-      <th></th>
+      <th class="text-right"></th>
     </tr>
   </thead>
   <tbody>
     <tr ng-repeat="model in ctrl.models">
-      <td>{{model.name}}</td>
-      <td>{{model.username}}</td>
+      <td class="text-truncate">{{model.name}}</td>
+      <td class="text-truncate">{{model.username}}</td>
       <td>
         <timesince ng-model="model._created" />
       </td>
       <td>
         <timesince ng-model="model.lastseen" />
       </td>
-      <!-- <td class="btn-cell" height="40px" width="200">
-        <canvas id="bar" class="model.chart-base" chart-type="model.chart.charttype" chart-data="model.chart.data"
-          chart-labels="model.chart.labels" chart-series="model.chart.series" height="40px" width="200">
-        </canvas>
-      </td> -->
-      <td class="btn-cell" ng-show="ctrl.WebSocketClientService.stripe_api_key != ''">
-        <a ng-href="#/Payment/{{model._id}}" class="table-btn"
-          ng-show="menuctrl.hasrole('admins') && model._hasbilling == true">
-          <i class="fas fa-money-bill-wave"></i></a>
+      <td>
+        <div class="w-100">
+          <format-bytes ng-model="model.dbusage" />
+        </div>
+
       </td>
-      <td class="btn-cell">
-        <a ng-href ng-click="ctrl.Impersonate(model)" ng-show="model._id != ctrl.WebSocketClientService.user._id"><i
-            class="fas fa-user-secret" style="color: #007bff;"></i></a>
+      <td ng-show="ctrl.WebSocketClientService.stripe_api_key != ''">
+        <a href ng-click="ctrl.ShowPlans(model)" class="btn" role="button" ng-show="menuctrl.user.customerid != null && menuctrl.customer.stripeid != null && model.customerid && model.customerid != '' &&
+          (menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins') || menuctrl.hasrole('resellers'))          
+          ">
+          <em class="fas fa-money-bill-wave"></em></a>
       </td>
-      <td class="btn-cell" ng-show="ctrl.WebSocketClientService.validate_user_form != ''">
-        <i ng-show="model.validated" class="fas fa-check"></i></th>
+      <td ng-show="ctrl.WebSocketClientService.validate_user_form != ''">
+        <em ng-show="model.validated" class="fas fa-check"></em>
       </td>
-      <td class="btn-cell">
-        <a ng-href="#/User/{{model._id}}"><i class="az-edit"></i></a>
-      </td>
-      <td class="btn-cell">
-        <a href ng-click="ctrl.DeleteOneUser(model)" ng-disabled="ctrl.loading==true"><i class="az-trash"></i></a>
+      <td>
+        <div class="w-200 text-right">
+          <a ng-href ng-click="ctrl.Impersonate(model)" class="btn"
+            ng-show="model._id != ctrl.WebSocketClientService.user._id"><em class="fas fa-user-secret"></em></a>
+          <em class="btn fas fa-user-secret disabled" ng-show="model._id == ctrl.WebSocketClientService.user._id"></em>
+
+          <a class="btn" ng-href="#/User/{{model._id}}">
+            <em class="fas fa-edit"></em>
+          </a>
+          <a href ng-click="ctrl.DeleteOneUser(model)" class="btn" ng-disabled="ctrl.loading==true"><em
+              class="fas fa-trash"></em></a>
+        </div>
       </td>
     </tr>
   </tbody>
 </table>
+
+
+
+<div class="modal" id="resourceModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <a href="#" class="close" role="button" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+      </a>
+      <h5 class="modal-title">Services for {{ctrl.user.name}}</h5>
+      <p>
+      <div ng-repeat="Resource in ctrl.Resources | orderBy: 'order'">
+        <div class="row" ng-repeat="Product in Resource.products | orderBy: 'order'"
+          ng-show="Resource.userassign == 'multiplevariants'">
+          <div class="col">{{Product.name}}</div>
+          <div class="col">{{ Product.count }}</div>
+          <div class="col">
+
+            <a href ng-click="ctrl.AddPlan(Resource, Product)" class="btn" role="button"
+              ng-show="(Product.count == 0 || Product.userassign == 'multiple') && ctrl.loading==false">
+              <em class="fas fa-money-bill-wave"></em></a>
+            <a href ng-click="ctrl.RemovePlan(Resource, Product)" class="btn" role="button"
+              ng-show="Product.count > 0 && ctrl.loading==false">
+              <em class="fas fa-trash"></em></a>
+
+          </div>
+        </div>
+        <div class="row" ng-show="Resource.userassign == 'singlevariant'">
+          <div class="col">{{Resource.name}}</div>
+          <div class="col">
+            <select ng-model="Resource.newproduct"
+              ng-options="item as item.name for item in Resource.products | orderBy: 'order'"
+              ng-disabled="ctrl.loading==true">
+            </select>
+          </div>
+          <div class="col">
+            <a href ng-click="ctrl.AddPlan(Resource, Resource.newproduct)" class="btn" role="button"
+              ng-show="(Resource.newproduct.count == 0 || Resource.newproduct.userassign == 'multiple') && ctrl.loading==false">
+              <em class="fas fa-money-bill-wave"></em></a>
+            <em class="fas fa-money-bill-wave disabled btn"
+              ng-show="(Resource.newproduct.count > 0 && Resource.newproduct.userassign != 'multiple') || Resource.newproduct == null || ctrl.loading==true"></em>
+            <a href ng-click="ctrl.RemovePlan(Resource, Resource.newproduct)" class="btn" role="button"
+              ng-show="Resource.newproduct.count > 0 && ctrl.loading==false">
+              <em class="fas fa-trash"></em></a>
+            <em class="fas fa-trash disabled btn"
+              ng-show="(Resource.newproduct.count == 0) || Resource.newproduct == null || ctrl.loading==true"></em>
+
+          </div>
+        </div>
+      </div>
+      </p>
+      <div class="text-right mt-20">
+        <!-- text-right = text-align: right, mt-20 = margin-top: 2rem (20px) -->
+        <a href class="btn mr-5" role="button" ng-click="ctrl.ToggleModal()">Close</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+
+<div class="modal modal-full" id="NextInvoiceModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <a href="#" class="close" role="button" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+      </a>
+      <h5 class="modal-title" ng-show="!ctrl.proration">Next Invoice for
+        {{ctrl.WebSocketClientService.customer.name}}</h5>
+      <h5 class="modal-title" ng-show="ctrl.proration">Accept next Invoice for
+        {{ctrl.WebSocketClientService.customer.name}}</h5>
+      <h6>{{ ctrl.period_start }} to {{ ctrl.period_end }}</h6>
+      <p>
+      <div class="row" ng-repeat="line in ctrl.nextinvoice.lines.data">
+        <div class="col">{{line.description}}</div>
+        <div class="col">{{ line.quantity }}</div>
+        <div class="col">{{ line.amount / 100 }} {{ line.currency }}</div>
+      </div>
+      <hr
+        ng-show="(ctrl.nextinvoice.tax && ctrl.nextinvoice.tax > 0) || (ctrl.nextinvoice.total_discount_amounts && ctrl.nextinvoice.total_discount_amounts.length > 0)">
+      <div class="row" ng-show="ctrl.nextinvoice.tax && ctrl.nextinvoice.tax > 0">
+        <div class="col">Tax</div>
+        <div class="col"></div>
+        <div class="col">{{ ctrl.nextinvoice.tax / 100 }} {{ ctrl.nextinvoice.currency }}</div>
+      </div>
+      <div class="row" ng-repeat="item in ctrl.nextinvoice.total_discount_amounts">
+        <div class="col">Discount</div>
+        <div class="col"></div>
+        <div class="col">{{ item.amount / 100 }} {{ ctrl.nextinvoice.currency }}</div>
+      </div>
+      <hr>
+      <div class="row">
+        <div class="col">Total</div>
+        <div class="col"></div>
+        <div class="col">{{ ctrl.nextinvoice.amount_due / 100 }} {{ ctrl.nextinvoice.currency }}</div>
+      </div>
+      </p>
+      <div class="text-right mt-20">
+
+        <a href ng-show="ctrl.proration" class="btn mr-5 btn-success" role="button"
+          ng-click="ctrl.AddPlan2()">Accept</a>
+        <a href class="btn mr-5" role="button" ng-click="ctrl.ToggleNextInvoiceModal()">Close</a>
+      </div>
+    </div>
+  </div>
+</div>

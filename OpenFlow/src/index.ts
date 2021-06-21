@@ -11,6 +11,7 @@ import { DBHelper } from "./DBHelper";
 import { OAuthProvider } from "./OAuthProvider";
 import { Span } from "@opentelemetry/api";
 import { QueueClient } from "./QueueClient";
+import { Message } from "./Messages/Message";
 
 Logger.configure();
 
@@ -138,14 +139,26 @@ async function initamqp() {
 //     }, 5000);
 // }
 
-
+async function ValidateValidateUserForm() {
+    var forms = await Config.db.query<Base>({ _id: Config.validate_user_form, _type: "form" }, null, 1, 0, null, "forms", Crypt.rootToken(), undefined, undefined, null);
+    if (forms.length == 0) {
+        Logger.instanse.error("validate_user_form " + Config.validate_user_form + " does not exists!");
+        Config.validate_user_form = "";
+    }
+}
 async function initDatabase(): Promise<boolean> {
     const span: Span = Logger.otel.startSpan("initDatabase");
     try {
         const jwt: string = Crypt.rootToken();
+
+
         const admins: Role = await DBHelper.EnsureRole(jwt, "admins", WellknownIds.admins, span);
         const users: Role = await DBHelper.EnsureRole(jwt, "users", WellknownIds.users, span);
         const root: User = await DBHelper.ensureUser(jwt, "root", "root", WellknownIds.root, null, span);
+
+        const allan: User = await DBHelper.ensureUser(jwt, "Allan Zimmermann", "az", null, null, span);
+        admins.AddMember(allan);
+        await DBHelper.Save(admins, jwt, span);
 
         Base.addRight(root, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(root, WellknownIds.admins, [Rights.delete]);
@@ -224,6 +237,26 @@ async function initDatabase(): Promise<boolean> {
         }
         await DBHelper.Save(nodered_api_users, jwt, span);
 
+        if (Config.multi_tenant) {
+            try {
+                const resellers: Role = await DBHelper.EnsureRole(jwt, "resellers", WellknownIds.resellers, span);
+                Base.addRight(resellers, WellknownIds.admins, "admins", [Rights.full_control]);
+                Base.removeRight(resellers, WellknownIds.admins, [Rights.delete]);
+                Base.removeRight(resellers, WellknownIds.resellers, [Rights.full_control]);
+                resellers.AddMember(admins);
+                await DBHelper.Save(resellers, jwt, span);
+
+                const customer_admins: Role = await DBHelper.EnsureRole(jwt, "customer admins", WellknownIds.customer_admins, span);
+                Base.addRight(customer_admins, WellknownIds.admins, "admins", [Rights.full_control]);
+                Base.removeRight(customer_admins, WellknownIds.admins, [Rights.delete]);
+                Base.removeRight(customer_admins, WellknownIds.customer_admins, [Rights.full_control]);
+                await DBHelper.Save(customer_admins, jwt, span);
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+
         const robot_admins: Role = await DBHelper.EnsureRole(jwt, "robot admins", WellknownIds.robot_admins, span);
         robot_admins.AddMember(admins);
         Base.addRight(robot_admins, WellknownIds.admins, "admins", [Rights.full_control]);
@@ -276,6 +309,26 @@ async function initDatabase(): Promise<boolean> {
         await Config.db.ensureindexes(span);
         Logger.otel.endSpan(span);
 
+        if (Config.auto_hourly_housekeeping) {
+            housekeeping = setInterval(async () => {
+                try {
+                    var dt = new Date(new Date().toISOString());
+                    var msg = new Message(); msg.jwt = Crypt.rootToken();
+                    var skipUpdateUsage: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
+                    await msg.Housekeeping(false, skipUpdateUsage, skipUpdateUsage, null);
+                } catch (error) {
+                }
+            }, 3600000);
+            setTimeout(async () => {
+                var dt = new Date(new Date().toISOString());
+                var msg = new Message(); msg.jwt = Crypt.rootToken();
+                var skipUpdateUsage: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
+                var skipUpdateUserSize: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
+                if (Config.housekeeping_update_usage_hourly) skipUpdateUsage = false;
+                if (Config.housekeeping_update_usersize_hourly) skipUpdateUserSize = false;
+                await msg.Housekeeping(false, skipUpdateUsage, skipUpdateUserSize, null);
+            }, 5000);
+        }
         return true;
     } catch (error) {
         span.recordException(error);
@@ -328,9 +381,16 @@ var signals = {
     'SIGINT': 2,
     'SIGTERM': 15
 };
+var housekeeping = null;
 function handle(signal, value) {
     console.trace(`process received a ${signal} signal with value ${value}`);
     try {
+        if (housekeeping != null) {
+            try {
+                clearInterval(housekeeping);
+            } catch (error) {
+            }
+        }
         setTimeout(() => {
             process.exit(128 + value);
         }, 1000);
@@ -404,6 +464,7 @@ var server: http.Server = null;
         await QueueClient.configure();
         Logger.instanse.info("listening on " + Config.baseurl());
         Logger.instanse.info("namespace: " + Config.namespace);
+        await ValidateValidateUserForm();
         if (!await initDatabase()) {
             process.exit(404);
         }

@@ -24,14 +24,19 @@
             </div>
         </div>
     </section>
-    <div class="form-group">
-        <div class="col-sm-offset-2 col-sm-10">
-            <button type="submit" ng-disabled="ctrl.loading==true" class="btn btn-success" translate
-                lib="web">invoke</button>
-            timeout: <input ng-model="ctrl.timeout" class="form-control input-md" ng-disabled="ctrl.loading==true" />
-
+    <div>
+        <label for="state">Timeout</label>
+        <div class="form-row row-eq-spacing-md">
+            <div class="col-md-3">
+                <input ng-model="ctrl.timeout" class="form-control input-md" ng-disabled="ctrl.loading==true" />
+            </div>
+            <div class="col-md-9">
+                <button type="submit" ng-disabled="ctrl.loading==true" class="btn btn-success"><em
+                        class="fas fa-play-circle"></em></button>
+            </div>
         </div>
     </div>
+
 </form>
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 

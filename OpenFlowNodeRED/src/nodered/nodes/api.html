@@ -1,3 +1,22 @@
+<script type="text/javascript">
+    function validate(name) {
+        return function () {
+            if (this[name] == null || this[name] == "") {
+                console.log(this.type, name + " false: value null");
+                if (name == "entities" && this.inputfield != null) {
+                    this[name] = this.inputfield; return true;
+                    this[name + "type"] = "msg";
+                }
+                return false;
+            }
+            // if (this[name + "type"] == null || this[name + "type"] == "") {
+            //     console.log(this.type, name + " false: type null");
+            //     return false;
+            // }
+            return RED.validators.typedInput(name);
+        }
+    }
+</script>
 <script type="text/x-red" data-template-name="api-credentials">
     <div class="form-row">
         <label><i class="icon-bookmark"></i> Username</label>
@@ -5,7 +24,7 @@
     </div>
     <div class="form-row">
         <label><i class="icon-bookmark"></i> Password</label>
-        <input type="password" id="node-config-input-password">
+        <input type="text" id="node-config-input-password" style="-webkit-text-security: disc;">
     </div>
     <div class="form-row">
         <label ><i class="fa fa-tag"></i> Name</label>
@@ -74,32 +93,38 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 <script type="text/x-red" data-template-name="api get">
     <div class="form-row">
         <label><i class="fa fa-tag"></i> Query</label>
-        <input type="text" id="node-input-query" placeholder="Mongo Query">
+        <input type="hidden" id="node-input-querytype">
+        <input style="width:70%" type="text" id="node-input-query" placeholder="Mongo Query">
     </div>
     <div class="form-row">
         <label><i class="fa fa-tag"></i> Projection</label>
-        <input type="text" id="node-input-projection" placeholder="Projection">
+        <input type="hidden" id="node-input-projectiontype">
+        <input style="width:70%" type="text" id="node-input-projection" placeholder="Projection">
     </div>
     <div class="form-row">
         <label><i class="fa fa-tag"></i> Collection</label>
-        <input type="text" id="node-input-collection" placeholder="Collection">
+        <input type="hidden" id="node-input-collectiontype">
+        <input style="width:70%" type="text" id="node-input-collection" placeholder="Collection">
     </div>
     <div class="form-row">
         <label><i class="fa fa-list"></i> Result to</label>
-        <input id="node-input-typed-resultfield" type="text" style="width: 70%">
-        <input id="node-input-resultfield" type="hidden">
+        <input type="hidden" id="node-input-resultfieldtype">
+        <input style="width:70%" type="text" id="node-input-resultfield" placeholder="Save result to this field"">
     </div>
     <div class="form-row">
         <label><i class="fa fa-tag"></i> Orderby</label>
-        <input type="text" id="node-input-orderby" placeholder="Order result by this property">
+        <input type="hidden" id="node-input-orderbytype">
+        <input style="width:70%" type="text" id="node-input-orderby" placeholder="Order result by this property">
     </div>
     <div class="form-row">
         <label><i class="fa fa-tag"></i> Top</label>
-        <input type="text" id="node-input-top" placeholder="Limit number of results">
+        <input type="hidden" id="node-input-toptype">
+        <input style="width:70%" type="text" id="node-input-top" placeholder="Limit number of results">
     </div>
     <div class="form-row">
         <label><i class="fa fa-tag"></i> Skip</label>
-        <input type="text" id="node-input-skip" placeholder="Skip a number of results">
+        <input type="hidden" id="node-input-skiptype">
+        <input style="width:70%" type="text" id="node-input-skip" placeholder="Skip a number of results">
     </div>
     <div class="form-row">
         <label><i class="fa fa-tag"></i> Name</label>
@@ -117,13 +142,18 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         icon: "font-awesome/fa-database",
         defaults: {
             name: { value: "" },
-            query: { value: "" },
-            projection: { value: "" },
-            orderby: { value: "" },
-            top: { value: 500, required: true },
-            skip: { value: 0 },
-            collection: { value: "entities", required: true },
-            resultfield: { value: "payload", required: true },
+            query: { value: "", validate: validate("querytype") },
+            querytype: { value: "" },
+            projection: { value: "", validate: validate("projectiontype") },
+            projectiontype: { value: "" },
+            top: { value: 500, validate: validate("toptype"), required: true },
+            toptype: { value: "" },
+            skip: { value: 0, validate: validate("skiptype"), required: true },
+            skiptype: { value: "" },
+            collection: { value: "entities", validate: validate("collectiontype"), required: true },
+            collectiontype: { value: "" },
+            resultfield: { value: "payload", validate: validate("resultfieldtype"), required: true },
+            resultfieldtype: { value: "" },
         },
         inputs: 1,
         outputs: 1,
@@ -134,15 +164,50 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             return this.name ? "node_label_italic" : "";
         },
         oneditprepare: function () {
-            $("#node-input-typed-resultfield").typedInput(
-                { types: ['msg'] }
-            );
-            $("#node-input-typed-resultfield").typedInput('value', this.resultfield);
-        },
-        oneditsave: function () {
-            $("#node-input-resultfield").val($("#node-input-typed-resultfield").typedInput('value'));
-        }
+            if (this.querytype === null) $("#node-input-querytype").val('str');
+            $("#node-input-query").typedInput({
+                default: 'str',
+                typeField: $("#node-input-querytype"),
+                types: ['msg', 'str', 'flow', 'global', 'json']
+            });
+            if (this.projectiontype === null) $("#node-input-projectiontype").val('str');
+            $("#node-input-projection").typedInput({
+                default: 'str',
+                typeField: $("#node-input-projectiontype"),
+                types: ['msg', 'str', 'flow', 'global', 'json']
+            });
+            if (this.orderbytype === null) $("#node-input-orderbytype").val('str');
+            $("#node-input-orderby").typedInput({
+                default: 'str',
+                typeField: $("#node-input-orderbytype"),
+                types: ['msg', 'str', 'flow', 'global', 'json']
+            });
+            if (this.collectiontype === null) $("#node-input-collectiontype").val('str');
+            $("#node-input-collection").typedInput({
+                default: 'str',
+                typeField: $("#node-input-collectiontype"),
+                types: ['msg', 'str', 'flow', 'global', 'json']
+            });
+            if (this.toptype === null) $("#node-input-toptype").val('num');
+            $("#node-input-top").typedInput({
+                default: 'num',
+                typeField: $("#node-input-toptype"),
+                types: ['msg', 'num', 'flow', 'global']
+            });
+            if (this.skiptype === null) $("#node-input-skiptype").val('num');
+            $("#node-input-skip").typedInput({
+                default: 'num',
+                typeField: $("#node-input-skiptype"),
+                types: ['msg', 'num', 'flow', 'global']
+            });
+            if (this.resultfieldtype === null) $("#node-input-resultfieldtype").val('msg');
+            $("#node-input-resultfield").typedInput({
+                default: 'msg',
+                typeField: $("#node-input-resultfieldtype"),
+                types: ['msg']
+            });
 
+        }
     });
 
 </script>
@@ -154,21 +219,18 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 <script type="text/x-red" data-template-name="api add">
     <div class="form-row">
         <label><i class="fa fa-tag"></i> Type</label>
-        <input type="text" id="node-input-entitytype" placeholder="Override new entity type">
+        <input type="hidden" id="node-input-entitytypetype">
+        <input style="width:70%" type="text" id="node-input-entitytype" placeholder="Override new entity type">
     </div>
     <div class="form-row">
         <label><i class="fa fa-tag"></i> Collection</label>
-        <input type="text" id="node-input-collection" placeholder="Collection">
+        <input type="hidden" id="node-input-collectiontype">
+        <input style="width:70%" type="text" id="node-input-collection">
     </div>
     <div class="form-row">
-        <label><i class="fa fa-list"></i> Entity from</label>
-        <input id="node-input-typed-inputfield" type="text" style="width: 70%">
-        <input id="node-input-inputfield" type="hidden">
-    </div>
-    <div class="form-row">
-        <label><i class="fa fa-list"></i> Result to</label>
-        <input id="node-input-typed-resultfield" type="text" style="width: 70%">
-        <input id="node-input-resultfield" type="hidden">
+        <label><i class="fa fa-list"></i> Entities</label>
+        <input type="hidden" id="node-input-entitiestype">
+        <input style="width:70%" type="text" id="node-input-entities">
     </div>
     <div class="form-row">
         <label><i class="fa fa-list"></i> Write Concern</label>
@@ -203,12 +265,18 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         icon: "font-awesome/fa-plus",
         defaults: {
             name: { value: "" },
-            entitytype: { value: "" },
             writeconcern: { value: "0", required: true },
             journal: { value: "false", required: true },
-            collection: { value: "entities", required: true },
-            inputfield: { value: "payload", required: true },
-            resultfield: { value: "payload", required: true }
+            collection: { value: "entities", validate: validate("collection") },
+            collectiontype: { value: "" },
+            entitiestype: { value: "" },
+            entities: { value: "payload", validate: validate("entities") },
+            entitiestype: { value: "" },
+            entitytype: { value: "" },
+            entitytypetype: { value: "" },
+
+            resultfield: { value: "" },
+            inputfield: { value: "" },
         },
         inputs: 1,
         outputs: 1,
@@ -220,15 +288,25 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         },
 
         oneditprepare: function () {
-            $("#node-input-typed-inputfield").typedInput({ types: ['msg'] });
-            $("#node-input-typed-inputfield").typedInput('value', this.inputfield);
-            $("#node-input-typed-resultfield").typedInput({ types: ['msg'] });
-            $("#node-input-typed-resultfield").typedInput('value', this.resultfield);
+            if (this.collectiontype === 'val') $("#node-input-collectiontype").val('str');
+            $("#node-input-collection").typedInput({
+                default: 'str',
+                typeField: $("#node-input-collectiontype"),
+                types: ['msg', 'str', 'flow', 'global', 'json']
+            });
+            if (this.entitytypetype === 'val') $("#node-input-entitytypetype").val('str');
+            $("#node-input-entitytype").typedInput({
+                default: 'str',
+                typeField: $("#node-input-entitytypetype"),
+                types: ['msg', 'str', 'flow', 'global', 'json']
+            });
+            if (this.entitiestype === 'val') $("#node-input-entitiestype").val('str');
+            $("#node-input-entities").typedInput({
+                default: 'msg',
+                typeField: $("#node-input-entitiestype"),
+                types: ['msg', 'str', 'flow', 'global', 'json']
+            });
         },
-        oneditsave: function () {
-            $("#node-input-inputfield").val($("#node-input-typed-inputfield").typedInput('value'));
-            $("#node-input-resultfield").val($("#node-input-typed-resultfield").typedInput('value'));
-        }
 
     });
 
@@ -239,21 +317,18 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 <script type="text/x-red" data-template-name="api add many">
     <div class="form-row">
         <label><i class="fa fa-tag"></i> Type</label>
-        <input type="text" id="node-input-entitytype" placeholder="Override new entity type">
+        <input type="hidden" id="node-input-entitytypetype">
+        <input style="width:70%" type="text" id="node-input-entitytype">
     </div>
     <div class="form-row">
         <label><i class="fa fa-tag"></i> Collection</label>
-        <input type="text" id="node-input-collection" placeholder="Collection">
+        <input type="hidden" id="node-input-collectiontype">
+        <input style="width:70%" type="text" id="node-input-collection">
     </div>
     <div class="form-row">
-        <label><i class="fa fa-list"></i> Entity from</label>
-        <input id="node-input-typed-inputfield" type="text" style="width: 70%">
-        <input id="node-input-inputfield" type="hidden">
-    </div>
-    <div class="form-row">
-        <label><i class="fa fa-list"></i> Result to</label>
-        <input id="node-input-typed-resultfield" type="text" style="width: 70%">
-        <input id="node-input-resultfield" type="hidden">
+        <label><i class="fa fa-list"></i> Entities</label>
+        <input type="hidden" id="node-input-entitiestype">
+        <input style="width:70%" type="text" id="node-input-entities">
     </div>
     <div class="form-row">
         <label><i class="fa fa-list"></i> Write Concern</label>
@@ -292,13 +367,20 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         icon: "font-awesome/fa-plus",
         defaults: {
             name: { value: "" },
+            collection: { value: "entities", validate: validate("collection"), required: true },
+            collectiontype: { value: "" },
             entitytype: { value: "" },
+            inputfield: { value: "" },
+            entitytypetype: { value: "" },
+            entities: { value: "payload", validate: validate("entities"), required: true },
+            entitiestype: { value: "" },
             writeconcern: { value: "0", required: true },
             journal: { value: "false", required: true },
-            collection: { value: "entities", required: true },
-            inputfield: { value: "payload", required: true },
-            resultfield: { value: "payload", required: true },
-            skipresults: { value: false, required: true }
+            skipresults: { value: false, required: true },
+
+            resultfield: { value: "" },
+            inputfield: { value: "" },
+
         },
         inputs: 1,
         outputs: 1,
@@ -310,15 +392,25 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         },
 
         oneditprepare: function () {
-            $("#node-input-typed-inputfield").typedInput({ types: ['msg'] });
-            $("#node-input-typed-inputfield").typedInput('value', this.inputfield);
-            $("#node-input-typed-resultfield").typedInput({ types: ['msg'] });
-            $("#node-input-typed-resultfield").typedInput('value', this.resultfield);
+            if (this.entitytypetype === 'val') $("#node-input-entitytypetype").val('str');
+            $("#node-input-entitytype").typedInput({
+                default: 'str',
+                typeField: $("#node-input-entitytypetype"),
+                types: ['msg', 'str', 'flow', 'global', 'json']
+            });
+            if (this.collectiontype === 'val') $("#node-input-collectiontype").val('str');
+            $("#node-input-collection").typedInput({
+                default: 'str',
+                typeField: $("#node-input-collectiontype"),
+                types: ['msg', 'str', 'flow', 'global', 'json']
+            });
+            if (this.entitiestype === 'val') $("#node-input-entitiestype").val('str');
+            $("#node-input-entities").typedInput({
+                default: 'msg',
+                typeField: $("#node-input-entitiestype"),
+                types: ['msg', 'json']
+            });
         },
-        oneditsave: function () {
-            $("#node-input-inputfield").val($("#node-input-typed-inputfield").typedInput('value'));
-            $("#node-input-resultfield").val($("#node-input-typed-resultfield").typedInput('value'));
-        }
 
     });
 
@@ -327,21 +419,18 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 <script type="text/x-red" data-template-name="api update">
     <div class="form-row">
         <label><i class="fa fa-tag"></i> Type</label>
-        <input type="text" id="node-input-entitytype" placeholder="Override new entity type">
+        <input type="hidden" id="node-input-entitytypetype">
+        <input style="width:70%" type="text" id="node-input-entitytype" placeholder="Override _type">
     </div>
     <div class="form-row">
         <label><i class="fa fa-tag"></i> Collection</label>
-        <input type="text" id="node-input-collection" placeholder="Collection">
+        <input type="hidden" id="node-input-collectiontype">
+        <input style="width:70%" type="text" id="node-input-collection" placeholder="Collection">
     </div>
     <div class="form-row">
-        <label><i class="fa fa-list"></i> Entity from</label>
-        <input id="node-input-typed-inputfield" type="text" style="width: 70%">
-        <input id="node-input-inputfield" type="hidden">
-    </div>
-    <div class="form-row">
-        <label><i class="fa fa-list"></i> Result to</label>
-        <input id="node-input-typed-resultfield" type="text" style="width: 70%">
-        <input id="node-input-resultfield" type="hidden">
+        <label><i class="fa fa-list"></i> Entities</label>
+        <input type="hidden" id="node-input-entitiestype">
+        <input style="width:70%" type="text" id="node-input-entities">
     </div>
     <div class="form-row">
         <label><i class="fa fa-list"></i> Write Concern</label>
@@ -376,12 +465,17 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         icon: "font-awesome/fa-pencil",
         defaults: {
             name: { value: "" },
-            entitytype: { value: "" },
+            entitytype: { value: "", validate: validate("entitytypetype") },
+            entitytypetype: { value: "" },
+            collection: { value: "entities", validate: validate("collectiontype"), required: true },
+            collectiontype: { value: "" },
+            entities: { value: "payload", validate: validate("entities"), required: true },
+            entitiestype: { value: "" },
             writeconcern: { value: "0", required: true },
             journal: { value: "false", required: true },
-            collection: { value: "entities", required: true },
-            inputfield: { value: "payload", required: true },
-            resultfield: { value: "payload", required: true }
+
+            inputfield: { value: "" },
+            resultfield: { value: "" }
         },
         inputs: 1,
         outputs: 1,
@@ -393,15 +487,25 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         },
 
         oneditprepare: function () {
-            $("#node-input-typed-inputfield").typedInput({ types: ['msg'] });
-            $("#node-input-typed-inputfield").typedInput('value', this.inputfield);
-            $("#node-input-typed-resultfield").typedInput({ types: ['msg'] });
-            $("#node-input-typed-resultfield").typedInput('value', this.resultfield);
+            if (this.entitytypetype === 'val') $("#node-input-entitytypetype").val('str');
+            $("#node-input-entitytype").typedInput({
+                default: 'str',
+                typeField: $("#node-input-entitytypetype"),
+                types: ['msg', 'str', 'flow', 'global']
+            });
+            if (this.collectiontype === 'val') $("#node-input-collectiontype").val('str');
+            $("#node-input-collection").typedInput({
+                default: 'str',
+                typeField: $("#node-input-collectiontype"),
+                types: ['msg', 'str', 'flow', 'global']
+            });
+            if (this.entitiestype === 'val') $("#node-input-entitiestype").val('str');
+            $("#node-input-entities").typedInput({
+                default: 'msg',
+                typeField: $("#node-input-entitiestype"),
+                types: ['msg', 'str', 'flow', 'global', 'json']
+            });
         },
-        oneditsave: function () {
-            $("#node-input-inputfield").val($("#node-input-typed-inputfield").typedInput('value'));
-            $("#node-input-resultfield").val($("#node-input-typed-resultfield").typedInput('value'));
-        }
 
     });
 
@@ -412,25 +516,23 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 <script type="text/x-red" data-template-name="api addorupdate">
     <div class="form-row">
         <label><i class="fa fa-tag"></i> Type</label>
-        <input type="text" id="node-input-entitytype" placeholder="Override new entity type">
+        <input type="hidden" id="node-input-entitytypetype">
+        <input style="width:70%" type="text" id="node-input-entitytype" placeholder="Override new entity type">
     </div>
     <div class="form-row">
         <label><i class="fa fa-tag"></i> Collection</label>
-        <input type="text" id="node-input-collection" placeholder="Collection">
+        <input type="hidden" id="node-input-collectiontype">
+        <input style="width:70%" type="text" id="node-input-collection">
     </div>
     <div class="form-row">
         <label><i class="fa fa-tag"></i> Uniqeness</label>
-        <input type="text" id="node-input-uniqeness" placeholder="Comma list of fields to compare by">
+        <input type="hidden" id="node-input-uniqenesstype">
+        <input style="width:70%" type="text" id="node-input-uniqeness" placeholder="Comma list of fields to compare by">
     </div>
     <div class="form-row">
-        <label><i class="fa fa-list"></i> Entity from</label>
-        <input id="node-input-typed-inputfield" type="text" style="width: 70%">
-        <input id="node-input-inputfield" type="hidden">
-    </div>
-    <div class="form-row">
-        <label><i class="fa fa-list"></i> Result to</label>
-        <input id="node-input-typed-resultfield" type="text" style="width: 70%">
-        <input id="node-input-resultfield" type="hidden">
+        <label><i class="fa fa-list"></i> Entities</label>
+        <input type="hidden" id="node-input-entitiestype">
+        <input style="width:70%" type="text" id="node-input-entities">
     </div>
     <div class="form-row">
         <label><i class="fa fa-list"></i> Write Concern</label>
@@ -470,13 +572,19 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         icon: "font-awesome/fa-pencil",
         defaults: {
             name: { value: "" },
-            entitytype: { value: "" },
             writeconcern: { value: "0", required: true },
             journal: { value: "false", required: true },
-            collection: { value: "entities", required: true },
-            inputfield: { value: "payload", required: true },
-            resultfield: { value: "payload", required: true },
-            uniqeness: { value: "", required: false }
+            entitytype: { value: "", validate: validate("entitytypetype") },
+            entitytypetype: { value: "" },
+            collection: { value: "entities", validate: validate("collectiontype"), required: true },
+            collectiontype: { value: "" },
+            entities: { value: "payload", validate: validate("entities"), required: true },
+            entitiestype: { value: "" },
+            uniqeness: { value: "", validate: validate("uniqenesstype") },
+            uniqenesstype: { value: "" },
+
+            resultfield: { value: "" },
+            inputfield: { value: "" },
         },
         inputs: 1,
         outputs: 1,
@@ -488,15 +596,32 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         },
 
         oneditprepare: function () {
-            $("#node-input-typed-inputfield").typedInput({ types: ['msg'] });
-            $("#node-input-typed-inputfield").typedInput('value', this.inputfield);
-            $("#node-input-typed-resultfield").typedInput({ types: ['msg'] });
-            $("#node-input-typed-resultfield").typedInput('value', this.resultfield);
+            if (this.entitytypetype === 'val') $("#node-input-entitytypetype").val('str');
+            $("#node-input-entitytype").typedInput({
+                default: 'str',
+                typeField: $("#node-input-entitytypetype"),
+                types: ['msg', 'str', 'flow', 'global']
+            });
+            if (this.collectiontype === 'val') $("#node-input-collectiontype").val('str');
+            $("#node-input-collection").typedInput({
+                default: 'str',
+                typeField: $("#node-input-collectiontype"),
+                types: ['msg', 'str', 'flow', 'global']
+            });
+            if (this.entitiestype === 'val') $("#node-input-entitiestype").val('str');
+            $("#node-input-entities").typedInput({
+                default: 'msg',
+                typeField: $("#node-input-entitiestype"),
+                types: ['msg', 'str', 'flow', 'global', 'json']
+            });
+            if (this.uniqenesstype === 'val') $("#node-input-uniqenesstype").val('str');
+            $("#node-input-uniqeness").typedInput({
+                default: 'str',
+                typeField: $("#node-input-uniqenesstype"),
+                types: ['msg', 'str', 'flow', 'global']
+            });
+
         },
-        oneditsave: function () {
-            $("#node-input-inputfield").val($("#node-input-typed-inputfield").typedInput('value'));
-            $("#node-input-resultfield").val($("#node-input-typed-resultfield").typedInput('value'));
-        }
 
     });
 
@@ -509,12 +634,13 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 <script type="text/x-red" data-template-name="api delete">
     <div class="form-row">
         <label><i class="fa fa-tag"></i> Collection</label>
-        <input type="text" id="node-input-collection" placeholder="Collection">
+        <input type="hidden" id="node-input-collectiontype">
+        <input style="width:70%" type="text" id="node-input-collection" placeholder="Collection">
     </div>
     <div class="form-row">
-        <label><i class="fa fa-list"></i> Entity from</label>
-        <input id="node-input-typed-inputfield" type="text" style="width: 70%">
-        <input id="node-input-inputfield" type="hidden">
+        <label><i class="fa fa-list"></i> Entities</label>
+        <input type="hidden" id="node-input-entitiestype">
+        <input style="width:70%" type="text" id="node-input-entities">
     </div>
     <div class="form-row">
         <label><i class="fa fa-tag"></i> Name</label>
@@ -532,9 +658,13 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         icon: "font-awesome/fa-trash",
         defaults: {
             name: { value: "" },
-            entitytype: { value: "" },
-            collection: { value: "entities", required: true },
-            inputfield: { value: "payload", required: true }
+            collection: { value: "entities", validate: validate("collection"), required: true },
+            collectiontype: { value: "" },
+            entities: { value: "payload", validate: validate("entities"), required: true },
+            entitiestype: { value: "" },
+
+            resultfield: { value: "" },
+            inputfield: { value: "" },
         },
         inputs: 1,
         outputs: 1,
@@ -544,14 +674,22 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         labelStyle: function () {
             return this.name ? "node_label_italic" : "";
         },
-
         oneditprepare: function () {
-            $("#node-input-typed-inputfield").typedInput({ types: ['msg'] });
-            $("#node-input-typed-inputfield").typedInput('value', this.inputfield);
+            if (this.collectiontype === 'val') $("#node-input-collectiontype").val('str');
+            $("#node-input-collection").typedInput({
+                default: 'str',
+                typeField: $("#node-input-collectiontype"),
+                types: ['msg', 'str', 'flow', 'global']
+            });
+
+            if (this.entitiestype === 'val') $("#node-input-entitiestype").val('str');
+            $("#node-input-entities").typedInput({
+                default: 'msg',
+                typeField: $("#node-input-entitiestype"),
+                types: ['msg']
+            });
+
         },
-        oneditsave: function () {
-            $("#node-input-inputfield").val($("#node-input-typed-inputfield").typedInput('value'));
-        }
 
     });
 </script>
@@ -561,17 +699,14 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 
 <script type="text/x-red" data-template-name="api delete many">
     <div class="form-row">
-        <label><i class="fa fa-tag"></i> Collection</label>
-        <input type="text" id="node-input-collection" placeholder="Collection">
+        <label><i class="fa fa-list"></i> Collection</label>
+        <input type="hidden" id="node-input-collectiontype">
+        <input style="width:70%" type="text" id="node-input-collection">
     </div>
     <div class="form-row">
-        <label><i class="fa fa-list"></i> Entity from</label>
-        <input id="node-input-typed-inputfield" type="text" style="width: 70%">
-        <input id="node-input-inputfield" type="hidden">
-    </div>
-    <div class="form-row">
-        <label><i class="fa fa-list"></i> Delete Query</label>
-        <input type="text" id="node-input-query" placeholder="Deleted using Query">
+        <label><i class="fa fa-list"></i> Query</label>
+        <input type="hidden" id="node-input-querytype">
+        <input style="width:70%" type="text" id="node-input-query">
     </div>
     <div class="form-row">
         <label><i class="fa fa-tag"></i> Name</label>
@@ -579,7 +714,10 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
     </div>
 </script>
 <script type="text/x-red" data-help-name="api delete many">
-    <p>Deletes payload from database. Payload can be a string with the id, or an object with an _id field, or an array of text/objects</p>
+    <p>Deletes payload from database. <br>
+        Query can either be an array of objects ( with an _id ) to delete, or a string/object query to delete.
+        Collection is the collection to query and delete from.
+        </p>
 </script>
 <script type="text/javascript">
     RED.nodes.registerType('api delete many', {
@@ -589,10 +727,10 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         icon: "font-awesome/fa-trash",
         defaults: {
             name: { value: "" },
-            entitytype: { value: "" },
-            collection: { value: "entities", required: true },
-            inputfield: { value: "payload" },
-            query: { value: "" }
+            query: { value: "query", validate: validate("querytype"), required: true },
+            querytype: { value: "" },
+            collection: { value: "entities", validate: validate("collectiontype"), required: true },
+            collectiontype: { value: "" },
         },
         inputs: 1,
         outputs: 1,
@@ -603,12 +741,21 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             return this.name ? "node_label_italic" : "";
         },
 
+        // https://nodered.org/docs/api/ui/typedInput/
         oneditprepare: function () {
-            $("#node-input-typed-inputfield").typedInput({ types: ['msg'] });
-            $("#node-input-typed-inputfield").typedInput('value', this.inputfield);
-        },
-        oneditsave: function () {
-            $("#node-input-inputfield").val($("#node-input-typed-inputfield").typedInput('value'));
+            if (this.querytype === 'val') $("#node-input-querytype").val('str');
+            $("#node-input-query").typedInput({
+                default: 'msg',
+                typeField: $("#node-input-querytype"),
+                types: ['msg', 'str', 'flow', 'global', 'json']
+            });
+            if (this.collectiontype === 'val') $("#node-input-collectiontype").val('str');
+            $("#node-input-collection").typedInput({
+                default: 'str',
+                typeField: $("#node-input-collectiontype"),
+                types: ['msg', 'str', 'flow', 'global']
+            });
+
         }
 
     });
@@ -1103,20 +1250,18 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 <script type="text/x-red" data-template-name="api updatedocument">
     <div class="form-row">
         <label><i class="fa fa-tag"></i> Query</label>
-        <input type="text" id="node-input-query" placeholder="Mongo Query">
+        <input type="hidden" id="node-input-querytype">
+        <input style="width:70%" type="text" id="node-input-query" placeholder="Mongo Query">
     </div>
-    <div class="form-row" style="margin-bottom: 0px;">
-        <label for="node-input-updatedocument"><i class="fa fa-wrench"></i> Update document</label>
-        <input type="hidden" id="node-input-updatedocument" autofocus="autofocus">
-        <input type="hidden" id="node-input-noerr-updatedocument">
-    </div>
-    <div class="form-row node-text-editor-row" style="position:relative">
-        <div style="position: absolute; right:0; bottom:calc(100% + 3px);"><button id="node-function-expand-js-updatedocument" class="editor-button editor-button-small"><i class="fa fa-expand"></i></button></div>
-        <div style="height: 100px; min-height:100px;" class="node-text-editor" id="node-input-updatedocument-editor" ></div>
+    <div class="form-row">
+        <label><i class="fa fa-tag"></i> Update document</label>
+        <input type="hidden" id="node-input-updatedocumenttype">
+        <input style="width:70%" type="text" id="node-input-updatedocument" placeholder="Update document">
     </div>
     <div class="form-row">
         <label><i class="fa fa-tag"></i> Collection</label>
-        <input type="text" id="node-input-collection" placeholder="Collection">
+        <input type="hidden" id="node-input-collectiontype">
+        <input style="width:70%" type="text" id="node-input-collection">
     </div>
     <div class="form-row">
         <label><i class="fa fa-list"></i> Action</label>
@@ -1179,9 +1324,13 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             writeconcern: { value: "0", required: true },
             journal: { value: "false", required: true },
             action: { value: "updateOne", required: true },
-            query: { value: "" },
-            updatedocument: { value: "{ \"$inc\": { \"count\": 1}}" },
-            collection: { value: "entities", required: true }
+            collection: { value: "entities", validate: validate("collectiontype"), required: true },
+            collectiontype: { value: "" },
+            query: { value: "", validate: validate("querytype"), required: true },
+            querytype: { value: "" },
+
+            updatedocument: { value: "{ \"$inc\": { \"count\": 1}}", validate: validate("updatedocumenttype"), required: true },
+            updatedocumenttype: { value: "" },
         },
         inputs: 1,
         outputs: 1,
@@ -1192,63 +1341,26 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             return this.name ? "node_label_italic" : "";
         },
         oneditprepare: function () {
-            this.updatedocumenteditor = RED.editor.createEditor({
-                id: 'node-input-updatedocument-editor',
-                mode: 'ace/mode/json',
-                value: $("#node-input-updatedocument").val(),
-                globals: {
-                    msg: false,
-                    context: false,
-                    RED: false,
-                    util: true,
-                    flow: false,
-                    global: false,
-                    console: false,
-                    Buffer: true,
-                    setTimeout: false,
-                    clearTimeout: false,
-                    setInterval: false,
-                    clearInterval: false
-                }
+            if (this.collectiontype === 'val') $("#node-input-collectiontype").val('str');
+            $("#node-input-collection").typedInput({
+                default: 'str',
+                typeField: $("#node-input-collectiontype"),
+                types: ['msg', 'str', 'flow', 'global']
             });
-            const that = this;
-            $("#node-function-expand-js-updatedocument").click(function (e) {
-                e.preventDefault();
-                const value = that.updatedocumenteditor.getValue();
-                RED.editor.editJavaScript({
-                    value: value,
-                    width: "Infinity",
-                    cursor: that.updatedocumenteditor.getCursorPosition(),
-                    mode: "ace/mode/json",
-                    complete: function (v, cursor) {
-                        that.updatedocumenteditor.setValue(v, -1);
-                        that.updatedocumenteditor.gotoLine(cursor.row + 1, cursor.column, false);
-                        setTimeout(function () {
-                            that.updatedocumenteditor.focus();
-                        }, 300);
-                    }
-                })
+            if (this.querytype === 'val') $("#node-input-querytype").val('str');
+            $("#node-input-query").typedInput({
+                default: 'str',
+                typeField: $("#node-input-querytype"),
+                types: ['msg', 'str', 'flow', 'global', 'json']
+            });
+            if (this.updatedocumenttype === 'val') $("#node-input-updatedocumenttype").val('str');
+            $("#node-input-updatedocument").typedInput({
+                default: 'str',
+                typeField: $("#node-input-updatedocumenttype"),
+                types: ['msg', 'str', 'flow', 'global', 'json']
             });
 
         },
-        oneditcancel: function () {
-            this.updatedocumenteditor.destroy();
-            delete this.updatedocumenteditor;
-        },
-        oneditsave: function () {
-            annot = this.updatedocumenteditor.getSession().getAnnotations();
-            $("#node-input-noerr-updatedocument").val(0);
-            for (let k = 0; k < annot.length; k++) {
-                if (annot[k].type === "error") {
-                    $("#node-input-noerr-updatedocument").val(annot.length);
-                    this.noerr = annot.length;
-                }
-            }
-
-            $("#node-input-updatedocument").val(this.updatedocumenteditor.getValue());
-            this.updatedocumenteditor.destroy();
-            delete this.updatedocumenteditor;
-        }
 
     });
 
@@ -1263,18 +1375,15 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 
 
 <script type="text/x-red" data-template-name="api aggregate">
-    <div class="form-row" style="margin-bottom: 0px;">
+    <div class="form-row" >
         <label for="node-input-aggregates"><i class="fa fa-wrench"></i> Aggregates</label>
-        <input type="hidden" id="node-input-aggregates" autofocus="autofocus">
-        <input type="hidden" id="node-input-noerr-aggregates">
-    </div>
-    <div class="form-row node-text-editor-row" style="position:relative">
-        <div style="position: absolute; right:0; bottom:calc(100% + 3px);"><button id="node-function-expand-js-aggregates" class="editor-button editor-button-small"><i class="fa fa-expand"></i></button></div>
-        <div style="height: 100px; min-height:100px;" class="node-text-editor" id="node-input-aggregates-editor" ></div>
+        <input type="hidden" id="node-input-aggregatestype">
+        <input style="width:70%" type="text" id="node-input-aggregates">
     </div>
     <div class="form-row">
         <label><i class="fa fa-tag"></i> Collection</label>
-        <input type="text" id="node-input-collection" placeholder="Collection">
+        <input type="hidden" id="node-input-collectiontype">
+        <input style="width:70%" type="text" id="node-input-collection">
     </div>
     <div class="form-row">
         <label><i class="fa fa-tag"></i> Name</label>
@@ -1286,9 +1395,6 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         read more about the 
         <a tagret="_blank" href="https://docs.mongodb.com/manual/reference/command/aggregate/index.html/">
             aggregate here</a> and the <a tagret="_blank" href="https://docs.mongodb.com/manual/reference/operator/aggregation-pipeline//">aggregation-pipeline</a>
-            <br>
-            you can set the aggregate using msg.aggregates<br>
-            you can set the collection using msg.collection<br>
     </p>
 </script>
 <script type="text/javascript">
@@ -1299,8 +1405,12 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         icon: "font-awesome/fa-bar-chart",
         defaults: {
             name: { value: "" },
-            aggregates: { value: "[ {\"$group\" : {\"_id\":\"$_type\", \"count\":{\"$sum\":1}} } ]" },
-            collection: { value: "entities" }
+            aggregates: { value: "[ {\"$group\" : {\"_id\":\"$_type\", \"count\":{\"$sum\":1}} } ]", validate: validate("aggregatestype"), required: true },
+            aggregatestype: { value: "" },
+
+            collection: { value: "entities", validate: validate("collectiontype"), required: true },
+            collectiontype: { value: "" },
+
         },
         inputs: 1,
         outputs: 1,
@@ -1311,63 +1421,20 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             return this.name ? "node_label_italic" : "";
         },
         oneditprepare: function () {
-            this.aggregateseditor = RED.editor.createEditor({
-                id: 'node-input-aggregates-editor',
-                mode: 'ace/mode/json',
-                value: $("#node-input-aggregates").val(),
-                globals: {
-                    msg: false,
-                    context: false,
-                    RED: false,
-                    util: false,
-                    flow: false,
-                    global: false,
-                    console: false,
-                    Buffer: false,
-                    setTimeout: false,
-                    clearTimeout: false,
-                    setInterval: false,
-                    clearInterval: false
-                }
+            if (this.aggregatestype === 'val') $("#node-input-aggregatestype").val('str');
+            $("#node-input-aggregates").typedInput({
+                default: 'json',
+                typeField: $("#node-input-aggregatestype"),
+                types: ['msg', 'str', 'flow', 'global', 'json']
             });
-            const that = this;
-            $("#node-function-expand-js-aggregates").click(function (e) {
-                e.preventDefault();
-                const value = that.aggregateseditor.getValue();
-                RED.editor.editJavaScript({
-                    value: value,
-                    width: "Infinity",
-                    cursor: that.aggregateseditor.getCursorPosition(),
-                    mode: "ace/mode/json",
-                    complete: function (v, cursor) {
-                        that.aggregateseditor.setValue(v, -1);
-                        that.aggregateseditor.gotoLine(cursor.row + 1, cursor.column, false);
-                        setTimeout(function () {
-                            that.aggregateseditor.focus();
-                        }, 300);
-                    }
-                })
+            if (this.collectiontype === 'val') $("#node-input-collectiontype").val('str');
+            $("#node-input-collection").typedInput({
+                default: 'str',
+                typeField: $("#node-input-collectiontype"),
+                types: ['msg', 'str', 'flow', 'global', 'json']
             });
 
         },
-        oneditcancel: function () {
-            this.aggregateseditor.destroy();
-            delete this.aggregateseditor;
-        },
-        oneditsave: function () {
-            annot = this.aggregateseditor.getSession().getAnnotations();
-            $("#node-input-noerr-aggregates").val(0);
-            for (let k = 0; k < annot.length; k++) {
-                if (annot[k].type === "error") {
-                    $("#node-input-noerr-aggregates").val(annot.length);
-                    this.noerr = annot.length;
-                }
-            }
-
-            $("#node-input-aggregates").val(this.aggregateseditor.getValue());
-            this.aggregateseditor.destroy();
-            delete this.aggregateseditor;
-        }
 
     });
 
@@ -1379,11 +1446,13 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 <script type="text/x-red" data-template-name="api download file">
 <div class="form-row">
     <label><i class="fa fa-tag"></i> fileid</label>
-    <input type="text" id="node-input-fileid" placeholder="Get by database id of file">
+    <input type="hidden" id="node-input-fileidtype">
+    <input style="width:70%" type="text" id="node-input-fileid" placeholder="Get by database id of file">
 </div>
 <div class="form-row">
     <label><i class="fa fa-tag"></i> Filename</label>
-    <input type="text" id="node-input-filename" placeholder="Get by filename">
+    <input type="hidden" id="node-input-filenametype">
+    <input style="width:70%" type="text" id="node-input-filename" placeholder="Get by filename">
 </div>
 <div class="form-row">
     <label><i class="fa fa-tag"></i> Name</label>
@@ -1402,8 +1471,10 @@ you can set filename using msg.filename<br>
         paletteLabel: 'download',
         icon: "font-awesome/fa-download",
         defaults: {
-            fileid: { value: "" },
-            filename: { value: "" },
+            fileid: { value: "", validate: validate("fileidtype") },
+            fileidtype: { value: "" },
+            filename: { value: "", validate: validate("filenametype"), required: true },
+            filenametype: { value: "" },
             name: { value: "" }
         },
         inputs: 1,
@@ -1414,7 +1485,21 @@ you can set filename using msg.filename<br>
         labelStyle: function () {
             return this.name ? "node_label_italic" : "";
         },
+        oneditprepare: function () {
+            if (this.fileidtype === 'val') $("#node-input-fileidtype").val('str');
+            $("#node-input-fileid").typedInput({
+                default: 'str',
+                typeField: $("#node-input-fileidtype"),
+                types: ['msg', 'str', 'flow', 'global']
+            });
+            if (this.filenametype === 'val') $("#node-input-filenametype").val('str');
+            $("#node-input-filename").typedInput({
+                default: 'str',
+                typeField: $("#node-input-filenametype"),
+                types: ['msg', 'str', 'flow', 'global']
+            });
 
+        },
     });
 </script>
 
@@ -1425,11 +1510,23 @@ you can set filename using msg.filename<br>
 <script type="text/x-red" data-template-name="api upload file">
     <div class="form-row">
         <label><i class="fa fa-tag"></i> Filename</label>
-        <input type="text" id="node-input-filename" placeholder="filename including path">
+        <input type="hidden" id="node-input-filenametype">
+        <input style="width:70%" type="text" id="node-input-filename" placeholder="filename including path">
     </div>
     <div class="form-row">
         <label><i class="fa fa-tag"></i> mimeType</label>
-        <input type="text" id="node-input-mimeType" placeholder="Mimetype of file">
+        <input type="hidden" id="node-input-mimeTypetype">
+        <input style="width:70%" type="text" id="node-input-mimeType" placeholder="Mimetype of file">
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-tag"></i> File Content</label>
+        <input type="hidden" id="node-input-contenttype">
+        <input style="width:70%" type="text" id="node-input-content" placeholder="Base64 encoded file content">
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-list"></i> DB Entity</label>
+        <input type="hidden" id="node-input-entitytype">
+        <input style="width:70%" type="text" id="node-input-entity">
     </div>
     <div class="form-row">
         <label><i class="fa fa-tag"></i> Name</label>
@@ -1439,8 +1536,6 @@ you can set filename using msg.filename<br>
 <script type="text/x-red" data-help-name="api upload file">
     Upload a file to API/GridFS<br>
     msg.payload should be a base64 encode string of the file.<br>
-    you can set filename using msg.filename<br>
-    you can set mimeType using msg.mimeType<br>
     to save data with the file set msg.metadata to and javascript object<br>
     </script>
 <script type="text/javascript">
@@ -1450,8 +1545,14 @@ you can set filename using msg.filename<br>
         paletteLabel: 'upload',
         icon: "font-awesome/fa-upload",
         defaults: {
-            filename: { value: "" },
-            mimeType: { value: "" },
+            filename: { value: "filename", validate: validate("filename"), required: true },
+            filenametype: { value: "" },
+            content: { value: "payload", validate: validate("content"), required: true },
+            contenttype: { value: "" },
+            mimeType: { value: "", validate: RED.validators.typedInput("mimeTypetype") },
+            mimeTypetype: { value: "" },
+            entity: { value: "result", validate: RED.validators.typedInput("mimeTypetype") },
+            entitytype: { value: "" },
             name: { value: "" }
         },
         inputs: 1,
@@ -1462,7 +1563,32 @@ you can set filename using msg.filename<br>
         labelStyle: function () {
             return this.name ? "node_label_italic" : "";
         },
-
+        oneditprepare: function () {
+            if (this.filenametype === 'val') $("#node-input-filenametype").val('str');
+            $("#node-input-filename").typedInput({
+                default: 'msg',
+                typeField: $("#node-input-filenametype"),
+                types: ['msg', 'str', 'flow', 'global', 'json']
+            });
+            if (this.contenttype === 'val') $("#node-input-contenttype").val('str');
+            $("#node-input-content").typedInput({
+                default: 'msg',
+                typeField: $("#node-input-contenttype"),
+                types: ['msg']
+            });
+            if (this.mimeTypetype === 'val') $("#node-input-mimeTypetype").val('str');
+            $("#node-input-mimeType").typedInput({
+                default: 'str',
+                typeField: $("#node-input-mimeTypetype"),
+                types: ['msg', 'str', 'flow', 'global', 'json']
+            });
+            if (this.entitytype === 'val') $("#node-input-entitytype").val('str');
+            $("#node-input-entity").typedInput({
+                default: 'msg',
+                typeField: $("#node-input-entitytype"),
+                types: ['msg']
+            });
+        },
     });
 </script>
 
@@ -1577,4 +1703,89 @@ you can set filename using msg.filename<br>
 
     });
 
+</script>
+
+
+
+
+
+
+
+<script type="text/x-red" data-template-name="api list collections">
+    <div class="form-row">
+        <label><i class="fa fa-list"></i> Results</label>
+        <input type="hidden" id="node-input-resultstype">
+        <input style="width:70%" type="text" id="node-input-results">
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>
+<script type="text/x-red" data-help-name="api list collections">
+    <p>List collections in the database <br>
+    </p>
+</script>
+<script type="text/javascript">
+    // https://fontawesome.com/v4.7/icon/list
+    RED.nodes.registerType('api list collections', {
+        category: 'api',
+        color: "#E9967A",
+        paletteLabel: 'list collections',
+        icon: "font-awesome/fa-list",
+        defaults: {
+            name: { value: "" },
+            results: { value: "payload", validate: validate("resultstype"), required: true },
+            resultstype: { value: "", required: true },
+        },
+        inputs: 1,
+        outputs: 1,
+        label: function () {
+            return this.name || "list collections";
+        },
+        labelStyle: function () {
+            return this.name ? "node_label_italic" : "";
+        },
+        oneditprepare: function () {
+            if (this.resultstype === 'val') $("#node-input-resultstype").val('str');
+            $("#node-input-results").typedInput({
+                default: 'msg',
+                typeField: $("#node-input-resultstype"),
+                types: ['msg']
+            });
+        }
+    });
+</script>
+
+
+
+<script type="text/x-red" data-template-name="api housekeeping">
+    <div class="form-row">
+        <label><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>
+<script type="text/x-red" data-help-name="api housekeeping">
+    <p>Do openflow housekeeping <br>
+    </p>
+</script>
+<script type="text/javascript">
+    // https://fontawesome.com/v4.7/icon/list
+    RED.nodes.registerType('api housekeeping', {
+        category: 'api',
+        color: "#E9967A",
+        paletteLabel: 'housekeeping',
+        icon: "font-awesome/fa-list",
+        defaults: {
+            name: { value: "" },
+        },
+        inputs: 1,
+        outputs: 1,
+        label: function () {
+            return this.name || "housekeeping";
+        },
+        labelStyle: function () {
+            return this.name ? "node_label_italic" : "";
+        },
+    });
 </script>

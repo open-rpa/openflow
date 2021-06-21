@@ -9,6 +9,9 @@ const tsify = require('tsify');
 const watchify = require('watchify');
 const exorcist = require('exorcist')
 
+var sass = require('gulp-sass')
+
+
 
 let minify = true;
 let watch = false;
@@ -45,7 +48,64 @@ gulp.task("dowatch", function () {
     console.log("watch")
     return gulp.watch(NodeREDHTMLFiles.concat(OpenFlowFiles).concat('./VERSION').concat('./OpenFlow/src/public/**/*.ts'), gulp.series("browserify", "copyfiles1"));
 });
+
+gulp.task('sass', function () {
+    return gulp
+        .src('./OpenFlow/src/public/**/*.scss')
+        .pipe(sass().on('error', sass.logError))
+        .pipe(gulp.dest('./OpenFlow/src/public'));
+});
+
+
 let bfi = null;
+
+
+gulp.task("deps", function () {
+    if (bfi != null) return gulp.src('.');
+    const config = {
+        entries: ['./OpenFlow/src/public/app.ts'],
+        cache: {},
+        packageCache: {},
+        debug: true,
+        basedir: '.',
+        plugin: []
+    }
+    bfi = browserify(config)
+        .plugin(tsify, { noImplicitAny: false });
+    bfi.pipeline.get('deps').push(require('through2').obj(
+        function (row, enc, next) {
+            var wasok = false;
+            try {
+                var stats = fs.statSync(row.file || row.id);
+                var fileSizeInBytes = stats.size
+                var fileSizeInMegabytes = fileSizeInBytes / (1024 * 1024);
+                fileSizeInMegabytes = parseFloat(fileSizeInMegabytes).toFixed(2);
+                console.log((row.file || row.id) + " " + fileSizeInMegabytes + "mb");
+                wasok = true;
+            } catch (error) {
+                console.log(error)
+            }
+            if (!wasok) {
+                console.log(row.file || row.id);
+            }
+
+            next();
+        }
+    ));
+    function bundle() {
+        console.log('browserify bundle::begin()');
+        const result = bfi.bundle()
+            .on('error', function (error) {
+                console.log(error.message ? error.message : error);
+                this.emit('end');
+            })
+            .pipe(exorcist(mapfile))
+            .pipe(fs.createWriteStream('./dist/public/bundle.js'));
+        return result;
+    };
+    return bundle();
+});
+
 gulp.task("browserify", function () {
     console.log("browserify")
     if (bfi != null) return gulp.src('.');
@@ -62,16 +122,6 @@ gulp.task("browserify", function () {
         config.plugin.push(watchify);
     }
     bfi = browserify(config)
-        // .transform('browserify-shim', {
-        //     global: true,
-        //     shim: {
-        //         jQuery: {
-        //             path: './node_modules/jquery/dist/jquery.min.js',
-        //             exports: '$'
-        //         }
-        //     }
-        // })
-        // .transform('exposify', { expose: { jquery: '$', three: 'THREE' } })
         .plugin(tsify, { noImplicitAny: false });
     if (minify) bfi.plugin('tinyify', {})
     bfi.transform('browserify-css', {
@@ -90,9 +140,6 @@ gulp.task("browserify", function () {
                 var relativePath = stripQueryStringAndHashFromPath(relativeUrl);
                 var queryStringAndHash = relativeUrl.substring(relativePath.length);
 
-                //
-                // Copying files from '../node_modules/bootstrap/' to 'dist/vendor/bootstrap/'
-                //
                 // var prefix = '../node_modules/';
                 var prefix = '..\\..\\..\\node_modules\\';
                 if (relativeUrl.startsWith(relativePath, prefix)) {
@@ -170,9 +217,11 @@ gulp.task("compose", shell.task([
     'echo "Build openiap/openflow"',
     'docker build -t openiap/openflow:edge .',
     'docker tag openiap/openflow:edge openiap/openflow:' + version,
+    'docker tag openiap/openflow:edge openiap/openflow:edge1.3',
     'echo "Push openiap/openflow"',
     'docker push openiap/openflow:edge',
     'docker push openiap/openflow:' + version,
+    'docker push openiap/openflow:edge1.3',
 
     'echo "Build openiap/nodered"',
     'cd OpenFlowNodeRED && docker build -t openiap/nodered:edge .',
@@ -180,20 +229,21 @@ gulp.task("compose", shell.task([
     'echo "Push openiap/nodered"',
     'docker push openiap/nodered:edge',
     'docker push openiap/nodered:' + version,
+    'docker push openiap/nodered:edge1.3',
 
-    // 'echo "Build openiap/nodered-puppeteer"',
-    // 'cd OpenFlowNodeRED && docker build -t openiap/nodered-puppeteer:edge -f Dockerfilepuppeteer .',
-    // 'docker tag openiap/nodered-puppeteer:edge openiap/nodered-puppeteer:' + version,
-    // 'echo "Push openiap/nodered-puppeteer"',
-    // 'docker push openiap/nodered-puppeteer:edge',
-    // 'docker push openiap/nodered-puppeteer:' + version,
+    'echo "Build openiap/nodered-puppeteer"',
+    'cd OpenFlowNodeRED && docker build -t openiap/nodered-puppeteer:edge -f Dockerfilepuppeteer .',
+    'docker tag openiap/nodered-puppeteer:edge openiap/nodered-puppeteer:' + version,
+    'echo "Push openiap/nodered-puppeteer"',
+    'docker push openiap/nodered-puppeteer:edge',
+    'docker push openiap/nodered-puppeteer:' + version,
 
-    // 'echo "Build openiap/nodered-tagui"',
-    // 'cd OpenFlowNodeRED && docker build -t openiap/nodered-tagui:edge -f Dockerfiletagui .',
-    // 'docker tag openiap/nodered-tagui:edge openiap/nodered-tagui:' + version,
-    // 'echo "Push openiap/nodered-tagui"',
-    // 'docker push openiap/nodered-tagui:edge',
-    // 'docker push openiap/nodered-tagui:' + version,
+    'echo "Build openiap/nodered-tagui"',
+    'cd OpenFlowNodeRED && docker build -t openiap/nodered-tagui:edge -f Dockerfiletagui .',
+    'docker tag openiap/nodered-tagui:edge openiap/nodered-tagui:' + version,
+    'echo "Push openiap/nodered-tagui"',
+    'docker push openiap/nodered-tagui:edge',
+    'docker push openiap/nodered-tagui:' + version,
 
 ]));
 
