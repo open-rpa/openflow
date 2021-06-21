@@ -3,7 +3,6 @@ import { User, Role, Rolemember, WellknownIds, Rights, NoderedUtil, Base, TokenU
 import { Config } from "./Config";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
-import { Exception } from "handlebars";
 
 export class DBHelper {
     public static async FindByUsername(username: string, jwt: string, parent: Span): Promise<User> {
@@ -26,7 +25,7 @@ export class DBHelper {
     public static async FindById(_id: string, jwt: string, parent: Span): Promise<User> {
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
-            if (NoderedUtil.IsNullEmpty(_id)) throw new Exception("_id cannot be null");
+            if (NoderedUtil.IsNullEmpty(_id)) throw new Error("_id cannot be null");
             if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
             const items: User[] = await Config.db.query<User>({ _id }, null, 1, 0, null, "users", jwt, undefined, undefined, span);
             if (items === null || items === undefined || items.length === 0) { return null; }

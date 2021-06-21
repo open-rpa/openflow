@@ -46,7 +46,7 @@ module openflow {
                     source: scope[iAttrs.uiItems],
                     select: function () {
                         $timeout(function () {
-                            iElement.trigger('input');
+                            (iElement as any).trigger('input');
                         }, 0);
                     }
                 })
