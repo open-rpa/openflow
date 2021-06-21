@@ -126,8 +126,8 @@ export class WebSocketServer {
                         Logger.instanse.info("removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent);
                         span.addEvent("removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent);
                     } else {
-                        Logger.instanse.info("removing disconnected client " + cli.id + "/" + cli.clientagent + " timeout, close down");
-                        span.addEvent("removing disconnected client " + cli.id + "/" + cli.clientagent + " timeout, close down");
+                        Logger.instanse.info("removing disconnected client " + cli.id + "/" + cli.clientagent);
+                        span.addEvent("removing disconnected client " + cli.id + "/" + cli.clientagent);
                     }
                     WebSocketServer._clients.splice(i, 1);
                 }

@@ -6907,7 +6907,7 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
 
                 const support = await this.newResource("Support Agreement", "customer", "singlevariant", "singlevariant", {},
                     [
-                        this.newProduct("Basic Support", "prod_HEGjSQ9M6wiYiP", "plan_HEGjLCtwsVbIx8", "single", "single", supporthours._id, "plan_HEZAsA1DfkiQ6k", 1, {}, true, 0),
+                        this.newProduct("Basic Support", "prod_HEGjSQ9M6wiYiP", "plan_HEGjLCtwsVbIx8", "single", "single", supporthours._id, "plan_HEZAsA1DfkiQ6k", 1, {}, false, 0),
                     ], true, true, 0);
 
                 const premium: Resource = await this.newResource("Openflow License", "customer", "singlevariant", "singlevariant", {},
@@ -6940,13 +6940,13 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
 
                 const support = await this.newResource("Support Agreement", "customer", "singlevariant", "singlevariant", {},
                     [
-                        this.newProduct("Basic Support", "prod_HG1vTqU4c7EaV5", "plan_HG1vb53VlOu46y", "single", "single", supporthours._id, "plan_HG1wBF6yq1O15C", 1, {}, true, 0),
+                        this.newProduct("Basic Support", "prod_HG1vTqU4c7EaV5", "plan_HG1vb53VlOu46y", "single", "single", supporthours._id, "plan_HG1wBF6yq1O15C", 1, {}, false, 0),
                     ], true, true, 0);
 
                 const premium: Resource = await this.newResource("Openflow License", "customer", "singlevariant", "singlevariant", {},
                     [
                         this.newProduct("Premium License", "prod_JcXS2AvXfwk1Lv", "price_1J2KcMC2vUMc6gvhmmsAGo35", "multiple", "multiple", supporthours._id, "plan_HFkbfsAs1Yvcly", 1, {}, true, 0),
-                        this.newProduct("Premium License Legacy", "prod_HFkZ8lKn7GtFQU", "plan_HFka1sgovtAQ7k", "single", "single", supporthours._id, "plan_HFkbfsAs1Yvcly", 1, {}, true, 1),
+                        this.newProduct("Premium License Legacy", "prod_HFkZ8lKn7GtFQU", "plan_HFka1sgovtAQ7k", "single", "single", supporthours._id, "plan_HFkbfsAs1Yvcly", 1, {}, false, 1),
                     ], true, true, 2);
 
                 const databaseusage: Resource = await this.newResource("Database Usage", "customer", "singlevariant", "singlevariant", { dbusage: (1048576 * 25) },

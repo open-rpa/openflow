@@ -210,9 +210,9 @@ export class Message {
 
             if (!NoderedUtil.IsNullEmpty(this.command)) { this.command = this.command.toLowerCase(); }
             let command: string = this.command;
+            cli.lastheartbeat = new Date();
             if (command == "ping" || command == "pong") {
                 if (command == "ping") this.Ping(cli);
-                cli.lastheartbeat = new Date();
                 return;
             }
             try {
