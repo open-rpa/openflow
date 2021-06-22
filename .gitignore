@@ -10,3 +10,4 @@ letsencrypt
 .openflowapicache
 .scannerwork
 docker-package.json
+.env
