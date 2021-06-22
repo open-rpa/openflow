@@ -507,8 +507,10 @@ export class Message {
                     await this.EnsureCustomer(cli, span);
                     break;
                 case "selectcustomer":
+                    this.EnsureJWT(cli);
                     await this.SelectCustomer(span);
-                    this.ReloadUserToken(cli, span)
+                    this.ReloadUserToken(cli, span);
+                    cli.Send(this);
                     break;
                 case "housekeeping":
                     this.EnsureJWT(cli);

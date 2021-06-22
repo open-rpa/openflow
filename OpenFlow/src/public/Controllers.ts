@@ -187,12 +187,16 @@ export class MenuCtrl {
         this.$rootScope.$broadcast("search", this.searchstring);
     }
     async EditCustomer(customer) {
-        if (customer == null) return;
-        this.WebSocketClientService.user.selectedcustomerid = customer._id;
-        this.WebSocketClientService.customer = customer as any;
-        await NoderedUtil.SelectCustomer(this.WebSocketClientService.user.selectedcustomerid, null, 2);
-        this.$location.path("/Customer/" + customer._id);
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        try {
+            if (customer == null) return;
+            this.WebSocketClientService.user.selectedcustomerid = customer._id;
+            this.WebSocketClientService.customer = customer as any;
+            await NoderedUtil.SelectCustomer(this.WebSocketClientService.user.selectedcustomerid, null, 2);
+            this.$location.path("/Customer/" + customer._id);
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        } catch (error) {
+            console.error(error);
+        }
     }
     async SelectCustomer(customer) {
         // if (customer != null) {
