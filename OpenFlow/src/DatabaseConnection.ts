@@ -43,7 +43,7 @@ Object.defineProperty(Promise, 'retry', {
     configurable: true,
     writable: true,
     value: function retry(retries, executor) {
-        console.warn(`${retries} retries left!`)
+        // console.warn(`${retries} retries left!`)
         if (typeof retries !== 'number') {
             throw new TypeError('retries is not a number')
         }
@@ -115,6 +115,13 @@ export class DatabaseConnection {
         });
     }
     public isConnected: boolean = false;
+    async shutdown() {
+        try {
+            await this.cli.close();
+        } catch (error) {
+            Logger.instanse.error(error);
+        }
+    }
     /**
      * Connect to MongoDB
      * @returns Promise<void>
@@ -135,16 +142,20 @@ export class DatabaseConnection {
                 reject(reason);
             });
         });
-        Logger.instanse.info(`Really connected to mongodb`);
+        Logger.instanse.silly(`Really connected to mongodb`);
         const errEvent = (error) => {
             this.isConnected = false;
             Logger.instanse.error(error);
+        }
+        const closeEvent = () => {
+            this.isConnected = false;
+            Logger.instanse.silly(`Disconnected from mongodb`);
         }
         this.cli
             .on('error', errEvent)
             .on('parseError', errEvent)
             .on('timeout', errEvent)
-            .on('close', errEvent);
+            .on('close', closeEvent);
         this.db = this.cli.db(this._dbname);
         this.isConnected = true;
         Logger.otel.endSpan(span);

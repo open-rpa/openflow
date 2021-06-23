@@ -1,7 +1,7 @@
 import { Logger } from "../Logger";
 import { Config } from "../Config";
 import * as fs from "fs";
-export const logger = Logger.configure();
+export const logger = Logger.configure(true, true);
 const path = require('path');
 const envfile = require('envfile')
 export const envfilename = ".env";

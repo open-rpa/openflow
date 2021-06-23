@@ -1,0 +1,24 @@
+{
+    "compilerOptions": {
+        "skipLibCheck": true,
+        "module": "commonjs",
+        "target": "es2017",
+        "sourceMap": true,
+        "declaration": true,
+        "lib": [
+            "es2017",
+            "dom"
+        ],
+        "experimentalDecorators": true,
+        "isolatedModules": false,
+        "typeRoots": [
+            "../node_modules/@types"
+        ]
+    },
+    "exclude": [
+        "../node_modules"
+    ],
+    "include": [
+        "./**/*.ts"
+    ]
+}

@@ -11,3 +11,4 @@ letsencrypt
 .scannerwork
 docker-package.json
 .env
+.nyc_output

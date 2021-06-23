@@ -13,64 +13,8 @@ import { Span } from "@opentelemetry/api";
 import { QueueClient } from "./QueueClient";
 import { Message } from "./Messages/Message";
 
-Logger.configure();
-
-let _lic_require: any = null;
-try {
-    _lic_require = require("./license-file");
-} catch (error) {
-}
-if (_lic_require != null) {
-    Logger.License = new _lic_require.LicenseFile();
-} else {
-    Logger.License = {} as any;
-    Logger.License.ofid = function () {
-        if (!NoderedUtil.IsNullEmpty(this._ofid)) return this._ofid;
-        var crypto = require('crypto');
-        const openflow_uniqueid = Config.openflow_uniqueid || crypto.createHash('md5').update(Config.domain).digest("hex");
-        Config.openflow_uniqueid = openflow_uniqueid;
-        this._ofid = openflow_uniqueid;
-        return openflow_uniqueid;
-    };
-}
-let _otel_require: any = null;
-try {
-    _otel_require = require("./otel");
-} catch (error) {
-
-}
-if (_otel_require != null) {
-    Logger.otel = _otel_require.otel.configure();
-} else {
-    const fakespan = {
-        context: () => undefined,
-        setAttribute: () => undefined,
-        setAttributes: () => undefined,
-        addEvent: () => undefined,
-        setStatus: () => undefined,
-        updateName: () => undefined,
-        end: () => undefined,
-        isRecording: () => undefined,
-        recordException: () => undefined,
-    };
-    Logger.otel =
-        {
-            startSpan: () => fakespan,
-            startSubSpan: () => fakespan,
-            endSpan: () => undefined,
-            startTimer: () => undefined,
-            endTimer: () => undefined,
-            setdefaultlabels: () => undefined,
-            meter: {
-                createValueRecorder: () => undefined,
-                createCounter: () => undefined,
-                createUpDownSumObserver: () => undefined,
-            }
-        } as any;
-}
+Logger.configure(false, false);
 Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db);
-
-
 
 async function adddlx() {
     if (NoderedUtil.IsNullEmpty(Config.amqp_dlx)) return;
@@ -84,7 +28,6 @@ async function adddlx() {
         try {
             msg.command = "timeout";
             // Resend message, this time to the reply queue for the correct node (replyTo)
-            // this.SendMessage(JSON.stringify(data), msg.properties.replyTo, msg.properties.correlationId, false);
             Logger.instanse.info("[DLX][" + options.exchange + "] Send timeout to " + options.replyTo + " correlationId: " + options.correlationId);
             await amqpwrapper.Instance().sendWithReply("", options.replyTo, msg, 20000, options.correlationId, "");
         } catch (error) {
@@ -101,44 +44,7 @@ async function initamqp() {
     amqpwrapper.SetInstance(amqp);
     amqp.on("connected", adddlx);
     await amqp.connect();
-
-    // Must also consume messages in the dead letter queue, to catch messages that have timed out
-
-    // await amqp.AddExchangeConsumer("testexchange", "fanout", "", null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
-    //     console.info("testexchange: " + msg);
-    //     ack();
-    //     done(msg + " hi from testexchange");
-    // });
-    // await amqp.AddQueueConsumer("testqueue", null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
-    //     console.info("testqueue: " + msg);
-    //     ack();
-    //     done(msg + " hi from testqueue.1");
-    // });
-    // await amqp.AddQueueConsumer("testqueue", null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
-    //     console.info("tempqueue: " + msg);
-    //     ack();
-    //     done(msg + " hi from testqueue.2");
-    // });
-    // doitagain();
 }
-// let flipper: boolean = false;
-// async function doitagain() {
-//     try {
-//         flipper = !flipper;
-//         if (flipper) {
-//             console.info(await amqpwrapper.Instance().sendWithReply("", "testqueue", "Hi mom", 20000, ""));
-//         } else {
-//             // console.info(await amqpwrapper.Instance().sendWithReply("", "testqueue2", "Hi mom", 2000));
-//             console.info(await amqpwrapper.Instance().sendWithReply("testexchange", "", "Hi mom", 20000, ""));
-//         }
-//     } catch (error) {
-//         console.error(error);
-//     }
-//     setTimeout(() => {
-//         doitagain()
-//     }, 5000);
-// }
-
 async function ValidateValidateUserForm() {
     var forms = await Config.db.query<Base>({ _id: Config.validate_user_form, _type: "form" }, null, 1, 0, null, "forms", Crypt.rootToken(), undefined, undefined, null);
     if (forms.length == 0) {
@@ -150,15 +56,9 @@ async function initDatabase(): Promise<boolean> {
     const span: Span = Logger.otel.startSpan("initDatabase");
     try {
         const jwt: string = Crypt.rootToken();
-
-
         const admins: Role = await DBHelper.EnsureRole(jwt, "admins", WellknownIds.admins, span);
         const users: Role = await DBHelper.EnsureRole(jwt, "users", WellknownIds.users, span);
         const root: User = await DBHelper.ensureUser(jwt, "root", "root", WellknownIds.root, null, span);
-
-        const allan: User = await DBHelper.ensureUser(jwt, "Allan Zimmermann", "az", null, null, span);
-        admins.AddMember(allan);
-        await DBHelper.Save(admins, jwt, span);
 
         Base.addRight(root, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(root, WellknownIds.admins, [Rights.delete]);
@@ -385,6 +285,8 @@ var housekeeping = null;
 function handle(signal, value) {
     console.trace(`process received a ${signal} signal with value ${value}`);
     try {
+        Config.db.shutdown();
+        Logger.otel.shutdown();
         if (housekeeping != null) {
             try {
                 clearInterval(housekeeping);
@@ -407,21 +309,6 @@ function handle(signal, value) {
 }
 Object.keys(signals).forEach((signal) => process.on(signal, handle));
 
-// process.on('SIGTERM', handle);
-// process.on('SIGINT', handle);
-// process.on('SIGUSR1', handle);
-// process.on('SIGPIPE', handle);
-// process.on('SIGHUP', handle);
-// process.on('SIGBREAK', handle);
-// process.on('SIGKILL', handle);
-// process.on('SIGWINCH', handle);
-// process.on('SIGSTOP', handle);
-// process.on('SIGBUS', handle);
-// process.on('SIGFPE', handle);
-// process.on('SIGSEGV', handle);
-// process.on('SIGILL', handle);
-
-
 let GrafanaProxy: any = null;
 try {
     GrafanaProxy = require("./grafana-proxy");
@@ -436,7 +323,6 @@ try {
 }
 
 
-
 const originalStdoutWrite = process.stdout.write.bind(process.stdout);
 const originalStderrWrite = process.stderr.write.bind(process.stderr);
 (process.stdout.write as any) = (chunk: string, encoding?: string, callback?: (err?: Error | null) => void): boolean => {
@@ -446,10 +332,6 @@ const originalStderrWrite = process.stderr.write.bind(process.stderr);
     return originalStderrWrite(chunk, encoding, callback);
 };
 
-// write(buffer: Buffer | Uint8Array | string, cb?: (err?: Error | null) => void): boolean;
-// write(str: string, encoding?: string, cb?: (err?: Error | null) => void): boolean;
-
-// https://medium.com/kubernetes-tutorials/monitoring-your-kubernetes-deployments-with-prometheus-5665eda54045
 var server: http.Server = null;
 (async function (): Promise<void> {
     try {
