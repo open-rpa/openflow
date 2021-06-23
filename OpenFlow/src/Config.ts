@@ -18,6 +18,8 @@ export class Config {
     public static reload(): void {
         Config.getversion();
         Config.logpath = Config.getEnv("logpath", __dirname);
+        Config.log_error_stack = Config.parseBoolean(Config.getEnv("log_error_stack", "false"));
+        Config.log_errors = Config.parseBoolean(Config.getEnv("log_errors", "true"));
         Config.log_queries = Config.parseBoolean(Config.getEnv("log_queries", "false"));
         Config.log_aggregates = Config.parseBoolean(Config.getEnv("log_aggregates", "false"));
         Config.log_inserts = Config.parseBoolean(Config.getEnv("log_inserts", "false"));
@@ -157,6 +159,8 @@ export class Config {
     public static license_key: string = Config.getEnv("license_key", "");
     public static version: string = Config.getversion();
     public static logpath: string = Config.getEnv("logpath", __dirname);
+    public static log_error_stack: boolean = Config.parseBoolean(Config.getEnv("log_error_stack", "false"));
+    public static log_errors: boolean = Config.parseBoolean(Config.getEnv("log_errors", "true"));
     public static log_queries: boolean = Config.parseBoolean(Config.getEnv("log_queries", "false"));
     public static log_aggregates: boolean = Config.parseBoolean(Config.getEnv("log_aggregates", "false"));
     public static log_inserts: boolean = Config.parseBoolean(Config.getEnv("log_inserts", "false"));

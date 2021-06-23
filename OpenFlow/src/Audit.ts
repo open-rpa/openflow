@@ -3,8 +3,11 @@ import { TokenUser, Base, Rights, NoderedUtil } from "@openiap/openflow-api";
 import { Crypt } from "./Crypt";
 import { Span } from "@opentelemetry/api";
 
+export type tokenType = "local" | "jwtsignin" | "samltoken" | "tokenissued" | "weblogin";
+export type loginProvider = "saml" | "google" | "local" | "websocket";
+export type clientType = "browser" | "openrpa" | "nodered" | "webapp" | "openflow" | "powershell" | "mobileapp" | "samlverify" | "googleverify" | "aiotmobileapp" | "aiotwebapp";
 export class Audit {
-    public static LoginSuccess(user: TokenUser, type: string, provider: string, remoteip: string, clientagent: string, clientversion: string, parent: Span) {
+    public static LoginSuccess(user: TokenUser, type: tokenType, provider: loginProvider, remoteip: string, clientagent: clientType, clientversion: string, parent: Span) {
         const log: Singin = new Singin();
         Base.addRight(log, user._id, user.name, [Rights.read, Rights.update, Rights.invoke]);
         log.remoteip = remoteip;
@@ -19,7 +22,7 @@ export class Audit {
         Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), parent)
             .catch((error) => console.error("failed InsertOne in LoginSuccess: " + error));
     }
-    public static ImpersonateSuccess(user: TokenUser, impostor: TokenUser, clientagent: string, clientversion: string, parent: Span) {
+    public static ImpersonateSuccess(user: TokenUser, impostor: TokenUser, clientagent: clientType, clientversion: string, parent: Span) {
         const log: Singin = new Singin();
         Base.addRight(log, user._id, user.name, [Rights.read]);
         Base.addRight(log, impostor._id, impostor.name, [Rights.read]);
@@ -36,7 +39,7 @@ export class Audit {
         Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), parent)
             .catch((error) => console.error("failed InsertOne in ImpersonateSuccess: " + error));
     }
-    public static ImpersonateFailed(user: TokenUser, impostor: TokenUser, clientagent: string, clientversion: string, parent: Span) {
+    public static ImpersonateFailed(user: TokenUser, impostor: TokenUser, clientagent: clientType, clientversion: string, parent: Span) {
         const log: Singin = new Singin();
         Base.addRight(log, user._id, user.name, [Rights.read]);
         Base.addRight(log, impostor._id, impostor.name, [Rights.read]);
@@ -52,7 +55,7 @@ export class Audit {
         Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), parent)
             .catch((error) => console.error("failed InsertOne in ImpersonateFailed: " + error));
     }
-    public static LoginFailed(username: string, type: string, provider: string, remoteip: string, clientagent: string, clientversion: string, parent: Span) {
+    public static LoginFailed(username: string, type: tokenType, provider: loginProvider, remoteip: string, clientagent: clientType, clientversion: string, parent: Span) {
         const log: Singin = new Singin();
         log.remoteip = remoteip;
         log.success = false;

@@ -25,6 +25,11 @@ export class Auth {
 
     public static authorizationCache: HashTable<CachedUser> = {};
     private static cacheTimer: NodeJS.Timeout;
+    public static shutdown() {
+        if (!NoderedUtil.IsNullUndefinded(this.cacheTimer)) {
+            clearInterval(this.cacheTimer);
+        }
+    }
     public static getUser(key: string, type: string): User {
         if (NoderedUtil.IsNullUndefinded(this.cacheTimer)) this.cacheTimer = setInterval(this.cleanCache, 60000)
         var res: CachedUser = this.authorizationCache[key + type];
@@ -43,7 +48,7 @@ export class Auth {
         this.RemoveUser(key, type);
         return null;
     }
-    private static async cleanCache() {
+    public static async cleanCache() {
         try {
             if (this.authorizationCache == null) return;
             const keys: string[] = Object.keys(this.authorizationCache);

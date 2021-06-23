@@ -8,6 +8,7 @@ export class DBHelper {
     public static async FindByUsername(username: string, jwt: string, parent: Span): Promise<User> {
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindByUsername", parent);
         try {
+            if (NoderedUtil.IsNullEmpty(username)) throw new Error("Username is mandatory")
             const byuser = { username: new RegExp(["^", username, "$"].join(""), "i") };
             const byid = { federationids: new RegExp(["^", username, "$"].join(""), "i") }
             const q = { $or: [byuser, byid] };
@@ -42,6 +43,7 @@ export class DBHelper {
         try {
             var _id = id;
             if (NoderedUtil.IsNullEmpty(_id)) _id = null;
+            if (NoderedUtil.IsNullEmpty(username) && NoderedUtil.IsNullEmpty(_id)) throw new Error("Either username or id is mandatory");
             const items: User[] = await Config.db.query<User>({ $or: [{ username: new RegExp(["^", username, "$"].join(""), "i") }, { _id }] },
                 null, 1, 0, null, "users", Crypt.rootToken(), undefined, undefined, span);
             if (items === null || items === undefined || items.length === 0) { return null; }
@@ -56,6 +58,7 @@ export class DBHelper {
     public static async FindByUsernameOrFederationid(username: string, parent: Span): Promise<User> {
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindByUsernameOrFederationid", parent);
         try {
+            if (NoderedUtil.IsNullEmpty(username)) throw new Error("username cannot be null");
             const byuser = { username: new RegExp(["^", username, "$"].join(""), "i") };
             const byid = { federationids: new RegExp(["^", username, "$"].join(""), "i") }
             const q = { $or: [byuser, byid] };
@@ -74,6 +77,7 @@ export class DBHelper {
     public static async DecorateWithRoles<T extends TokenUser | User>(user: T, parent: Span): Promise<T> {
         const span: Span = Logger.otel.startSubSpan("dbhelper.DecorateWithRoles", parent);
         try {
+            if (NoderedUtil.IsNullUndefinded(user)) throw new Error("User is mandatory");
             if (!Config.decorate_roles_fetching_all_roles) {
                 if (!user.roles) user.roles = [];
                 const pipe: any = [{ "$match": { "_id": user._id } },
@@ -164,22 +168,18 @@ export class DBHelper {
         return user as any;
     }
     public static async FindRoleByName(name: string, parent: Span): Promise<Role> {
-        const items: Role[] = await Config.db.query<Role>({ name: name }, null, 1, 0, null, "users", Crypt.rootToken(), undefined, undefined, parent);
+        const items: Role[] = await Config.db.query<Role>({ name: name, "_type": "role" }, null, 1, 0, null, "users", Crypt.rootToken(), undefined, undefined, parent);
         if (items === null || items === undefined || items.length === 0) { return null; }
         return Role.assign(items[0]);
     }
     public static async FindRoleByNameOrId(name: string, id: string, parent: Span): Promise<Role> {
-        try {
-            var _id = id;
-            if (NoderedUtil.IsNullEmpty(_id)) _id = null; // undefined is bad here
-            const jwt = Crypt.rootToken();
-            const items: Role[] = await Config.db.query<Role>({ $or: [{ name }, { _id }], "_type": "role" }, null, 5, 0, null, "users", jwt, undefined, undefined, parent);
-            if (items === null || items === undefined || items.length === 0) { return null; }
-            return Role.assign(items[0]);
-        } catch (error) {
-            console.error(error);
-            return null;
-        }
+        var _id = id;
+        if (NoderedUtil.IsNullEmpty(_id)) _id = null; // undefined is bad here
+        if (NoderedUtil.IsNullEmpty(name) && NoderedUtil.IsNullEmpty(_id)) throw new Error("Either username or id is mandatory");
+        const jwt = Crypt.rootToken();
+        const items: Role[] = await Config.db.query<Role>({ $or: [{ name }, { _id }], "_type": "role" }, null, 5, 0, null, "users", jwt, undefined, undefined, parent);
+        if (items === null || items === undefined || items.length === 0) { return null; }
+        return Role.assign(items[0]);
     }
     public static async Save(item: User | Role, jwt: string, parent: Span): Promise<void> {
         await Config.db._UpdateOne(null, item, "users", 2, false, jwt, parent);
@@ -205,7 +205,7 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public static async ensureUser(jwt: string, name: string, username: string, id: string, password: string, parent: Span): Promise<User> {
+    public static async EnsureUser(jwt: string, name: string, username: string, id: string, password: string, parent: Span): Promise<User> {
         const span: Span = Logger.otel.startSubSpan("dbhelper.ensureUser", parent);
         try {
             let user: User = await this.FindByUsernameOrId(username, id, span);

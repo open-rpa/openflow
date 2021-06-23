@@ -12,6 +12,7 @@ import { OAuthProvider } from "./OAuthProvider";
 import { Span } from "@opentelemetry/api";
 import { QueueClient } from "./QueueClient";
 import { Message } from "./Messages/Message";
+import { Auth } from "./Auth";
 
 Logger.configure(false, false);
 Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db);
@@ -58,7 +59,7 @@ async function initDatabase(): Promise<boolean> {
         const jwt: string = Crypt.rootToken();
         const admins: Role = await DBHelper.EnsureRole(jwt, "admins", WellknownIds.admins, span);
         const users: Role = await DBHelper.EnsureRole(jwt, "users", WellknownIds.users, span);
-        const root: User = await DBHelper.ensureUser(jwt, "root", "root", WellknownIds.root, null, span);
+        const root: User = await DBHelper.EnsureUser(jwt, "root", "root", WellknownIds.root, null, span);
 
         Base.addRight(root, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(root, WellknownIds.admins, [Rights.delete]);
@@ -287,6 +288,7 @@ function handle(signal, value) {
     try {
         Config.db.shutdown();
         Logger.otel.shutdown();
+        Auth.shutdown();
         if (housekeeping != null) {
             try {
                 clearInterval(housekeeping);

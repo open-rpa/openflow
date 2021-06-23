@@ -329,26 +329,26 @@ export class DatabaseConnection {
                             } else if (arr[0]._type === "user") {
                                 let u: User = User.assign(arr[0]);
                                 if (!Base.hasRight(u, item._id, Rights.read)) {
-                                    Logger.instanse.debug("Assigning " + item.name + " read permission to " + u.name);
+                                    Logger.instanse.silly("Assigning " + item.name + " read permission to " + u.name);
                                     Base.addRight(u, item._id, item.name, [Rights.read], false);
                                     u = this.ensureResource(u);
                                     const _ot_end1 = Logger.otel.startTimer();
                                     await this.db.collection("users").updateOne({ _id: u._id }, { $set: { _acl: u._acl } });
                                     Logger.otel.endTimer(_ot_end1, DatabaseConnection.mongodb_update, { collection: "users" });
                                 } else if (u._id != item._id) {
-                                    Logger.instanse.debug(item.name + " allready exists on " + u.name);
+                                    Logger.instanse.silly(item.name + " allready exists on " + u.name);
                                 }
                             } else if (arr[0]._type === "role") {
                                 let r: Role = Role.assign(arr[0]);
                                 if (r._id !== WellknownIds.admins && r._id !== WellknownIds.users && !Base.hasRight(r, item._id, Rights.read)) {
-                                    Logger.instanse.debug("Assigning " + item.name + " read permission to " + r.name);
+                                    Logger.instanse.silly("Assigning " + item.name + " read permission to " + r.name);
                                     Base.addRight(r, item._id, item.name, [Rights.read], false);
                                     r = this.ensureResource(r);
                                     const _ot_end2 = Logger.otel.startTimer();
                                     await this.db.collection("users").updateOne({ _id: r._id }, { $set: { _acl: r._acl } });
                                     Logger.otel.endTimer(_ot_end2, DatabaseConnection.mongodb_update, { collection: "users" });
                                 } else if (r._id != item._id) {
-                                    Logger.instanse.debug(item.name + " allready exists on " + r.name);
+                                    Logger.instanse.silly(item.name + " allready exists on " + r.name);
                                 }
 
                             }

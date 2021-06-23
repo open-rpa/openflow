@@ -6,7 +6,7 @@ import { Auth } from "../Auth";
 import { Crypt } from "../Crypt";
 import * as url from "url";
 import { Config } from "../Config";
-import { Audit } from "../Audit";
+import { Audit, tokenType } from "../Audit";
 import { LoginProvider } from "../LoginProvider";
 import { KubeUtil } from "../KubeUtil";
 import { Readable, Stream } from "stream";
@@ -41,10 +41,10 @@ var _hostname = "";
 async function handleError(cli: WebSocketServerClient, error: Error) {
     try {
         if (cli == null) {
-            if (_hostname == "DESKTOP-HRNQ2GL" && false) {
-                Logger.instanse.error(error.message ? error.message : error);
-            } else {
+            if (Config.log_errors && Config.log_error_stack) {
                 Logger.instanse.error(error);
+            } else if (Config.log_errors) {
+                Logger.instanse.error(error.message ? error.message : error);
             }
             return;
         }
@@ -52,10 +52,10 @@ async function handleError(cli: WebSocketServerClient, error: Error) {
         errorcounter++;
         if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_errors)) WebSocketServer.websocket_errors.bind({ ...Logger.otel.defaultlabels }).update(errorcounter);
         if (Config.socket_rate_limit) await ErrorRateLimiter.consume(cli.id);
-        if (_hostname == "DESKTOP-HRNQ2GL" && false) {
-            Logger.instanse.error(error.message ? error.message : error);
-        } else {
+        if (Config.log_errors && Config.log_error_stack) {
             Logger.instanse.error(error);
+        } else if (Config.log_errors) {
+            Logger.instanse.error(error.message ? error.message : error);
         }
     } catch (error) {
         if (error.consumedPoints) {
@@ -1151,7 +1151,7 @@ export class Message {
         const span: Span = Logger.otel.startSpan("message.DoSignin");
         let tuser: TokenUser;
         try {
-            let type: string = "jwtsignin";
+            let type: tokenType = "jwtsignin";
             if (!NoderedUtil.IsNullEmpty(rawAssertion)) {
                 type = "samltoken";
                 cli.user = await LoginProvider.validateToken(rawAssertion, span);
@@ -1188,7 +1188,7 @@ export class Message {
         }
         return tuser;
     }
-    private async Signin(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    public async Signin(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
         const span: Span = Logger.otel.startSubSpan("message.Signin", parent);
         try {
@@ -1197,7 +1197,7 @@ export class Message {
             let msg: SigninMessage
             let impostor: string = "";
             const UpdateDoc: any = { "$set": {} };
-            let type: string = "local";
+            let type: tokenType = "local";
             try {
                 msg = SigninMessage.assign(this.data);
                 const originialjwt = msg.jwt;
@@ -1216,7 +1216,7 @@ export class Message {
                     } else { // Autocreate user .... safe ?? we use this for autocreating nodered service accounts
                         if (Config.auto_create_user_from_jwt) {
                             const jwt: string = Crypt.rootToken();
-                            user = await DBHelper.ensureUser(jwt, tuser.name, tuser.username, null, msg.password, span);
+                            user = await DBHelper.EnsureUser(jwt, tuser.name, tuser.username, null, msg.password, span);
                             if (user != null) tuser = TokenUser.From(user);
                             if (user == null) {
                                 tuser = new TokenUser();
@@ -1260,7 +1260,7 @@ export class Message {
                         tuser.username = msg.username;
                     }
                 }
-                cli.clientagent = msg.clientagent;
+                cli.clientagent = msg.clientagent as any;
                 cli.clientversion = msg.clientversion;
                 if (user === null || user === undefined || tuser === null || tuser === undefined) {
                     if (msg !== null && msg !== undefined) msg.error = "Unknown username or password";
@@ -1454,7 +1454,7 @@ export class Message {
             if (msg.password == null || msg.password == undefined || msg.password == "") { throw new Error("Password cannot be null"); }
             user = await DBHelper.FindByUsername(msg.username, null, span);
             if (user !== null && user !== undefined) { throw new Error("Illegal username"); }
-            user = await DBHelper.ensureUser(Crypt.rootToken(), msg.name, msg.username, null, msg.password, span);
+            user = await DBHelper.EnsureUser(Crypt.rootToken(), msg.name, msg.username, null, msg.password, span);
             msg.user = TokenUser.From(user);
 
             const jwt: string = Crypt.createToken(msg.user, Config.shorttoken_expires_in);
@@ -4460,6 +4460,7 @@ export class Message {
                 if (customer == null) msg.customerid = null;
             }
             const user: TokenUser = User.assign(Crypt.verityToken(this.jwt));
+            if (Config.db.WellknownIdsArray.indexOf(user._id) != -1) throw new Error("Builtin entities cannot select a company")
 
             if (NoderedUtil.IsNullEmpty(msg.customerid)) {
                 {

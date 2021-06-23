@@ -9,6 +9,7 @@ import { WebSocketServer } from "./WebSocketServer";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { WebServer } from "./WebServer";
+import { clientType } from "./Audit";
 interface IHashTable<T> {
     [key: string]: T;
 }
@@ -46,7 +47,7 @@ export class WebSocketServerClient {
     private _sendQueue: SocketMessage[];
     public messageQueue: IHashTable<QueuedMessage> = {};
     public remoteip: string;
-    public clientagent: string;
+    public clientagent: clientType;
     public clientversion: string;
     public lastheartbeat: Date = new Date();
     public metrics: string = "";
@@ -254,8 +255,6 @@ export class WebSocketServerClient {
                     exchange = "nodered." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
                 } else if (this.clientagent == "webapp") {
                     exchange = "webapp." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
-                } else if (this.clientagent == "web") {
-                    exchange = "web." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
                 } else if (this.clientagent == "openrpa") {
                     exchange = "openrpa." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
                 } else if (this.clientagent == "powershell") {
@@ -311,8 +310,6 @@ export class WebSocketServerClient {
                     qname = "nodered." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
                 } else if (this.clientagent == "webapp") {
                     qname = "webapp." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
-                } else if (this.clientagent == "web") {
-                    qname = "web." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
                 } else if (this.clientagent == "openrpa") {
                     qname = "openrpa." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
                 } else if (this.clientagent == "powershell") {

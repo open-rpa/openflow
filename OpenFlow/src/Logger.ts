@@ -6,6 +6,12 @@ const path = require('path');
 export class Logger {
     public static otel: otel;
     public static License: LicenseFile;
+    static myFormat = winston.format.printf(info => {
+        if (info instanceof Error || info.stack) {
+            return `${info.timestamp} [${info.level}] ${info.message} \n ${info.stack}`;
+        }
+        return `${info.timestamp} [${info.level}] ${info.message}`;
+    });
     static configure(skipotel: boolean, skiplic: boolean): winston.Logger {
         const filename = path.join(Config.logpath, "openflow.log");
         const options: any = {
@@ -25,18 +31,12 @@ export class Logger {
                 colorize: true
             },
         };
-        const myFormat = winston.format.printf(info => {
-            if (info instanceof Error || info.stack) {
-                return `${info.timestamp} [${info.level}] ${info.message} \n ${info.stack}`;
-            }
-            return `${info.timestamp} [${info.level}] ${info.message}`;
-        });
         options.console.format = winston.format.combine(
             winston.format.errors({ stack: true }),
             winston.format.timestamp({ format: 'HH:mm:ss.sss' }),
             winston.format.colorize(),
             winston.format.json(),
-            myFormat
+            Logger.myFormat
         );
         const logger: winston.Logger = winston.createLogger({
             level: "debug",
@@ -45,7 +45,7 @@ export class Logger {
                 winston.format.errors({ stack: true }),
                 winston.format.timestamp({ format: 'HH:mm:ss.sss' }),
                 winston.format.json(),
-                myFormat
+                Logger.myFormat
             ),
             transports: [
                 new winston.transports.File(options.file),

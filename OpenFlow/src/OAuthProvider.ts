@@ -519,9 +519,7 @@ export class OAuthProvider {
         return codeobject;
     }
     sleep(ms) {
-        return new Promise(resolve => {
-            setTimeout(resolve, ms)
-        })
+        return new Promise(resolve => { setTimeout(resolve, ms) })
     }
 
     public async getAuthorizationCode(code) {

@@ -1006,7 +1006,7 @@ export class LoginProvider {
                         user = new User(); user.name = username; user.username = username;
                         await Crypt.SetPassword(user, password, span);
                         const jwt: string = Crypt.rootToken();
-                        user = await DBHelper.ensureUser(jwt, user.name, user.username, null, password, span);
+                        user = await DBHelper.EnsureUser(jwt, user.name, user.username, null, password, span);
 
                         const admins: Role = await DBHelper.FindRoleByName("admins", span);
                         admins.AddMember(user);
@@ -1035,7 +1035,7 @@ export class LoginProvider {
                     if (!createUser) {
                         return done(null, false);
                     }
-                    user = await DBHelper.ensureUser(Crypt.rootToken(), username, username, null, password, span);
+                    user = await DBHelper.EnsureUser(Crypt.rootToken(), username, username, null, password, span);
                 } else {
                     if (user.disabled) {
                         Audit.LoginFailed(username, "weblogin", "local", remoteip, "browser", "unknown", span);
@@ -1156,7 +1156,7 @@ export class LoginProvider {
                     }
                     if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty, please add displayname to claims", null); return; }
                     const jwt: string = Crypt.rootToken();
-                    _user = await DBHelper.ensureUser(jwt, _user.name, _user.username, null, null, span);
+                    _user = await DBHelper.EnsureUser(jwt, _user.name, _user.username, null, null, span);
                 }
             } else {
                 if (!NoderedUtil.IsNullUndefinded(_user)) {
@@ -1230,7 +1230,7 @@ export class LoginProvider {
                     _user.username = username;
                     (_user as any).mobile = profile.mobile;
                     if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty.", null); return; }
-                    _user = await DBHelper.ensureUser(jwt, _user.name, _user.username, null, null, span);
+                    _user = await DBHelper.EnsureUser(jwt, _user.name, _user.username, null, null, span);
                 }
             }
             if (NoderedUtil.IsNullUndefinded(_user)) {
