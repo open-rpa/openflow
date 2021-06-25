@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "./node_modules/.bin/_mocha 'test/**/*.test.ts'",
-    "test2": "nyc ./node_modules/.bin/_mocha 'test/**/*.test.ts'",
+    "coverage": "nyc ./node_modules/.bin/_mocha 'test/**/*.test.ts'",
     "oldtest": "ts-mocha --paths -p OpenFlow/tsconfig.json OpenFlow/**/*.spec.ts",
     "build": "webpack --mode production"
   },

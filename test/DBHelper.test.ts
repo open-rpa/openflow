@@ -114,3 +114,4 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
         assert.rejects(async () => { await DBHelper.EnsureRole(null, null, null, null); });
     }
 }
+// cls | ./node_modules/.bin/_mocha 'test/**/DBHelper.test.ts'

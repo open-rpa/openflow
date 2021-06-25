@@ -72,22 +72,38 @@ export class Auth {
         }
     }
     public static async RemoveUser(key: string, type: string): Promise<void> {
-        await semaphore.down();
+        await Auth.semaphore.down();
         if (!NoderedUtil.IsNullUndefinded(this.authorizationCache[key + type])) {
             Logger.instanse.silly("Delete user with key " + key + " from cache");
             delete this.authorizationCache[key + type];
         }
-        semaphore.up();
+        Auth.semaphore.up();
     }
     public static async AddUser(user: User, key: string, type: string): Promise<void> {
-        await semaphore.down();
+        await Auth.semaphore.down();
         if (NoderedUtil.IsNullUndefinded(this.authorizationCache[key + type])) {
             Logger.instanse.silly("Adding user " + user.name + " to cache with key " + key);
             var cuser: CachedUser = new CachedUser(user, user._id, type);
             this.authorizationCache[key + type] = cuser;
         }
-        semaphore.up();
+        Auth.semaphore.up();
     }
+    public static Semaphore = (n) => ({
+        n,
+        async down() {
+            while (this.n <= 0) await this.wait();
+            this.n--;
+        },
+        up() {
+            this.n++;
+        },
+        async wait() {
+            if (this.n <= 0) return new Promise((res, req) => {
+                setImmediate(async () => res(await this.wait()))
+            });
+        },
+    });
+    public static semaphore = Auth.Semaphore(1);
 }
 export class CachedUser {
     public firstsignin: Date;
@@ -102,19 +118,3 @@ export class CachedUser {
 interface HashTable<T> {
     [key: string]: T;
 }
-const Semaphore = (n) => ({
-    n,
-    async down() {
-        while (this.n <= 0) await this.wait();
-        this.n--;
-    },
-    up() {
-        this.n++;
-    },
-    async wait() {
-        if (this.n <= 0) return new Promise((res, req) => {
-            setImmediate(async () => res(await this.wait()))
-        });
-    },
-});
-const semaphore = Semaphore(1);

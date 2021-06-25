@@ -34,6 +34,15 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
         assert.ok(result, "Failed validating with the correct password");
         result = await Crypt.compare("not-my-randompassword", hash, null);
         assert.ok(!result, "compare did not fail with wrong password");
+
+        assert.rejects(async () => { await Crypt.SetPassword(null, "randompassword", null); });
+        assert.rejects(async () => { await Crypt.SetPassword(this.testUser, null, null); });
+        assert.rejects(async () => { await Crypt.SetPassword(null, null, null); });
+        assert.rejects(async () => { await Crypt.ValidatePassword(null, "randompassword", null); });
+        assert.rejects(async () => { await Crypt.ValidatePassword(this.testUser, null, null); });
+        assert.rejects(async () => { await Crypt.ValidatePassword(null, null, null); });
+        assert.rejects(async () => { await Crypt.compare(null, null, null); });
+
     }
     @test async 'encrypt'() {
         const basestring = "Hi mom, i miss you.";
@@ -51,3 +60,4 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
         assert.ok(cbcdecrypted == "teststring", "Failed decrypting string using gcm encryption");
     }
 }
+// cls | ./node_modules/.bin/_mocha 'test/**/Crypt.test.ts'

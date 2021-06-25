@@ -65,14 +65,7 @@ export class Logger {
             Logger.License = new _lic_require.LicenseFile();
         } else {
             Logger.License = {} as any;
-            Logger.License.ofid = function () {
-                if (!NoderedUtil.IsNullEmpty(this._ofid)) return this._ofid;
-                var crypto = require('crypto');
-                const openflow_uniqueid = Config.openflow_uniqueid || crypto.createHash('md5').update(Config.domain).digest("hex");
-                Config.openflow_uniqueid = openflow_uniqueid;
-                this._ofid = openflow_uniqueid;
-                return openflow_uniqueid;
-            };
+            Logger.License.ofid = Logger.ofid;
         }
 
 
@@ -119,4 +112,14 @@ export class Logger {
         return logger;
     }
     static instanse: winston.Logger = null;
+    private static _ofid = null;
+    static ofid() {
+        if (!NoderedUtil.IsNullEmpty(Logger._ofid)) return Logger._ofid;
+        var crypto = require('crypto');
+        const openflow_uniqueid = Config.openflow_uniqueid || crypto.createHash('md5').update(Config.domain).digest("hex");
+        Config.openflow_uniqueid = openflow_uniqueid;
+        Logger._ofid = openflow_uniqueid;
+        return openflow_uniqueid;
+    }
+
 }

@@ -25,6 +25,7 @@ import { Span } from "@opentelemetry/api";
 import { Logger } from "../Logger";
 import Dockerode = require("dockerode");
 import { QueueClient } from "../QueueClient";
+import { use } from "passport";
 const got = require("got");
 const { RateLimiterMemory } = require('rate-limiter-flexible')
 const BaseRateLimiter = new RateLimiterMemory({
@@ -508,7 +509,8 @@ export class Message {
                     break;
                 case "selectcustomer":
                     this.EnsureJWT(cli);
-                    await this.SelectCustomer(span);
+                    var user = await this.SelectCustomer(span);
+                    if (user != null) cli.user.selectedcustomerid = user.selectedcustomerid;
                     this.ReloadUserToken(cli, span);
                     cli.Send(this);
                     break;
@@ -4450,7 +4452,8 @@ export class Message {
         }
         Logger.otel.endSpan(span);
     }
-    async SelectCustomer(parent: Span) {
+    async SelectCustomer(parent: Span): Promise<TokenUser> {
+        let user: TokenUser = null;
         this.Reply();
         let msg: SelectCustomerMessage;
         try {
@@ -4459,7 +4462,7 @@ export class Message {
                 var customer = await Config.db.getbyid<Customer>(msg.customerid, "users", this.jwt, parent)
                 if (customer == null) msg.customerid = null;
             }
-            const user: TokenUser = User.assign(Crypt.verityToken(this.jwt));
+            user = User.assign(Crypt.verityToken(this.jwt));
             if (Config.db.WellknownIdsArray.indexOf(user._id) != -1) throw new Error("Builtin entities cannot select a company")
 
             if (NoderedUtil.IsNullEmpty(msg.customerid)) {
@@ -4487,6 +4490,7 @@ export class Message {
             this.data = "";
             await handleError(null, error);
         }
+        return user;
     }
 
 }

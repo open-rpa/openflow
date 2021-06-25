@@ -2,7 +2,7 @@ import * as WebSocket from "ws";
 import { SocketMessage } from "./SocketMessage";
 import { Message, JSONfn } from "./Messages/Message";
 import { Config } from "./Config";
-import { amqpwrapper, QueueMessageOptions, amqpqueue, amqpexchange } from "./amqpwrapper";
+import { amqpwrapper, QueueMessageOptions, amqpqueue, amqpexchange, exchangealgorithm } from "./amqpwrapper";
 import { NoderedUtil, Base, InsertOneMessage, QueueMessage, MapReduceMessage, QueryMessage, UpdateOneMessage, UpdateManyMessage, DeleteOneMessage, User, mapFunc, reduceFunc, finalizeFunc, QueuedMessage, QueuedMessageCallback, WatchEventMessage, QueueClosedMessage, ExchangeClosedMessage } from "@openiap/openflow-api";
 import { ChangeStream } from "mongodb";
 import { WebSocketServer } from "./WebSocketServer";
@@ -245,7 +245,7 @@ export class WebSocketServerClient {
             Logger.otel.endSpan(span);
         }
     }
-    public async RegisterExchange(exchangename: string, algorithm: "direct" | "fanout" | "topic" | "header", routingkey: string = "", parent: Span): Promise<RegisterExchangeResponse> {
+    public async RegisterExchange(exchangename: string, algorithm: exchangealgorithm, routingkey: string = "", parent: Span): Promise<RegisterExchangeResponse> {
         const span: Span = Logger.otel.startSubSpan("WebSocketServerClient.CreateConsumer", parent);
         try {
             let exclusive: boolean = false; // Should we keep the queue around ? for robots and roles

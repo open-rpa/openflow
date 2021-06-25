@@ -70,3 +70,4 @@ import { NoderedUtil } from '@openiap/openflow-api';
         assert.ok(metadata.cert.length > 0);
     }
 }
+// cls | ./node_modules/.bin/_mocha 'test/**/Config.test.ts'

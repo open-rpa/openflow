@@ -21,5 +21,8 @@ import { NoderedUtil } from '@openiap/openflow-api';
     }
     @test async 'test info'() {
         assert.ok(!NoderedUtil.IsNullUndefinded(Logger.myFormat), "Logger missing winston error formatter");
+        var ofid = Logger.ofid();
+        assert.strictEqual(NoderedUtil.IsNullEmpty(ofid), false);
     }
 }
+// cls | ./node_modules/.bin/_mocha 'test/**/Logger.test.ts'

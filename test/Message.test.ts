@@ -71,3 +71,4 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
     //     assert.ok(q && !q.error, q.error);
     // }
 }
+// cls | ./node_modules/.bin/_mocha 'test/**/Message.test.ts'

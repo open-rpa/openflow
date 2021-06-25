@@ -17,33 +17,11 @@ import { Auth } from "./Auth";
 Logger.configure(false, false);
 Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db);
 
-async function adddlx() {
-    if (NoderedUtil.IsNullEmpty(Config.amqp_dlx)) return;
-    await amqp.AddExchangeConsumer(Config.amqp_dlx, "fanout", "", null, null, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
-        if (typeof msg === "string" || msg instanceof String) {
-            try {
-                msg = JSON.parse((msg as any));
-            } catch (error) {
-            }
-        }
-        try {
-            msg.command = "timeout";
-            // Resend message, this time to the reply queue for the correct node (replyTo)
-            Logger.instanse.info("[DLX][" + options.exchange + "] Send timeout to " + options.replyTo + " correlationId: " + options.correlationId);
-            await amqpwrapper.Instance().sendWithReply("", options.replyTo, msg, 20000, options.correlationId, "");
-        } catch (error) {
-            console.error("Failed sending deadletter message to " + options.replyTo);
-            console.error(error);
-        }
-        ack();
-        done();
-    }, undefined);
-}
+
 let amqp: amqpwrapper = null;
 async function initamqp() {
     amqp = new amqpwrapper(Config.amqp_url);
     amqpwrapper.SetInstance(amqp);
-    amqp.on("connected", adddlx);
     await amqp.connect();
 }
 async function ValidateValidateUserForm() {

@@ -35,7 +35,9 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
         Audit.ImpersonateSuccess(tuser, troot, "openflow", Config.version, null);
         Audit.ImpersonateFailed(tuser, troot, "openflow", Config.version, null);
         Audit.NoderedAction(tuser, true, "testuser", "createdeployment", "openiap/nodered", "testuser", null);
+        Audit.NoderedAction(tuser, true, "testuser", "deletedeployment", "openiap/nodered:latest", "testuser", null);
         await new Promise(resolve => { setTimeout(resolve, 1000) })
     }
 
 }
+// cls | ./node_modules/.bin/_mocha 'test/**/Audit.test.ts'

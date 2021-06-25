@@ -64,4 +64,14 @@ import { Auth } from '../OpenFlow/src/Auth';
         Auth.cleanCache();
 
     }
+    @test async 'semaphore'() {
+        setTimeout(async () => {
+            await Auth.semaphore.up();
+        }, 500);
+        await Auth.semaphore.down();
+        await Auth.semaphore.down();
+        await Auth.semaphore.up();
+    }
+
 }
+// cls | ./node_modules/.bin/_mocha 'test/**/Auth.test.ts'

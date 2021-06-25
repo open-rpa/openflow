@@ -24,21 +24,6 @@ const jsondiffpatch = require('jsondiffpatch').create({
 });
 
 
-const Semaphore = (n) => ({
-    n,
-    async down() {
-        while (this.n <= 0) await this.wait();
-        this.n--;
-    },
-    up() {
-        this.n++;
-    },
-    async wait() {
-        if (this.n <= 0) return new Promise((res, req) => {
-            setImmediate(async () => res(await this.wait()))
-        });
-    },
-});
 Object.defineProperty(Promise, 'retry', {
     configurable: true,
     writable: true,
@@ -67,6 +52,7 @@ export class DatabaseConnection {
     public static mongodb_replace: ValueRecorder;
     public static mongodb_delete: ValueRecorder;
     public static mongodb_deletemany: ValueRecorder;
+    public static semaphore = Auth.Semaphore(1);
     constructor(mongodburl: string, dbname: string) {
         this._dbname = dbname;
         this.mongodburl = mongodburl;
@@ -586,8 +572,8 @@ export class DatabaseConnection {
                 const baseversion = basehist[0]._version;
                 const history = await this.query<T>({ id: id, "_version": { $gt: baseversion, $lte: version } }, null, Config.history_delta_count, 0, { _version: 1 }, collectionname + "_hist", rootjwt, undefined, undefined, span);
                 for (let delta of history) {
-                    if (delta != null) {
-                        result = jsondiffpatch.patch(result, delta);
+                    if (delta != null && (delta as any).delta != null) {
+                        result = jsondiffpatch.patch(result, (delta as any).delta);
                     }
                 }
             }
@@ -1734,7 +1720,22 @@ export class DatabaseConnection {
             Logger.otel.endSpan(span);
         }
     }
-    private static InsertOrUpdateOneSemaphore = Semaphore(1);
+    public static Semaphore = (n) => ({
+        n,
+        async down() {
+            while (this.n <= 0) await this.wait();
+            this.n--;
+        },
+        up() {
+            this.n++;
+        },
+        async wait() {
+            if (this.n <= 0) return new Promise((res, req) => {
+                setImmediate(async () => res(await this.wait()))
+            });
+        },
+    });
+    private static InsertOrUpdateOneSemaphore = DatabaseConnection.Semaphore(1);
     /**
     * Insert or Update depending on document allready exists.
     * @param  {T} item Item to insert or update
@@ -2550,7 +2551,7 @@ export class DatabaseConnection {
                     Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname + '_hist' });
                 });
             }
-            if (original != null && original._version > 0) {
+            if (original != null && original._version >= 0) {
                 delta = jsondiffpatch.diff(original, item);
                 if (NoderedUtil.IsNullUndefinded(delta)) return 0;
                 const keys = Object.keys(delta);

@@ -21,6 +21,8 @@ export class Crypt {
     public static async SetPassword(user: User, password: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("Crypt.SetPassword", parent);
         try {
+            if (NoderedUtil.IsNullUndefinded(user)) throw new Error("user is mandatody")
+            if (NoderedUtil.IsNullEmpty(password)) throw new Error("password is mandatody")
             user.passwordhash = await Crypt.hash(password);
             if (!(this.ValidatePassword(user, password, span))) { throw new Error("Failed validating password after hasing"); }
         } catch (error) {
@@ -33,6 +35,8 @@ export class Crypt {
     public static async ValidatePassword(user: User, password: string, parent: Span): Promise<boolean> {
         const span: Span = Logger.otel.startSubSpan("Crypt.ValidatePassword", parent);
         try {
+            if (NoderedUtil.IsNullUndefinded(user)) throw new Error("user is mandatody")
+            if (NoderedUtil.IsNullEmpty(password)) throw new Error("password is mandatody")
             return await Crypt.compare(password, user.passwordhash, span);
         } catch (error) {
             span.recordException(error);
