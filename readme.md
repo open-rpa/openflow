@@ -125,7 +125,7 @@ then open a browser and visit [localhost.openiap.io:1880](http://localhost.openi
 For now only tested on ubuntu 18LTS
 Install NodeJS version 14 
 Also you need to have an installation of  [mongoDB](https://www.mongodb.com/download-center/community) and [RabbitMQ](https://www.rabbitmq.com/download.html)
-Importantent! You need to [enable management console](https://www.rabbitmq.com/management.html) in RabbitMQ 
+
 
 Then to install and run OpenFlow, install the @openiap/openflow package 
 
@@ -238,7 +238,6 @@ Read more about this at the [githu repo](https://github.com/open-rpa/helm-repo)
 #### Developer setup
 
 Install [VSCode](https://code.visualstudio.com/download), [NodeJS 12](https://nodejs.org/en/download/),  [mongoDB](https://www.mongodb.com/download-center/community) and [RabbitMQ](https://www.rabbitmq.com/download.html) 
-You need to [enable management console](https://www.rabbitmq.com/management.html) in RabbitMQ 
 
 Clone this repo into a folder, in a shell type
 
