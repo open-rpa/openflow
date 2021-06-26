@@ -266,6 +266,7 @@ function handle(signal, value) {
     try {
         Config.db.shutdown();
         Logger.otel.shutdown();
+        Logger.License.shutdown()
         Auth.shutdown();
         if (housekeeping != null) {
             try {

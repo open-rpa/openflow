@@ -22,7 +22,7 @@ export declare class LicenseFile {
     licenserror: string;
     data: license_data;
     private _ofid;
-    ofid(): any;
+    ofid(force: boolean): any;
     validate(): void;
     shutdown(): void;
     private validateTimer;

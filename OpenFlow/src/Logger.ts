@@ -66,6 +66,7 @@ export class Logger {
         } else {
             Logger.License = {} as any;
             Logger.License.ofid = Logger.ofid;
+            Logger.License.shutdown = () => undefined;
         }
 
 
