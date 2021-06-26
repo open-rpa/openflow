@@ -99,6 +99,7 @@ import { Crypt } from '../OpenFlow/src/Crypt';
         items = await Config.db.query<Base>({}, null, 5, 0, null, "files", this.rootToken, "", null, null);
         assert.strictEqual(items.length, 5, "Root did not find any files");
     }
+    @timeout(5000)
     @test async 'GetDocumentVersion'() {
         let item = new Base(); item.name = "item version 0";
         item = await Config.db.InsertOne(item, "entities", 1, true, this.userToken, null);
@@ -126,6 +127,95 @@ import { Crypt } from '../OpenFlow/src/Crypt';
         assert.strictEqual(testitem.name, "item version 2");
         assert.strictEqual(testitem._version, 2);
     }
+    @test async 'getbyid'() {
+        var user = await Config.db.getbyid(this.testUser._id, "users", this.userToken, null);
+        assert.notDeepStrictEqual(user, null);
+        assert.strictEqual(user._id, this.testUser._id);
+        user = await Config.db.getbyid(WellknownIds.root, "users", this.rootToken, null);
+        assert.notDeepStrictEqual(user, null);
+        assert.strictEqual(user._id, WellknownIds.root);
+        user = await Config.db.getbyid(WellknownIds.root, "users", this.userToken, null);
+        assert.strictEqual(user, null);
+    }
+    @test async 'aggregate'() {
+        var userssize = await Config.db.aggregate([
+            {
+                "$project": {
+                    "_modifiedbyid": 1,
+                    "object_size": {
+                        "$bsonSize": "$$ROOT"
+                    }
+                }
+            },
+            {
+                "$group": {
+                    "_id": "$_modifiedbyid",
+                    "size": {
+                        "$sum": "$object_size"
+                    }
+                }
+            }
+        ], "users", this.rootToken, null, null);
 
+        assert.notDeepStrictEqual(userssize, null);
+        assert.notDeepStrictEqual(userssize.length, 0);
+        assert.ok(!NoderedUtil.IsNullEmpty(userssize[0]._id));
+        assert.ok((userssize[0] as any).size > 0);
+    }
+    @timeout(15000)
+    @test async 'Many'() {
+        await Config.db.DeleteMany({}, null, "entities", this.userToken, null);
+        await new Promise(resolve => { setTimeout(resolve, 1000) })
+        var items = await Config.db.query({}, null, 100, 0, null, "entities", this.userToken, null, null, null);
+        assert.notDeepStrictEqual(items, null);
+        assert.strictEqual(items.length, 0);
+        items = [];
+        for (let i = 0; i < 50; i++) {
+            let item = new Base(); item.name = "Item " + i;
+            items.push(item);
+        }
+        items = await Config.db.InsertMany(items, "entities", 1, true, this.userToken, null);
+        assert.notDeepStrictEqual(items, null);
+        assert.strictEqual(items.length, 50);
+        assert.strictEqual(items[0].name, "Item 0");
+        assert.ok(!NoderedUtil.IsNullEmpty(items[0]._id));
+        await new Promise(resolve => { setTimeout(resolve, 1000) })
+        await Config.db.DeleteMany({}, null, "entities", this.userToken, null);
+        await new Promise(resolve => { setTimeout(resolve, 1000) })
+        var items = await Config.db.query({}, null, 100, 0, null, "entities", this.userToken, null, null, null);
+        assert.notDeepStrictEqual(items, null);
+        assert.strictEqual(items.length, 0);
+    }
+    @test async 'updatedoc'() {
+        var item = new Base(); item.name = "test item";
+        item = await Config.db.InsertOne(item, "entities", 1, true, this.userToken, null);
+        assert.notDeepStrictEqual(item, null);
+        assert.strictEqual(item.name, "test item");
+        assert.ok(!NoderedUtil.IsNullEmpty(item._id));
+        assert.strictEqual(item._version, 0);
+
+        let updateDoc = { "$set": { "name": "test item updated" } };
+        await Config.db._UpdateOne({ "_id": item._id }, updateDoc as any, "entities", 1, true, this.userToken, null);
+        await new Promise(resolve => { setTimeout(resolve, 1000) })
+        item = await Config.db.getbyid(item._id, "entities", this.userToken, null);
+
+        assert.notDeepStrictEqual(item, null);
+        assert.strictEqual(item.name, "test item updated");
+        assert.ok(!NoderedUtil.IsNullEmpty(item._id));
+        assert.strictEqual(item._version, 1);
+        await Config.db.DeleteOne(item._id, "entities", this.userToken, null);
+    }
+    @timeout(60000)
+    @test async 'indextest'() {
+        Config.log_index_mngt = false;
+        await Config.db.ensureindexes(null)
+        const indexes = await Config.db.db.collection("entities").indexes();
+        const indexnames = indexes.map(x => x.name);
+        if (indexnames.indexOf("test_index") !== -1) {
+            await Config.db.deleteIndex("entities", "test_index", null);
+        }
+        await Config.db.createIndex("entities", "test_index", { "_id": 1 }, null, null);
+        Config.log_index_mngt = true;
+    }
 }
 // cls | ./node_modules/.bin/_mocha 'test/**/DatabaseConnection.test.ts'

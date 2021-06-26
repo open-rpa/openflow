@@ -108,6 +108,7 @@ export class DatabaseConnection {
             Logger.instanse.error(error);
         }
     }
+    public replicat: string = null;
     /**
      * Connect to MongoDB
      * @returns Promise<void>
@@ -120,6 +121,7 @@ export class DatabaseConnection {
         this.cli = await (Promise as any).retry(100, (resolve, reject) => {
             const options: MongoClientOptions = { minPoolSize: Config.mongodb_minpoolsize, autoReconnect: false, useNewUrlParser: true, useUnifiedTopology: true };
             MongoClient.connect(this.mongodburl, options).then((cli) => {
+                this.replicat = (cli as any).s.options.replicaSet;
                 resolve(cli);
                 span.addEvent("Connected to mongodb");
             }).catch((reason) => {
@@ -989,8 +991,9 @@ export class DatabaseConnection {
 
             span.setAttribute("collection", collectionname);
             span.setAttribute("username", user.username);
-            const options: CollectionInsertOneOptions = { writeConcern: { w, j } };
+            let options: CollectionInsertOneOptions = { writeConcern: { w, j } };
             (options as any).WriteConcern = { w, j };
+            if (NoderedUtil.IsNullEmpty(this.replicat)) options = null;
 
             span.addEvent("do insert");
             const ot_end = Logger.otel.startTimer();
@@ -1488,16 +1491,13 @@ export class DatabaseConnection {
                     if (q.item["$set"].hasOwnProperty("_skiphistory")) {
                         delete q.item["$set"]._skiphistory;
                         if (!Config.allow_skiphistory) this.SaveUpdateDiff(q, user, span);
+                    } else {
+                        this.SaveUpdateDiff(q, user, span);
                     }
                 } else {
                     this.SaveUpdateDiff(q, user, span);
                 }
-
-                // const _version = await this.SaveUpdateDiff(q, user);
-                // if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };
-                // (q.item["$set"])._version = _version;
             }
-
             if (q.collectionname === "users" && q.item._type === "user" && q.item.hasOwnProperty("newpassword")) {
                 (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
                 delete (q.item as any).newpassword;
@@ -1525,8 +1525,9 @@ export class DatabaseConnection {
             q.j = ((q.j as any) === 'true' || q.j === true);
             if ((q.w as any) !== "majority") q.w = parseInt((q.w as any));
 
-            const options: CollectionInsertOneOptions = { writeConcern: { w: q.w, j: q.j } };
+            let options: CollectionInsertOneOptions = { writeConcern: { w: q.w, j: q.j } };
             (options as any).WriteConcern = { w: q.w, j: q.j };
+            if (NoderedUtil.IsNullEmpty(this.replicat)) options = null;
 
             q.opresult = null;
             try {
@@ -1702,8 +1703,9 @@ export class DatabaseConnection {
 
             q.j = ((q.j as any) === 'true' || q.j === true);
             if ((q.w as any) !== "majority") q.w = parseInt((q.w as any));
-            const options: CollectionInsertOneOptions = { writeConcern: { w: q.w, j: q.j } };
+            let options: CollectionInsertOneOptions = { writeConcern: { w: q.w, j: q.j } };
             (options as any).WriteConcern = { w: q.w, j: q.j };
+            if (NoderedUtil.IsNullEmpty(this.replicat)) options = null;
             try {
                 const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.updateMany", span);
                 q.opresult = await this.db.collection(q.collectionname).updateMany(_query, q.item, options);
@@ -2047,7 +2049,8 @@ export class DatabaseConnection {
                         reason: doc.reason
                     }
                     bulkInsert.insert(fullhist);
-                    bulkRemove.find({ _id: doc._id }).removeOne();
+                    // bulkRemove.find({ _id: doc._id }).removeOne();
+                    bulkRemove.find({ _id: doc._id }).deleteOne();
                     counter++
                     if (counter % x === 0) {
                         const ot_end = Logger.otel.startTimer();
@@ -2607,7 +2610,7 @@ export class DatabaseConnection {
         const span: Span = Logger.otel.startSubSpan("db.createIndex", parent);
         return new Promise((resolve, reject) => {
             try {
-                Logger.instanse.info("Adding index " + name + " to " + collectionname);
+                if (Config.log_index_mngt) Logger.instanse.info("Adding index " + name + " to " + collectionname);
                 if (NoderedUtil.IsNullUndefinded(options)) options = {};
                 options["name"] = name;
                 this.db.collection(collectionname).createIndex(keypath, options, (err, name) => {
@@ -2631,7 +2634,7 @@ export class DatabaseConnection {
         const span: Span = Logger.otel.startSubSpan("db.deleteIndex", parent);
         return new Promise((resolve, reject) => {
             try {
-                Logger.instanse.info("Dropping index " + name + " in " + collectionname);
+                if (Config.log_index_mngt) Logger.instanse.info("Dropping index " + name + " in " + collectionname);
                 this.db.collection(collectionname).dropIndex(name, (err, name) => {
                     if (err) {
                         span.recordException(err);

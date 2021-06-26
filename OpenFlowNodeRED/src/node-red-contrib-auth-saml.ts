@@ -74,10 +74,10 @@ export class noderedcontribauthsaml {
         }
         // if anything throws, we retry
         const metadata: any = await retry(async bail => {
-            process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+            if (Config.saml_ignore_cert) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
             const backupStore = new FileSystemCache(path.join(Config.logpath, '.cache-' + Config.nodered_id));
             const reader: any = await fetch({ url, backupStore });
-            process.env.NODE_TLS_REJECT_UNAUTHORIZED = "1";
+            if (Config.saml_ignore_cert) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "1";
             if (reader === null || reader === undefined) { bail(new Error("Failed getting result")); return; }
             const config: any = toPassportConfig(reader);
             // we need this, for Office 365 :-/
