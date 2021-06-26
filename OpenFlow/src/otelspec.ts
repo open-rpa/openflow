@@ -22,8 +22,9 @@ export declare class LicenseFile {
     licenserror: string;
     data: license_data;
     private _ofid;
-    ofid(): any;
+    ofid(force: boolean): any;
     validate(): void;
+    shutdown(): void;
     private validateTimer;
     /**
      *  Generate license file
@@ -90,4 +91,5 @@ export declare class otel {
     startTimer(): HrTime;
     endTimer(startTime: HrTime, recorder: ValueRecorder, labels?: Labels): any;
     setdefaultlabels(): void;
+    shutdown(): Promise<void>;
 }

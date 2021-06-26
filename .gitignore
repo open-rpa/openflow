@@ -10,3 +10,5 @@ letsencrypt
 .openflowapicache
 .scannerwork
 docker-package.json
+.env
+.nyc_output

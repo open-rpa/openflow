@@ -10,7 +10,9 @@ import { Crypt } from "./Crypt";
 import { Audit } from "./Audit";
 import * as saml from "saml20";
 const multer = require('multer');
-const GridFsStorage = require('multer-gridfs-storage');
+// const GridFsStorage = require('multer-gridfs-storage');
+import { Multer } from "multer";
+import { GridFsStorage } from "multer-gridfs-storage";
 import { GridFSBucket, ObjectID, Binary } from "mongodb";
 import { Base, User, NoderedUtil, TokenUser, WellknownIds, Rights, Role } from "@openiap/openflow-api";
 import { DBHelper } from "./DBHelper";
@@ -625,7 +627,7 @@ export class LoginProvider {
             }
         });
         try {
-            const storage = GridFsStorage({
+            const storage = new GridFsStorage({
                 db: Config.db,
                 file: (req, file) => {
                     return new Promise((resolve, reject) => {
@@ -647,7 +649,7 @@ export class LoginProvider {
                                 jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
                             }
                             else if (req.user) {
-                                user = TokenUser.From(req.user);
+                                user = TokenUser.From(req.user as any);
                                 jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
                             }
                             const { query, headers } = req;
@@ -1004,7 +1006,7 @@ export class LoginProvider {
                         user = new User(); user.name = username; user.username = username;
                         await Crypt.SetPassword(user, password, span);
                         const jwt: string = Crypt.rootToken();
-                        user = await DBHelper.ensureUser(jwt, user.name, user.username, null, password, span);
+                        user = await DBHelper.EnsureUser(jwt, user.name, user.username, null, password, span);
 
                         const admins: Role = await DBHelper.FindRoleByName("admins", span);
                         admins.AddMember(user);
@@ -1033,7 +1035,7 @@ export class LoginProvider {
                     if (!createUser) {
                         return done(null, false);
                     }
-                    user = await DBHelper.ensureUser(Crypt.rootToken(), username, username, null, password, span);
+                    user = await DBHelper.EnsureUser(Crypt.rootToken(), username, username, null, password, span);
                 } else {
                     if (user.disabled) {
                         Audit.LoginFailed(username, "weblogin", "local", remoteip, "browser", "unknown", span);
@@ -1154,7 +1156,7 @@ export class LoginProvider {
                     }
                     if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty, please add displayname to claims", null); return; }
                     const jwt: string = Crypt.rootToken();
-                    _user = await DBHelper.ensureUser(jwt, _user.name, _user.username, null, null, span);
+                    _user = await DBHelper.EnsureUser(jwt, _user.name, _user.username, null, null, span);
                 }
             } else {
                 if (!NoderedUtil.IsNullUndefinded(_user)) {
@@ -1228,7 +1230,7 @@ export class LoginProvider {
                     _user.username = username;
                     (_user as any).mobile = profile.mobile;
                     if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty.", null); return; }
-                    _user = await DBHelper.ensureUser(jwt, _user.name, _user.username, null, null, span);
+                    _user = await DBHelper.EnsureUser(jwt, _user.name, _user.username, null, null, span);
                 }
             }
             if (NoderedUtil.IsNullUndefinded(_user)) {

@@ -3,7 +3,6 @@ import * as bcrypt from "bcryptjs";
 import * as jsonwebtoken from "jsonwebtoken";
 import { Config } from "./Config";
 import { NoderedUtil, TokenUser, WellknownIds, Rolemember, User } from "@openiap/openflow-api";
-import { Exception } from "handlebars";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 export class Crypt {
@@ -22,6 +21,8 @@ export class Crypt {
     public static async SetPassword(user: User, password: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("Crypt.SetPassword", parent);
         try {
+            if (NoderedUtil.IsNullUndefinded(user)) throw new Error("user is mandatody")
+            if (NoderedUtil.IsNullEmpty(password)) throw new Error("password is mandatody")
             user.passwordhash = await Crypt.hash(password);
             if (!(this.ValidatePassword(user, password, span))) { throw new Error("Failed validating password after hasing"); }
         } catch (error) {
@@ -34,6 +35,8 @@ export class Crypt {
     public static async ValidatePassword(user: User, password: string, parent: Span): Promise<boolean> {
         const span: Span = Logger.otel.startSubSpan("Crypt.ValidatePassword", parent);
         try {
+            if (NoderedUtil.IsNullUndefinded(user)) throw new Error("user is mandatody")
+            if (NoderedUtil.IsNullEmpty(password)) throw new Error("password is mandatody")
             return await Crypt.compare(password, user.passwordhash, span);
         } catch (error) {
             span.recordException(error);
@@ -112,8 +115,8 @@ export class Crypt {
         user.dblocked = item.dblocked;
 
         const key = Crypt.encryption_key;
-        if (NoderedUtil.IsNullEmpty(Config.aes_secret)) throw new Exception("Config missing aes_secret");
-        if (NoderedUtil.IsNullEmpty(key)) throw new Exception("Config missing aes_secret");
+        if (NoderedUtil.IsNullEmpty(Config.aes_secret)) throw new Error("Config missing aes_secret");
+        if (NoderedUtil.IsNullEmpty(key)) throw new Error("Config missing aes_secret");
         return jsonwebtoken.sign({ data: user }, key,
             { expiresIn: expiresIn }); // 60 (seconds), "2 days", "10h", "7d"
     }

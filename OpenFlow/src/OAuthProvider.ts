@@ -304,7 +304,7 @@ export class OAuthProvider {
                         instance.clients = await Config.db.query<Base>({ _type: "oauthclient" }, null, 10, 0, null, "config", Crypt.rootToken(), undefined, undefined, span);
                         if (instance.clients == null || instance.clients.length == 0) return res.status(500).json({ message: 'OAuth not configured' });
                     }
-                    let state = (req.params.state ? req.params.state : req.params["amp;state"]);
+                    let state = ((req.params as any).state ? (req.params as any).state : req.params["amp;state"]);
                     if (state == null) state = encodeURIComponent((req.query.state ? req.query.state : req.query["amp;state"]) as any);
                     const access_type = (req.query.access_type ? req.query.access_type : req.query["amp;access_type"]);
                     const client_id = (req.query.client_id ? req.query.client_id : req.query["amp;client_id"]);
@@ -519,9 +519,7 @@ export class OAuthProvider {
         return codeobject;
     }
     sleep(ms) {
-        return new Promise(resolve => {
-            setTimeout(resolve, ms)
-        })
+        return new Promise(resolve => { setTimeout(resolve, ms) })
     }
 
     public async getAuthorizationCode(code) {

@@ -78,7 +78,7 @@ export class SamlProvider {
                     const tuser: TokenUser = TokenUser.From(req.user);
                     const remoteip = WebServer.remoteip(req);
                     span.setAttribute("remoteip", remoteip);
-                    Audit.LoginSuccess(tuser, "tokenissued", "saml", remoteip, "getUserFromRequest", "unknown", span);
+                    Audit.LoginSuccess(tuser, "tokenissued", "saml", remoteip, "samlverify", "unknown", span);
                 } catch (error) {
                     span.recordException(error);
                 }

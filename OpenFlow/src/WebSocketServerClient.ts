@@ -2,13 +2,14 @@ import * as WebSocket from "ws";
 import { SocketMessage } from "./SocketMessage";
 import { Message, JSONfn } from "./Messages/Message";
 import { Config } from "./Config";
-import { amqpwrapper, QueueMessageOptions, amqpqueue, amqpexchange } from "./amqpwrapper";
+import { amqpwrapper, QueueMessageOptions, amqpqueue, amqpexchange, exchangealgorithm } from "./amqpwrapper";
 import { NoderedUtil, Base, InsertOneMessage, QueueMessage, MapReduceMessage, QueryMessage, UpdateOneMessage, UpdateManyMessage, DeleteOneMessage, User, mapFunc, reduceFunc, finalizeFunc, QueuedMessage, QueuedMessageCallback, WatchEventMessage, QueueClosedMessage, ExchangeClosedMessage } from "@openiap/openflow-api";
 import { ChangeStream } from "mongodb";
 import { WebSocketServer } from "./WebSocketServer";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { WebServer } from "./WebServer";
+import { clientType } from "./Audit";
 interface IHashTable<T> {
     [key: string]: T;
 }
@@ -46,7 +47,7 @@ export class WebSocketServerClient {
     private _sendQueue: SocketMessage[];
     public messageQueue: IHashTable<QueuedMessage> = {};
     public remoteip: string;
-    public clientagent: string;
+    public clientagent: clientType;
     public clientversion: string;
     public lastheartbeat: Date = new Date();
     public metrics: string = "";
@@ -244,7 +245,7 @@ export class WebSocketServerClient {
             Logger.otel.endSpan(span);
         }
     }
-    public async RegisterExchange(exchangename: string, algorithm: "direct" | "fanout" | "topic" | "header", routingkey: string = "", parent: Span): Promise<RegisterExchangeResponse> {
+    public async RegisterExchange(exchangename: string, algorithm: exchangealgorithm, routingkey: string = "", parent: Span): Promise<RegisterExchangeResponse> {
         const span: Span = Logger.otel.startSubSpan("WebSocketServerClient.CreateConsumer", parent);
         try {
             let exclusive: boolean = false; // Should we keep the queue around ? for robots and roles
@@ -254,8 +255,6 @@ export class WebSocketServerClient {
                     exchange = "nodered." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
                 } else if (this.clientagent == "webapp") {
                     exchange = "webapp." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
-                } else if (this.clientagent == "web") {
-                    exchange = "web." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
                 } else if (this.clientagent == "openrpa") {
                     exchange = "openrpa." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
                 } else if (this.clientagent == "powershell") {
@@ -311,8 +310,6 @@ export class WebSocketServerClient {
                     qname = "nodered." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
                 } else if (this.clientagent == "webapp") {
                     qname = "webapp." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
-                } else if (this.clientagent == "web") {
-                    qname = "web." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
                 } else if (this.clientagent == "openrpa") {
                     qname = "openrpa." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
                 } else if (this.clientagent == "powershell") {

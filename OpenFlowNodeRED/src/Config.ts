@@ -29,6 +29,7 @@ export class Config {
         Config.saml_entrypoint = Config.getEnv("saml_entrypoint", "");
         Config.saml_baseurl = Config.getEnv("saml_baseurl", "");
         Config.saml_crt = Config.getEnv("saml_crt", "");
+        Config.saml_ignore_cert = Config.parseBoolean(Config.getEnv("saml_ignore_cert", "false"));
 
         Config.port = parseInt(Config.getEnv("port", "1880"));
         Config.nodered_port = parseInt(Config.getEnv("nodered_port", "0"));
@@ -95,6 +96,7 @@ export class Config {
     public static saml_entrypoint: string = Config.getEnv("saml_entrypoint", "");
     public static saml_baseurl: string = Config.getEnv("saml_baseurl", "");
     public static saml_crt: string = Config.getEnv("saml_crt", "");
+    public static saml_ignore_cert: boolean = Config.parseBoolean(Config.getEnv("saml_ignore_cert", "false"));
 
     public static port: number = parseInt(Config.getEnv("port", "1880"));
     public static nodered_port: number = parseInt(Config.getEnv("nodered_port", "0"));
@@ -232,9 +234,9 @@ export class Config {
 
         // if anything throws, we retry
         const metadata: any = await retry(async bail => {
-            process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+            if (Config.saml_ignore_cert) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
             const reader: any = await fetch({ url });
-            process.env.NODE_TLS_REJECT_UNAUTHORIZED = "1";
+            if (Config.saml_ignore_cert) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "1";
             if (reader === null || reader === undefined) { bail(new Error("Failed getting result")); return; }
             const config: any = toPassportConfig(reader);
             // we need this, for Office 365 :-/
