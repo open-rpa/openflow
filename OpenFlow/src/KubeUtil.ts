@@ -1,4 +1,4 @@
-import { CoreV1Api, AppsV1Api, ExtensionsV1beta1Api, VoidAuth, ApiKeyAuth } from "@kubernetes/client-node";
+import { CoreV1Api, AppsV1Api, ExtensionsV1beta1Api, VoidAuth, ApiKeyAuth, V1PodList } from "@kubernetes/client-node";
 import http = require('http');
 const localVarRequest = require("request");
 let defaultBasePath = 'https://localhost';
@@ -101,6 +101,14 @@ export class KubeUtil {
         }
         return null;
     }
+
+    GetPods(namespace): Promise<{
+        response: http.IncomingMessage;
+        body: V1PodList;
+    }> {
+        return this.Metricsv1beta1Api.GetPods(namespace) as any;
+    }
+
 
 }
 
