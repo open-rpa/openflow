@@ -3281,6 +3281,13 @@ export class Message {
                         }
                         if (metered) delete item.quantity;
                     }
+                } else {
+                    for (var i = msg.subscription_items.length - 1; i >= 0; i--) {
+                        var item = msg.subscription_items[i];
+                        var _price = await this.Stripe<stripe_price>("GET", "prices", item.price, payload, customer.stripeid);
+                        var metered = (_price.recurring && _price.recurring.usage_type == "metered");
+                        if (metered) delete item.quantity;
+                    }
                 }
                 payload.subscription_items = msg.subscription_items;
             }
