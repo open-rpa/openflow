@@ -22,3 +22,5 @@ docker-compose-toolbox.yml
 docker-compose-traefik.yml
 docker-compose-traefik-letsencrypt.yml
 .nyc_output
+.scannerwor
+test
