@@ -437,12 +437,21 @@ export class MenuCtrl {
                 },
                 text: 'Manage Robots and Nodered'
             });
-            tour.addStep({
-                title: 'What do you want to explorer ?',
-                text: `Select from one of the below guided tours to learn more. Use your keyboard arror keys to move back and forward and Esc to exit the tour. <br><small><i>For billing questions and sales support feel free to reach out on support@openiap.io, for all other questions use the <a class="text-primary" href="https://bb.openiap.io/" target="_blank" rel="noopener">forum</a> or <a class="text-primary" href="https://rocket.openiap.io/" target="_blank" rel="noopener">rocket</a> chat</i></small>`,
-                buttons: bottons,
-                id: 'tourlist'
-            });
+            if (this.WebSocketClientService.stripe_api_key == "pk_live_0XOJdv1fPLPnOnRn40CSdBsh009Ge1B2yI") {
+                tour.addStep({
+                    title: 'What do you want to explorer ?',
+                    text: `Select from one of the below guided tours to learn more. Use your keyboard arror keys to move back and forward and Esc to exit the tour. <br><small><i>For billing questions and sales support feel free to reach out on support@openiap.io, for all other questions use the <a class="text-primary" href="https://bb.openiap.io/" target="_blank" rel="noopener">forum</a> or <a class="text-primary" href="https://rocket.openiap.io/" target="_blank" rel="noopener">rocket</a> chat</i></small>`,
+                    buttons: bottons,
+                    id: 'tourlist'
+                });
+            } else {
+                tour.addStep({
+                    title: 'What do you want to explorer ?',
+                    text: `Select from one of the below guided tours to learn more. Use your keyboard arror keys to move back and forward and Esc to exit the tour.`,
+                    buttons: bottons,
+                    id: 'tourlist'
+                });
+            }
             tour.start();
         } catch (error) {
             console.error(error);
