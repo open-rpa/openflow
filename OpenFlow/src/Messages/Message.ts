@@ -1202,7 +1202,7 @@ export class Message {
             let type: tokenType = "local";
             try {
                 msg = SigninMessage.assign(this.data);
-                const originialjwt = msg.jwt;
+                let originialjwt = msg.jwt;
                 let tuser: TokenUser = null;
                 let user: User = null;
                 if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
@@ -1291,8 +1291,10 @@ export class Message {
                     const userid: string = user._id;
                     if (msg.longtoken) {
                         msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
+                        originialjwt = msg.jwt;
                     } else {
                         msg.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
+                        originialjwt = msg.jwt;
                     }
                     msg.user = tuser;
                     if (!NoderedUtil.IsNullEmpty(user.impersonating) && NoderedUtil.IsNullEmpty(msg.impersonate)) {
