@@ -414,6 +414,7 @@ export class DatabaseConnection {
     // tslint:disable-next-line: max-line-length
     async query<T extends Base>(query: any, projection: Object, top: number, skip: number, orderby: Object | string, collectionname: string, jwt: string, queryas: string, hint: Object | string, parent: Span): Promise<T[]> {
         const span: Span = Logger.otel.startSubSpan("db.query", parent);
+        let _query: Object = {};
         try {
             await this.connect(span);
             let mysort: Object = {};
@@ -507,19 +508,23 @@ export class DatabaseConnection {
             }
             span.addEvent("verityToken");
             const user: TokenUser = Crypt.verityToken(jwt);
-            let _query: Object = {};
+
             span.addEvent("getbasequery");
             if (collectionname === "files") { collectionname = "fs.files"; }
             if (collectionname === "fs.files") {
-                if (!NoderedUtil.IsNullEmpty(queryas)) {
-                    _query = { $and: [query, this.getbasequery(jwt, "metadata._acl", [Rights.read]), await this.getbasequeryuserid(queryas, "metadata._acl", [Rights.read], span)] };
+                let impersonationquery;
+                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(queryas, "metadata._acl", [Rights.read], span);
+                if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
+                    _query = { $and: [query, this.getbasequery(jwt, "metadata._acl", [Rights.read]), impersonationquery] };
                 } else {
                     _query = { $and: [query, this.getbasequery(jwt, "metadata._acl", [Rights.read])] };
                 }
                 projection = null;
             } else {
-                if (!NoderedUtil.IsNullEmpty(queryas)) {
-                    _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read]), await this.getbasequeryuserid(queryas, "_acl", [Rights.read], span)] };
+                let impersonationquery: any;
+                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(queryas, "_acl", [Rights.read], span)
+                if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
+                    _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read]), impersonationquery] };
                 } else {
                     _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
                 }
@@ -550,6 +555,7 @@ export class DatabaseConnection {
             if (Config.log_queries) Logger.instanse.debug("[" + user.username + "][" + collectionname + "] query gave " + arr.length + " results ");
             return arr;
         } catch (error) {
+            console.log(JSON.stringify(_query, null, 2));
             span.recordException(error);
             throw error;
         } finally {
@@ -2198,7 +2204,7 @@ export class DatabaseConnection {
         // const user = await DBHelper.FindByUsernameOrId(null, userid, parent);
         let user: User = await this.getbyid(userid, "users", Crypt.rootToken(), parent);
         if (NoderedUtil.IsNullUndefinded(user)) return null;
-        if (user._type == "user") {
+        if (user._type == "user" || user._type == "role") {
             user = await DBHelper.DecorateWithRoles(user as any, parent);
             const jwt = Crypt.createToken(user as any, Config.shorttoken_expires_in);
             return this.getbasequery(jwt, field, bits);
@@ -2209,6 +2215,7 @@ export class DatabaseConnection {
             const jwt = Crypt.createToken(user as any, Config.shorttoken_expires_in);
             return this.getbasequery(jwt, field, bits);
         }
+        // throw new Error("Cannot create filter for an " + user._type)
     }
     /**
      * Ensure _type and _acs on object
