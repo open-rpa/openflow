@@ -165,31 +165,11 @@ then open a browser and visit [localhost.openiap.io:1880](http://localhost.openi
 
 #### Quick start using docker
 
-To quickly get started with your own installation you can use one of these docker-compose files.
-download the file you want
-rename to docker-compose.yaml 
-open a shell and cd to that folder you downloaded the file to, and type
-docker-compose up
-or
-docker-compose up -d
+Installing using [docker-compose](docs/dockercompose)
 
-[docker-compose-traefik.yml](https://github.com/open-rpa/openflow/blob/master/docker-compose-traefik.yml) is for people running docker ce/docker desktop or docker swarm
+#### Quick start using kubernetes
 
-[docker-compose-toolbox.yml](https://github.com/open-rpa/openflow/blob/master/docker-compose-toolbox.yml) is for people running [docker toolbox](https://docs.docker.com/toolbox/toolbox_install_windows/) 
-
-[docker-compose.yml](https://github.com/open-rpa/openflow/blob/master/docker-compose.yml) is for developers who don't want to install [mongoDB](https://www.mongodb.com/download-center/community)/[RabbitMQ](https://www.rabbitmq.com/download.html) or an easy way to run one instance while debugging the other.
-
-Then you can access the API/web on [http://localhost.openiap.io](http://localhost.openiap.io) ( or [http://toolbox.openiap.io](http://toolbox.openiap.io) )
-You can access nodered on [http://nodered1.localhost.openiap.io](http://nodered1.localhost.openiap.io) ( or [http://nodered1.toolbox.openiap.io](http://nodered1.toolbox.openiap.io) )
-and RabbitMQ on  [http://mq.localhost.openiap.io](http://mq.localhost.openiap.io) ( or [http://mq.toolbox.openiap.io](http://mq.toolbox.openiap.io) )
-
-The first username and password you try to login as, will be created and made admin
-
-For help with running on [kubernetes](https://kubernetes.io/) or self hosting contact [OpenIAP](https://openiap.io/) for a support agreement
-
-#### Quick start using helm to install on kubernetes
-
-To quickly get started with your own installation on kubernetes, first install [traefik](https://doc.traefik.io/traefik/v1.7/user-guide/kubernetes/)
+Installing using [docker-compose](docs/kubernetes)
 
 Each OpenFlow will have it's own namespace, and you create a value file for each instance/namespace
 Create a file and call it demo1.yaml with this content
