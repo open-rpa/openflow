@@ -18,7 +18,7 @@ Using the [mobile app](mobileapp)
 
 #### How to deployment on kubernetes
 
-Installing on [kubernetes](docs/kubernetes)
+Installing on [kubernetes](kubernetes)
 using our [helm-charts](github.com/open-rpa/helm-charts/)
 
 #### How to install and manage Openflow using npm packages
