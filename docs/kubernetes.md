@@ -18,9 +18,9 @@ helm repo add openiap https://open-rpa.github.io/helm-charts/
 helm repo update
 ```
 
-Next create a values file. To avoid confusen i recomend you name this file the same as your namespace and the "instance" you are creating. So imaging you want to deploy an openflow instance responding to demo.mydomain.com then create a file names demo.yaml
+Next create a values file. To avoid confusen i recomend you name this file the same as your namespace and the "instance" you are creating. So imaging you want to deploy an openflow instance responding to demo.mydomain.com then create a file named demo.yaml
 
-There is a ton of different settings you can fine tune, you can always find all the settings in the openflow [values file here](https://github.com/open-rpa/helm-charts/blob/main/charts/openflow/values.yaml) but you only need to add the values you want to override, so get you started this would be a good starting point to add to your demo.yaml file
+There is a ton of different settings you can fine tune, you can always find all the settings in the openflow [values file here](https://github.com/open-rpa/helm-charts/blob/main/charts/openflow/values.yaml) but you only need to add the values you want to override. So as a good starting point, add the following to your demo.yaml file
 
 ```yaml
 # this will be the root domain name hence your openflow url will now be http://demo.mydomain.com 
@@ -43,7 +43,7 @@ So first we need to create a namespace. Namespaces allow us to segregate multipl
 ``` sh
 kubectl create namespace demo
 ```
-and now we can create our first openflow installation
+and now we can create our first openflow installation inside that namespace
 ``` sh
 helm install openflow openiap/openflow -n demo --values ./demo.yaml
 ```
@@ -52,9 +52,7 @@ If you update the demo.yaml values file, you can update the installation with
 helm upgrade openflow openiap/openflow -n demo --values ./demo.yaml
 ```
 
-I also go though the install process in the video 
-[![Configuring Openflow on Kubernetes](https://img.youtube.com/vi/onI_9JIAKbM/1.jpg)](https://youtu.be/onI_9JIAKbM)
-
+For more help and guides, check out my youtube channel, here is a few more about kubernetes
 Utilizing multiple node pools
 [![Distributing workloads with nodepools](https://img.youtube.com/vi/06OmsoV-AgM/1.jpg)](https://youtu.be/06OmsoV-AgM)
 
