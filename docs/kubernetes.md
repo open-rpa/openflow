@@ -54,10 +54,14 @@ helm upgrade openflow openiap/openflow -n demo --values ./demo.yaml
 
 For more help and guides, check out my youtube channel, here is a few more about kubernetes
 Utilizing multiple node pools
+
 [![Distributing workloads with nodepools](https://img.youtube.com/vi/06OmsoV-AgM/1.jpg)](https://youtu.be/06OmsoV-AgM)
 
 After install, this will help you getting started with monitoring (premium openflow only!)
+
 [![Configurering Reporting and Monitoring](https://img.youtube.com/vi/cyseDpnects/1.jpg)](https://youtu.be/cyseDpnects)
 
 Performance tuning and/or troubleshooting workflows or the platform (premium openflow only!)
+
 [![Collecting spans and custom metrics](https://img.youtube.com/vi/wlErCAJX52E/1.jpg)](https://youtu.be/wlErCAJX52E)
+
