@@ -37,5 +37,28 @@ rabbitmq:
 #   enabled: false
 ```
 
+So first we need to create a namespace. Namespaces allow us to segregate multiple installations from each other, and ensure they run completely independently of each other.
 
+``` sh
+kubectl create namespace demo
+```
+and now we can create our first openflow installation
+``` sh
+helm install openflow openiap/openflow -n demo --values ./demo.yaml
+```
+If you update the demo.yaml values file, you can update the installation with 
+``` sh
+helm upgrade openflow openiap/openflow -n demo --values ./demo.yaml
+```
 
+I also go though the install process in the video 
+[![Configuring Openflow on Kubernetes](https://img.youtube.com/vi/onI_9JIAKbM/1.jpg)](https://youtu.be/onI_9JIAKbM)
+
+Utilizing multiple node pools
+[![Distributing workloads with nodepools](https://img.youtube.com/vi/06OmsoV-AgM/1.jpg)](https://youtu.be/06OmsoV-AgM)
+
+After install, this will help you getting started with monitoring (premium openflow only!)
+[![Configurering Reporting and Monitoring](https://img.youtube.com/vi/cyseDpnects/1.jpg)](https://youtu.be/cyseDpnects)
+
+Performance tuning and/or troubleshooting workflows or the platform (premium openflow only!)
+[![Collecting spans and custom metrics](https://img.youtube.com/vi/wlErCAJX52E/1.jpg)](https://youtu.be/wlErCAJX52E)
