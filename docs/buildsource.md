@@ -73,7 +73,7 @@ auto_create_users=true
 auto_create_domains=
 skip_history_collections=audit,jslog
 ```
-Lastly you need to allow powershell scripts to run, i don't know what is the recommended setting, i normally just go with bypass
+Next you need to allow powershell scripts to run, i don't know what is the recommended setting, i normally just go with bypass
 
 `Set-ExecutionPolicy Bypass -Force`
 
@@ -91,6 +91,8 @@ doing developerment, you can run the bundle without the minifyer by typing
 
 `gulp watch`
 
-You can now access openflow web on [http://localhost.openiap.io](http://localhost.openiap.io) and nodered on [http://localhost.openiap.io:1880](http://localhost.openiap.io:1880)
+You can now access openflow web on [http://localhost.openiap.io](http://localhost.openiap.io) and nodered on [http://localhost.openiap.io:1880](http://localhost.openiap.io:1880) 
+
+Before starting nodered you either need to signin to openflow and create a user with username nodered1 or add auto_create_user_from_jwt=true to the  .env file
 
 For further help or education contact [OpenIAP](https://openiap.io/) for a support agreement

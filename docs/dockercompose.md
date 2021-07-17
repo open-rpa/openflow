@@ -24,7 +24,6 @@ docker-compose -f docker-compose-traefik.yml -p demo pull
 ```
 
 Then you can access the API/web on [http://localhost.openiap.io](http://localhost.openiap.io) 
-You can access nodered on [http://nodered1.localhost.openiap.io](http://nodered1.localhost.openiap.io) 
 and RabbitMQ on  [http://mq.localhost.openiap.io](http://mq.localhost.openiap.io) 
 
 The first username and password you try to login as, will be created and made admin. This **cannot** be admin, root or other common administrate account names.
