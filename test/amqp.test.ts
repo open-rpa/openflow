@@ -14,7 +14,6 @@ import { amqpwrapper } from '../OpenFlow/src/amqpwrapper';
 @suite class OpenFlowConfigTests {
     private rootToken: string;
     private testUser: User;
-    private userToken: string;
     private amqp: amqpwrapper;
     async before() {
         Logger.configure(true, false);
@@ -22,7 +21,6 @@ import { amqpwrapper } from '../OpenFlow/src/amqpwrapper';
         await Config.db.connect(null);
         this.rootToken = Crypt.rootToken();
         this.testUser = await DBHelper.FindByUsername("testuser", this.rootToken, null)
-        this.userToken = Crypt.createToken(this.testUser, Config.shorttoken_expires_in);
         this.amqp = new amqpwrapper(Config.amqp_url);
         amqpwrapper.SetInstance(this.amqp);
         Config.log_amqp = false;

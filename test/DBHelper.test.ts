@@ -10,6 +10,7 @@ import { NoderedUtil, TokenUser, User, WellknownIds } from '@openiap/openflow-ap
 import { Auth } from '../OpenFlow/src/Auth';
 import { Crypt } from '../OpenFlow/src/Crypt';
 import { DBHelper } from '../OpenFlow/src/DBHelper';
+
 @suite class OpenFlowConfigTests {
     private rootToken: string;
     private testUser: User;

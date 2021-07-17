@@ -444,7 +444,7 @@ export class Message {
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
-                        await this.RestartNoderedInstance(span);
+                        await this.GetNoderedInstance(span);
                         cli.Send(this);
                     }
                     break;
@@ -2204,10 +2204,10 @@ export class Message {
     private async dockerDeleteNoderedPod(parent: Span): Promise<void> {
         this.Reply();
         let msg: DeleteNoderedPodMessage;
-        const span: Span = Logger.otel.startSubSpan("message.GetNoderedInstance", parent);
+        const span: Span = Logger.otel.startSubSpan("message.dockerDeleteNoderedPod", parent);
         try {
             const user = Crypt.verityToken(this.jwt);
-            Logger.instanse.debug("[" + user.username + "] GetNoderedInstance");
+            Logger.instanse.debug("[" + user.username + "] dockerDeleteNoderedPod");
             msg = DeleteNoderedPodMessage.assign(this.data);
             const name = await this.GetInstanceName(msg._id, user._id, user.username, this.jwt, span);
             if (NoderedUtil.IsNullEmpty(msg.name)) msg.name = name;

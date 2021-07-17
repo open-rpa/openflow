@@ -11,7 +11,6 @@ import { Auth } from '../OpenFlow/src/Auth';
 import { DBHelper } from '../OpenFlow/src/DBHelper';
 import { Crypt } from '../OpenFlow/src/Crypt';
 
-
 @suite class OpenFlowDatabaseConnectionTests {
     private rootToken: string;
     private testUser: User;
