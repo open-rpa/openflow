@@ -6,9 +6,7 @@ import { Config } from "../OpenFlow/src/Config";
 import { DatabaseConnection } from '../OpenFlow/src/DatabaseConnection';
 import assert = require('assert');
 import { Logger } from '../OpenFlow/src/Logger';
-import { NoderedUtil } from '@openiap/openflow-api';
 import { Auth } from '../OpenFlow/src/Auth';
-
 
 @suite class OpenFlowConfigTests {
     async before() {

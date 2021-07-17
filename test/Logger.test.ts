@@ -2,7 +2,6 @@ const path = require("path");
 const env = path.join(process.cwd(), 'config', '.env');
 require("dotenv").config({ path: env }); // , debug: false 
 import { suite, test } from '@testdeck/mocha';
-import { Message } from "../OpenFlow/src/Messages/Message";
 import { Config } from "../OpenFlow/src/Config";
 import { DatabaseConnection } from '../OpenFlow/src/DatabaseConnection';
 import assert = require('assert');

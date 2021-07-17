@@ -6,7 +6,7 @@ import { Config } from "../OpenFlow/src/Config";
 import { DatabaseConnection } from '../OpenFlow/src/DatabaseConnection';
 import assert = require('assert');
 import { Logger } from '../OpenFlow/src/Logger';
-import { NoderedUtil, TokenUser, User } from '@openiap/openflow-api';
+import { TokenUser, User } from '@openiap/openflow-api';
 import { Audit } from '../OpenFlow/src/Audit';
 import { Crypt } from '../OpenFlow/src/Crypt';
 import { DBHelper } from '../OpenFlow/src/DBHelper';
@@ -14,14 +14,12 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
 @suite class OpenFlowConfigTests {
     private rootToken: string;
     private testUser: User;
-    private userToken: string;
     async before() {
         Logger.configure(true, false);
         Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db);
         await Config.db.connect(null);
         this.rootToken = Crypt.rootToken();
         this.testUser = await DBHelper.FindByUsername("testuser", this.rootToken, null)
-        this.userToken = Crypt.createToken(this.testUser, Config.shorttoken_expires_in);
     }
     async after() {
         await Config.db.shutdown();
