@@ -7,4 +7,4 @@ Test it in a single user installation [here](https://app.openiap.io/)
 Join rocket chat [#openrpa](https://rocket.openiap.io/)
 or check out the [community forum](https://nn.openiap.io/)
 
-Installation guides and light documentation at [openflow.openiap.io](https://openflow.openiap.io/)
+Installation guides and light documentation at [openflow.openiap.io](https://openflow.openiap.io/) and [docs.openiap.io](https://docs.openiap.io)
