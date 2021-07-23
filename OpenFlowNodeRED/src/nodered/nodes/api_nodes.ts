@@ -1170,6 +1170,7 @@ export interface Iuploadload_file {
     mimeType: string;
     name: string;
     content: string;
+    entity: string;
 }
 export class upload_file {
     public node: Red = null;
@@ -1196,9 +1197,8 @@ export class upload_file {
             const file = await NoderedUtil.SaveFile(filename, mimeType, msg.metadata, filecontent, jwt, priority);
             if (!NoderedUtil.IsNullEmpty(file.error)) { throw new Error(file.error); }
 
-            if (!NoderedUtil.IsNullEmpty(this.config.filename)) Util.SetMessageProperty(msg, this.config.filename, file.filename);
-            if (!NoderedUtil.IsNullEmpty(this.config.mimeType)) Util.SetMessageProperty(msg, this.config.mimeType, file.mimeType);
-            if (!NoderedUtil.IsNullEmpty(this.config.content)) Util.SetMessageProperty(msg, this.config.content, file);
+            Util.SetMessageProperty(msg, this.config.entity, file.result);
+
             this.node.send(msg);
             this.node.status({});
         } catch (error) {

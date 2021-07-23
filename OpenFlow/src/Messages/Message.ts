@@ -2825,12 +2825,22 @@ export class Message {
             msg.metadata = Config.db.ensureResource(msg.metadata);
             if (!NoderedUtil.hasAuthorization(user, msg.metadata, Rights.create)) { throw new Error("Access denied, no authorization to save file"); }
             msg.id = await this._SaveFile(readable, msg.filename, msg.mimeType, msg.metadata);
+            msg.result = await Config.db.getbyid(msg.id, "fs.files", msg.jwt, null);
+            if (NoderedUtil.IsNullUndefinded(msg.result)) {
+                await this.sleep(1000);
+                msg.result = await Config.db.getbyid(msg.id, "fs.files", msg.jwt, null);
+            }
+            if (NoderedUtil.IsNullUndefinded(msg.result)) {
+                await this.sleep(1000);
+                msg.result = await Config.db.getbyid(msg.id, "fs.files", msg.jwt, null);
+            }
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             await handleError(cli, error);
         }
         try {
+            delete msg.file;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
