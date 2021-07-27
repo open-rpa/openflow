@@ -748,6 +748,7 @@ export class Message {
             } else {
                 span.addEvent("ListCollections");
                 msg.result = await Config.db.ListCollections(msg.jwt);
+                msg.result = msg.result.filter(x => x.name.indexOf("system.") === -1);
                 span.addEvent("Filter collections");
                 if (msg.includehist !== true) {
                     msg.result = msg.result.filter(x => !x.name.endsWith("_hist"));
@@ -834,6 +835,8 @@ export class Message {
                 span.recordException("Access denied, not signed in")
                 msg.error = "Access denied, not signed in";
             } else {
+                console.log("Query: " + JSON.stringify(msg.query, null, 4));
+                console.log("Orderby: " + JSON.stringify(msg.orderby, null, 4));
                 msg.result = await Config.db.query(msg.query, msg.projection, msg.top, msg.skip, msg.orderby, msg.collectionname, msg.jwt, msg.queryas, msg.hint, span);
             }
         } catch (error) {
@@ -4096,7 +4099,8 @@ export class Message {
                 const user = Crypt.rootUser();
                 const tuser = TokenUser.From(user);
                 const jwt: string = Crypt.rootToken();
-                const collections = await Config.db.ListCollections(jwt);
+                let collections = await Config.db.ListCollections(jwt);
+                collections = collections.filter(x => x.name.indexOf("system.") === -1);
                 let totalusage = 0;
                 let index = 0;
                 for (let col of collections) {
