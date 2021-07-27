@@ -43,12 +43,14 @@ import { Crypt } from '../OpenFlow/src/Crypt';
     }
     @test async 'ListCollections'() {
         var rootcollections = await Config.db.ListCollections(this.rootToken);
+        rootcollections = rootcollections.filter(x => x.name.indexOf("system.") === -1);
         assert.notDeepStrictEqual(rootcollections, null);
         assert.notDeepStrictEqual(rootcollections.length, 0);
     }
     @test async 'DropCollections'() {
         const colname = "testcollection"
         var rootcollections = await Config.db.ListCollections(this.rootToken);
+        rootcollections = rootcollections.filter(x => x.name.indexOf("system.") === -1);
         assert.notDeepStrictEqual(rootcollections, null);
         assert.notDeepStrictEqual(rootcollections.length, 0);
         var exists = rootcollections.filter(x => x.name == colname);

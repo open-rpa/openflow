@@ -149,7 +149,8 @@ export class DatabaseConnection {
         Logger.otel.endSpan(span);
     }
     async ListCollections(jwt: string): Promise<any[]> {
-        const result = await DatabaseConnection.toArray(this.db.listCollections());
+        let result = await DatabaseConnection.toArray(this.db.listCollections());
+        result = result.filter(x => x.name.indexOf("system.") === -1);
         Crypt.verityToken(jwt);
         return result;
     }
@@ -2663,7 +2664,8 @@ export class DatabaseConnection {
         const span: Span = Logger.otel.startSubSpan("db.ensureindexes", parent);
         try {
             if (!Config.ensure_indexes) return;
-            const collections = await DatabaseConnection.toArray(this.db.listCollections());
+            let collections = await DatabaseConnection.toArray(this.db.listCollections());
+            collections = collections.filter(x => x.name.indexOf("system.") === -1);
 
             for (let i = 0; i < collections.length; i++) {
                 try {

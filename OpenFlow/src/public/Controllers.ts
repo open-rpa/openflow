@@ -2924,6 +2924,12 @@ export class EntitiesCtrl extends entitiesCtrl<Base> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
             try {
+                if (this.collection == "audit") {
+                    if (this.orderby && this.orderby["_id"]) {
+                        this.orderby["_created"] = this.orderby["_id"];
+                        delete this.orderby["_id"];
+                    }
+                }
                 this.loadData();
                 this.collections = await NoderedUtil.ListCollections(null);
             } catch (error) {
