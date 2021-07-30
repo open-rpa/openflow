@@ -32,13 +32,9 @@ services:
     image: "rabbitmq:3-management"
     container_name: "rabbitmq"
     restart: always
-    environment:
-      - RABBITMQ_DEFAULT_USER=admin
-      - RABBITMQ_DEFAULT_PASS=demo2018
     ports:
       - "5672:5672"
       - "15672:15672"
-
   web:
     labels:
       - "traefik.enable=true"
@@ -70,7 +66,7 @@ services:
       - port=80
       - domain=toolbox.openiap.io
 
-      - amqp_url=amqp://admin:demo2018@rabbitmq
+      - amqp_url=amqp://guest:guest@rabbitmq
       - mongodb_url=mongodb://mongodb:27017
       - mongodb_db=openrpa
 
@@ -115,7 +111,6 @@ services:
       #      - noderedadmins=nodered1admins
 
       - api_ws_url=ws://web
-      # - amqp_url=amqp://admin:demo2018@rabbitmq
 
       - api_credential_cache_seconds=300
       - api_allow_anonymous=false

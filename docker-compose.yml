@@ -11,9 +11,6 @@ services:
   rabbitmq:
     image: "rabbitmq:3-management"
     restart: always
-    environment:
-      - RABBITMQ_DEFAULT_USER=admin
-      - RABBITMQ_DEFAULT_PASS=demo2018
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -37,7 +34,7 @@ services:
       - port=80
       - domain=localhost.openiap.io
 
-      - amqp_url=amqp://admin:demo2018@rabbitmq
+      - amqp_url=amqp://guest:guest@rabbitmq
       - mongodb_url=mongodb://mongodb:27017
       - mongodb_db=openrpa
 
