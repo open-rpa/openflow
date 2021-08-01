@@ -835,8 +835,6 @@ export class Message {
                 span.recordException("Access denied, not signed in")
                 msg.error = "Access denied, not signed in";
             } else {
-                console.log("Query: " + JSON.stringify(msg.query, null, 4));
-                console.log("Orderby: " + JSON.stringify(msg.orderby, null, 4));
                 msg.result = await Config.db.query(msg.query, msg.projection, msg.top, msg.skip, msg.orderby, msg.collectionname, msg.jwt, msg.queryas, msg.hint, span);
             }
         } catch (error) {
@@ -2886,7 +2884,8 @@ export class Message {
                 msg.metadata = (rows[0] as any).metadata
                 msg.mimeType = (rows[0] as any).contentType;
             } else if (!NoderedUtil.IsNullEmpty(msg.filename)) {
-                const rows = await Config.db.query({ "filename": msg.filename }, null, 1, 0, { uploadDate: -1 }, "fs.files", msg.jwt, undefined, undefined, span);
+                let rows = await Config.db.query({ "metadata.uniquename": msg.filename }, null, 1, 0, { uploadDate: -1 }, "fs.files", msg.jwt, undefined, undefined, span);
+                if (rows.length == 0) rows = await Config.db.query({ "filename": msg.filename }, null, 1, 0, { uploadDate: -1 }, "fs.files", msg.jwt, undefined, undefined, span);
                 if (rows.length == 0) { throw new Error("Not found"); }
                 msg.id = rows[0]._id;
                 msg.metadata = (rows[0] as any).metadata
