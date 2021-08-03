@@ -662,7 +662,7 @@ export class Message {
                 sendthis.__jwt = msg.jwt;
                 sendthis.__user = msg.user;
             }
-            if (msg.striptoken && !NoderedUtil.IsNullEmpty(msg.exchange)) {
+            if (msg.striptoken) {
                 delete msg.jwt;
                 delete msg.data.jwt;
                 delete sendthis.__jwt;
