@@ -880,7 +880,11 @@ export class DatabaseConnection {
                 if ((item._type === "user" || item._type === "role") &&
                     (this.WellknownNamesArray.indexOf(item.name) > -1 || this.WellknownNamesArray.indexOf((item as any).username) > -1)) {
                     if (this.WellknownIdsArray.indexOf(item._id) == -1) {
-                        throw new Error("Access denied");
+                        if (item._type == "role" && item.name == "administrator") {
+                            // temp, allow this
+                        } else {
+                            throw new Error("Access denied");
+                        }
                     }
                 }
             }
@@ -1113,7 +1117,11 @@ export class DatabaseConnection {
                     if ((item._type === "user" || item._type === "role") &&
                         (this.WellknownNamesArray.indexOf(item.name) > -1 || this.WellknownNamesArray.indexOf((item as any).username) > -1)) {
                         if (this.WellknownIdsArray.indexOf(item._id) == -1) {
-                            throw new Error("Access denied");
+                            if (item._type == "role" && item.name == "administrator") {
+                                // temp, allow this
+                            } else {
+                                throw new Error("Access denied");
+                            }
                         }
                     }
                 }
@@ -1313,7 +1321,12 @@ export class DatabaseConnection {
                     if ((q.item._type === "user" || q.item._type === "role") &&
                         (this.WellknownNamesArray.indexOf(q.item.name) > -1 || this.WellknownNamesArray.indexOf((q.item as any).username) > -1)) {
                         if (this.WellknownIdsArray.indexOf(q.item._id) == -1) {
-                            throw new Error("Access denied");
+                            if (q.item._type == "role" && q.item.name == "administrator") {
+                                // temp, allow this
+                            } else {
+                                throw new Error("Access denied");
+                            }
+
                         }
                     }
                 }

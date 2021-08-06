@@ -57,6 +57,7 @@ export class WebSocketServerClient {
     public _exchanges: amqpexchange[] = [];
     public devnull: boolean = false;
     public commandcounter: object = {};
+    private _amqpdisconnected: any = null;
     public inccommandcounter(command: string): number {
         let result: number = 0;
         if (!NoderedUtil.IsNullUndefinded(this.commandcounter[command])) result = this.commandcounter[command];
@@ -78,12 +79,12 @@ export class WebSocketServerClient {
             this.remoteip = WebServer.remoteip(req);
         }
         Logger.instanse.info("new client " + this.id + " from " + this.remoteip);
-        socketObject.on("open", (e: Event): void => this.open(e));
-        socketObject.on("message", (e: string): void => (this.message(e) as any)); // e: MessageEvent
-        socketObject.on("error", (e: Event): void => this.error(e));
-        socketObject.on("close", (e: CloseEvent): void => this.close(e));
-
-        amqpwrapper.Instance().on("disconnected", (e: Event): void => this.amqpdisconnected(e));
+        socketObject.on("open", this.open.bind(this));
+        socketObject.on("message", this.message.bind(this)); // e: MessageEvent
+        socketObject.on("error", this.error.bind(this));
+        socketObject.on("close", this.close.bind(this));
+        this._amqpdisconnected = this.amqpdisconnected.bind(this);
+        amqpwrapper.Instance().on("disconnected", this._amqpdisconnected);
     }
     private amqpdisconnected(e: Event): void {
         for (var i = 0; i < this._queues.length; i++) {
@@ -201,18 +202,24 @@ export class WebSocketServerClient {
             await this.CloseStreams();
             if (this._socketObject != null) {
                 try {
-                    this._socketObject.removeListener("open", (e: Event): void => this.open(e));
-                    this._socketObject.removeListener("message", (e: string): void => (this.message(e) as any)); // e: MessageEvent
-                    this._socketObject.removeListener("error", (e: Event): void => this.error(e));
-                    this._socketObject.removeListener("close", (e: CloseEvent): void => this.close(e));
+                    this._socketObject.removeAllListeners();
+                    // this._socketObject.removeListener("open", this.open);
+                    // this._socketObject.removeListener("message", this.message); // e: MessageEvent
+                    // this._socketObject.removeListener("error", this.error);
+                    // this._socketObject.removeListener("close", this.close);
                 } catch (error) {
                     Logger.instanse.error("WebSocketclient::Close::removeListener " + error);
                 }
                 try {
                     this._socketObject.close();
                 } catch (error) {
-                    Logger.instanse.error("WebSocketclient::Close " + error);
+                    Logger.instanse.error("WebSocketclient::Close-socketObject " + error);
                 }
+            }
+            try {
+                amqpwrapper.Instance().removeListener("disconnected", this._amqpdisconnected);
+            } catch (error) {
+                Logger.instanse.error("WebSocketclient::Close-disconnected " + error);
             }
         } catch (error) {
             span.recordException(error);

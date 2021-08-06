@@ -129,7 +129,13 @@ export class WebSocketServer {
                         Logger.instanse.info("removing disconnected client " + cli.id + "/" + cli.clientagent);
                         span.addEvent("removing disconnected client " + cli.id + "/" + cli.clientagent);
                     }
-                    WebSocketServer._clients.splice(i, 1);
+                    try {
+                        cli.CloseConsumers(span);
+                        WebSocketServer._clients.splice(i, 1);
+                    } catch (error) {
+                        span?.recordException(error);
+                        console.error(error);
+                    }
                 }
             }
             if (count !== WebSocketServer._clients.length) {

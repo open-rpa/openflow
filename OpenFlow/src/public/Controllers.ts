@@ -6137,15 +6137,17 @@ export class CustomerCtrl extends entityCtrl<Customer> {
             this.loading = true;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             let haderror: boolean = false;
-            try {
-                this.stripe = Stripe(this.WebSocketClientService.stripe_api_key);
-            } catch (error) {
-                haderror = true;
-            }
-            if (haderror) {
-                console.debug("loading stripe script")
-                await jsutil.loadScript('//js.stripe.com/v3/');
-                this.stripe = Stripe(this.WebSocketClientService.stripe_api_key);
+            if (!NoderedUtil.IsNullEmpty(this.WebSocketClientService.stripe_api_key)) {
+                try {
+                    this.stripe = Stripe(this.WebSocketClientService.stripe_api_key);
+                } catch (error) {
+                    haderror = true;
+                }
+                if (haderror) {
+                    console.debug("loading stripe script")
+                    await jsutil.loadScript('//js.stripe.com/v3/');
+                    this.stripe = Stripe(this.WebSocketClientService.stripe_api_key);
+                }
             }
 
             if (this.id !== null && this.id !== undefined) {

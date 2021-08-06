@@ -33,7 +33,8 @@
             "request": "launch",
             "runtimeArgs": [
                 "--nolazy",
-                "--trace-warnings"
+                "--trace-warnings",
+                "--inspect"
             ],
             "showAsyncStacks": true,
             "trace": true,
