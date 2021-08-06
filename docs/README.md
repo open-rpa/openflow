@@ -1,9 +1,11 @@
 # OpenFlow
 
-OpenFlow is basically a couple of [NodeRED](https://nodered.org/) installations and an API on top of a [MongoDB](https://www.mongodb.com/) instance, using [RabbitMQ](https://www.rabbitmq.com/) for scalability. It is designed to supplement digitalization strategies by giving an easy to use, highly scalable and secure platform that supports human workflows, automation of IT systems and things (both Internet of things and  Industri Internet of things/Industri 4.0 ). It also functions as the dashboard and enabler of enterprise features for [OpenRPA](https://github.com/open-rpa/openrpa)
+OpenFlow is basically a couple of [NodeRED](https://nodered.org/) installations and an API on top of a [MongoDB](https://www.mongodb.com/) instance, using [RabbitMQ](https://www.rabbitmq.com/) for scalability. It is designed to supplement digitalization strategies by giving an easy to use, highly scalable and secure platform that supports human workflows, automation of IT systems and things (both Internet of things and  Industry Internet of things/Industry 4.0 ). It also functions as the dashboard and enabler of enterprise features for [OpenRPA](https://github.com/open-rpa/openrpa)
 
 If in doubt, always use docker
-For prodcution envoriment we recommend moving to kubernetes
+For production environment we recommend moving to kubernetes
+
+Read more about the [security model here](securitymodel).
 
 #### Quick start using docker
 Installing using [docker-compose](dockercompose)
@@ -20,9 +22,9 @@ Using the [mobile app](mobileapp)
 
 Installing on [kubernetes](kubernetes)
 
-using our [helm-charts](github.com/open-rpa/helm-charts/)
+using our [helm-charts](https://github.com/open-rpa/helm-charts/)
 
-#### How to install and manage Openflow using npm packages
+#### How to install and manage OpenFlow using npm packages
 Installing using [npm packages](npmopenflow)
 
 Installing remote/local nodereds using [npm packages](npmnodered)
@@ -30,8 +32,8 @@ Installing remote/local nodereds using [npm packages](npmnodered)
 #### How to build and run from source
 build [from source](buildsource)
 
-#### Getting help from the comminty
+#### Getting help from the community
 Join rocket chat [#openrpa](https://rocket.openiap.io/)
 or check out the [community forum](https://nn.openiap.io/)
 
-For commercial support and access to premium featues, contact [openiap](https://openiap.io/)
+For commercial support and access to premium features, contact [openiap](https://openiap.io/)
