@@ -7,6 +7,8 @@ For production environment we recommend moving to kubernetes
 
 Read more about the [security model here](securitymodel).
 
+Read more about the [architecture here](architecture).
+
 #### Quick start using docker
 Installing using [docker-compose](dockercompose)
 
