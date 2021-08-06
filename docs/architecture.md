@@ -14,6 +14,10 @@ But for most people you should go for the docker install using [traefik](https:/
 
 ![openflow_traefik](architecture/openflow_with_traefik.png)
 
-For bigger installations we recommend using kubernetes. Besides adding easy access for running geo distributed installation ( multiple data centers ) it also adds more layers of security and much needed fault tolerance and scalability. This is usually also when we want to add better monitoring of the core components and support for designing graphs and dashboard based on data in OpenFlow.
+For bigger installations we recommend using kubernetes, we supply an easy to get started with [helm chart](https://github.com/open-rpa/helm-charts/), that also supports very complex demands. Besides adding easy access for running geo distributed installation ( multiple data centers ) of a single OpenFlow install, it also adds more layers of security and much needed fault tolerance and scalability. This is usually also when we want to add better monitoring of the core components and support for designing graphs and dashboard based on data in OpenFlow.
 
 ![openflow_with_otel](architecture/openflow_with_monitoring.png)
+
+When running in high secured network, where you need to control and prioritize the flow of data and events, OpenFlow can be deployed in mesh topologies. 
+This can also be useful if working in distributed networks where network outage can last for very long periods of time, and the local storage of a remote NodeRED is not enough, or you need access to the web interface or reports even when the network is down.
+
