@@ -18,6 +18,6 @@ For bigger installations we recommend using kubernetes, we supply an easy to get
 
 ![openflow_with_otel](architecture/openflow_with_monitoring.png)
 
-When running in high secured network, where you need to control and prioritize the flow of data and events, OpenFlow can be deployed in mesh topologies. 
-This can also be useful if working in distributed networks where network outage can last for very long periods of time, and the local storage of a remote NodeRED is not enough, or you need access to the web interface or reports even when the network is down.
+When running in high secured network, where you need to control the direction and priority the flow of data and events, OpenFlow can be deployed in mesh topologies. 
+This can also be useful if working in distributed networks where network outage can last for very long periods of time, and the local storage of a remote NodeRED is not enough, or you need access to the web interface and reports even when the network is down.
 
