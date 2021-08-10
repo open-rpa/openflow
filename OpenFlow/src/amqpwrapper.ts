@@ -232,7 +232,7 @@ export class amqpwrapper extends events.EventEmitter {
         }
     }
     async RemoveQueueConsumer(queue: amqpqueue, parent: Span): Promise<void> {
-        const span: Span = Logger.otel.startSubSpan("amqpwrapper.validateToken", parent);
+        const span: Span = Logger.otel.startSubSpan("amqpwrapper.RemoveQueueConsumer", parent);
         try {
             if (NoderedUtil.IsNullUndefinded(queue)) throw new Error("queue is mandatory");
             if (queue != null) {
@@ -261,7 +261,7 @@ export class amqpwrapper extends events.EventEmitter {
         }
     }
     async AddQueueConsumer(queuename: string, QueueOptions: any, jwt: string, callback: QueueOnMessage, parent: Span): Promise<amqpqueue> {
-        const span: Span = Logger.otel.startSubSpan("amqpwrapper.validateToken", parent);
+        const span: Span = Logger.otel.startSubSpan("amqpwrapper.AddQueueConsumer", parent);
         try {
             if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Queue Consumer, not connected to rabbitmq");
             let queue: string = (NoderedUtil.IsNullEmpty(queuename) ? "" : queuename);
@@ -362,7 +362,7 @@ export class amqpwrapper extends events.EventEmitter {
         }
     }
     async AddExchangeConsumer(exchange: string, algorithm: exchangealgorithm, routingkey: string, ExchangeOptions: any, jwt: string, callback: QueueOnMessage, parent: Span): Promise<amqpexchange> {
-        const span: Span = Logger.otel.startSubSpan("amqpwrapper.validateToken", parent);
+        const span: Span = Logger.otel.startSubSpan("amqpwrapper.AddExchangeConsumer", parent);
         try {
             if (NoderedUtil.IsNullEmpty(exchange)) throw new Error("exchange name cannot be empty");
             if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Exchange Consumer, not connected to rabbitmq");

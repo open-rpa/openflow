@@ -212,6 +212,10 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(this.command)) { this.command = this.command.toLowerCase(); }
             let command: string = this.command;
             cli.lastheartbeat = new Date();
+            cli.lastheartbeatstr = new Date().toISOString();
+            const now = new Date();
+            const seconds = (now.getTime() - cli.lastheartbeat.getTime()) / 1000;
+            cli.lastheartbeatsec = seconds.toString();
             if (command == "ping" || command == "pong") {
                 if (command == "ping") this.Ping(cli);
                 return;
@@ -1158,11 +1162,13 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(rawAssertion)) {
                 type = "samltoken";
                 cli.user = await LoginProvider.validateToken(rawAssertion, span);
+                if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
                 tuser = TokenUser.From(cli.user);
             } else if (!NoderedUtil.IsNullEmpty(cli.jwt)) {
                 tuser = Crypt.verityToken(cli.jwt);
                 const impostor: string = tuser.impostor;
                 cli.user = await DBHelper.FindById(cli.user._id, undefined, span);
+                if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
                 tuser = TokenUser.From(cli.user);
                 tuser.impostor = impostor;
             }
@@ -1378,6 +1384,7 @@ export class Message {
                         Logger.instanse.debug(tuser.username + " signed in using " + type + " " + cli.id + "/" + cli.clientagent);
                         cli.jwt = msg.jwt;
                         cli.user = user;
+                        if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
                     } else {
                         Logger.instanse.debug(tuser.username + " was validated in using " + type);
                     }
@@ -4021,6 +4028,7 @@ export class Message {
             if (msg.customer._id == cli.user.customerid) {
                 cli.user.selectedcustomerid = msg.customer._id;
                 cli.user = await DBHelper.DecorateWithRoles(cli.user, span);
+                if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
                 cli.user.roles.push(new Rolemember(customerusers.name, customerusers._id));
                 cli.user.roles.push(new Rolemember(customeradmins.name, customeradmins._id));
                 await this.ReloadUserToken(cli, span);
@@ -4069,6 +4077,7 @@ export class Message {
         Auth.RemoveUser(cli.user._id, "passport");
         cli.user = await DBHelper.DecorateWithRoles(cli.user, parent);
         cli.jwt = Crypt.createToken(cli.user, Config.shorttoken_expires_in);
+        if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
         l.jwt = cli.jwt;
         l.user = TokenUser.From(cli.user);
         const m: Message = new Message(); m.command = "refreshtoken";

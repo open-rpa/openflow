@@ -54,8 +54,7 @@ export class workflow_in_node {
                 return;
             }
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
-            this.localqueue = this.config.queue;
-            this.localqueue = await NoderedUtil.RegisterQueue(WebSocketClient.instance, this.localqueue, (msg: QueueMessage, ack: any) => {
+            this.localqueue = await NoderedUtil.RegisterQueue(WebSocketClient.instance, this.config.queue, (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
             }, (msg) => {
                 if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected" });

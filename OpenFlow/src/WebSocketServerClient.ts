@@ -50,10 +50,17 @@ export class WebSocketServerClient {
     public clientagent: clientType;
     public clientversion: string;
     public lastheartbeat: Date = new Date();
+    public lastheartbeatstr: string = new Date().toISOString();
+    public lastheartbeatsec: string = "0";
     public metrics: string = "";
     public id: string = "";
-    user: User;
+    public user: User;
+    public username: string;
     public _queues: amqpqueue[] = [];
+    public _queuescounter: number = 0;
+    public _queuescurrent: number = 0;
+    public _queuescounterstr: string = "0";
+    public _queuescurrentstr: string = "0";
     public _exchanges: amqpexchange[] = [];
     public devnull: boolean = false;
     public commandcounter: object = {};
@@ -188,6 +195,8 @@ export class WebSocketServerClient {
                 // await this.CloseConsumer(this._queues[i]);
                 await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i], undefined);
                 this._queues.splice(i, 1);
+                this._queuescurrent--;
+                this._queuescurrentstr = this._queuescurrent.toString();
             } catch (error) {
                 Logger.instanse.error("WebSocketclient::closeconsumers " + error);
             }
@@ -239,6 +248,8 @@ export class WebSocketServerClient {
                     try {
                         await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i], span);
                         this._queues.splice(i, 1);
+                        this._queuescurrent--;
+                        this._queuescurrentstr = this._queuescurrent.toString();
                         if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...Logger.otel.defaultlabels, clientid: this.id }).update(this._queues.length);
                     } catch (error) {
                         Logger.instanse.error("WebSocketclient::CloseConsumer " + error);
@@ -293,6 +304,10 @@ export class WebSocketServerClient {
                     exchange = exchangequeue.queue.queue;
                     this._exchanges.push(exchangequeue);
                     this._queues.push(exchangequeue.queue);
+                    this._queuescounter++;
+                    this._queuescurrent++;
+                    this._queuescounterstr = this._queuescounter.toString();
+                    this._queuescurrentstr = this._queuescurrent.toString();
                 }
             } catch (error) {
                 Logger.instanse.error("WebSocketclient::CreateConsumer " + error);
@@ -352,6 +367,10 @@ export class WebSocketServerClient {
                 }, span);
                 if (queue) {
                     qname = queue.queue;
+                    this._queuescounter++;
+                    this._queuescurrent++;
+                    this._queuescounterstr = this._queuescounter.toString();
+                    this._queuescurrentstr = this._queuescurrent.toString();
                     this._queues.push(queue);
                 }
                 if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...Logger.otel.defaultlabels, clientid: this.id }).update(this._queues.length);
