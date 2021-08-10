@@ -290,6 +290,13 @@ export class DatabaseConnection {
             }
         }
         let doadd: boolean = true;
+        if ((item as any).hidemembers == true) {
+            doadd = false;
+            for (let i = item.members.length - 1; i >= 0; i--) {
+                const ace = original.members[i];
+                removed.push(ace);
+            }
+        }
         const multi_tenant_skip: string[] = [WellknownIds.users, WellknownIds.filestore_users,
         WellknownIds.nodered_api_users, WellknownIds.nodered_users, WellknownIds.personal_nodered_users,
         WellknownIds.robot_users, WellknownIds.robots, WellknownIds.customer_admins, WellknownIds.resellers];
@@ -364,7 +371,8 @@ export class DatabaseConnection {
 
                             // was read the only right ? then remove it
                             const right = Base.getRight(u, item._id, false);
-                            if (NoderedUtil.IsNullUndefinded(right)) {
+                            if (NoderedUtil.IsNullUndefinded(right) || (!Ace.isBitSet(right, 3) && !Ace.isBitSet(right, 4) && !Ace.isBitSet(right, 5))) {
+                                Base.removeRight(u, item._id, [Rights.full_control]);
                                 u = this.ensureResource(u);
                                 Logger.instanse.debug("Removing " + item.name + " read permissions from " + u.name);
                                 const _ot_end1 = Logger.otel.startTimer();
@@ -382,7 +390,8 @@ export class DatabaseConnection {
 
                             // was read the only right ? then remove it
                             const right = Base.getRight(r, item._id, false);
-                            if (NoderedUtil.IsNullUndefinded(right)) {
+                            if (NoderedUtil.IsNullUndefinded(right) || (!Ace.isBitSet(right, 3) && !Ace.isBitSet(right, 4) && !Ace.isBitSet(right, 5))) {
+                                Base.removeRight(r, item._id, [Rights.full_control]);
                                 r = this.ensureResource(r);
                                 Logger.instanse.debug("Removing " + item.name + " read permissions from " + r.name);
                                 const _ot_end2 = Logger.otel.startTimer();
