@@ -361,7 +361,7 @@ export class DatabaseConnection {
                 const arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1, _acl: 1, _type: 1 }).limit(1).toArray();
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: "users" });
                 if (arr.length === 1 && item._id != WellknownIds.admins && item._id != WellknownIds.root) {
-                    if (Config.multi_tenant && multi_tenant_skip.indexOf(item._id) > -1) {
+                    if (Config.multi_tenant && multi_tenant_skip.indexOf(item._id) > -1 && !((item as any).hidemembers == true)) {
                         // when multi tenant don't allow members of common user groups to see each other
                         Logger.instanse.info("Running in multi tenant mode, skip removing permissions for " + item.name);
                     } else if (arr[0]._type === "user") {
