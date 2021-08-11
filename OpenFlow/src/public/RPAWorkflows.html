@@ -1,7 +1,13 @@
-<div class="row">
-  <h1 translate lib="web">rpaworkflows</h1>
-  <p class="col-md-5 lead"></p>
+<div class="row" id="title">
+  <div class="col-sm">
+    <h1 translate lib="web">rpaworkflows</h1>
+  </div>
+  <div class="col-sm"></div>
+  <div class="col-sm text-right">
+    <i class="fas fa-cog fa-spin" ng-show="ctrl.loading==true"></i>
+  </div>
 </div>
+
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <div class="row">
   <table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;">

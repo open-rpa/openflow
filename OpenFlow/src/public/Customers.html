@@ -2,6 +2,7 @@
   <h1 translate lib="web">customers</h1>
 </div>
 <div class="col-sm-12 text-right">
+  <i class="fas fa-cog fa-spin" ng-show="ctrl.loading==true"></i>
   <a href="#/Customer" class="btn btn-info" translate lib="web"
     ng-show="menuctrl.hasrole('customer admins') || menuctrl.hasrole('resellers')">addcustomer</a>
 </div>

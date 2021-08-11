@@ -2,6 +2,7 @@
   <h1 translate lib="web">resources</h1>
 </div>
 <div class="col-sm-12 text-right">
+  <i class="fas fa-cog fa-spin" ng-show="ctrl.loading==true"></i>
   <a class="btn btn-info" ng-click="ctrl.EnsureCommon()" translate lib="web"
     ng-show="menuctrl.hasrole('admins') && ctrl.loading==false">ensurecommon</a>
   <a class="btn btn-info disabled" translate lib="web"

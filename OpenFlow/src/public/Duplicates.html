@@ -8,18 +8,21 @@
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 
 <div class="form-group form-horizontal">
-  <label class="sr-only">Uniqeness</label>
-  <div class="input-group unframed-addons col-sm-9 ">
-    <input ng-model="ctrl.uniqeness" ng-change="ctrl.loadData()" class="form-control input-md"
-      ng-model-options="{debounce: 400}" placeholder="group by fields seperated by comma" />
-    <p class="col-md-1 lead"></p>
-    <div class="text-right">
-      <button class="btn btn-info" ng-disabled="ctrl.loading==true" ng-click="ctrl.MassDeleteOnlyOne()"><em
-          class="fas fa-trash"></em> one</button>
-      <button class="btn btn-info" ng-disabled="ctrl.loading==true" ng-click="ctrl.MassDeleteAllButOne()"><em
-          class="fas fa-trash"></em> all but one</button>
-      <button class="btn btn-info" ng-disabled="ctrl.loading==true" ng-click="ctrl.MassDeleteAll()"><em
-          class="fas fa-trash"></em> all</button>
+  <div class="col-sm">
+    <label class="sr-only">Uniqeness</label>
+    <div class="input-group unframed-addons">
+      <input ng-model="ctrl.uniqeness" ng-change="ctrl.loadData()" class="form-control input-md"
+        ng-model-options="{debounce: 400}" placeholder="group by fields seperated by comma" />
+      <p class="col-md-1 lead"></p>
+      <div class="text-right">
+        <i class="fas fa-cog fa-spin" ng-show="ctrl.loading==true"></i>
+        <button class="btn btn-info" ng-disabled="ctrl.loading==true" ng-click="ctrl.MassDeleteOnlyOne()"><em
+            class="fas fa-trash"></em> one</button>
+        <button class="btn btn-info" ng-disabled="ctrl.loading==true" ng-click="ctrl.MassDeleteAllButOne()"><em
+            class="fas fa-trash"></em> all but one</button>
+        <button class="btn btn-info" ng-disabled="ctrl.loading==true" ng-click="ctrl.MassDeleteAll()"><em
+            class="fas fa-trash"></em> all</button>
+      </div>
     </div>
   </div>
 </div>

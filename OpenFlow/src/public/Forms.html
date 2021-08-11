@@ -2,6 +2,7 @@
   <h1 translate lib="web">forms</h1>
 </div>
 <div class="col-sm-12 text-right">
+  <i class="fas fa-cog fa-spin" ng-show="ctrl.loading==true"></i>
   <a ng-href="#/EditForm" class="btn btn-info" translate lib="web">addform</a>
 </div>
 <div ng-show="ctrl.errormessage != ''" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>

@@ -3,6 +3,7 @@
 </div>
 
 <div class="col-sm-12 text-right">
+  <i class="fas fa-cog fa-spin" ng-show="ctrl.loading==true"></i>
   <input type="checkbox" id="checkbox-1" ng-model="ctrl.skipcustomerfilter" ng-change="ctrl.Search()"
     ng-show="menuctrl.WebSocketClientService.multi_tenant">
   <label for="checkbox-1" ng-show="menuctrl.WebSocketClientService.multi_tenant"><span translate lib="web">show

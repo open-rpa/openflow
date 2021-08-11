@@ -6046,7 +6046,7 @@ export class DeletedCtrl extends entitiesCtrl<Base> {
         });
     }
     async loadData(): Promise<void> {
-
+        this.loading = true;
         var query: any = { _deleted: { "$exists": true } };
         if ((this.searchstring as string).indexOf("{") == 0) {
             if ((this.searchstring as string).lastIndexOf("}") == ((this.searchstring as string).length - 1)) {
@@ -6075,6 +6075,7 @@ export class DeletedCtrl extends entitiesCtrl<Base> {
         this.models = await NoderedUtil.Query(this.collection + "_hist",
             query, { name: 1, _type: 1, _createdby: 1, _created: 1, _modified: 1, _deleted: 1, _version: 1, id: 1 }, this.orderby, 100, 0, null,
             null, null, 2);
+        this.loading = false;
         this.processdata();
     }
     processdata() {
@@ -6085,6 +6086,7 @@ export class DeletedCtrl extends entitiesCtrl<Base> {
         this.userdata.data.DeletedCtrl.orderby = this.orderby;
         this.userdata.data.DeletedCtrl.searchstring = this.searchstring;
         this.userdata.data.DeletedCtrl.basequeryas = this.basequeryas;
+        this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     SelectCollection() {
