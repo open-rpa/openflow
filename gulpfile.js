@@ -229,19 +229,19 @@ gulp.task("compose", shell.task([
     'docker push openiap/nodered:edge',
     'docker push openiap/nodered:' + version,
 
-    // 'echo "Build openiap/nodered-puppeteer"',
-    // 'cd OpenFlowNodeRED && docker build -t openiap/nodered-puppeteer:edge -f Dockerfilepuppeteer .',
-    // 'docker tag openiap/nodered-puppeteer:edge openiap/nodered-puppeteer:' + version,
-    // 'echo "Push openiap/nodered-puppeteer"',
-    // 'docker push openiap/nodered-puppeteer:edge',
-    // 'docker push openiap/nodered-puppeteer:' + version,
+    'echo "Build openiap/nodered-puppeteer"',
+    'cd OpenFlowNodeRED && docker build -t openiap/nodered-puppeteer:edge -f Dockerfilepuppeteer .',
+    'docker tag openiap/nodered-puppeteer:edge openiap/nodered-puppeteer:' + version,
+    'echo "Push openiap/nodered-puppeteer"',
+    'docker push openiap/nodered-puppeteer:edge',
+    'docker push openiap/nodered-puppeteer:' + version,
 
-    // 'echo "Build openiap/nodered-tagui"',
-    // 'cd OpenFlowNodeRED && docker build -t openiap/nodered-tagui:edge -f Dockerfiletagui .',
-    // 'docker tag openiap/nodered-tagui:edge openiap/nodered-tagui:' + version,
-    // 'echo "Push openiap/nodered-tagui"',
-    // 'docker push openiap/nodered-tagui:edge',
-    // 'docker push openiap/nodered-tagui:' + version,
+    'echo "Build openiap/nodered-tagui"',
+    'cd OpenFlowNodeRED && docker build -t openiap/nodered-tagui:edge -f Dockerfiletagui .',
+    'docker tag openiap/nodered-tagui:edge openiap/nodered-tagui:' + version,
+    'echo "Push openiap/nodered-tagui"',
+    'docker push openiap/nodered-tagui:edge',
+    'docker push openiap/nodered-tagui:' + version,
 
 ]));
 
@@ -252,6 +252,12 @@ gulp.task("latest", shell.task([
     'docker tag openiap/openflow:edge openiap/openflow:latest',
     'echo "Push openiap/openflow"',
     'docker push openiap/openflow:latest',
+    'docker tag openiap/nodered-puppeteer:edge openiap/nodered-puppeteer:latest',
+    'echo "Push openiap/nodered-puppeteer"',
+    'docker push openiap/nodered-puppeteer:latest',
+    'docker tag openiap/nodered-tagui:edge openiap/nodered-tagui:latest',
+    'echo "Push openiap/nodered-tagui"',
+    'docker push openiap/nodered-tagui:latest',
 ]));
 // gulp.task("composelatest", gulp.series("compose", "latest"));
 
