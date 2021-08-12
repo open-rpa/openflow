@@ -240,6 +240,7 @@ export class WebSocketServerClient {
     }
     public async CloseConsumer(queuename: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("WebSocketServerClient.CloseConsumer", parent);
+        await semaphore.down();
         try {
             var old = this._queues.length;
             for (let i = this._queues.length - 1; i >= 0; i--) {
@@ -260,6 +261,7 @@ export class WebSocketServerClient {
             span.recordException(error);
             throw error;
         } finally {
+            semaphore.up();
             Logger.otel.endSpan(span);
         }
     }
@@ -340,14 +342,21 @@ export class WebSocketServerClient {
                     qname = "unknown." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
                 }
             }
+            await this.CloseConsumer(qname, span);
             await semaphore.down();
-            this.CloseConsumer(qname, span);
             let queue: amqpqueue = null;
             try {
                 const AssertQueueOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertQueueOptions));
                 AssertQueueOptions.exclusive = exclusive;
                 if (NoderedUtil.IsNullEmpty(queuename)) {
                     AssertQueueOptions.autoDelete = true;
+                }
+                var exists = this._queues.filter(x => x.queuename == qname || x.queue == qname);
+                if (exists.length > 0) {
+                    Logger.instanse.warn("CreateConsumer: " + qname + " already exists, removing before re-creating");
+                    for (let i = 0; i < exists.length; i++) {
+                        await amqpwrapper.Instance().RemoveQueueConsumer(exists[i], span);
+                    }
                 }
                 queue = await amqpwrapper.Instance().AddQueueConsumer(qname, AssertQueueOptions, this.jwt, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
                     const _data = msg;
