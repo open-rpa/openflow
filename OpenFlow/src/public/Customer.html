@@ -449,15 +449,15 @@
             </div>
             <hr
                 ng-show="(ctrl.nextinvoice.tax && ctrl.nextinvoice.tax > 0) || (ctrl.nextinvoice.total_discount_amounts && ctrl.nextinvoice.total_discount_amounts.length > 0)">
-            <div class="row" ng-show="ctrl.nextinvoice.tax && ctrl.nextinvoice.tax > 0">
-                <div class="col">Tax</div>
-                <div class="col"></div>
-                <div class="col">{{ ctrl.nextinvoice.tax / 100 }} {{ ctrl.nextinvoice.currency }}</div>
-            </div>
             <div class="row" ng-repeat="item in ctrl.nextinvoice.total_discount_amounts">
                 <div class="col">Discount</div>
                 <div class="col"></div>
                 <div class="col">{{ item.amount / 100 }} {{ ctrl.nextinvoice.currency }}</div>
+            </div>
+            <div class="row" ng-show="ctrl.nextinvoice.tax && ctrl.nextinvoice.tax > 0">
+                <div class="col">Tax</div>
+                <div class="col"></div>
+                <div class="col">{{ ctrl.nextinvoice.tax / 100 }} {{ ctrl.nextinvoice.currency }}</div>
             </div>
             <hr>
             <div class="row">
