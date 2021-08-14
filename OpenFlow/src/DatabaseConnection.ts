@@ -293,7 +293,7 @@ export class DatabaseConnection {
         if ((item as any).hidemembers == true) {
             doadd = false;
             for (let i = item.members.length - 1; i >= 0; i--) {
-                const ace = original.members[i];
+                const ace = item.members[i];
                 removed.push(ace);
             }
         }
@@ -357,6 +357,7 @@ export class DatabaseConnection {
         if (Config.update_acl_based_on_groups) {
             for (let i = removed.length - 1; i >= 0; i--) {
                 const ace = removed[i];
+                if (NoderedUtil.IsNullUndefinded(ace)) continue;
                 const ot_end = Logger.otel.startTimer();
                 const arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1, _acl: 1, _type: 1 }).limit(1).toArray();
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: "users" });
