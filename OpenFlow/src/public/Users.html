@@ -19,7 +19,7 @@
       <th ng-click="ctrl.ToggleOrder('_created')"><b translate lib="web">created</b></th>
       <th ng-click="ctrl.ToggleOrder('lastseen')"><b translate lib="web">lastseen</b></th>
       <th ng-click="ctrl.ToggleOrder('dbusage')"><b translate lib="web">dbusage</b></th>
-      <th ng-show="ctrl.WebSocketClientService.stripe_api_key != ''" ng-click="ctrl.ToggleOrder('customerid')">
+      <th ng-show="menuctrl.WebSocketClientService.multi_tenant" ng-click="ctrl.ToggleOrder('customerid')">
         <i class="fas fa-money-bill-wave"></i>
       </th>
       <th ng-show="ctrl.WebSocketClientService.validate_user_form != ''" ng-click="ctrl.ToggleOrder('validated')">
@@ -44,8 +44,8 @@
         </div>
 
       </td>
-      <td ng-show="ctrl.WebSocketClientService.stripe_api_key != ''">
-        <a href ng-click="ctrl.ShowPlans(model)" class="btn" role="button" ng-show="menuctrl.user.customerid != null && menuctrl.customer.stripeid != null && model.customerid && model.customerid != '' &&
+      <td ng-show="menuctrl.WebSocketClientService.multi_tenant">
+        <a href ng-click="ctrl.ShowPlans(model)" class="btn" role="button" ng-show="menuctrl.user.customerid != null && menuctrl.WebSocketClientService.multi_tenant && model.customerid && model.customerid != '' &&
           (menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins') || menuctrl.hasrole('resellers'))          
           ">
           <em class="fas fa-money-bill-wave"></em></a>
