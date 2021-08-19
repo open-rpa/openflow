@@ -6294,7 +6294,6 @@ export class CustomerCtrl extends entityCtrl<Customer> {
         this.loading = false;
         console.debug("processdata::end");
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
-
     }
     ToggleNextInvoiceModal() {
         var modal = document.getElementById("NextInvoiceModal");
@@ -6307,6 +6306,16 @@ export class CustomerCtrl extends entityCtrl<Customer> {
     public period_start: string;
     public period_end: string;
 
+    ShowPlans() {
+        if (this.WebSocketClientService.customer == null) return false;
+        if (!this.WebSocketClientService.multi_tenant) return false;
+        if (!NoderedUtil.IsNullEmpty(this.WebSocketClientService.stripe_api_key)) {
+            if (!NoderedUtil.IsNullEmpty(this.WebSocketClientService.customer.stripeid)) return true;
+            return false;
+        } else {
+            return true;
+        }
+    }
     async NextInvoice() {
         try {
             this.proration = false;
@@ -6945,9 +6954,6 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
                         this.newProduct("50Mb quota", "prod_JccNQXT636UNhG", "price_1IzQBRC2vUMc6gvh3Er9QaO8", "multiple", "multiple", null, null, 0, { dbusage: (1048576 * 50) }, true, 1),
                         this.newProduct("Metered Monthly", "prod_JccNQXT636UNhG", "price_1IzNEZC2vUMc6gvhAWQbEBHm", "metered", "metered", null, null, 0, { dbusage: (1048576 * 50) }, true, 0),
                     ], true, true, 1);
-
-                this.loading = false;
-                this.loadData();
             } if (this.WebSocketClientService.stripe_api_key == "pk_live_0XOJdv1fPLPnOnRn40CSdBsh009Ge1B2yI") {
                 const nodered: Resource = await this.newResource("Nodered Instance", "user", "singlevariant", "singlevariant", { "resources": { "limits": { "memory": "225Mi" } } },
                     [
@@ -6986,11 +6992,23 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
                     ], true, true, 3);
                 poc.products.push(this.newProduct("POC Starter pack", "prod_Jgk2LqELt4QFwB", "price_1J3MZZC2vUMc6gvhh0sOq19z", "single", "single", poc._id, "prod_Jgk2LqELt4QFwB", 1, {}, true, 1));
                 await NoderedUtil.UpdateOne(this.collection, null, poc, 1, false, null, 2);
+            } else {
+                const nodered: Resource = await this.newResource("Nodered Instance", "user", "singlevariant", "singlevariant", { "resources": { "limits": { "memory": "225Mi" } } },
+                    [
+                        this.newProduct("Basic", "prod_HEC6rB2wRUwviG", "plan_HECATxbGlff4Pv", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, true, 0),
+                        this.newProduct("Plus", "prod_HEDSUIZLD7rfgh", "plan_HEDSUl6qdOE4ru", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "512Mi" }, "requests": { "memory": "512Mi" } } }, true, 1),
+                        this.newProduct("Premium", "prod_HEDTI7YBbwEzVX", "plan_HEDTJQBGaVGnvl", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "1Gi" }, "requests": { "memory": "1Gi" } } }, true, 2),
+                        this.newProduct("Premium+", "prod_IERLqCwV7BV8zy", "price_1HdySLC2vUMc6gvh3H1pgG7A", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "2Gi" }, "requests": { "memory": "2Gi" } } }, true, 3),
+                    ], true, true, 0);
+                const databaseusage: Resource = await this.newResource("Database Usage", "customer", "singlevariant", "singlevariant", { dbusage: (1048576 * 25) },
+                    [
+                        this.newProduct("50Mb quota", "prod_JccNQXT636UNhG", "price_1IzQBRC2vUMc6gvh3Er9QaO8", "multiple", "multiple", null, null, 0, { dbusage: (1048576 * 50) }, true, 1),
+                        this.newProduct("Metered Monthly", "prod_JccNQXT636UNhG", "price_1IzNEZC2vUMc6gvhAWQbEBHm", "metered", "metered", null, null, 0, { dbusage: (1048576 * 50) }, true, 0),
+                    ], true, true, 1);
 
-
-                this.loading = false;
-                this.loadData();
             }
+            this.loading = false;
+            this.loadData();
         } catch (error) {
             this.loading = false;
             this.errormessage = error;

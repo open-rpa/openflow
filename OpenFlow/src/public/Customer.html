@@ -348,18 +348,17 @@
 
 </form>
 
-<div ng-show="!ctrl.model.stripeid || ctrl.model.stripeid == ''">
+<div ng-show="ctrl.model.dbusage || WebSocketClientService.user.dbusage">
     Current database usage:
     <format-bytes ng-model="ctrl.model.dbusage" ng-show="ctrl.model.dbusage" />
     <format-bytes ng-model="WebSocketClientService.user.dbusage" ng-show="!ctrl.model.dbusage" />
 </div>
-<div class="row"
-    ng-show="ctrl.WebSocketClientService.customer != null && menuctrl.WebSocketClientService.stripe_api_key && menuctrl.WebSocketClientService.stripe_api_key != '' && (ctrl.WebSocketClientService.customer.stripeid != '' && ctrl.WebSocketClientService.customer.stripeid != null) ">
+<div class="row" ng-show="ctrl.ShowPlans() && ctrl.Resources.length > 0">
     <div class="col-sm-7">
         <h4>Buy/manage company plans</h4><br><br>
     </div>
 </div>
-<div ng-repeat="Resource in ctrl.Resources | orderBy: 'order'" ng-show="ctrl.model.stripeid">
+<div ng-repeat="Resource in ctrl.Resources | orderBy: 'order'" ng-show="ctrl.ShowPlans() && ctrl.Resources.length > 0">
     <div class="row" ng-repeat="Product in Resource.products | orderBy: 'order'"
         ng-show="Resource.customerassign == 'multiplevariants'">
         <div class="col">{{Product.name}}</div>
@@ -410,17 +409,15 @@
 </div>
 
 
-<div class="row"
-    ng-show="ctrl.WebSocketClientService.customer != null && menuctrl.WebSocketClientService.stripe_api_key && menuctrl.WebSocketClientService.stripe_api_key != '' && (ctrl.WebSocketClientService.customer.stripeid != '' && ctrl.WebSocketClientService.customer.stripeid != null) ">
+<div class="row" ng-show="ctrl.ShowPlans()">
     <div class="col-sm-7">
         <h4>Buy/manage user plans <a href="#/Users">here</a></h4><br><br>
-
     </div>
 </div>
 
 
-<div ng-repeat="Resource in ctrl.UserResources | orderBy: 'order'" ng-show="ctrl.model.stripeid">
-    <h4>{{Resource.name}}</h4>
+<div ng-repeat="Resource in ctrl.UserResources | orderBy: 'order'" ng-show="ctrl.ShowPlans()">
+    <b>{{Resource.name}}</b>
     <div class="row" ng-repeat="Product in Resource.products | orderBy: 'order'" ng-show="Product.count > 0">
         <div class="col">{{Product.name}}</div>
         <div class="col">{{ Product.count }}</div>
