@@ -30,6 +30,8 @@ export class api_credentials {
 export interface Iapi_get_jwt {
     config: any;
     name: string;
+    longtoken: boolean;
+    refresh: boolean;
 }
 export class api_get_jwt {
     public node: Red = null;
@@ -69,7 +71,9 @@ export class api_get_jwt {
             if (!NoderedUtil.IsNullEmpty(username) && !NoderedUtil.IsNullEmpty(password)) {
                 q.username = username; q.password = password;
             } else {
-                if (!NoderedUtil.IsNullUndefinded(WebSocketClient.instance) && !NoderedUtil.IsNullEmpty(WebSocketClient.instance.jwt)) {
+                if (this.config.refresh && !NoderedUtil.IsNullEmpty(msg.jwt)) {
+                    q.jwt = msg.jwt;
+                } else if (!NoderedUtil.IsNullUndefinded(WebSocketClient.instance) && !NoderedUtil.IsNullEmpty(WebSocketClient.instance.jwt)) {
                     q.jwt = WebSocketClient.instance.jwt;
                 } else if (Crypt.encryption_key() !== "") {
                     const user = new TokenUser();
@@ -83,6 +87,9 @@ export class api_get_jwt {
                 } else {
                     return NoderedUtil.HandleError(this, "root signin not allowed", msg);
                 }
+            }
+            if (this.config.longtoken) {
+                q.longtoken = true;
             }
             this.node.status({ fill: "blue", shape: "dot", text: "Requesting token" });
             const _msg: Message = new Message();
