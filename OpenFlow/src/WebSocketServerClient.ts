@@ -247,7 +247,9 @@ export class WebSocketServerClient {
                 const q = this._queues[i];
                 if (q && (q.queue == queuename || q.queuename == queuename)) {
                     try {
-                        await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i], span);
+                        amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i], span).catch((err) => {
+                            Logger.instanse.error("WebSocketclient::CloseConsumer::RemoveQueueConsumer " + err);
+                        });
                         this._queues.splice(i, 1);
                         this._queuescurrent--;
                         this._queuescurrentstr = this._queuescurrent.toString();
@@ -283,7 +285,6 @@ export class WebSocketServerClient {
                     exchange = "unknown." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
                 }
             }
-            await semaphore.down();
             let exchangequeue: amqpexchange = null;
             try {
                 const AssertExchangeOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertExchangeOptions));
@@ -303,6 +304,7 @@ export class WebSocketServerClient {
                     }
                 }, span);
                 if (exchangequeue) {
+                    await semaphore.down();
                     exchange = exchangequeue.queue.queue;
                     this._exchanges.push(exchangequeue);
                     this._queues.push(exchangequeue.queue);
@@ -314,7 +316,7 @@ export class WebSocketServerClient {
             } catch (error) {
                 Logger.instanse.error("WebSocketclient::CreateConsumer " + error);
             }
-            semaphore.up();
+            if (exchangequeue) semaphore.up();
             if (exchangequeue != null) return { exchangename: exchangequeue.exchange, queuename: exchangequeue.queue.queue };
             return null;
         } catch (error) {
@@ -343,7 +345,6 @@ export class WebSocketServerClient {
                 }
             }
             await this.CloseConsumer(qname, span);
-            await semaphore.down();
             let queue: amqpqueue = null;
             try {
                 const AssertQueueOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertQueueOptions));
@@ -375,6 +376,7 @@ export class WebSocketServerClient {
                     }
                 }, span);
                 if (queue) {
+                    await semaphore.down();
                     qname = queue.queue;
                     this._queuescounter++;
                     this._queuescurrent++;
@@ -387,7 +389,7 @@ export class WebSocketServerClient {
                 throw error
             }
             finally {
-                semaphore.up();
+                if (queue) semaphore.up();
             }
             if (queue != null) {
                 return queue.queue;
