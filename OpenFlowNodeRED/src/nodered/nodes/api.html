@@ -55,6 +55,14 @@
     <input type="text" id="node-input-config">
 </div>
 <div class="form-row">
+    <label><i class="fa fa-tag"></i> Refresh existing</label>
+    <input type="checkbox" id="node-input-refresh" style="width: auto;">
+</div>
+<div class="form-row">
+    <label><i class="fa fa-tag"></i> Create long token</label>
+    <input type="checkbox" id="node-input-longtoken" style="width: auto;">
+</div>
+<div class="form-row">
     <label><i class="fa fa-tag"></i> Name</label>
     <input type="text" id="node-input-name" placeholder="Node name">
 </div>
@@ -70,7 +78,9 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         icon: "font-awesome/fa-key",
         defaults: {
             name: { value: "" },
-            config: { value: "", type: "api-credentials", required: false }
+            config: { value: "", type: "api-credentials", required: false },
+            refresh: { value: false, type: "boolean" },
+            longtoken: { value: false, type: "boolean" },
         },
         inputs: 1,
         outputs: 1,

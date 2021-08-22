@@ -4,7 +4,7 @@
 </div>
 
 <div class="row">
-  <div class="col-md-6">
+  <div class="col-sm">
     <div className="btn-group-justified">
       <div class="btn-group" role="group">
         <select ng-model="ctrl.collection" ng-options="item.name as item.name for item in ctrl.collections"
@@ -12,6 +12,11 @@
         </select>
       </div>
     </div>
+  </div>
+  <div class="col-sm">
+  </div>
+  <div class="col-sm text-right">
+    <i class="fas fa-cog fa-spin" ng-show="ctrl.loading==true"></i>
   </div>
 </div>
 

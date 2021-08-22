@@ -70,7 +70,10 @@ module.exports = function (RED) {
         //     port = config.mailserver_port;
         // }
         // port = config.mailserver_port;
-        const port = 25;
+
+
+        let port = 25;
+        if (this.port) port = this.port;
         init(port);
 
         this.on("close", function () {

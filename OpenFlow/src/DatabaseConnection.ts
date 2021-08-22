@@ -290,6 +290,13 @@ export class DatabaseConnection {
             }
         }
         let doadd: boolean = true;
+        if ((item as any).hidemembers == true) {
+            doadd = false;
+            for (let i = item.members.length - 1; i >= 0; i--) {
+                const ace = item.members[i];
+                removed.push(ace);
+            }
+        }
         const multi_tenant_skip: string[] = [WellknownIds.users, WellknownIds.filestore_users,
         WellknownIds.nodered_api_users, WellknownIds.nodered_users, WellknownIds.personal_nodered_users,
         WellknownIds.robot_users, WellknownIds.robots, WellknownIds.customer_admins, WellknownIds.resellers];
@@ -350,11 +357,12 @@ export class DatabaseConnection {
         if (Config.update_acl_based_on_groups) {
             for (let i = removed.length - 1; i >= 0; i--) {
                 const ace = removed[i];
+                if (NoderedUtil.IsNullUndefinded(ace)) continue;
                 const ot_end = Logger.otel.startTimer();
                 const arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1, _acl: 1, _type: 1 }).limit(1).toArray();
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: "users" });
                 if (arr.length === 1 && item._id != WellknownIds.admins && item._id != WellknownIds.root) {
-                    if (Config.multi_tenant && multi_tenant_skip.indexOf(item._id) > -1) {
+                    if (Config.multi_tenant && multi_tenant_skip.indexOf(item._id) > -1 && !((item as any).hidemembers == true)) {
                         // when multi tenant don't allow members of common user groups to see each other
                         Logger.instanse.info("Running in multi tenant mode, skip removing permissions for " + item.name);
                     } else if (arr[0]._type === "user") {
@@ -364,7 +372,8 @@ export class DatabaseConnection {
 
                             // was read the only right ? then remove it
                             const right = Base.getRight(u, item._id, false);
-                            if (NoderedUtil.IsNullUndefinded(right)) {
+                            if (NoderedUtil.IsNullUndefinded(right) || (!Ace.isBitSet(right, 3) && !Ace.isBitSet(right, 4) && !Ace.isBitSet(right, 5))) {
+                                Base.removeRight(u, item._id, [Rights.full_control]);
                                 u = this.ensureResource(u);
                                 Logger.instanse.debug("Removing " + item.name + " read permissions from " + u.name);
                                 const _ot_end1 = Logger.otel.startTimer();
@@ -382,7 +391,8 @@ export class DatabaseConnection {
 
                             // was read the only right ? then remove it
                             const right = Base.getRight(r, item._id, false);
-                            if (NoderedUtil.IsNullUndefinded(right)) {
+                            if (NoderedUtil.IsNullUndefinded(right) || (!Ace.isBitSet(right, 3) && !Ace.isBitSet(right, 4) && !Ace.isBitSet(right, 5))) {
+                                Base.removeRight(r, item._id, [Rights.full_control]);
                                 r = this.ensureResource(r);
                                 Logger.instanse.debug("Removing " + item.name + " read permissions from " + r.name);
                                 const _ot_end2 = Logger.otel.startTimer();

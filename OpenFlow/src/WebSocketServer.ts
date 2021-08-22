@@ -110,6 +110,7 @@ export class WebSocketServer {
                 }
                 const now = new Date();
                 const seconds = (now.getTime() - cli.lastheartbeat.getTime()) / 1000;
+                cli.lastheartbeatsec = seconds.toString();
                 if (seconds >= Config.client_heartbeat_timeout) {
                     if (cli.user != null) {
                         span.addEvent("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " timeout, close down");

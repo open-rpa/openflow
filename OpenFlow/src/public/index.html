@@ -97,9 +97,9 @@
         </div>
 
         <input type="text" class="form-control" placeholder="Search" ng-model="menuctrl.searchstring"
-          ng-change="menuctrl.Search()" id="menusearch"
-          ng-show="!menuctrl.PathIs('/Nodered') && !menuctrl.PathIs('/Payment') && !menuctrl.PathIs('/Customer')">
-        <button class="btn btn-action mr-5" type="button" ng-click="menuctrl.toggleDarkMode()"
+          ng-change="menuctrl.Search()" id="menusearch" ng-show="!menuctrl.PathIs('/Nodered') && !menuctrl.PathIs('/Payment') && !menuctrl.PathIs('/Customer')
+          && !menuctrl.PathIs('/Entity/') && !menuctrl.PathIs('/User/') && !menuctrl.PathIs('/Role/')">
+        <button class=" btn btn-action mr-5" type="button" ng-click="menuctrl.toggleDarkMode()"
           aria-label="Toggle dark mode" id="menudarkmode">
           <i class="fa fa-moon" aria-hidden="true"></i>
         </button>

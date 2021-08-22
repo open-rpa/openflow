@@ -50,10 +50,17 @@ export class WebSocketServerClient {
     public clientagent: clientType;
     public clientversion: string;
     public lastheartbeat: Date = new Date();
+    public lastheartbeatstr: string = new Date().toISOString();
+    public lastheartbeatsec: string = "0";
     public metrics: string = "";
     public id: string = "";
-    user: User;
+    public user: User;
+    public username: string;
     public _queues: amqpqueue[] = [];
+    public _queuescounter: number = 0;
+    public _queuescurrent: number = 0;
+    public _queuescounterstr: string = "0";
+    public _queuescurrentstr: string = "0";
     public _exchanges: amqpexchange[] = [];
     public devnull: boolean = false;
     public commandcounter: object = {};
@@ -188,6 +195,8 @@ export class WebSocketServerClient {
                 // await this.CloseConsumer(this._queues[i]);
                 await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i], undefined);
                 this._queues.splice(i, 1);
+                this._queuescurrent--;
+                this._queuescurrentstr = this._queuescurrent.toString();
             } catch (error) {
                 Logger.instanse.error("WebSocketclient::closeconsumers " + error);
             }
@@ -231,14 +240,19 @@ export class WebSocketServerClient {
     }
     public async CloseConsumer(queuename: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("WebSocketServerClient.CloseConsumer", parent);
+        await semaphore.down();
         try {
             var old = this._queues.length;
             for (let i = this._queues.length - 1; i >= 0; i--) {
                 const q = this._queues[i];
                 if (q && (q.queue == queuename || q.queuename == queuename)) {
                     try {
-                        await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i], span);
+                        amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i], span).catch((err) => {
+                            Logger.instanse.error("WebSocketclient::CloseConsumer::RemoveQueueConsumer " + err);
+                        });
                         this._queues.splice(i, 1);
+                        this._queuescurrent--;
+                        this._queuescurrentstr = this._queuescurrent.toString();
                         if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...Logger.otel.defaultlabels, clientid: this.id }).update(this._queues.length);
                     } catch (error) {
                         Logger.instanse.error("WebSocketclient::CloseConsumer " + error);
@@ -249,6 +263,7 @@ export class WebSocketServerClient {
             span.recordException(error);
             throw error;
         } finally {
+            semaphore.up();
             Logger.otel.endSpan(span);
         }
     }
@@ -270,7 +285,6 @@ export class WebSocketServerClient {
                     exchange = "unknown." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
                 }
             }
-            await semaphore.down();
             let exchangequeue: amqpexchange = null;
             try {
                 const AssertExchangeOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertExchangeOptions));
@@ -290,14 +304,19 @@ export class WebSocketServerClient {
                     }
                 }, span);
                 if (exchangequeue) {
+                    await semaphore.down();
                     exchange = exchangequeue.queue.queue;
                     this._exchanges.push(exchangequeue);
                     this._queues.push(exchangequeue.queue);
+                    this._queuescounter++;
+                    this._queuescurrent++;
+                    this._queuescounterstr = this._queuescounter.toString();
+                    this._queuescurrentstr = this._queuescurrent.toString();
                 }
             } catch (error) {
                 Logger.instanse.error("WebSocketclient::CreateConsumer " + error);
             }
-            semaphore.up();
+            if (exchangequeue) semaphore.up();
             if (exchangequeue != null) return { exchangename: exchangequeue.exchange, queuename: exchangequeue.queue.queue };
             return null;
         } catch (error) {
@@ -325,14 +344,20 @@ export class WebSocketServerClient {
                     qname = "unknown." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
                 }
             }
-            await semaphore.down();
-            this.CloseConsumer(qname, span);
+            await this.CloseConsumer(qname, span);
             let queue: amqpqueue = null;
             try {
                 const AssertQueueOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertQueueOptions));
                 AssertQueueOptions.exclusive = exclusive;
                 if (NoderedUtil.IsNullEmpty(queuename)) {
                     AssertQueueOptions.autoDelete = true;
+                }
+                var exists = this._queues.filter(x => x.queuename == qname || x.queue == qname);
+                if (exists.length > 0) {
+                    Logger.instanse.warn("CreateConsumer: " + qname + " already exists, removing before re-creating");
+                    for (let i = 0; i < exists.length; i++) {
+                        await amqpwrapper.Instance().RemoveQueueConsumer(exists[i], span);
+                    }
                 }
                 queue = await amqpwrapper.Instance().AddQueueConsumer(qname, AssertQueueOptions, this.jwt, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
                     const _data = msg;
@@ -351,7 +376,12 @@ export class WebSocketServerClient {
                     }
                 }, span);
                 if (queue) {
+                    await semaphore.down();
                     qname = queue.queue;
+                    this._queuescounter++;
+                    this._queuescurrent++;
+                    this._queuescounterstr = this._queuescounter.toString();
+                    this._queuescurrentstr = this._queuescurrent.toString();
                     this._queues.push(queue);
                 }
                 if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...Logger.otel.defaultlabels, clientid: this.id }).update(this._queues.length);
@@ -359,7 +389,7 @@ export class WebSocketServerClient {
                 throw error
             }
             finally {
-                semaphore.up();
+                if (queue) semaphore.up();
             }
             if (queue != null) {
                 return queue.queue;

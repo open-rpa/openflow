@@ -1,6 +1,13 @@
 <div class="row" id="title">
-  <h1 translate lib="web">auditlogs</h1>
+  <div class="col-sm">
+    <h1 translate lib="web">auditlogs</h1>
+  </div>
+  <div class="col-sm"></div>
+  <div class="col-sm text-right">
+    <i class="fas fa-cog fa-spin" ng-show="ctrl.loading==true"></i>
+  </div>
 </div>
+
 <style>
   .failed {
     border-color: red !important;

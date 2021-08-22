@@ -63,12 +63,12 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
         q = JSON.parse(msg.data);
         assert.ok(q && !q.error, q.error);
     }
-    @test async 'signin with username and password'() {
-        var q = new SigninMessage(); q.username = "testuser"; q.password = "testuser"
-        var msg = new Message();
-        await msg.Signin(null, null);
-        q = JSON.parse(msg.data);
-        assert.ok(q && !q.error, q.error);
-    }
+    // @test async 'signin with username and password'() {
+    //     var q = new SigninMessage(); q.username = "testuser"; q.password = "testuser"
+    //     var msg = new Message();
+    //     await msg.Signin(null, null);
+    //     q = JSON.parse(msg.data);
+    //     assert.ok(q && !q.error, q.error);
+    // }
 }
 // cls | ./node_modules/.bin/_mocha 'test/**/Message.test.ts'

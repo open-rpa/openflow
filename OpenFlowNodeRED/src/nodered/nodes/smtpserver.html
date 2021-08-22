@@ -7,6 +7,10 @@
         <label for="node-input-email"><i class="fa fa-tag"></i> Email</label>
         <input type="text" id="node-input-email" placeholder="Name">
     </div>
+    <div class="form-row">
+        <label for="node-input-port"><i class="fa fa-tag"></i> Port</label>
+        <input type="text" id="node-input-port" placeholder="Port ">
+    </div>
 </script>
 <script type="text/x-red" data-help-name="smtpserver in">
    <p>Receive emails directly from outside world on port 25s</p>
@@ -19,6 +23,7 @@
         icon: "font-awesome/fa-envelope",
         defaults: {
             name: { value: "", required: false },
+            port: { value: "3025", required: true },
             email: { value: 'allan@app.openiap.io', required: true }
         },
         inputs: 0,

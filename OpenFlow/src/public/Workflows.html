@@ -2,6 +2,15 @@
   <h1 translate lib="web">workflows</h1>
   <p class="col-md-5 lead"></p>
 </div>
+<div class="row">
+  <div class="col-sm">
+    Start an instance of one of these workflow
+  </div>
+  <div class="col-sm"></div>
+  <div class="col-sm text-right">
+    <i class="fas fa-cog fa-spin" ng-show="ctrl.loading==true"></i>
+  </div>
+</div>
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <div class="row">
   <table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;">

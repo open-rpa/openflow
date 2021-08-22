@@ -212,6 +212,10 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(this.command)) { this.command = this.command.toLowerCase(); }
             let command: string = this.command;
             cli.lastheartbeat = new Date();
+            cli.lastheartbeatstr = new Date().toISOString();
+            const now = new Date();
+            const seconds = (now.getTime() - cli.lastheartbeat.getTime()) / 1000;
+            cli.lastheartbeatsec = seconds.toString();
             if (command == "ping" || command == "pong") {
                 if (command == "ping") this.Ping(cli);
                 return;
@@ -677,6 +681,8 @@ export class Message {
                 const sendthis = msg.data;
                 await amqpwrapper.Instance().sendWithReplyTo(msg.exchange, msg.queuename, msg.replyto, sendthis, expiration, msg.correlationId, msg.routingkey);
             }
+            // delete msg.data;
+            // delete msg.jwt;
         } catch (error) {
             await handleError(cli, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -697,6 +703,7 @@ export class Message {
         try {
             msg = CloseQueueMessage.assign(this.data);
             await cli.CloseConsumer(msg.queuename, parent);
+            delete msg.jwt;
         } catch (error) {
             await handleError(cli, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -786,6 +793,7 @@ export class Message {
             } else {
                 var b = true;
             }
+            delete msg.jwt;
         } catch (error) {
             span.recordException(error);
             await handleError(null, error);
@@ -809,6 +817,7 @@ export class Message {
             msg = DropCollectionMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             await Config.db.DropCollection(msg.collectionname, msg.jwt, span);
+            delete msg.jwt;
         } catch (error) {
             span.recordException(error);
             await handleError(null, error);
@@ -837,6 +846,8 @@ export class Message {
             } else {
                 msg.result = await Config.db.query(msg.query, msg.projection, msg.top, msg.skip, msg.orderby, msg.collectionname, msg.jwt, msg.queryas, msg.hint, span);
             }
+            delete msg.query;
+            delete msg.jwt;
         } catch (error) {
             await handleError(null, error);
             span.recordException(error)
@@ -864,6 +875,7 @@ export class Message {
             } else {
                 msg.result = await Config.db.GetDocumentVersion(msg.collectionname, msg._id, msg.version, msg.jwt, span);
             }
+            delete msg.jwt;
         } catch (error) {
             await handleError(null, error);
             span.recordException(error)
@@ -888,6 +900,8 @@ export class Message {
             msg = AggregateMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             msg.result = await Config.db.aggregate(msg.aggregates, msg.collectionname, msg.jwt, msg.hint, span);
+            delete msg.aggregates;
+            delete msg.jwt;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -913,6 +927,7 @@ export class Message {
                 msg.error = "Watch is not supported by this openflow";
             }
             msg.result = null;
+            delete msg.jwt;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -938,6 +953,7 @@ export class Message {
                 msg.error = "Watch is not supported by this openflow";
             }
             msg.result = null;
+            delete msg.jwt;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -964,6 +980,8 @@ export class Message {
                 throw new Error("jwt is null and client is not authenticated");
             }
             msg.result = await Config.db.InsertOne(msg.item, msg.collectionname, msg.w, msg.j, msg.jwt, span);
+            delete msg.item;
+            delete msg.jwt;
         } catch (error) {
             span.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -993,6 +1011,8 @@ export class Message {
             }
             msg.results = await Config.db.InsertMany(msg.items, msg.collectionname, msg.w, msg.j, msg.jwt, span);
             if (msg.skipresults) msg.results = [];
+            delete msg.items;
+            delete msg.jwt;
         } catch (error) {
             span.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -1019,6 +1039,8 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
             var tempres = await Config.db.UpdateOne(msg, span);
             msg = tempres;
+            delete msg.item;
+            delete msg.jwt;
         } catch (error) {
             span.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -1045,6 +1067,8 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
             if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
             msg = await Config.db.UpdateMany(msg, span);
+            delete msg.item;
+            delete msg.jwt;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -1075,6 +1099,8 @@ export class Message {
                 }
             }
             msg = await Config.db.InsertOrUpdateOne(msg, parent);
+            delete msg.item;
+            delete msg.jwt;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (error) if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -1096,6 +1122,7 @@ export class Message {
             msg = DeleteOneMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             await Config.db.DeleteOne(msg._id, msg.collectionname, msg.jwt, span);
+            delete msg.jwt;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -1117,6 +1144,8 @@ export class Message {
             msg = DeleteManyMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             msg.affectedrows = await Config.db.DeleteMany(msg.query, msg.ids, msg.collectionname, msg.jwt, span);
+            delete msg.ids;
+            delete msg.jwt;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -1137,6 +1166,10 @@ export class Message {
             msg = MapReduceMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             msg.result = await Config.db.MapReduce(msg.map, msg.reduce, msg.finalize, msg.query, msg.out, msg.collectionname, msg.scope, msg.jwt);
+            delete msg.map;
+            delete msg.reduce;
+            delete msg.finalize;
+            delete msg.jwt;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -1158,11 +1191,13 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(rawAssertion)) {
                 type = "samltoken";
                 cli.user = await LoginProvider.validateToken(rawAssertion, span);
+                if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
                 tuser = TokenUser.From(cli.user);
             } else if (!NoderedUtil.IsNullEmpty(cli.jwt)) {
                 tuser = Crypt.verityToken(cli.jwt);
                 const impostor: string = tuser.impostor;
                 cli.user = await DBHelper.FindById(cli.user._id, undefined, span);
+                if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
                 tuser = TokenUser.From(cli.user);
                 tuser.impostor = impostor;
             }
@@ -1251,8 +1286,8 @@ export class Message {
                         user = await LoginProvider.validateToken(msg.rawAssertion, span);
                         // refresh, for roles and stuff
                         if (user !== null && user != undefined) { tuser = TokenUser.From(user); }
-                        msg.rawAssertion = "";
                     }
+                    delete msg.rawAssertion;
                 } else {
                     user = await Auth.ValidateByPassword(msg.username, msg.password, span);
                     tuser = null;
@@ -1378,6 +1413,7 @@ export class Message {
                         Logger.instanse.debug(tuser.username + " signed in using " + type + " " + cli.id + "/" + cli.clientagent);
                         cli.jwt = msg.jwt;
                         cli.user = user;
+                        if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
                     } else {
                         Logger.instanse.debug(tuser.username + " was validated in using " + type);
                     }
@@ -2842,6 +2878,7 @@ export class Message {
         }
         try {
             delete msg.file;
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -2894,6 +2931,7 @@ export class Message {
                 throw new Error("id or filename is mandatory");
             }
             msg.file = await this._GetFile(msg.id);
+            delete msg.jwt;
         } catch (error) {
             span.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -2964,6 +3002,8 @@ export class Message {
             const fsc = Config.db.db.collection("fs.files");
             DatabaseConnection.traversejsonencode(msg.metadata);
             const res = await fsc.updateOne(q, { $set: { metadata: msg.metadata } });
+            delete msg.metadata;
+            delete msg.jwt;
 
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -3128,23 +3168,25 @@ export class Message {
                 (user == null && usage.product.customerassign == "metered")) {
                 delete payload.quantity;
             }
-            if (!NoderedUtil.IsNullEmpty(usage.siid)) {
-                if (payload.quantity == 0) {
-                    var sub = await this.Stripe<stripe_subscription>("GET", "subscriptions", usage.subid, null, customer.stripeid);
-                    if (sub.items.total_count < 2) {
-                        const res = await this.Stripe("DELETE", "subscriptions", usage.subid, null, customer.stripeid);
-                        if (customer.subscriptionid == usage.subid) {
-                            const UpdateDoc: any = { "$set": {} };
-                            UpdateDoc.$set["subscriptionid"] = null;
-                            await Config.db.db.collection("users").updateMany({ "_id": customer._id }, UpdateDoc);
+            if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
+                if (!NoderedUtil.IsNullEmpty(usage.siid)) {
+                    if (payload.quantity == 0) {
+                        var sub = await this.Stripe<stripe_subscription>("GET", "subscriptions", usage.subid, null, customer.stripeid);
+                        if (sub.items.total_count < 2) {
+                            const res = await this.Stripe("DELETE", "subscriptions", usage.subid, null, customer.stripeid);
+                            if (customer.subscriptionid == usage.subid) {
+                                const UpdateDoc: any = { "$set": {} };
+                                UpdateDoc.$set["subscriptionid"] = null;
+                                await Config.db.db.collection("users").updateMany({ "_id": customer._id }, UpdateDoc);
+                            }
+                        } else {
+                            const res = await this.Stripe("DELETE", "subscription_items", usage.siid, payload, customer.stripeid);
                         }
                     } else {
-                        const res = await this.Stripe("DELETE", "subscription_items", usage.siid, payload, customer.stripeid);
+                        const res = await this.Stripe("POST", "subscription_items", usage.siid, payload, customer.stripeid);
                     }
-
-                } else {
-                    const res = await this.Stripe("POST", "subscription_items", usage.siid, payload, customer.stripeid);
                 }
+            } else {
             }
 
             usage.quantity -= quantity;
@@ -3204,7 +3246,13 @@ export class Message {
             let payload: any = {};
             const customer: Customer = await Config.db.getbyid(msg.customerid, "users", msg.jwt, span);
             if (NoderedUtil.IsNullUndefinded(customer)) throw new Error("Unknown customer or Access Denied");
+            if (NoderedUtil.IsNullEmpty(customer.stripeid) && NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
+                this.Send(cli);
+                return;
+                // throw new Error("Customer has no billing information, please update with vattype and vatnumber");
+            }
             if (NoderedUtil.IsNullEmpty(customer.stripeid)) throw new Error("Customer has no billing information, please update with vattype and vatnumber");
+
 
             const user = Crypt.verityToken(cli.jwt);
             if (!user.HasRoleName(customer.name + " admins") && !user.HasRoleName("admins")) {
@@ -3486,7 +3534,7 @@ export class Message {
                 filter = total_usage.filter(x => x.product.stripeprice == stripeprice && x.userid == user._id);
                 if (filter.length > 0) usage = filter[0];
             }
-            if (total_usage.length > 0) {
+            if (total_usage.length > 0 && !NoderedUtil.IsNullEmpty(total_usage[0].subid)) {
                 usage.subid = total_usage[0].subid;
             }
             if (!Config.stripe_force_checkout) {
@@ -3498,7 +3546,7 @@ export class Message {
             }
 
             // Backward compatability and/or pick up after deleting customer object 
-            if (NoderedUtil.IsNullEmpty(usage.siid)) {
+            if (NoderedUtil.IsNullEmpty(usage.siid) && !NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
                 const stripecustomer = await this.Stripe<stripe_customer>("GET", "customers", customer.stripeid, null, null);
                 if (stripecustomer == null) throw new Error("Failed locating stripe customer " + customer.stripeid);
                 for (let sub of stripecustomer.subscriptions.data) {
@@ -3538,15 +3586,23 @@ export class Message {
                 if (NoderedUtil.IsNullEmpty(customer.country)) customer.country = "";
                 customer.country = customer.country.toUpperCase();
                 if (NoderedUtil.IsNullEmpty(customer.vattype) || NoderedUtil.IsNullEmpty(customer.vattype) || customer.country == "DK") {
-                    const tax_ids = await this.Stripe<stripe_list<any>>("GET", "tax_rates", null, null, null);
-                    if (tax_ids && tax_ids.data && tax_ids.data.length > 0) {
-                        tax_rates = tax_ids.data.filter(x => x.active && x.country == customer.country).map(x => x.id);
+                    if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
+                        const tax_ids = await this.Stripe<stripe_list<any>>("GET", "tax_rates", null, null, null);
+                        if (tax_ids && tax_ids.data && tax_ids.data.length > 0) {
+                            tax_rates = tax_ids.data.filter(x => x.active && x.country == customer.country).map(x => x.id);
+                        }
                     }
                 }
 
                 // https://stripe.com/docs/payments/checkout/taxes
                 Base.addRight(usage, customer.admins, customer.name + " admin", [Rights.read]);
                 if (NoderedUtil.IsNullEmpty(customer.subscriptionid) || Config.stripe_force_checkout) {
+                    if (NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
+                        // Create fake subscription id
+                        usage.siid = NoderedUtil.GetUniqueIdentifier();
+                        usage.subid = NoderedUtil.GetUniqueIdentifier();
+                    }
+
                     if (NoderedUtil.IsNullEmpty(usage._id)) {
                         const res = await Config.db.InsertOne(usage, "config", 1, false, rootjwt, span);
                         usage._id = res._id;
@@ -3582,7 +3638,13 @@ export class Message {
                             }
                             payload.line_items.push(line_item);
                         }
-                        checkout = await this.Stripe("POST", "checkout.sessions", null, payload, null);
+                        if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
+                            checkout = await this.Stripe("POST", "checkout.sessions", null, payload, null);
+                        } else {
+                            // Create fake subscription id
+                            usage.siid = NoderedUtil.GetUniqueIdentifier();
+                        }
+
                     }
                 } else {
                     const siid: string = usage.siid;
@@ -3608,7 +3670,9 @@ export class Message {
                 if ((resource.target == "user" && product.userassign != "metered") ||
                     (resource.target == "customer" && product.customerassign != "metered")) {
                     payload.quantity = _quantity
-                    const res = await this.Stripe("POST", "subscription_items", usage.siid, payload, customer.stripeid);
+                    if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
+                        const res = await this.Stripe("POST", "subscription_items", usage.siid, payload, customer.stripeid);
+                    }
                 }
 
                 await Config.db._UpdateOne(null, usage, "config", 1, false, rootjwt, span);
@@ -3623,7 +3687,6 @@ export class Message {
                 UpdateDoc.$set["dblocked"] = false;
                 await Config.db.db.collection("users").updateMany({ "_type": "user", "customerid": customer._id }, UpdateDoc);
             }
-
 
             return [customer, checkout];
         } catch (error) {
@@ -4021,6 +4084,7 @@ export class Message {
             if (msg.customer._id == cli.user.customerid) {
                 cli.user.selectedcustomerid = msg.customer._id;
                 cli.user = await DBHelper.DecorateWithRoles(cli.user, span);
+                if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
                 cli.user.roles.push(new Rolemember(customerusers.name, customerusers._id));
                 cli.user.roles.push(new Rolemember(customeradmins.name, customeradmins._id));
                 await this.ReloadUserToken(cli, span);
@@ -4069,6 +4133,7 @@ export class Message {
         Auth.RemoveUser(cli.user._id, "passport");
         cli.user = await DBHelper.DecorateWithRoles(cli.user, parent);
         cli.jwt = Crypt.createToken(cli.user, Config.shorttoken_expires_in);
+        if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
         l.jwt = cli.jwt;
         l.user = TokenUser.From(cli.user);
         const m: Message = new Message(); m.command = "refreshtoken";
