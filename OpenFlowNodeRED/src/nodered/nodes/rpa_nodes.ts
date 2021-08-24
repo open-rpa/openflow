@@ -260,6 +260,9 @@ export class rpa_workflow_node {
             let priority: number = 1;
             if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
             if (queue == "none") queue = "";
+            if (queue == "from msg.targetid") queue = "";
+            if (workflowid == "none") workflowid = "";
+            if (workflowid == "from msg.workflowid") workflowid = "";
             if (NoderedUtil.IsNullEmpty(queue) && !NoderedUtil.IsNullEmpty(msg.targetid)) { queue = msg.targetid; }
             if (NoderedUtil.IsNullEmpty(workflowid) && !NoderedUtil.IsNullEmpty(msg.workflowid)) { workflowid = msg.workflowid; }
 
