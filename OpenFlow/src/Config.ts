@@ -244,6 +244,7 @@ export class Config {
     public static port: number = parseInt(Config.getEnv("port", "3000"));
     public static domain: string = Config.getEnv("domain", "localhost"); // sent to website and used in baseurl()
     public static cookie_secret: string = Config.getEnv("cookie_secret", "NLgUIsozJaxO38ze0WuHthfj2eb1eIEu"); // Used to protect cookies
+    public static max_ace_count: number = parseInt(Config.getEnv("max_ace_count", "128"), 10);
 
     public static amqp_reply_expiration: number = parseInt(Config.getEnv("amqp_reply_expiration", (60 * 1000).toString())); // 1 min
     public static amqp_force_queue_prefix: boolean = Config.parseBoolean(Config.getEnv("amqp_force_queue_prefix", "false"));

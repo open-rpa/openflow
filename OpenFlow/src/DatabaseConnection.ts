@@ -226,6 +226,11 @@ export class DatabaseConnection {
     async CleanACL<T extends Base>(item: T, user: TokenUser, parent: Span): Promise<T> {
         const span: Span = Logger.otel.startSubSpan("db.CleanACL", parent);
         try {
+            if (item._acl.length > Config.max_ace_count) {
+                // remove excesive acls
+                const newacl = item._acl.slice(0, Config.max_ace_count);
+                item._acl = newacl;
+            }
             for (let i = item._acl.length - 1; i >= 0; i--) {
                 {
                     const ace = item._acl[i];
