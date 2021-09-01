@@ -2,6 +2,8 @@ version: "3.3"
 services:
   mongodb:
     image: "mongo"
+    # if you get MongoDB 5.0+ require a CPU with AVX support, then try using version 4 instead
+    # image: "mongo:4.4.8"
     restart: always
     volumes:
       - mongodb_data:/data/db

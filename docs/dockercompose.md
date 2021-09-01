@@ -36,14 +36,41 @@ For more complex setups where you don't have public IP or just need access to wi
 
 [docker-compose.yml](https://github.com/open-rpa/openflow/blob/master/docker-compose.yml) is for developers who don't want to install [mongoDB](https://www.mongodb.com/download-center/community)/[RabbitMQ](https://www.rabbitmq.com/download.html) or an easy way to run one instance while debugging the other.
 
-
 In this video the whole process is showed on ubuntu 18 
 [![Ubuntu 18 npm install](https://img.youtube.com/vi/YdH3h3iAu-Y/1.jpg)](https://youtu.be/YdH3h3iAu-Y)
 
 
 
+Troubleshooting tip.
+
+If something is not working, make sure all instances are running, if on windows client simply open the docker UI and expand the project. for everyone else you can use 
+
+```bash
+docker-compose -f docker-compose-traefik.yml -p demo ps
+```
+
+and make sure all is running
+
+![image-20210901130019482](docker-running-instances.png)
+
+If one is not running, check the logs by specifying the service name ( SERVICE table ) for instance to watch web logs
+
+```bash
+docker-compose -f docker-compose-traefik.yml -p demo logs web
+```
+
+If you want to watch the logs lice you can add the follow flag
+
+```bash
+docker-compose -f docker-compose-traefik.yml -p demo logs web -f
+```
+
+1) Its a know issue rabbitmq can take a bit long to startup on docker desktop that will make the web instances restart a few times until rabbitmq is responding. 
+2) It's a know issue that with mongodb 5 you need to be running on a processor that supports AVX and have an updated docker installation. A work around can be to specify you want to use mongodb 4 instead 
+
+![image-20210901130702714](docker-mongodb-version-4.png)
+
 For questions or help, feel free to join the community on the [forum](https://bb.openiap.io) or [rocket chat](https://rocket.openiap.io).
 
 For help with running on [kubernetes](kubernetes) or self hosting, feel free to contact [OpenIAP](https://openiap.io/) for a commercial support options.
-
 
