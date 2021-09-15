@@ -13,7 +13,7 @@ const Response = OAuthServer.Response;
 export class OAuthProvider {
     private app: express.Express;
     public static instance: OAuthProvider = null;
-    private clients = [];
+    public clients = [];
     private codes = {};
     public oauthServer: any = null;
     private authorizationCodeStore: any = {};

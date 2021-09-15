@@ -1398,8 +1398,8 @@ export class RPAWorkflowsCtrl extends entitiesCtrl<Base> {
     }
     download(data, filename, type) {
         const file = new Blob([data], { type: type });
-        if (window.navigator.msSaveOrOpenBlob) // IE10+
-            window.navigator.msSaveOrOpenBlob(file, filename);
+        if ((window.navigator as any).msSaveOrOpenBlob) // IE10+
+            (window.navigator as any).msSaveOrOpenBlob(file, filename);
         else { // Others
             const a = document.createElement("a"),
                 url = URL.createObjectURL(file);

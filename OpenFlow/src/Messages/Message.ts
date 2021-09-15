@@ -1256,6 +1256,20 @@ export class Message {
                         AccessToken = await OAuthProvider.instance.oidc.AccessToken.find(msg.rawAssertion);
                         if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
                             User = await OAuthProvider.instance.oidc.Account.findAccount(null, AccessToken.accountId);
+                        } else {
+                            var c = OAuthProvider.instance.clients;
+                            for (var i = 0; i < OAuthProvider.instance.clients.length; i++) {
+                                try {
+                                    var _cli = await OAuthProvider.instance.oidc.Client.find(OAuthProvider.instance.clients[i].clientId);;
+                                    AccessToken = await OAuthProvider.instance.oidc.IdToken.validate(msg.rawAssertion, _cli);
+                                    if (!NoderedUtil.IsNullEmpty(AccessToken)) {
+                                        User = await OAuthProvider.instance.oidc.Account.findAccount(null, AccessToken.payload.sub);
+                                        break;
+                                    }
+                                } catch (error) {
+
+                                }
+                            }
                         }
                     } catch (error) {
                         console.error(error);
