@@ -105,7 +105,6 @@ export class noderedcontribauthsaml {
         if (roles !== undefined) {
             if (roles.indexOf("nodered_users") !== -1 || roles.indexOf("nodered users") !== -1) { profile.permissions = "read"; }
             if (roles.indexOf("nodered_admins") !== -1 || roles.indexOf("nodered admins") !== -1) { profile.permissions = "*"; }
-            logger.verbose("[auth] User roles: " + roles);
         } else {
             logger.error("[auth] User has no roles");
         }

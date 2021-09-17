@@ -1398,8 +1398,8 @@ export class RPAWorkflowsCtrl extends entitiesCtrl<Base> {
     }
     download(data, filename, type) {
         const file = new Blob([data], { type: type });
-        if (window.navigator.msSaveOrOpenBlob) // IE10+
-            window.navigator.msSaveOrOpenBlob(file, filename);
+        if ((window.navigator as any).msSaveOrOpenBlob) // IE10+
+            (window.navigator as any).msSaveOrOpenBlob(file, filename);
         else { // Others
             const a = document.createElement("a"),
                 url = URL.createObjectURL(file);
@@ -2880,6 +2880,7 @@ export class FilesCtrl extends entitiesCtrl<Base> {
 }
 export class EntitiesCtrl extends entitiesCtrl<Base> {
     public collections: any;
+    public showrunning: boolean = false;
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -2904,6 +2905,7 @@ export class EntitiesCtrl extends entitiesCtrl<Base> {
             this.orderby = this.userdata.data.EntitiesCtrl.orderby;
             this.searchstring = this.userdata.data.EntitiesCtrl.searchstring;
             this.basequeryas = this.userdata.data.EntitiesCtrl.basequeryas;
+            this.showrunning = this.userdata.data.EntitiesCtrl.showrunning;
         } else {
             if (NoderedUtil.IsNullEmpty(this.collection)) {
                 this.$location.path("/Entities/entities");
@@ -2922,6 +2924,13 @@ export class EntitiesCtrl extends entitiesCtrl<Base> {
             return;
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        this.preloadData = () => {
+            if (this.showrunning) {
+                this.basequery = { "state": { "$in": ["idle", "running"] } };
+            } else {
+                this.basequery = {};
+            }
+        };
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
             try {
                 if (this.collection == "audit") {
@@ -2946,6 +2955,7 @@ export class EntitiesCtrl extends entitiesCtrl<Base> {
         this.userdata.data.EntitiesCtrl.orderby = this.orderby;
         this.userdata.data.EntitiesCtrl.searchstring = this.searchstring;
         this.userdata.data.EntitiesCtrl.basequeryas = this.basequeryas;
+        this.userdata.data.EntitiesCtrl.showrunning = this.showrunning;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     SelectCollection() {

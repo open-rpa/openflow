@@ -48,7 +48,6 @@ export class workflow_in_node {
     }
     async connect() {
         try {
-            Logger.instanse.info("track::workflow in::connect");
             if (this.config.queue == null || this.config.queue == "") {
                 this.node.status({ fill: "red", shape: "dot", text: "Missing queue name" });
                 return;
@@ -72,7 +71,6 @@ export class workflow_in_node {
     async init() {
         let name = this.config.name;
 
-        Logger.instanse.info("track::workflow in::init");
         if (NoderedUtil.IsNullEmpty(name)) {
             name = this.config.queue;
         }
@@ -498,7 +496,6 @@ export class assign_workflow_node {
         this.node = this;
         this.name = config.name;
         this.node.status({});
-        Logger.instanse.info("track::assign workflow in::constructor");
         if (this.config == null || this.config.queue == null || this.config.queue == "") {
             this.node.status({ fill: "red", shape: "dot", text: "Missing queue name" });
             return;
@@ -524,7 +521,6 @@ export class assign_workflow_node {
     async connect() {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
-            Logger.instanse.info("track::assign workflow in::connect");
             this.localqueue = this.config.queue;
             this.localqueue = await NoderedUtil.RegisterQueue(WebSocketClient.instance, this.localqueue, (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);

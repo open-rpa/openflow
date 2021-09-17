@@ -681,8 +681,6 @@ export class Message {
                 const sendthis = msg.data;
                 await amqpwrapper.Instance().sendWithReplyTo(msg.exchange, msg.queuename, msg.replyto, sendthis, expiration, msg.correlationId, msg.routingkey);
             }
-            // delete msg.data;
-            // delete msg.jwt;
         } catch (error) {
             await handleError(cli, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -703,7 +701,6 @@ export class Message {
         try {
             msg = CloseQueueMessage.assign(this.data);
             await cli.CloseConsumer(msg.queuename, parent);
-            delete msg.jwt;
         } catch (error) {
             await handleError(cli, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -793,7 +790,6 @@ export class Message {
             } else {
                 var b = true;
             }
-            delete msg.jwt;
         } catch (error) {
             span.recordException(error);
             await handleError(null, error);
@@ -817,7 +813,6 @@ export class Message {
             msg = DropCollectionMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             await Config.db.DropCollection(msg.collectionname, msg.jwt, span);
-            delete msg.jwt;
         } catch (error) {
             span.recordException(error);
             await handleError(null, error);
@@ -847,7 +842,6 @@ export class Message {
                 msg.result = await Config.db.query(msg.query, msg.projection, msg.top, msg.skip, msg.orderby, msg.collectionname, msg.jwt, msg.queryas, msg.hint, span);
             }
             delete msg.query;
-            delete msg.jwt;
         } catch (error) {
             await handleError(null, error);
             span.recordException(error)
@@ -875,7 +869,6 @@ export class Message {
             } else {
                 msg.result = await Config.db.GetDocumentVersion(msg.collectionname, msg._id, msg.version, msg.jwt, span);
             }
-            delete msg.jwt;
         } catch (error) {
             await handleError(null, error);
             span.recordException(error)
@@ -901,7 +894,6 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             msg.result = await Config.db.aggregate(msg.aggregates, msg.collectionname, msg.jwt, msg.hint, span);
             delete msg.aggregates;
-            delete msg.jwt;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -927,7 +919,6 @@ export class Message {
                 msg.error = "Watch is not supported by this openflow";
             }
             msg.result = null;
-            delete msg.jwt;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -953,7 +944,6 @@ export class Message {
                 msg.error = "Watch is not supported by this openflow";
             }
             msg.result = null;
-            delete msg.jwt;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -981,7 +971,6 @@ export class Message {
             }
             msg.result = await Config.db.InsertOne(msg.item, msg.collectionname, msg.w, msg.j, msg.jwt, span);
             delete msg.item;
-            delete msg.jwt;
         } catch (error) {
             span.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -1012,7 +1001,6 @@ export class Message {
             msg.results = await Config.db.InsertMany(msg.items, msg.collectionname, msg.w, msg.j, msg.jwt, span);
             if (msg.skipresults) msg.results = [];
             delete msg.items;
-            delete msg.jwt;
         } catch (error) {
             span.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -1040,7 +1028,6 @@ export class Message {
             var tempres = await Config.db.UpdateOne(msg, span);
             msg = tempres;
             delete msg.item;
-            delete msg.jwt;
         } catch (error) {
             span.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -1068,7 +1055,6 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
             msg = await Config.db.UpdateMany(msg, span);
             delete msg.item;
-            delete msg.jwt;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -1100,7 +1086,6 @@ export class Message {
             }
             msg = await Config.db.InsertOrUpdateOne(msg, parent);
             delete msg.item;
-            delete msg.jwt;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (error) if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -1122,7 +1107,6 @@ export class Message {
             msg = DeleteOneMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             await Config.db.DeleteOne(msg._id, msg.collectionname, msg.jwt, span);
-            delete msg.jwt;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -1145,7 +1129,6 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             msg.affectedrows = await Config.db.DeleteMany(msg.query, msg.ids, msg.collectionname, msg.jwt, span);
             delete msg.ids;
-            delete msg.jwt;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -1169,7 +1152,6 @@ export class Message {
             delete msg.map;
             delete msg.reduce;
             delete msg.finalize;
-            delete msg.jwt;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -1274,6 +1256,20 @@ export class Message {
                         AccessToken = await OAuthProvider.instance.oidc.AccessToken.find(msg.rawAssertion);
                         if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
                             User = await OAuthProvider.instance.oidc.Account.findAccount(null, AccessToken.accountId);
+                        } else {
+                            var c = OAuthProvider.instance.clients;
+                            for (var i = 0; i < OAuthProvider.instance.clients.length; i++) {
+                                try {
+                                    var _cli = await OAuthProvider.instance.oidc.Client.find(OAuthProvider.instance.clients[i].clientId);;
+                                    AccessToken = await OAuthProvider.instance.oidc.IdToken.validate(msg.rawAssertion, _cli);
+                                    if (!NoderedUtil.IsNullEmpty(AccessToken)) {
+                                        User = await OAuthProvider.instance.oidc.Account.findAccount(null, AccessToken.payload.sub);
+                                        break;
+                                    }
+                                } catch (error) {
+
+                                }
+                            }
                         }
                     } catch (error) {
                         console.error(error);
@@ -2878,7 +2874,6 @@ export class Message {
         }
         try {
             delete msg.file;
-            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -2931,7 +2926,6 @@ export class Message {
                 throw new Error("id or filename is mandatory");
             }
             msg.file = await this._GetFile(msg.id);
-            delete msg.jwt;
         } catch (error) {
             span.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -3003,7 +2997,6 @@ export class Message {
             DatabaseConnection.traversejsonencode(msg.metadata);
             const res = await fsc.updateOne(q, { $set: { metadata: msg.metadata } });
             delete msg.metadata;
-            delete msg.jwt;
 
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }

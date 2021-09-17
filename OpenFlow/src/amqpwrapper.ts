@@ -337,9 +337,8 @@ export class amqpwrapper extends events.EventEmitter {
             q.QueueOptions = Object.assign({}, (QueueOptions != null ? QueueOptions : this.AssertQueueOptions));
             if (NoderedUtil.IsNullEmpty(queue)) queue = "";
             if (queue.startsWith("amq.")) queue = "";
-            // if (NoderedUtil.IsNullEmpty(queue)) q.QueueOptions.autoDelete = true;
-            if (NoderedUtil.IsNullEmpty(queue)) q.QueueOptions.exclusive = true;
-            // if (NoderedUtil.IsNullEmpty(queue)) q.QueueOptions.autoDelete = true;
+            // if (NoderedUtil.IsNullEmpty(queue)) q.QueueOptions.exclusive = true;
+            if (NoderedUtil.IsNullEmpty(queue)) q.QueueOptions.autoDelete = true;
             q.ok = await this.channel.assertQueue(queue, q.QueueOptions);
             if (q && q.ok) {
                 this.queues.push(q);
