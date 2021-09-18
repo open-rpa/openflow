@@ -193,7 +193,6 @@ export class rpa_workflow_node {
             let command = data.command;
             if (command == undefined && data.data != null && data.data.command != null) { command = data.data.command; }
             if (correlationId != null && rpa_workflow_node.messages[correlationId] != null) {
-                // result = Object.assign({}, this.messages[correlationId]);
                 result = rpa_workflow_node.messages[correlationId];
                 if (command == "invokecompleted" || command == "invokefailed" || command == "invokeaborted" || command == "error" || command == "timeout") {
                     delete rpa_workflow_node.messages[correlationId];
@@ -206,7 +205,7 @@ export class rpa_workflow_node {
             if (command == "completed") {
                 result.payload = data.payload;
                 if (data.user != null) result.user = data.user;
-                if (data.jwt != null) result.jwt = data.jwt;
+                if (data.jwt != null && NoderedUtil.IsNullUndefinded(result.jwt)) result.jwt = data.jwt;
                 if (result.payload == null || result.payload == undefined) { result.payload = {}; }
                 this.node.status({ fill: "green", shape: "dot", text: command + "  " + this.localqueue });
                 result.id = correlationId;
@@ -222,7 +221,7 @@ export class rpa_workflow_node {
                     result.error = result.error.Message;
                 }
                 if (data.user != null) result.user = data.user;
-                if (data.jwt != null) result.jwt = data.jwt;
+                if (data.jwt != null && NoderedUtil.IsNullUndefinded(result.jwt)) result.jwt = data.jwt;
                 if (result.payload == null || result.payload == undefined) { result.payload = {}; }
                 this.node.status({ fill: "red", shape: "dot", text: command + "  " + this.localqueue });
                 result.id = correlationId;
@@ -232,7 +231,7 @@ export class rpa_workflow_node {
                 this.node.status({ fill: "blue", shape: "dot", text: command + "  " + this.localqueue });
                 result.payload = data.payload;
                 if (data.user != null) result.user = data.user;
-                if (data.jwt != null) result.jwt = data.jwt;
+                if (data.jwt != null && NoderedUtil.IsNullUndefinded(result.jwt)) result.jwt = data.jwt;
                 if (result.payload == null || result.payload == undefined) { result.payload = {}; }
                 result.id = correlationId;
                 this.node.send([null, result]);
@@ -422,7 +421,7 @@ export class rpa_killworkflows_node {
             if (command == "killallworkflowssuccess") {
                 // result.payload = data.payload;
                 if (data.user != null) result.user = data.user;
-                if (data.jwt != null) result.jwt = data.jwt;
+                if (data.jwt != null && NoderedUtil.IsNullUndefinded(result.jwt)) result.jwt = data.jwt;
                 if (result.payload == null || result.payload == undefined) { result.payload = {}; }
                 this.node.status({ fill: "green", shape: "dot", text: "killed " + this.localqueue });
                 result.id = correlationId;
@@ -438,7 +437,7 @@ export class rpa_killworkflows_node {
                     result.error = result.error.Message;
                 }
                 if (data.user != null) result.user = data.user;
-                if (data.jwt != null) result.jwt = data.jwt;
+                if (data.jwt != null && NoderedUtil.IsNullUndefinded(result.jwt)) result.jwt = data.jwt;
                 if (result.payload == null || result.payload == undefined) { result.payload = {}; }
                 this.node.status({ fill: "red", shape: "dot", text: command + "  " + this.localqueue });
                 result.id = correlationId;
@@ -448,7 +447,7 @@ export class rpa_killworkflows_node {
                 this.node.status({ fill: "blue", shape: "dot", text: "Unknown command " + command + "  " + this.localqueue });
                 result.payload = data.payload;
                 if (data.user != null) result.user = data.user;
-                if (data.jwt != null) result.jwt = data.jwt;
+                if (data.jwt != null && NoderedUtil.IsNullUndefinded(result.jwt)) result.jwt = data.jwt;
                 if (result.payload == null || result.payload == undefined) { result.payload = {}; }
                 result.id = correlationId;
                 this.node.send([null, result]);
