@@ -2030,6 +2030,10 @@ export class DatabaseConnection {
                 throw new Error("DeleteMany needs either a list of ids or a query");
             }
 
+            const _skip_array: string[] = Config.skip_history_collections.split(",");
+            const skip_array: string[] = [];
+            _skip_array.forEach(x => skip_array.push(x.trim()));
+
             if (collectionname === "files") { collectionname = "fs.files"; }
             if (collectionname === "fs.files") {
                 const ot_end = Logger.otel.startTimer();
@@ -2083,7 +2087,9 @@ export class DatabaseConnection {
                         _version: doc._version,
                         reason: doc.reason
                     }
-                    bulkInsert.insert(fullhist);
+                    if (skip_array.indexOf(collectionname) == -1) {
+                        if (!collectionname.endsWith("_hist")) bulkInsert.insert(fullhist);
+                    }
                     // bulkRemove.find({ _id: doc._id }).removeOne();
                     bulkRemove.find({ _id: doc._id }).deleteOne();
                     counter++
