@@ -1,7 +1,12 @@
 import { WebSocketClientService } from "./WebSocketClientService";
 import angular = require("angular");
 import { timesince, translate, textarea, fileread, userdata, api, copytext, jsonText, formatBytes, whenScrolled } from "./CommonControllers";
-import { MenuCtrl, ProvidersCtrl, MainCtrl, LoginCtrl, ProviderCtrl, UsersCtrl, UserCtrl, RolesCtrl, RoleCtrl, RPAWorkflowsCtrl, RPAWorkflowCtrl, WorkflowsCtrl, ReportsCtrl, jslogCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, SocketCtrl, NoderedCtrl, hdrobotsCtrl, ClientsCtrl, AuditlogsCtrl, SignupCtrl, QueuesCtrl, SocketsCtrl, QueueCtrl, CredentialsCtrl, CredentialCtrl, DuplicatesCtrl, OAuthClientsCtrl, OAuthClientCtrl, DeletedCtrl, CustomerCtrl, EntityRestrictionsCtrl, EntityRestrictionCtrl, CustomersCtrl, ResourcesCtrl, ResourceCtrl } from "./Controllers";
+import {
+    MenuCtrl, ProvidersCtrl, MainCtrl, LoginCtrl, ProviderCtrl, UsersCtrl, UserCtrl, RolesCtrl, RoleCtrl, RPAWorkflowsCtrl, RPAWorkflowCtrl,
+    WorkflowsCtrl, ReportsCtrl, jslogCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, SocketCtrl, NoderedCtrl,
+    hdrobotsCtrl, ClientsCtrl, AuditlogsCtrl, SignupCtrl, QueuesCtrl, SocketsCtrl, QueueCtrl, CredentialsCtrl, CredentialCtrl, DuplicatesCtrl,
+    OAuthClientsCtrl, OAuthClientCtrl, DeletedCtrl, CustomerCtrl, EntityRestrictionsCtrl, EntityRestrictionCtrl, CustomersCtrl, ResourcesCtrl, ResourceCtrl
+} from "./Controllers";
 
 require('angular-route');
 require('angular-sanitize');
