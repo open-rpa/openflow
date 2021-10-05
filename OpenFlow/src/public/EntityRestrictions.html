@@ -2,12 +2,12 @@
   <h1 translate lib="web">entity restrictions</h1>
 </div>
 <div class="col-sm-12 text-right">
-  <i class="fas fa-cog fa-spin" ng-show="ctrl.loading==true"></i>
+  <em class="fas fa-cog fa-spin" ng-show="ctrl.loading==true"></em>
   <a class="btn btn-info" ng-click="ctrl.EnsureCommon()" translate lib="web"
     ng-show="menuctrl.hasrole('admins')">ensurecommon</a>
   <a href="#/EntityRestriction" class="btn btn-info" translate lib="web">addEntityRestriction</a>
 </div>
-<div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
+<div ng-show="ctrl.errormessage != ''" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;">
   <thead class="thead-dark">
     <tr>

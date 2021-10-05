@@ -2,18 +2,22 @@
   <h1 translate lib="web">forms</h1>
 </div>
 <div class="col-sm-12 text-right">
-  <i class="fas fa-cog fa-spin" ng-show="ctrl.loading==true"></i>
+  <em class="fas fa-cog fa-spin" ng-show="ctrl.loading==true"></em>
   <a ng-href="#/EditForm" class="btn btn-info" translate lib="web">addform</a>
 </div>
 <div ng-show="ctrl.errormessage != ''" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;">
+  <caption>List of workflow forms</caption>
   <thead class="thead-dark">
     <tr>
-      <th ng-click="ctrl.ToggleOrder('name')"><b translate lib="web">name</b></th>
-      <th class="w-150" ng-click="ctrl.ToggleOrder('_createdby')"><b translate lib="web">createdby</b></th>
-      <th class="w-150" ng-click="ctrl.ToggleOrder('_created')"><b translate lib="web">created</b></th>
-      <th class="w-150" ng-click="ctrl.ToggleOrder('_modified')"><b translate lib="web">updated</b></th>
-      <th class="w-150"></th>
+      <th ng-click="ctrl.ToggleOrder('name')" scope="col"><strong translate lib="web">name</strong></th>
+      <th class="w-150" ng-click="ctrl.ToggleOrder('_createdby')" scope="col"><strong translate
+          lib="web">createdby</strong></th>
+      <th class="w-150" ng-click="ctrl.ToggleOrder('_created')" scope="col"><strong translate lib="web">created</strong>
+      </th>
+      <th class="w-150" ng-click="ctrl.ToggleOrder('_modified')" scope="col"><strong translate
+          lib="web">updated</strong></th>
+      <th class="w-150" scope="col"></th>
     </tr>
   </thead>
   <tbody>
