@@ -109,8 +109,8 @@ export class DBHelper {
                 const results = await Config.db.aggregate<User>(pipe, "users", Crypt.rootToken(), null, span);
                 if (results.length > 0) {
                     let res = { roles: results[0].roles, roles2: (results[0] as any).roles2 }
-                    res.roles = res.roles.map(x => ({ "_id": x._id, "name": x.name, "d": (x as any).depth })) as any;
-                    res.roles2 = res.roles2.map(x => ({ "_id": x._id, "name": x.name, "d": (x as any).depth })) as any;
+                    res.roles = res.roles.map(x => ({ "_id": x._id, "name": x.name, "d": (x as any).depth }));
+                    res.roles2 = res.roles2.map(x => ({ "_id": x._id, "name": x.name, "d": (x as any).depth }));
                     user.roles = res.roles;
                     res.roles2.forEach(r => {
                         const exists = user.roles.filter(x => x._id == r._id);
@@ -225,7 +225,6 @@ export class DBHelper {
             await this.Save(user, jwt, span);
             const users: Role = await this.FindRoleByName("users", span);
             users.AddMember(user);
-            // this.EnsureNoderedRoles(user, jwt, false, span);
             await this.Save(users, jwt, span)
             user = await this.DecorateWithRoles(user, span);
             return user;

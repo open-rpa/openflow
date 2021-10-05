@@ -8,7 +8,6 @@ import { ValueRecorder } from "@opentelemetry/api-metrics"
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { Auth } from "./Auth";
-import { flush } from "pm2";
 const { JSONPath } = require('jsonpath-plus');
 
 
@@ -796,7 +795,7 @@ export class DatabaseConnection {
                     return value; // leave any other value as-is
             });
         }
-        let q: any = query;
+        let q: any;
         if (query !== null && query !== undefined) {
             q = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
         } else {
@@ -812,8 +811,6 @@ export class DatabaseConnection {
         let inline: boolean = false;
         const opt: MapReduceOptions = { query: q, out: { replace: "map_temp_res" }, finalize: finalize };
 
-        // (opt as any).w = 0;
-
         let outcol: string = "map_temp_res";
         if (out === null || out === undefined || out === "") {
             opt.out = { replace: outcol };
@@ -822,17 +819,13 @@ export class DatabaseConnection {
             opt.out = { replace: outcol };
         } else {
             opt.out = out;
-            if (out.hasOwnProperty("replace")) { outcol = out.replace; }
-            if (out.hasOwnProperty("merge")) { outcol = out.merge; }
-            if (out.hasOwnProperty("reduce")) { outcol = out.reduce; }
             if (out.hasOwnProperty("inline")) { inline = true; }
         }
         opt.scope = scope;
         try {
             if (inline) {
                 opt.out = { inline: 1 };
-                const result: T[] = await this.db.collection(collectionname).mapReduce(map, reduce, opt);
-                return result;
+                return await this.db.collection(collectionname).mapReduce(map, reduce, opt);;
             } else {
                 await this.db.collection(collectionname).mapReduce(map, reduce, opt);
                 return [];
