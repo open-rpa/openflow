@@ -188,11 +188,6 @@ ul.jsondiffpatch-textdiff {
 .jsondiffpatch-textdiff-line-number:after {
   content: ','; }
 
-.jsondiffpatch-error {
-  background: red;
-  color: white;
-  font-weight: bold; }
-
 .cameraView {
   background: transparent none !important;
   position: fixed;

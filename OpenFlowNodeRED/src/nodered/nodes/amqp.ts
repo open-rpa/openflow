@@ -2,9 +2,6 @@ import { Red } from "node-red";
 import { Config } from "../../Config";
 import * as amqp from "./amqp_nodes";
 
-
-// declare function fn(RED: Red): void;
-// export = fn;
 export = function (RED: Red) {
     RED.nodes.registerType("amqp-connection", amqp.amqp_connection, {
         credentials: {
