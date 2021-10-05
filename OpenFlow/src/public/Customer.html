@@ -417,7 +417,7 @@
 
 
 <div ng-repeat="Resource in ctrl.UserResources | orderBy: 'order'" ng-show="ctrl.ShowPlans()">
-    <b>{{Resource.name}}</b>
+    <strong>{{Resource.name}}</strong>
     <div class="row" ng-repeat="Product in Resource.products | orderBy: 'order'" ng-show="Product.count > 0">
         <div class="col">{{Product.name}}</div>
         <div class="col">{{ Product.count }}</div>

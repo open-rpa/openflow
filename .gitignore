@@ -12,3 +12,5 @@ letsencrypt
 docker-package.json
 .env
 .nyc_output
+sonar-scanner.properties
+sonar-project.properties
