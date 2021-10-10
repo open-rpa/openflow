@@ -23,6 +23,7 @@ export class amqp_connection {
         RED.nodes.createNode(this, config);
         this.node = this;
         this.node.status({});
+        this.node.on("close", this.onclose);
         this.credentials = this.node.credentials;
         if (this.node.credentials && this.node.credentials.hasOwnProperty("username")) {
             this.username = this.node.credentials.username;
@@ -67,6 +68,14 @@ export class amqp_connection {
             return this.webcli;
         }
         return WebSocketClient.instance;
+    }
+    async onclose(removed: boolean, done: any) {
+        if (!NoderedUtil.IsNullUndefinded(this.host)) {
+            this.webcli.close(8000, "node-red closed");
+            this.webcli.events.removeAllListeners();
+            this.webcli = null;
+        }
+        if (done != null) done();
     }
 }
 
