@@ -1903,7 +1903,7 @@ export class DatabaseConnection {
                     throw Error("item not found, or Access Denied");
                 }
             }
-            // if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] Deleting " + id + " in database");
+            if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] Deleting " + id + " in database");
             // const ot_end = Logger.otel.startTimer();
             // const res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteOne(_query);
             // Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, { collection: collectionname });
