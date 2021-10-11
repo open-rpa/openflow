@@ -16,12 +16,12 @@ RUN groupadd -r openiapuser && useradd -r -g openiapuser -G audio,video openiapu
     && chown -R openiapuser:openiapuser /home/openiapuser \
     && chown -R openiapuser:openiapuser /data/
 
-# RUN wget -O /tmp/tagui_linux.zip https://github.com/kelaberetiv/TagUI/releases/download/v6.14.0/TagUI_Linux.zip \
+# RUN wget -O /tmp/tagui_linux.zip https://github.com/kelaberetiv/TagUI/releases/download/v6.46.0/TagUI_Linux.zip \
 # && unzip '/tmp/tagui_linux.zip' -d /home/openiapuser && rm /tmp/tagui_linux.zip || true && mv /home/openiapuser/tagui /home/openiapuser/.tagui && chown -R openiapuser:openiapuser /home/openiapuser
 # RUN ln -sf /home/openiapuser/.tagui/src/tagui /usr/local/bin/tagui
 
-RUN wget -O /tmp/tagui_linux.zip https://github.com/kelaberetiv/TagUI/releases/download/v6.14.0/TagUI_Linux.zip \
-&& unzip '/tmp/tagui_linux.zip' -d /home/openiapuser && rm /tmp/tagui_linux.zip || true && chown -R openiapuser:openiapuser /home/openiapuser
+RUN wget -O /tmp/tagui_linux.zip https://github.com/kelaberetiv/TagUI/releases/download/v6.46.0/TagUI_Linux.zip \
+    && unzip '/tmp/tagui_linux.zip' -d /home/openiapuser && rm /tmp/tagui_linux.zip || true && chown -R openiapuser:openiapuser /home/openiapuser
 RUN ln -sf /home/openiapuser/tagui/src/tagui /usr/local/bin/tagui
 
 # USER openiapuser
@@ -31,7 +31,7 @@ ENV replace="browser_option = 'headless'"
 RUN sed -i "s/${search}/${replace}/" /usr/local/lib/python3.5/dist-packages/tagui.py
 
 RUN wget -O /tmp/tagui_linux2.zip https://github.com/tebelorg/Tump/releases/download/v1.0.0/TagUI_Linux.zip \
-&& unzip '/tmp/tagui_linux2.zip' -d /tmp && rm /tmp/tagui_linux2.zip || true && mv /tmp/tagui /home/openiapuser/.tagui && chown -R openiapuser:openiapuser /home/openiapuser/.tagui
+    && unzip '/tmp/tagui_linux2.zip' -d /tmp && rm /tmp/tagui_linux2.zip || true && mv /tmp/tagui /home/openiapuser/.tagui && chown -R openiapuser:openiapuser /home/openiapuser/.tagui
 
 # RUN mkdir /home/openiapuser/.tagui  && chown -R openiapuser:openiapuser /home/openiapuser/.tagui
 # RUN mkdir /home/openiapuser/.tagui_previous  && chown -R openiapuser:openiapuser /home/openiapuser/.tagui_previous

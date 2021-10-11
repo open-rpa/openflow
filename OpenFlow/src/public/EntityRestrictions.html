@@ -2,21 +2,24 @@
   <h1 translate lib="web">entity restrictions</h1>
 </div>
 <div class="col-sm-12 text-right">
-  <i class="fas fa-cog fa-spin" ng-show="ctrl.loading==true"></i>
+  <em class="fas fa-cog fa-spin" ng-show="ctrl.loading==true"></em>
   <a class="btn btn-info" ng-click="ctrl.EnsureCommon()" translate lib="web"
     ng-show="menuctrl.hasrole('admins')">ensurecommon</a>
   <a href="#/EntityRestriction" class="btn btn-info" translate lib="web">addEntityRestriction</a>
 </div>
-<div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
+<div ng-show="ctrl.errormessage != ''" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;">
+  <caption>List of entity restrictions</caption>
   <thead class="thead-dark">
     <tr>
-      <th ng-click="ctrl.ToggleOrder('name')"><b translate lib="web">name</b></th>
-      <th ng-click="ctrl.ToggleOrder('collection')"><b translate lib="web">collection</b></th>
-      <th ng-click="ctrl.ToggleOrder('paths')"><b translate lib="web">paths</b></th>
-      <th class="w-150" ng-click="ctrl.ToggleOrder('_created')"><b translate lib="web">created</b></th>
-      <th scope="col" ng-click="ctrl.ToggleOrder('_modified')"><b translate lib="web">updated</b></th>
-      <th class="w-150"></th>
+      <th ng-click="ctrl.ToggleOrder('name')" scope="col"><strong translate lib="web">name</strong></th>
+      <th ng-click="ctrl.ToggleOrder('collection')" scope="col"><strong translate lib="web">collection</strong></th>
+      <th ng-click="ctrl.ToggleOrder('paths')" scope="col"><strong translate lib="web">paths</strong></th>
+      <th class="w-150" ng-click="ctrl.ToggleOrder('_created')" scope="col"><strong translate lib="web">created</strong>
+      </th>
+      <th ng-click="ctrl.ToggleOrder('_modified')" scope="col"><strong translate lib="web">updated</strong>
+      </th>
+      <th class="w-150" scope="col"></th>
     </tr>
   </thead>
   <tbody>

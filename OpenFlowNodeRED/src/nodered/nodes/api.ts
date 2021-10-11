@@ -1,10 +1,6 @@
-import { WebSocketClient } from "@openiap/openflow-api";
 import { Red } from "node-red";
 import * as api from "./api_nodes";
 
-
-// declare function fn(RED: Red): void;
-// export = fn;
 export = function (RED: Red) {
     RED.nodes.registerType("api-credentials", api.api_credentials, {
         credentials: {

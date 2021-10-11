@@ -3,7 +3,6 @@ import { Config } from "../Config";
 import * as fs from "fs";
 export const logger = Logger.configure();
 const cp = require('child_process');
-const spawn = cp.spawn;
 const path = require('path');
 const envfile = require('envfile')
 export const envfilename = ".env";
@@ -61,7 +60,6 @@ export function loadenv() {
     let parsedFile = envfile.parse(fs.readFileSync(envfilepathname));
     for (const k in parsedFile) {
         process.env[k] = parsedFile[k];
-        // logger.verbose(k + " = " + parsedFile[k]);
     }
     Config.reload();
 }

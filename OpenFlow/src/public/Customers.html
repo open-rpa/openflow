@@ -2,17 +2,19 @@
   <h1 translate lib="web">customers</h1>
 </div>
 <div class="col-sm-12 text-right">
-  <i class="fas fa-cog fa-spin" ng-show="ctrl.loading==true"></i>
+  <em class="fas fa-cog fa-spin" ng-show="ctrl.loading==true"></em>
   <a href="#/Customer" class="btn btn-info" translate lib="web"
     ng-show="menuctrl.hasrole('customer admins') || menuctrl.hasrole('resellers')">addcustomer</a>
 </div>
 <div ng-show="ctrl.errormessage != ''" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;">
+  <caption>Customers</caption>
   <thead class="thead-dark">
     <tr>
-      <th ng-click="ctrl.ToggleOrder('name')"><b translate lib="web">name</b></th>
-      <th class="w-150" ng-click="ctrl.ToggleOrder('_created')"><b translate lib="web">created</b></th>
-      <th class="w-150"></th>
+      <th ng-click="ctrl.ToggleOrder('name')" scope="col"><strong translate lib="web">name</strong></th>
+      <th class="w-150" ng-click="ctrl.ToggleOrder('_created')" scope="col"><strong translate lib="web">created</strong>
+      </th>
+      <th class="w-150" scope="col"></th>
     </tr>
   </thead>
   <tbody>

@@ -9,6 +9,8 @@ Read more about the [security model here](securitymodel).
 
 Read more about the [architecture here](architecture).
 
+Read more about the [web socket protocol](protocol).
+
 #### Quick start using docker
 Installing using [docker-compose](dockercompose)
 

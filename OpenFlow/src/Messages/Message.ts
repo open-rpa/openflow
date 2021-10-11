@@ -3358,7 +3358,7 @@ export class Message {
                 let tax_rates = [];
                 if (NoderedUtil.IsNullEmpty(customer.country)) customer.country = "";
                 customer.country = customer.country.toUpperCase();
-                if (NoderedUtil.IsNullEmpty(customer.vattype) || NoderedUtil.IsNullEmpty(customer.vattype) || customer.country == "DK") {
+                if (NoderedUtil.IsNullEmpty(customer.vattype) || customer.country == "DK") {
                     const tax_ids = await this.Stripe<stripe_list<any>>("GET", "tax_rates", null, null, null);
                     if (tax_ids && tax_ids.data && tax_ids.data.length > 0) {
                         tax_rates = tax_ids.data.filter(x => x.active && x.country == customer.country).map(x => x.id);
@@ -3578,7 +3578,7 @@ export class Message {
                 let tax_rates = [];
                 if (NoderedUtil.IsNullEmpty(customer.country)) customer.country = "";
                 customer.country = customer.country.toUpperCase();
-                if (NoderedUtil.IsNullEmpty(customer.vattype) || NoderedUtil.IsNullEmpty(customer.vattype) || customer.country == "DK") {
+                if (NoderedUtil.IsNullEmpty(customer.vattype) || customer.country == "DK") {
                     if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
                         const tax_ids = await this.Stripe<stripe_list<any>>("GET", "tax_rates", null, null, null);
                         if (tax_ids && tax_ids.data && tax_ids.data.length > 0) {
