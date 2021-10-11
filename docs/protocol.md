@@ -7,14 +7,14 @@ Examples in [C#](https://github.com/open-rpa/openrpa/blob/master/OpenRPA.Net/Web
 
 Encryption of data should be handled by the HTTP(s) transport, since we always recommend using certificates on your ingress controller.
 
-Once connected, the first thing you need to to us authenticate by sending a "signin" command.
+Once connected, the first thing you need to do, is authenticate by sending a "signin" command.
 
 Your client must reply/acknowledge all commands ( like reply "pong" to all "ping" commands )
 
 You client should either leave out JWT on all commands.
-Or use the temporary JWT send by OpenFlow every 10 minutes in a "refreshtoken" command. ( This is to update the token with changes, like updated role member ships )
+Or use the temporary JWT send by OpenFlow every 10 minutes in a "refreshtoken" command. ( This is to update the token with changes, like updated role memberships )
 
-You can change user context for specific commands, but supplying a different JWT in the command.
+You can change user context for a specific commands, by supplying a different JWT in the command.
 
 #### Message Structure
 
@@ -32,7 +32,7 @@ We send pure UTF8 text over the socket. All messages have this base format
 
 You must generate an unique id for each command. If the data cannot fit in one message, you send multiple messages with the same id, for all messages also supply the total count and the current index starting at 0.
 If you are sending a reply to a message you must set replyto to the id of the message you are replying too.
-Data is a STRING representation of the command JSON.
+Data is a STRING representation of the command JSON. ( JSON.stringify in JavaScript )
 
 #### Command structure
 
@@ -52,5 +52,6 @@ For commands with no result, result can be left out. Some commands send one resu
 
 #### Command list
 
-All commands can be found [here](https://github.com/open-rpa/openflow-api/tree/master/src/Message) . 
+All commands can be found [here](https://github.com/open-rpa/openflow-api/tree/master/src/Message) , and usage can be found [here](https://github.com/open-rpa/openflow-api/blob/master/src/nodeclient/NoderedUtil.ts#L162).
 Below some of these will be documented in more details later
+
