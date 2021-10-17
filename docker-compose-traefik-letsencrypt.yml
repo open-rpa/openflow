@@ -63,7 +63,7 @@ services:
       - "traefik.frontend.passHostHeader=true"
     image: "openiap/openflow"
     deploy:
-      replicas: 2
+      replicas: 1
     pull_policy: always
     restart: always
     depends_on:
@@ -91,7 +91,7 @@ services:
       - nodered_docker_certresolver=myresolver
       - domain=localhost.openiap.io
 
-      - enable_openflow_amqp=true
+      - enable_openflow_amqp=false # enable this to use the openflow amqp, only usefull when you have more than one replicas
       - amqp_prefetch=25
       - socket_rate_limit=true
       - socket_rate_limit_points=1000
