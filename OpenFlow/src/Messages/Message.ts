@@ -200,6 +200,10 @@ export class Message {
         if (NoderedUtil.IsNullEmpty(this.jwt)) this.jwt = cli.jwt;
         if (NoderedUtil.IsNullEmpty(this.jwt)) {
             console.warn("no jwt");
+
+            this.Reply("error");
+            this.data = "{\"message\": \"Not signed in, and missing jwt\"}";
+            cli.Send(this);
         }
     }
     public async Process(cli: WebSocketServerClient): Promise<void> {

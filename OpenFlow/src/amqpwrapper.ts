@@ -60,6 +60,22 @@ export declare interface amqpwrapper {
 }
 // tslint:disable-next-line: class-name
 export class amqpwrapper extends events.EventEmitter {
+    static waitFor(condition, callback) {
+        if (!condition()) {
+            console.log('waiting');
+            setTimeout(amqpwrapper.waitFor.bind(null, condition, callback), 100); /* this checks the flag every 100 milliseconds*/
+        } else {
+            console.log('done');
+            callback();
+        }
+    }
+    // async version of static waitFor
+    static async asyncWaitFor(condition) {
+        return new Promise((resolve) => {
+            this.waitFor(condition, resolve);
+        });
+    }
+    public connected: boolean = false;
     private conn: amqplib.Connection;
     private channel: amqplib.ConfirmChannel; // amqplib.Channel  channel: amqplib.ConfirmChannel;
     // private confirmchannel: amqplib.ConfirmChannel; // channel: amqplib.ConfirmChannel;
@@ -129,6 +145,7 @@ export class amqpwrapper extends events.EventEmitter {
             });
             this.adddlx();
             this.emit("connected");
+            this.connected = true;
         } catch (error) {
             if (this.timeout != null) {
                 clearTimeout(this.timeout);
@@ -142,6 +159,7 @@ export class amqpwrapper extends events.EventEmitter {
         }
     }
     shutdown() {
+        this.connected = false;
         try {
             if (this.channel != null) {
                 this.channel.removeAllListeners();
@@ -216,6 +234,7 @@ export class amqpwrapper extends events.EventEmitter {
                 }
             })
             this.channel.on('close', () => {
+                this.connected = false;
                 try {
                     if (this.conn != null) this.conn.close();
                 } catch (error) {
@@ -450,6 +469,7 @@ export class amqpwrapper extends events.EventEmitter {
         return promise.promise;
     }
     async sendWithReplyTo(exchange: string, queue: string, replyTo: string, data: any, expiration: number, correlationId: string, routingkey: string, priority: number = 1): Promise<void> {
+        await amqpwrapper.asyncWaitFor(() => this.connected);
         if (this.channel == null || this.conn == null) {
             throw new Error("Cannot send message, when not connected");
         }
@@ -481,6 +501,7 @@ export class amqpwrapper extends events.EventEmitter {
         }
     }
     async send(exchange: string, queue: string, data: any, expiration: number, correlationId: string, routingkey: string, priority: number = 1): Promise<void> {
+        await amqpwrapper.asyncWaitFor(() => this.connected);
         if (this.channel == null || this.conn == null) {
             throw new Error("Cannot send message, when not connected");
         }

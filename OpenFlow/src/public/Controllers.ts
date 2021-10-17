@@ -6630,7 +6630,7 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
                 const databaseusage: Resource = await this.newResource("Database Usage", "customer", "singlevariant", "singlevariant", { dbusage: (1048576 * 25) },
                     [
                         this.newProduct("50Mb quota", "prod_JffpwKLldz2QWN", "price_1J2KWFC2vUMc6gvheg4kFzjI", "multiple", "multiple", null, null, 0, { dbusage: (1048576 * 50) }, true, 1),
-                        this.newProduct("Metered Monthly", "prod_JffpwKLldz2QWN", "price_1J2KXMC2vUMc6gvhIhBFBKW6", "metered", "metered", null, null, 0, { dbusage: (1048576 * 50) }, true, 0),
+                        this.newProduct("Metered Monthly", "prod_JffpwKLldz2QWN", "price_1Jkl6HC2vUMc6gvhXe4asJXW", "metered", "metered", null, null, 0, { dbusage: (1048576 * 50) }, true, 0),
                     ], true, true, 1);
 
                 const poc = await this.newResource("Proff of Concept", "customer", "multiplevariants", "multiplevariants", {},
