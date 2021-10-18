@@ -4282,13 +4282,12 @@ export class Message {
                 if (usercount.length > 0) {
                     Logger.instanse.debug("[housekeeping] Begin updating all users (" + usercount[0].userCount + ") dbusage field");
                 }
-
                 const cursor = Config.db.db.collection("users").find({ "_type": "user", lastseen: { "$gte": yesterday } })
                 for await (const u of cursor) {
                     if (u.dbusage == null) u.dbusage = 0;
                     index++;
                     const pipe = [
-                        { "$match": { "userid": u._id, timestamp: { "$gte": yesterday } } },
+                        { "$match": { "userid": u._id, timestamp: timestamp } },
                         {
                             "$group":
                             {
@@ -4300,8 +4299,6 @@ export class Message {
                         }
                     ]// "items": { "$push": "$$ROOT" }
                     const items: any[] = await Config.db.db.collection("dbusage").aggregate(pipe).toArray();
-
-
                     if (items.length > 0) {
                         Logger.instanse.debug("[housekeeping][" + index + "/" + usercount[0].userCount + "] " + u.name + " " + this.formatBytes(items[0].size) + " from " + items[0].count + " collections");
                         await Config.db.db.collection("users").updateOne({ _id: u._id }, { $set: { "dbusage": items[0].size } });
@@ -4316,7 +4313,6 @@ export class Message {
         }
         if (Config.multi_tenant) {
             try {
-                let index = 0;
                 const usercount = await Config.db.db.collection("users").aggregate([{ "$match": { "_type": "customer" } }, { $count: "userCount" }]).toArray();
                 if (usercount.length > 0) {
                     Logger.instanse.debug("[housekeeping] Begin updating all customers (" + usercount[0].userCount + ") dbusage field");
@@ -4369,7 +4365,6 @@ export class Message {
                     for (let u of c.users) dbusage += (u.dbusage ? u.dbusage : 0);
                     await Config.db.db.collection("users").updateOne({ _id: c._id }, { $set: { "dbusage": dbusage } });
                     Logger.instanse.debug("[housekeeping] " + c.name + " using " + this.formatBytes(dbusage));
-                    index++;
                 }
                 var sleep = (ms) => {
                     return new Promise(resolve => {
