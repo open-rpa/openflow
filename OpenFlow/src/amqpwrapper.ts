@@ -62,10 +62,10 @@ export declare interface amqpwrapper {
 export class amqpwrapper extends events.EventEmitter {
     static waitFor(condition, callback) {
         if (!condition()) {
-            console.log('waiting');
+            // console.log('waiting');
             setTimeout(amqpwrapper.waitFor.bind(null, condition, callback), 100); /* this checks the flag every 100 milliseconds*/
         } else {
-            console.log('done');
+            // console.log('done');
             callback();
         }
     }
