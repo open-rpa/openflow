@@ -71,7 +71,7 @@ export class amqp_connection {
     }
     async onclose(removed: boolean, done: any) {
         if (!NoderedUtil.IsNullUndefinded(this.host)) {
-            this.webcli.close(8000, "node-red closed");
+            this.webcli.close(1000, "node-red closed");
             this.webcli.events.removeAllListeners();
             this.webcli = null;
         }
