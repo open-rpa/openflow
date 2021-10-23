@@ -74,6 +74,9 @@ export class Config {
         Config.enable_analytics = Config.parseBoolean(Config.getEnv("enable_analytics", "true"));
         Config.openflow_uniqueid = Config.getEnv("openflow_uniqueid", "");
         Config.otel_debug_log = Config.parseBoolean(Config.getEnv("otel_debug_log", "false"));
+        Config.otel_warn_log = Config.parseBoolean(Config.getEnv("otel_warn_log", "false"));
+        Config.otel_err_log = Config.parseBoolean(Config.getEnv("otel_err_log", "false"));
+
         Config.otel_trace_url = Config.getEnv("otel_trace_url", "");
         Config.otel_metric_url = Config.getEnv("otel_metric_url", "");
         Config.otel_trace_interval = parseInt(Config.getEnv("otel_trace_interval", "5000"));
@@ -148,6 +151,8 @@ export class Config {
     public static enable_analytics: boolean = Config.parseBoolean(Config.getEnv("enable_analytics", "true"));
     public static openflow_uniqueid: string = Config.getEnv("openflow_uniqueid", "");
     public static otel_debug_log: boolean = Config.parseBoolean(Config.getEnv("otel_debug_log", "false"));
+    public static otel_warn_log: boolean = Config.parseBoolean(Config.getEnv("otel_warn_log", "false"));
+    public static otel_err_log: boolean = Config.parseBoolean(Config.getEnv("otel_err_log", "false"));
     public static otel_trace_url: string = Config.getEnv("otel_trace_url", "");
     public static otel_metric_url: string = Config.getEnv("otel_metric_url", "");
     public static otel_trace_interval: number = parseInt(Config.getEnv("otel_trace_interval", "5000"));

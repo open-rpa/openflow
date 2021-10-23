@@ -102,7 +102,9 @@ export class DatabaseConnection {
     public isConnected: boolean = false;
     async shutdown() {
         try {
-            await this.cli.close();
+            if (this.cli) {
+                await this.cli.close();
+            }
         } catch (error) {
             Logger.instanse.error(error);
         }

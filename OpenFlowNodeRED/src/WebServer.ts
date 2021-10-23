@@ -9,7 +9,6 @@ import * as nodered from "node-red";
 import * as morgan from "morgan";
 
 // import * as samlauth from "./node-red-contrib-auth-saml";
-import * as cookieSession from "cookie-session";
 
 import { nodered_settings } from "./nodered_settings";
 import { Config } from "./Config";
@@ -137,6 +136,9 @@ export class WebServer {
                 this.app.use(express.json({ limit: '10mb' }))
                 this.app.use(cookieParser());
                 this.app.use("/", express.static(path.join(__dirname, "/public")));
+
+                var session = require('express-session')
+                this.app.use(session({ secret: Config.cookie_secret, cookie: { maxAge: 60000 } }))
 
                 this.app.use(passport.initialize());
                 this.app.use(passport.session());
@@ -336,11 +338,6 @@ export class WebServer {
                 };
 
                 this.app.set('trust proxy', 1)
-                this.app.use(cookieSession({
-                    name: 'session', secret: Config.cookie_secret, httpOnly: true
-                }))
-
-
 
                 const events = require("@node-red/util").events;
                 const validateNodes = (e) => {

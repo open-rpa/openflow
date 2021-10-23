@@ -151,6 +151,8 @@ export class Config {
         Config.prometheus_measure_onlineuser = Config.parseBoolean(Config.getEnv("prometheus_measure_onlineuser", "false"));
         Config.enable_analytics = Config.parseBoolean(Config.getEnv("enable_analytics", "true"));
         Config.otel_debug_log = Config.parseBoolean(Config.getEnv("otel_debug_log", "false"));
+        Config.otel_warn_log = Config.parseBoolean(Config.getEnv("otel_warn_log", "false"));
+        Config.otel_err_log = Config.parseBoolean(Config.getEnv("otel_err_log", "false"));
         Config.otel_trace_url = Config.getEnv("otel_trace_url", "");
         Config.otel_metric_url = Config.getEnv("otel_metric_url", "");
         Config.otel_trace_interval = parseInt(Config.getEnv("otel_trace_interval", "5000"));
@@ -304,6 +306,8 @@ export class Config {
     public static prometheus_measure_onlineuser: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_onlineuser", "false"));
     public static enable_analytics: boolean = Config.parseBoolean(Config.getEnv("enable_analytics", "true"));
     public static otel_debug_log: boolean = Config.parseBoolean(Config.getEnv("otel_debug_log", "false"));
+    public static otel_warn_log: boolean = Config.parseBoolean(Config.getEnv("otel_warn_log", "false"));
+    public static otel_err_log: boolean = Config.parseBoolean(Config.getEnv("otel_err_log", "false"));
     public static otel_trace_url: string = Config.getEnv("otel_trace_url", "");
     public static otel_metric_url: string = Config.getEnv("otel_metric_url", "");
     public static otel_trace_interval: number = parseInt(Config.getEnv("otel_trace_interval", "5000"));
