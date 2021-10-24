@@ -474,6 +474,8 @@ export class noderedcontribopenflowstorage {
                     await NoderedUtil.UpdateOne("nodered", null, result[0], 1, true, null, 1);
                 }
                 this._flows = flows;
+            } else {
+                this.RED.log.warn("Flow only saved locally, not connected to openflow!");
             }
         } catch (error) {
             Logger.instanse.error(error);

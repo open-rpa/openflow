@@ -188,7 +188,7 @@ export class Message {
         this.id = NoderedUtil.GetUniqueIdentifier();
     }
 
-    public EnsureJWT(cli: WebSocketServerClient) {
+    public EnsureJWT(cli: WebSocketServerClient): boolean {
         if (!NoderedUtil.IsNullUndefinded(this.data)) {
             var obj: any = this.data;
             if (typeof obj == "string") obj = JSON.parse(obj);
@@ -204,7 +204,9 @@ export class Message {
             this.Reply("error");
             this.data = "{\"message\": \"Not signed in, and missing jwt\"}";
             cli.Send(this);
+            return false;
         }
+        return true;
     }
     public async Process(cli: WebSocketServerClient): Promise<void> {
         if (cli.devnull) return;
@@ -277,7 +279,7 @@ export class Message {
             span.setAttribute("id", this.id);
             switch (command) {
                 case "listcollections":
-                    this.EnsureJWT(cli);
+                    if (!this.EnsureJWT(cli)) break;
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -286,7 +288,7 @@ export class Message {
                     }
                     break;
                 case "dropcollection":
-                    this.EnsureJWT(cli);
+                    if (!this.EnsureJWT(cli)) break;
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -295,7 +297,7 @@ export class Message {
                     }
                     break;
                 case "query":
-                    this.EnsureJWT(cli);
+                    if (!this.EnsureJWT(cli)) break;
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -304,7 +306,7 @@ export class Message {
                     }
                     break;
                 case "getdocumentversion":
-                    this.EnsureJWT(cli);
+                    if (!this.EnsureJWT(cli)) break;
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -313,7 +315,7 @@ export class Message {
                     }
                     break;
                 case "aggregate":
-                    this.EnsureJWT(cli);
+                    if (!this.EnsureJWT(cli)) break;
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -322,13 +324,15 @@ export class Message {
                     }
                     break;
                 case "watch":
+                    if (!this.EnsureJWT(cli)) break;
                     await this.Watch(cli);
                     break;
                 case "unwatch":
+                    if (!this.EnsureJWT(cli)) break;
                     await this.UnWatch(cli);
                     break;
                 case "insertone":
-                    this.EnsureJWT(cli);
+                    if (!this.EnsureJWT(cli)) break;
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -337,7 +341,7 @@ export class Message {
                     }
                     break;
                 case "insertmany":
-                    this.EnsureJWT(cli);
+                    if (!this.EnsureJWT(cli)) break;
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -346,7 +350,7 @@ export class Message {
                     }
                     break;
                 case "updateone":
-                    this.EnsureJWT(cli);
+                    if (!this.EnsureJWT(cli)) break;
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -355,7 +359,7 @@ export class Message {
                     }
                     break;
                 case "updatemany":
-                    this.EnsureJWT(cli);
+                    if (!this.EnsureJWT(cli)) break;
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -364,7 +368,7 @@ export class Message {
                     }
                     break;
                 case "insertorupdateone":
-                    this.EnsureJWT(cli);
+                    if (!this.EnsureJWT(cli)) break;
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -373,7 +377,7 @@ export class Message {
                     }
                     break;
                 case "deleteone":
-                    this.EnsureJWT(cli);
+                    if (!this.EnsureJWT(cli)) break;
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -382,7 +386,7 @@ export class Message {
                     }
                     break;
                 case "deletemany":
-                    this.EnsureJWT(cli);
+                    if (!this.EnsureJWT(cli)) break;
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -397,6 +401,7 @@ export class Message {
                     await this.RegisterUser(cli, span);
                     break;
                 case "mapreduce":
+                    if (!this.EnsureJWT(cli)) break;
                     await this.MapReduce(cli);
                     break;
                 case "refreshtoken":
@@ -405,19 +410,23 @@ export class Message {
                     // this.Ping(cli);
                     break;
                 case "registerqueue":
+                    if (!this.EnsureJWT(cli)) break;
                     await this.RegisterQueue(cli, span);
                     break;
                 case "registerexchange":
+                    if (!this.EnsureJWT(cli)) break;
                     await this.RegisterExchange(cli, span);
                     break;
                 case "queuemessage":
+                    if (!this.EnsureJWT(cli)) break;
                     await this.QueueMessage(cli, span);
                     break;
                 case "closequeue":
+                    if (!this.EnsureJWT(cli)) break;
                     await this.CloseQueue(cli, span);
                     break;
                 case "ensurenoderedinstance":
-                    this.EnsureJWT(cli);
+                    if (!this.EnsureJWT(cli)) break;
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -427,7 +436,7 @@ export class Message {
                     await this.ReloadUserToken(cli, span);
                     break;
                 case "deletenoderedinstance":
-                    this.EnsureJWT(cli);
+                    if (!this.EnsureJWT(cli)) break;
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -436,7 +445,7 @@ export class Message {
                     }
                     break;
                 case "restartnoderedinstance":
-                    this.EnsureJWT(cli);
+                    if (!this.EnsureJWT(cli)) break;
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -445,10 +454,11 @@ export class Message {
                     }
                     break;
                 case "getkubenodelabels":
+                    if (!this.EnsureJWT(cli)) break;
                     await this.GetKubeNodeLabels(cli);
                     break;
                 case "getnoderedinstance":
-                    this.EnsureJWT(cli);
+                    if (!this.EnsureJWT(cli)) break;
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -457,16 +467,19 @@ export class Message {
                     }
                     break;
                 case "getnoderedinstancelog":
+                    if (!this.EnsureJWT(cli)) break;
                     await this.GetNoderedInstanceLog(cli, span);
                     break;
                 case "startnoderedinstance":
+                    if (!this.EnsureJWT(cli)) break;
                     await this.StartNoderedInstance(cli, span);
                     break;
                 case "stopnoderedinstance":
+                    if (!this.EnsureJWT(cli)) break;
                     await this.StopNoderedInstance(cli, span);
                     break;
                 case "deletenoderedpod":
-                    this.EnsureJWT(cli);
+                    if (!this.EnsureJWT(cli)) break;
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -475,31 +488,40 @@ export class Message {
                     }
                     break;
                 case "savefile":
+                    if (!this.EnsureJWT(cli)) break;
                     await this.SaveFile(cli);
                     break;
                 case "getfile":
+                    if (!this.EnsureJWT(cli)) break;
                     await this.GetFile(cli, span);
                     break;
                 case "updatefile":
+                    if (!this.EnsureJWT(cli)) break;
                     await this.UpdateFile(cli);
                     break;
                 case "createworkflowinstance":
+                    if (!this.EnsureJWT(cli)) break;
                     await this.CreateWorkflowInstance(cli, span);
                     break;
                 case "stripeaddplan":
+                    if (!this.EnsureJWT(cli)) break;
                     await this.StripeAddPlan(cli, span);
                     break;
                 case "getnextinvoice":
+                    if (!this.EnsureJWT(cli)) break;
                     await this.GetNextInvoice(cli, span);
                     break;
                 case "stripecancelplan":
+                    if (!this.EnsureJWT(cli)) break;
                     await this.StripeCancelPlan(cli, span);
                     break;
                 case "ensurestripecustomer":
+                    if (!this.EnsureJWT(cli)) break;
                     this.Reply();
                     this.Send(cli);
                     break;
                 case "stripemessage":
+                    if (!this.EnsureJWT(cli)) break;
                     await this.StripeMessage(cli);
                     break;
                 case "dumpclients":
@@ -516,14 +538,14 @@ export class Message {
                     await this.EnsureCustomer(cli, span);
                     break;
                 case "selectcustomer":
-                    this.EnsureJWT(cli);
+                    if (!this.EnsureJWT(cli)) break;
                     var user = await this.SelectCustomer(span);
                     if (user != null) cli.user.selectedcustomerid = user.selectedcustomerid;
                     this.ReloadUserToken(cli, span);
                     cli.Send(this);
                     break;
                 case "housekeeping":
-                    this.EnsureJWT(cli);
+                    if (!this.EnsureJWT(cli)) break;
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -1411,6 +1433,7 @@ export class Message {
                     }
                     if (msg.validate_only !== true) {
                         Logger.instanse.debug(tuser.username + " signed in using " + type + " " + cli.id + "/" + cli.clientagent);
+                        Logger.instanse.info(tuser.username + " signed in using " + type + " " + cli.id + "/" + cli.clientagent);
                         cli.jwt = msg.jwt;
                         cli.user = user;
                         if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
@@ -4282,13 +4305,12 @@ export class Message {
                 if (usercount.length > 0) {
                     Logger.instanse.debug("[housekeeping] Begin updating all users (" + usercount[0].userCount + ") dbusage field");
                 }
-
                 const cursor = Config.db.db.collection("users").find({ "_type": "user", lastseen: { "$gte": yesterday } })
                 for await (const u of cursor) {
                     if (u.dbusage == null) u.dbusage = 0;
                     index++;
                     const pipe = [
-                        { "$match": { "userid": u._id, timestamp: { "$gte": yesterday } } },
+                        { "$match": { "userid": u._id, timestamp: timestamp } },
                         {
                             "$group":
                             {
@@ -4300,8 +4322,6 @@ export class Message {
                         }
                     ]// "items": { "$push": "$$ROOT" }
                     const items: any[] = await Config.db.db.collection("dbusage").aggregate(pipe).toArray();
-
-
                     if (items.length > 0) {
                         Logger.instanse.debug("[housekeeping][" + index + "/" + usercount[0].userCount + "] " + u.name + " " + this.formatBytes(items[0].size) + " from " + items[0].count + " collections");
                         await Config.db.db.collection("users").updateOne({ _id: u._id }, { $set: { "dbusage": items[0].size } });
@@ -4316,7 +4336,6 @@ export class Message {
         }
         if (Config.multi_tenant) {
             try {
-                let index = 0;
                 const usercount = await Config.db.db.collection("users").aggregate([{ "$match": { "_type": "customer" } }, { $count: "userCount" }]).toArray();
                 if (usercount.length > 0) {
                     Logger.instanse.debug("[housekeeping] Begin updating all customers (" + usercount[0].userCount + ") dbusage field");
@@ -4369,7 +4388,6 @@ export class Message {
                     for (let u of c.users) dbusage += (u.dbusage ? u.dbusage : 0);
                     await Config.db.db.collection("users").updateOne({ _id: c._id }, { $set: { "dbusage": dbusage } });
                     Logger.instanse.debug("[housekeeping] " + c.name + " using " + this.formatBytes(dbusage));
-                    index++;
                 }
                 var sleep = (ms) => {
                     return new Promise(resolve => {
