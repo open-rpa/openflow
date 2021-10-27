@@ -923,7 +923,11 @@ export class DatabaseConnection {
                     // if (!user.HasRoleName(customer.name + " admins")) throw new Error("Access denied to customer with " + customer.name);
                 } else if (user.HasRoleName("customer admins") && !NoderedUtil.IsNullEmpty(user.customerid)) {
                     // user2.customerid = user.customerid;
-                    if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
+                    if (NoderedUtil.IsNullEmpty(user2.selectedcustomerid)) {
+                        if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
+                        if (NoderedUtil.IsNullEmpty(user2.customerid) && !NoderedUtil.IsNullEmpty(user.customerid)) user2.customerid = user.customerid;
+                    }
+                    if (NoderedUtil.IsNullEmpty(user2.customerid)) throw new Error("Access denied, no customerid on you, and no customer selected");
                     customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, span);
                 } else if (Config.multi_tenant && !user.HasRoleName("admins")) {
                     // user2.customerid = user.customerid;

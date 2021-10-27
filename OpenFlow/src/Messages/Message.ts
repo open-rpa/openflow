@@ -1580,9 +1580,9 @@ export class Message {
     private async EnsureNoderedInstance(parent: Span): Promise<void> {
         await this.DetectDocker();
         if (Message.usedocker) {
-            this.DockerEnsureNoderedInstance(parent);
+            await this.DockerEnsureNoderedInstance(parent);
         } else {
-            this.KubeEnsureNoderedInstance(parent);
+            await this.KubeEnsureNoderedInstance(parent);
         }
     }
     _pullImage(docker: Dockerode, imagename: string) {
@@ -2006,6 +2006,9 @@ export class Message {
                                             { name: "otel_metric_url", value: Config.otel_metric_url },
                                             { name: "otel_trace_interval", value: Config.otel_trace_interval.toString() },
                                             { name: "otel_metric_interval", value: Config.otel_metric_interval.toString() },
+                                            { name: "otel_debug_log", value: Config.otel_debug_log.toString() },
+                                            { name: "otel_warn_log", value: Config.otel_warn_log.toString() },
+                                            { name: "otel_err_log", value: Config.otel_err_log.toString() },
                                             { name: "amqp_enabled_exchange", value: Config.amqp_enabled_exchange.toString() },
                                         ],
                                         livenessProbe: livenessProbe,
@@ -2216,9 +2219,9 @@ export class Message {
     private async DeleteNoderedInstance(parent: Span): Promise<void> {
         await this.DetectDocker();
         if (Message.usedocker) {
-            this.dockerDeleteNoderedInstance(parent);
+            await this.dockerDeleteNoderedInstance(parent);
         } else {
-            this.KubeDeleteNoderedInstance(parent);
+            await this.KubeDeleteNoderedInstance(parent);
         }
     }
     private async dockerDeleteNoderedInstance(parent: Span): Promise<void> {
@@ -2255,9 +2258,9 @@ export class Message {
     private async DeleteNoderedPod(parent: Span): Promise<void> {
         await this.DetectDocker();
         if (Message.usedocker) {
-            this.dockerDeleteNoderedPod(parent);
+            await this.dockerDeleteNoderedPod(parent);
         } else {
-            this.KubeDeleteNoderedPod(parent);
+            await this.KubeDeleteNoderedPod(parent);
         }
 
     }
@@ -2359,9 +2362,9 @@ export class Message {
     private async RestartNoderedInstance(parent: Span): Promise<void> {
         await this.DetectDocker();
         if (Message.usedocker) {
-            this.DockerRestartNoderedInstance(parent);
+            await this.DockerRestartNoderedInstance(parent);
         } else {
-            this.KubeRestartNoderedInstance(parent);
+            await this.KubeRestartNoderedInstance(parent);
         }
     }
     private async DockerRestartNoderedInstance(parent: Span): Promise<void> {
@@ -2645,9 +2648,9 @@ export class Message {
     private async GetNoderedInstanceLog(cli: WebSocketServerClient, parent: Span): Promise<void> {
         await this.DetectDocker();
         if (Message.usedocker) {
-            this.DockerGetNoderedInstanceLog(cli, parent);
+            await this.DockerGetNoderedInstanceLog(cli, parent);
         } else {
-            this.KubeGetNoderedInstanceLog(cli, parent);
+            await this.KubeGetNoderedInstanceLog(cli, parent);
         }
     }
     streamToString(stream) {
