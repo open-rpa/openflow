@@ -6186,6 +6186,8 @@ export class EntityRestrictionsCtrl extends entitiesCtrl<Base> {
     async EnsureCommon() {
         try {
             await this.newRestriction("Add any", "entities", ["$."], false);
+            await this.newRestriction("Create queues", "mq", ["$.[?(@ && @._type == 'queue')]"], false);
+            await this.newRestriction("Create exchanges", "mq", ["$.[?(@ && @._type == 'exchange')]"], false);
             await this.newRestriction("Create form", "forms", ["$.[?(@ && @._type == 'form')]"], false);
             await this.newRestriction("Create workflow", "openrpa", ["$.[?(@ && @._type == 'workflow')]"], false);
             await this.newRestriction("Create project", "openrpa", ["$.[?(@ && @._type == 'project')]"], false);
