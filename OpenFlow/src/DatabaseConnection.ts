@@ -9,7 +9,7 @@ import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { Auth } from "./Auth";
 const { JSONPath } = require('jsonpath-plus');
-
+import events = require("events");
 
 
 // tslint:disable-next-line: typedef
@@ -38,7 +38,7 @@ Object.defineProperty(Promise, 'retry', {
     }
 })
 
-export class DatabaseConnection {
+export class DatabaseConnection extends events.EventEmitter {
     private mongodburl: string;
     private cli: MongoClient;
     public db: Db;
@@ -53,6 +53,7 @@ export class DatabaseConnection {
     public static mongodb_deletemany: ValueRecorder;
     public static semaphore = Auth.Semaphore(1);
     constructor(mongodburl: string, dbname: string) {
+        super();
         this._dbname = dbname;
         this.mongodburl = mongodburl;
 
@@ -135,10 +136,12 @@ export class DatabaseConnection {
         const errEvent = (error) => {
             this.isConnected = false;
             Logger.instanse.error(error);
+            this.emit("disconnected");
         }
         const closeEvent = () => {
             this.isConnected = false;
             Logger.instanse.silly(`Disconnected from mongodb`);
+            this.emit("disconnected");
         }
         this.cli
             .on('error', errEvent)
@@ -148,6 +151,7 @@ export class DatabaseConnection {
         this.db = this.cli.db(this._dbname);
         this.isConnected = true;
         Logger.otel.endSpan(span);
+        this.emit("connected");
     }
     async ListCollections(jwt: string): Promise<any[]> {
         let result = await DatabaseConnection.toArray(this.db.listCollections());
