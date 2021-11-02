@@ -75,6 +75,11 @@ export class workflow_in_node {
             name = this.config.queue;
         }
 
+        if (NoderedUtil.IsNullEmpty(this.localqueue)) {
+            this.node.status({ fill: "green", shape: "dot", text: "init failed, missing localqueue name" });
+            return;
+        }
+
         const res = await NoderedUtil.Query("workflow", { "queue": this.localqueue }, null, null, 1, 0, null, null, null, 1);
         if (res.length == 0) {
             const noderedadmins = await NoderedUtil.GetRole(null, Config.noderedadmins);
