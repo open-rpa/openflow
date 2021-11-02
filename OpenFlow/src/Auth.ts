@@ -41,6 +41,7 @@ export class Auth {
         if (type == "grafana") cache_seconds = Config.grafana_credential_cache_seconds;
         if (type == "dashboard") cache_seconds = Config.dashboard_credential_cache_seconds;
         if (type == "cleanacl") cache_seconds = Config.cleanacl_credential_cache_seconds;
+        if (type == "mq") cache_seconds = Config.mq_credential_cache_seconds;
         if (seconds < cache_seconds) {
             Logger.instanse.silly("Return user " + res.user.username + " from cache");
             return res.user;
@@ -63,6 +64,7 @@ export class Auth {
                 if (res.type == "grafana") cache_seconds = Config.grafana_credential_cache_seconds;
                 if (res.type == "dashboard") cache_seconds = Config.dashboard_credential_cache_seconds;
                 if (res.type == "cleanacl") cache_seconds = Config.cleanacl_credential_cache_seconds;
+                if (res.type == "mq") cache_seconds = Config.mq_credential_cache_seconds;
                 if (seconds >= cache_seconds) {
                     this.RemoveUser(key, res.type);
                 }
