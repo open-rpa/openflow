@@ -5572,32 +5572,38 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
     }
     async MassDeleteOnlyOne() {
         this.loading = true;
+        let ids: string[] = [];
         for (let x = 0; x < this.models.length; x++) {
             const item = (this.models[x] as any);
-            await NoderedUtil.DeleteOne(this.collection, item.items[0]._id, null, 1);
+            ids.push(item.items[0]._id);
         }
+        await NoderedUtil.DeleteMany(this.collection, null, ids, null, 1);
         this.loading = false;
         this.loadData();
     }
     async MassDeleteAllButOne() {
         this.loading = true;
+        let ids: string[] = [];
         for (let x = 0; x < this.models.length; x++) {
             const item = (this.models[x] as any);
             for (let y = 1; y < item.items.length; y++) {
-                await NoderedUtil.DeleteOne(this.collection, item.items[y]._id, null, 1);
+                ids.push(item.items[y]._id);
             }
         }
+        await NoderedUtil.DeleteMany(this.collection, null, ids, null, 1);
         this.loading = false;
         this.loadData();
     }
     async MassDeleteAll() {
         this.loading = true;
+        let ids: string[] = [];
         for (let x = 0; x < this.models.length; x++) {
             const item = (this.models[x] as any);
             for (let y = 0; y < item.items.length; y++) {
-                await NoderedUtil.DeleteOne(this.collection, item.items[y]._id, null, 1);
+                ids.push(item.items[y]._id);
             }
         }
+        await NoderedUtil.DeleteMany(this.collection, null, ids, null, 1);
         this.loading = false;
         this.loadData();
     }
@@ -5614,9 +5620,11 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         if (NoderedUtil.IsNullUndefinded(model)) return;
         if (NoderedUtil.IsNullUndefinded(model.items)) return;
         this.loading = true;
+        let ids: string[] = [];
         for (let i = 1; i < model.items.length; i++) {
-            await NoderedUtil.DeleteOne(this.collection, model.items[i]._id, null, 1);
+            ids.push(model.items[i]._id);
         }
+        await NoderedUtil.DeleteMany(this.collection, null, ids, null, 1);
         this.loading = false;
         this.loadData();
     }
@@ -5624,9 +5632,11 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         if (NoderedUtil.IsNullUndefinded(model)) return;
         if (NoderedUtil.IsNullUndefinded(model.items)) return;
         this.loading = true;
+        let ids: string[] = [];
         for (let i = 0; i < model.items.length; i++) {
-            await NoderedUtil.DeleteOne(this.collection, model.items[i]._id, null, 1);
+            ids.push(model.items[i]._id);
         }
+        await NoderedUtil.DeleteMany(this.collection, null, ids, null, 1);
         this.loading = false;
         this.loadData();
     }
