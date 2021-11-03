@@ -576,6 +576,39 @@ export class Message {
         let msg: RegisterExchangeMessage;
         try {
             msg = RegisterExchangeMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.exchangename) || msg.exchangename.toLowerCase() == "openflow") {
+                throw new Error("Access denied");
+            }
+            const jwt: string = msg.jwt || this.jwt;
+            const rootjwt = Crypt.rootToken();
+            if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !NoderedUtil.IsNullEmpty(msg.exchangename)) {
+                const tuser = Crypt.verityToken(jwt);
+                let mq = Auth.getUser(msg.exchangename, "mqe");
+                if (mq == null) {
+                    const arr = await Config.db.query({ "name": msg.exchangename, "_type": "exchange" }, { name: 1, _acl: 1 }, 1, 0, null, "mq", rootjwt, undefined, undefined, parent);
+                    if (arr.length > 0) {
+                        await Auth.AddUser(arr[0] as any, msg.exchangename, "mqe");
+                        mq = arr[0] as any;
+                    }
+                }
+                if (mq != null) {
+                    if (Config.amqp_force_consumer_has_update) {
+                        if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
+                            throw new Error("Unknown queue or access denied");
+                        }
+                    } else if (Config.amqp_force_sender_has_invoke) {
+                        if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
+                            throw new Error("Unknown queue or access denied");
+                        }
+                    }
+                } else {
+                    const q = new Base(); q._type = "exchange";
+                    q.name = msg.exchangename;
+                    const res = await Config.db.InsertOne(q, "mq", 1, true, jwt, parent);
+                    await Auth.AddUser(res as any, msg.exchangename, "mqe");
+                }
+
+            }
             var res = await cli.RegisterExchange(msg.exchangename, msg.algorithm, msg.routingkey, parent);
             msg.queuename = res.queuename;
             msg.exchangename = res.exchangename;
@@ -597,8 +630,75 @@ export class Message {
         let msg: RegisterQueueMessage;
         try {
             msg = RegisterQueueMessage.assign(this.data);
+            const jwt: string = msg.jwt || this.jwt;
+            const rootjwt = Crypt.rootToken();
             if (!NoderedUtil.IsNullEmpty(msg.queuename) && msg.queuename.toLowerCase() == "openflow") {
                 throw new Error("Access denied");
+            }
+            if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !NoderedUtil.IsNullEmpty(msg.queuename)) {
+                const tuser = Crypt.verityToken(jwt);
+                let allowed: boolean = false;
+                if (tuser._id == msg.queuename) {
+                    // Queue is mine
+                    allowed = true;
+                } else if (tuser.roles != null && !Config.amqp_force_consumer_has_update && !Config.amqp_force_sender_has_invoke) {
+                    // Queue is for a role i am a member of.
+                    const isrole = tuser.roles.filter(x => x._id == msg.queuename);
+                    if (isrole.length > 0) {
+                        allowed = true;
+                    }
+                }
+                if (!allowed && msg.queuename.length == 24) {
+                    // Do i have permission to listen on a queue with this id ?
+                    let mq = Auth.getUser(msg.queuename, "mq");
+                    if (mq == null) {
+                        const arr = await Config.db.query({ _id: msg.queuename }, { name: 1, _acl: 1 }, 1, 0, null, "users", rootjwt, undefined, undefined, parent);
+                        if (arr.length > 0) {
+                            await Auth.AddUser(arr[0] as any, msg.queuename, "mq");
+                            mq = arr[0] as any;
+                        }
+                    }
+                    if (mq != null) {
+                        if (Config.amqp_force_consumer_has_update) {
+                            if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
+                                throw new Error("Unknown queue or access denied");
+                            }
+                        } else if (Config.amqp_force_sender_has_invoke) {
+                            if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
+                                throw new Error("Unknown queue or access denied");
+                            }
+                        }
+                        allowed = true;
+                    }
+                }
+                if (!allowed) {
+                    let mq = Auth.getUser(msg.queuename, "mq");
+                    if (mq == null) {
+                        const arr = await Config.db.query({ "name": msg.queuename, "_type": "queue" }, { name: 1, _acl: 1 }, 1, 0, null, "mq", rootjwt, undefined, undefined, parent);
+                        if (arr.length > 0) {
+                            await Auth.AddUser(arr[0] as any, msg.queuename, "mq");
+                            mq = arr[0] as any;
+                        }
+                    }
+                    if (mq != null) {
+                        if (Config.amqp_force_consumer_has_update) {
+                            if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
+                                throw new Error("Unknown queue or access denied");
+                            }
+                        } else if (Config.amqp_force_sender_has_invoke) {
+                            if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
+                                throw new Error("Unknown queue or access denied");
+                            }
+                        }
+                        allowed = true;
+                    }
+                }
+                if (!allowed) {
+                    const q = new Base(); q._type = "queue";
+                    q.name = msg.queuename;
+                    const res = await Config.db.InsertOne(q, "mq", 1, true, jwt, parent);
+                    await Auth.AddUser(res as any, msg.queuename, "mq");
+                }
             }
             msg.queuename = await cli.CreateConsumer(msg.queuename, parent);
         } catch (error) {
@@ -620,7 +720,8 @@ export class Message {
         let msg: QueueMessage
         try {
             msg = QueueMessage.assign(this.data);
-            if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+            const jwt: string = msg.jwt || this.jwt;
+            const rootjwt = Crypt.rootToken();
             if (!NoderedUtil.IsNullUndefinded(msg.data)) {
                 if (typeof msg.data == 'string') {
                     try {
@@ -628,7 +729,7 @@ export class Message {
                     } catch (error) {
                     }
                 } else {
-                    msg.data.jwt = msg.jwt;
+                    msg.data.jwt = jwt;
                 }
             }
             if (!NoderedUtil.IsNullEmpty(msg.exchange) && !Config.amqp_enabled_exchange) {
@@ -647,36 +748,64 @@ export class Message {
                 throw new Error("queuename or exchange must be given");
             }
 
-
-            if (msg.queuename.length == 24 && Config.amqp_force_sender_has_read) {
-                const tuser = Crypt.verityToken(msg.jwt);
+            if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !NoderedUtil.IsNullEmpty(msg.queuename)) {
+                const tuser = Crypt.verityToken(jwt);
                 let allowed: boolean = false;
                 if (tuser._id == msg.queuename) {
                     // Queue is for me
                     allowed = true;
                 } else if (tuser.roles != null) {
-                    // Queue is for a group i am a member of.
+                    // Queue is for a role i am a member of.
                     const isrole = tuser.roles.filter(x => x._id == msg.queuename);
                     if (isrole.length > 0) allowed = true;
                 }
-                if (!allowed) {
+                if (!allowed && msg.queuename.length == 24) {
                     // Do i have permission to send to a queue with this id ?
-                    const arr = await Config.db.query({ _id: msg.queuename }, { name: 1 }, 1, 0, null, "users", msg.jwt, undefined, undefined, span);
-                    if (arr.length > 0) allowed = true;
-                    if (!allowed) {
-                        const arr1 = await Config.db.query({ _id: msg.queuename }, { name: 1 }, 1, 0, null, "openrpa", msg.jwt, undefined, undefined, span);
-                        if (arr1.length > 0) allowed = true;
+                    let mq = Auth.getUser(msg.queuename, "mq");
+                    if (mq == null) {
+                        const arr = await Config.db.query({ _id: msg.queuename }, { name: 1, _acl: 1 }, 1, 0, null, "users", rootjwt, undefined, undefined, span);
+                        if (arr.length > 0) {
+                            await Auth.AddUser(arr[0] as any, msg.queuename, "mq");
+                            mq = arr[0] as any;
+                        }
                     }
-                    if (!allowed) {
-                        const arr2 = await Config.db.query({ _id: msg.queuename }, { name: 1 }, 1, 0, null, "workflow", msg.jwt, undefined, undefined, span);
-                        if (arr2.length > 0) allowed = true;
+                    if (mq != null) {
+                        if (Config.amqp_force_sender_has_invoke) {
+                            if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
+                                throw new Error("Unknown queue or access denied");
+                            }
+                        } else {
+                            if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.read)) {
+                                throw new Error("Unknown queue or access denied");
+                            }
+                        }
+                        allowed = true;
                     }
                 }
                 if (!allowed) {
-                    throw new Error("Unknown queue or access denied");
+                    let mq = Auth.getUser(msg.queuename, "mq");
+                    if (mq == null) {
+                        const arr = await Config.db.query({ "name": msg.queuename, "_type": "queue" }, { name: 1, _acl: 1 }, 1, 0, null, "mq", rootjwt, undefined, undefined, span);
+                        if (arr.length > 0) {
+                            await Auth.AddUser(arr[0] as any, msg.queuename, "mq");
+                            mq = arr[0] as any;
+                        }
+                    }
+                    if (mq != null) {
+                        if (Config.amqp_force_sender_has_invoke) {
+                            if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
+                                throw new Error("Unknown queue or access denied");
+                            }
+                        } else {
+                            if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.read)) {
+                                throw new Error("Unknown queue or access denied");
+                            }
+
+                        }
+                        allowed = true;
+                    }
                 }
             }
-
             const sendthis: any = msg.data;
             if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(msg.data.jwt)) {
                 msg.jwt = msg.data.jwt;
