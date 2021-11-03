@@ -73,6 +73,12 @@ export class Config {
         Config.cleanacl_credential_cache_seconds = parseInt(Config.getEnv("cleanacl_credential_cache_seconds", "900"));
         Config.mq_credential_cache_seconds = parseInt(Config.getEnv("mq_credential_cache_seconds", "900"));
 
+        Config.oidc_access_token_ttl = parseInt(Config.getEnv("oidc_access_token_ttl", "28800"));
+        Config.oidc_authorization_code_ttl = parseInt(Config.getEnv("oidc_authorization_code_ttl", "28800"));
+        Config.oidc_client_credentials_ttl = parseInt(Config.getEnv("oidc_client_credentials_ttl", "28800"));
+        Config.oidc_refresh_token_ttl = parseInt(Config.getEnv("oidc_refresh_token_ttl", "1209600"));
+        Config.oidc_session_ttl = parseInt(Config.getEnv("oidc_session_ttl", "1209600"));
+
         Config.oauth_token_cache_seconds = parseInt(Config.getEnv("oauth_token_cache_seconds", "60000"));
         Config.oauth_access_token_lifetime = parseInt(Config.getEnv("oauth_access_token_lifetime", "604800"));
         Config.oauth_refresh_token_lifetime = parseInt(Config.getEnv("oauth_refresh_token_lifetime", "604800"));
@@ -224,6 +230,12 @@ export class Config {
     public static grafana_credential_cache_seconds: number = parseInt(Config.getEnv("grafana_credential_cache_seconds", "900"));
     public static cleanacl_credential_cache_seconds: number = parseInt(Config.getEnv("cleanacl_credential_cache_seconds", "900"));
     public static mq_credential_cache_seconds: number = parseInt(Config.getEnv("mq_credential_cache_seconds", "900"));
+
+    public static oidc_access_token_ttl: number = parseInt(Config.getEnv("oidc_access_token_ttl", "28800")); // 8 hours
+    public static oidc_authorization_code_ttl: number = parseInt(Config.getEnv("oidc_authorization_code_ttl", "28800")); // 8 hours
+    public static oidc_client_credentials_ttl: number = parseInt(Config.getEnv("oidc_client_credentials_ttl", "28800")); // 8 hours
+    public static oidc_refresh_token_ttl: number = parseInt(Config.getEnv("oidc_refresh_token_ttl", "1209600")); // 14 days in seconds
+    public static oidc_session_ttl: number = parseInt(Config.getEnv("oidc_session_ttl", "1209600")); // 14 days in seconds
 
     public static oauth_token_cache_seconds: number = parseInt(Config.getEnv("oauth_token_cache_seconds", "60000"));
     public static oauth_access_token_lifetime: number = parseInt(Config.getEnv("oauth_access_token_lifetime", "604800"));

@@ -108,11 +108,11 @@ export class OAuthProvider {
                     AccessToken: 'jwt',
                 },
                 ttl: {
-                    AccessToken: 28800, // 8 hours
-                    AuthorizationCode: 28800, // 8 hours
-                    ClientCredentials: 28800, // 8 hours
-                    RefreshToken: 14 * 24 * 60 * 60, // 14 days in seconds
-                    Session: 1209600 // 14 days in seconds
+                    AccessToken: Config.oidc_access_token_ttl,
+                    AuthorizationCode: Config.oidc_authorization_code_ttl,
+                    ClientCredentials: Config.oidc_client_credentials_ttl,
+                    RefreshToken: Config.oidc_refresh_token_ttl,
+                    Session: Config.oidc_session_ttl
                 },
                 jwks: jwks,
                 features: {
