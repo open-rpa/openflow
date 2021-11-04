@@ -6,6 +6,7 @@ import { WebSocketServer } from "./WebSocketServer";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import events = require("events");
+import { Auth } from "./Auth";
 type QueueOnMessage = (msg: string, options: QueueMessageOptions, ack: any, done: any) => void;
 interface IHashTable<T> {
     [key: string]: T;
@@ -143,7 +144,8 @@ export class amqpwrapper extends events.EventEmitter {
                     Logger.instanse.error(error);
                 }
             });
-            this.adddlx();
+            this.Adddlx();
+            this.AddOFExchange();
             this.emit("connected");
             this.connected = true;
         } catch (error) {
@@ -530,7 +532,7 @@ export class amqpwrapper extends events.EventEmitter {
             this.channel.publish(exchange, routingkey, Buffer.from(data), options);
         }
     }
-    async adddlx() {
+    async Adddlx() {
         if (NoderedUtil.IsNullEmpty(Config.amqp_dlx)) return;
         await this.AddExchangeConsumer(Config.amqp_dlx, "fanout", "", null, null, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
             if (typeof msg === "string" || msg instanceof String) {
@@ -553,6 +555,58 @@ export class amqpwrapper extends events.EventEmitter {
                 console.error("Failed sending deadletter message to " + options.replyTo);
                 console.error(error);
             }
+            ack();
+            done();
+        }, undefined);
+    }
+    async AddOFExchange() {
+        if (!Config.enable_openflow_amqp) return;
+        await this.AddExchangeConsumer("openflow", "fanout", "", null, null, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+            if (typeof msg === "string" || msg instanceof String) {
+                try {
+                    msg = JSON.parse((msg as any));
+                } catch (error) {
+                }
+            }
+            if (typeof msg !== "string") {
+                if (Config.log_amqp) Logger.instanse.info("[OF][" + options.exchange + "] Received command " + msg.command);
+                switch (msg.command) {
+                    case "clearcache":
+                        Auth.clearCache();
+                        break;
+                    case "shutdown":
+                        try {
+                            await Config.db.shutdown();
+                            await Logger.otel.shutdown();
+                            await Logger.License.shutdown()
+                            await Auth.shutdown();
+                        } catch (error) {
+                            console.error(error);
+                        }
+                        process.exit(404);
+                        // process.kill(process.pid, "SIGINT");
+                        break;
+                    default:
+                        console.error("[OF] Received unknown command: " + msg.command);
+                        break;
+                }
+            } else {
+                if (Config.log_amqp) console.log("[OF] Received string message: " + JSON.stringify(msg));
+            }
+            // try {
+            //     if (typeof msg === "string" || msg instanceof String) {
+            //         msg = "timeout"
+            //     } else {
+            //         msg.command = "timeout";
+            //     }
+            //     // Resend message, this time to the reply queue for the correct node (replyTo)
+            //     if (Config.log_amqp) Logger.instanse.info("[DLX][" + options.exchange + "] Send timeout to " + options.replyTo + " correlationId: " + options.correlationId);
+            //     // await amqpwrapper.Instance().sendWithReply("", options.replyTo, msg, 20000, options.correlationId, "");
+            //     await amqpwrapper.Instance().send("", options.replyTo, msg, 20000, options.correlationId, "");
+            // } catch (error) {
+            //     console.error("Failed sending deadletter message to " + options.replyTo);
+            //     console.error(error);
+            // }
             ack();
             done();
         }, undefined);

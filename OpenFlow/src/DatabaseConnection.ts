@@ -10,6 +10,7 @@ import { Logger } from "./Logger";
 import { Auth } from "./Auth";
 const { JSONPath } = require('jsonpath-plus');
 import events = require("events");
+import { amqpwrapper } from "./amqpwrapper";
 
 
 // tslint:disable-next-line: typedef
@@ -1063,7 +1064,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (item._type === "role") {
                     const r: Role = (item as any);
                     if (r.members.length > 0) {
-                        Auth.clearCache();
+                        amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
                     }
                 }
             }
@@ -1150,7 +1151,9 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                     if (item._type === "role") {
                         const r: Role = item as any;
-                        if (r.members.length > 0) Auth.clearCache();
+                        if (r.members.length > 0) {
+                            amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                        }
                     }
                 }
                 item._version = 0;
@@ -1590,7 +1593,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         DBHelper.cached_roles = [];
                     }
                     if (q.item._type === "role") {
-                        Auth.clearCache();
+                        amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
                     }
                     if (q.collectionname != "fs.files") {
                         const ot_end = Logger.otel.startTimer();
@@ -1990,7 +1993,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                 }
                 if (collectionname == "users" && doc._type == "role") {
-                    Auth.clearCache();
+                    amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
                 }
             }
         } catch (error) {
