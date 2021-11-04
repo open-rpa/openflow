@@ -744,6 +744,10 @@ export class Message {
             }
             if (!NoderedUtil.IsNullEmpty(msg.queuename) && msg.queuename.toLowerCase() == "openflow") {
                 throw new Error("Access denied");
+            } else if (!NoderedUtil.IsNullEmpty(msg.exchange) && msg.exchange.toLowerCase() == "openflow") {
+                throw new Error("Access denied");
+            } else if (!NoderedUtil.IsNullEmpty(msg.replyto) && msg.replyto.toLowerCase() == "openflow") {
+                throw new Error("Access denied");
             } else if (NoderedUtil.IsNullEmpty(msg.queuename) && NoderedUtil.IsNullEmpty(msg.exchange)) {
                 throw new Error("queuename or exchange must be given");
             }
@@ -799,6 +803,41 @@ export class Message {
                         } else {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.read)) {
                                 throw new Error("Unknown queue or access denied, missing read permission on queue object " + tuser.name);
+                            }
+
+                        }
+                        allowed = true;
+                    }
+                }
+            }
+            if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !NoderedUtil.IsNullEmpty(msg.exchange)) {
+                const tuser = Crypt.verityToken(jwt);
+                let allowed: boolean = false;
+                if (tuser._id == msg.exchange) {
+                    // Queue is for me
+                    allowed = true;
+                } else if (tuser.roles != null) {
+                    // Queue is for a role i am a member of.
+                    const isrole = tuser.roles.filter(x => x._id == msg.exchange);
+                    if (isrole.length > 0) allowed = true;
+                }
+                if (!allowed) {
+                    let mq = Auth.getUser(msg.exchange, "mqe");
+                    if (mq == null) {
+                        const arr = await Config.db.query({ "name": msg.exchange, "_type": "exchange" }, { name: 1, _acl: 1 }, 1, 0, null, "mq", rootjwt, undefined, undefined, span);
+                        if (arr.length > 0) {
+                            await Auth.AddUser(arr[0] as any, msg.exchange, "mqe");
+                            mq = arr[0] as any;
+                        }
+                    }
+                    if (mq != null) {
+                        if (Config.amqp_force_sender_has_invoke) {
+                            if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
+                                throw new Error("Unknown exchange or access denied, missing invoke permission on exchange object " + tuser.name);
+                            }
+                        } else {
+                            if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.read)) {
+                                throw new Error("Unknown exchange or access denied, missing read permission on exchange object " + tuser.name);
                             }
 
                         }
