@@ -1060,6 +1060,12 @@ export class DatabaseConnection extends events.EventEmitter {
                 Logger.otel.endSpan(mongodbspan);
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_replace, { collection: collectionname });
                 DBHelper.cached_roles = [];
+                if (item._type === "role") {
+                    const r: Role = (item as any);
+                    if (r.members.length > 0) {
+                        Auth.clearCache();
+                    }
+                }
             }
             if (collectionname === "config" && item._type === "oauthclient") {
                 if (user.HasRoleName("admins")) {
@@ -1141,6 +1147,10 @@ export class DatabaseConnection extends events.EventEmitter {
                                 throw new Error("Access denied");
                             }
                         }
+                    }
+                    if (item._type === "role") {
+                        const r: Role = item as any;
+                        if (r.members.length > 0) Auth.clearCache();
                     }
                 }
                 item._version = 0;
@@ -1579,7 +1589,9 @@ export class DatabaseConnection extends events.EventEmitter {
                         q.item = await this.Cleanmembers(q.item as any, original);
                         DBHelper.cached_roles = [];
                     }
-
+                    if (q.item._type === "role") {
+                        Auth.clearCache();
+                    }
                     if (q.collectionname != "fs.files") {
                         const ot_end = Logger.otel.startTimer();
                         const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.replaceOne", span);
@@ -1976,6 +1988,9 @@ export class DatabaseConnection extends events.EventEmitter {
                     for (var r of subdocs) {
                         this.DeleteOne(r._id, "config", jwt, span);
                     }
+                }
+                if (collectionname == "users" && doc._type == "role") {
+                    Auth.clearCache();
                 }
             }
         } catch (error) {
