@@ -151,7 +151,7 @@ async function initDatabase(): Promise<boolean> {
             Base.removeRight(robot_users, robot_users._id, [Rights.full_control]);
         } else if (Config.update_acl_based_on_groups) {
             Base.removeRight(robot_users, robot_users._id, [Rights.full_control]);
-            Base.addRight(robot_users, robot_users._id, "robot users", [Rights.read]);
+            Base.addRight(robot_users, robot_users._id, "robot users", [Rights.read, Rights.invoke, Rights.update]);
         }
         await DBHelper.Save(robot_users, jwt, span);
 
