@@ -594,11 +594,11 @@ export class Message {
                 if (mq != null) {
                     if (Config.amqp_force_consumer_has_update) {
                         if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
-                            throw new Error("Unknown queue or access denied");
+                            throw new Error("Unknown queue or access denied, missing update permission on exchange object " + tuser.name);
                         }
                     } else if (Config.amqp_force_sender_has_invoke) {
                         if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
-                            throw new Error("Unknown queue or access denied");
+                            throw new Error("Unknown queue or access denied, missing invoke permission on exchange object " + tuser.name);
                         }
                     }
                 } else {
@@ -661,11 +661,11 @@ export class Message {
                     if (mq != null) {
                         if (Config.amqp_force_consumer_has_update) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
-                                throw new Error("Unknown queue or access denied");
+                                throw new Error("Unknown queue or access denied, missing update permission on users object " + tuser.name);
                             }
                         } else if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
-                                throw new Error("Unknown queue or access denied");
+                                throw new Error("Unknown queue or access denied, missing invoke permission on users object " + tuser.name);
                             }
                         }
                         allowed = true;
@@ -683,11 +683,11 @@ export class Message {
                     if (mq != null) {
                         if (Config.amqp_force_consumer_has_update) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
-                                throw new Error("Unknown queue or access denied");
+                                throw new Error("Unknown queue or access denied, missing update permission on queue object " + tuser.name);
                             }
                         } else if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
-                                throw new Error("Unknown queue or access denied");
+                                throw new Error("Unknown queue or access denied, missing invoke permission on queue object " + tuser.name);
                             }
                         }
                         allowed = true;
@@ -772,11 +772,11 @@ export class Message {
                     if (mq != null) {
                         if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
-                                throw new Error("Unknown queue or access denied");
+                                throw new Error("Unknown queue or access denied, missing invoke permission on users object " + tuser.name);
                             }
                         } else {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.read)) {
-                                throw new Error("Unknown queue or access denied");
+                                throw new Error("Unknown queue or access denied, missing read permission on users object " + tuser.name);
                             }
                         }
                         allowed = true;
@@ -794,11 +794,11 @@ export class Message {
                     if (mq != null) {
                         if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
-                                throw new Error("Unknown queue or access denied");
+                                throw new Error("Unknown queue or access denied, missing invoke permission on queue object " + tuser.name);
                             }
                         } else {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.read)) {
-                                throw new Error("Unknown queue or access denied");
+                                throw new Error("Unknown queue or access denied, missing read permission on queue object " + tuser.name);
                             }
 
                         }
