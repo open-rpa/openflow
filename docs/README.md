@@ -11,6 +11,8 @@ Read more about the [architecture here](architecture).
 
 Read more about the [web socket protocol](protocol).
 
+Read more about [size recommendations](requirements).
+
 #### Quick start using docker
 Installing using [docker-compose](dockercompose)
 
