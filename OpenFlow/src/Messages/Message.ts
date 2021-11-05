@@ -4331,7 +4331,28 @@ export class Message {
         m.data = JSON.stringify(l);
         cli.Send(m);
     }
+    public static lastHouseKeeping: Date = null;
+    public static ReadyForHousekeeping(): boolean {
+        const date = new Date();
+        const a: number = (date as any) - (Message.lastHouseKeeping as any);
+        const diffminutes = a / (1000 * 60);
+        // const diffhours = a / (1000 * 60 * 60);
+        if (diffminutes < 60) return false;
+        return true;
+    }
     public async Housekeeping(skipNodered: boolean, skipCalculateSize: boolean, skipUpdateUserSize: boolean, parent: Span): Promise<void> {
+        if (Message.lastHouseKeeping == null) {
+            Message.lastHouseKeeping = new Date();
+            Message.lastHouseKeeping.setDate(Message.lastHouseKeeping.getDate() - 1);
+        }
+        if (!Message.ReadyForHousekeeping()) {
+            const date = new Date();
+            const a: number = (date as any) - (Message.lastHouseKeeping as any);
+            const diffminutes = a / (1000 * 60);
+            Logger.instanse.debug("[housekeeping] Skipping housekeeping, to early for next run (ran " + diffminutes + " minutes ago)");
+            return;
+        }
+        Message.lastHouseKeeping = new Date();
         const span: Span = Logger.otel.startSubSpan("message.QueueMessage", parent);
         try {
             if (!skipNodered) await this.GetNoderedInstance(span)

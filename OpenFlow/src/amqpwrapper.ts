@@ -7,6 +7,7 @@ import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import events = require("events");
 import { Auth } from "./Auth";
+import { Message } from "./Messages/Message";
 type QueueOnMessage = (msg: string, options: QueueMessageOptions, ack: any, done: any) => void;
 interface IHashTable<T> {
     [key: string]: T;
@@ -559,6 +560,10 @@ export class amqpwrapper extends events.EventEmitter {
             done();
         }, undefined);
     }
+    IsMyconsumerTag(consumerTag: string) {
+        var q = this.queues.filter(q => q.consumerTag == consumerTag);
+        return q.length != 0;
+    }
     async AddOFExchange() {
         if (!Config.enable_openflow_amqp) return;
         await this.AddExchangeConsumer("openflow", "fanout", "", null, null, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
@@ -573,6 +578,22 @@ export class amqpwrapper extends events.EventEmitter {
                 switch (msg.command) {
                     case "clearcache":
                         Auth.clearCache();
+                        break;
+                    case "housekeeping":
+                        if (this.IsMyconsumerTag(options.consumerTag)) {
+                            ack();
+                            done();
+                            try {
+                                var dt = new Date(new Date().toISOString());
+                                var msg2 = new Message(); msg2.jwt = Crypt.rootToken();
+                                var skipUpdateUsage: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
+                                await msg2.Housekeeping(false, skipUpdateUsage, skipUpdateUsage, null);
+                            } catch (error) {
+                            }
+                            return;
+                        }
+                        console.log("Reset house keeping, someone else is doing it now");
+                        Message.lastHouseKeeping = new Date();
                         break;
                     case "shutdown":
                         try {
