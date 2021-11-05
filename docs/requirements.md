@@ -1,6 +1,14 @@
 # Size recommendations for OpenFlow
 
-#### Using OpenFlow without premium features:
+If installing on kubernetes, traefik is required as ingress controller. You can run both nginx and traefik side by side, but you cannot have nginx infront of traefik.
+A storage provider needs to be provisioned that support both up and down scaling the size. Using local storage and assigning pods to specific machines is NOT supported or recommended.
+If you need to share RabbitMQ with other applications, its recommended create a virtual server solely for OpenFlow. In the connection string then add the name of your virtual server.
+
+```
+amqp_url=amqp://user:password@rabbitmqhost/openflowvirtualserver
+```
+
+Using OpenFlow without premium features:
 
 using docker, with traefik as ingress controller
 allocated around 200 to 300mb ram for RabbitMQ
@@ -18,10 +26,10 @@ each image is around 500 to 1 Gigabyte and most setups takes a long time to reac
 
 
 1) for option to use Grafana toward OpenFlow data
-  This requires only starting a Grafana instance and should not require more than 50mb to 100mb of RAM (the image is 250mb so also 500mb of disk space )
+    This requires only starting a Grafana instance and should not require more than 50mb to 100mb of RAM (the image is 250mb so also 500mb of disk space )
 2) option to use Open Telemetry to collect usage, metrics and spans and send custom tracing info from NodeRED.
-  There are a few options here, but a typical setup would involve:
-  allocate around 200mb to 1 gb memory for otel-collector
-  allocate around 300mb to 3 gb memory for victoriametrics
-  allocate around 200mb to 500mb memory for jaeger
-  allocate around 500mb to 3 gb memory for cassandra, and enough disk space to hold 14 days of metrics and spans. ( 50 to 100 Gi disk space is a good starting point )
+    There are a few options here, but a typical setup would involve:
+    allocate around 200mb to 1 gb memory for otel-collector
+    allocate around 300mb to 3 gb memory for victoriametrics
+    allocate around 200mb to 500mb memory for jaeger
+    allocate around 500mb to 3 gb memory for cassandra, and enough disk space to hold 14 days of metrics and spans. ( 50 to 100 Gi disk space is a good starting point )
