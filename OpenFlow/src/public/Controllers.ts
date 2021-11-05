@@ -164,8 +164,9 @@ export class MenuCtrl {
         this.path = this.$location.path();
     }
     hasrole(role: string) {
-        if (this.WebSocketClientService.user === null || this.WebSocketClientService.user === undefined) return false;
-        const hits = this.WebSocketClientService.user.roles.filter(member => member.name == role);
+        if (WebSocketClient.instance === null || WebSocketClient.instance === undefined) return false;
+        if (WebSocketClient.instance.user === null || WebSocketClient.instance.user === undefined) return false;
+        const hits = WebSocketClient.instance.user.roles.filter(member => member.name == role);
         return (hits.length == 1)
     }
     hascordova() {
@@ -189,9 +190,9 @@ export class MenuCtrl {
     async EditCustomer(customer) {
         try {
             if (customer == null) return;
-            this.WebSocketClientService.user.selectedcustomerid = customer._id;
+            WebSocketClient.instance.user.selectedcustomerid = customer._id;
             this.WebSocketClientService.customer = customer as any;
-            await NoderedUtil.SelectCustomer(this.WebSocketClientService.user.selectedcustomerid, null, 2);
+            await NoderedUtil.SelectCustomer(WebSocketClient.instance.user.selectedcustomerid, null, 2);
             this.$location.path("/Customer/" + customer._id);
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         } catch (error) {
@@ -207,16 +208,16 @@ export class MenuCtrl {
         try {
             this.customer = customer;
             if (customer != null) {
-                this.WebSocketClientService.user.selectedcustomerid = customer._id;
-                await NoderedUtil.SelectCustomer(this.WebSocketClientService.user.selectedcustomerid, null, 2);
+                WebSocketClient.instance.user.selectedcustomerid = customer._id;
+                await NoderedUtil.SelectCustomer(WebSocketClient.instance.user.selectedcustomerid, null, 2);
                 this.WebSocketClientService.customer = customer as any;
                 if (this.PathIs("/Customer")) {
                     this.$location.path("/Customer/" + customer._id);
                     if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 }
             } else {
-                this.WebSocketClientService.user.selectedcustomerid = null;
-                await NoderedUtil.SelectCustomer(this.WebSocketClientService.user.selectedcustomerid, null, 2);
+                WebSocketClient.instance.user.selectedcustomerid = null;
+                await NoderedUtil.SelectCustomer(WebSocketClient.instance.user.selectedcustomerid, null, 2);
                 this.WebSocketClientService.customer = null;
             }
             // this.$rootScope.$broadcast("menurefresh");
@@ -1877,10 +1878,10 @@ export class MainCtrl extends entitiesCtrl<Base> {
         // this.basequery = { state: { $ne: "completed" }, $and: [{ form: { $exists: true } }, { form: { "$ne": "none" } }] };
         // this.basequery = { state: { $ne: "completed" }, form: { $exists: true } };
         this.preloadData = () => {
-            const user = this.WebSocketClientService.user;
+            const user = WebSocketClient.instance.user;
             const ors: any[] = [];
             ors.push({ targetid: user._id });
-            this.WebSocketClientService.user.roles.forEach(role => {
+            WebSocketClient.instance.user.roles.forEach(role => {
                 ors.push({ targetid: role._id });
             });
             this.basequery = {};
@@ -2436,13 +2437,18 @@ export class UserCtrl extends entityCtrl<TokenUser> {
     }
     async processdata() {
         if (this.model != null && (this.model._id != null && this.model._id != "")) {
-            this.memberof = await NoderedUtil.Query("users",
-                {
-                    $and: [
-                        { _type: "role" },
-                        { members: { $elemMatch: { _id: this.model._id } } }
-                    ]
-                }, null, { _type: -1, name: 1 }, 5, 0, null, null, null, 2);
+            if (this.model._id == WebSocketClient.instance.user._id) {
+                console.log(WebSocketClient.instance.user)
+                this.memberof = WebSocketClient.instance.user.roles as any;
+            } else {
+                this.memberof = await NoderedUtil.Query("users",
+                    {
+                        $and: [
+                            { _type: "role" },
+                            { members: { $elemMatch: { _id: this.model._id } } }
+                        ]
+                    }, null, { _type: -1, name: 1 }, 50, 0, null, null, null, 2);
+            }
         } else {
             this.memberof = [];
         }
@@ -2499,12 +2505,12 @@ export class UserCtrl extends entityCtrl<TokenUser> {
                 for (let i = 0; i < this.removedmembers.length; i++) {
                     const roles = await NoderedUtil.Query("users", { _type: "role", _id: this.removedmembers[i]._id }, null, { _type: -1, name: 1 }, 5, 0, null, null, null, 2);
                     if (roles.length > 0) {
-                        const memberof = this.removedmembers[i];
-                        if (this.memberof == null || this.memberof == undefined) this.memberof = [];
-                        const exists = this.memberof.filter(x => x._id == this.model._id);
+                        const memberof = roles[i];
+                        const exists = memberof.members.filter(x => x._id == this.model._id);
                         if (exists.length > 0) {
                             memberof.members = memberof.members.filter(x => x._id != this.model._id);
                             try {
+                                console.log("Updating " + memberof.name, memberof);
                                 await NoderedUtil.UpdateOne("users", null, memberof, 1, false, null, 2);
                             } catch (error) {
                                 console.error("Error updating " + memberof.name, error);
@@ -2518,6 +2524,7 @@ export class UserCtrl extends entityCtrl<TokenUser> {
             }
             this.$location.path("/Users");
         } catch (error) {
+            debugger;
             this.errormessage = error.message ? error.message : error;
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -3060,7 +3067,7 @@ export class EditFormCtrl extends entityCtrl<Form> {
             // http://www.alpacajs.org/demos/form-builder/form-builder.html
             // https://github.com/kevinchappell/formBuilder - https://formbuilder.online/ - https://kevinchappell.github.io/formBuilder/
             const roles: any = {};
-            this.WebSocketClientService.user.roles.forEach(role => {
+            WebSocketClient.instance.user.roles.forEach(role => {
                 roles[role._id] = role.name;
             });
 
@@ -3557,7 +3564,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         if (this.form.fbeditor === true) {
             console.debug("renderform");
             const roles: any = {};
-            this.WebSocketClientService.user.roles.forEach(role => {
+            WebSocketClient.instance.user.roles.forEach(role => {
                 roles[role._id] = role.name;
             });
             if (typeof this.form.formData === 'string' || this.form.formData instanceof String) {
@@ -3796,7 +3803,7 @@ export class EntityCtrl extends entityCtrl<Base> {
                 for (let i: number = this.keys.length - 1; i >= 0; i--) {
                     if (this.keys[i].startsWith('_')) this.keys.splice(i, 1);
                 }
-                this.searchSelectedItem = WebSocketClientService.user;
+                this.searchSelectedItem = WebSocketClient.instance.user;
                 this.adduser();
                 this.processdata();
                 //if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -4279,8 +4286,8 @@ export class NoderedCtrl {
             this.loading = true;
             this.userid = $routeParams.id;
             if (this.userid == null || this.userid == undefined || this.userid == "") {
-                this.name = WebSocketClientService.user.username;
-                this.userid = WebSocketClientService.user._id;
+                this.name = WebSocketClient.instance.user.username;
+                this.userid = WebSocketClient.instance.user._id;
                 const users: NoderedUser[] = await NoderedUtil.Query("users", { _id: this.userid }, null, null, 1, 0, null, null, null, 2);
                 if (users.length == 0) {
                     this.instancestatus = "Unknown id! " + this.userid;
@@ -5053,7 +5060,7 @@ export class CredentialCtrl extends entityCtrl<Base> {
                 this.model = new Base();
                 this.model._type = "credential";
                 this.model._encrypt = ["password"];
-                this.searchSelectedItem = WebSocketClientService.user;
+                this.searchSelectedItem = WebSocketClient.instance.user;
                 this.adduser();
             }
         });
@@ -5098,7 +5105,7 @@ export class CredentialCtrl extends entityCtrl<Base> {
         ace._id = this.searchSelectedItem._id;
         ace.name = this.searchSelectedItem.name;
         // ace.rights = "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=";
-        if (this.WebSocketClientService.user._id != ace._id) {
+        if (WebSocketClient.instance.user._id != ace._id) {
             ace.rights = this.unsetBit(ace.rights, 1);
             ace.rights = this.setBit(ace.rights, 2);
             ace.rights = this.unsetBit(ace.rights, 3);
@@ -5572,32 +5579,38 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
     }
     async MassDeleteOnlyOne() {
         this.loading = true;
+        let ids: string[] = [];
         for (let x = 0; x < this.models.length; x++) {
             const item = (this.models[x] as any);
-            await NoderedUtil.DeleteOne(this.collection, item.items[0]._id, null, 1);
+            ids.push(item.items[0]._id);
         }
+        await NoderedUtil.DeleteMany(this.collection, null, ids, null, 1);
         this.loading = false;
         this.loadData();
     }
     async MassDeleteAllButOne() {
         this.loading = true;
+        let ids: string[] = [];
         for (let x = 0; x < this.models.length; x++) {
             const item = (this.models[x] as any);
             for (let y = 1; y < item.items.length; y++) {
-                await NoderedUtil.DeleteOne(this.collection, item.items[y]._id, null, 1);
+                ids.push(item.items[y]._id);
             }
         }
+        await NoderedUtil.DeleteMany(this.collection, null, ids, null, 1);
         this.loading = false;
         this.loadData();
     }
     async MassDeleteAll() {
         this.loading = true;
+        let ids: string[] = [];
         for (let x = 0; x < this.models.length; x++) {
             const item = (this.models[x] as any);
             for (let y = 0; y < item.items.length; y++) {
-                await NoderedUtil.DeleteOne(this.collection, item.items[y]._id, null, 1);
+                ids.push(item.items[y]._id);
             }
         }
+        await NoderedUtil.DeleteMany(this.collection, null, ids, null, 1);
         this.loading = false;
         this.loadData();
     }
@@ -5614,9 +5627,11 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         if (NoderedUtil.IsNullUndefinded(model)) return;
         if (NoderedUtil.IsNullUndefinded(model.items)) return;
         this.loading = true;
+        let ids: string[] = [];
         for (let i = 1; i < model.items.length; i++) {
-            await NoderedUtil.DeleteOne(this.collection, model.items[i]._id, null, 1);
+            ids.push(model.items[i]._id);
         }
+        await NoderedUtil.DeleteMany(this.collection, null, ids, null, 1);
         this.loading = false;
         this.loadData();
     }
@@ -5624,9 +5639,11 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         if (NoderedUtil.IsNullUndefinded(model)) return;
         if (NoderedUtil.IsNullUndefinded(model.items)) return;
         this.loading = true;
+        let ids: string[] = [];
         for (let i = 0; i < model.items.length; i++) {
-            await NoderedUtil.DeleteOne(this.collection, model.items[i]._id, null, 1);
+            ids.push(model.items[i]._id);
         }
+        await NoderedUtil.DeleteMany(this.collection, null, ids, null, 1);
         this.loading = false;
         this.loadData();
     }
@@ -5817,7 +5834,7 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                 if (NoderedUtil.IsNullUndefinded(this.model)) {
                     this.model = {} as any;
 
-                    if (this.model.name == null || this.model.name == "") this.model.name = WebSocketClientService.user.name;
+                    if (this.model.name == null || this.model.name == "") this.model.name = WebSocketClient.instance.user.name;
                     this.model._type = "customer";
                     var results = await NoderedUtil.Query(this.collection, { "_type": "billing", "userid": user._id }, null, null, 1, 0, null, null, null, 2);
 
@@ -5828,15 +5845,15 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                         this.model.vatnumber = results[0].vatnumber;
                         this.model.vattype = results[0].vattype;
                     } else {
-                        var results = await NoderedUtil.Query(this.collection, { "_type": "user", "_id": WebSocketClientService.user._id }, null, null, 1, 0, null, null, null, 2);
+                        var results = await NoderedUtil.Query(this.collection, { "_type": "user", "_id": WebSocketClient.instance.user._id }, null, null, 1, 0, null, null, null, 2);
                         if (results.length > 0 && !NoderedUtil.IsNullEmpty((results[0] as any).company)) {
                             this.model.name = (results[0] as any).company;
                         }
                     }
-                    this.model.email = (WebSocketClientService.user as any).username;
-                    if ((WebSocketClientService.user as any).email) this.model.email = (WebSocketClientService.user as any).email;
+                    this.model.email = (WebSocketClient.instance.user as any).username;
+                    if ((WebSocketClient.instance.user as any).email) this.model.email = (WebSocketClient.instance.user as any).email;
                     if (this.model.email && this.model.email.indexOf("@") == -1) {
-                        this.model.email = (WebSocketClientService.user as any).username + "@domain.com";
+                        this.model.email = (WebSocketClient.instance.user as any).username + "@domain.com";
                     }
                     console.debug("Create new customer");
                 }
@@ -5886,8 +5903,8 @@ export class CustomerCtrl extends entityCtrl<Customer> {
             this.errormessage = "";
             // this.stripe_customer = await NoderedUtil.EnsureStripeCustomer(this.model, this.userid, null, 2);
             if (this.model != null) {
-                if (this.WebSocketClientService.user.selectedcustomerid != this.model._id) {
-                    this.WebSocketClientService.user.selectedcustomerid = this.model._id;
+                if (WebSocketClient.instance.user.selectedcustomerid != this.model._id) {
+                    WebSocketClient.instance.user.selectedcustomerid = this.model._id;
                     this.$rootScope.$broadcast("menurefresh");
                 }
             }
@@ -6186,6 +6203,8 @@ export class EntityRestrictionsCtrl extends entitiesCtrl<Base> {
     async EnsureCommon() {
         try {
             await this.newRestriction("Add any", "entities", ["$."], false);
+            await this.newRestriction("Create queues", "mq", ["$.[?(@ && @._type == 'queue')]"], false);
+            await this.newRestriction("Create exchanges", "mq", ["$.[?(@ && @._type == 'exchange')]"], false);
             await this.newRestriction("Create form", "forms", ["$.[?(@ && @._type == 'form')]"], false);
             await this.newRestriction("Create workflow", "openrpa", ["$.[?(@ && @._type == 'workflow')]"], false);
             await this.newRestriction("Create project", "openrpa", ["$.[?(@ && @._type == 'project')]"], false);
@@ -6320,7 +6339,7 @@ export class EntityRestrictionCtrl extends entityCtrl<Base> {
         ace._id = this.searchSelectedItem._id;
         ace.name = this.searchSelectedItem.name;
         // ace.rights = "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=";
-        if (this.WebSocketClientService.user._id != ace._id) {
+        if (WebSocketClient.instance.user._id != ace._id) {
             ace.rights = this.setBit(ace.rights, 1);
             ace.rights = this.unsetBit(ace.rights, 2);
             ace.rights = this.unsetBit(ace.rights, 3);

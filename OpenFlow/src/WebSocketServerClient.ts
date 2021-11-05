@@ -65,6 +65,8 @@ export class WebSocketServerClient {
     public devnull: boolean = false;
     public commandcounter: object = {};
     private _amqpdisconnected: any = null;
+    private _dbdisconnected: any = null;
+    private _dbconnected: any = null;
     public inccommandcounter(command: string): number {
         let result: number = 0;
         if (!NoderedUtil.IsNullUndefinded(this.commandcounter[command])) result = this.commandcounter[command];
@@ -90,8 +92,24 @@ export class WebSocketServerClient {
         socketObject.on("message", this.message.bind(this)); // e: MessageEvent
         socketObject.on("error", this.error.bind(this));
         socketObject.on("close", this.close.bind(this));
+
+        this._dbdisconnected = this.dbdisconnected.bind(this);
+        this._dbconnected = this.dbconnected.bind(this);
+        Config.db.on("disconnected", this._dbdisconnected);
+        Config.db.on("connected", this._dbconnected);
+
         this._amqpdisconnected = this.amqpdisconnected.bind(this);
         amqpwrapper.Instance().on("disconnected", this._amqpdisconnected);
+    }
+    private async dbdisconnected(e: Event): Promise<void> {
+        var keys = Object.keys(this.watches);
+        for (var i = 0; i < keys.length; i++) {
+            let id = keys[i];
+            let w = this.watches[id];
+            await this.Watch(w.aggregates, w.collectionname, this.jwt, id);
+        }
+    }
+    private dbconnected(e: Event): void {
     }
     private amqpdisconnected(e: Event): void {
         for (var i = 0; i < this._queues.length; i++) {
@@ -119,6 +137,8 @@ export class WebSocketServerClient {
     private close(e: CloseEvent): void {
         Logger.instanse.info("WebSocket connection closed " + e + " " + this.id + "/" + this.clientagent);
         this.Close();
+        Config.db.removeListener("disconnected", this._dbdisconnected);
+        Config.db.removeListener("connected", this._dbconnected);
     }
     private error(e: Event): void {
         Logger.instanse.error("WebSocket error encountered " + e + " " + this.id + "/" + this.clientagent);
@@ -212,10 +232,6 @@ export class WebSocketServerClient {
             if (this._socketObject != null) {
                 try {
                     this._socketObject.removeAllListeners();
-                    // this._socketObject.removeListener("open", this.open);
-                    // this._socketObject.removeListener("message", this.message); // e: MessageEvent
-                    // this._socketObject.removeListener("error", this.error);
-                    // this._socketObject.removeListener("close", this.close);
                 } catch (error) {
                     Logger.instanse.error("WebSocketclient::Close::removeListener " + error);
                 }
@@ -229,6 +245,10 @@ export class WebSocketServerClient {
                 amqpwrapper.Instance().removeListener("disconnected", this._amqpdisconnected);
             } catch (error) {
                 Logger.instanse.error("WebSocketclient::Close-disconnected " + error);
+            }
+            var keys = Object.keys(this.watches);
+            for (var i = 0; i < keys.length; i++) {
+                await this.UnWatch(keys[i], this.jwt);
             }
         } catch (error) {
             span.recordException(error);
@@ -594,13 +614,18 @@ export class WebSocketServerClient {
         WebSocketServer.update_mongodb_watch_count(this);
     }
     async UnWatch(id: string, jwt: string): Promise<void> {
-        this.CloseStream(id);
+        if (this.watches[id]) {
+            this.CloseStream(this.watches[id].streamid);
+            delete this.watches[id];
+        }
     }
-    async Watch(aggregates: object[], collectionname: string, jwt: string): Promise<string> {
+    public watches: IHashTable<ClientWatch> = {};
+    async Watch(aggregates: object[], collectionname: string, jwt: string, id: string = null): Promise<string> {
         const stream: clsstream = new clsstream();
         stream.id = NoderedUtil.GetUniqueIdentifier();
         stream.stream = await Config.db.watch(aggregates, collectionname, jwt);
         this.streams.push(stream);
+        if (id == null) id = NoderedUtil.GetUniqueIdentifier();
 
         const options = { fullDocument: "updateLookup" };
         const me = this;
@@ -613,7 +638,7 @@ export class WebSocketServerClient {
                     Logger.instanse.info("Watch: " + JSON.stringify(next.documentKey));
                     const msg: SocketMessage = SocketMessage.fromcommand("watchevent");
                     const q = new WatchEventMessage();
-                    q.id = stream.id;
+                    q.id = id;
                     q.result = next;
                     if (q.result && q.result.fullDocument) {
                         q.result.fullDocument = Config.db.decryptentity(q.result.fullDocument);
@@ -625,11 +650,18 @@ export class WebSocketServerClient {
                 }
             }, options);
             WebSocketServer.update_mongodb_watch_count(this);
-            return stream.id;
+            this.watches[id] = {
+                aggregates, collectionname, streamid: stream.id
+            } as ClientWatch;
+            return id;
         } catch (error) {
             Logger.instanse.error("WebSocketclient::Watch " + error + " " + this.id + "/" + this.clientagent);
             throw error;
         }
     }
-
+}
+export class ClientWatch {
+    public streamid: string;
+    public aggregates: object[];
+    public collectionname: string;
 }

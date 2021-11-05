@@ -151,7 +151,7 @@ async function initDatabase(): Promise<boolean> {
             Base.removeRight(robot_users, robot_users._id, [Rights.full_control]);
         } else if (Config.update_acl_based_on_groups) {
             Base.removeRight(robot_users, robot_users._id, [Rights.full_control]);
-            Base.addRight(robot_users, robot_users._id, "robot users", [Rights.read]);
+            Base.addRight(robot_users, robot_users._id, "robot users", [Rights.read, Rights.invoke, Rights.update]);
         }
         await DBHelper.Save(robot_users, jwt, span);
 
@@ -189,24 +189,38 @@ async function initDatabase(): Promise<boolean> {
         Logger.otel.endSpan(span);
 
         if (Config.auto_hourly_housekeeping) {
+            // Every 15 minutes, give and take a few minutes, send out a message to do house keeping, if ready
+            const randomNum = (Math.floor(Math.random() * 100) + 1);
+            console.log("Housekeeping every 15 minutes plus " + randomNum + " seconds");
             housekeeping = setInterval(async () => {
-                try {
-                    var dt = new Date(new Date().toISOString());
-                    var msg = new Message(); msg.jwt = Crypt.rootToken();
-                    var skipUpdateUsage: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
-                    await msg.Housekeeping(false, skipUpdateUsage, skipUpdateUsage, null);
-                } catch (error) {
+                if (Config.enable_openflow_amqp) {
+                    if (Config.enable_openflow_amqp) {
+                        if (!Message.ReadyForHousekeeping()) {
+                            return;
+                        }
+                        amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping" }, 20000, null, "", 1);
+                    }
+                } else {
+                    try {
+                        var dt = new Date(new Date().toISOString());
+                        var msg = new Message(); msg.jwt = Crypt.rootToken();
+                        var skipUpdateUsage: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
+                        await msg.Housekeeping(false, skipUpdateUsage, skipUpdateUsage, null);
+                    } catch (error) {
+                    }
                 }
-            }, 3600000);
+            }, (15 * 60 * 1000) + (randomNum * 1000));
+            // If I'm first and noone else has run it, lets trigger it now
+            const randomNum2 = (Math.floor(Math.random() * 10) + 1);
+            console.log("Trigger first Housekeeping in " + randomNum2 + " seconds");
             setTimeout(async () => {
-                var dt = new Date(new Date().toISOString());
-                var msg = new Message(); msg.jwt = Crypt.rootToken();
-                var skipUpdateUsage: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
-                var skipUpdateUserSize: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
-                if (Config.housekeeping_update_usage_hourly) skipUpdateUsage = false;
-                if (Config.housekeeping_update_usersize_hourly) skipUpdateUserSize = false;
-                await msg.Housekeeping(false, skipUpdateUsage, skipUpdateUserSize, null);
-            }, 5000);
+                if (Config.enable_openflow_amqp) {
+                    if (!Message.ReadyForHousekeeping()) {
+                        return;
+                    }
+                    amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping" }, 20000, null, "", 1);
+                }
+            }, randomNum2 * 1000);
         }
         return true;
     } catch (error) {

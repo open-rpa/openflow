@@ -712,10 +712,6 @@ export class LoginProvider {
                         return res.status(404).send({ message: 'Route ' + req.url + ' Not found.' });
                     }
                     const query = req.query;
-                    console.log("baseUrl: " + query.baseUrl);
-                    console.log("form: " + query.form);
-                    console.log("project: " + query.project);
-                    console.log("uniquename: " + query.uniquename);
                     let uniquename: string = query.uniquename;
                     let q: any = {};
                     if (!NoderedUtil.IsNullEmpty(uniquename)) {
@@ -761,10 +757,6 @@ export class LoginProvider {
                         return res.status(404).send({ message: 'Route ' + req.url + ' Not found.' });
                     }
                     const query = req.query;
-                    console.log("baseUrl: " + query.baseUrl);
-                    console.log("form: " + query.form);
-                    console.log("project: " + query.project);
-                    console.log("uniquename: " + query.uniquename);
                     let uniquename: string = query.uniquename;
                     let q: any = {};
                     if (!NoderedUtil.IsNullEmpty(uniquename)) {
@@ -779,8 +771,6 @@ export class LoginProvider {
                     const rows = await Config.db.query({ _id: safeObjectID(id) }, null, 1, 0, null, "files", jwt, undefined, undefined, span);
                     if (rows == null || rows.length != 1) { return res.status(404).send({ message: 'id ' + id + ' Not found.' }); }
                     const file = rows[0] as any;
-
-                    console.log("id: " + id);
 
                     const bucket = new GridFSBucket(Config.db.db);
                     let downloadStream = bucket.openDownloadStream(safeObjectID(id));

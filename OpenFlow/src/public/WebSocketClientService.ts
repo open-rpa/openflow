@@ -40,7 +40,7 @@ export class WebSocketClientService {
                 this.enable_entity_restriction = data.enable_entity_restriction;
                 this.enable_web_tours = data.enable_web_tours;
 
-                if (WebSocketClient.instance == null) {
+                if (NoderedUtil.IsNullUndefinded(WebSocketClient.instance)) {
                     const cli: WebSocketClient = new WebSocketClient(this.logger, wsurl);
                     cli.agent = "webapp";
                     cli.version = data.version;
@@ -60,16 +60,16 @@ export class WebSocketClientService {
     }
     loadToken() {
         WebSocketClient.instance.getJSON("/jwt", async (error: any, data: any) => {
-            if (data !== null && data !== undefined) {
-                if (data.jwt === null || data.jwt === undefined || data.jwt.trim() === "") { data.jwt = null; }
-                if (data.rawAssertion === null || data.rawAssertion === undefined || data.rawAssertion.trim() === "") { data.rawAssertion = null; }
-                if (data.jwt === null && data.rawAssertion === null) {
+            if (!NoderedUtil.IsNullUndefinded(data)) {
+                if (NoderedUtil.IsNullUndefinded(data.jwt) || data.jwt.trim() === "") { data.jwt = null; }
+                if (NoderedUtil.IsNullUndefinded(data.rawAssertion) || data.rawAssertion.trim() === "") { data.rawAssertion = null; }
+                if (NoderedUtil.IsNullUndefinded(data.jwt)) {
                     console.debug("data.jwt and data.rawAssertion is null");
                     data = null;
                 }
             }
             const _url = this.$location.absUrl();
-            if (data === null || data === undefined) {
+            if (NoderedUtil.IsNullUndefinded(data)) {
                 if (this.$location.path() !== "/Login" && this.$location.path() !== "/Signup") {
                     // const _url = this.$location.absUrl();
                     // this.setCookie("weburl", _url, 365);
@@ -81,23 +81,16 @@ export class WebSocketClientService {
             }
             try {
                 const result = await NoderedUtil.SigninWithToken(data.jwt, data.rawAssertion, null);
-                this.user = result.user;
-                this.jwt = result.jwt;
 
                 this.customer = null;
-                if (!NoderedUtil.IsNullEmpty(this.user.selectedcustomerid)) {
-                    const customers = await NoderedUtil.Query("users", { _type: "customer", "$or": [{ "_id": this.user.selectedcustomerid }, { "_id": this.user.customerid }] }, null, null, 100, 0, null, null, null, 2);
-                    if (customers.length > 0 && (this.user.selectedcustomerid != null)) {
-                        if (this.user.selectedcustomerid != null) {
+                if (!NoderedUtil.IsNullEmpty(WebSocketClient.instance.user.selectedcustomerid)) {
+                    const customers = await NoderedUtil.Query("users", { _type: "customer", "$or": [{ "_id": WebSocketClient.instance.user.selectedcustomerid }, { "_id": WebSocketClient.instance.user.customerid }] }, null, null, 100, 0, null, null, null, 2);
+                    if (customers.length > 0 && (WebSocketClient.instance.user.selectedcustomerid != null)) {
+                        if (WebSocketClient.instance.user.selectedcustomerid != null) {
                             for (let cust of customers)
-                                if (cust._id == this.user.selectedcustomerid) this.customer = cust;
+                                if (cust._id == WebSocketClient.instance.user.selectedcustomerid) this.customer = cust;
                         }
                     }
-                    // if (this.customer == null && customers.length > 0) {
-                    //     for (let cust of customers)
-                    //         if (cust._id == this.user.customerid) this.customer = cust;
-
-                    // }
                 }
 
                 this.$rootScope.$broadcast("signin", result.user);
@@ -126,9 +119,7 @@ export class WebSocketClientService {
     }
     async impersonate(userid: string) {
         try {
-            const result = await NoderedUtil.SigninWithToken(this.jwt, null, userid);
-            this.user = result.user;
-            this.jwt = result.jwt;
+            const result = await NoderedUtil.SigninWithToken(WebSocketClient.instance.jwt, null, userid);
             this.$rootScope.$broadcast("signin", result.user);
         } catch (error) {
             console.error(error);
@@ -166,8 +157,8 @@ export class WebSocketClientService {
         silly(msg) { console.debug(msg); }
     }
     public customer: Customer = null;
-    public user: TokenUser = null;
-    public jwt: string = null;
+    // public user: TokenUser = null;
+    // public jwt: string = null;
     public version: string = "";
     public messageQueue: IHashTable<QueuedMessage> = {};
     public usingCordova: boolean = false;
@@ -201,14 +192,14 @@ export class WebSocketClientService {
         xhr.send();
     }
     public onSignedin(callback: onSignedinCallback) {
-        if (this.user !== null) {
-            callback(this.user);
+        if (!NoderedUtil.IsNullUndefinded(WebSocketClient.instance.user)) {
+            callback(WebSocketClient.instance.user);
             return;
         }
         const cleanup = this.$rootScope.$on('signin', (event, data) => {
             if (event && data) { }
             cleanup();
-            callback(this.user);
+            callback(WebSocketClient.instance.user);
         });
     }
     onConnected(callback) {

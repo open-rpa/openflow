@@ -1,4 +1,5 @@
-FROM node:lts
+# FROM node:lts
+FROM node:16.9.1
 EXPOSE 80
 EXPOSE 5859
 

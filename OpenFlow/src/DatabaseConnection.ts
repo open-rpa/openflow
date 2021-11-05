@@ -9,7 +9,8 @@ import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { Auth } from "./Auth";
 const { JSONPath } = require('jsonpath-plus');
-
+import events = require("events");
+import { amqpwrapper } from "./amqpwrapper";
 
 
 // tslint:disable-next-line: typedef
@@ -38,7 +39,7 @@ Object.defineProperty(Promise, 'retry', {
     }
 })
 
-export class DatabaseConnection {
+export class DatabaseConnection extends events.EventEmitter {
     private mongodburl: string;
     private cli: MongoClient;
     public db: Db;
@@ -53,6 +54,7 @@ export class DatabaseConnection {
     public static mongodb_deletemany: ValueRecorder;
     public static semaphore = Auth.Semaphore(1);
     constructor(mongodburl: string, dbname: string) {
+        super();
         this._dbname = dbname;
         this.mongodburl = mongodburl;
 
@@ -135,10 +137,12 @@ export class DatabaseConnection {
         const errEvent = (error) => {
             this.isConnected = false;
             Logger.instanse.error(error);
+            this.emit("disconnected");
         }
         const closeEvent = () => {
             this.isConnected = false;
             Logger.instanse.silly(`Disconnected from mongodb`);
+            this.emit("disconnected");
         }
         this.cli
             .on('error', errEvent)
@@ -148,6 +152,7 @@ export class DatabaseConnection {
         this.db = this.cli.db(this._dbname);
         this.isConnected = true;
         Logger.otel.endSpan(span);
+        this.emit("connected");
     }
     async ListCollections(jwt: string): Promise<any[]> {
         let result = await DatabaseConnection.toArray(this.db.listCollections());
@@ -1056,6 +1061,12 @@ export class DatabaseConnection {
                 Logger.otel.endSpan(mongodbspan);
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_replace, { collection: collectionname });
                 DBHelper.cached_roles = [];
+                if (item._type === "role") {
+                    const r: Role = (item as any);
+                    if (r.members.length > 0) {
+                        amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                    }
+                }
             }
             if (collectionname === "config" && item._type === "oauthclient") {
                 if (user.HasRoleName("admins")) {
@@ -1136,6 +1147,12 @@ export class DatabaseConnection {
                             } else {
                                 throw new Error("Access denied");
                             }
+                        }
+                    }
+                    if (item._type === "role") {
+                        const r: Role = item as any;
+                        if (r.members.length > 0) {
+                            amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
                         }
                     }
                 }
@@ -1575,7 +1592,9 @@ export class DatabaseConnection {
                         q.item = await this.Cleanmembers(q.item as any, original);
                         DBHelper.cached_roles = [];
                     }
-
+                    if (q.item._type === "role") {
+                        amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                    }
                     if (q.collectionname != "fs.files") {
                         const ot_end = Logger.otel.startTimer();
                         const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.replaceOne", span);
@@ -1972,6 +1991,9 @@ export class DatabaseConnection {
                     for (var r of subdocs) {
                         this.DeleteOne(r._id, "config", jwt, span);
                     }
+                }
+                if (collectionname == "users" && doc._type == "role") {
+                    amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
                 }
             }
         } catch (error) {

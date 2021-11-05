@@ -454,10 +454,10 @@ export class amqp_exchange_node {
         }
     }
     async onclose(removed: boolean, done: any) {
-        // if (!NoderedUtil.IsNullEmpty(this.localqueue) && removed) {
-        NoderedUtil.CloseQueue(this.websocket(), this.localqueue);
-        this.localqueue = "";
-        // }
+        if (!NoderedUtil.IsNullEmpty(this.localqueue)) { // && removed
+            NoderedUtil.CloseQueue(this.websocket(), this.localqueue);
+            this.localqueue = "";
+        }
         this.websocket().events.removeListener("onsignedin", this._onsignedin);
         this.websocket().events.removeListener("onclose", this._onsocketclose);
         if (done != null) done();

@@ -41,12 +41,24 @@ export class Auth {
         if (type == "grafana") cache_seconds = Config.grafana_credential_cache_seconds;
         if (type == "dashboard") cache_seconds = Config.dashboard_credential_cache_seconds;
         if (type == "cleanacl") cache_seconds = Config.cleanacl_credential_cache_seconds;
+        if (type == "mq") cache_seconds = Config.mq_credential_cache_seconds;
+        if (type == "mqe") cache_seconds = Config.mq_credential_cache_seconds;
         if (seconds < cache_seconds) {
             Logger.instanse.silly("Return user " + res.user.username + " from cache");
             return res.user;
         }
         this.RemoveUser(key, type);
         return null;
+    }
+    public static async clearCache() {
+        if (this.authorizationCache == null) return;
+        const keys: string[] = Object.keys(this.authorizationCache);
+        for (let i = keys.length - 1; i >= 0; i--) {
+            let key: string = keys[i];
+            var res: CachedUser = this.authorizationCache[key];
+            if (res === null || res === undefined) continue;
+            this.RemoveUser(key, res.type);
+        }
     }
     public static async cleanCache() {
         try {
@@ -63,6 +75,8 @@ export class Auth {
                 if (res.type == "grafana") cache_seconds = Config.grafana_credential_cache_seconds;
                 if (res.type == "dashboard") cache_seconds = Config.dashboard_credential_cache_seconds;
                 if (res.type == "cleanacl") cache_seconds = Config.cleanacl_credential_cache_seconds;
+                if (res.type == "mq") cache_seconds = Config.mq_credential_cache_seconds;
+                if (res.type == "mqe") cache_seconds = Config.mq_credential_cache_seconds;
                 if (seconds >= cache_seconds) {
                     this.RemoveUser(key, res.type);
                 }

@@ -67,8 +67,18 @@ export class Config {
         Config.tls_ca = Config.getEnv("tls_ca", "");
         Config.tls_passphrase = Config.getEnv("tls_passphrase", "");
 
-        Config.api_credential_cache_seconds = parseInt(Config.getEnv("api_credential_cache_seconds", "60000"));
-        Config.api_credential_cache_seconds = parseInt(Config.getEnv("api_credential_cache_seconds", "60000"));
+        Config.api_credential_cache_seconds = parseInt(Config.getEnv("api_credential_cache_seconds", "900"));
+        Config.dashboard_credential_cache_seconds = parseInt(Config.getEnv("dashboard_credential_cache_seconds", "900"));
+        Config.grafana_credential_cache_seconds = parseInt(Config.getEnv("grafana_credential_cache_seconds", "900"));
+        Config.cleanacl_credential_cache_seconds = parseInt(Config.getEnv("cleanacl_credential_cache_seconds", "900"));
+        Config.mq_credential_cache_seconds = parseInt(Config.getEnv("mq_credential_cache_seconds", "900"));
+
+        Config.oidc_access_token_ttl = parseInt(Config.getEnv("oidc_access_token_ttl", "28800"));
+        Config.oidc_authorization_code_ttl = parseInt(Config.getEnv("oidc_authorization_code_ttl", "28800"));
+        Config.oidc_client_credentials_ttl = parseInt(Config.getEnv("oidc_client_credentials_ttl", "28800"));
+        Config.oidc_refresh_token_ttl = parseInt(Config.getEnv("oidc_refresh_token_ttl", "1209600"));
+        Config.oidc_session_ttl = parseInt(Config.getEnv("oidc_session_ttl", "1209600"));
+
         Config.oauth_token_cache_seconds = parseInt(Config.getEnv("oauth_token_cache_seconds", "60000"));
         Config.oauth_access_token_lifetime = parseInt(Config.getEnv("oauth_access_token_lifetime", "604800"));
         Config.oauth_refresh_token_lifetime = parseInt(Config.getEnv("oauth_refresh_token_lifetime", "604800"));
@@ -100,6 +110,9 @@ export class Config {
         Config.amqp_force_queue_prefix = Config.parseBoolean(Config.getEnv("amqp_force_queue_prefix", "false"));
         Config.amqp_force_exchange_prefix = Config.parseBoolean(Config.getEnv("amqp_force_exchange_prefix", "false"));
         Config.amqp_force_sender_has_read = Config.parseBoolean(Config.getEnv("amqp_force_sender_has_read", "true"));
+        Config.amqp_force_sender_has_invoke = Config.parseBoolean(Config.getEnv("amqp_force_sender_has_invoke", "false"));
+        Config.amqp_force_consumer_has_update = Config.parseBoolean(Config.getEnv("amqp_force_consumer_has_update", "false"));
+
         Config.amqp_enabled_exchange = Config.parseBoolean(Config.getEnv("amqp_enabled_exchange", "false"));
         Config.amqp_url = Config.getEnv("amqp_url", "amqp://localhost"); // used to register queues and by personal nodered
         Config.amqp_username = Config.getEnv("amqp_username", "guest"); // used to talk wth rabbitmq api, used if not present in amqp_url
@@ -212,10 +225,18 @@ export class Config {
     public static tls_ca: string = Config.getEnv("tls_ca", "");
     public static tls_passphrase: string = Config.getEnv("tls_passphrase", "");
 
-    public static api_credential_cache_seconds: number = parseInt(Config.getEnv("api_credential_cache_seconds", "60000"));
-    public static dashboard_credential_cache_seconds: number = parseInt(Config.getEnv("dashboard_credential_cache_seconds", "60000"));
-    public static grafana_credential_cache_seconds: number = parseInt(Config.getEnv("grafana_credential_cache_seconds", "60000"));
-    public static cleanacl_credential_cache_seconds: number = parseInt(Config.getEnv("grafana_credential_cache_seconds", "60000"));
+    public static api_credential_cache_seconds: number = parseInt(Config.getEnv("api_credential_cache_seconds", "900"));
+    public static dashboard_credential_cache_seconds: number = parseInt(Config.getEnv("dashboard_credential_cache_seconds", "900"));
+    public static grafana_credential_cache_seconds: number = parseInt(Config.getEnv("grafana_credential_cache_seconds", "900"));
+    public static cleanacl_credential_cache_seconds: number = parseInt(Config.getEnv("cleanacl_credential_cache_seconds", "900"));
+    public static mq_credential_cache_seconds: number = parseInt(Config.getEnv("mq_credential_cache_seconds", "900"));
+
+    public static oidc_access_token_ttl: number = parseInt(Config.getEnv("oidc_access_token_ttl", "28800")); // 8 hours
+    public static oidc_authorization_code_ttl: number = parseInt(Config.getEnv("oidc_authorization_code_ttl", "28800")); // 8 hours
+    public static oidc_client_credentials_ttl: number = parseInt(Config.getEnv("oidc_client_credentials_ttl", "28800")); // 8 hours
+    public static oidc_refresh_token_ttl: number = parseInt(Config.getEnv("oidc_refresh_token_ttl", "1209600")); // 14 days in seconds
+    public static oidc_session_ttl: number = parseInt(Config.getEnv("oidc_session_ttl", "1209600")); // 14 days in seconds
+
     public static oauth_token_cache_seconds: number = parseInt(Config.getEnv("oauth_token_cache_seconds", "60000"));
     public static oauth_access_token_lifetime: number = parseInt(Config.getEnv("oauth_access_token_lifetime", "604800"));
     public static oauth_refresh_token_lifetime: number = parseInt(Config.getEnv("oauth_refresh_token_lifetime", "604800"));
@@ -252,6 +273,8 @@ export class Config {
     public static amqp_force_queue_prefix: boolean = Config.parseBoolean(Config.getEnv("amqp_force_queue_prefix", "false"));
     public static amqp_force_exchange_prefix: boolean = Config.parseBoolean(Config.getEnv("amqp_force_exchange_prefix", "false"));
     public static amqp_force_sender_has_read: boolean = Config.parseBoolean(Config.getEnv("amqp_force_sender_has_read", "true"));
+    public static amqp_force_sender_has_invoke: boolean = Config.parseBoolean(Config.getEnv("amqp_force_sender_has_invoke", "false"));
+    public static amqp_force_consumer_has_update: boolean = Config.parseBoolean(Config.getEnv("amqp_force_consumer_has_update", "false"));
     public static amqp_enabled_exchange: boolean = Config.parseBoolean(Config.getEnv("amqp_enabled_exchange", "false"));
     public static amqp_url: string = Config.getEnv("amqp_url", "amqp://localhost"); // used to register queues and by personal nodered
     public static amqp_username: string = Config.getEnv("amqp_username", "guest"); // used to talk wth rabbitmq api
@@ -261,7 +284,6 @@ export class Config {
     public static amqp_check_for_consumer_count: boolean = Config.parseBoolean(Config.getEnv("amqp_check_for_consumer_count", "false"));
     public static amqp_default_expiration: number = parseInt(Config.getEnv("amqp_default_expiration", (60 * 1000).toString())); // 1 min
     public static amqp_requeue_time: number = parseInt(Config.getEnv("amqp_requeue_time", "1000")); // 1 seconds    
-    // public static amqp_dlx: string = Config.getEnv("amqp_dlx", "openflow-dlx");  // Dead letter exchange, used to pickup dead or timeout messages
     public static amqp_dlx: string = Config.getEnv("amqp_dlx", "openflow-dlx");  // Dead letter exchange, used to pickup dead or timeout messages
 
     public static mongodb_url: string = Config.getEnv("mongodb_url", "mongodb://localhost:27017");
