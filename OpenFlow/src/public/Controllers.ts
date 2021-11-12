@@ -164,8 +164,8 @@ export class MenuCtrl {
         this.path = this.$location.path();
     }
     hasrole(role: string) {
-        if (WebSocketClient.instance === null || WebSocketClient.instance === undefined) return false;
-        if (WebSocketClient.instance.user === null || WebSocketClient.instance.user === undefined) return false;
+        if (NoderedUtil.IsNullUndefinded(WebSocketClient.instance)) return false;
+        if (NoderedUtil.IsNullUndefinded(WebSocketClient.instance.user)) return false;
         const hits = WebSocketClient.instance.user.roles.filter(member => member.name == role);
         return (hits.length == 1)
     }
