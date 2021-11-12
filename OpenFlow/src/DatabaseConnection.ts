@@ -860,7 +860,7 @@ export class DatabaseConnection extends events.EventEmitter {
             span.addEvent("ensureResource");
             span.addEvent("verityToken");
             const user: TokenUser = Crypt.verityToken(jwt);
-            if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit");
+            if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             item = this.ensureResource(item);
             if (!await this.CheckEntityRestriction(user, collectionname, item, span)) {
                 throw Error("Create " + item._type + " access denied");
@@ -1098,7 +1098,7 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             await this.connect(span);
             const user = Crypt.verityToken(jwt);
-            if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit");
+            if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             span.setAttribute("collection", collectionname);
             span.setAttribute("username", user.username);
             let bulkInsert = this.db.collection(collectionname).initializeUnorderedBulkOp();
@@ -1327,7 +1327,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (q.item === null || q.item === undefined) { throw Error("Cannot update null item"); }
             await this.connect(span);
             const user: TokenUser = Crypt.verityToken(q.jwt);
-            if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit");
+            if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             if (!DatabaseConnection.hasAuthorization(user, (q.item as Base), Rights.update)) {
                 throw new Error("Access denied, no authorization to UpdateOne");
             }
@@ -1687,7 +1687,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (q.item === null || q.item === undefined) { throw Error("Cannot update null item"); }
             await this.connect();
             const user: TokenUser = Crypt.verityToken(q.jwt);
-            if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit");
+            if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             if (!DatabaseConnection.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to UpdateMany"); }
 
             if (q.collectionname === "users" && q.item._type === "user" && q.item.hasOwnProperty("newpassword")) {
@@ -1821,7 +1821,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
             }
             const user: TokenUser = Crypt.verityToken(q.jwt);
-            if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit");
+            if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             let exists: Base[] = [];
             if (query != null) {
                 // exists = await this.query(query, { name: 1 }, 2, 0, null, q.collectionname, q.jwt);
