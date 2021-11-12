@@ -1419,6 +1419,7 @@ export class RPAWorkflowsCtrl extends entitiesCtrl<Base> {
             null, 2);
         if (workflows.length > 0) {
             model = workflows[0];
+            if (NoderedUtil.IsNullEmpty(model.Xaml)) model.Xaml = "";
             this.download(model.Xaml, model.name + ".xaml", "application/xaml+xml");
         }
     }
@@ -4198,6 +4199,7 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
             }
             if (asXAML == true) {
                 var xaml = model.item.Xaml;
+                if (NoderedUtil.IsNullEmpty(xaml)) xaml = "";
                 this.download(model.item.Filename, xaml);
             } else {
                 this.download(this.id + ".json", JSON.stringify(model.item, null, 2));
