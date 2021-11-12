@@ -581,6 +581,20 @@ export class noderedcontribopenflowstorage {
                 //     npmrc = new noderednpmrc();
                 //     npmrc.content = fs.readFileSync(npmrcFile, "utf8");
                 //     await this._setnpmrc(npmrc);
+            } else if (!NoderedUtil.IsNullEmpty(Config.HTTP_PROXY) || !NoderedUtil.IsNullEmpty(Config.HTTPS_PROXY)) {
+                // According to https://docs.npmjs.com/cli/v7/using-npm/config it should be picked up by envoriment variables, 
+                // HTTP_PROXY, HTTPS_PROXY and NO_PROXY 
+                const npmrc = new noderednpmrc();
+                npmrc.content = "proxy=" + Config.HTTP_PROXY + "\n" + "https-proxy=" + Config.HTTPS_PROXY;
+                if (!NoderedUtil.IsNullEmpty(Config.NO_PROXY)) {
+                    npmrc.content += "\n" + "noproxy=" + Config.NO_PROXY;
+                }
+                npmrc.content += "\n" + "registry=http://registry.npmjs.org/";
+                fs.writeFileSync(npmrcFile, npmrc.content);
+            } else {
+                if (fs.existsSync(npmrcFile)) {
+                    fs.unlinkSync(npmrcFile);
+                }
             }
             //}
         } catch (error) {

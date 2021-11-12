@@ -192,7 +192,7 @@ export class WebSocketClientService {
         xhr.send();
     }
     public onSignedin(callback: onSignedinCallback) {
-        if (!NoderedUtil.IsNullUndefinded(WebSocketClient.instance.user)) {
+        if (!NoderedUtil.IsNullUndefinded(WebSocketClient.instance) && !NoderedUtil.IsNullUndefinded(WebSocketClient.instance.user)) {
             callback(WebSocketClient.instance.user);
             return;
         }

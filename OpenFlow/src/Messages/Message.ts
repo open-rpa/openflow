@@ -581,8 +581,15 @@ export class Message {
             }
             const jwt: string = msg.jwt || this.jwt;
             const rootjwt = Crypt.rootToken();
+            const tuser = Crypt.verityToken(jwt);
+            if (Config.amqp_force_exchange_prefix && !NoderedUtil.IsNullEmpty(msg.exchangename)) {
+                let name = tuser.username.split("@").join("").split(".").join("");
+                name = name.toLowerCase();
+                msg.exchangename = name + msg.exchangename;
+                if (msg.exchangename.length == 24) { msg.exchangename += "1"; }
+            }
+
             if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !NoderedUtil.IsNullEmpty(msg.exchangename)) {
-                const tuser = Crypt.verityToken(jwt);
                 let mq = Auth.getUser(msg.exchangename, "mqe");
                 if (mq == null) {
                     const arr = await Config.db.query({ "name": msg.exchangename, "_type": "exchange" }, { name: 1, _acl: 1 }, 1, 0, null, "mq", rootjwt, undefined, undefined, parent);
@@ -635,8 +642,48 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(msg.queuename) && msg.queuename.toLowerCase() == "openflow") {
                 throw new Error("Access denied");
             }
+
+            // ################################################################################################################
+
+            const tuser = Crypt.verityToken(jwt);
+            if (Config.amqp_force_queue_prefix && !NoderedUtil.IsNullEmpty(msg.queuename)) {
+                // assume queue names if 24 letters is an mongodb is, should proberly do a real test here
+                if (msg.queuename.length == 24) {
+                    let name = tuser.username.split("@").join("").split(".").join("");
+                    name = name.toLowerCase();
+                    let skip: boolean = false;
+                    if (tuser._id == msg.queuename) {
+                        // Queue is for me
+                        skip = false;
+                    } else if (tuser.roles != null) {
+                        // Queue is for a group i am a member of.
+                        const isrole = tuser.roles.filter(x => x._id == msg.queuename);
+                        if (isrole.length > 0) skip = false;
+                    }
+                    if (skip) {
+                        // Do i have permission to listen on a queue with this id ?
+                        const arr = await Config.db.query({ _id: msg.queuename }, { name: 1 }, 1, 0, null, "users", jwt, undefined, undefined, parent);
+                        if (arr.length == 0) skip = true;
+                        if (!skip) {
+                            msg.queuename = name + msg.queuename;
+                            if (msg.queuename.length == 24) { msg.queuename += "1"; }
+                        } else {
+                            if (Config.log_amqp) Logger.instanse.info("[SKIP] skipped force prefix for " + msg.queuename);
+                        }
+                    } else {
+                        if (Config.log_amqp) Logger.instanse.info("[SKIP] skipped force prefix for " + msg.queuename);
+                    }
+                } else {
+                    let name = tuser.username.split("@").join("").split(".").join("");
+                    name = name.toLowerCase();
+                    msg.queuename = name + msg.queuename;
+                    if (msg.queuename.length == 24) { msg.queuename += "1"; }
+                }
+            }
+
+            // ################################################################################################################
+
             if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !NoderedUtil.IsNullEmpty(msg.queuename)) {
-                const tuser = Crypt.verityToken(jwt);
                 let allowed: boolean = false;
                 if (tuser._id == msg.queuename) {
                     // Queue is mine
@@ -1912,6 +1959,8 @@ export class Message {
                     "prometheus_measure_nodeid=" + Config.prometheus_measure_nodeid.toString(),
                     "prometheus_measure_queued_messages=" + Config.prometheus_measure_queued_messages.toString(),
                     "NODE_ENV=" + Config.NODE_ENV,
+                    "HTTP_PROXY=" + Config.HTTP_PROXY,
+                    "HTTPS_PROXY=" + Config.HTTPS_PROXY,
                     "prometheus_expose_metric=" + "false",
                     "enable_analytics=" + Config.enable_analytics.toString(),
                     "otel_trace_url=" + Config.otel_trace_url,
@@ -1920,6 +1969,7 @@ export class Message {
                     "otel_metric_interval=" + Config.otel_metric_interval.toString(),
                     "amqp_enabled_exchange=" + Config.amqp_enabled_exchange.toString()
                 ]
+
                 // const image = await docker.pull(nodered_image, { serveraddress: "https://index.docker.io/v1" });
                 await this._pullImage(docker, nodered_image);
                 instance = await docker.createContainer({
@@ -2168,6 +2218,8 @@ export class Message {
                                             { name: "prometheus_measure_nodeid", value: Config.prometheus_measure_nodeid.toString() },
                                             { name: "prometheus_measure_queued_messages", value: Config.prometheus_measure_queued_messages.toString() },
                                             { name: "NODE_ENV", value: Config.NODE_ENV },
+                                            { name: "HTTP_PROXY", value: Config.HTTP_PROXY },
+                                            { name: "HTTPS_PROXY", value: Config.HTTPS_PROXY },
                                             { name: "prometheus_expose_metric", value: "false" },
                                             { name: "enable_analytics", value: Config.enable_analytics.toString() },
                                             { name: "otel_trace_url", value: Config.otel_trace_url },

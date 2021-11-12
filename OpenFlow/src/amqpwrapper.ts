@@ -287,73 +287,6 @@ export class amqpwrapper extends events.EventEmitter {
         try {
             if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Queue Consumer, not connected to rabbitmq");
             let queue: string = (NoderedUtil.IsNullEmpty(queuename) ? "" : queuename);
-            if (Config.amqp_force_queue_prefix && !NoderedUtil.IsNullEmpty(jwt) && !NoderedUtil.IsNullEmpty(queue)) {
-                // assume queue names if 24 letters is an mongodb is, should proberly do a real test here
-                if (queue.length == 24) {
-                    const tuser = Crypt.verityToken(jwt);
-                    let name = tuser.username.split("@").join("").split(".").join("");
-                    name = name.toLowerCase();
-                    let skip: boolean = false;
-                    if (tuser._id == queue) {
-                        // Queue is for me
-                        skip = false;
-                    } else if (tuser.roles != null) {
-                        // Queue is for a group i am a member of.
-                        const isrole = tuser.roles.filter(x => x._id == queue);
-                        if (isrole.length > 0) skip = false;
-                    }
-                    if (skip) {
-                        // Do i have permission to listen on a queue with this id ?
-                        const arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "users", jwt, undefined, undefined, span);
-                        if (arr.length == 0) skip = true;
-                        if (!skip) {
-                            const arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "openrpa", jwt, undefined, undefined, span);
-                            if (arr.length == 0) skip = true;
-                        }
-                        if (!skip) {
-                            const arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "workflow", jwt, undefined, undefined, span);
-                            if (arr.length == 0) skip = true;
-                        }
-                        if (!skip) {
-                            queue = name + queue;
-                            if (queue.length == 24) { queue += "1"; }
-                        } else {
-                            if (Config.log_amqp) Logger.instanse.info("[SKIP] skipped force prefix for " + queue);
-                        }
-                    } else {
-                        if (Config.log_amqp) Logger.instanse.info("[SKIP] skipped force prefix for " + queue);
-                    }
-                } else {
-                    const tuser = Crypt.verityToken(jwt);
-                    let name = tuser.username.split("@").join("").split(".").join("");
-                    name = name.toLowerCase();
-                    queue = name + queue;
-                    if (queue.length == 24) { queue += "1"; }
-                }
-            } else if (queue.length == 24) {
-                if (!NoderedUtil.IsNullEmpty(jwt)) {
-                    const tuser = Crypt.verityToken(jwt);
-
-                    const isrole = tuser.roles.filter(x => x._id == queue);
-                    if (isrole.length == 0 && tuser._id != queue) {
-                        let skip: boolean = false;
-                        const arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "users", jwt, undefined, undefined, span);
-                        if (arr.length == 0) skip = true;
-                        if (!skip) {
-                            const arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "openrpa", jwt, undefined, undefined, span);
-                            if (arr.length == 0) skip = true;
-                        }
-                        if (!skip) {
-                            const arr = await Config.db.query({ _id: queue }, { name: 1 }, 1, 0, null, "workflow", jwt, undefined, undefined, span);
-                            if (arr.length == 0) skip = true;
-                        }
-                        if (!skip) {
-                            throw new Error("Access denied creating consumer for " + queue);
-                        }
-                    }
-
-                }
-            }
             const q: amqpqueue = new amqpqueue();
             q.callback = callback;
             q.QueueOptions = Object.assign({}, (QueueOptions != null ? QueueOptions : this.AssertQueueOptions));
@@ -387,13 +320,6 @@ export class amqpwrapper extends events.EventEmitter {
         try {
             if (NoderedUtil.IsNullEmpty(exchange)) throw new Error("exchange name cannot be empty");
             if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Exchange Consumer, not connected to rabbitmq");
-            if (Config.amqp_force_exchange_prefix && !NoderedUtil.IsNullEmpty(jwt)) {
-                const tuser = Crypt.verityToken(jwt);
-                let name = tuser.username.split("@").join("").split(".").join("");
-                name = name.toLowerCase();
-                exchange = name + exchange;
-                if (exchange.length == 24) { exchange += "1"; }
-            }
             const q: amqpexchange = new amqpexchange();
             if (!NoderedUtil.IsNullEmpty(q.queue)) {
                 this.RemoveQueueConsumer(q.queue, span);

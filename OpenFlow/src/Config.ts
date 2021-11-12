@@ -44,6 +44,9 @@ export class Config {
         Config.getting_started_url = Config.getEnv("getting_started_url", "");
 
         Config.NODE_ENV = Config.getEnv("NODE_ENV", "development");
+        Config.HTTP_PROXY = Config.getEnv("HTTP_PROXY", "");
+        Config.HTTPS_PROXY = Config.getEnv("HTTPS_PROXY", "");
+        Config.NO_PROXY = Config.getEnv("NO_PROXY", "");
 
         Config.stripe_api_key = Config.getEnv("stripe_api_key", "");
         Config.stripe_api_secret = Config.getEnv("stripe_api_secret", "");
@@ -201,6 +204,9 @@ export class Config {
     public static getting_started_url: string = Config.getEnv("getting_started_url", "");
 
     public static NODE_ENV: string = Config.getEnv("NODE_ENV", "development");
+    public static HTTP_PROXY: string = Config.getEnv("HTTP_PROXY", "");
+    public static HTTPS_PROXY: string = Config.getEnv("HTTPS_PROXY", "");
+    public static NO_PROXY: string = Config.getEnv("NO_PROXY", "");
 
     public static stripe_api_key: string = Config.getEnv("stripe_api_key", "");
     public static stripe_api_secret: string = Config.getEnv("stripe_api_secret", "");
