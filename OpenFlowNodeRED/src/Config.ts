@@ -25,6 +25,7 @@ export class Config {
         Config.NODE_ENV = Config.getEnv("NODE_ENV", "development");
         Config.HTTP_PROXY = Config.getEnv("HTTP_PROXY", "");
         Config.HTTPS_PROXY = Config.getEnv("HTTPS_PROXY", "");
+        Config.NO_PROXY = Config.getEnv("NO_PROXY", "");
 
         Config.saml_federation_metadata = Config.getEnv("saml_federation_metadata", "");
         Config.saml_issuer = Config.getEnv("saml_issuer", "");
@@ -93,6 +94,7 @@ export class Config {
     public static NODE_ENV: string = Config.getEnv("NODE_ENV", "development");
     public static HTTP_PROXY: string = Config.getEnv("HTTP_PROXY", "");
     public static HTTPS_PROXY: string = Config.getEnv("HTTPS_PROXY", "");
+    public static NO_PROXY: string = Config.getEnv("NO_PROXY", "");
 
     public static allow_start_from_cache: boolean = Config.parseBoolean(Config.getEnv("allow_start_from_cache", "false"));
     public static auto_restart_when_needed: boolean = Config.parseBoolean(Config.getEnv("auto_restart_when_needed", "true"));

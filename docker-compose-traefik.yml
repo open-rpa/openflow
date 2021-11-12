@@ -62,9 +62,10 @@ services:
       - protocol=http
       - port=3000
       - domain=localhost.openiap.io
-      # Fill to set proxy settings inside docker instances, you may also need to add an npmrc entry to the nodered collection !
+
       - HTTP_PROXY=
       - HTTPS_PROXY=
+      - NO_PROXY=
 
       - enable_openflow_amqp=false # enable this to use the openflow amqp, only usefull when you have more than one replicas
       - amqp_prefetch=25
