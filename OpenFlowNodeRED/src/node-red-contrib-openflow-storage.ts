@@ -581,6 +581,15 @@ export class noderedcontribopenflowstorage {
                 //     npmrc = new noderednpmrc();
                 //     npmrc.content = fs.readFileSync(npmrcFile, "utf8");
                 //     await this._setnpmrc(npmrc);
+            } else if (!NoderedUtil.IsNullEmpty(Config.HTTP_PROXY) || !NoderedUtil.IsNullEmpty(Config.HTTPS_PROXY)) {
+                const npmrc = new noderednpmrc();
+                npmrc.content = "proxy=" + Config.HTTP_PROXY + "\n" + "https-proxy=" + Config.HTTPS_PROXY;
+                npmrc.content += "\n" + "registry=http://registry.npmjs.org/";
+                fs.writeFileSync(npmrcFile, npmrc.content);
+            } else {
+                if (fs.existsSync(npmrcFile)) {
+                    fs.unlinkSync(npmrcFile);
+                }
             }
             //}
         } catch (error) {

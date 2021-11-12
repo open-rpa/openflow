@@ -1959,6 +1959,8 @@ export class Message {
                     "prometheus_measure_nodeid=" + Config.prometheus_measure_nodeid.toString(),
                     "prometheus_measure_queued_messages=" + Config.prometheus_measure_queued_messages.toString(),
                     "NODE_ENV=" + Config.NODE_ENV,
+                    "HTTP_PROXY=" + Config.HTTP_PROXY,
+                    "HTTPS_PROXY=" + Config.HTTPS_PROXY,
                     "prometheus_expose_metric=" + "false",
                     "enable_analytics=" + Config.enable_analytics.toString(),
                     "otel_trace_url=" + Config.otel_trace_url,
@@ -1967,6 +1969,7 @@ export class Message {
                     "otel_metric_interval=" + Config.otel_metric_interval.toString(),
                     "amqp_enabled_exchange=" + Config.amqp_enabled_exchange.toString()
                 ]
+
                 // const image = await docker.pull(nodered_image, { serveraddress: "https://index.docker.io/v1" });
                 await this._pullImage(docker, nodered_image);
                 instance = await docker.createContainer({
@@ -2215,6 +2218,8 @@ export class Message {
                                             { name: "prometheus_measure_nodeid", value: Config.prometheus_measure_nodeid.toString() },
                                             { name: "prometheus_measure_queued_messages", value: Config.prometheus_measure_queued_messages.toString() },
                                             { name: "NODE_ENV", value: Config.NODE_ENV },
+                                            { name: "HTTP_PROXY", value: Config.HTTP_PROXY },
+                                            { name: "HTTPS_PROXY", value: Config.HTTPS_PROXY },
                                             { name: "prometheus_expose_metric", value: "false" },
                                             { name: "enable_analytics", value: Config.enable_analytics.toString() },
                                             { name: "otel_trace_url", value: Config.otel_trace_url },
