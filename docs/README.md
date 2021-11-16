@@ -24,6 +24,8 @@ Creating your first [user form](forms_old) using the old form designer
 
 Using the [mobile app](mobileapp)
 
+Notes when running without internet or [behind a proxy server](proxy)
+
 #### How to deployment on kubernetes
 
 Installing on [kubernetes](kubernetes)
