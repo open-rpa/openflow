@@ -122,24 +122,18 @@ export class noderedcontribopenflowstorage {
         });
         return results;
     }
-    getGlobalModulesDir() {
-        return new Promise<string>((resolve, reject) => {
-            try {
-                var npm = require("global-npm")
-                // work around for https://github.com/npm/cli/issues/2137
-                npm.load(function (err) {
-                    if (err) return reject(err)
-                    resolve(npm.globalPrefix);
-                })
-            } catch (error) {
-                return reject(error)
-            }
-        });
-    }
     async GetMissingModules(settings: any) {
-        const globaldir = await this.getGlobalModulesDir();
         let currentmodules = this.scanDirForNodesModules(path.resolve('.'));
-        currentmodules = currentmodules.concat(this.scanDirForNodesModules(globaldir));
+        try {
+            let globaldir: string = child_process.execSync('npm root -g').toString();
+            if (globaldir.indexOf('\n')) {
+                if (globaldir.endsWith('\n')) globaldir = globaldir.substr(0, globaldir.length - 1);
+                globaldir = globaldir.substr(globaldir.lastIndexOf('\n') + 1);
+            }
+            if (globaldir != null && globaldir != "") currentmodules = currentmodules.concat(this.scanDirForNodesModules(globaldir));
+        } catch (error) {
+            console.error(error);
+        }
         const keys = Object.keys(settings.nodes);
         let modules = "";
         for (let i = 0; i < keys.length; i++) {
