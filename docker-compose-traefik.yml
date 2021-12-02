@@ -3,6 +3,9 @@ services:
   mongodb:
     image: "mongo"
     # if you get MongoDB 5.0+ require a CPU with AVX support, then try using version 4 instead
+
+
+
     # image: "mongo:4.4.8"
     restart: always
     volumes:
@@ -73,14 +76,17 @@ services:
       - socket_rate_limit_points=1000
       - socket_rate_limit_points_disconnect=2500
 
-      - nodered_images=[{"name":"Latest Plain Nodered", "image":"openiap/nodered"},{"name":"Latest Puppeteer Nodered", "image":"openiap/nodered-puppeteer"},{"name":"Latest TagUI Nodered", "image":"openiap/nodered-tagui"}]
+      - nodered_images=[{"name":"Latest Plain Nodered",
+        "image":"openiap/nodered"},{"name":"Latest Puppeteer Nodered",
+        "image":"openiap/nodered-puppeteer"},{"name":"Latest TagUI Nodered",
+        "image":"openiap/nodered-tagui"}]
       - nodered_ws_url=ws://web:3000
       - saml_federation_metadata=http://web:3000/issue/FederationMetadata/2007-06/FederationMetadata.xml
       - amqp_url=amqp://guest:guest@rabbitmq
       - mongodb_url=mongodb://mongodb:27017
       - mongodb_db=openrpa
 
-      - skip_history_collections=audit,jslog
+      - skip_history_collections=audit,openrpa_instances,workflow_instances
       - allow_skiphistory=false
 
       - saml_issuer=uri:localhost.openiap.io
