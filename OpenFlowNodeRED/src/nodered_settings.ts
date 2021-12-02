@@ -35,6 +35,7 @@ export class nodered_settings {
         "social", "mobile", "storage", "analysis", "advanced"];
     public debugUseColors: boolean = true;
     public flowFilePretty: boolean = true;
+
     public logging: any = {
         console: {
             level: "warn",
@@ -45,7 +46,8 @@ export class nodered_settings {
     public editorTheme = {
         palette: {
             catalogues: []
-        }
+        },
+        tours: true
     };
 
     // adminAuth: import("c:/code/OpenFlow/OpenFlowNodeRED/src/node-red-contrib-auth-google").noderedcontribauthgoogle;

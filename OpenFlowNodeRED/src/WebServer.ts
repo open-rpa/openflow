@@ -330,6 +330,7 @@ export class WebServer {
                 } else {
                     this.settings.editorTheme.palette.catalogues = ['https://catalogue.nodered.org/catalogue.json'];
                 }
+                this.settings.editorTheme.tours = Config.tours;
 
                 this.settings.ui.path = "ui";
                 // this.settings.ui.middleware = new dashboardAuth();
