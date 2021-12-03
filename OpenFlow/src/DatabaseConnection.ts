@@ -157,6 +157,7 @@ export class DatabaseConnection extends events.EventEmitter {
     async ListCollections(jwt: string): Promise<any[]> {
         let result = await DatabaseConnection.toArray(this.db.listCollections());
         result = result.filter(x => x.name.indexOf("system.") === -1);
+        result.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}))
         Crypt.verityToken(jwt);
         return result;
     }
