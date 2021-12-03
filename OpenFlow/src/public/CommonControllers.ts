@@ -517,6 +517,7 @@ export class entitiesCtrl<T> {
                     query["customerid"] = this.WebSocketClientService.customer._id;
                 }
             }
+            let orderby = this.orderby;
             if (this.searchstring !== "" && this.searchstring != null) {
                 if ((this.searchstring as string).indexOf("{") == 0) {
                     if ((this.searchstring as string).lastIndexOf("}") == ((this.searchstring as string).length - 1)) {
@@ -527,10 +528,10 @@ export class entitiesCtrl<T> {
                         }
                     }
                 } else {
-                    const finalor = [];
+                    let finalor = [];
                     const finalexactor = [];
                     for (let i = 0; i < this.searchfields.length; i++) {
-                        const newq: any = {};
+                        let newq: any = {};
                         const newexactq: any = {};
                         // exact match case sensitive
                         // newq[this.searchfields[i]] = this.searchstring;
@@ -538,10 +539,16 @@ export class entitiesCtrl<T> {
                         newexactq[this.searchfields[i]] = new RegExp(["^", this.searchstring, "$"].join(""), "i");
 
                         // exact match string contains
-                        newq[this.searchfields[i]] = new RegExp([this.searchstring].join(""), "i");
+                        newq[this.searchfields[i]] = new RegExp([this.searchstring.substring(1)].join(""), "i");
 
                         finalor.push(newq);
                         finalexactor.push(newexactq);
+                    }
+                    if (!this.searchstring.startsWith(".") && this.WebSocketClientService.use_text_index_for_names) {
+                        finalor = [{ $text: { $search: this.searchstring } }]
+                        // this.orderby = { "$sort": { "score": { "$meta": "textScore" } } }
+                        // this.orderby = { score: { $meta: "textScore" } }
+                        // orderby = { score: { $meta: "textScore" } };
                     }
                     if (Object.keys(query).length == 0) {
                         query = { $or: finalor.concat() };
@@ -554,13 +561,13 @@ export class entitiesCtrl<T> {
                 }
             }
             if (this.page == 0) {
-                this.models = await NoderedUtil.Query(this.collection, query, this.baseprojection, this.orderby, this.pagesize, 0, null, basequeryas, null, 2);
+                this.models = await NoderedUtil.Query(this.collection, query, this.baseprojection, orderby, this.pagesize, 0, null, basequeryas, null, 2);
             } else {
-                var temp = await NoderedUtil.Query(this.collection, query, this.baseprojection, this.orderby, this.pagesize, this.pagesize * this.page, null, basequeryas, null, 2);
+                var temp = await NoderedUtil.Query(this.collection, query, this.baseprojection, orderby, this.pagesize, this.pagesize * this.page, null, basequeryas, null, 2);
                 this.models = this.models.concat(temp);
             }
-            if (exactquery != null && this.page == 0) {
-                var temp = await NoderedUtil.Query(this.collection, exactquery, this.baseprojection, this.orderby, 1, 0, null, basequeryas, null, 2);
+            if (exactquery != null && this.page == 0 && this.collection != "cvr" && this.collection != "audit") {
+                var temp = await NoderedUtil.Query(this.collection, exactquery, this.baseprojection, orderby, 1, 0, null, basequeryas, null, 2);
                 if (temp.length > 0) {
                     this.models = this.models.filter(x => (x as any)._id != temp[0]._id);
                     this.models = temp.concat(this.models);

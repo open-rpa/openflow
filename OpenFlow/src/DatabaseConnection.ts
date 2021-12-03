@@ -2738,17 +2738,32 @@ export class DatabaseConnection extends events.EventEmitter {
                                 if (indexnames.indexOf("metadata.workflow_1") === -1) {
                                     await this.createIndex(collection.name, "metadata.workflow_1", { "metadata.workflow": 1 }, null, span)
                                 }
+                                if (indexnames.indexOf("filename_text") === -1 && Config.create_text_index_for_names) {
+                                    await this.createIndex(collection.name, "filename_text", { "filename": "text" }, {default_language: "none", language_override: "none"}, span)
+                                }
                                 break;
                             case "fs.chunks":
                                 break;
                             case "workflow":
+                                if (indexnames.indexOf("_created_1") === -1) {
+                                    await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
+                                }
+                                if (indexnames.indexOf("_modified_1") === -1) {
+                                    await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
+                                }
                                 if (indexnames.indexOf("queue_1") === -1) {
                                     await this.createIndex(collection.name, "queue_1", { "queue": 1 }, null, span)
+                                }
+                                if (indexnames.indexOf("name_text") === -1 && Config.create_text_index_for_names) {
+                                    await this.createIndex(collection.name, "name_text", { "name": "text" }, {default_language: "none", language_override: "none"}, span)
                                 }
                                 break;
                             case "openrpa_instances":
                                 if (indexnames.indexOf("_created_1") === -1) {
                                     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
+                                }
+                                if (indexnames.indexOf("_modified_1") === -1) {
+                                    await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
                                 }
                                 if (indexnames.indexOf("InstanceId_1_WorkflowId_1") === -1) {
                                     await this.createIndex(collection.name, "InstanceId_1_WorkflowId_1", { "WorkflowId": 1, "InstanceId": 1 }, null, span)
@@ -2759,6 +2774,9 @@ export class DatabaseConnection extends events.EventEmitter {
                                 if (indexnames.indexOf("fqdn_1") === -1) {
                                     await this.createIndex(collection.name, "fqdn_1", { "fqdn": 1 }, null, span)
                                 }
+                                if (indexnames.indexOf("name_text") === -1 && Config.create_text_index_for_names) {
+                                    await this.createIndex(collection.name, "name_text", { "name": "text" }, {default_language: "none", language_override: "none"}, span)
+                                }
                                 break;
                             case "audit":
                                 if (indexnames.indexOf("_type_1") === -1) {
@@ -2766,6 +2784,9 @@ export class DatabaseConnection extends events.EventEmitter {
                                 }
                                 if (indexnames.indexOf("_created_1") === -1) {
                                     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
+                                }
+                                if (indexnames.indexOf("_modified_1") === -1) {
+                                    await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
                                 }
                                 if (indexnames.indexOf("remoteip_1") === -1) {
                                     await this.createIndex(collection.name, "remoteip_1", { "remoteip": 1 }, null, span)
@@ -2775,6 +2796,9 @@ export class DatabaseConnection extends events.EventEmitter {
                                 }
                                 if (indexnames.indexOf("userid_1") === -1) {
                                     await this.createIndex(collection.name, "userid_1", { "userid": 1 }, null, span)
+                                }
+                                if (indexnames.indexOf("name_text") === -1 && Config.create_text_index_for_names) {
+                                    await this.createIndex(collection.name, "name_text", { "name": "text" }, {default_language: "none", language_override: "none"}, span)
                                 }
                                 break;
                             case "users":
@@ -2793,6 +2817,9 @@ export class DatabaseConnection extends events.EventEmitter {
                                 if (indexnames.indexOf("_created_1") === -1) {
                                     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
                                 }
+                                if (indexnames.indexOf("_modified_1") === -1) {
+                                    await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
+                                }
                                 if (indexnames.indexOf("federationids_1") === -1) {
                                     await this.createIndex(collection.name, "federationids_1", { "federationids": 1 }, null, span)
                                 }
@@ -2803,21 +2830,36 @@ export class DatabaseConnection extends events.EventEmitter {
                                 if (indexnames.indexOf("members._id_1") === -1) {
                                     await this.createIndex(collection.name, "members._id_1", { "members._id": 1 }, null, span)
                                 }
+                                if (indexnames.indexOf("name_text") === -1 && Config.create_text_index_for_names) {
+                                    await this.createIndex(collection.name, "name_text", { "name": "text" }, {default_language: "none", language_override: "none"}, span)
+                                }
                                 break;
                             case "openrpa":
                                 if (indexnames.indexOf("_created_1") === -1) {
                                     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
                                 }
+                                if (indexnames.indexOf("_modified_1") === -1) {
+                                    await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
+                                }
                                 if (indexnames.indexOf("_type_projectid_name_1") === -1) {
                                     await this.createIndex(collection.name, "_type_projectid_name_1", { _type: 1, "{projectid:-1,name:-1}": 1 }, null, span)
+                                }
+                                if (indexnames.indexOf("name_text") === -1 && Config.create_text_index_for_names) {
+                                    await this.createIndex(collection.name, "name_text", { "name": "text" }, {default_language: "none", language_override: "none"}, span)
                                 }
                                 break;
                             case "dbusage":
                                 if (indexnames.indexOf("_created_1") === -1) {
                                     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
                                 }
+                                if (indexnames.indexOf("_modified_1") === -1) {
+                                    await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
+                                }
                                 if (indexnames.indexOf("collection_1_timestamp_1") === -1) {
                                     await this.createIndex(collection.name, "collection_1_timestamp_1", { _type: 1, "{collection:1,timestamp:1}": 1 }, null, span)
+                                }
+                                if (indexnames.indexOf("name_text") === -1 && Config.create_text_index_for_names) {
+                                    await this.createIndex(collection.name, "name_text", { "name": "text" }, {default_language: "none", language_override: "none"}, span)
                                 }
                                 break;
                             default:
@@ -2826,6 +2868,12 @@ export class DatabaseConnection extends events.EventEmitter {
                                 }
                                 if (indexnames.indexOf("_created_1") === -1) {
                                     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
+                                }
+                                if (indexnames.indexOf("_modified_1") === -1) {
+                                    await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
+                                }
+                                if (indexnames.indexOf("name_text") === -1 && Config.create_text_index_for_names) {
+                                    await this.createIndex(collection.name, "name_text", { "name": "text" }, {default_language: "none", language_override: "none"}, span)
                                 }
                                 break;
                         }

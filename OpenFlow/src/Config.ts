@@ -237,6 +237,9 @@ export class Config {
     public static cleanacl_credential_cache_seconds: number = parseInt(Config.getEnv("cleanacl_credential_cache_seconds", "900"));
     public static mq_credential_cache_seconds: number = parseInt(Config.getEnv("mq_credential_cache_seconds", "900"));
 
+    public static create_text_index_for_names: boolean = Config.parseBoolean(Config.getEnv("create_text_index_for_names", "false"));
+    public static use_text_index_for_names: boolean = Config.parseBoolean(Config.getEnv("use_text_index_for_names", "false"));
+
     public static oidc_access_token_ttl: number = parseInt(Config.getEnv("oidc_access_token_ttl", "28800")); // 8 hours
     public static oidc_authorization_code_ttl: number = parseInt(Config.getEnv("oidc_authorization_code_ttl", "28800")); // 8 hours
     public static oidc_client_credentials_ttl: number = parseInt(Config.getEnv("oidc_client_credentials_ttl", "28800")); // 8 hours
