@@ -1592,7 +1592,10 @@ export class DatabaseConnection extends events.EventEmitter {
                         q.item = await this.Cleanmembers(q.item as any, original);
                         DBHelper.cached_roles = [];
                     }
-                    if (q.item._type === "role") {
+                    if (q.item._type === "role" && q.collectionname === "users") {
+                        amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                    }
+                    if (q.collectionname === "mq") {
                         amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
                     }
                     if (q.collectionname != "fs.files") {
@@ -1993,6 +1996,9 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                 }
                 if (collectionname == "users" && doc._type == "role") {
+                    amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                }
+                if (collectionname === "mq") {
                     amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
                 }
             }
