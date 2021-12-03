@@ -40,6 +40,8 @@ export class WebSocketClientService {
                 this.enable_entity_restriction = data.enable_entity_restriction;
                 this.enable_web_tours = data.enable_web_tours;
 
+                this.use_text_index_for_names = data.use_text_index_for_names;
+
                 if (NoderedUtil.IsNullUndefinded(WebSocketClient.instance)) {
                     const cli: WebSocketClient = new WebSocketClient(this.logger, wsurl);
                     cli.agent = "webapp";
@@ -176,6 +178,7 @@ export class WebSocketClientService {
     public multi_tenant: boolean;
     public enable_entity_restriction: boolean;
     public enable_web_tours: boolean;
+    public use_text_index_for_names: boolean;
 
     getJSON(url: string, callback: any): void {
         const xhr: XMLHttpRequest = new XMLHttpRequest();

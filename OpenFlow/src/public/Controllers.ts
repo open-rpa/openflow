@@ -2774,7 +2774,7 @@ export class FilesCtrl extends entitiesCtrl<Base> {
         console.debug("EntitiesCtrl");
         this.autorefresh = true;
         this.basequery = {};
-        this.searchfields = ["metadata.name", "metadata.path"];
+        this.searchfields = ["metadata.name"];
         this.collection = "files";
         this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
         const elem = document.getElementById("myBar");

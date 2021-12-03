@@ -164,6 +164,8 @@ export class Config {
     public static otel_trace_interval: number = parseInt(Config.getEnv("otel_trace_interval", "5000"));
     public static otel_metric_interval: number = parseInt(Config.getEnv("otel_metric_interval", "5000"));
 
+    public static tours: boolean = Config.parseBoolean(Config.getEnv("tours", "true"));
+
     public static baseurl(): string {
         if (!NoderedUtil.IsNullEmpty(Config.domain_use_ip_from_network)) {
             Config.domain_use_ip_from_network = Config.domain_use_ip_from_network.toLowerCase();
