@@ -695,7 +695,7 @@ export class LoginProvider {
             const upload = multer({ //multer settings for single upload
                 storage: storage,
                 limits: {
-                    fileSize: (1000000 * 25) // 25MB
+                    fileSize: (1000000 * Config.upload_max_filesize_mb) // 25MB
                 }
             }).any();
             app.delete("/upload", async (req: any, res: any, next: any): Promise<void> => {

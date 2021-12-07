@@ -201,6 +201,8 @@ export class Config {
     public static housekeeping_update_usage_hourly: boolean = Config.parseBoolean(Config.getEnv("housekeeping_update_usage_hourly", "false"));
     public static housekeeping_update_usersize_hourly: boolean = Config.parseBoolean(Config.getEnv("housekeeping_update_usersize_hourly", "true"));
 
+    public static upload_max_filesize_mb: number = parseInt(Config.getEnv("upload_max_filesize_mb", "25"));
+
     public static getting_started_url: string = Config.getEnv("getting_started_url", "");
 
     public static NODE_ENV: string = Config.getEnv("NODE_ENV", "development");
