@@ -97,7 +97,7 @@ volumes:
   # if you don't want to start nodered though powershell or the webinterface, you can hardcode one or more instance here
   # You need to pre-create the user .. in this example the user has to have username nodered1
   # create a user with no password so the user cannot login, or give it a very long and complex one
-  # nodered:
+  # nodered1:
   #   labels:
   #     - "traefik.enable=true"
   #     - "traefik.http.routers.nodered.rule=Host(`nodered1.localhost.openiap.io`)"
@@ -105,7 +105,7 @@ volumes:
   #     - "traefik.http.services.nodered.loadbalancer.server.port=1880"
   #     - "traefik.frontend.passHostHeader=true"
   #   image: "openiap/nodered"
-  #   container_name: "nodered"
+  #   container_name: "nodered1"
   #   environment:
   #     - nodered_sa=nodered1
   #     - saml_federation_metadata=http://web:3000/issue/FederationMetadata/2007-06/FederationMetadata.xml
