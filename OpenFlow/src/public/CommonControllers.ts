@@ -537,6 +537,7 @@ export class entitiesCtrl<T> {
                         // newq[this.searchfields[i]] = this.searchstring;
                         // exact match case insensitive
                         newexactq[this.searchfields[i]] = new RegExp(["^", this.searchstring, "$"].join(""), "i");
+                        // newexactq[this.searchfields[i]] = new RegExp(["^", this.searchstring].join(""), "i");
 
                         // exact match string contains
                         newq[this.searchfields[i]] = new RegExp([this.searchstring.substring(1)].join(""), "i");

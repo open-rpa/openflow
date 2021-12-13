@@ -26,7 +26,7 @@ export class Crypt {
             user.passwordhash = await Crypt.hash(password);
             if (!(this.ValidatePassword(user, password, span))) { throw new Error("Failed validating password after hasing"); }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -39,7 +39,7 @@ export class Crypt {
             if (NoderedUtil.IsNullEmpty(password)) throw new Error("password is mandatody")
             return await Crypt.compare(password, user.passwordhash, span);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -88,15 +88,15 @@ export class Crypt {
         const span: Span = Logger.otel.startSubSpan("Crypt.compare", parent);
         return new Promise<boolean>(async (resolve, reject) => {
             try {
-                if (NoderedUtil.IsNullEmpty(password)) { span.recordException("Password cannot be empty"); return reject("Password cannot be empty"); }
-                if (NoderedUtil.IsNullEmpty(passwordhash)) { span.recordException("Passwordhash cannot be empty"); return reject("Passwordhash cannot be empty"); }
+                if (NoderedUtil.IsNullEmpty(password)) { span?.recordException("Password cannot be empty"); return reject("Password cannot be empty"); }
+                if (NoderedUtil.IsNullEmpty(passwordhash)) { span?.recordException("Passwordhash cannot be empty"); return reject("Passwordhash cannot be empty"); }
                 bcrypt.compare(password, passwordhash, async (error, res) => {
-                    if (error) { span.recordException(error); Logger.otel.endSpan(span); return reject(error); }
+                    if (error) { span?.recordException(error); Logger.otel.endSpan(span); return reject(error); }
                     Logger.otel.endSpan(span);
                     resolve(res);
                 });
             } catch (error) {
-                span.recordException(error);
+                span?.recordException(error);
                 reject(error);
                 Logger.otel.endSpan(span);
             }

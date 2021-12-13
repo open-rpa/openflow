@@ -126,9 +126,9 @@ export class DatabaseConnection extends events.EventEmitter {
             MongoClient.connect(this.mongodburl, options).then((cli) => {
                 this.replicat = (cli as any).s.options.replicaSet;
                 resolve(cli);
-                span.addEvent("Connected to mongodb");
+                span?.addEvent("Connected to mongodb");
             }).catch((reason) => {
-                span.recordException(reason);
+                span?.recordException(reason);
                 console.error(reason);
                 reject(reason);
             });
@@ -165,15 +165,15 @@ export class DatabaseConnection extends events.EventEmitter {
         const span: Span = Logger.otel.startSubSpan("db.DropCollection", parent);
         try {
             const user: TokenUser = Crypt.verityToken(jwt);
-            span.setAttribute("collection", collectionname);
-            span.setAttribute("username", user.username);
+            span?.setAttribute("collection", collectionname);
+            span?.setAttribute("username", user.username);
             if (!user.HasRoleName("admins")) throw new Error("Access denied, droppping collection " + collectionname);
             if (["workflow", "entities", "config", "audit", "jslog", "openrpa", "nodered", "openrpa_instances", "forms", "workflow_instances", "users"].indexOf(collectionname) > -1) throw new Error("Access denied, dropping reserved collection " + collectionname);
             const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.dropCollection", span);
             await this.db.dropCollection(collectionname);
             Logger.otel.endSpan(mongodbspan);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -250,10 +250,10 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (NoderedUtil.IsNullUndefinded(_user)) {
                             const ot_end = Logger.otel.startTimer();
                             const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.find", span);
-                            mongodbspan.setAttribute("collection", "users");
-                            mongodbspan.setAttribute("query", JSON.stringify({ _id: ace._id }));
+                            mongodbspan?.setAttribute("collection", "users");
+                            mongodbspan?.setAttribute("query", JSON.stringify({ _id: ace._id }));
                             const arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1 }).limit(1).toArray();
-                            mongodbspan.setAttribute("results", arr.length);
+                            mongodbspan?.setAttribute("results", arr.length);
                             Logger.otel.endSpan(mongodbspan);
                             Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: "users" });
                             if (arr.length > 0) {
@@ -284,7 +284,7 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             item = this.ensureResource(item);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
         }
         Logger.otel.endSpan(span);
         return item;
@@ -442,7 +442,7 @@ export class DatabaseConnection extends events.EventEmitter {
             await this.connect(span);
             let mysort: Object = {};
             if (orderby) {
-                span.addEvent("parse orderby");
+                span?.addEvent("parse orderby");
                 if (typeof orderby === "string" || orderby instanceof String) {
                     let neworderby = null;
                     try {
@@ -451,9 +451,9 @@ export class DatabaseConnection extends events.EventEmitter {
                             mysort = neworderby;
                         }
                     } catch (error) {
-                        span.addEvent("Parsing order by failed");
-                        span.recordException(error);
-                        span.setAttribute("failedorderby", orderby as string);
+                        span?.addEvent("Parsing order by failed");
+                        span?.recordException(error);
+                        span?.setAttribute("failedorderby", orderby as string);
                         console.error("Failed parsing orderby:")
                         console.error(orderby)
                         console.error(error);
@@ -462,11 +462,11 @@ export class DatabaseConnection extends events.EventEmitter {
                 } else {
                     mysort = orderby;
                 }
-                span.setAttribute("orderby", JSON.stringify(mysort));
+                span?.setAttribute("orderby", JSON.stringify(mysort));
             }
             let myhint: Object = {};
             if (hint) {
-                span.addEvent("parse hint");
+                span?.addEvent("parse hint");
                 if (typeof hint === "string" || hint instanceof String) {
                     let newhint = null;
                     try {
@@ -475,26 +475,26 @@ export class DatabaseConnection extends events.EventEmitter {
                             myhint = newhint;
                         }
                     } catch (error) {
-                        span.addEvent("Parsing hint by failed");
-                        span.recordException(error);
-                        span.setAttribute("failedhint", hint as string);
+                        span?.addEvent("Parsing hint by failed");
+                        span?.recordException(error);
+                        span?.setAttribute("failedhint", hint as string);
                         console.error(error, hint);
                     }
                     if (NoderedUtil.IsNullUndefinded(newhint)) myhint[(hint as string)] = 1;
                 } else {
                     myhint = hint;
                 }
-                span.setAttribute("hint", JSON.stringify(myhint));
+                span?.setAttribute("hint", JSON.stringify(myhint));
             }
             if (projection) {
-                span.addEvent("parse projection");
+                span?.addEvent("parse projection");
                 if (typeof projection === "string" || projection instanceof String) {
                     projection = JSON.parse((projection as string));
                 }
-                span.setAttribute("projection", JSON.stringify(projection));
+                span?.setAttribute("projection", JSON.stringify(projection));
             }
             if (query !== null && query !== undefined) {
-                span.addEvent("parse query");
+                span?.addEvent("parse query");
                 let json: any = query;
                 if (typeof json !== 'string' && !(json instanceof String)) {
                     json = JSON.stringify(json, (key, value) => {
@@ -513,7 +513,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     } else
                         return value; // leave any other value as-is
                 });
-                span.setAttribute("query", JSON.stringify(query));
+                span?.setAttribute("query", JSON.stringify(query));
             }
             if (NoderedUtil.IsNullUndefinded(query)) {
                 throw new Error("Query is mandatory");
@@ -529,10 +529,10 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                 }
             }
-            span.addEvent("verityToken");
+            span?.addEvent("verityToken");
             const user: TokenUser = Crypt.verityToken(jwt);
 
-            span.addEvent("getbasequery");
+            span?.addEvent("getbasequery");
             if (collectionname === "files") { collectionname = "fs.files"; }
             if (collectionname === "fs.files") {
                 let impersonationquery;
@@ -554,10 +554,10 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             if (!top) { top = 500; }
             if (!skip) { skip = 0; }
-            span.setAttribute("collection", collectionname);
-            span.setAttribute("username", user.username);
-            span.setAttribute("top", top);
-            span.setAttribute("skip", skip);
+            span?.setAttribute("collection", collectionname);
+            span?.setAttribute("username", user.username);
+            span?.setAttribute("top", top);
+            span?.setAttribute("skip", skip);
             let arr: T[] = [];
             const ot_end = Logger.otel.startTimer();
             const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.find", span);
@@ -570,7 +570,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 _pipe = _pipe.hint(myhint);
             }
             arr = await _pipe.toArray();
-            mongodbspan.setAttribute("results", arr.length);
+            mongodbspan?.setAttribute("results", arr.length);
             Logger.otel.endSpan(mongodbspan);
             Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: collectionname });
             for (let i: number = 0; i < arr.length; i++) { arr[i] = this.decryptentity(arr[i]); }
@@ -579,7 +579,7 @@ export class DatabaseConnection extends events.EventEmitter {
             return arr;
         } catch (error) {
             console.log(JSON.stringify(_query, null, 2));
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -610,7 +610,7 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             return result;
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -631,7 +631,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (arr === null || arr.length === 0) { return null; }
             return arr[0];
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -673,7 +673,7 @@ export class DatabaseConnection extends events.EventEmitter {
             } else {
                 myhint = hint;
             }
-            span.setAttribute("hint", JSON.stringify(myhint));
+            span?.setAttribute("hint", JSON.stringify(myhint));
         }
         aggregates = JSON.parse(json, (key, value) => {
             if (typeof value === 'string' && value.match(isoDatePattern)) {
@@ -685,13 +685,11 @@ export class DatabaseConnection extends events.EventEmitter {
                 return value; // leave any other value as-is
         });
         const user: TokenUser = Crypt.verityToken(jwt);
-        span.setAttribute("aggregates", JSON.stringify(aggregates));
-        span.setAttribute("collection", collectionname);
-        span.setAttribute("username", user.username);
-
+        span?.setAttribute("aggregates", JSON.stringify(aggregates));
+        span?.setAttribute("collection", collectionname);
+        span?.setAttribute("username", user.username);
         const aggregatesjson = JSON.stringify(aggregates, null, 2)
-
-        span.addEvent("getbasequery");
+        span?.addEvent("getbasequery");
         let base: object;
         if (collectionname == "fs.files") {
             base = this.getbasequery(jwt, "metadata._acl", [Rights.read]);
@@ -709,7 +707,7 @@ export class DatabaseConnection extends events.EventEmitter {
             const ot_end = Logger.otel.startTimer();
             const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.aggregate", span);
             const items: T[] = await this.db.collection(collectionname).aggregate(aggregates, options).toArray();
-            mongodbspan.setAttribute("results", items.length);
+            mongodbspan?.setAttribute("results", items.length);
             Logger.otel.endSpan(mongodbspan);
             Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_aggregate, { collection: collectionname });
             DatabaseConnection.traversejsondecode(items);
@@ -720,7 +718,7 @@ export class DatabaseConnection extends events.EventEmitter {
             return items;
         } catch (error) {
             if (Config.log_aggregates) Logger.instanse.debug(aggregatesjson);
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         }
         finally {
@@ -858,15 +856,15 @@ export class DatabaseConnection extends events.EventEmitter {
             if (item === null || item === undefined) { throw Error("Cannot create null item"); }
             if (NoderedUtil.IsNullEmpty(jwt)) throw new Error("jwt is null");
             await this.connect(span);
-            span.addEvent("ensureResource");
-            span.addEvent("verityToken");
+            span?.addEvent("ensureResource");
+            span?.addEvent("verityToken");
             const user: TokenUser = Crypt.verityToken(jwt);
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             item = this.ensureResource(item);
             if (!await this.CheckEntityRestriction(user, collectionname, item, span)) {
                 throw Error("Create " + item._type + " access denied");
             }
-            span.addEvent("traversejsonencode");
+            span?.addEvent("traversejsonencode");
             DatabaseConnection.traversejsonencode(item);
             let name = item.name;
             if (NoderedUtil.IsNullEmpty(name)) name = item._name;
@@ -885,7 +883,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (collectionname != "audit") { Logger.instanse.silly("[" + user.username + "][" + collectionname + "] Adding " + item._type + " " + name + " to database"); }
             if (!DatabaseConnection.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
 
-            span.addEvent("encryptentity");
+            span?.addEvent("encryptentity");
             item = this.encryptentity(item) as T;
 
             if (collectionname === "users" && item._type === "user" && item.hasOwnProperty("newpassword")) {
@@ -998,7 +996,7 @@ export class DatabaseConnection extends events.EventEmitter {
             } else {
                 item._id = new ObjectID().toHexString();
             }
-            span.addEvent("CleanACL");
+            span?.addEvent("CleanACL");
             item = await this.CleanACL(item, user, span);
             if (item._type === "role" && collectionname === "users") {
                 item = await this.Cleanmembers(item as any, null);
@@ -1008,25 +1006,25 @@ export class DatabaseConnection extends events.EventEmitter {
                 const u: TokenUser = (item as any);
                 if (NoderedUtil.IsNullEmpty(u.username)) { throw new Error("Username is mandatory"); }
                 if (NoderedUtil.IsNullEmpty(u.name)) { throw new Error("Name is mandatory"); }
-                span.addEvent("FindByUsername");
+                span?.addEvent("FindByUsername");
                 const exists = await DBHelper.FindByUsername(u.username, null, span);
                 if (exists != null) { throw new Error("Access denied, user  '" + u.username + "' already exists"); }
             }
             if (collectionname === "users" && item._type === "role") {
                 const r: Role = (item as any);
                 if (NoderedUtil.IsNullEmpty(r.name)) { throw new Error("Name is mandatory"); }
-                span.addEvent("FindByUsername");
+                span?.addEvent("FindByUsername");
                 const exists2 = await DBHelper.FindRoleByName(r.name, span);
                 if (exists2 != null) { throw new Error("Access denied, role '" + r.name + "' already exists"); }
             }
 
-            span.setAttribute("collection", collectionname);
-            span.setAttribute("username", user.username);
+            span?.setAttribute("collection", collectionname);
+            span?.setAttribute("username", user.username);
             let options: CollectionInsertOneOptions = { writeConcern: { w, j } };
             (options as any).WriteConcern = { w, j };
             if (NoderedUtil.IsNullEmpty(this.replicat)) options = null;
 
-            span.addEvent("do insert");
+            span?.addEvent("do insert");
             const ot_end = Logger.otel.startTimer();
             const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.insertOne", span);
             const result: InsertOneWriteOpResult<T> = await this.db.collection(collectionname).insertOne(item, options);
@@ -1035,12 +1033,12 @@ export class DatabaseConnection extends events.EventEmitter {
             item = result.ops[0];
             if (collectionname === "users" && item._type === "user") {
                 Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
-                span.addEvent("FindRoleByNameOrId");
+                span?.addEvent("FindRoleByNameOrId");
                 const users: Role = await DBHelper.FindRoleByNameOrId("users", jwt, span);
                 users.AddMember(item);
-                span.addEvent("CleanACL");
+                span?.addEvent("CleanACL");
                 item = await this.CleanACL(item, user, span);
-                span.addEvent("Save");
+                span?.addEvent("Save");
                 await DBHelper.Save(users, Crypt.rootToken(), span);
                 let user2: TokenUser = item as any;
 
@@ -1077,11 +1075,11 @@ export class DatabaseConnection extends events.EventEmitter {
             if (collectionname === "config" && item._type === "restriction") {
                 this.EntityRestrictions = null;
             }
-            span.addEvent("traversejsondecode");
+            span?.addEvent("traversejsondecode");
             DatabaseConnection.traversejsondecode(item);
             if (Config.log_inserts) Logger.instanse.debug("[" + user.username + "][" + collectionname + "] inserted " + item.name);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         }
         finally {
@@ -1100,8 +1098,8 @@ export class DatabaseConnection extends events.EventEmitter {
             await this.connect(span);
             const user = Crypt.verityToken(jwt);
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
-            span.setAttribute("collection", collectionname);
-            span.setAttribute("username", user.username);
+            span?.setAttribute("collection", collectionname);
+            span?.setAttribute("username", user.username);
             let bulkInsert = this.db.collection(collectionname).initializeUnorderedBulkOp();
             let x = 1000
             let counter = 0
@@ -1186,7 +1184,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 } else {
                     item._id = new ObjectID().toHexString();
                 }
-                span.addEvent("CleanACL");
+                span?.addEvent("CleanACL");
                 item = await this.CleanACL(item, user, span);
                 if (item._type === "role" && collectionname === "users") {
                     item = await this.Cleanmembers(item as any, null);
@@ -1196,14 +1194,14 @@ export class DatabaseConnection extends events.EventEmitter {
                     const u: TokenUser = (item as any);
                     if (NoderedUtil.IsNullEmpty(u.username)) { throw new Error("Username is mandatory"); }
                     if (NoderedUtil.IsNullEmpty(u.name)) { throw new Error("Name is mandatory"); }
-                    span.addEvent("FindByUsername");
+                    span?.addEvent("FindByUsername");
                     const exists = await DBHelper.FindByUsername(u.username, null, span);
                     if (exists != null) { throw new Error("Access denied, user  '" + u.username + "' already exists"); }
                 }
                 if (collectionname === "users" && item._type === "role") {
                     const r: Role = (item as any);
                     if (NoderedUtil.IsNullEmpty(r.name)) { throw new Error("Name is mandatory"); }
-                    span.addEvent("FindByUsername");
+                    span?.addEvent("FindByUsername");
                     const exists2 = await DBHelper.FindRoleByName(r.name, span);
                     if (exists2 != null) { throw new Error("Access denied, role '" + r.name + "' already exists"); }
                 }
@@ -1233,12 +1231,12 @@ export class DatabaseConnection extends events.EventEmitter {
                 let item = items[y];
                 if (collectionname === "users" && item._type === "user") {
                     Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
-                    span.addEvent("FindRoleByNameOrId");
+                    span?.addEvent("FindRoleByNameOrId");
                     const users: Role = await DBHelper.FindRoleByNameOrId("users", jwt, span);
                     users.AddMember(item);
-                    span.addEvent("CleanACL");
+                    span?.addEvent("CleanACL");
                     item = await this.CleanACL(item, user, span);
-                    span.addEvent("Save");
+                    span?.addEvent("Save");
                     await DBHelper.Save(users, Crypt.rootToken(), span);
                     const user2: TokenUser = item as any;
                     DBHelper.EnsureNoderedRoles(user2, Crypt.rootToken(), false, span);
@@ -1258,13 +1256,13 @@ export class DatabaseConnection extends events.EventEmitter {
                         setTimeout(() => OAuthProvider.LoadClients(), 1000);
                     }
                 }
-                span.addEvent("traversejsondecode");
+                span?.addEvent("traversejsondecode");
                 DatabaseConnection.traversejsondecode(item);
             }
             result = items;
             if (Config.log_inserts) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] inserted " + counter + " items in database");
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         }
         finally {
@@ -1668,7 +1666,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (Config.log_updates) Logger.instanse.debug("[" + user.username + "][" + q.collectionname + "] updated " + q.item.name);
             return q;
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -1773,7 +1771,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 throw error;
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -1873,7 +1871,7 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             return q;
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             DatabaseConnection.InsertOrUpdateOneSemaphore.up();
@@ -2004,7 +2002,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -2140,7 +2138,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 return counter;
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -2523,12 +2521,12 @@ export class DatabaseConnection extends events.EventEmitter {
                 Logger.otel.endSpan(mongodbspan);
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: q.collectionname + '_hist' });
             }).catch(err => {
-                mongodbspan.recordException(err);
+                mongodbspan?.recordException(err);
                 Logger.otel.endSpan(mongodbspan);
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: q.collectionname + '_hist' });
             });
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             Logger.instanse.error(error);
         } finally {
             Logger.otel.endSpan(span);
@@ -2619,7 +2617,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     Logger.otel.endSpan(mongodbspan);
                     Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname + '_hist' });
                 }).catch(err => {
-                    mongodbspan.recordException(err);
+                    mongodbspan?.recordException(err);
                     Logger.otel.endSpan(mongodbspan);
                     Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname + '_hist' });
                 });
@@ -2655,7 +2653,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         Logger.otel.endSpan(mongodbspan);
                         Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname + '_hist' });
                     }).catch(err => {
-                        mongodbspan.recordException(err);
+                        mongodbspan?.recordException(err);
                         Logger.otel.endSpan(mongodbspan);
                         Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname + '_hist' });
                     });
@@ -2669,7 +2667,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 item.lastseen = lastseen;
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             Logger.instanse.error(error);
         } finally {
             Logger.otel.endSpan(span);
@@ -2685,7 +2683,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 options["name"] = name;
                 this.db.collection(collectionname).createIndex(keypath, options, (err, name) => {
                     if (err) {
-                        span.recordException(err);
+                        span?.recordException(err);
                         Logger.otel.endSpan(span);
                         reject(err);
                         return;
@@ -2694,7 +2692,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     resolve(name);
                 })
             } catch (error) {
-                span.recordException(error);
+                span?.recordException(error);
                 Logger.otel.endSpan(span);
                 reject(error);
             }
@@ -2707,7 +2705,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (Config.log_index_mngt) Logger.instanse.info("Dropping index " + name + " in " + collectionname);
                 this.db.collection(collectionname).dropIndex(name, (err, name) => {
                     if (err) {
-                        span.recordException(err);
+                        span?.recordException(err);
                         Logger.otel.endSpan(span);
                         reject(err);
                         return;
@@ -2716,7 +2714,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     resolve(name);
                 })
             } catch (error) {
-                span.recordException(error);
+                span?.recordException(error);
                 Logger.otel.endSpan(span);
                 reject(error);
             }
@@ -2886,12 +2884,12 @@ export class DatabaseConnection extends events.EventEmitter {
                         }
                     }
                 } catch (error) {
-                    span.recordException(error);
+                    span?.recordException(error);
                     Logger.instanse.error(error);
                 }
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
         } finally {
             Logger.otel.endSpan(span);
         }

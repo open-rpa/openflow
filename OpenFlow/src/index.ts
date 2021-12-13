@@ -224,7 +224,7 @@ async function initDatabase(): Promise<boolean> {
         }
         return true;
     } catch (error) {
-        span.recordException(error);
+        span?.recordException(error);
         Logger.otel.endSpan(span);
         Logger.instanse.error(error);
         return false;

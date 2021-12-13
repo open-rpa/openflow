@@ -158,7 +158,7 @@ export class WebSocketServerClient {
         return false;
     }
     public ping(parent: Span): void {
-        const span: Span = Logger.otel.startSubSpan("WebSocketServerClient.ping", parent);
+        const span: Span = (Config.otel_trace_pingclients && parent != null ? Logger.otel.startSubSpan("WebSocketServerClient.ping", parent) : null);
         try {
             let msg: SocketMessage = SocketMessage.fromcommand("ping");
             if (this._socketObject == null) {
@@ -178,7 +178,7 @@ export class WebSocketServerClient {
             }
         } catch (error) {
             Logger.instanse.error(error);
-            span.recordException(error);
+            span?.recordException(error);
             this._receiveQueue = [];
             this._sendQueue = [];
             if (this._socketObject != null) {
@@ -251,7 +251,7 @@ export class WebSocketServerClient {
                 await this.UnWatch(keys[i], this.jwt);
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             WebSocketServer.update_mongodb_watch_count(this);
@@ -280,7 +280,7 @@ export class WebSocketServerClient {
                 }
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             semaphore.up();
@@ -340,7 +340,7 @@ export class WebSocketServerClient {
             if (exchangequeue != null) return { exchangename: exchangequeue.exchange, queuename: exchangequeue.queue.queue };
             return null;
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -416,7 +416,7 @@ export class WebSocketServerClient {
             }
             return null;
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);

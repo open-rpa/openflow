@@ -17,7 +17,7 @@ export class DBHelper {
             if (items === null || items === undefined || items.length === 0) { return null; }
             return await this.DecorateWithRoles(User.assign(items[0]), span);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -32,7 +32,7 @@ export class DBHelper {
             if (items === null || items === undefined || items.length === 0) { return null; }
             return await this.DecorateWithRoles(User.assign(items[0]), span);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -49,7 +49,7 @@ export class DBHelper {
             if (items === null || items === undefined || items.length === 0) { return null; }
             return await this.DecorateWithRoles(User.assign(items[0]), span);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -66,7 +66,7 @@ export class DBHelper {
             if (items === null || items === undefined || items.length === 0) { return null; }
             return await this.DecorateWithRoles(User.assign(items[0]), span);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -160,7 +160,7 @@ export class DBHelper {
                 } while (updated)
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -199,7 +199,7 @@ export class DBHelper {
             await this.Save(role, jwt, span);
             return Role.assign(role);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -229,7 +229,7 @@ export class DBHelper {
             user = await this.DecorateWithRoles(user, span);
             return user;
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
