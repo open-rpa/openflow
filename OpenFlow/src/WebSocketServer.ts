@@ -202,7 +202,7 @@ export class WebSocketServer {
             }
         } catch (error) {
             span?.recordException(error);
-            throw error;
+            Logger.instanse.error(error);
         } finally {
             Logger.otel.endSpan(span);
         }
