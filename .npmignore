@@ -24,3 +24,4 @@ docker-compose-traefik-letsencrypt.yml
 .nyc_output
 .scannerwor
 test
+crash.log
