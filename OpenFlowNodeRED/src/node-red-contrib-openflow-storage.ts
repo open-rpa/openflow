@@ -403,7 +403,7 @@ export class noderedcontribopenflowstorage {
             // await backupStore.set(filename, JSON.stringify(npmrc));
             if (WebSocketClient.instance.isConnected()) {
                 const result = await NoderedUtil.Query("nodered", { _type: "npmrc", nodered_id: Config.nodered_id }, null, null, 1, 0, null, null, null, 1);
-                if (result.length === 0) {
+                if (NoderedUtil.IsNullUndefinded(result) || result.length === 0) {
                     npmrc.name = "npmrc for " + Config.nodered_id;
                     npmrc.nodered_id = Config.nodered_id;
                     npmrc._type = "npmrc";
@@ -437,7 +437,7 @@ export class noderedcontribopenflowstorage {
             result = [];
         }
         const filename: string = Config.nodered_id + "_flows.json";
-        if (result.length == 0) {
+        if (NoderedUtil.IsNullUndefinded(result) || result.length == 0) {
             const json = await this.backupStore.get<string>(filename, null);
             if (!NoderedUtil.IsNullEmpty(json)) {
                 this._flows = JSON.parse(json);
@@ -457,7 +457,7 @@ export class noderedcontribopenflowstorage {
                 this.last_reload = new Date();
                 const result = await NoderedUtil.Query("nodered", { _type: "flow", nodered_id: Config.nodered_id }, null, null, 1, 0, null, null, null, 1);
                 this.last_reload = new Date();
-                if (result.length === 0) {
+                if (NoderedUtil.IsNullUndefinded(result) || result.length === 0) {
                     const item: any = {
                         name: "flows for " + Config.nodered_id,
                         flows: JSON.stringify(flows), _type: "flow", nodered_id: Config.nodered_id
@@ -481,7 +481,7 @@ export class noderedcontribopenflowstorage {
             Logger.instanse.silly("noderedcontribopenflowstorage::_getCredentials");
             if (WebSocketClient.instance.isConnected()) {
                 const result = await NoderedUtil.Query("nodered", { _type: "credential", nodered_id: Config.nodered_id }, null, null, 1, 0, null, null, null, 1);
-                if (result.length === 0) { return []; }
+                if (NoderedUtil.IsNullUndefinded(result) || result.length === 0) { return []; }
                 cred = result[0].credentials;
                 const arr: any = result[0].credentialsarray;
                 if (arr !== null && arr !== undefined) {
@@ -531,7 +531,7 @@ export class noderedcontribopenflowstorage {
                 }
             }
             if (credentials) {
-                if (result.length === 0) {
+                if (NoderedUtil.IsNullUndefinded(result) || result.length === 0) {
                     const item: any = {
                         name: "credentials for " + Config.nodered_id,
                         credentials: credentials, credentialsarray: credentialsarray, _type: "credential", nodered_id: Config.nodered_id,
@@ -558,7 +558,7 @@ export class noderedcontribopenflowstorage {
             Logger.instanse.silly("noderedcontribopenflowstorage::_getSettings");
             if (WebSocketClient.instance.isConnected()) {
                 const result = await NoderedUtil.Query("nodered", { _type: "setting", nodered_id: Config.nodered_id }, null, null, 1, 0, null, null, null, 1);
-                if (result.length === 0) { return {}; }
+                if (NoderedUtil.IsNullUndefinded(result) || result.length === 0) { return {}; }
                 settings = JSON.parse(result[0].settings);
             }
         } catch (error) {
@@ -926,7 +926,7 @@ export class noderedcontribopenflowstorage {
                 this.last_reload = new Date();
                 const result = await NoderedUtil.Query("nodered", { _type: "setting", nodered_id: Config.nodered_id }, null, null, 1, 0, null, null, null, 1);
                 this.last_reload = new Date();
-                if (result.length === 0) {
+                if (NoderedUtil.IsNullUndefinded(result) || result.length === 0) {
                     const item: any = {
                         name: "settings for " + Config.nodered_id,
                         settings: JSON.stringify(settings), _type: "setting", nodered_id: Config.nodered_id
@@ -983,7 +983,7 @@ export class noderedcontribopenflowstorage {
             Logger.instanse.silly("noderedcontribopenflowstorage::_getSessions");
             if (WebSocketClient.instance.isConnected()) {
                 const result = await NoderedUtil.Query("nodered", { _type: "session", nodered_id: Config.nodered_id }, null, null, 1, 0, null, null, null, 1);
-                if (result.length === 0) { return []; }
+                if (NoderedUtil.IsNullUndefinded(result) || result.length === 0) { return []; }
                 item = JSON.parse(result[0].sessions);
             }
         } catch (error) {
@@ -1009,7 +1009,7 @@ export class noderedcontribopenflowstorage {
                 this.last_reload = new Date();
                 const result = await NoderedUtil.Query("nodered", { _type: "session", nodered_id: Config.nodered_id }, null, null, 1, 0, null, null, null, 1);
                 this.last_reload = new Date();
-                if (result.length === 0) {
+                if (NoderedUtil.IsNullUndefinded(result) || result.length === 0) {
                     const item: any = {
                         name: "sessions for " + Config.nodered_id,
                         sessions: JSON.stringify(sessions), _type: "session", nodered_id: Config.nodered_id
@@ -1047,7 +1047,7 @@ export class noderedcontribopenflowstorage {
             Logger.instanse.silly("noderedcontribopenflowstorage::_getSessions");
             if (WebSocketClient.instance.isConnected()) {
                 const result = await NoderedUtil.Query("nodered", { _type: "library", nodered_id: Config.nodered_id, type, path }, null, null, 1, 0, null, null, null, 1);
-                if (result.length === 0) { return null; }
+                if (NoderedUtil.IsNullUndefinded(result) || result.length === 0) { return null; }
                 var item = JSON.parse(result[0].sessions);
                 return item.body;
             }
