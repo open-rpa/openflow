@@ -115,13 +115,24 @@ let server: http.Server = null;
 (async function (): Promise<void> {
     try {
         const backupStore = new FileSystemCache(path.join(Config.logpath, '.cache-' + Config.nodered_id));
-        const filename: string = Config.nodered_id + "_flows.json";
-        const json = await backupStore.get(filename, null);
+        const flow_filename: string = Config.nodered_id + "_flows.json";
+        const nodereduser_filename: string = Config.nodered_id + "_user.json";
+        const flowjson = await backupStore.get<string>(flow_filename, null);
+        const userjson = await backupStore.get<string>(nodereduser_filename, null);
         const socket: WebSocketClient = new WebSocketClient(Logger.instanse, Config.api_ws_url);
-        if (!NoderedUtil.IsNullEmpty(json) && Config.allow_start_from_cache) {
+        if (!NoderedUtil.IsNullEmpty(flowjson) && Config.allow_start_from_cache) {
             server = await WebServer.configure(socket);
             const baseurl = (!NoderedUtil.IsNullEmpty(Config.saml_baseurl) ? Config.saml_baseurl : Config.baseurl());
             Logger.instanse.info("listening on " + baseurl);
+            if (!NoderedUtil.IsNullUndefinded(userjson)) {
+                const nodered = JSON.parse(userjson);
+                if (!NoderedUtil.IsNullEmpty(nodered.function_external_modules)) { Config.function_external_modules = nodered.function_external_modules; }
+                if (!NoderedUtil.IsNullEmpty(nodered.api_allow_anonymous)) { Config.api_allow_anonymous = nodered.api_allow_anonymous; }
+                if (!NoderedUtil.IsNullEmpty(nodered.codeeditor_lib)) { Config.codeeditor_lib = nodered.codeeditor_lib; }
+                if (!NoderedUtil.IsNullEmpty(nodered.monaco) && Config.parseBoolean(nodered.monaco)) { Config.codeeditor_lib = "monaco"; }
+                if (!NoderedUtil.IsNullEmpty(nodered.tours)) { Config.tours = nodered.tours; }
+                if (!NoderedUtil.IsNullEmpty(nodered.enable_web_tours)) { Config.tours = nodered.enable_web_tours; }
+            }
         }
         socket.setCacheFolder(Config.logpath);
         socket.agent = "nodered";
@@ -170,6 +181,22 @@ let server: http.Server = null;
                     }
                 }
                 if (server == null) {
+
+                    const user = await NoderedUtil.Query("users", { _id: result.user._id }, { "nodered": 1 }, null, 1, 0, result.jwt, null, null, 1);
+                    if (user.length > 0) {
+                        const nodered = user[0].nodered;
+                        if (!NoderedUtil.IsNullUndefinded(nodered)) {
+                            if (!NoderedUtil.IsNullEmpty(nodered.function_external_modules)) { Config.function_external_modules = nodered.function_external_modules; }
+                            if (!NoderedUtil.IsNullEmpty(nodered.api_allow_anonymous)) { Config.api_allow_anonymous = nodered.api_allow_anonymous; }
+                            if (!NoderedUtil.IsNullEmpty(nodered.codeeditor_lib)) { Config.codeeditor_lib = nodered.codeeditor_lib; }
+                            if (!NoderedUtil.IsNullEmpty(nodered.monaco) && Config.parseBoolean(nodered.monaco)) { Config.codeeditor_lib = "monaco"; }
+                            if (!NoderedUtil.IsNullEmpty(nodered.tours)) { Config.tours = nodered.tours; }
+                            if (!NoderedUtil.IsNullEmpty(nodered.enable_web_tours)) { Config.tours = nodered.enable_web_tours; }
+                            await backupStore.set(nodereduser_filename, JSON.stringify(nodered));
+                        } else {
+                            await backupStore.remove(nodereduser_filename);
+                        }
+                    }
                     server = await WebServer.configure(socket);
                     const baseurl = (!NoderedUtil.IsNullEmpty(Config.saml_baseurl) ? Config.saml_baseurl : Config.baseurl());
                     Logger.instanse.info("listening on " + baseurl);
@@ -179,6 +206,10 @@ let server: http.Server = null;
                 let closemsg: any = (error.message ? error.message : error);
                 Logger.instanse.error(closemsg);
                 socket.close(1000, closemsg);
+                socket.connect().catch(reason => {
+                    Logger.instanse.error(reason);
+                    process.exit(404);
+                })
             }
         });
     } catch (error) {
