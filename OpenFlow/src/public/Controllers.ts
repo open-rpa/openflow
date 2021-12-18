@@ -4372,7 +4372,7 @@ export class NoderedCtrl {
             await NoderedUtil.UpdateOne("users", null, this.user, 1, false, null, 2);
             this.loading = false;
             this.messages = 'update complete\n' + this.messages;
-            // this.EnsureNoderedInstance();
+            this.EnsureNoderedInstance();
         } catch (error) {
             this.errormessage = error.message ? error.message : error;
         }

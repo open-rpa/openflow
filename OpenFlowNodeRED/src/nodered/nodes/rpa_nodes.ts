@@ -513,10 +513,8 @@ export class rpa_killworkflows_node {
 
 export async function get_rpa_detectors(req, res) {
     try {
-        const rawAssertion = req.user.getAssertionXml();
-        const token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
         const result: any[] = await NoderedUtil.Query('openrpa', { _type: "detector" },
-            { name: 1 }, { name: -1 }, 1000, 0, token.jwt, null, null, 1)
+            { name: 1 }, { name: -1 }, 1000, 0, null, null, null, 1)
         res.json(result);
     } catch (error) {
         res.status(500).json(error);
@@ -524,10 +522,8 @@ export async function get_rpa_detectors(req, res) {
 }
 export async function get_rpa_robots_roles(req, res) {
     try {
-        const rawAssertion = req.user.getAssertionXml();
-        const token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
         const result: any[] = await NoderedUtil.Query('users', { $or: [{ _type: "user", _rpaheartbeat: { "$exists": true } }, { _type: "role", rparole: true }] },
-            { name: 1 }, { name: -1 }, 1000, 0, token.jwt, null, null, 1)
+            { name: 1 }, { name: -1 }, 1000, 0, null, null, null, 1)
         res.json(result);
     } catch (error) {
         res.status(500).json(error);
@@ -535,10 +531,8 @@ export async function get_rpa_robots_roles(req, res) {
 }
 export async function get_rpa_robots(req, res) {
     try {
-        const rawAssertion = req.user.getAssertionXml();
-        const token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
         const result: any[] = await NoderedUtil.Query('users', { _type: "user", _rpaheartbeat: { "$exists": true } },
-            { name: 1 }, { name: -1 }, 1000, 0, token.jwt, null, null, 1)
+            { name: 1 }, { name: -1 }, 1000, 0, null, null, null, 1)
         res.json(result);
     } catch (error) {
         res.status(500).json(error);
@@ -546,11 +540,9 @@ export async function get_rpa_robots(req, res) {
 }
 export async function get_rpa_workflows(req, res) {
     try {
-        const rawAssertion = req.user.getAssertionXml();
-        const token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
         const q: any = { _type: "workflow" };
         const result: any[] = await NoderedUtil.Query('openrpa', q,
-            { name: 1, projectandname: 1 }, { projectid: -1, name: -1 }, 1000, 0, token.jwt, req.query.queue, null, 1)
+            { name: 1, projectandname: 1 }, { projectid: -1, name: -1 }, 1000, 0, null, req.query.queue, null, 1)
         res.json(result);
     } catch (error) {
         res.status(500).json(error);

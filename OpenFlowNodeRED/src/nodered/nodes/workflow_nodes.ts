@@ -440,10 +440,8 @@ export class workflow_out_node {
 
 export async function get_workflow_forms(req, res) {
     try {
-        const rawAssertion = req.user.getAssertionXml();
-        const token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
         const result: any[] = await NoderedUtil.Query('forms', { _type: "form" },
-            { name: 1 }, { name: -1 }, 1000, 0, token.jwt, null, null, 1)
+            { name: 1 }, { name: -1 }, 1000, 0, null, null, null, 1)
         res.json(result);
     } catch (error) {
         res.status(500).json(error);
@@ -453,8 +451,6 @@ export async function get_workflow_forms(req, res) {
 
 export async function get_workflows(req, res) {
     try {
-        const rawAssertion = req.user.getAssertionXml();
-        const token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
         let q: any = { "_type": "workflow" };
         const ors = [];
         if (!NoderedUtil.IsNullEmpty(req.query.name)) {
@@ -471,7 +467,7 @@ export async function get_workflows(req, res) {
                 ]
             };
         }
-        const result: any[] = await NoderedUtil.Query('workflow', q, { name: 1 }, { name: -1 }, 100, 0, token.jwt, null, null, 1)
+        const result: any[] = await NoderedUtil.Query('workflow', q, { name: 1 }, { name: -1 }, 100, 0, null, null, null, 1)
         res.json(result);
     } catch (error) {
         res.status(500).json(error);
