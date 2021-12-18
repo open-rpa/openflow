@@ -287,7 +287,7 @@ export class api_add {
                     }
                     Promises.push(NoderedUtil.InsertOne(collection, element, writeconcern, journal, msg.jwt, priority));
                 }
-                this.node.status({ fill: "blue", shape: "dot", text: y + " to " + (y + 49) + " of " + data.length });
+                this.node.status({ fill: "blue", shape: "dot", text: (y + 1) + " to " + (y + 50) + " of " + data.length });
                 const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
                 results = results.concat(tempresults);
                 Promises = [];
@@ -391,7 +391,7 @@ export class api_addmany {
                         }
                         subitems.push(element);
                     }
-                    this.node.status({ fill: "blue", shape: "dot", text: y + " to " + (y + 49) + " of " + data.length });
+                    this.node.status({ fill: "blue", shape: "dot", text: (y + 1) + " to " + (y + 50) + " of " + data.length });
                     results = results.concat(await NoderedUtil.InsertMany(collection, subitems, writeconcern, journal, skipresults, msg.jwt, priority));
                 }
                 data = results;
@@ -477,7 +477,7 @@ export class api_update {
                     }
                     Promises.push(NoderedUtil.UpdateOne(collection, null, element, writeconcern, journal, msg.jwt, priority));
                 }
-                this.node.status({ fill: "blue", shape: "dot", text: y + " to " + (y + 49) + " of " + data.length });
+                this.node.status({ fill: "blue", shape: "dot", text: (y + 1) + " to " + (y + 50) + " of " + data.length });
                 const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
                 results = results.concat(tempresults);
                 Promises = [];
@@ -572,7 +572,7 @@ export class api_addorupdate {
                     }
                     Promises.push(NoderedUtil.InsertOrUpdateOne(collection, element, uniqeness, writeconcern, journal, msg.jwt, priority));
                 }
-                this.node.status({ fill: "blue", shape: "dot", text: y + " to " + (y + 49) + " of " + data.length });
+                this.node.status({ fill: "blue", shape: "dot", text: (y + 1) + " to " + (y + 50) + " of " + data.length });
                 const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
                 results = results.concat(tempresults);
                 Promises = [];
@@ -653,7 +653,7 @@ export class api_delete {
                     if (NoderedUtil.isObject(element)) { id = element._id; }
                     Promises.push(NoderedUtil.DeleteOne(collection, id, msg.jwt, priority));
                 }
-                this.node.status({ fill: "blue", shape: "dot", text: y + " to " + (y + 49) + " of " + data.length });
+                this.node.status({ fill: "blue", shape: "dot", text: (y + 1) + " to " + (y + 50) + " of " + data.length });
                 const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
                 results = results.concat(tempresults);
                 Promises = [];
