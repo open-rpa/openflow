@@ -7,6 +7,15 @@ services:
     restart: always
     volumes:
       - mongodb_data:/data/db
+  # mongoexpress:
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.http.routers.mongoexpress.rule=Host(`express.localhost.openiap.io`)"
+  #     - "traefik.http.routers.mongoexpress.entrypoints=web"
+  #     - "traefik.http.services.mongoexpress.loadbalancer.server.port=8081"
+  #   image: "mongo-express"
+  #   environment:
+  #     - ME_CONFIG_MONGODB_SERVER=mongodb
   traefik:
     image: "traefik"
     container_name: "traefik"
