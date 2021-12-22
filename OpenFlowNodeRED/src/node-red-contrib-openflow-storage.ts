@@ -366,7 +366,7 @@ export class noderedcontribopenflowstorage {
             Logger.instanse.silly("noderedcontribopenflowstorage::_getnpmrc");
             if (WebSocketClient.instance != null && WebSocketClient.instance.isConnected()) {
                 const array = await NoderedUtil.Query("nodered", { _type: "npmrc", nodered_id: Config.nodered_id }, null, null, 1, 0, null, null, null, 1);
-                if (array.length === 0) { return null; }
+                if (NoderedUtil.IsNullUndefinded(array) || array.length === 0) { return null; }
                 try {
                     this.npmrc = array[0];
                 } catch (error) {
@@ -423,7 +423,7 @@ export class noderedcontribopenflowstorage {
             Logger.instanse.silly("noderedcontribopenflowstorage::_getFlows");
             if (WebSocketClient.instance.isConnected()) {
                 const array = await NoderedUtil.Query("nodered", { _type: "flow", nodered_id: Config.nodered_id }, null, null, 1, 0, null, null, null, 1);
-                if (array.length === 0) { return []; }
+                if (NoderedUtil.IsNullUndefinded(array) || array.length === 0) { return []; }
                 try {
                     this._flows = JSON.parse(array[0].flows);
                     result = this._flows;
@@ -499,7 +499,7 @@ export class noderedcontribopenflowstorage {
             cred = [];
         }
         const filename: string = Config.nodered_id + "_credentials";
-        if (cred.length == 0) {
+        if (NoderedUtil.IsNullUndefinded(cred) || cred.length == 0) {
             let json = await this.backupStore.get<string>(filename, null);
             if (!NoderedUtil.IsNullEmpty(json)) {
                 json = noderedcontribopenflowstorage.decrypt(json);
@@ -991,7 +991,7 @@ export class noderedcontribopenflowstorage {
             item = [];
         }
         const filename: string = Config.nodered_id + "_sessions";
-        if (item == null || item.length == 0) {
+        if (NoderedUtil.IsNullUndefinded(item) || item.length == 0) {
             const json = await this.backupStore.get<string>(filename, null);
             if (!NoderedUtil.IsNullEmpty(json)) {
                 item = JSON.parse(json);
