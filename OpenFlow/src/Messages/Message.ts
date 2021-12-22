@@ -3107,7 +3107,7 @@ export class Message {
             if ((hasUser === null || hasUser === undefined)) {
                 Base.addRight(msg.metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
             }
-            msg.metadata = Config.db.ensureResource(msg.metadata);
+            msg.metadata = Config.db.ensureResource(msg.metadata, "fs.files");
             if (!NoderedUtil.hasAuthorization(user, msg.metadata, Rights.create)) { throw new Error("Access denied, no authorization to save file"); }
             msg.id = await this._SaveFile(readable, msg.filename, msg.mimeType, msg.metadata);
             msg.result = await Config.db.getbyid(msg.id, "fs.files", msg.jwt, null);
@@ -3244,7 +3244,7 @@ export class Message {
             Base.addRight(msg.metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
             if (!NoderedUtil.hasAuthorization(user, msg.metadata, Rights.update)) { throw new Error("Access denied, no authorization to update file"); }
 
-            msg.metadata = Config.db.ensureResource(msg.metadata);
+            msg.metadata = Config.db.ensureResource(msg.metadata, "fs.files");
             const fsc = Config.db.db.collection("fs.files");
             DatabaseConnection.traversejsonencode(msg.metadata);
             const res = await fsc.updateOne(q, { $set: { metadata: msg.metadata } });
@@ -4424,6 +4424,143 @@ export class Message {
         yesterday.setDate(yesterday.getDate() - 1);
 
         try {
+            for (let i = 0; i < DatabaseConnection.collections_with_text_index.length; i++) {
+                let collectionname = DatabaseConnection.collections_with_text_index[i];
+                if (DatabaseConnection.timeseries_collections.indexOf(collectionname) > -1) continue;
+                if (DatabaseConnection.usemetadata(collectionname)) {
+                    let exists = await Config.db.db.collection(collectionname).findOne({ "metadata._searchnames": { $exists: false } });
+                    if (!NoderedUtil.IsNullUndefinded(exists)) {
+                        Logger.instanse.info("[housekeeping][" + collectionname + "] Start creating metadata._searchnames for collection " + collectionname);
+                        await Config.db.db.collection(collectionname).updateMany({ "metadata._searchnames": { $exists: false } },
+                            [
+                                {
+                                    "$set": {
+                                        "metadata._searchnames":
+                                        {
+                                            $split: [
+                                                {
+                                                    $replaceAll: {
+                                                        input:
+                                                        {
+                                                            $replaceAll: {
+                                                                input:
+                                                                {
+                                                                    $replaceAll: {
+                                                                        input:
+                                                                            { $toLower: "$metadata.name" }
+                                                                        , find: ".", replacement: " "
+                                                                    }
+                                                                }
+                                                                , find: "-", replacement: " "
+                                                            }
+                                                        }
+                                                        , find: "/", replacement: " "
+                                                    }
+                                                }
+                                                , " "]
+                                        }
+                                    }
+                                }
+                                ,
+                                {
+                                    "$set": {
+                                        "_searchname":
+                                        {
+                                            $replaceAll: {
+                                                input:
+                                                {
+                                                    $replaceAll: {
+                                                        input:
+                                                        {
+                                                            $replaceAll: {
+                                                                input:
+                                                                    { $toLower: "$metadata.name" }
+                                                                , find: ".", replacement: " "
+                                                            }
+                                                        }
+                                                        , find: "-", replacement: " "
+                                                    }
+                                                }
+                                                , find: "/", replacement: " "
+                                            }
+                                        }
+                                    }
+                                }
+                                ,
+                                { "$set": { "metadata._searchnames": { $concatArrays: ["$metadata._searchnames", [{ $toLower: "$metadata.name" }]] } } }
+                            ]
+                        )
+                        Logger.instanse.info("[housekeeping][" + collectionname + "] Done creating _searchnames for collection " + collectionname);
+                    }
+                } else {
+                    let exists = await Config.db.db.collection(collectionname).findOne({ "_searchnames": { $exists: false } });
+                    if (!NoderedUtil.IsNullUndefinded(exists)) {
+                        Logger.instanse.info("[housekeeping][" + collectionname + "] Start creating _searchnames for collection " + collectionname);
+                        await Config.db.db.collection(collectionname).updateMany({ "_searchnames": { $exists: false } },
+                            [
+                                {
+                                    "$set": {
+                                        "_searchnames":
+                                        {
+                                            $split: [
+                                                {
+                                                    $replaceAll: {
+                                                        input:
+                                                        {
+                                                            $replaceAll: {
+                                                                input:
+                                                                {
+                                                                    $replaceAll: {
+                                                                        input:
+                                                                            { $toLower: "$name" }
+                                                                        , find: ".", replacement: " "
+                                                                    }
+                                                                }
+                                                                , find: "-", replacement: " "
+                                                            }
+                                                        }
+                                                        , find: "/", replacement: " "
+                                                    }
+                                                }
+                                                , " "]
+                                        }
+                                    }
+                                }
+                                ,
+                                {
+                                    "$set": {
+                                        "_searchname":
+                                        {
+                                            $replaceAll: {
+                                                input:
+                                                {
+                                                    $replaceAll: {
+                                                        input:
+                                                        {
+                                                            $replaceAll: {
+                                                                input:
+                                                                    { $toLower: "$name" }
+                                                                , find: ".", replacement: " "
+                                                            }
+                                                        }
+                                                        , find: "-", replacement: " "
+                                                    }
+                                                }
+                                                , find: "/", replacement: " "
+                                            }
+                                        }
+                                    }
+                                }
+                                ,
+                                { "$set": { "_searchnames": { $concatArrays: ["$_searchnames", [{ $toLower: "$name" }]] } } }
+                            ]
+                        )
+                        Logger.instanse.info("[housekeeping][" + collectionname + "] Done creating _searchnames for collection " + collectionname);
+                    }
+                }
+            }
+
+            // skipCalculateSize = false;
             if (!skipCalculateSize) {
 
                 const user = Crypt.rootUser();
@@ -4505,29 +4642,43 @@ export class Message {
                     Config.db.db.collection("dbusage").deleteMany({ timestamp: timestamp, collection: col.name });
                     let usage = 0;
                     if (items.length > 0) {
-                        let bulkInsert = Config.db.db.collection("dbusage").initializeUnorderedBulkOp();
-                        for (var _item of items) {
-                            let item = Config.db.ensureResource(_item);
-                            item = await Config.db.CleanACL(item, tuser, span);
-                            delete item._id;
-                            item.username = item.name;
-                            item.name = item.name + " / " + col.name + " / " + this.formatBytes(_item.size);
-                            item._type = "metered";
-                            item._createdby = "root";
-                            item._createdbyid = WellknownIds.root;
-                            item._created = new Date(new Date().toISOString());
-                            item._modifiedby = "root";
-                            item._modifiedbyid = WellknownIds.root;
-                            item._modified = item._created;
-                            usage += item.size;
-                            DatabaseConnection.traversejsonencode(item);
+                        // let bulkInsert = Config.db.db.collection("dbusage").initializeUnorderedBulkOp();
+                        for (var i = 0; i < items.length; i++) {
+                            try {
+                                // sometimes the item is "weird", re-serializing it, cleans it, so it works again ... mongodb bug ???
+                                let item = JSON.parse(JSON.stringify(items[i]));
+                                item = Config.db.ensureResource(item, "dbusage");
+                                item = await Config.db.CleanACL(item, tuser, "dbusage", span);
+                                delete item._id;
+                                item.username = item.name;
+                                item.name = item.name + " / " + col.name + " / " + this.formatBytes(item.size);
+                                item._type = "metered";
+                                item._createdby = "root";
+                                item._createdbyid = WellknownIds.root;
+                                item._created = new Date(new Date().toISOString());
+                                item._modifiedby = "root";
+                                item._modifiedbyid = WellknownIds.root;
+                                item._modified = item._created;
+                                usage += item.size;
+                                DatabaseConnection.traversejsonencode(item);
+                                item.timestamp = new Date(timestamp.toISOString());
+                                if (col.name == "cvr") {
+                                    delete item.timestamp;
+                                }
+                                await Config.db.db.collection("dbusage").insertOne(item);
+                                if (col.name == "cvr") {
+                                    await Config.db.db.collection("dbusage").updateOne({ _id: item._id }, { $set: { "timestamp": new Date(timestamp.toISOString()) } });
+                                }
+                                // bulkInsert.insert(item);
+                            } catch (error) {
+                                Logger.instanse.error(error);
+                                span?.recordException(error);
+                            }
 
-                            bulkInsert.insert(item);
                         }
-
                         totalusage += usage;
                         try {
-                            await bulkInsert.execute();
+                            // await bulkInsert.execute();
                             if (items.length > 0) Logger.instanse.debug("[housekeeping][" + col.name + "][" + index + "/" + collections.length + "] add " + items.length + " items with a usage of " + this.formatBytes(usage));
 
                         } catch (error) {
@@ -4563,7 +4714,6 @@ export class Message {
                                 "_id": "$userid",
                                 "size": { "$sum": "$size" },
                                 "count": { "$sum": 1 }
-
                             }
                         }
                     ]// "items": { "$push": "$$ROOT" }
