@@ -131,7 +131,6 @@ let server: http.Server = null;
                 if (!NoderedUtil.IsNullEmpty(nodered.codeeditor_lib)) { Config.codeeditor_lib = nodered.codeeditor_lib; }
                 if (!NoderedUtil.IsNullEmpty(nodered.monaco) && Config.parseBoolean(nodered.monaco)) { Config.codeeditor_lib = "monaco"; }
                 if (!NoderedUtil.IsNullEmpty(nodered.tours)) { Config.tours = nodered.tours; }
-                if (!NoderedUtil.IsNullEmpty(nodered.enable_web_tours)) { Config.tours = nodered.enable_web_tours; }
             }
         }
         socket.setCacheFolder(Config.logpath);
@@ -191,7 +190,6 @@ let server: http.Server = null;
                             if (!NoderedUtil.IsNullEmpty(nodered.codeeditor_lib)) { Config.codeeditor_lib = nodered.codeeditor_lib; }
                             if (!NoderedUtil.IsNullEmpty(nodered.monaco) && Config.parseBoolean(nodered.monaco)) { Config.codeeditor_lib = "monaco"; }
                             if (!NoderedUtil.IsNullEmpty(nodered.tours)) { Config.tours = nodered.tours; }
-                            if (!NoderedUtil.IsNullEmpty(nodered.enable_web_tours)) { Config.tours = nodered.enable_web_tours; }
                             await backupStore.set(nodereduser_filename, JSON.stringify(nodered));
                         } else {
                             await backupStore.remove(nodereduser_filename);
