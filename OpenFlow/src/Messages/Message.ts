@@ -896,9 +896,8 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(msg.data.jwt)) {
                 msg.jwt = msg.data.jwt;
             }
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) {
-                msg.jwt = cli.jwt;
-            }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
                 const tuser = Crypt.verityToken(msg.jwt);
                 msg.user = tuser;
@@ -1153,6 +1152,7 @@ export class Message {
         let msg: WatchMessage
         try {
             msg = WatchMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (Config.supports_watch) {
                 await cli.UnWatch(msg.id, msg.jwt);
@@ -1178,6 +1178,7 @@ export class Message {
         let msg: WatchMessage
         try {
             msg = WatchMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (Config.supports_watch) {
                 msg.id = await cli.Watch(msg.aggregates, msg.collectionname, msg.jwt);
@@ -1388,6 +1389,7 @@ export class Message {
         let msg: MapReduceMessage
         try {
             msg = MapReduceMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             msg.result = await Config.db.MapReduce(msg.map, msg.reduce, msg.finalize, msg.query, msg.out, msg.collectionname, msg.scope, msg.jwt);
             delete msg.map;
@@ -3057,6 +3059,7 @@ export class Message {
         let msg: SaveFileMessage
         try {
             msg = SaveFileMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.filename)) throw new Error("Filename is mandatory");
             if (NoderedUtil.IsNullEmpty(msg.file)) throw new Error("file is mandatory");
@@ -3161,6 +3164,7 @@ export class Message {
         let msg: GetFileMessage
         try {
             msg = SaveFileMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (!NoderedUtil.IsNullEmpty(msg.id)) {
                 const rows = await Config.db.query({ _id: safeObjectID(msg.id) }, null, 1, 0, null, "files", msg.jwt, undefined, undefined, span);
@@ -3215,6 +3219,7 @@ export class Message {
         let msg: UpdateFileMessage
         try {
             msg = UpdateFileMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
 
             const bucket = new GridFSBucket(Config.db.db);
@@ -3273,6 +3278,7 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.workflowid) && NoderedUtil.IsNullEmpty(msg.queue)) throw new Error("workflowid or queue is mandatory");
             if (NoderedUtil.IsNullEmpty(msg.resultqueue)) throw new Error("replyqueuename is mandatory");
             if (NoderedUtil.IsNullEmpty(msg.targetid)) throw new Error("targetid is mandatory");
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             const tuser = Crypt.verityToken(msg.jwt);
             msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
@@ -3455,7 +3461,8 @@ export class Message {
         const rootjwt = Crypt.rootToken();
         try {
             msg = StripeCancelPlanMessage.assign(this.data);
-            if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (NoderedUtil.IsNullUndefinded(msg.jwt)) { msg.jwt = cli.jwt; }
             await this._StripeCancelPlan(msg.resourceusageid, msg.quantity, msg.jwt, span);
 
         } catch (error) {
@@ -3486,7 +3493,8 @@ export class Message {
         let msg: GetNextInvoiceMessage;
         try {
             msg = GetNextInvoiceMessage.assign(this.data);
-            if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (NoderedUtil.IsNullUndefinded(msg.jwt)) { msg.jwt = cli.jwt; }
 
             let payload: any = {};
             const customer: Customer = await Config.db.getbyid(msg.customerid, "users", msg.jwt, span);
@@ -3665,7 +3673,8 @@ export class Message {
         let msg: StripeAddPlanMessage;
         try {
             msg = StripeAddPlanMessage.assign(this.data);
-            if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (NoderedUtil.IsNullUndefinded(msg.jwt)) { msg.jwt = cli.jwt; }
             if (NoderedUtil.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
             const [customer, checkout] = await this._StripeAddPlan(msg.customerid, msg.userid, msg.resourceid, msg.stripeprice,
                 msg.quantity, false, msg.jwt, span);
@@ -4077,7 +4086,8 @@ export class Message {
         let msg: StripeMessage;
         try {
             msg = StripeMessage.assign(this.data);
-            if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (NoderedUtil.IsNullUndefinded(msg.jwt)) { msg.jwt = cli.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.object)) throw new Error("object is mandatory");
             if (!cli.user.HasRoleName("admins")) {
                 if (!NoderedUtil.IsNullEmpty(msg.url)) throw new Error("Custom url not allowed");
@@ -4125,7 +4135,8 @@ export class Message {
         const rootjwt = Crypt.rootToken();
         try {
             msg = EnsureCustomerMessage.assign(this.data);
-            if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (NoderedUtil.IsNullUndefinded(msg.jwt)) { msg.jwt = cli.jwt; }
             let user: User = cli.user;
             let customer: Customer = null;
             if (msg.customer != null && msg.customer._id != null) {
