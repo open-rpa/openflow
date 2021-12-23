@@ -198,7 +198,7 @@ export class OAuthProvider {
                     }
                     if (session2 != null) { session2.resetIdentifier(); session2.destroy(); }
 
-                    req.logout();
+                    // req.logout();
                 }
                 instance.oidc.callback(req, res);
             });
