@@ -409,7 +409,7 @@ export class entitiesCtrl<T> {
     public baseprojection: any = {};
     public collection: string = "entities";
     public models: T[] = [];
-    public orderby: any = { _id: -1 };
+    public orderby: any = {};
     public autorefresh: boolean = false;
     public autorefreshinterval: number = 30 * 1000;
     public pagesize: number = 100;
@@ -417,6 +417,7 @@ export class entitiesCtrl<T> {
     public preloadData: any = null;
     public postloadData: any = null;
     public searchstring: string = "";
+    public lastsearchstring: string = "";
     public searchfields: string[] = ["name"];
     public basequeryas: string = null;
     public errormessage: string = "";
@@ -518,6 +519,12 @@ export class entitiesCtrl<T> {
                 }
             }
             let orderby = this.orderby;
+            if (this.lastsearchstring !== this.searchstring) {
+                this.models = [];
+                this.orderby = {};
+                orderby = {};
+            }
+            this.lastsearchstring = this.searchstring;
             if (this.searchstring !== "" && this.searchstring != null) {
                 if ((this.searchstring as string).indexOf("{") == 0) {
                     if ((this.searchstring as string).lastIndexOf("}") == ((this.searchstring as string).length - 1)) {
@@ -545,11 +552,13 @@ export class entitiesCtrl<T> {
                         finalor.push(newq);
                         finalexactor.push(newexactq);
                     }
-                    if (!this.searchstring.startsWith(".") && this.WebSocketClientService.use_text_index_for_names) {
-                        finalor = [{ $text: { $search: this.searchstring } }]
-                        // this.orderby = { "$sort": { "score": { "$meta": "textScore" } } }
-                        // this.orderby = { score: { $meta: "textScore" } }
-                        // orderby = { score: { $meta: "textScore" } };
+                    var hastextindex = false;
+                    if (this.WebSocketClientService.collections_with_text_index.indexOf(this.collection) > -1) {
+                        hastextindex = true;
+                    }
+                    if (!this.searchstring.startsWith(".") && hastextindex) {
+                        finalor = [{ $text: { $search: this.searchstring.toLowerCase() } }]
+                        console.debug("text search using ", this.searchstring.toLowerCase());
                     }
                     if (Object.keys(query).length == 0) {
                         query = { $or: finalor.concat() };
@@ -557,6 +566,9 @@ export class entitiesCtrl<T> {
                     } else {
                         query = { $and: [query, { $or: finalor.concat() }] };
                         exactquery = { $and: [query, { $or: finalexactor.concat() }] };
+                    }
+                    if (!this.searchstring.startsWith(".") && hastextindex) {
+                        exactquery = { "_searchnames": this.searchstring.toLowerCase() };
                     }
 
                 }
@@ -567,7 +579,7 @@ export class entitiesCtrl<T> {
                 var temp = await NoderedUtil.Query(this.collection, query, this.baseprojection, orderby, this.pagesize, this.pagesize * this.page, null, basequeryas, null, 2);
                 this.models = this.models.concat(temp);
             }
-            if (exactquery != null && this.page == 0 && this.collection != "cvr" && this.collection != "audit") {
+            if (exactquery != null && this.page == 0 && this.collection != "audit") {
                 var temp = await NoderedUtil.Query(this.collection, exactquery, this.baseprojection, orderby, 1, 0, null, basequeryas, null, 2);
                 if (temp.length > 0) {
                     this.models = this.models.filter(x => (x as any)._id != temp[0]._id);

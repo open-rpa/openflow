@@ -20,6 +20,7 @@ import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { Auth } from "./Auth";
 import { WebServer } from "./WebServer";
+import { DatabaseConnection } from "./DatabaseConnection";
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 
 interface IVerifyFunction { (error: any, profile: any): void; }
@@ -419,10 +420,6 @@ export class LoginProvider {
                 if (NoderedUtil.IsNullEmpty(nodered_domain_schema)) {
                     nodered_domain_schema = "$nodered_id$." + Config.domain;
                 }
-                var use_text_index_for_names = false;
-                if(Config.create_text_index_for_names) {
-                    use_text_index_for_names = Config.use_text_index_for_names;
-                }
                 const res2 = {
                     wshost: _url,
                     wsurl: _url,
@@ -444,7 +441,8 @@ export class LoginProvider {
                     multi_tenant: Config.multi_tenant,
                     enable_entity_restriction: Config.enable_entity_restriction,
                     enable_web_tours: Config.enable_web_tours,
-                    use_text_index_for_names: use_text_index_for_names
+                    collections_with_text_index: DatabaseConnection.collections_with_text_index,
+                    timeseries_collections: DatabaseConnection.timeseries_collections,
                 }
                 res.end(JSON.stringify(res2));
             } catch (error) {

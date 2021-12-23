@@ -38,6 +38,7 @@ async function initDatabase(): Promise<boolean> {
         const admins: Role = await DBHelper.EnsureRole(jwt, "admins", WellknownIds.admins, span);
         const users: Role = await DBHelper.EnsureRole(jwt, "users", WellknownIds.users, span);
         const root: User = await DBHelper.EnsureUser(jwt, "root", "root", WellknownIds.root, null, span);
+        await Config.db.ensureindexes(span);
 
         Base.addRight(root, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(root, WellknownIds.admins, [Rights.delete]);
