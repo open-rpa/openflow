@@ -112,5 +112,12 @@
     "Coupon": "Coupon",
     "rparole": "RPA Rolle",
     "member": "Medlem",
-    "clients": "Klienter"
+    "clients": "Klienter",
+    "customers": "Kunder",
+    "entityrestrictions": "Objekt begrænsninger",
+    "resources": "Ressourcer",
+    "enable multi tenancy": "Aktiver multitenant",
+    "showproperties": "Vis egenskaber",
+    "add key": "Tilføj nøgle",
+    "json": "Json"
 }
