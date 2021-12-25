@@ -3811,6 +3811,15 @@ export class EntityCtrl extends entityCtrl<Base> {
             }
         });
     }
+    gettype(obj) {
+        return typeof obj;
+    }
+    getinputtype(obj, key) {
+        if (this.model._encrypt.indexOf(key))
+            if (typeof obj === "string") return "text";
+        if (typeof obj === "number") return "number";
+        if (typeof obj === "boolean") return "checkbox";
+    }
     processdata() {
         const ids: string[] = [];
         if (this.collection == "files") {

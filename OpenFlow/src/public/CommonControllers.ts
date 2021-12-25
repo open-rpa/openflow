@@ -240,6 +240,72 @@ export class textarea implements ng.IDirective {
     }
 }
 
+export class ngtype implements ng.IDirective {
+    restrict = 'A';
+    require = '?ngModel';
+    constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService) {
+    }
+    link: ng.IDirectiveLinkFn = (scope: ng.IScope, element: ng.IAugmentedJQuery, attr: ng.IAttributes, ngModelCtrl: any) => {
+        if (NoderedUtil.IsNullUndefinded(ngModelCtrl)) { return; }
+        var mytype = "";
+        scope.$watch((newValue) => {
+            if (ngModelCtrl.$viewValue === null || ngModelCtrl.$viewValue === undefined) { return; }
+            if (typeof ngModelCtrl.$modelValue === 'number') {
+                mytype = "number";
+                element.attr("type", "number");
+            } else if (typeof ngModelCtrl.$modelValue === 'boolean') {
+                mytype = "boolean";
+                element.attr("type", "checkbox");
+            }
+        });
+
+        var toModelb = function (value) {
+            if (mytype == "text") {
+                return value;
+            } else if (mytype == "boolean") {
+                if (String(value).toLowerCase() == "true") { value = true; return true; }
+                { value = false; return false; }
+            } else if (mytype == "number") {
+                if (value === "" || value === null || value === undefined) return value;
+                return parseInt(value);
+            }
+            return value;
+        }
+        var toViewb = function (value) {
+            if (mytype == "") {
+                if (typeof value === 'number') {
+                    mytype = "number";
+                    element.attr("type", "number");
+                } else if (typeof value === 'boolean') {
+                    mytype = "boolean";
+                    element.attr("type", "checkbox");
+                } else if (value != null && value != undefined && typeof value === 'string') {
+                    mytype = "text";
+                    element.attr("type", "text");
+                }
+            }
+            if (mytype == "text") {
+                return value;
+            } else if (mytype == "boolean") {
+                if (String(value).toLowerCase() == "true") { value = true; return true; }
+                { value = false; return false; }
+            } else if (mytype == "number") {
+                if (value === "" || value === null || value === undefined) return value;
+                return parseInt(value);
+            }
+            return value;
+        }
+        ngModelCtrl.$formatters.push(toViewb);
+        ngModelCtrl.$parsers.push(toModelb);
+    }
+    static factory(): ng.IDirectiveFactory {
+        const directive = ($location: ng.ILocationService, $timeout: ng.ITimeoutService) => new ngtype($location, $timeout);
+        directive.$inject = ['$location', '$timeout'];
+        return directive;
+    }
+}
+
+
 async function getString(locale: any, lib: string, key: string): Promise<any> {
     return new Promise((resolve) => {
         try {

@@ -1,6 +1,6 @@
 import { WebSocketClientService } from "./WebSocketClientService";
 import angular = require("angular");
-import { timesince, translate, textarea, fileread, userdata, api, copytext, jsonText, formatBytes, whenScrolled } from "./CommonControllers";
+import { timesince, translate, textarea, fileread, userdata, api, copytext, jsonText, formatBytes, whenScrolled, ngtype } from "./CommonControllers";
 import {
     MenuCtrl, ProvidersCtrl, MainCtrl, LoginCtrl, ProviderCtrl, UsersCtrl, UserCtrl, RolesCtrl, RoleCtrl, RPAWorkflowsCtrl, RPAWorkflowCtrl,
     WorkflowsCtrl, ReportsCtrl, jslogCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, SocketCtrl, NoderedCtrl,
@@ -39,6 +39,7 @@ module openflow {
         .directive("fileread", fileread.factory())
         .directive("copytext", copytext.factory())
         .directive("jsonText", jsonText.factory())
+        .directive("ngType", ngtype.factory())
         .directive("formatBytes", formatBytes.factory())
         .directive("whenScrolled", whenScrolled.factory())
         .service("userdata", userdata)
