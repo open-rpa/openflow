@@ -6,6 +6,7 @@ download the file you want ( you can rename the file to docker-compose.yaml or u
 [docker-compose-traefik.yml](https://github.com/open-rpa/openflow/blob/master/docker-compose-traefik.yml) is for people running docker ce/docker desktop
 
 open a shell and cd to that folder you downloaded the file to, and type
+( you need to rename the downloaded file to docker-compose.yml, or use the next command instead )
 
 ```bash
 docker-compose up
