@@ -1,13 +1,13 @@
 {
   "name": "@openiap/openflow",
-  "version": "1.3.95",
+  "version": "1.3.96",
   "description": "Simple wrapper around NodeRed, RabbitMQ and MongoDB to support a more scaleable NodeRed implementation.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {
     "test": "./node_modules/.bin/_mocha 'test/**/*.test.ts'",
     "coverage": "nyc ./node_modules/.bin/_mocha 'test/**/*.test.ts'",
     "oldtest": "ts-mocha --paths -p OpenFlow/tsconfig.json OpenFlow/**/*.spec.ts",
-    "build": "webpack --mode production"
+    "build": "gulp build"
   },
   "repository": {
     "type": "git",
@@ -106,9 +106,11 @@
     "gulp-replace": "^1.1.3",
     "gulp-sass": "^5.0.0",
     "gulp-shell": "^0.8.0",
+    "gulp-typescript": "^6.0.0-alpha.1",
     "merge-stream": "^2.0.0",
     "mocha": "^9.1.3",
     "popper.js": "^1.16.1",
+    "sass": "^1.45.1",
     "tinyify": "^3.0.0",
     "tsify": "^5.0.4",
     "typescript": "^4.3.4",
