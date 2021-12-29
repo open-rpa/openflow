@@ -2525,7 +2525,6 @@ export class UserCtrl extends entityCtrl<TokenUser> {
             }
             this.$location.path("/Users");
         } catch (error) {
-            debugger;
             this.errormessage = error.message ? error.message : error;
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
