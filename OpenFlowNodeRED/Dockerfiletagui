@@ -2,44 +2,48 @@ FROM node:lts
 EXPOSE 80
 EXPOSE 5859
 RUN apt-get update \
-    && apt-get install -y unzip wget gnupg python3-pip python3-venv php \
+    && apt-get install -y wget gnupg python3-pip python3-venv php nano sudo \
     && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
     && sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list' \
     && apt-get update \
-    && apt-get install -y google-chrome-stable fonts-ipafont-gothic fonts-wqy-zenhei fonts-thai-tlwg fonts-kacst fonts-freefont-ttf libxss1 \
+    && apt-get install -y google-chrome-stable fonts-ipafont-gothic fonts-wqy-zenhei fonts-thai-tlwg fonts-kacst fonts-freefont-ttf gconf-service libasound2 libatk1.0-0 libc6 libcairo2 libcups2 libdbus-1-3 libexpat1 libfontconfig1 libgcc1 libgconf-2-4 libgdk-pixbuf2.0-0 libglib2.0-0 libgtk-3-0 libnspr4 libpango-1.0-0 libpangocairo-1.0-0 libstdc++6 libx11-6 libx11-xcb1 libxcb1 libxcomposite1 libxcursor1 libxdamage1 libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 libxss1 libxtst6 ca-certificates fonts-liberation libappindicator1 libnss3 lsb-release xdg-utils wget sudo libgbm-dev libxshmfence1 \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 RUN pip3 install rpa
 WORKDIR /data
-RUN groupadd -r openiapuser && useradd -r -g openiapuser -G audio,video openiapuser \
+RUN groupadd -r openiapuser && useradd -r -g openiapuser -G audio,video,sudo openiapuser \
     && mkdir -p /home/openiapuser/Downloads \
     && chown -R openiapuser:openiapuser /home/openiapuser \
     && chown -R openiapuser:openiapuser /data/
+RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
-# RUN wget -O /tmp/tagui_linux.zip https://github.com/kelaberetiv/TagUI/releases/download/v6.46.0/TagUI_Linux.zip \
-# && unzip '/tmp/tagui_linux.zip' -d /home/openiapuser && rm /tmp/tagui_linux.zip || true && mv /home/openiapuser/tagui /home/openiapuser/.tagui && chown -R openiapuser:openiapuser /home/openiapuser
-# RUN ln -sf /home/openiapuser/.tagui/src/tagui /usr/local/bin/tagui
-
+# Download and install tagui python, can be be used from python node in node-red
 RUN wget -O /tmp/tagui_linux.zip https://github.com/kelaberetiv/TagUI/releases/download/v6.46.0/TagUI_Linux.zip \
     && unzip '/tmp/tagui_linux.zip' -d /home/openiapuser && rm /tmp/tagui_linux.zip || true && chown -R openiapuser:openiapuser /home/openiapuser
 RUN ln -sf /home/openiapuser/tagui/src/tagui /usr/local/bin/tagui
 
-# USER openiapuser
-
+# Force tagui python to use headless
 ENV search="browser_option = 'chrome'"
 ENV replace="browser_option = 'headless'"
-RUN sed -i "s/${search}/${replace}/" /usr/local/lib/python3.5/dist-packages/tagui.py
+RUN sed -i "s/${search}/${replace}/" /usr/local/lib/python3.7/dist-packages/tagui.py
 
+# Download and install TagUI ( human language version ) to be used with node-red-contrib-tagui module
 RUN wget -O /tmp/tagui_linux2.zip https://github.com/tebelorg/Tump/releases/download/v1.0.0/TagUI_Linux.zip \
     && unzip '/tmp/tagui_linux2.zip' -d /tmp && rm /tmp/tagui_linux2.zip || true && mv /tmp/tagui /home/openiapuser/.tagui && chown -R openiapuser:openiapuser /home/openiapuser/.tagui
 
-# RUN mkdir /home/openiapuser/.tagui  && chown -R openiapuser:openiapuser /home/openiapuser/.tagui
-# RUN mkdir /home/openiapuser/.tagui_previous  && chown -R openiapuser:openiapuser /home/openiapuser/.tagui_previous
-# RUN ln -sf /home/openiapuser/tagui /root/tagui
+# Force updating to current version
+RUN tagui update
+# Force tagui to use --no-sandbox parameter from chrome
+RUN touch /home/openiapuser/tagui/src/tagui_no_sandbox
 
 COPY --chown=openiapuser:openiapuser docker-package.json ./package.json
 RUN npm install --only=prod
 COPY --chown=openiapuser:openiapuser dist ./
+
+# work around from https://github.com/bazelbuild/rules_closure/issues/351
+# and https://stackoverflow.com/q/53355217/17318661
+ENV OPENSSL_CONF=/etc/ssl/
+
 
 USER openiapuser
 

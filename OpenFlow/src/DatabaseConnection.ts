@@ -126,9 +126,9 @@ export class DatabaseConnection extends events.EventEmitter {
             MongoClient.connect(this.mongodburl, options).then((cli) => {
                 this.replicat = (cli as any).s.options.replicaSet;
                 resolve(cli);
-                span.addEvent("Connected to mongodb");
+                span?.addEvent("Connected to mongodb");
             }).catch((reason) => {
-                span.recordException(reason);
+                span?.recordException(reason);
                 console.error(reason);
                 reject(reason);
             });
@@ -165,15 +165,15 @@ export class DatabaseConnection extends events.EventEmitter {
         const span: Span = Logger.otel.startSubSpan("db.DropCollection", parent);
         try {
             const user: TokenUser = Crypt.verityToken(jwt);
-            span.setAttribute("collection", collectionname);
-            span.setAttribute("username", user.username);
+            span?.setAttribute("collection", collectionname);
+            span?.setAttribute("username", user.username);
             if (!user.HasRoleName("admins")) throw new Error("Access denied, droppping collection " + collectionname);
             if (["workflow", "entities", "config", "audit", "jslog", "openrpa", "nodered", "openrpa_instances", "forms", "workflow_instances", "users"].indexOf(collectionname) > -1) throw new Error("Access denied, dropping reserved collection " + collectionname);
             const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.dropCollection", span);
             await this.db.dropCollection(collectionname);
             Logger.otel.endSpan(mongodbspan);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -230,7 +230,7 @@ export class DatabaseConnection extends events.EventEmitter {
         "reseller", "resellers"
     ]
 
-    async CleanACL<T extends Base>(item: T, user: TokenUser, parent: Span): Promise<T> {
+    async CleanACL<T extends Base>(item: T, user: TokenUser, collection: string, parent: Span): Promise<T> {
         const span: Span = Logger.otel.startSubSpan("db.CleanACL", parent);
         try {
             if (item._acl.length > Config.max_ace_count) {
@@ -250,10 +250,10 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (NoderedUtil.IsNullUndefinded(_user)) {
                             const ot_end = Logger.otel.startTimer();
                             const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.find", span);
-                            mongodbspan.setAttribute("collection", "users");
-                            mongodbspan.setAttribute("query", JSON.stringify({ _id: ace._id }));
+                            mongodbspan?.setAttribute("collection", "users");
+                            mongodbspan?.setAttribute("query", JSON.stringify({ _id: ace._id }));
                             const arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1 }).limit(1).toArray();
-                            mongodbspan.setAttribute("results", arr.length);
+                            mongodbspan?.setAttribute("results", arr.length);
                             Logger.otel.endSpan(mongodbspan);
                             Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: "users" });
                             if (arr.length > 0) {
@@ -282,9 +282,9 @@ export class DatabaseConnection extends events.EventEmitter {
             if (addself) {
                 Base.addRight(item, user._id, user.name, [Rights.full_control], false);
             }
-            item = this.ensureResource(item);
+            item = this.ensureResource(item, collection);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
         }
         Logger.otel.endSpan(span);
         return item;
@@ -339,7 +339,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                 if (!Base.hasRight(u, item._id, Rights.read)) {
                                     Logger.instanse.silly("Assigning " + item.name + " read permission to " + u.name);
                                     Base.addRight(u, item._id, item.name, [Rights.read], false);
-                                    u = this.ensureResource(u);
+                                    u = this.ensureResource(u, "users");
                                     const _ot_end1 = Logger.otel.startTimer();
                                     await this.db.collection("users").updateOne({ _id: u._id }, { $set: { _acl: u._acl } });
                                     Logger.otel.endTimer(_ot_end1, DatabaseConnection.mongodb_update, { collection: "users" });
@@ -351,7 +351,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                 if (r._id !== WellknownIds.admins && r._id !== WellknownIds.users && !Base.hasRight(r, item._id, Rights.read)) {
                                     Logger.instanse.silly("Assigning " + item.name + " read permission to " + r.name);
                                     Base.addRight(r, item._id, item.name, [Rights.read], false);
-                                    r = this.ensureResource(r);
+                                    r = this.ensureResource(r, "users");
                                     const _ot_end2 = Logger.otel.startTimer();
                                     await this.db.collection("users").updateOne({ _id: r._id }, { $set: { _acl: r._acl } });
                                     Logger.otel.endTimer(_ot_end2, DatabaseConnection.mongodb_update, { collection: "users" });
@@ -386,7 +386,7 @@ export class DatabaseConnection extends events.EventEmitter {
                             const right = Base.getRight(u, item._id, false);
                             if (NoderedUtil.IsNullUndefinded(right) || (!Ace.isBitSet(right, 3) && !Ace.isBitSet(right, 4) && !Ace.isBitSet(right, 5))) {
                                 Base.removeRight(u, item._id, [Rights.full_control]);
-                                u = this.ensureResource(u);
+                                u = this.ensureResource(u, "users");
                                 Logger.instanse.debug("Removing " + item.name + " read permissions from " + u.name);
                                 const _ot_end1 = Logger.otel.startTimer();
                                 await this.db.collection("users").updateOne({ _id: u._id }, { $set: { _acl: u._acl } });
@@ -405,7 +405,7 @@ export class DatabaseConnection extends events.EventEmitter {
                             const right = Base.getRight(r, item._id, false);
                             if (NoderedUtil.IsNullUndefinded(right) || (!Ace.isBitSet(right, 3) && !Ace.isBitSet(right, 4) && !Ace.isBitSet(right, 5))) {
                                 Base.removeRight(r, item._id, [Rights.full_control]);
-                                r = this.ensureResource(r);
+                                r = this.ensureResource(r, "users");
                                 Logger.instanse.debug("Removing " + item.name + " read permissions from " + r.name);
                                 const _ot_end2 = Logger.otel.startTimer();
                                 await this.db.collection("users").updateOne({ _id: r._id }, { $set: { _acl: r._acl } });
@@ -442,7 +442,7 @@ export class DatabaseConnection extends events.EventEmitter {
             await this.connect(span);
             let mysort: Object = {};
             if (orderby) {
-                span.addEvent("parse orderby");
+                span?.addEvent("parse orderby");
                 if (typeof orderby === "string" || orderby instanceof String) {
                     let neworderby = null;
                     try {
@@ -451,9 +451,9 @@ export class DatabaseConnection extends events.EventEmitter {
                             mysort = neworderby;
                         }
                     } catch (error) {
-                        span.addEvent("Parsing order by failed");
-                        span.recordException(error);
-                        span.setAttribute("failedorderby", orderby as string);
+                        span?.addEvent("Parsing order by failed");
+                        span?.recordException(error);
+                        span?.setAttribute("failedorderby", orderby as string);
                         console.error("Failed parsing orderby:")
                         console.error(orderby)
                         console.error(error);
@@ -462,11 +462,11 @@ export class DatabaseConnection extends events.EventEmitter {
                 } else {
                     mysort = orderby;
                 }
-                span.setAttribute("orderby", JSON.stringify(mysort));
+                span?.setAttribute("orderby", JSON.stringify(mysort));
             }
             let myhint: Object = {};
             if (hint) {
-                span.addEvent("parse hint");
+                span?.addEvent("parse hint");
                 if (typeof hint === "string" || hint instanceof String) {
                     let newhint = null;
                     try {
@@ -475,26 +475,26 @@ export class DatabaseConnection extends events.EventEmitter {
                             myhint = newhint;
                         }
                     } catch (error) {
-                        span.addEvent("Parsing hint by failed");
-                        span.recordException(error);
-                        span.setAttribute("failedhint", hint as string);
+                        span?.addEvent("Parsing hint by failed");
+                        span?.recordException(error);
+                        span?.setAttribute("failedhint", hint as string);
                         console.error(error, hint);
                     }
                     if (NoderedUtil.IsNullUndefinded(newhint)) myhint[(hint as string)] = 1;
                 } else {
                     myhint = hint;
                 }
-                span.setAttribute("hint", JSON.stringify(myhint));
+                span?.setAttribute("hint", JSON.stringify(myhint));
             }
             if (projection) {
-                span.addEvent("parse projection");
+                span?.addEvent("parse projection");
                 if (typeof projection === "string" || projection instanceof String) {
                     projection = JSON.parse((projection as string));
                 }
-                span.setAttribute("projection", JSON.stringify(projection));
+                span?.setAttribute("projection", JSON.stringify(projection));
             }
             if (query !== null && query !== undefined) {
-                span.addEvent("parse query");
+                span?.addEvent("parse query");
                 let json: any = query;
                 if (typeof json !== 'string' && !(json instanceof String)) {
                     json = JSON.stringify(json, (key, value) => {
@@ -513,7 +513,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     } else
                         return value; // leave any other value as-is
                 });
-                span.setAttribute("query", JSON.stringify(query));
+                span?.setAttribute("query", JSON.stringify(query));
             }
             if (NoderedUtil.IsNullUndefinded(query)) {
                 throw new Error("Query is mandatory");
@@ -529,12 +529,12 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                 }
             }
-            span.addEvent("verityToken");
+            span?.addEvent("verityToken");
             const user: TokenUser = Crypt.verityToken(jwt);
 
-            span.addEvent("getbasequery");
+            span?.addEvent("getbasequery");
             if (collectionname === "files") { collectionname = "fs.files"; }
-            if (collectionname === "fs.files") {
+            if (DatabaseConnection.usemetadata(collectionname)) {
                 let impersonationquery;
                 if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(queryas, "metadata._acl", [Rights.read], span);
                 if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
@@ -554,10 +554,10 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             if (!top) { top = 500; }
             if (!skip) { skip = 0; }
-            span.setAttribute("collection", collectionname);
-            span.setAttribute("username", user.username);
-            span.setAttribute("top", top);
-            span.setAttribute("skip", skip);
+            span?.setAttribute("collection", collectionname);
+            span?.setAttribute("username", user.username);
+            span?.setAttribute("top", top);
+            span?.setAttribute("skip", skip);
             let arr: T[] = [];
             const ot_end = Logger.otel.startTimer();
             const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.find", span);
@@ -570,7 +570,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 _pipe = _pipe.hint(myhint);
             }
             arr = await _pipe.toArray();
-            mongodbspan.setAttribute("results", arr.length);
+            mongodbspan?.setAttribute("results", arr.length);
             Logger.otel.endSpan(mongodbspan);
             Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: collectionname });
             for (let i: number = 0; i < arr.length; i++) { arr[i] = this.decryptentity(arr[i]); }
@@ -579,7 +579,7 @@ export class DatabaseConnection extends events.EventEmitter {
             return arr;
         } catch (error) {
             console.log(JSON.stringify(_query, null, 2));
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -610,7 +610,7 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             return result;
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -631,7 +631,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (arr === null || arr.length === 0) { return null; }
             return arr[0];
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -673,7 +673,7 @@ export class DatabaseConnection extends events.EventEmitter {
             } else {
                 myhint = hint;
             }
-            span.setAttribute("hint", JSON.stringify(myhint));
+            span?.setAttribute("hint", JSON.stringify(myhint));
         }
         aggregates = JSON.parse(json, (key, value) => {
             if (typeof value === 'string' && value.match(isoDatePattern)) {
@@ -685,15 +685,13 @@ export class DatabaseConnection extends events.EventEmitter {
                 return value; // leave any other value as-is
         });
         const user: TokenUser = Crypt.verityToken(jwt);
-        span.setAttribute("aggregates", JSON.stringify(aggregates));
-        span.setAttribute("collection", collectionname);
-        span.setAttribute("username", user.username);
-
+        span?.setAttribute("aggregates", JSON.stringify(aggregates));
+        span?.setAttribute("collection", collectionname);
+        span?.setAttribute("username", user.username);
         const aggregatesjson = JSON.stringify(aggregates, null, 2)
-
-        span.addEvent("getbasequery");
+        span?.addEvent("getbasequery");
         let base: object;
-        if (collectionname == "fs.files") {
+        if (DatabaseConnection.usemetadata(collectionname)) {
             base = this.getbasequery(jwt, "metadata._acl", [Rights.read]);
         } else {
             base = this.getbasequery(jwt, "_acl", [Rights.read]);
@@ -709,7 +707,7 @@ export class DatabaseConnection extends events.EventEmitter {
             const ot_end = Logger.otel.startTimer();
             const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.aggregate", span);
             const items: T[] = await this.db.collection(collectionname).aggregate(aggregates, options).toArray();
-            mongodbspan.setAttribute("results", items.length);
+            mongodbspan?.setAttribute("results", items.length);
             Logger.otel.endSpan(mongodbspan);
             Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_aggregate, { collection: collectionname });
             DatabaseConnection.traversejsondecode(items);
@@ -720,7 +718,7 @@ export class DatabaseConnection extends events.EventEmitter {
             return items;
         } catch (error) {
             if (Config.log_aggregates) Logger.instanse.debug(aggregatesjson);
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         }
         finally {
@@ -858,15 +856,15 @@ export class DatabaseConnection extends events.EventEmitter {
             if (item === null || item === undefined) { throw Error("Cannot create null item"); }
             if (NoderedUtil.IsNullEmpty(jwt)) throw new Error("jwt is null");
             await this.connect(span);
-            span.addEvent("ensureResource");
-            span.addEvent("verityToken");
+            span?.addEvent("ensureResource");
+            span?.addEvent("verityToken");
             const user: TokenUser = Crypt.verityToken(jwt);
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
-            item = this.ensureResource(item);
+            item = this.ensureResource(item, collectionname);
             if (!await this.CheckEntityRestriction(user, collectionname, item, span)) {
                 throw Error("Create " + item._type + " access denied");
             }
-            span.addEvent("traversejsonencode");
+            span?.addEvent("traversejsonencode");
             DatabaseConnection.traversejsonencode(item);
             let name = item.name;
             if (NoderedUtil.IsNullEmpty(name)) name = item._name;
@@ -880,12 +878,12 @@ export class DatabaseConnection extends events.EventEmitter {
             const hasUser: Ace = item._acl.find(e => e._id === user._id);
             if ((hasUser === null || hasUser === undefined)) {
                 Base.addRight(item, user._id, user.name, [Rights.full_control]);
-                item = this.ensureResource(item);
+                item = this.ensureResource(item, collectionname);
             }
             if (collectionname != "audit") { Logger.instanse.silly("[" + user.username + "][" + collectionname + "] Adding " + item._type + " " + name + " to database"); }
             if (!DatabaseConnection.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
 
-            span.addEvent("encryptentity");
+            span?.addEvent("encryptentity");
             item = this.encryptentity(item) as T;
 
             if (collectionname === "users" && item._type === "user" && item.hasOwnProperty("newpassword")) {
@@ -951,7 +949,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         Base.removeRight(item, custadmins._id, [Rights.delete]);
                     }
                     (item as any).company = customer.name;
-                    item = this.ensureResource(item);
+                    item = this.ensureResource(item, collectionname);
                 }
             }
             j = ((j as any) === 'true' || j === true);
@@ -998,8 +996,8 @@ export class DatabaseConnection extends events.EventEmitter {
             } else {
                 item._id = new ObjectID().toHexString();
             }
-            span.addEvent("CleanACL");
-            item = await this.CleanACL(item, user, span);
+            span?.addEvent("CleanACL");
+            item = await this.CleanACL(item, user, collectionname, span);
             if (item._type === "role" && collectionname === "users") {
                 item = await this.Cleanmembers(item as any, null);
             }
@@ -1008,25 +1006,25 @@ export class DatabaseConnection extends events.EventEmitter {
                 const u: TokenUser = (item as any);
                 if (NoderedUtil.IsNullEmpty(u.username)) { throw new Error("Username is mandatory"); }
                 if (NoderedUtil.IsNullEmpty(u.name)) { throw new Error("Name is mandatory"); }
-                span.addEvent("FindByUsername");
+                span?.addEvent("FindByUsername");
                 const exists = await DBHelper.FindByUsername(u.username, null, span);
                 if (exists != null) { throw new Error("Access denied, user  '" + u.username + "' already exists"); }
             }
             if (collectionname === "users" && item._type === "role") {
                 const r: Role = (item as any);
                 if (NoderedUtil.IsNullEmpty(r.name)) { throw new Error("Name is mandatory"); }
-                span.addEvent("FindByUsername");
+                span?.addEvent("FindByUsername");
                 const exists2 = await DBHelper.FindRoleByName(r.name, span);
                 if (exists2 != null) { throw new Error("Access denied, role '" + r.name + "' already exists"); }
             }
 
-            span.setAttribute("collection", collectionname);
-            span.setAttribute("username", user.username);
+            span?.setAttribute("collection", collectionname);
+            span?.setAttribute("username", user.username);
             let options: CollectionInsertOneOptions = { writeConcern: { w, j } };
             (options as any).WriteConcern = { w, j };
             if (NoderedUtil.IsNullEmpty(this.replicat)) options = null;
 
-            span.addEvent("do insert");
+            span?.addEvent("do insert");
             const ot_end = Logger.otel.startTimer();
             const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.insertOne", span);
             const result: InsertOneWriteOpResult<T> = await this.db.collection(collectionname).insertOne(item, options);
@@ -1035,12 +1033,12 @@ export class DatabaseConnection extends events.EventEmitter {
             item = result.ops[0];
             if (collectionname === "users" && item._type === "user") {
                 Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
-                span.addEvent("FindRoleByNameOrId");
+                span?.addEvent("FindRoleByNameOrId");
                 const users: Role = await DBHelper.FindRoleByNameOrId("users", jwt, span);
                 users.AddMember(item);
-                span.addEvent("CleanACL");
-                item = await this.CleanACL(item, user, span);
-                span.addEvent("Save");
+                span?.addEvent("CleanACL");
+                item = await this.CleanACL(item, user, collectionname, span);
+                span?.addEvent("Save");
                 await DBHelper.Save(users, Crypt.rootToken(), span);
                 let user2: TokenUser = item as any;
 
@@ -1055,7 +1053,7 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             if (collectionname === "users" && item._type === "role") {
                 Base.addRight(item, item._id, item.name, [Rights.read]);
-                item = await this.CleanACL(item, user, span);
+                item = await this.CleanACL(item, user, collectionname, span);
                 const ot_end = Logger.otel.startTimer();
                 const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.replaceOne", span);
                 await this.db.collection(collectionname).replaceOne({ _id: item._id }, item);
@@ -1077,11 +1075,11 @@ export class DatabaseConnection extends events.EventEmitter {
             if (collectionname === "config" && item._type === "restriction") {
                 this.EntityRestrictions = null;
             }
-            span.addEvent("traversejsondecode");
+            span?.addEvent("traversejsondecode");
             DatabaseConnection.traversejsondecode(item);
             if (Config.log_inserts) Logger.instanse.debug("[" + user.username + "][" + collectionname + "] inserted " + item.name);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         }
         finally {
@@ -1100,8 +1098,8 @@ export class DatabaseConnection extends events.EventEmitter {
             await this.connect(span);
             const user = Crypt.verityToken(jwt);
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
-            span.setAttribute("collection", collectionname);
-            span.setAttribute("username", user.username);
+            span?.setAttribute("collection", collectionname);
+            span?.setAttribute("username", user.username);
             let bulkInsert = this.db.collection(collectionname).initializeUnorderedBulkOp();
             let x = 1000
             let counter = 0
@@ -1109,7 +1107,7 @@ export class DatabaseConnection extends events.EventEmitter {
             date.setMonth(date.getMonth() - 1);
             let tempresult: any[] = [];
             for (let i = 0; i < items.length; i++) {
-                let item = this.ensureResource(items[i]);
+                let item = this.ensureResource(items[i], collectionname);
                 DatabaseConnection.traversejsonencode(item);
 
                 if (!await this.CheckEntityRestriction(user, collectionname, item, span)) {
@@ -1128,7 +1126,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 const hasUser: Ace = item._acl.find(e => e._id === user._id);
                 if ((hasUser === null || hasUser === undefined)) {
                     Base.addRight(item, user._id, user.name, [Rights.full_control]);
-                    item = this.ensureResource(item);
+                    item = this.ensureResource(item, collectionname);
                 }
                 if (collectionname != "audit") { Logger.instanse.silly("[" + user.username + "][" + collectionname + "] Adding " + item._type + " " + name + " to database"); }
                 if (!DatabaseConnection.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
@@ -1186,8 +1184,8 @@ export class DatabaseConnection extends events.EventEmitter {
                 } else {
                     item._id = new ObjectID().toHexString();
                 }
-                span.addEvent("CleanACL");
-                item = await this.CleanACL(item, user, span);
+                span?.addEvent("CleanACL");
+                item = await this.CleanACL(item, user, collectionname, span);
                 if (item._type === "role" && collectionname === "users") {
                     item = await this.Cleanmembers(item as any, null);
                 }
@@ -1196,14 +1194,14 @@ export class DatabaseConnection extends events.EventEmitter {
                     const u: TokenUser = (item as any);
                     if (NoderedUtil.IsNullEmpty(u.username)) { throw new Error("Username is mandatory"); }
                     if (NoderedUtil.IsNullEmpty(u.name)) { throw new Error("Name is mandatory"); }
-                    span.addEvent("FindByUsername");
+                    span?.addEvent("FindByUsername");
                     const exists = await DBHelper.FindByUsername(u.username, null, span);
                     if (exists != null) { throw new Error("Access denied, user  '" + u.username + "' already exists"); }
                 }
                 if (collectionname === "users" && item._type === "role") {
                     const r: Role = (item as any);
                     if (NoderedUtil.IsNullEmpty(r.name)) { throw new Error("Name is mandatory"); }
-                    span.addEvent("FindByUsername");
+                    span?.addEvent("FindByUsername");
                     const exists2 = await DBHelper.FindRoleByName(r.name, span);
                     if (exists2 != null) { throw new Error("Access denied, role '" + r.name + "' already exists"); }
                 }
@@ -1233,19 +1231,19 @@ export class DatabaseConnection extends events.EventEmitter {
                 let item = items[y];
                 if (collectionname === "users" && item._type === "user") {
                     Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
-                    span.addEvent("FindRoleByNameOrId");
+                    span?.addEvent("FindRoleByNameOrId");
                     const users: Role = await DBHelper.FindRoleByNameOrId("users", jwt, span);
                     users.AddMember(item);
-                    span.addEvent("CleanACL");
-                    item = await this.CleanACL(item, user, span);
-                    span.addEvent("Save");
+                    span?.addEvent("CleanACL");
+                    item = await this.CleanACL(item, user, collectionname, span);
+                    span?.addEvent("Save");
                     await DBHelper.Save(users, Crypt.rootToken(), span);
                     const user2: TokenUser = item as any;
                     DBHelper.EnsureNoderedRoles(user2, Crypt.rootToken(), false, span);
                 }
                 if (collectionname === "users" && item._type === "role") {
                     Base.addRight(item, item._id, item.name, [Rights.read]);
-                    item = await this.CleanACL(item, user, span);
+                    item = await this.CleanACL(item, user, collectionname, span);
                     const ot_end_inner2 = Logger.otel.startTimer();
                     const mongodbspan_inner2: Span = Logger.otel.startSubSpan("mongodb.replaceOne", span);
                     await this.db.collection(collectionname).replaceOne({ _id: item._id }, item);
@@ -1258,13 +1256,13 @@ export class DatabaseConnection extends events.EventEmitter {
                         setTimeout(() => OAuthProvider.LoadClients(), 1000);
                     }
                 }
-                span.addEvent("traversejsondecode");
+                span?.addEvent("traversejsondecode");
                 DatabaseConnection.traversejsondecode(item);
             }
             result = items;
             if (Config.log_inserts) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] inserted " + counter + " items in database");
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         }
         finally {
@@ -1407,11 +1405,11 @@ export class DatabaseConnection extends events.EventEmitter {
                             Base.removeRight(q.item, custadmins._id, [Rights.delete]);
                         }
                         (q.item as any).company = customer.name;
-                        q.item = this.ensureResource(q.item);
+                        q.item = this.ensureResource(q.item, q.collectionname);
                     }
                 }
 
-                if (q.collectionname != "fs.files") {
+                if (!DatabaseConnection.usemetadata(q.collectionname)) {
                     q.item._modifiedby = user.name;
                     q.item._modifiedbyid = user._id;
                     q.item._modified = new Date(new Date().toISOString());
@@ -1453,7 +1451,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         q.item._acl = original._acl;
                         q.item._version = original._version;
                     }
-                    q.item = this.ensureResource(q.item);
+                    q.item = this.ensureResource(q.item, q.collectionname);
                     if (original._type != q.item._type && !await this.CheckEntityRestriction(user, q.collectionname, q.item, span)) {
                         throw Error("Create " + q.item._type + " access denied");
                     }
@@ -1462,11 +1460,11 @@ export class DatabaseConnection extends events.EventEmitter {
                     const hasUser: Ace = q.item._acl.find(e => e._id === user._id);
                     if (NoderedUtil.IsNullUndefinded(hasUser) && q.item._acl.length === 0) {
                         Base.addRight(q.item, user._id, user.name, [Rights.full_control]);
-                        q.item = this.ensureResource(q.item);
+                        q.item = this.ensureResource(q.item, q.collectionname);
                     }
                     if (q.collectionname === "users" && q.item._type === "user") {
                         Base.addRight(q.item, q.item._id, q.item.name, [Rights.read, Rights.update, Rights.invoke]);
-                        q.item = this.ensureResource(q.item);
+                        q.item = this.ensureResource(q.item, q.collectionname);
                     }
                 } else {
                     if (!DatabaseConnection.hasAuthorization(user, (q.item as any).metadata, Rights.update)) {
@@ -1505,13 +1503,13 @@ export class DatabaseConnection extends events.EventEmitter {
                         (q.item as any).metadata._acl = (original as any).metadata._acl;
                         (q.item as any).metadata._version = (original as any).metadata._version;
                     }
-                    (q.item as any).metadata = this.ensureResource((q.item as any).metadata);
+                    (q.item as any).metadata = this.ensureResource((q.item as any).metadata, q.collectionname);
                     DatabaseConnection.traversejsonencode(q.item);
                     (q.item as any).metadata = this.encryptentity((q.item as any).metadata);
                     const hasUser: Ace = (q.item as any).metadata._acl.find(e => e._id === user._id);
                     if ((hasUser === null || hasUser === undefined) && (q.item as any).metadata._acl.length === 0) {
                         Base.addRight((q.item as any).metadata, user._id, user.name, [Rights.full_control]);
-                        q.item = this.ensureResource(q.item);
+                        q.item = this.ensureResource(q.item, q.collectionname);
                     }
                 }
 
@@ -1567,7 +1565,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 q.query = { $or: [{ _id: id }, { _id: safeObjectID(id) }] };
             }
             let _query: Object = {};
-            if (q.collectionname === "fs.files") {
+            if (DatabaseConnection.usemetadata(q.collectionname)) {
                 _query = { $and: [q.query, this.getbasequery(q.jwt, "metadata._acl", [Rights.update])] };
             } else {
                 // todo: enforcer permissions when fetching _hist ?
@@ -1584,10 +1582,10 @@ export class DatabaseConnection extends events.EventEmitter {
             q.opresult = null;
             try {
                 if (itemReplace) {
-                    if (q.collectionname != "fs.files") {
-                        q.item = await this.CleanACL(q.item, user, span);
+                    if (!DatabaseConnection.usemetadata(q.collectionname)) {
+                        q.item = await this.CleanACL(q.item, user, q.collectionname, span);
                     } else {
-                        (q.item as any).metadata = await this.CleanACL((q.item as any).metadata, user, span);
+                        (q.item as any).metadata = await this.CleanACL((q.item as any).metadata, user, q.collectionname, span);
                     }
                     if (q.item._type === "role" && q.collectionname === "users") {
                         q.item = await this.Cleanmembers(q.item as any, original);
@@ -1599,19 +1597,19 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (q.collectionname === "mq") {
                         amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
                     }
-                    if (q.collectionname != "fs.files") {
+                    if (!DatabaseConnection.usemetadata(q.collectionname)) {
                         const ot_end = Logger.otel.startTimer();
                         const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.replaceOne", span);
                         q.opresult = await this.db.collection(q.collectionname).replaceOne(_query, q.item, options);
                         Logger.otel.endSpan(mongodbspan);
                         Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_replace, { collection: q.collectionname });
                     } else {
-                        const fsc = Config.db.db.collection("fs.files");
+                        const fsc = Config.db.db.collection(q.collectionname);
                         const ot_end = Logger.otel.startTimer();
                         const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.replaceOne", span);
                         q.opresult = await fsc.updateOne(_query, { $set: { metadata: (q.item as any).metadata } });
                         Logger.otel.endSpan(mongodbspan);
-                        Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: 'fs.files' });
+                        Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: q.collectionname });
                     }
                 } else {
                     if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };
@@ -1635,7 +1633,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     Logger.otel.endSpan(mongodbspan);
                     Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: q.collectionname });
                 }
-                if (q.collectionname != "fs.files") {
+                if (!DatabaseConnection.usemetadata(q.collectionname)) {
                     q.item = this.decryptentity(q.item);
                 } else {
                     (q.item as any).metadata = this.decryptentity<T>((q.item as any).metadata);
@@ -1668,7 +1666,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (Config.log_updates) Logger.instanse.debug("[" + user.username + "][" + q.collectionname + "] updated " + q.item.name);
             return q;
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -1733,7 +1731,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (!user.HasRoleId("admins")) throw new Error("Access denied, no authorization to UpdateMany");
             }
             if (q.collectionname === "files") { q.collectionname = "fs.files"; }
-            if (q.collectionname === "fs.files") {
+            if (DatabaseConnection.usemetadata(q.collectionname)) {
                 _query = { $and: [q.query, this.getbasequery(q.jwt, "metadata._acl", [Rights.update])] };
             } else {
                 // todo: enforcer permissions when fetching _hist ?
@@ -1773,7 +1771,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 throw error;
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -1839,7 +1837,7 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             if (!DatabaseConnection.hasAuthorization(user, q.item, Rights.update)) {
                 Base.addRight(q.item, user._id, user.name, [Rights.full_control], false);
-                this.ensureResource(q.item);
+                this.ensureResource(q.item, q.collectionname);
             }
             // if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to InsertOrUpdateOne"); }
 
@@ -1873,7 +1871,7 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             return q;
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             DatabaseConnection.InsertOrUpdateOneSemaphore.up();
@@ -1916,7 +1914,7 @@ export class DatabaseConnection extends events.EventEmitter {
             }
 
             if (collectionname === "files") { collectionname = "fs.files"; }
-            if (collectionname === "fs.files") {
+            if (DatabaseConnection.usemetadata(collectionname)) {
                 _query = { $and: [{ _id: safeObjectID(id) }, this.getbasequery(jwt, "metadata._acl", [Rights.delete])] };
                 const ot_end = Logger.otel.startTimer();
                 const arr = await this.db.collection(collectionname).find(_query).toArray();
@@ -2004,7 +2002,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -2026,7 +2024,7 @@ export class DatabaseConnection extends events.EventEmitter {
             let _query: any = {};
             let aclfield = "_acl";
             if (collectionname === "files") { collectionname = "fs.files"; }
-            if (collectionname === "fs.files") {
+            if (DatabaseConnection.usemetadata(collectionname)) {
                 aclfield = "metadata._acl"
             }
             const baseq = this.getbasequery(jwt, aclfield, [Rights.delete]);
@@ -2063,7 +2061,7 @@ export class DatabaseConnection extends events.EventEmitter {
             _skip_array.forEach(x => skip_array.push(x.trim()));
 
             if (collectionname === "files") { collectionname = "fs.files"; }
-            if (collectionname === "fs.files") {
+            if (DatabaseConnection.usemetadata(collectionname)) {
                 const ot_end = Logger.otel.startTimer();
                 const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.find", span);
                 const arr = await this.db.collection(collectionname).find(_query).toArray();
@@ -2140,7 +2138,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 return counter;
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -2285,7 +2283,7 @@ export class DatabaseConnection extends events.EventEmitter {
      * @param  {T} item Object to validate
      * @returns T Validated object
      */
-    ensureResource<T extends Base>(item: T): T {
+    ensureResource<T extends Base>(item: T, collection: string): T {
         if (!item.hasOwnProperty("_type") || item._type === null || item._type === undefined) {
             item._type = "unknown";
         }
@@ -2298,6 +2296,15 @@ export class DatabaseConnection extends events.EventEmitter {
         });
         if (item._acl.length === 0) {
             Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control]);
+        }
+        if (DatabaseConnection.collections_with_text_index.indexOf(collection) > -1) {
+            if (!NoderedUtil.IsNullEmpty(item.name)) {
+                var name: string = item.name.toLowerCase();
+                name = name.replace(/[.*!#"'`|%$@+\-?^${}()|[\]\\]/g, " ").trim();
+                (item as any)._searchnames = name.split(" ");
+                (item as any)._searchnames.push(name);
+                if (name != item.name.toLowerCase()) (item as any)._searchnames.push(item.name.toLowerCase());
+            }
         }
         return item;
     }
@@ -2523,12 +2530,12 @@ export class DatabaseConnection extends events.EventEmitter {
                 Logger.otel.endSpan(mongodbspan);
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: q.collectionname + '_hist' });
             }).catch(err => {
-                mongodbspan.recordException(err);
+                mongodbspan?.recordException(err);
                 Logger.otel.endSpan(mongodbspan);
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: q.collectionname + '_hist' });
             });
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             Logger.instanse.error(error);
         } finally {
             Logger.otel.endSpan(span);
@@ -2619,7 +2626,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     Logger.otel.endSpan(mongodbspan);
                     Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname + '_hist' });
                 }).catch(err => {
-                    mongodbspan.recordException(err);
+                    mongodbspan?.recordException(err);
                     Logger.otel.endSpan(mongodbspan);
                     Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname + '_hist' });
                 });
@@ -2655,7 +2662,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         Logger.otel.endSpan(mongodbspan);
                         Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname + '_hist' });
                     }).catch(err => {
-                        mongodbspan.recordException(err);
+                        mongodbspan?.recordException(err);
                         Logger.otel.endSpan(mongodbspan);
                         Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname + '_hist' });
                     });
@@ -2669,7 +2676,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 item.lastseen = lastseen;
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             Logger.instanse.error(error);
         } finally {
             Logger.otel.endSpan(span);
@@ -2685,7 +2692,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 options["name"] = name;
                 this.db.collection(collectionname).createIndex(keypath, options, (err, name) => {
                     if (err) {
-                        span.recordException(err);
+                        span?.recordException(err);
                         Logger.otel.endSpan(span);
                         reject(err);
                         return;
@@ -2694,7 +2701,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     resolve(name);
                 })
             } catch (error) {
-                span.recordException(error);
+                span?.recordException(error);
                 Logger.otel.endSpan(span);
                 reject(error);
             }
@@ -2707,7 +2714,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (Config.log_index_mngt) Logger.instanse.info("Dropping index " + name + " in " + collectionname);
                 this.db.collection(collectionname).dropIndex(name, (err, name) => {
                     if (err) {
-                        span.recordException(err);
+                        span?.recordException(err);
                         Logger.otel.endSpan(span);
                         reject(err);
                         return;
@@ -2716,12 +2723,14 @@ export class DatabaseConnection extends events.EventEmitter {
                     resolve(name);
                 })
             } catch (error) {
-                span.recordException(error);
+                span?.recordException(error);
                 Logger.otel.endSpan(span);
                 reject(error);
             }
         });
     }
+    public static collections_with_text_index: string[] = [];
+    public static timeseries_collections: string[] = [];
     async ensureindexes(parent: Span) {
         const span: Span = Logger.otel.startSubSpan("db.ensureindexes", parent);
         try {
@@ -2745,9 +2754,9 @@ export class DatabaseConnection extends events.EventEmitter {
                                 if (indexnames.indexOf("metadata.workflow_1") === -1) {
                                     await this.createIndex(collection.name, "metadata.workflow_1", { "metadata.workflow": 1 }, null, span)
                                 }
-                                if (indexnames.indexOf("filename_text") === -1 && Config.create_text_index_for_names) {
-                                    await this.createIndex(collection.name, "filename_text", { "filename": "text" }, {default_language: "none", language_override: "none"}, span)
-                                }
+                                // if (indexnames.indexOf("filename_text") === -1 && Config.create_text_index_for_names) {
+                                //     await this.createIndex(collection.name, "filename_text", { "filename": "text" }, {default_language: "none", language_override: "none"}, span)
+                                // }
                                 break;
                             case "fs.chunks":
                                 break;
@@ -2760,9 +2769,6 @@ export class DatabaseConnection extends events.EventEmitter {
                                 }
                                 if (indexnames.indexOf("queue_1") === -1) {
                                     await this.createIndex(collection.name, "queue_1", { "queue": 1 }, null, span)
-                                }
-                                if (indexnames.indexOf("name_text") === -1 && Config.create_text_index_for_names) {
-                                    await this.createIndex(collection.name, "name_text", { "name": "text" }, {default_language: "none", language_override: "none"}, span)
                                 }
                                 break;
                             case "openrpa_instances":
@@ -2781,9 +2787,9 @@ export class DatabaseConnection extends events.EventEmitter {
                                 if (indexnames.indexOf("fqdn_1") === -1) {
                                     await this.createIndex(collection.name, "fqdn_1", { "fqdn": 1 }, null, span)
                                 }
-                                if (indexnames.indexOf("name_text") === -1 && Config.create_text_index_for_names) {
-                                    await this.createIndex(collection.name, "name_text", { "name": "text" }, {default_language: "none", language_override: "none"}, span)
-                                }
+                                // if (indexnames.indexOf("name_text") === -1 && Config.create_text_index_for_names) {
+                                //     await this.createIndex(collection.name, "name_text", { "name": "text" }, {default_language: "none", language_override: "none"}, span)
+                                // }
                                 break;
                             case "audit":
                                 if (indexnames.indexOf("_type_1") === -1) {
@@ -2804,9 +2810,9 @@ export class DatabaseConnection extends events.EventEmitter {
                                 if (indexnames.indexOf("userid_1") === -1) {
                                     await this.createIndex(collection.name, "userid_1", { "userid": 1 }, null, span)
                                 }
-                                if (indexnames.indexOf("name_text") === -1 && Config.create_text_index_for_names) {
-                                    await this.createIndex(collection.name, "name_text", { "name": "text" }, {default_language: "none", language_override: "none"}, span)
-                                }
+                                // if (indexnames.indexOf("name_text") === -1 && Config.create_text_index_for_names) {
+                                //     await this.createIndex(collection.name, "name_text", { "name": "text" }, {default_language: "none", language_override: "none"}, span)
+                                // }
                                 break;
                             case "users":
                                 if (indexnames.indexOf("workflowid_1") === -1) {
@@ -2837,9 +2843,6 @@ export class DatabaseConnection extends events.EventEmitter {
                                 if (indexnames.indexOf("members._id_1") === -1) {
                                     await this.createIndex(collection.name, "members._id_1", { "members._id": 1 }, null, span)
                                 }
-                                if (indexnames.indexOf("name_text") === -1 && Config.create_text_index_for_names) {
-                                    await this.createIndex(collection.name, "name_text", { "name": "text" }, {default_language: "none", language_override: "none"}, span)
-                                }
                                 break;
                             case "openrpa":
                                 if (indexnames.indexOf("_created_1") === -1) {
@@ -2850,9 +2853,6 @@ export class DatabaseConnection extends events.EventEmitter {
                                 }
                                 if (indexnames.indexOf("_type_projectid_name_1") === -1) {
                                     await this.createIndex(collection.name, "_type_projectid_name_1", { _type: 1, "{projectid:-1,name:-1}": 1 }, null, span)
-                                }
-                                if (indexnames.indexOf("name_text") === -1 && Config.create_text_index_for_names) {
-                                    await this.createIndex(collection.name, "name_text", { "name": "text" }, {default_language: "none", language_override: "none"}, span)
                                 }
                                 break;
                             case "dbusage":
@@ -2865,9 +2865,6 @@ export class DatabaseConnection extends events.EventEmitter {
                                 if (indexnames.indexOf("collection_1_timestamp_1") === -1) {
                                     await this.createIndex(collection.name, "collection_1_timestamp_1", { _type: 1, "{collection:1,timestamp:1}": 1 }, null, span)
                                 }
-                                if (indexnames.indexOf("name_text") === -1 && Config.create_text_index_for_names) {
-                                    await this.createIndex(collection.name, "name_text", { "name": "text" }, {default_language: "none", language_override: "none"}, span)
-                                }
                                 break;
                             default:
                                 if (indexnames.indexOf("_type_1") === -1) {
@@ -2879,22 +2876,48 @@ export class DatabaseConnection extends events.EventEmitter {
                                 if (indexnames.indexOf("_modified_1") === -1) {
                                     await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
                                 }
-                                if (indexnames.indexOf("name_text") === -1 && Config.create_text_index_for_names) {
-                                    await this.createIndex(collection.name, "name_text", { "name": "text" }, {default_language: "none", language_override: "none"}, span)
-                                }
                                 break;
                         }
                     }
                 } catch (error) {
-                    span.recordException(error);
+                    span?.recordException(error);
                     Logger.instanse.error(error);
                 }
             }
+
+            collections = await DatabaseConnection.toArray(this.db.listCollections());
+            collections = collections.filter(x => x.name.indexOf("system.") === -1);
+
+            for (let i = 0; i < collections.length; i++) {
+                var collection = collections[i];
+                if (collection.type == "timeseries") {
+                    DatabaseConnection.timeseries_collections = DatabaseConnection.timeseries_collections.filter(x => x != collection.name);
+                    DatabaseConnection.timeseries_collections.push(collection.name);
+                }
+                if (collection.type != "collection" && collection.type != "timeseries") continue;
+                const indexes = await this.db.collection(collection.name).indexes();
+                for (let y = 0; y < indexes.length; y++) {
+                    var idx = indexes[y];
+                    if (idx.textIndexVersion && idx.textIndexVersion > 1 && collection.name != "fs.files") {
+                        DatabaseConnection.collections_with_text_index = DatabaseConnection.collections_with_text_index.filter(x => x != collection.name);
+                        DatabaseConnection.collections_with_text_index.push(collection.name);
+                    }
+                }
+            }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
         } finally {
             Logger.otel.endSpan(span);
         }
+    }
+    static usemetadata(collectionname: string) {
+        if (collectionname == "files" || collectionname == "fs.chunks" || collectionname == "fs.files") {
+            return true;
+        }
+        if (DatabaseConnection.timeseries_collections.indexOf(collectionname) > -1) {
+            return true;
+        }
+        return false;
     }
 }
 

@@ -20,6 +20,7 @@ import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { Auth } from "./Auth";
 import { WebServer } from "./WebServer";
+import { DatabaseConnection } from "./DatabaseConnection";
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 
 interface IVerifyFunction { (error: any, profile: any): void; }
@@ -92,7 +93,7 @@ export class LoginProvider {
                 }
                 saml.validate(rawAssertion, options, async (err, profile) => {
                     try {
-                        if (err) { span.recordException(err); return reject(err); }
+                        if (err) { span?.recordException(err); return reject(err); }
                         const claims = profile.claims; // Array of user attributes;
                         const username = claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] ||
                             claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] ||
@@ -102,11 +103,11 @@ export class LoginProvider {
                         if (user) {
                             resolve(user);
                         } else {
-                            span.recordException("Unknown user");
+                            span?.recordException("Unknown user");
                             reject("Unknown user");
                         }
                     } catch (error) {
-                        span.recordException(error);
+                        span?.recordException(error);
                         reject(error);
                     } finally {
                         Logger.otel.endSpan(span);
@@ -114,7 +115,7 @@ export class LoginProvider {
 
                 });
             } catch (error) {
-                span.recordException(error);
+                span?.recordException(error);
             } finally {
                 Logger.otel.endSpan(span);
             }
@@ -138,7 +139,7 @@ export class LoginProvider {
             }
             return result;
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -191,7 +192,7 @@ export class LoginProvider {
             }
         });
         app.get("/dashboardauth", async (req: any, res: any, next: any) => {
-            const span: Span = (Config.trace_dashboardauth ? Logger.otel.startSpan("LoginProvider.dashboardauth") : null);
+            const span: Span = (Config.otel_trace_dashboardauth ? Logger.otel.startSpan("LoginProvider.dashboardauth") : null);
             try {
                 span?.setAttribute("remoteip", WebServer.remoteip(req));
                 if (req.user) {
@@ -323,7 +324,7 @@ export class LoginProvider {
         app.get("/user", async (req: any, res: any, next: any): Promise<void> => {
             const span: Span = Logger.otel.startSpan("LoginProvider.user");
             try {
-                span.setAttribute("remoteip", WebServer.remoteip(req));
+                span?.setAttribute("remoteip", WebServer.remoteip(req));
                 res.setHeader("Content-Type", "application/json");
                 if (req.user) {
                     const user: User = await DBHelper.FindById(req.user._id, undefined, span);
@@ -333,7 +334,7 @@ export class LoginProvider {
                 }
                 res.end();
             } catch (error) {
-                span.recordException(error);
+                span?.recordException(error);
                 throw error;
             } finally {
                 Logger.otel.endSpan(span);
@@ -342,18 +343,18 @@ export class LoginProvider {
         app.get("/jwt", (req: any, res: any, next: any): void => {
             const span: Span = Logger.otel.startSpan("LoginProvider.jwt");
             try {
-                span.setAttribute("remoteip", WebServer.remoteip(req));
+                span?.setAttribute("remoteip", WebServer.remoteip(req));
                 res.setHeader("Content-Type", "application/json");
                 if (req.user) {
                     const user: TokenUser = TokenUser.From(req.user);
-                    span.setAttribute("username", user.username);
+                    span?.setAttribute("username", user.username);
                     res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.shorttoken_expires_in), user: user }));
                 } else {
                     res.end(JSON.stringify({ jwt: "" }));
                 }
                 res.end();
             } catch (error) {
-                span.recordException(error);
+                span?.recordException(error);
                 console.error(error.message ? error.message : error);
                 return res.status(500).send({ message: error.message ? error.message : error });
             } finally {
@@ -363,11 +364,11 @@ export class LoginProvider {
         app.get("/jwtlong", (req: any, res: any, next: any): void => {
             const span: Span = Logger.otel.startSpan("LoginProvider.jwtlong");
             try {
-                span.setAttribute("remoteip", WebServer.remoteip(req));
+                span?.setAttribute("remoteip", WebServer.remoteip(req));
                 res.setHeader("Content-Type", "application/json");
                 if (req.user) {
                     const user: TokenUser = TokenUser.From(req.user);
-                    span.setAttribute("username", user.username);
+                    span?.setAttribute("username", user.username);
                     if (!(user.validated == true) && Config.validate_user_form != "") {
                         res.end(JSON.stringify({ jwt: "" }));
                     } else {
@@ -378,7 +379,7 @@ export class LoginProvider {
                 }
                 res.end();
             } catch (error) {
-                span.recordException(error);
+                span?.recordException(error);
                 console.error(error.message ? error.message : error);
                 return res.status(500).send({ message: error.message ? error.message : error });
             } finally {
@@ -389,15 +390,15 @@ export class LoginProvider {
             const span: Span = Logger.otel.startSpan("LoginProvider.jwt");
             // logger.debug("/jwt " + !(req.user == null));
             try {
-                span.setAttribute("remoteip", WebServer.remoteip(req));
+                span?.setAttribute("remoteip", WebServer.remoteip(req));
                 const rawAssertion = req.body.token;
                 const user: User = await LoginProvider.validateToken(rawAssertion, span);
                 const tuser: TokenUser = TokenUser.From(user);
-                span.setAttribute("username", user.username);
+                span?.setAttribute("username", user.username);
                 res.setHeader("Content-Type", "application/json");
                 res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, Config.shorttoken_expires_in) }));
             } catch (error) {
-                span.recordException(error);
+                span?.recordException(error);
                 console.error(error.message ? error.message : error);
                 return res.status(500).send({ message: error.message ? error.message : error });
             } finally {
@@ -407,21 +408,17 @@ export class LoginProvider {
         app.get("/config", (req: any, res: any, next: any): void => {
             const span: Span = Logger.otel.startSpan("LoginProvider.config");
             try {
-                span.setAttribute("remoteip", WebServer.remoteip(req));
+                span?.setAttribute("remoteip", WebServer.remoteip(req));
                 let _url = Config.basewsurl();
                 if (!NoderedUtil.IsNullEmpty(Config.api_ws_url)) _url = Config.api_ws_url;
                 if (!_url.endsWith("/")) _url += "/";
                 if (req.user) {
                     const user: TokenUser = TokenUser.From(req.user);
-                    span.setAttribute("username", user.username);
+                    span?.setAttribute("username", user.username);
                 }
                 let nodered_domain_schema = Config.nodered_domain_schema;
                 if (NoderedUtil.IsNullEmpty(nodered_domain_schema)) {
                     nodered_domain_schema = "$nodered_id$." + Config.domain;
-                }
-                var use_text_index_for_names = false;
-                if(Config.create_text_index_for_names) {
-                    use_text_index_for_names = Config.use_text_index_for_names;
                 }
                 const res2 = {
                     wshost: _url,
@@ -444,11 +441,12 @@ export class LoginProvider {
                     multi_tenant: Config.multi_tenant,
                     enable_entity_restriction: Config.enable_entity_restriction,
                     enable_web_tours: Config.enable_web_tours,
-                    use_text_index_for_names: use_text_index_for_names
+                    collections_with_text_index: DatabaseConnection.collections_with_text_index,
+                    timeseries_collections: DatabaseConnection.timeseries_collections,
                 }
                 res.end(JSON.stringify(res2));
             } catch (error) {
-                span.recordException(error);
+                span?.recordException(error);
                 return res.status(500).send({ message: error.message ? error.message : error });
             } finally {
                 Logger.otel.endSpan(span);
@@ -457,7 +455,7 @@ export class LoginProvider {
         app.get("/login", async (req: any, res: any, next: any): Promise<void> => {
             const span: Span = Logger.otel.startSpan("LoginProvider.login");
             try {
-                span.setAttribute("remoteip", WebServer.remoteip(req));
+                span?.setAttribute("remoteip", WebServer.remoteip(req));
                 const originalUrl: any = req.cookies.originalUrl;
                 const validateurl: any = req.cookies.validateurl;
                 if (NoderedUtil.IsNullEmpty(originalUrl) && !req.originalUrl.startsWith("/login")) {
@@ -483,7 +481,7 @@ export class LoginProvider {
                 const file = path.join(__dirname, 'public', 'PassiveLogin.html');
                 res.sendFile(file);
             } catch (error) {
-                span.recordException(error);
+                span?.recordException(error);
                 console.error(error.message ? error.message : error);
                 return res.status(500).send({ message: error.message ? error.message : error });
             }
@@ -492,7 +490,7 @@ export class LoginProvider {
         app.get("/validateuserform", async (req: any, res: any, next: any): Promise<void> => {
             const span: Span = Logger.otel.startSpan("LoginProvider.validateuserform");
             try {
-                span.setAttribute("remoteip", WebServer.remoteip(req));
+                span?.setAttribute("remoteip", WebServer.remoteip(req));
                 res.setHeader("Content-Type", "application/json");
                 if (NoderedUtil.IsNullEmpty(Config.validate_user_form)) {
                     res.end(JSON.stringify({}));
@@ -512,7 +510,7 @@ export class LoginProvider {
                 res.end(JSON.stringify({}));
                 res.end();
             } catch (error) {
-                span.recordException(error);
+                span?.recordException(error);
                 return res.status(500).send({ message: error.message ? error.message : error });
             } finally {
                 Logger.otel.endSpan(span);
@@ -524,7 +522,7 @@ export class LoginProvider {
             // logger.debug("/validateuserform " + !(req.user == null));
             res.setHeader("Content-Type", "application/json");
             try {
-                span.setAttribute("remoteip", WebServer.remoteip(req));
+                span?.setAttribute("remoteip", WebServer.remoteip(req));
                 if (req.user) {
                     if (req.body && req.body.data) {
                         const tuser: TokenUser = TokenUser.From(req.user);
@@ -566,7 +564,7 @@ export class LoginProvider {
                     res.end(JSON.stringify({ jwt: "" }));
                 }
             } catch (error) {
-                span.recordException(error);
+                span?.recordException(error);
                 console.error(error);
                 return res.status(500).send({ message: error.message ? error.message : error });
             }
@@ -577,13 +575,13 @@ export class LoginProvider {
         app.get("/loginproviders", async (req: any, res: any, next: any): Promise<void> => {
             const span: Span = Logger.otel.startSpan("LoginProvider.loginproviders");
             try {
-                span.setAttribute("remoteip", WebServer.remoteip(req));
+                span?.setAttribute("remoteip", WebServer.remoteip(req));
                 const result: any[] = await this.getProviders(span);
                 res.setHeader("Content-Type", "application/json");
                 res.end(JSON.stringify(result));
                 res.end();
             } catch (error) {
-                span.recordException(error);
+                span?.recordException(error);
                 console.error(error.message ? error.message : error);
                 Logger.otel.endSpan(span);
                 return res.status(500).send({ message: error.message ? error.message : error });
@@ -594,7 +592,7 @@ export class LoginProvider {
         app.get("/download/:id", async (req, res) => {
             const span: Span = Logger.otel.startSpan("LoginProvider.download");
             try {
-                span.setAttribute("remoteip", WebServer.remoteip(req));
+                span?.setAttribute("remoteip", WebServer.remoteip(req));
                 let user: TokenUser = null;
                 let jwt: string = null;
                 const authHeader = req.headers.authorization;
@@ -625,7 +623,7 @@ export class LoginProvider {
                 });
                 downloadStream.pipe(res);
             } catch (error) {
-                span.recordException(error);
+                span?.recordException(error);
                 return res.status(500).send({ message: error.message ? error.message : error });
             } finally {
                 Logger.otel.endSpan(span);
@@ -695,13 +693,13 @@ export class LoginProvider {
             const upload = multer({ //multer settings for single upload
                 storage: storage,
                 limits: {
-                    fileSize: (1000000 * 25) // 25MB
+                    fileSize: (1000000 * Config.upload_max_filesize_mb) // 25MB
                 }
             }).any();
             app.delete("/upload", async (req: any, res: any, next: any): Promise<void> => {
                 const span: Span = Logger.otel.startSpan("LoginProvider.upload");
                 try {
-                    span.setAttribute("remoteip", WebServer.remoteip(req));
+                    span?.setAttribute("remoteip", WebServer.remoteip(req));
                     let user: TokenUser = null;
                     let jwt: string = null;
                     const authHeader = req.headers.authorization;
@@ -735,7 +733,7 @@ export class LoginProvider {
                         message: uniquename + " deleted"
                     });
                 } catch (error) {
-                    span.recordException(error);
+                    span?.recordException(error);
                     console.error(error);
                     return res.status(500).send({ message: error.message ? error.message : error });
                 } finally {
@@ -746,7 +744,7 @@ export class LoginProvider {
             app.get("/upload", async (req: any, res: any, next: any): Promise<void> => {
                 const span: Span = Logger.otel.startSpan("LoginProvider.upload");
                 try {
-                    span.setAttribute("remoteip", WebServer.remoteip(req));
+                    span?.setAttribute("remoteip", WebServer.remoteip(req));
                     let user: TokenUser = null;
                     let jwt: string = null;
                     const authHeader = req.headers.authorization;
@@ -788,7 +786,7 @@ export class LoginProvider {
                     downloadStream.pipe(res);
                     return;
                 } catch (error) {
-                    span.recordException(error);
+                    span?.recordException(error);
                     return res.status(500).send({ message: error.message ? error.message : error });
                 } finally {
                     Logger.otel.endSpan(span);
@@ -858,7 +856,7 @@ export class LoginProvider {
                 }
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -988,7 +986,7 @@ export class LoginProvider {
                 if (!NoderedUtil.IsNullUndefinded(req)) {
                     remoteip = WebServer.remoteip(req);
                 }
-                span.setAttribute("remoteip", remoteip);
+                span?.setAttribute("remoteip", remoteip);
                 if (username !== null && username != undefined) { username = username.toLowerCase(); }
                 let user: User = null;
                 if (LoginProvider.login_providers.length === 0) {
@@ -1048,7 +1046,7 @@ export class LoginProvider {
                 Logger.otel.endSpan(span);
                 return done(null, tuser);
             } catch (error) {
-                span.recordException(error);
+                span?.recordException(error);
                 Logger.otel.endSpan(span);
                 console.error(error.message ? error.message : error);
                 done(error.message ? error.message : error);
@@ -1132,7 +1130,7 @@ export class LoginProvider {
             if (!NoderedUtil.IsNullUndefinded(req)) {
                 remoteip = WebServer.remoteip(req);
             }
-            span.setAttribute("remoteip", remoteip);
+            span?.setAttribute("remoteip", remoteip);
 
             if (NoderedUtil.IsNullUndefinded(_user)) {
                 let createUser: boolean = Config.auto_create_users;
@@ -1194,7 +1192,7 @@ export class LoginProvider {
             Logger.otel.endSpan(span);
             done(null, tuser);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
         }
         Logger.otel.endSpan(span);
     }
@@ -1209,7 +1207,7 @@ export class LoginProvider {
             if (!NoderedUtil.IsNullUndefinded(req)) {
                 remoteip = WebServer.remoteip(req);
             }
-            span.setAttribute("remoteip", remoteip);
+            span?.setAttribute("remoteip", remoteip);
             let username: string = profile.username;
             if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
             if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
@@ -1241,7 +1239,7 @@ export class LoginProvider {
             Audit.LoginSuccess(tuser, "weblogin", "google", remoteip, "googleverify", "unknown", span);
             done(null, tuser);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
         }
         Logger.otel.endSpan(span);
     }

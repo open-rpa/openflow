@@ -3811,6 +3811,15 @@ export class EntityCtrl extends entityCtrl<Base> {
             }
         });
     }
+    gettype(obj) {
+        return typeof obj;
+    }
+    getinputtype(obj, key) {
+        if (this.model._encrypt.indexOf(key))
+            if (typeof obj === "string") return "text";
+        if (typeof obj === "number") return "number";
+        if (typeof obj === "boolean") return "checkbox";
+    }
     processdata() {
         const ids: string[] = [];
         if (this.collection == "files") {
@@ -4314,6 +4323,10 @@ export class NoderedCtrl {
             // ctrl.user.nodered.nodered_image_name = ctrl.user.nodered.nodered_image_name || menuctrl.WebSocketClientService.nodered_images[0].name
 
             if (this.user.nodered == null) this.user.nodered = {} as any;
+            if ((this.user.nodered as any).monaco == null) (this.user.nodered as any).monaco = false;
+            if ((this.user.nodered as any).tours == null) (this.user.nodered as any).tours = WebSocketClientService.enable_web_tours;
+            if (this.user.nodered.function_external_modules == null) this.user.nodered.function_external_modules = true;
+            
             this.user.nodered.nodered_image_name = this.user.nodered.nodered_image_name || WebSocketClientService.nodered_images[0].name;
             if (this.user.nodered != null && this.user.nodered.resources != null && this.user.nodered.resources.limits != null) {
                 this.limitsmemory = this.user.nodered.resources.limits.memory;

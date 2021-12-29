@@ -14,3 +14,4 @@ docker-package.json
 .nyc_output
 sonar-scanner.properties
 sonar-project.properties
+crash.log

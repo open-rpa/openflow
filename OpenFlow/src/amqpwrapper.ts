@@ -276,7 +276,7 @@ export class amqpwrapper extends events.EventEmitter {
                 }
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -309,7 +309,7 @@ export class amqpwrapper extends events.EventEmitter {
             }
             return q;
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -342,7 +342,7 @@ export class amqpwrapper extends events.EventEmitter {
             this.exchanges.push(q);
             return q;
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);

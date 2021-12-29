@@ -41,11 +41,11 @@ export class log_message_node {
     }
     startspan(parentspan: Span, msgid) {
         this.span = Logger.otel.startSubSpan(this.name, parentspan);
-        this.span.setAttributes(Logger.otel.defaultlabels);
-        this.span.setAttribute("msgid", msgid);
-        this.span.setAttribute("nodeid", this.nodeid);
-        this.span.setAttribute("nodetype", this.nodetype)
-        this.span.setAttribute("name", this.name)
+        this.span?.setAttributes(Logger.otel.defaultlabels);
+        this.span?.setAttribute("msgid", msgid);
+        this.span?.setAttribute("nodeid", this.nodeid);
+        this.span?.setAttribute("nodetype", this.nodetype)
+        this.span?.setAttribute("name", this.name)
         // nodemessage.span = otel.startSpan2(msg.event, msg.msgid);
         this.end = Logger.otel.startTimer();
     }
@@ -65,10 +65,10 @@ export class log_message {
         this.hrtimestamp = hrTime();
         this.nodes = {};
         this.span = Logger.otel.startSpan(this.name);
-        this.span.setAttribute("msgid", msgid);
-        this.span.setAttribute("nodeid", this.nodeid);
-        this.span.setAttribute("nodetype", this.node.type)
-        this.span.setAttribute("name", this.name)
+        this.span?.setAttribute("msgid", msgid);
+        this.span?.setAttribute("nodeid", this.nodeid);
+        this.span?.setAttribute("nodetype", this.node.type)
+        this.span?.setAttribute("name", this.name)
     }
 }
 export class WebServer {
@@ -195,7 +195,7 @@ export class WebServer {
                 Logger.instanse.debug("WebServer.configure::configure nodered settings");
                 this.settings = new nodered_settings();
                 this.settings.functionExternalModules = Config.function_external_modules;
-                const c = Config;
+                this.settings.editorTheme.codeEditor.lib = Config.codeeditor_lib;
                 if (Config.nodered_port > 0) {
                     this.settings.uiPort = Config.nodered_port;
                 }
@@ -333,7 +333,6 @@ export class WebServer {
                 this.settings.editorTheme.tours = Config.tours;
 
                 this.settings.ui.path = "ui";
-                // this.settings.ui.middleware = new dashboardAuth();
                 this.settings.ui.middleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
                     noderedcontribmiddlewareauth.process(socket, req, res, next);
                 };

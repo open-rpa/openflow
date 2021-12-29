@@ -240,6 +240,72 @@ export class textarea implements ng.IDirective {
     }
 }
 
+export class ngtype implements ng.IDirective {
+    restrict = 'A';
+    require = '?ngModel';
+    constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService) {
+    }
+    link: ng.IDirectiveLinkFn = (scope: ng.IScope, element: ng.IAugmentedJQuery, attr: ng.IAttributes, ngModelCtrl: any) => {
+        if (NoderedUtil.IsNullUndefinded(ngModelCtrl)) { return; }
+        var mytype = "";
+        scope.$watch((newValue) => {
+            if (ngModelCtrl.$viewValue === null || ngModelCtrl.$viewValue === undefined) { return; }
+            if (typeof ngModelCtrl.$modelValue === 'number') {
+                mytype = "number";
+                element.attr("type", "number");
+            } else if (typeof ngModelCtrl.$modelValue === 'boolean') {
+                mytype = "boolean";
+                element.attr("type", "checkbox");
+            }
+        });
+
+        var toModelb = function (value) {
+            if (mytype == "text") {
+                return value;
+            } else if (mytype == "boolean") {
+                if (String(value).toLowerCase() == "true") { value = true; return true; }
+                { value = false; return false; }
+            } else if (mytype == "number") {
+                if (value === "" || value === null || value === undefined) return value;
+                return parseInt(value);
+            }
+            return value;
+        }
+        var toViewb = function (value) {
+            if (mytype == "") {
+                if (typeof value === 'number') {
+                    mytype = "number";
+                    element.attr("type", "number");
+                } else if (typeof value === 'boolean') {
+                    mytype = "boolean";
+                    element.attr("type", "checkbox");
+                } else if (value != null && value != undefined && typeof value === 'string') {
+                    mytype = "text";
+                    element.attr("type", "text");
+                }
+            }
+            if (mytype == "text") {
+                return value;
+            } else if (mytype == "boolean") {
+                if (String(value).toLowerCase() == "true") { value = true; return true; }
+                { value = false; return false; }
+            } else if (mytype == "number") {
+                if (value === "" || value === null || value === undefined) return value;
+                return parseInt(value);
+            }
+            return value;
+        }
+        ngModelCtrl.$formatters.push(toViewb);
+        ngModelCtrl.$parsers.push(toModelb);
+    }
+    static factory(): ng.IDirectiveFactory {
+        const directive = ($location: ng.ILocationService, $timeout: ng.ITimeoutService) => new ngtype($location, $timeout);
+        directive.$inject = ['$location', '$timeout'];
+        return directive;
+    }
+}
+
+
 async function getString(locale: any, lib: string, key: string): Promise<any> {
     return new Promise((resolve) => {
         try {
@@ -409,7 +475,7 @@ export class entitiesCtrl<T> {
     public baseprojection: any = {};
     public collection: string = "entities";
     public models: T[] = [];
-    public orderby: any = { _id: -1 };
+    public orderby: any = {};
     public autorefresh: boolean = false;
     public autorefreshinterval: number = 30 * 1000;
     public pagesize: number = 100;
@@ -417,6 +483,7 @@ export class entitiesCtrl<T> {
     public preloadData: any = null;
     public postloadData: any = null;
     public searchstring: string = "";
+    public lastsearchstring: string = "";
     public searchfields: string[] = ["name"];
     public basequeryas: string = null;
     public errormessage: string = "";
@@ -518,6 +585,12 @@ export class entitiesCtrl<T> {
                 }
             }
             let orderby = this.orderby;
+            if (this.lastsearchstring !== this.searchstring) {
+                this.models = [];
+                this.orderby = {};
+                orderby = {};
+            }
+            this.lastsearchstring = this.searchstring;
             if (this.searchstring !== "" && this.searchstring != null) {
                 if ((this.searchstring as string).indexOf("{") == 0) {
                     if ((this.searchstring as string).lastIndexOf("}") == ((this.searchstring as string).length - 1)) {
@@ -537,6 +610,7 @@ export class entitiesCtrl<T> {
                         // newq[this.searchfields[i]] = this.searchstring;
                         // exact match case insensitive
                         newexactq[this.searchfields[i]] = new RegExp(["^", this.searchstring, "$"].join(""), "i");
+                        // newexactq[this.searchfields[i]] = new RegExp(["^", this.searchstring].join(""), "i");
 
                         // exact match string contains
                         newq[this.searchfields[i]] = new RegExp([this.searchstring.substring(1)].join(""), "i");
@@ -544,11 +618,13 @@ export class entitiesCtrl<T> {
                         finalor.push(newq);
                         finalexactor.push(newexactq);
                     }
-                    if (!this.searchstring.startsWith(".") && this.WebSocketClientService.use_text_index_for_names) {
-                        finalor = [{ $text: { $search: this.searchstring } }]
-                        // this.orderby = { "$sort": { "score": { "$meta": "textScore" } } }
-                        // this.orderby = { score: { $meta: "textScore" } }
-                        // orderby = { score: { $meta: "textScore" } };
+                    var hastextindex = false;
+                    if (this.WebSocketClientService.collections_with_text_index.indexOf(this.collection) > -1) {
+                        hastextindex = true;
+                    }
+                    if (!this.searchstring.startsWith(".") && hastextindex) {
+                        finalor = [{ $text: { $search: this.searchstring.toLowerCase() } }]
+                        console.debug("text search using ", this.searchstring.toLowerCase());
                     }
                     if (Object.keys(query).length == 0) {
                         query = { $or: finalor.concat() };
@@ -556,6 +632,9 @@ export class entitiesCtrl<T> {
                     } else {
                         query = { $and: [query, { $or: finalor.concat() }] };
                         exactquery = { $and: [query, { $or: finalexactor.concat() }] };
+                    }
+                    if (!this.searchstring.startsWith(".") && hastextindex) {
+                        exactquery = { "_searchnames": this.searchstring.toLowerCase() };
                     }
 
                 }
@@ -566,7 +645,7 @@ export class entitiesCtrl<T> {
                 var temp = await NoderedUtil.Query(this.collection, query, this.baseprojection, orderby, this.pagesize, this.pagesize * this.page, null, basequeryas, null, 2);
                 this.models = this.models.concat(temp);
             }
-            if (exactquery != null && this.page == 0 && this.collection != "cvr" && this.collection != "audit") {
+            if (exactquery != null && this.page == 0 && this.collection != "audit") {
                 var temp = await NoderedUtil.Query(this.collection, exactquery, this.baseprojection, orderby, 1, 0, null, basequeryas, null, 2);
                 if (temp.length > 0) {
                     this.models = this.models.filter(x => (x as any)._id != temp[0]._id);

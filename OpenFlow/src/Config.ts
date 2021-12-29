@@ -33,7 +33,6 @@ export class Config {
         Config.enable_openflow_amqp = Config.parseBoolean(Config.getEnv("enable_openflow_amqp", "false"));
         Config.openflow_amqp_expiration = parseInt(Config.getEnv("openflow_amqp_expiration", (60 * 1000 * 25).toString())); // 25 min
         Config.amqp_prefetch = parseInt(Config.getEnv("amqp_prefetch", "50"));
-        Config.trace_dashboardauth = Config.parseBoolean(Config.getEnv("trace_dashboardauth", "true"));
         Config.enable_entity_restriction = Config.parseBoolean(Config.getEnv("enable_entity_restriction", "false"));
         Config.enable_web_tours = Config.parseBoolean(Config.getEnv("enable_web_tours", "true"));
         Config.auto_hourly_housekeeping = Config.parseBoolean(Config.getEnv("auto_hourly_housekeeping", "false"));
@@ -173,6 +172,10 @@ export class Config {
         Config.otel_metric_url = Config.getEnv("otel_metric_url", "");
         Config.otel_trace_interval = parseInt(Config.getEnv("otel_trace_interval", "5000"));
         Config.otel_metric_interval = parseInt(Config.getEnv("otel_metric_interval", "5000"));
+
+        Config.otel_trace_pingclients = Config.parseBoolean(Config.getEnv("otel_trace_pingclients", "false"));
+        Config.otel_trace_dashboardauth = Config.parseBoolean(Config.getEnv("otel_trace_dashboardauth", "false"));
+    
         Config.validate_user_form = Config.getEnv("validate_user_form", "");
     }
     public static db: DatabaseConnection = null;
@@ -194,12 +197,13 @@ export class Config {
     public static enable_openflow_amqp: boolean = Config.parseBoolean(Config.getEnv("enable_openflow_amqp", "false"));
     public static openflow_amqp_expiration: number = parseInt(Config.getEnv("openflow_amqp_expiration", (60 * 1000 * 25).toString())); // 25 min
     public static amqp_prefetch: number = parseInt(Config.getEnv("amqp_prefetch", "50"));
-    public static trace_dashboardauth: boolean = Config.parseBoolean(Config.getEnv("trace_dashboardauth", "true"));
     public static enable_entity_restriction: boolean = Config.parseBoolean(Config.getEnv("enable_entity_restriction", "false"));
     public static enable_web_tours: boolean = Config.parseBoolean(Config.getEnv("enable_web_tours", "true"));
     public static auto_hourly_housekeeping: boolean = Config.parseBoolean(Config.getEnv("auto_hourly_housekeeping", "true"));
     public static housekeeping_update_usage_hourly: boolean = Config.parseBoolean(Config.getEnv("housekeeping_update_usage_hourly", "false"));
     public static housekeeping_update_usersize_hourly: boolean = Config.parseBoolean(Config.getEnv("housekeeping_update_usersize_hourly", "true"));
+
+    public static upload_max_filesize_mb: number = parseInt(Config.getEnv("upload_max_filesize_mb", "25"));
 
     public static getting_started_url: string = Config.getEnv("getting_started_url", "");
 
@@ -236,9 +240,6 @@ export class Config {
     public static grafana_credential_cache_seconds: number = parseInt(Config.getEnv("grafana_credential_cache_seconds", "900"));
     public static cleanacl_credential_cache_seconds: number = parseInt(Config.getEnv("cleanacl_credential_cache_seconds", "900"));
     public static mq_credential_cache_seconds: number = parseInt(Config.getEnv("mq_credential_cache_seconds", "900"));
-
-    public static create_text_index_for_names: boolean = Config.parseBoolean(Config.getEnv("create_text_index_for_names", "false"));
-    public static use_text_index_for_names: boolean = Config.parseBoolean(Config.getEnv("use_text_index_for_names", "false"));
 
     public static oidc_access_token_ttl: number = parseInt(Config.getEnv("oidc_access_token_ttl", "28800")); // 8 hours
     public static oidc_authorization_code_ttl: number = parseInt(Config.getEnv("oidc_authorization_code_ttl", "28800")); // 8 hours
@@ -343,6 +344,9 @@ export class Config {
     public static otel_metric_url: string = Config.getEnv("otel_metric_url", "");
     public static otel_trace_interval: number = parseInt(Config.getEnv("otel_trace_interval", "5000"));
     public static otel_metric_interval: number = parseInt(Config.getEnv("otel_metric_interval", "5000"));
+    public static otel_trace_pingclients: boolean = Config.parseBoolean(Config.getEnv("otel_trace_pingclients", "false"));
+    public static otel_trace_dashboardauth: boolean = Config.parseBoolean(Config.getEnv("otel_trace_dashboardauth", "false"));
+    
 
     public static validate_user_form: string = Config.getEnv("validate_user_form", "");
 

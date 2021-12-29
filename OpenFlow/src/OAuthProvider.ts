@@ -198,7 +198,7 @@ export class OAuthProvider {
                     }
                     if (session2 != null) { session2.resetIdentifier(); session2.destroy(); }
 
-                    req.logout();
+                    // req.logout();
                 }
                 instance.oidc.callback(req, res);
             });
@@ -264,7 +264,7 @@ export class OAuthProvider {
                         );
                     }
                 } catch (error) {
-                    span.recordException(error);
+                    span?.recordException(error);
                     if (error.name == "SessionNotFound") {
                         res.redirect(`/`);
                         res.end();
@@ -275,7 +275,7 @@ export class OAuthProvider {
                 }
             });
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             Logger.instanse.error(error);
         }
         Logger.otel.endSpan(span);
@@ -337,7 +337,7 @@ export class OAuthProvider {
                         res.redirect("/login");
                     }
                 } catch (error) {
-                    span.recordException(error);
+                    span?.recordException(error);
                     throw error;
                 } finally {
                     Logger.otel.endSpan(span);
@@ -416,7 +416,7 @@ export class OAuthProvider {
             if (token == null) return false;
             return token;
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -434,7 +434,7 @@ export class OAuthProvider {
             if (token == null) return false;
             return token;
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -586,7 +586,7 @@ export class OAuthProvider {
             }
             return result;
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);

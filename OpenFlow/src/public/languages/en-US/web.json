@@ -112,5 +112,12 @@
     "Coupon": "Coupon",
     "rparole": "RPA Role",
     "member": "Member",
-    "clients": "Clients"
+    "clients": "Clients",
+    "customers": "Customers",
+    "entityrestrictions": "Entity restrictions",
+    "resources": "Resources",
+    "enable multi tenancy": "Enable multi tenancy",
+    "showproperties": "Show properties",
+    "add key": "Add key",
+    "json": "JSON"
 }

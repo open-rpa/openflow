@@ -87,8 +87,8 @@ export class Message {
             this.options = options;
             const ot_end = Logger.otel.startTimer();
             span = Logger.otel.startSubSpan("QueueProcessMessage " + this.command, parent);
-            span.setAttribute("command", this.command);
-            span.setAttribute("id", this.id);
+            span?.setAttribute("command", this.command);
+            span?.setAttribute("id", this.id);
             switch (this.command) {
                 case "listcollections":
                     await this.ListCollections(span);
@@ -145,14 +145,14 @@ export class Message {
                     await this.Housekeeping(false, false, false, span);
                     break;
                 default:
-                    span.recordException("Unknown command " + this.command);
+                    span?.recordException("Unknown command " + this.command);
                     this.UnknownCommand();
                     break;
             }
             if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: this.command });
         } catch (error) {
             Logger.instanse.error(error);
-            span.recordException(error);
+            span?.recordException(error);
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -244,14 +244,14 @@ export class Message {
 
             if (!NoderedUtil.IsNullEmpty(this.replyto)) {
                 span = Logger.otel.startSpan("ProcessMessageReply " + command);
-                span.setAttribute("clientid", cli.id);
-                span.setAttribute("command", command);
-                span.setAttribute("id", this.id);
-                span.setAttribute("replyto", this.replyto);
-                if (!NoderedUtil.IsNullEmpty(cli.clientversion)) span.setAttribute("clientversion", cli.clientversion);
-                if (!NoderedUtil.IsNullEmpty(cli.clientagent)) span.setAttribute("clientagent", cli.clientagent);
-                if (!NoderedUtil.IsNullEmpty(cli.remoteip)) span.setAttribute("remoteip", cli.remoteip);
-                if (!NoderedUtil.IsNullUndefinded(cli.user) && !NoderedUtil.IsNullEmpty(cli.user.username)) span.setAttribute("username", cli.user.username);
+                span?.setAttribute("clientid", cli.id);
+                span?.setAttribute("command", command);
+                span?.setAttribute("id", this.id);
+                span?.setAttribute("replyto", this.replyto);
+                if (!NoderedUtil.IsNullEmpty(cli.clientversion)) span?.setAttribute("clientversion", cli.clientversion);
+                if (!NoderedUtil.IsNullEmpty(cli.clientagent)) span?.setAttribute("clientagent", cli.clientagent);
+                if (!NoderedUtil.IsNullEmpty(cli.remoteip)) span?.setAttribute("remoteip", cli.remoteip);
+                if (!NoderedUtil.IsNullUndefinded(cli.user) && !NoderedUtil.IsNullEmpty(cli.user.username)) span?.setAttribute("username", cli.user.username);
                 const ot_end = Logger.otel.startTimer();
                 const qmsg: QueuedMessage = cli.messageQueue[this.replyto];
                 if (!NoderedUtil.IsNullUndefinded(qmsg)) {
@@ -270,13 +270,13 @@ export class Message {
             }
             const ot_end = Logger.otel.startTimer();
             span = Logger.otel.startSpan("ProcessMessage " + command);
-            span.setAttribute("clientid", cli.id);
-            if (!NoderedUtil.IsNullEmpty(cli.clientversion)) span.setAttribute("clientversion", cli.clientversion);
-            if (!NoderedUtil.IsNullEmpty(cli.clientagent)) span.setAttribute("clientagent", cli.clientagent);
-            if (!NoderedUtil.IsNullEmpty(cli.remoteip)) span.setAttribute("remoteip", cli.remoteip);
-            if (!NoderedUtil.IsNullUndefinded(cli.user) && !NoderedUtil.IsNullEmpty(cli.user.username)) span.setAttribute("username", cli.user.username);
-            span.setAttribute("command", command);
-            span.setAttribute("id", this.id);
+            span?.setAttribute("clientid", cli.id);
+            if (!NoderedUtil.IsNullEmpty(cli.clientversion)) span?.setAttribute("clientversion", cli.clientversion);
+            if (!NoderedUtil.IsNullEmpty(cli.clientagent)) span?.setAttribute("clientagent", cli.clientagent);
+            if (!NoderedUtil.IsNullEmpty(cli.remoteip)) span?.setAttribute("remoteip", cli.remoteip);
+            if (!NoderedUtil.IsNullUndefinded(cli.user) && !NoderedUtil.IsNullEmpty(cli.user.username)) span?.setAttribute("username", cli.user.username);
+            span?.setAttribute("command", command);
+            span?.setAttribute("id", this.id);
             switch (command) {
                 case "listcollections":
                     if (!this.EnsureJWT(cli)) break;
@@ -555,7 +555,7 @@ export class Message {
                     break;
                 default:
                     if (command != "error") {
-                        span.recordException("Unknown command " + command);
+                        span?.recordException("Unknown command " + command);
                         this.UnknownCommand();
                         cli.Send(this);
                     } else {
@@ -566,7 +566,7 @@ export class Message {
             if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
         } catch (error) {
             Logger.instanse.error(error);
-            span.recordException(error);
+            span?.recordException(error);
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -896,9 +896,8 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(msg.data.jwt)) {
                 msg.jwt = msg.data.jwt;
             }
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) {
-                msg.jwt = cli.jwt;
-            }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
                 const tuser = Crypt.verityToken(msg.jwt);
                 msg.user = tuser;
@@ -987,14 +986,14 @@ export class Message {
             }
             const keys = Object.keys(Message.collectionCache);
             if (Message.collectionCache[msg.jwt] != null) {
-                span.addEvent("Get from cache");
-                span.setAttribute("cache size", keys.length);
+                span?.addEvent("Get from cache");
+                span?.setAttribute("cache size", keys.length);
                 msg.result = Message.collectionCache[msg.jwt];
             } else {
-                span.addEvent("ListCollections");
+                span?.addEvent("ListCollections");
                 msg.result = await Config.db.ListCollections(msg.jwt);
                 msg.result = msg.result.filter(x => x.name.indexOf("system.") === -1);
-                span.addEvent("Filter collections");
+                span?.addEvent("Filter collections");
                 if (msg.includehist !== true) {
                     msg.result = msg.result.filter(x => !x.name.endsWith("_hist"));
                 }
@@ -1011,9 +1010,9 @@ export class Message {
                 if (result.filter(x => x.name == "entities").length == 0) {
                     result.push({ name: "entities", type: "collection" });
                 }
-                span.addEvent("Add result to cache");
+                span?.addEvent("Add result to cache");
                 Message.collectionCache[msg.jwt] = result;
-                span.setAttribute("cache size", keys.length + 1);
+                span?.setAttribute("cache size", keys.length + 1);
                 msg.result = result;
             }
             const _tuser = Crypt.verityToken(this.jwt);
@@ -1032,7 +1031,7 @@ export class Message {
                 var b = true;
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             await handleError(null, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -1040,7 +1039,7 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(null, error);
         }
@@ -1055,7 +1054,7 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             await Config.db.DropCollection(msg.collectionname, msg.jwt, span);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             await handleError(null, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -1063,7 +1062,7 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(null, error);
         }
@@ -1077,7 +1076,7 @@ export class Message {
             msg = QueryMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) {
-                span.recordException("Access denied, not signed in")
+                span?.recordException("Access denied, not signed in")
                 msg.error = "Access denied, not signed in";
             } else {
                 msg.result = await Config.db.query(msg.query, msg.projection, msg.top, msg.skip, msg.orderby, msg.collectionname, msg.jwt, msg.queryas, msg.hint, span);
@@ -1085,7 +1084,7 @@ export class Message {
             delete msg.query;
         } catch (error) {
             await handleError(null, error);
-            span.recordException(error)
+            span?.recordException(error)
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
@@ -1093,7 +1092,7 @@ export class Message {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            span.recordException(error)
+            span?.recordException(error)
             await handleError(null, error);
         }
         Logger.otel.endSpan(span);
@@ -1112,7 +1111,7 @@ export class Message {
             }
         } catch (error) {
             await handleError(null, error);
-            span.recordException(error)
+            span?.recordException(error)
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
@@ -1120,7 +1119,7 @@ export class Message {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            span.recordException(error)
+            span?.recordException(error)
             await handleError(null, error);
         }
         Logger.otel.endSpan(span);
@@ -1153,6 +1152,7 @@ export class Message {
         let msg: WatchMessage
         try {
             msg = WatchMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (Config.supports_watch) {
                 await cli.UnWatch(msg.id, msg.jwt);
@@ -1178,6 +1178,7 @@ export class Message {
         let msg: WatchMessage
         try {
             msg = WatchMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (Config.supports_watch) {
                 msg.id = await cli.Watch(msg.aggregates, msg.collectionname, msg.jwt);
@@ -1213,7 +1214,7 @@ export class Message {
             msg.result = await Config.db.InsertOne(msg.item, msg.collectionname, msg.w, msg.j, msg.jwt, span);
             delete msg.item;
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             await handleError(null, error);
@@ -1222,7 +1223,7 @@ export class Message {
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
-            span.recordException(error);
+            span?.recordException(error);
             await handleError(null, error);
         }
         Logger.otel.endSpan(span);
@@ -1243,7 +1244,7 @@ export class Message {
             if (msg.skipresults) msg.results = [];
             delete msg.items;
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             await handleError(null, error);
@@ -1251,7 +1252,7 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(null, error);
         }
@@ -1270,7 +1271,7 @@ export class Message {
             msg = tempres;
             delete msg.item;
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             await handleError(null, error);
@@ -1279,7 +1280,7 @@ export class Message {
             if (msg != null) delete msg.query;
             this.data = JSON.stringify(msg);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(null, error);
         }
@@ -1388,6 +1389,7 @@ export class Message {
         let msg: MapReduceMessage
         try {
             msg = MapReduceMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             msg.result = await Config.db.MapReduce(msg.map, msg.reduce, msg.finalize, msg.query, msg.out, msg.collectionname, msg.scope, msg.jwt);
             delete msg.map;
@@ -1424,8 +1426,8 @@ export class Message {
                 tuser = TokenUser.From(cli.user);
                 tuser.impostor = impostor;
             }
-            span.setAttribute("type", type);
-            span.setAttribute("clientid", cli.id);
+            span?.setAttribute("type", type);
+            span?.setAttribute("clientid", cli.id);
             if (!NoderedUtil.IsNullUndefinded(cli.user)) {
                 if (!(cli.user.validated == true) && Config.validate_user_form != "") {
                     if (cli.clientagent != "nodered" && NoderedUtil.IsNullEmpty(tuser.impostor)) {
@@ -1445,7 +1447,7 @@ export class Message {
             }
         } catch (error) {
             Logger.instanse.error(error);
-            span.recordException(error);
+            span?.recordException(error);
         }
         return tuser;
     }
@@ -1713,7 +1715,7 @@ export class Message {
             }
             hrend = process.hrtime(hrstart)
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
         }
         Logger.otel.endSpan(span);
         this.Send(cli);
@@ -1739,7 +1741,7 @@ export class Message {
             const jwt: string = Crypt.createToken(msg.user, Config.shorttoken_expires_in);
             DBHelper.EnsureNoderedRoles(user, jwt, false, span);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             await handleError(cli, error);
@@ -1747,7 +1749,7 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(cli, error);
         }
@@ -1770,7 +1772,7 @@ export class Message {
         }
         name = name.split("@").join("").split(".").join("");
         name = name.toLowerCase();
-        span.setAttribute("instancename", name)
+        span?.setAttribute("instancename", name)
         Logger.otel.endSpan(span);
         return name;
     }
@@ -1985,7 +1987,7 @@ export class Message {
 
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(null, error);
             //msg.error = JSON.stringify(error, null, 2);
@@ -1994,7 +1996,7 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(null, error);
         }
@@ -2008,7 +2010,7 @@ export class Message {
             msg = EnsureNoderedInstanceMessage.assign(this.data);
             await this._EnsureNoderedInstance(msg._id, false, span);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(null, error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -2016,7 +2018,7 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(null, error);
         }
@@ -2363,7 +2365,7 @@ export class Message {
                 throw new Error("failed locating useringress");
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             Logger.otel.endSpan(span);
             throw error;
         }
@@ -2432,7 +2434,7 @@ export class Message {
                 throw new Error("failed locating useringress");
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             Logger.otel.endSpan(span);
             throw error;
         }
@@ -2471,7 +2473,7 @@ export class Message {
                 await handleError(null, error);
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             Logger.otel.endSpan(span);
             throw error;
         }
@@ -2497,22 +2499,22 @@ export class Message {
             const name = await this.GetInstanceName(msg._id, user._id, user.username, this.jwt, span);
             if (NoderedUtil.IsNullEmpty(msg.name)) msg.name = name;
 
-            span.addEvent("init Docker()");
+            span?.addEvent("init Docker()");
             const docker: Dockerode = new Docker();
-            span.addEvent("listContainers()");
+            span?.addEvent("listContainers()");
             var list = await docker.listContainers({ all: 1 });
             for (let i = 0; i < list.length; i++) {
                 const item = list[i];
                 if (item.Names[0] == "/" + msg.name) {
-                    span.addEvent("getContainer(" + item.Id + ")");
+                    span?.addEvent("getContainer(" + item.Id + ")");
                     const container = docker.getContainer(item.Id);
                     if (item.State == "running") await container.stop();
-                    span.addEvent("remove()");
+                    span?.addEvent("remove()");
                     await container.remove();
                 }
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(null, error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error
@@ -2520,7 +2522,7 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(null, error);
         }
@@ -2567,7 +2569,7 @@ export class Message {
                 Audit.NoderedAction(TokenUser.From(user), false, null, "deletepod", image, msg.name, span);
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(null, error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -2575,7 +2577,7 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(null, error);
         }
@@ -2599,9 +2601,9 @@ export class Message {
             msg = RestartNoderedInstanceMessage.assign(this.data);
             const name = await this.GetInstanceName(msg._id, user._id, user.username, this.jwt, span);
 
-            span.addEvent("init Docker()");
+            span?.addEvent("init Docker()");
             const docker: Dockerode = new Docker();
-            span.addEvent("listContainers()");
+            span?.addEvent("listContainers()");
             var list = await docker.listContainers({ all: 1 });
             var instance = null;
             for (let i = 0; i < list.length; i++) {
@@ -2611,13 +2613,13 @@ export class Message {
                 }
             }
             if (instance != null) {
-                span.addEvent("getContainer(" + instance.Id + ")");
+                span?.addEvent("getContainer(" + instance.Id + ")");
                 const container = docker.getContainer(instance.Id);
                 if (instance.State == "running") await container.stop();
                 await container.restart();
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(null, error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error
@@ -2625,7 +2627,7 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(null, error);
         }
@@ -2661,7 +2663,7 @@ export class Message {
                 }
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(null, error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -2669,7 +2671,7 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(null, error);
         }
@@ -2734,9 +2736,9 @@ export class Message {
             msg = GetNoderedInstanceMessage.assign(this.data);
             const name = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
 
-            span.addEvent("init Docker()");
+            span?.addEvent("init Docker()");
             const docker = new Docker();
-            span.addEvent("listContainers()");
+            span?.addEvent("listContainers()");
             var list = await docker.listContainers({ all: 1 });
             var result = [];
             for (let i = 0; i < list.length; i++) {
@@ -2745,9 +2747,9 @@ export class Message {
                 item.metadata = { creationTimestamp: Created, name: (item.Names[0] as string).substr(1) };
                 item.status = { phase: item.State }
                 if (item.Names[0] == "/" + name) {
-                    span.addEvent("getContainer(" + item.Id + ")");
+                    span?.addEvent("getContainer(" + item.Id + ")");
                     const container = docker.getContainer(item.Id);
-                    span.addEvent("stats()");
+                    span?.addEvent("stats()");
                     var stats = await container.stats({ stream: false });
                     let cpu_usage: 0;
                     let memory: 0;
@@ -2766,7 +2768,7 @@ export class Message {
             msg.results = result;
             if (result.length > 0) msg.result = result[0];
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(null, error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error
@@ -2774,7 +2776,7 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(null, error);
         }
@@ -2853,7 +2855,7 @@ export class Message {
                 Logger.instanse.warn("[" + _tuser.username + "] GetNoderedInstance: found NO Namespaced Pods ???");
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(null, error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error
@@ -2861,7 +2863,7 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(null, error);
         }
@@ -2923,7 +2925,7 @@ export class Message {
                 console.log(msg.result);
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(cli, error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error
@@ -2935,7 +2937,7 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(cli, error);
         }
@@ -3001,7 +3003,7 @@ export class Message {
                 Audit.NoderedAction(TokenUser.From(cli.user), false, name, "readpodlog", image, null, span);
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(cli, error);
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error
@@ -3013,7 +3015,7 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(cli, error);
         }
@@ -3057,6 +3059,7 @@ export class Message {
         let msg: SaveFileMessage
         try {
             msg = SaveFileMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.filename)) throw new Error("Filename is mandatory");
             if (NoderedUtil.IsNullEmpty(msg.file)) throw new Error("file is mandatory");
@@ -3107,7 +3110,7 @@ export class Message {
             if ((hasUser === null || hasUser === undefined)) {
                 Base.addRight(msg.metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
             }
-            msg.metadata = Config.db.ensureResource(msg.metadata);
+            msg.metadata = Config.db.ensureResource(msg.metadata, "fs.files");
             if (!NoderedUtil.hasAuthorization(user, msg.metadata, Rights.create)) { throw new Error("Access denied, no authorization to save file"); }
             msg.id = await this._SaveFile(readable, msg.filename, msg.mimeType, msg.metadata);
             msg.result = await Config.db.getbyid(msg.id, "fs.files", msg.jwt, null);
@@ -3161,6 +3164,7 @@ export class Message {
         let msg: GetFileMessage
         try {
             msg = SaveFileMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (!NoderedUtil.IsNullEmpty(msg.id)) {
                 const rows = await Config.db.query({ _id: safeObjectID(msg.id) }, null, 1, 0, null, "files", msg.jwt, undefined, undefined, span);
@@ -3179,7 +3183,7 @@ export class Message {
             }
             msg.file = await this._GetFile(msg.id);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             await handleError(cli, error);
@@ -3187,7 +3191,7 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(cli, error);
         }
@@ -3215,6 +3219,7 @@ export class Message {
         let msg: UpdateFileMessage
         try {
             msg = UpdateFileMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
 
             const bucket = new GridFSBucket(Config.db.db);
@@ -3244,7 +3249,7 @@ export class Message {
             Base.addRight(msg.metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
             if (!NoderedUtil.hasAuthorization(user, msg.metadata, Rights.update)) { throw new Error("Access denied, no authorization to update file"); }
 
-            msg.metadata = Config.db.ensureResource(msg.metadata);
+            msg.metadata = Config.db.ensureResource(msg.metadata, "fs.files");
             const fsc = Config.db.db.collection("fs.files");
             DatabaseConnection.traversejsonencode(msg.metadata);
             const res = await fsc.updateOne(q, { $set: { metadata: msg.metadata } });
@@ -3273,6 +3278,7 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.workflowid) && NoderedUtil.IsNullEmpty(msg.queue)) throw new Error("workflowid or queue is mandatory");
             if (NoderedUtil.IsNullEmpty(msg.resultqueue)) throw new Error("replyqueuename is mandatory");
             if (NoderedUtil.IsNullEmpty(msg.targetid)) throw new Error("targetid is mandatory");
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             const tuser = Crypt.verityToken(msg.jwt);
             msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
@@ -3317,7 +3323,7 @@ export class Message {
                 amqpwrapper.Instance().sendWithReplyTo("", msg.queue, msg.resultqueue, message, Config.amqp_default_expiration, msg.correlationId, "");
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
             await handleError(cli, error);
@@ -3325,7 +3331,7 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(cli, error);
         }
@@ -3441,7 +3447,7 @@ export class Message {
                 await Config.db.DeleteOne(usage._id, "config", Crypt.rootToken(), span);
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         }
         finally {
@@ -3455,11 +3461,12 @@ export class Message {
         const rootjwt = Crypt.rootToken();
         try {
             msg = StripeCancelPlanMessage.assign(this.data);
-            if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (NoderedUtil.IsNullUndefinded(msg.jwt)) { msg.jwt = cli.jwt; }
             await this._StripeCancelPlan(msg.resourceusageid, msg.quantity, msg.jwt, span);
 
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             await handleError(cli, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
@@ -3472,7 +3479,7 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(cli, error);
         }
@@ -3486,7 +3493,8 @@ export class Message {
         let msg: GetNextInvoiceMessage;
         try {
             msg = GetNextInvoiceMessage.assign(this.data);
-            if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (NoderedUtil.IsNullUndefinded(msg.jwt)) { msg.jwt = cli.jwt; }
 
             let payload: any = {};
             const customer: Customer = await Config.db.getbyid(msg.customerid, "users", msg.jwt, span);
@@ -3638,7 +3646,7 @@ export class Message {
                 } while (test.has_more);
             }
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             await handleError(null, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
@@ -3652,7 +3660,7 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(cli, error);
         }
@@ -3665,14 +3673,15 @@ export class Message {
         let msg: StripeAddPlanMessage;
         try {
             msg = StripeAddPlanMessage.assign(this.data);
-            if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (NoderedUtil.IsNullUndefinded(msg.jwt)) { msg.jwt = cli.jwt; }
             if (NoderedUtil.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
             const [customer, checkout] = await this._StripeAddPlan(msg.customerid, msg.userid, msg.resourceid, msg.stripeprice,
                 msg.quantity, false, msg.jwt, span);
             msg.checkout = checkout;
 
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             await handleError(null, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
@@ -3685,7 +3694,7 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(cli, error);
         }
@@ -3935,7 +3944,7 @@ export class Message {
 
             return [customer, checkout];
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             throw error;
         }
         finally {
@@ -4077,7 +4086,8 @@ export class Message {
         let msg: StripeMessage;
         try {
             msg = StripeMessage.assign(this.data);
-            if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (NoderedUtil.IsNullUndefinded(msg.jwt)) { msg.jwt = cli.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.object)) throw new Error("object is mandatory");
             if (!cli.user.HasRoleName("admins")) {
                 if (!NoderedUtil.IsNullEmpty(msg.url)) throw new Error("Custom url not allowed");
@@ -4125,7 +4135,8 @@ export class Message {
         const rootjwt = Crypt.rootToken();
         try {
             msg = EnsureCustomerMessage.assign(this.data);
-            if (NoderedUtil.IsNullUndefinded(msg.jwt)) msg.jwt = cli.jwt;
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (NoderedUtil.IsNullUndefinded(msg.jwt)) { msg.jwt = cli.jwt; }
             let user: User = cli.user;
             let customer: Customer = null;
             if (msg.customer != null && msg.customer._id != null) {
@@ -4336,7 +4347,7 @@ export class Message {
             }
 
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             await handleError(cli, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
@@ -4349,7 +4360,7 @@ export class Message {
         try {
             this.data = JSON.stringify(msg);
         } catch (error) {
-            span.recordException(error);
+            span?.recordException(error);
             this.data = "";
             await handleError(cli, error);
         }
@@ -4424,6 +4435,143 @@ export class Message {
         yesterday.setDate(yesterday.getDate() - 1);
 
         try {
+            for (let i = 0; i < DatabaseConnection.collections_with_text_index.length; i++) {
+                let collectionname = DatabaseConnection.collections_with_text_index[i];
+                if (DatabaseConnection.timeseries_collections.indexOf(collectionname) > -1) continue;
+                if (DatabaseConnection.usemetadata(collectionname)) {
+                    let exists = await Config.db.db.collection(collectionname).findOne({ "metadata._searchnames": { $exists: false } });
+                    if (!NoderedUtil.IsNullUndefinded(exists)) {
+                        Logger.instanse.info("[housekeeping][" + collectionname + "] Start creating metadata._searchnames for collection " + collectionname);
+                        await Config.db.db.collection(collectionname).updateMany({ "metadata._searchnames": { $exists: false } },
+                            [
+                                {
+                                    "$set": {
+                                        "metadata._searchnames":
+                                        {
+                                            $split: [
+                                                {
+                                                    $replaceAll: {
+                                                        input:
+                                                        {
+                                                            $replaceAll: {
+                                                                input:
+                                                                {
+                                                                    $replaceAll: {
+                                                                        input:
+                                                                            { $toLower: "$metadata.name" }
+                                                                        , find: ".", replacement: " "
+                                                                    }
+                                                                }
+                                                                , find: "-", replacement: " "
+                                                            }
+                                                        }
+                                                        , find: "/", replacement: " "
+                                                    }
+                                                }
+                                                , " "]
+                                        }
+                                    }
+                                }
+                                ,
+                                {
+                                    "$set": {
+                                        "_searchname":
+                                        {
+                                            $replaceAll: {
+                                                input:
+                                                {
+                                                    $replaceAll: {
+                                                        input:
+                                                        {
+                                                            $replaceAll: {
+                                                                input:
+                                                                    { $toLower: "$metadata.name" }
+                                                                , find: ".", replacement: " "
+                                                            }
+                                                        }
+                                                        , find: "-", replacement: " "
+                                                    }
+                                                }
+                                                , find: "/", replacement: " "
+                                            }
+                                        }
+                                    }
+                                }
+                                ,
+                                { "$set": { "metadata._searchnames": { $concatArrays: ["$metadata._searchnames", [{ $toLower: "$metadata.name" }]] } } }
+                            ]
+                        )
+                        Logger.instanse.info("[housekeeping][" + collectionname + "] Done creating _searchnames for collection " + collectionname);
+                    }
+                } else {
+                    let exists = await Config.db.db.collection(collectionname).findOne({ "_searchnames": { $exists: false } });
+                    if (!NoderedUtil.IsNullUndefinded(exists)) {
+                        Logger.instanse.info("[housekeeping][" + collectionname + "] Start creating _searchnames for collection " + collectionname);
+                        await Config.db.db.collection(collectionname).updateMany({ "_searchnames": { $exists: false } },
+                            [
+                                {
+                                    "$set": {
+                                        "_searchnames":
+                                        {
+                                            $split: [
+                                                {
+                                                    $replaceAll: {
+                                                        input:
+                                                        {
+                                                            $replaceAll: {
+                                                                input:
+                                                                {
+                                                                    $replaceAll: {
+                                                                        input:
+                                                                            { $toLower: "$name" }
+                                                                        , find: ".", replacement: " "
+                                                                    }
+                                                                }
+                                                                , find: "-", replacement: " "
+                                                            }
+                                                        }
+                                                        , find: "/", replacement: " "
+                                                    }
+                                                }
+                                                , " "]
+                                        }
+                                    }
+                                }
+                                ,
+                                {
+                                    "$set": {
+                                        "_searchname":
+                                        {
+                                            $replaceAll: {
+                                                input:
+                                                {
+                                                    $replaceAll: {
+                                                        input:
+                                                        {
+                                                            $replaceAll: {
+                                                                input:
+                                                                    { $toLower: "$name" }
+                                                                , find: ".", replacement: " "
+                                                            }
+                                                        }
+                                                        , find: "-", replacement: " "
+                                                    }
+                                                }
+                                                , find: "/", replacement: " "
+                                            }
+                                        }
+                                    }
+                                }
+                                ,
+                                { "$set": { "_searchnames": { $concatArrays: ["$_searchnames", [{ $toLower: "$name" }]] } } }
+                            ]
+                        )
+                        Logger.instanse.info("[housekeeping][" + collectionname + "] Done creating _searchnames for collection " + collectionname);
+                    }
+                }
+            }
+
+            // skipCalculateSize = false;
             if (!skipCalculateSize) {
 
                 const user = Crypt.rootUser();
@@ -4505,34 +4653,48 @@ export class Message {
                     Config.db.db.collection("dbusage").deleteMany({ timestamp: timestamp, collection: col.name });
                     let usage = 0;
                     if (items.length > 0) {
-                        let bulkInsert = Config.db.db.collection("dbusage").initializeUnorderedBulkOp();
-                        for (var _item of items) {
-                            let item = Config.db.ensureResource(_item);
-                            item = await Config.db.CleanACL(item, tuser, span);
-                            delete item._id;
-                            item.username = item.name;
-                            item.name = item.name + " / " + col.name + " / " + this.formatBytes(_item.size);
-                            item._type = "metered";
-                            item._createdby = "root";
-                            item._createdbyid = WellknownIds.root;
-                            item._created = new Date(new Date().toISOString());
-                            item._modifiedby = "root";
-                            item._modifiedbyid = WellknownIds.root;
-                            item._modified = item._created;
-                            usage += item.size;
-                            DatabaseConnection.traversejsonencode(item);
+                        // let bulkInsert = Config.db.db.collection("dbusage").initializeUnorderedBulkOp();
+                        for (var i = 0; i < items.length; i++) {
+                            try {
+                                // sometimes the item is "weird", re-serializing it, cleans it, so it works again ... mongodb bug ???
+                                let item = JSON.parse(JSON.stringify(items[i]));
+                                item = Config.db.ensureResource(item, "dbusage");
+                                item = await Config.db.CleanACL(item, tuser, "dbusage", span);
+                                delete item._id;
+                                item.username = item.name;
+                                item.name = item.name + " / " + col.name + " / " + this.formatBytes(item.size);
+                                item._type = "metered";
+                                item._createdby = "root";
+                                item._createdbyid = WellknownIds.root;
+                                item._created = new Date(new Date().toISOString());
+                                item._modifiedby = "root";
+                                item._modifiedbyid = WellknownIds.root;
+                                item._modified = item._created;
+                                usage += item.size;
+                                DatabaseConnection.traversejsonencode(item);
+                                item.timestamp = new Date(timestamp.toISOString());
+                                if (col.name == "cvr") {
+                                    delete item.timestamp;
+                                }
+                                await Config.db.db.collection("dbusage").insertOne(item);
+                                if (col.name == "cvr") {
+                                    await Config.db.db.collection("dbusage").updateOne({ _id: item._id }, { $set: { "timestamp": new Date(timestamp.toISOString()) } });
+                                }
+                                // bulkInsert.insert(item);
+                            } catch (error) {
+                                Logger.instanse.error(error);
+                                span?.recordException(error);
+                            }
 
-                            bulkInsert.insert(item);
                         }
-
                         totalusage += usage;
                         try {
-                            await bulkInsert.execute();
+                            // await bulkInsert.execute();
                             if (items.length > 0) Logger.instanse.debug("[housekeeping][" + col.name + "][" + index + "/" + collections.length + "] add " + items.length + " items with a usage of " + this.formatBytes(usage));
 
                         } catch (error) {
                             Logger.instanse.error(error);
-                            span.recordException(error);
+                            span?.recordException(error);
                         }
                     }
                 }
@@ -4541,7 +4703,7 @@ export class Message {
 
         } catch (error) {
             Logger.instanse.error(error);
-            span.recordException(error);
+            span?.recordException(error);
         }
         try {
             if (!skipUpdateUserSize) {
@@ -4563,7 +4725,6 @@ export class Message {
                                 "_id": "$userid",
                                 "size": { "$sum": "$size" },
                                 "count": { "$sum": 1 }
-
                             }
                         }
                     ]// "items": { "$push": "$$ROOT" }
@@ -4578,7 +4739,7 @@ export class Message {
             }
         } catch (error) {
             Logger.instanse.error(error);
-            span.recordException(error);
+            span?.recordException(error);
         }
         if (Config.multi_tenant) {
             try {
@@ -4644,7 +4805,7 @@ export class Message {
 
             } catch (error) {
                 Logger.instanse.error(error);
-                span.recordException(error);
+                span?.recordException(error);
             }
         }
         if (Config.multi_tenant) {
@@ -4791,10 +4952,10 @@ export class Message {
             } catch (error) {
                 if (error.response && error.response.body) {
                     Logger.instanse.error(error.response.body);
-                    span.recordException(error.response.body);
+                    span?.recordException(error.response.body);
                 } else {
                     Logger.instanse.error(error);
-                    span.recordException(error);
+                    span?.recordException(error);
                 }
             }
         }

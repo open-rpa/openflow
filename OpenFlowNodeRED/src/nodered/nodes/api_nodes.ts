@@ -287,7 +287,7 @@ export class api_add {
                     }
                     Promises.push(NoderedUtil.InsertOne(collection, element, writeconcern, journal, msg.jwt, priority));
                 }
-                this.node.status({ fill: "blue", shape: "dot", text: y + " to " + (y + 49) + " of " + data.length });
+                this.node.status({ fill: "blue", shape: "dot", text: (y + 1) + " to " + (y + 50) + " of " + data.length });
                 const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
                 results = results.concat(tempresults);
                 Promises = [];
@@ -391,7 +391,7 @@ export class api_addmany {
                         }
                         subitems.push(element);
                     }
-                    this.node.status({ fill: "blue", shape: "dot", text: y + " to " + (y + 49) + " of " + data.length });
+                    this.node.status({ fill: "blue", shape: "dot", text: (y + 1) + " to " + (y + 50) + " of " + data.length });
                     results = results.concat(await NoderedUtil.InsertMany(collection, subitems, writeconcern, journal, skipresults, msg.jwt, priority));
                 }
                 data = results;
@@ -477,7 +477,7 @@ export class api_update {
                     }
                     Promises.push(NoderedUtil.UpdateOne(collection, null, element, writeconcern, journal, msg.jwt, priority));
                 }
-                this.node.status({ fill: "blue", shape: "dot", text: y + " to " + (y + 49) + " of " + data.length });
+                this.node.status({ fill: "blue", shape: "dot", text: (y + 1) + " to " + (y + 50) + " of " + data.length });
                 const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
                 results = results.concat(tempresults);
                 Promises = [];
@@ -572,7 +572,7 @@ export class api_addorupdate {
                     }
                     Promises.push(NoderedUtil.InsertOrUpdateOne(collection, element, uniqeness, writeconcern, journal, msg.jwt, priority));
                 }
-                this.node.status({ fill: "blue", shape: "dot", text: y + " to " + (y + 49) + " of " + data.length });
+                this.node.status({ fill: "blue", shape: "dot", text: (y + 1) + " to " + (y + 50) + " of " + data.length });
                 const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
                 results = results.concat(tempresults);
                 Promises = [];
@@ -653,7 +653,7 @@ export class api_delete {
                     if (NoderedUtil.isObject(element)) { id = element._id; }
                     Promises.push(NoderedUtil.DeleteOne(collection, id, msg.jwt, priority));
                 }
-                this.node.status({ fill: "blue", shape: "dot", text: y + " to " + (y + 49) + " of " + data.length });
+                this.node.status({ fill: "blue", shape: "dot", text: (y + 1) + " to " + (y + 50) + " of " + data.length });
                 const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
                 results = results.concat(tempresults);
                 Promises = [];
@@ -802,13 +802,11 @@ export class api_map_reduce {
 
 export async function get_api_roles(req, res) {
     try {
-        const rawAssertion = req.user.getAssertionXml();
-        const token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
         let q: any = { _type: "role" };
         if (!NoderedUtil.IsNullEmpty(req.query.name)) {
             q = { _type: "role", name: { $regex: ".*" + req.query.name + ".*" } };
         }
-        const result: any[] = await NoderedUtil.Query('users', q, { name: 1 }, { name: -1 }, 1000, 0, token.jwt, null, null, 1);
+        const result: any[] = await NoderedUtil.Query('users', q, { name: 1 }, { name: -1 }, 1000, 0, null, null, null, 1);
 
         res.json(result);
     } catch (error) {
@@ -819,8 +817,6 @@ export async function get_api_roles(req, res) {
 
 export async function get_api_userroles(req, res) {
     try {
-        const rawAssertion = req.user.getAssertionXml();
-        const token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
         let q: any = { $or: [{ _type: "role" }, { _type: "user" }] };
         const ors = [];
         if (!NoderedUtil.IsNullEmpty(req.query.name)) {
@@ -838,11 +834,11 @@ export async function get_api_userroles(req, res) {
             };
         }
 
-        const result: any[] = await NoderedUtil.Query('users', q, { name: 1 }, { name: -1 }, 100, 0, token.jwt, null, null, 1);
+        const result: any[] = await NoderedUtil.Query('users', q, { name: 1 }, { name: -1 }, 100, 0, null, null, null, 1);
         if (!NoderedUtil.IsNullEmpty(req.query.id)) {
             const exists = result.filter(x => x._id == req.query.id);
             if (exists.length == 0) {
-                const result2: any[] = await NoderedUtil.Query('users', { _id: req.query.id }, { name: 1 }, { name: -1 }, 1, 0, token.jwt, null, null, 1);
+                const result2: any[] = await NoderedUtil.Query('users', { _id: req.query.id }, { name: 1 }, { name: -1 }, 1, 0, null, null, null, 1);
                 if (result2.length == 1) {
                     result.push(result2[0]);
                 }
@@ -857,8 +853,6 @@ export async function get_api_userroles(req, res) {
 
 export async function get_api_users(req, res) {
     try {
-        const rawAssertion = req.user.getAssertionXml();
-        const token = await NoderedUtil.GetTokenFromSAML(rawAssertion);
         let q: any = { _type: "user" };
         const ors = [];
         if (!NoderedUtil.IsNullEmpty(req.query.name)) {
@@ -876,11 +870,11 @@ export async function get_api_users(req, res) {
             };
         }
 
-        const result: any[] = await NoderedUtil.Query('users', q, { name: 1 }, { name: -1 }, 100, 0, token.jwt, null, null, 1);
+        const result: any[] = await NoderedUtil.Query('users', q, { name: 1 }, { name: -1 }, 100, 0, null, null, null, 1);
         if (!NoderedUtil.IsNullEmpty(req.query.id)) {
             const exists = result.filter(x => x._id == req.query.id);
             if (exists.length == 0) {
-                const result2: any[] = await NoderedUtil.Query('users', { _id: req.query.id }, { name: 1 }, { name: -1 }, 1, 0, token.jwt, null, null, 1);
+                const result2: any[] = await NoderedUtil.Query('users', { _id: req.query.id }, { name: 1 }, { name: -1 }, 1, 0, null, null, null, 1);
                 if (result2.length == 1) {
                     result.push(result2[0]);
                 }

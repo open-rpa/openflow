@@ -107,6 +107,18 @@
       <input type="checkbox" ng-model="ctrl.user.nodered.function_external_modules"></input>
     </div>
   </div>
+  <div class="row">
+    <label class="col-sm-4 control-label"><span translate lib="web">enable tour</span>: </label>
+    <div class="col-sm-1">
+      <input type="checkbox" ng-model="ctrl.user.nodered.tours"></input>
+    </div>
+  </div>
+  <div class="row">
+    <label class="col-sm-4 control-label"><span translate lib="web">monaco editor</span>: </label>
+    <div class="col-sm-1">
+      <input type="checkbox" ng-model="ctrl.user.nodered.monaco"></input>
+    </div>
+  </div>
   <div class="row" ng-show="menuctrl.WebSocketClientService.nodered_images.length > 1">
     <label class="col-sm-4 control-label"><span translate lib="web">nodered_image</span>: </label>
     <div class="col-sm-1">
