@@ -1,5 +1,7 @@
 # Docker Compose
 
+#### Getting started
+
 To quickly get started with your own installation you can use one of these docker-compose files.
 download the file you want ( you can rename the file to docker-compose.yaml or use -f to specify the file )
 
@@ -36,9 +38,29 @@ For more complex setups where you don't have public IP or just need access to wi
 In this video the whole process is showed on ubuntu 18 
 [![Ubuntu 18 npm install](https://img.youtube.com/vi/YdH3h3iAu-Y/1.jpg)](https://youtu.be/YdH3h3iAu-Y)
 
+#### Using custom domain names
 
+All examples use localhost.openiap.io for domain. This domain points to your localhost ( 127.0.0.1 ) and there for only works on your local machine. To allow other clients to connect, or if you did this on a hosting/cloud server somewhere, you need to use your own DNS to access your instance.
 
-Troubleshooting tip.
+First find the IP if your machine. If used on the local network only, use the IP of the machine with docker, if you are in the cloud, us the public IP given to that machine.
+
+You need to add 2 DNS record at your DNS provider, one for OpenFlow it self, and and for all the services under that OpenFlow ( MQ, NodeRED's, etc. )
+
+First add one A record for OpenFlow, pointing to the IP of the docker host. ( in this example your domain is mydomain.com )
+
+```
+openflow	A	10.0.1.1
+```
+
+Next add an wildcard * record for all the services exposed from that instance, as a CNAME pointing to the instance
+
+```
+*			CNAME	openflow.mydomain.com.
+```
+
+( a few DNS providers does not allow create wildcard records using CNAME, and that case use an A record pointing to the same IP )
+
+#### Troubleshooting tips
 
 If something is not working, make sure all instances are running, if on windows client simply open the docker UI and expand the project. for everyone else you can use 
 
