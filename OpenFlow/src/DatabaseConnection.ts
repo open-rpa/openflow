@@ -2243,22 +2243,22 @@ export class DatabaseConnection extends events.EventEmitter {
         q[field] = {
             $elemMatch: {
                 rights: { $bitsAllSet: bits },
-                deny: false,
                 $or: isme
             }
         };
+        // deny: false,
         finalor.push(q);
-        if (field === "_acl") {
-            const q2 = {};
-            q2["value._acl"] = {
-                $elemMatch: {
-                    rights: { $bitsAllSet: bits },
-                    deny: false,
-                    $or: isme
-                }
-            };
-            finalor.push(q2);
-        }
+        // if (field === "_acl") {
+        //     const q2 = {};
+        //     q2["value._acl"] = {
+        //         $elemMatch: {
+        //             rights: { $bitsAllSet: bits },
+        //             deny: false,
+        //             $or: isme
+        //         }
+        //     };
+        //     finalor.push(q2);
+        // }
         return { $or: finalor.concat() };
     }
     private async getbasequeryuserid(userid: string, field: string, bits: number[], parent: Span): Promise<Object> {
@@ -2738,15 +2738,29 @@ export class DatabaseConnection extends events.EventEmitter {
             let collections = await DatabaseConnection.toArray(this.db.listCollections());
             collections = collections.filter(x => x.name.indexOf("system.") === -1);
 
+            DatabaseConnection.timeseries_collections = [];
+            for (let i = 0; i < collections.length; i++) {
+                var collection = collections[i];
+                if (collection.type == "timeseries") {
+                    DatabaseConnection.timeseries_collections = DatabaseConnection.timeseries_collections.filter(x => x != collection.name);
+                    DatabaseConnection.timeseries_collections.push(collection.name);
+                }
+                if (collection.type != "collection" && collection.type != "timeseries") continue;
+            }
+
             for (let i = 0; i < collections.length; i++) {
                 try {
                     const collection = collections[i];
                     if (collection.type != "collection") continue;
+                    if (collection.name == "uploads.files" || collection.name == "uploads.chunks" || collection.name == "fs.chunks") continue;
                     const indexes = await this.db.collection(collection.name).indexes();
                     const indexnames = indexes.map(x => x.name);
                     if (collection.name.endsWith("_hist")) {
                         if (indexnames.indexOf("id_1__version_-1") === -1) {
                             await this.createIndex(collection.name, "id_1__version_-1", { "id": 1, "_version": -1 }, null, span)
+                        }
+                        if (indexnames.indexOf("_acl") === -1) {
+                            await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
                         }
                     } else {
                         switch (collection.name) {
@@ -2754,9 +2768,9 @@ export class DatabaseConnection extends events.EventEmitter {
                                 if (indexnames.indexOf("metadata.workflow_1") === -1) {
                                     await this.createIndex(collection.name, "metadata.workflow_1", { "metadata.workflow": 1 }, null, span)
                                 }
-                                // if (indexnames.indexOf("filename_text") === -1 && Config.create_text_index_for_names) {
-                                //     await this.createIndex(collection.name, "filename_text", { "filename": "text" }, {default_language: "none", language_override: "none"}, span)
-                                // }
+                                if (indexnames.indexOf("metadata._acl") === -1) {
+                                    await this.createIndex(collection.name, "metadata._acl", { "metadata._acl._id": 1, "metadata._acl.rights": 1, "metadata._acl.deny": 1 }, null, span)
+                                }
                                 break;
                             case "fs.chunks":
                                 break;
@@ -2770,6 +2784,9 @@ export class DatabaseConnection extends events.EventEmitter {
                                 if (indexnames.indexOf("queue_1") === -1) {
                                     await this.createIndex(collection.name, "queue_1", { "queue": 1 }, null, span)
                                 }
+                                if (indexnames.indexOf("_acl") === -1) {
+                                    await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
+                                }
                                 break;
                             case "openrpa_instances":
                                 if (indexnames.indexOf("_created_1") === -1) {
@@ -2779,7 +2796,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                     await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
                                 }
                                 if (indexnames.indexOf("InstanceId_1_WorkflowId_1") === -1) {
-                                    await this.createIndex(collection.name, "InstanceId_1_WorkflowId_1", { "WorkflowId": 1, "InstanceId": 1 }, null, span)
+                                    await this.createIndex(collection.name, "InstanceId_1_WorkflowId_1", { "WorkflowId": 1, "InstanceId": 1, "_acl.deny": 1 }, null, span)
                                 }
                                 if (indexnames.indexOf("state_1") === -1) {
                                     await this.createIndex(collection.name, "state_1", { "state": 1 }, null, span)
@@ -2787,9 +2804,9 @@ export class DatabaseConnection extends events.EventEmitter {
                                 if (indexnames.indexOf("fqdn_1") === -1) {
                                     await this.createIndex(collection.name, "fqdn_1", { "fqdn": 1 }, null, span)
                                 }
-                                // if (indexnames.indexOf("name_text") === -1 && Config.create_text_index_for_names) {
-                                //     await this.createIndex(collection.name, "name_text", { "name": "text" }, {default_language: "none", language_override: "none"}, span)
-                                // }
+                                if (indexnames.indexOf("_acl") === -1) {
+                                    await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
+                                }
                                 break;
                             case "audit":
                                 if (indexnames.indexOf("_type_1") === -1) {
@@ -2810,9 +2827,9 @@ export class DatabaseConnection extends events.EventEmitter {
                                 if (indexnames.indexOf("userid_1") === -1) {
                                     await this.createIndex(collection.name, "userid_1", { "userid": 1 }, null, span)
                                 }
-                                // if (indexnames.indexOf("name_text") === -1 && Config.create_text_index_for_names) {
-                                //     await this.createIndex(collection.name, "name_text", { "name": "text" }, {default_language: "none", language_override: "none"}, span)
-                                // }
+                                if (indexnames.indexOf("_acl") === -1) {
+                                    await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
+                                }
                                 break;
                             case "users":
                                 if (indexnames.indexOf("workflowid_1") === -1) {
@@ -2843,6 +2860,9 @@ export class DatabaseConnection extends events.EventEmitter {
                                 if (indexnames.indexOf("members._id_1") === -1) {
                                     await this.createIndex(collection.name, "members._id_1", { "members._id": 1 }, null, span)
                                 }
+                                if (indexnames.indexOf("_acl") === -1) {
+                                    await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
+                                }
                                 break;
                             case "openrpa":
                                 if (indexnames.indexOf("_created_1") === -1) {
@@ -2853,6 +2873,9 @@ export class DatabaseConnection extends events.EventEmitter {
                                 }
                                 if (indexnames.indexOf("_type_projectid_name_1") === -1) {
                                     await this.createIndex(collection.name, "_type_projectid_name_1", { _type: 1, "{projectid:-1,name:-1}": 1 }, null, span)
+                                }
+                                if (indexnames.indexOf("_acl") === -1) {
+                                    await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
                                 }
                                 break;
                             case "dbusage":
@@ -2865,6 +2888,9 @@ export class DatabaseConnection extends events.EventEmitter {
                                 if (indexnames.indexOf("collection_1_timestamp_1") === -1) {
                                     await this.createIndex(collection.name, "collection_1_timestamp_1", { _type: 1, "{collection:1,timestamp:1}": 1 }, null, span)
                                 }
+                                if (indexnames.indexOf("_acl") === -1) {
+                                    await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
+                                }
                                 break;
                             default:
                                 if (indexnames.indexOf("_type_1") === -1) {
@@ -2875,6 +2901,15 @@ export class DatabaseConnection extends events.EventEmitter {
                                 }
                                 if (indexnames.indexOf("_modified_1") === -1) {
                                     await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
+                                }
+                                if (DatabaseConnection.timeseries_collections.indexOf(collection.name) > -1) {
+                                    if (indexnames.indexOf("metadata._acl") === -1) {
+                                        await this.createIndex(collection.name, "metadata._acl", { "metadata._acl._id": 1, "metadata._acl.rights": 1, "metadata._acl.deny": 1 }, null, span)
+                                    }
+                                } else {
+                                    if (indexnames.indexOf("_acl") === -1) {
+                                        await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
+                                    }
                                 }
                                 break;
                         }
@@ -2888,6 +2923,8 @@ export class DatabaseConnection extends events.EventEmitter {
             collections = await DatabaseConnection.toArray(this.db.listCollections());
             collections = collections.filter(x => x.name.indexOf("system.") === -1);
 
+            DatabaseConnection.timeseries_collections = [];
+            DatabaseConnection.collections_with_text_index = [];
             for (let i = 0; i < collections.length; i++) {
                 var collection = collections[i];
                 if (collection.type == "timeseries") {

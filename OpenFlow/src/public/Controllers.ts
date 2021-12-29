@@ -2525,7 +2525,6 @@ export class UserCtrl extends entityCtrl<TokenUser> {
             }
             this.$location.path("/Users");
         } catch (error) {
-            debugger;
             this.errormessage = error.message ? error.message : error;
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -5502,6 +5501,7 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
                 return;
             }
         }
+        if (this.orderby)
         if (NoderedUtil.IsNullEmpty(this.collection)) {
             this.$location.path("/Duplicates/entities");
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -5526,31 +5526,29 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
             this.keys.sort();
             this.keys.reverse();
         } else { this.keys = []; }
-        if (!NoderedUtil.IsNullEmpty(this.uniqeness)) {
-            const pipe: any[] = [];
-            const arr = this.uniqeness.split(",");
-            const group: any = { _id: {}, count: { "$sum": 1 } };
-            //if ("111".toLowerCase() == "22") {
-            group.items = {
-                $push: { "_id": '$$ROOT._id', "name": '$$ROOT.name' }
-            }
-            //}
-            arr.forEach(field => {
-                if (field.trim() !== "") {
-                    group._id[field] = "$" + field;
-                }
-            });
-            pipe.push({ "$group": group });
-            pipe.push({ "$match": { "count": { "$gte": 2 } } });
-            pipe.push({ "$limit": 100 });
-            pipe.push({ "$sort": this.orderby })
-            try {
-                this.models = await NoderedUtil.Aggregate(this.collection, pipe, null, null, 1);
-            } catch (error) {
-                this.errormessage = JSON.stringify(error);
-            }
+        if (NoderedUtil.IsNullEmpty(this.uniqeness)) {
+            this.uniqeness = "_type"
         }
-
+        const pipe: any[] = [];
+        const arr = this.uniqeness.split(",");
+        const group: any = { _id: {}, count: { "$sum": 1 } };
+        group.items = {
+            $push: { "_id": '$$ROOT._id', "name": '$$ROOT.name' }
+        }
+        arr.forEach(field => {
+            if (field.trim() !== "") {
+                group._id[field] = "$" + field;
+            }
+        });
+        pipe.push({ "$group": group });
+        pipe.push({ "$match": { "count": { "$gte": 2 } } });
+        pipe.push({ "$limit": 100 });
+        if (!NoderedUtil.IsNullUndefinded(this.orderby) && Object.keys(this.orderby).length > 0) pipe.push({ "$sort": this.orderby })
+        try {
+            this.models = await NoderedUtil.Aggregate(this.collection, pipe, null, null, 1);
+        } catch (error) {
+            this.errormessage = JSON.stringify(error);
+        }
         if (!this.userdata.data.DuplicatesCtrl) this.userdata.data.DuplicatesCtrl = {};
         this.userdata.data.DuplicatesCtrl.basequery = this.basequery;
         this.userdata.data.DuplicatesCtrl.uniqeness = this.uniqeness;

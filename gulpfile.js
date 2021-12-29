@@ -8,8 +8,8 @@ const browserify = require('browserify');
 const tsify = require('tsify');
 const watchify = require('watchify');
 const exorcist = require('exorcist')
-
-var sass = require('gulp-sass')
+const ts = require('gulp-typescript');
+const sass = require('gulp-sass')(require('sass'));
 
 
 
@@ -320,6 +320,22 @@ gulp.task("bumpprojectfiles", function () {
     return gulp.src('.');
 
 });
+
+
+var tsOpenFlowProject = ts.createProject('OpenFlow/tsconfig.json');
+var tsNodeREDProject = ts.createProject('OpenFlowNodeRED/tsconfig.json');
+gulp.task('ts-openflow', function () {
+    var tsResult = tsOpenFlowProject.src().pipe(tsOpenFlowProject());
+    return tsResult.js.pipe(gulp.dest('dist'));
+});
+gulp.task('ts-nodered', function () {
+    var tsResult = tsNodeREDProject.src().pipe(tsNodeREDProject());
+    return tsResult.js.pipe(gulp.dest('OpenFlowNodeRED/dist'));
+});
+gulp.task("ts", gulp.series("ts-openflow", "ts-nodered"));
+
+gulp.task("build", gulp.series("copyfiles1", "sass", "ts", "browserify", "copyfiles1"));
+
 
 gulp.task("bump", gulp.series("bumpyml1", "bumpyml2", "bumpflow", "bumpnodered", "bumpconfigmap", "bumpaiotfrontend", "bumpprojectfiles", "copyfiles1"));
 

@@ -587,9 +587,9 @@ export class entitiesCtrl<T> {
             let orderby = this.orderby;
             if (this.lastsearchstring !== this.searchstring) {
                 this.models = [];
-                this.orderby = {};
-                orderby = {};
+                this.orderby = null;
             }
+
             this.lastsearchstring = this.searchstring;
             if (this.searchstring !== "" && this.searchstring != null) {
                 if ((this.searchstring as string).indexOf("{") == 0) {
@@ -639,6 +639,15 @@ export class entitiesCtrl<T> {
 
                 }
             }
+            if (this.WebSocketClientService.collections_with_text_index.indexOf(this.collection) == -1) {
+                if (NoderedUtil.IsNullUndefinded(this.orderby) || Object.keys(this.orderby).length == 0) {
+                    orderby = { _created: -1 };
+                }
+            } else {
+                orderby = null;
+            }
+            // orderby = null;
+
             if (this.page == 0) {
                 this.models = await NoderedUtil.Query(this.collection, query, this.baseprojection, orderby, this.pagesize, 0, null, basequeryas, null, 2);
             } else {
