@@ -2832,9 +2832,9 @@ export class DatabaseConnection extends events.EventEmitter {
                                 }
                                 break;
                             case "users":
-                                if (indexnames.indexOf("workflowid_1") === -1) {
-                                    await this.createIndex(collection.name, "workflowid_1", { "workflowid": 1 }, null, span)
-                                }
+                                // if (indexnames.indexOf("workflowid_1") === -1) {
+                                //     await this.createIndex(collection.name, "workflowid_1", { "workflowid": 1 }, null, span)
+                                // }
                                 if (indexnames.indexOf("_rpaheartbeat_1") === -1) {
                                     await this.createIndex(collection.name, "_rpaheartbeat_1", { "_rpaheartbeat": 1 }, null, span)
                                 }
