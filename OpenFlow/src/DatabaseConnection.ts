@@ -1,7 +1,7 @@
 import { MongoClient, ObjectID, Db, Binary, InsertOneWriteOpResult, MapReduceOptions, CollectionInsertOneOptions, GridFSBucket, ChangeStream, CollectionAggregationOptions, MongoClientOptions } from "mongodb";
 import { Crypt } from "./Crypt";
 import { Config } from "./Config";
-import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User, Customer } from "@openiap/openflow-api";
+import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User, Customer, WatchEventMessage } from "@openiap/openflow-api";
 import { DBHelper } from "./DBHelper";
 import { OAuthProvider } from "./OAuthProvider";
 import { ValueRecorder } from "@opentelemetry/api-metrics"
@@ -11,6 +11,12 @@ import { Auth } from "./Auth";
 const { JSONPath } = require('jsonpath-plus');
 import events = require("events");
 import { amqpwrapper } from "./amqpwrapper";
+import { WebSocketServer } from "./WebSocketServer";
+import { clsstream } from "./WebSocketServerClient";
+import { SocketMessage } from "./SocketMessage";
+import { Log } from "@kubernetes/client-node";
+import { LoginProvider } from "./LoginProvider";
+import { WebServer } from "./WebServer";
 
 
 // tslint:disable-next-line: typedef
@@ -112,6 +118,7 @@ export class DatabaseConnection extends events.EventEmitter {
         }
     }
     public replicat: string = null;
+    public streams: clsstream[] = [];
     /**
      * Connect to MongoDB
      * @returns Promise<void>
@@ -121,6 +128,7 @@ export class DatabaseConnection extends events.EventEmitter {
             return;
         }
         const span: Span = Logger.otel.startSubSpan("db.connect", parent);
+        this.streams = [];
         this.cli = await (Promise as any).retry(100, (resolve, reject) => {
             const options: MongoClientOptions = { minPoolSize: Config.mongodb_minpoolsize, autoReconnect: false, useNewUrlParser: true, useUnifiedTopology: true };
             MongoClient.connect(this.mongodburl, options).then((cli) => {
@@ -133,6 +141,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 reject(reason);
             });
         });
+
         Logger.instanse.silly(`Really connected to mongodb`);
         const errEvent = (error) => {
             this.isConnected = false;
@@ -150,9 +159,155 @@ export class DatabaseConnection extends events.EventEmitter {
             .on('timeout', errEvent)
             .on('close', closeEvent);
         this.db = this.cli.db(this._dbname);
+        try {
+            var topology = (this.cli as any).topology;
+            if (topology.s.description.type == "Single" || topology.s.description.type == "single") {
+                Config.supports_watch = false;
+            } else {
+                Config.supports_watch = true;
+            }
+        } catch (error) {
+            console.error(error);
+        }
+        if (Config.supports_watch) {
+            let collections = await DatabaseConnection.toArray(this.db.listCollections());
+            collections = collections.filter(x => x.name.indexOf("system.") === -1);
+
+            for (var c = 0; c < collections.length; c++) {
+                if (collections[c].type != "collection") continue;
+                if (collections[c].name == "fs.files" || collections[c].name == "fs.chunks") continue;
+                this.registerGlobalWatch(collections[c].name);
+            }
+        }
         this.isConnected = true;
         Logger.otel.endSpan(span);
         this.emit("connected");
+    }
+    registerGlobalWatch(collectionname: string) {
+        try {
+            var exists = this.streams.filter(x => x.collectionname == collectionname);
+            if (exists.length > 0) return;
+            if (collectionname.endsWith("_hist")) return;
+            // if (collectionname == "users") return;
+            if (collectionname == "dbusage") return;
+            if (collectionname == "audit") return;
+            Logger.instanse.info("register global watch for " + collectionname + " collection")
+            var stream = new clsstream();
+            stream.collectionname = collectionname;
+            stream.stream = this.db.collection(collectionname).watch([], { fullDocument: 'updateLookup' });
+            (stream.stream as any).on("error", err => {
+                console.error(err);
+            });
+            (stream.stream as any).on("change", async (next) => {
+                try {
+                    var _id = next.documentKey._id;
+                    if (next.operationType == 'update' && collectionname == "users") {
+                        if (next.updateDescription.updatedFields.hasOwnProperty("_heartbeat")) return;
+                        if (next.updateDescription.updatedFields.hasOwnProperty("lastseen")) return;
+                    }
+                    // var item = await this.GetLatestDocumentVersion(collectionname, _id, Crypt.rootToken(), null);
+                    var item = next.fullDocument;
+                    if (NoderedUtil.IsNullEmpty(item)) item = await this.GetLatestDocumentVersion(collectionname, _id, Crypt.rootToken(), null);
+                    if (NoderedUtil.IsNullEmpty(item)) {
+                        Logger.instanse.error("Missing fullDocument and could not find historic version for " + _id + " in " + collectionname);
+                        return;
+                    } else {
+                        if (Config.log_watches) Logger.instanse.verbose("[" + collectionname + "][" + next.operationType + "] " + _id);
+                    }
+                    var _type = item._type;
+                    try {
+                        for (var i = 0; i < WebSocketServer._clients.length; i++) {
+                            var client = WebSocketServer._clients[i];
+                            if (NoderedUtil.IsNullUndefinded(client.user)) continue;
+                            const tuser: TokenUser = TokenUser.From(client.user);
+                            try {
+                                if (DatabaseConnection.hasAuthorization(tuser, item, Rights.read)) {
+                                    try {
+                                        var ids = Object.keys(client.watches);
+                                        for (var y = 0; y < ids.length; y++) {
+                                            let notify: boolean = false;
+                                            var stream = client.watches[ids[y]];
+                                            if (stream.collectionname != collectionname) continue;
+                                            if (NoderedUtil.IsNullUndefinded(stream.aggregates)) { notify = true; continue; }
+                                            if (stream.aggregates.length == 0) { notify = true; continue; }
+                                            if (typeof stream.aggregates[0] === 'object') {
+                                                // This is fucking ugly, but need something to be backward compatible with older version of OpenRPA and Nodered Nodes
+                                                var match = stream.aggregates[0]["$match"];
+                                                if (NoderedUtil.IsNullUndefinded(match)) { continue; }
+                                                var keys = Object.keys(match);
+                                                var ismatch = true;
+                                                keys.forEach(key => {
+                                                    var targetkey = key.replace("fullDocument.", "");
+                                                    var value = match[key];
+                                                    if (value = "{'$exists': true}") {
+                                                        if (!item.hasOwnProperty(targetkey)) ismatch = false;
+                                                    } else {
+                                                        if (item[targetkey] != value) ismatch = false;
+                                                    }
+
+                                                });
+                                                if (ismatch) notify = true;
+                                            } else {
+                                                for (var p = 0; p < stream.aggregates.length; p++) {
+                                                    var path = stream.aggregates[p];
+                                                    if (!NoderedUtil.IsNullEmpty(path)) {
+                                                        try {
+                                                            const result = JSONPath({ path, json: { a: item } });
+                                                            if (result && result.length > 0) notify = true;
+                                                        } catch (error) {
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            if (notify) {
+                                                if (Config.log_watches_notify) Logger.instanse.verbose("Notify " + tuser.username + " of " + next.operationType + " " + item.name);
+                                                // Logger.instanse.info("Watch: " + JSON.stringify(next.documentKey));
+                                                const msg: SocketMessage = SocketMessage.fromcommand("watchevent");
+                                                const q = new WatchEventMessage();
+                                                q.id = ids[y];
+                                                q.result = next;
+                                                if (q.result && !q.result.fullDocument) q.result.fullDocument = item;
+                                                if (q.result && q.result.fullDocument) {
+                                                    q.result.fullDocument = Config.db.decryptentity(q.result.fullDocument);
+                                                }
+                                                msg.data = JSON.stringify(q);
+                                                client._socketObject.send(msg.tojson(), (err) => {
+                                                    if (err) console.error(err);
+                                                });
+                                            }
+                                        }
+
+                                    } catch (error) {
+                                        Logger.instanse.error(error);
+                                    }
+                                }
+                            } catch (error) {
+                                Logger.instanse.error(error);
+                            }
+                        }
+                    } catch (error) {
+                        Logger.instanse.error(error);
+                    }
+                    if (collectionname == "mq") {
+                        Auth.clearCache();
+                    }
+                    if (collectionname == "users" && (_type == "user" || _type == "role")) {
+                        Auth.clearCache();
+                    }
+                    if (collectionname == "config" && (_type == "provider" || _type == "restriction" || _type == "resource")) {
+                        Auth.clearCache();
+                    }
+                    if (collectionname == "config" && _type == "provider") {
+                        await LoginProvider.RegisterProviders(WebServer.app, Config.baseurl());
+                    }
+                } catch (error) {
+                    Logger.instanse.error(error);
+                }
+            });
+            this.streams.push(stream);
+        } catch (error) {
+            Logger.instanse.error(error);
+        }
     }
     async ListCollections(jwt: string): Promise<any[]> {
         let result = await DatabaseConnection.toArray(this.db.listCollections());
@@ -585,10 +740,24 @@ export class DatabaseConnection extends events.EventEmitter {
             Logger.otel.endSpan(span);
         }
     }
+    async GetLatestDocumentVersion<T extends Base>(collectionname: string, id: string, jwt: string, parent: Span): Promise<T> {
+        let result: T = await this.getbyid<T>(id, collectionname, jwt, parent);
+        if (result) return result;
+
+        const basehist = await this.query<any>({ id: id }, { _version: 1 }, 1, 0, { _version: -1 }, collectionname + "_hist", Crypt.rootToken(), undefined, undefined, parent);
+        if (basehist.length > 0) {
+            let result: T = null;
+            try {
+                result = await this.GetDocumentVersion(collectionname, id, basehist[0]._version, Crypt.rootToken(), parent)
+                return result;
+            } catch (error) {
+            }
+        }
+        return null;
+    }
     async GetDocumentVersion<T extends Base>(collectionname: string, id: string, version: number, jwt: string, parent: Span): Promise<T> {
         const span: Span = Logger.otel.startSubSpan("db.GetDocumentVersion", parent);
         try {
-
             let result: T = await this.getbyid<T>(id, collectionname, jwt, span);
             if (NoderedUtil.IsNullUndefinded(result)) {
                 const subbasehist = await this.query<any>({ id: id, item: { $exists: true, $ne: null } }, null, 1, 0, { _version: -1 }, collectionname + "_hist", jwt, undefined, undefined, span);
@@ -1063,7 +1232,11 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (item._type === "role") {
                     const r: Role = (item as any);
                     if (r.members.length > 0) {
-                        amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                        if (Config.enable_openflow_amqp && !Config.supports_watch) {
+                            amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                        } else if (!Config.supports_watch) {
+                            Auth.clearCache();
+                        }
                     }
                 }
             }
@@ -1151,7 +1324,11 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (item._type === "role") {
                         const r: Role = item as any;
                         if (r.members.length > 0) {
-                            amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                            if (Config.enable_openflow_amqp && !Config.supports_watch) {
+                                amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                            } else if (!Config.supports_watch) {
+                                Auth.clearCache();
+                            }
                         }
                     }
                 }
@@ -1592,10 +1769,18 @@ export class DatabaseConnection extends events.EventEmitter {
                         DBHelper.cached_roles = [];
                     }
                     if (q.item._type === "role" && q.collectionname === "users") {
-                        amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                        if (Config.enable_openflow_amqp && !Config.supports_watch) {
+                            amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                        } else if (!Config.supports_watch) {
+                            Auth.clearCache();
+                        }
                     }
                     if (q.collectionname === "mq") {
-                        amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                        if (Config.enable_openflow_amqp && !Config.supports_watch) {
+                            amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                        } else if (!Config.supports_watch) {
+                            Auth.clearCache();
+                        }
                     }
                     if (!DatabaseConnection.usemetadata(q.collectionname)) {
                         const ot_end = Logger.otel.startTimer();
@@ -1995,10 +2180,18 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                 }
                 if (collectionname == "users" && doc._type == "role") {
-                    amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                    if (Config.enable_openflow_amqp && !Config.supports_watch) {
+                        amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                    } else if (!Config.supports_watch) {
+                        Auth.clearCache();
+                    }
                 }
                 if (collectionname === "mq") {
-                    amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                    if (Config.enable_openflow_amqp && !Config.supports_watch) {
+                        amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                    } else if (!Config.supports_watch) {
+                        Auth.clearCache();
+                    }
                 }
             }
         } catch (error) {
@@ -2922,6 +3115,14 @@ export class DatabaseConnection extends events.EventEmitter {
 
             collections = await DatabaseConnection.toArray(this.db.listCollections());
             collections = collections.filter(x => x.name.indexOf("system.") === -1);
+
+            if (Config.supports_watch) {
+                for (var c = 0; c < collections.length; c++) {
+                    if (collections[c].type != "collection") continue;
+                    if (collections[c].name == "fs.files" || collections[c].name == "fs.chunks") continue;
+                    this.registerGlobalWatch(collections[c].name);
+                }
+            }
 
             DatabaseConnection.timeseries_collections = [];
             DatabaseConnection.collections_with_text_index = [];

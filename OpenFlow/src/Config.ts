@@ -29,6 +29,9 @@ export class Config {
         Config.log_openflow_amqp = Config.parseBoolean(Config.getEnv("log_openflow_amqp", "false"));
         Config.log_amqp = Config.parseBoolean(Config.getEnv("log_amqp", "true"));
         Config.log_index_mngt = Config.parseBoolean(Config.getEnv("log_index_mngt", "true"));
+        Config.log_watches = Config.parseBoolean(Config.getEnv("log_watches", "false"));
+        Config.log_watches_notify = Config.parseBoolean(Config.getEnv("log_watches_notify", "true"));
+
         Config.openflow_uniqueid = Config.getEnv("openflow_uniqueid", "");
         Config.enable_openflow_amqp = Config.parseBoolean(Config.getEnv("enable_openflow_amqp", "false"));
         Config.openflow_amqp_expiration = parseInt(Config.getEnv("openflow_amqp_expiration", (60 * 1000 * 25).toString())); // 25 min
@@ -193,6 +196,8 @@ export class Config {
     public static log_openflow_amqp: boolean = Config.parseBoolean(Config.getEnv("log_openflow_amqp", "false"));
     public static log_amqp: boolean = Config.parseBoolean(Config.getEnv("log_amqp", "true"));
     public static log_index_mngt: boolean = Config.parseBoolean(Config.getEnv("log_index_mngt", "true"));
+    public static log_watches: boolean = Config.parseBoolean(Config.getEnv("log_watches", "false"));
+    public static log_watches_notify: boolean = Config.parseBoolean(Config.getEnv("log_watches_notify", "true"));
     public static openflow_uniqueid: string = Config.getEnv("openflow_uniqueid", "");
     public static enable_openflow_amqp: boolean = Config.parseBoolean(Config.getEnv("enable_openflow_amqp", "false"));
     public static openflow_amqp_expiration: number = parseInt(Config.getEnv("openflow_amqp_expiration", (60 * 1000 * 25).toString())); // 25 min

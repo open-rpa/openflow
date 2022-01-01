@@ -35,7 +35,7 @@ export class WebSocketServer {
         WebSocketServer.mongodb_watch_count.clear();
         for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
             const cli: WebSocketServerClient = WebSocketServer._clients[i];
-            WebSocketServer.mongodb_watch_count.bind({ ...Logger.otel.defaultlabels, clientid: cli.id, agent: cli.clientagent }).update(cli.streamcount());
+            // WebSocketServer.mongodb_watch_count.bind({ ...Logger.otel.defaultlabels, clientid: cli.id, agent: cli.clientagent }).update(cli.streamcount());
         }
     }
     static configure(server: http.Server): void {
@@ -122,7 +122,7 @@ export class WebSocketServer {
                     cli.Close();
                 }
                 cli.ping(span);
-                if (!cli.connected() && cli.queuecount() == 0 && cli.streamcount() == 0) {
+                if (!cli.connected() && cli.queuecount() == 0) { // && cli.streamcount() == 0
                     if (cli.user != null) {
                         Logger.instanse.info("removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent);
                         span?.addEvent("removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent);
@@ -154,36 +154,36 @@ export class WebSocketServer {
                                 p_all[cli.clientagent] += 1;
                             }
                         }
-                        // Lets assume only robots register queues ( not true )
+                        const updatedoc = { _heartbeat: new Date(new Date().toISOString()), lastseen: new Date(new Date().toISOString()) };
                         if (cli.clientagent == "openrpa") {
                             Config.db.synRawUpdateOne("users", { _id: cli.user._id },
-                                { $set: { _rpaheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } },
+                                { $set: { ...updatedoc, _rpaheartbeat: new Date(new Date().toISOString()) } },
                                 Config.prometheus_measure_onlineuser, null);
                         }
                         if (cli.clientagent == "nodered") {
                             Config.db.synRawUpdateOne("users", { _id: cli.user._id },
-                                { $set: { _noderedheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } },
+                                { $set: { ...updatedoc, _noderedheartbeat: new Date(new Date().toISOString()) } },
                                 Config.prometheus_measure_onlineuser, null);
                         }
                         if (cli.clientagent == "webapp" || cli.clientagent == "aiotwebapp") {
                             Config.db.synRawUpdateOne("users", { _id: cli.user._id },
-                                { $set: { _webheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } },
+                                { $set: { ...updatedoc, _webheartbeat: new Date(new Date().toISOString()) } },
                                 Config.prometheus_measure_onlineuser, null);
                         }
                         if (cli.clientagent == "powershell") {
                             Config.db.synRawUpdateOne("users", { _id: cli.user._id },
-                                { $set: { _powershellheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } },
+                                { $set: { ...updatedoc, _powershellheartbeat: new Date(new Date().toISOString()) } },
                                 Config.prometheus_measure_onlineuser, null);
                         }
                         if (cli.clientagent == "mobileapp" || cli.clientagent == "aiotmobileapp") {
                             Config.db.synRawUpdateOne("users", { _id: cli.user._id },
-                                { $set: { _webheartbeat: new Date(new Date().toISOString()), _mobilheartbeat: new Date(new Date().toISOString()), _heartbeat: new Date(new Date().toISOString()) } },
+                                { $set: { ...updatedoc, _webheartbeat: new Date(new Date().toISOString()), _mobilheartbeat: new Date(new Date().toISOString()) } },
                                 Config.prometheus_measure_onlineuser, null);
                         }
                         else {
                             // Should proberly turn this a little down, so we dont update all online users every 10th second
                             Config.db.synRawUpdateOne("users", { _id: cli.user._id },
-                                { $set: { _heartbeat: new Date(new Date().toISOString()) } },
+                                { $set: updatedoc, },
                                 Config.prometheus_measure_onlineuser, null);
                         }
                     }

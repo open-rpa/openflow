@@ -1444,6 +1444,9 @@ export class Message {
             } else if (tuser != null) {
                 Logger.instanse.info(tuser.username + " successfully signed in");
                 Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
+                const updatedoc = { _heartbeat: new Date(new Date().toISOString()), lastseen: new Date(new Date().toISOString()) };
+                Config.db.synRawUpdateOne("users", { _id: cli.user._id }, { $set: updatedoc, }, Config.prometheus_measure_onlineuser, null);
+
             }
         } catch (error) {
             Logger.instanse.error(error);
