@@ -3011,26 +3011,11 @@ export class DatabaseConnection extends events.EventEmitter {
                                 if (indexnames.indexOf("_modified_1") === -1) {
                                     await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
                                 }
-                                if (indexnames.indexOf("remoteip_1") === -1) {
-                                    await this.createIndex(collection.name, "remoteip_1", { "remoteip": 1 }, null, span)
-                                }
-                                if (indexnames.indexOf("username_1") === -1) {
-                                    await this.createIndex(collection.name, "username_1", { "username": 1 }, null, span)
-                                }
-                                if (indexnames.indexOf("userid_1") === -1) {
-                                    await this.createIndex(collection.name, "userid_1", { "userid": 1 }, null, span)
-                                }
                                 if (indexnames.indexOf("_acl") === -1) {
                                     await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
                                 }
                                 break;
                             case "users":
-                                // if (indexnames.indexOf("workflowid_1") === -1) {
-                                //     await this.createIndex(collection.name, "workflowid_1", { "workflowid": 1 }, null, span)
-                                // }
-                                if (indexnames.indexOf("_rpaheartbeat_1") === -1) {
-                                    await this.createIndex(collection.name, "_rpaheartbeat_1", { "_rpaheartbeat": 1 }, null, span)
-                                }
                                 if (indexnames.indexOf("name_1") === -1) {
                                     await this.createIndex(collection.name, "name_1", { "name": 1 }, null, span)
                                 }
@@ -3043,15 +3028,13 @@ export class DatabaseConnection extends events.EventEmitter {
                                 if (indexnames.indexOf("_modified_1") === -1) {
                                     await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
                                 }
-                                if (indexnames.indexOf("federationids_1") === -1) {
-                                    await this.createIndex(collection.name, "federationids_1", { "federationids": 1 }, null, span)
-                                }
                                 if (indexnames.indexOf("unique_username_1") === -1) {
                                     await this.createIndex(collection.name, "unique_username_1", { "username": 1 },
                                         { "unique": true, "name": "unique_username_1", "partialFilterExpression": { "_type": "user" } }, span)
                                 }
                                 if (indexnames.indexOf("members._id_1") === -1) {
-                                    await this.createIndex(collection.name, "members._id_1", { "members._id": 1 }, null, span)
+                                    await this.createIndex(collection.name, "members._id_1", { "members._id": 1 },
+                                        { "partialFilterExpression": { "_type": "role" } }, span)
                                 }
                                 if (indexnames.indexOf("_acl") === -1) {
                                     await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)

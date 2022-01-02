@@ -212,16 +212,16 @@ async function initDatabase(): Promise<boolean> {
                 }
             }, (15 * 60 * 1000) + (randomNum * 1000));
             // If I'm first and noone else has run it, lets trigger it now
-            const randomNum2 = (Math.floor(Math.random() * 10) + 1);
-            console.log("Trigger first Housekeeping in " + randomNum2 + " seconds");
-            setTimeout(async () => {
-                if (Config.enable_openflow_amqp) {
-                    if (!Message.ReadyForHousekeeping()) {
-                        return;
-                    }
-                    amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping" }, 20000, null, "", 1);
-                }
-            }, randomNum2 * 1000);
+            // const randomNum2 = (Math.floor(Math.random() * 10) + 1);
+            // console.log("Trigger first Housekeeping in " + randomNum2 + " seconds");
+            // setTimeout(async () => {
+            //     if (Config.enable_openflow_amqp) {
+            //         if (!Message.ReadyForHousekeeping()) {
+            //             return;
+            //         }
+            //         amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping" }, 20000, null, "", 1);
+            //     }
+            // }, randomNum2 * 1000);
         }
         return true;
     } catch (error) {
