@@ -3,6 +3,7 @@ import { User, Role, Rolemember, WellknownIds, Rights, NoderedUtil, Base, TokenU
 import { Config } from "./Config";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
+import { Auth } from "./Auth";
 
 export class DBHelper {
     public static async FindByUsername(username: string, jwt: string, parent: Span): Promise<User> {
@@ -80,43 +81,50 @@ export class DBHelper {
             if (NoderedUtil.IsNullUndefinded(user)) throw new Error("User is mandatory");
             if (!Config.decorate_roles_fetching_all_roles) {
                 if (!user.roles) user.roles = [];
-                const pipe: any = [{ "$match": { "_id": user._id } },
-                {
-                    "$graphLookup": {
-                        from: "users",
-                        startWith: "$_id",
-                        connectFromField: "_id",
-                        connectToField: "members._id",
-                        as: "roles",
-                        maxDepth: Config.max_recursive_group_depth,
-                        depthField: "depth"
-                        , restrictSearchWithMatch: { "_type": "role" }
-                        // , "_id": { $nin: Config.db.WellknownIdsArray }, "members._id": { $nin: Config.db.WellknownIdsArray }
+                const _roles = await Auth.getUser(user._id, "userroles");
+                if (_roles != null) {
+                    user.roles = _roles as any;
+                } else {
+                    const pipe: any = [{ "$match": { "_id": user._id } },
+                    {
+                        "$graphLookup": {
+                            from: "users",
+                            startWith: "$_id",
+                            connectFromField: "_id",
+                            connectToField: "members._id",
+                            as: "roles",
+                            maxDepth: Config.max_recursive_group_depth,
+                            depthField: "depth"
+                            , restrictSearchWithMatch: { "_type": "role" }
+                            // , "_id": { $nin: Config.db.WellknownIdsArray }, "members._id": { $nin: Config.db.WellknownIdsArray }
+                        }
+                    }, {
+                        "$graphLookup": {
+                            from: "users",
+                            startWith: "$_id",
+                            connectFromField: "members._id",
+                            connectToField: "members._id",
+                            as: "roles2",
+                            maxDepth: 0,
+                            depthField: "depth",
+                            restrictSearchWithMatch: { "_type": "role" }
+                        }
                     }
-                }, {
-                    "$graphLookup": {
-                        from: "users",
-                        startWith: "$_id",
-                        connectFromField: "members._id",
-                        connectToField: "members._id",
-                        as: "roles2",
-                        maxDepth: 0,
-                        depthField: "depth",
-                        restrictSearchWithMatch: { "_type": "role" }
+                    ]
+                    const results = await Config.db.aggregate<User>(pipe, "users", Crypt.rootToken(), null, span);
+                    if (results.length > 0) {
+                        let res = { roles: results[0].roles, roles2: (results[0] as any).roles2 }
+                        res.roles = res.roles.map(x => ({ "_id": x._id, "name": x.name, "d": (x as any).depth }));
+                        res.roles2 = res.roles2.map(x => ({ "_id": x._id, "name": x.name, "d": (x as any).depth }));
+                        user.roles = res.roles;
+                        res.roles2.forEach(r => {
+                            const exists = user.roles.filter(x => x._id == r._id);
+                            if (exists.length == 0) user.roles.push(r);
+                        });
                     }
+                    await Auth.AddUser(user.roles as any, user._id, "userroles");
                 }
-                ]
-                const results = await Config.db.aggregate<User>(pipe, "users", Crypt.rootToken(), null, span);
-                if (results.length > 0) {
-                    let res = { roles: results[0].roles, roles2: (results[0] as any).roles2 }
-                    res.roles = res.roles.map(x => ({ "_id": x._id, "name": x.name, "d": (x as any).depth }));
-                    res.roles2 = res.roles2.map(x => ({ "_id": x._id, "name": x.name, "d": (x as any).depth }));
-                    user.roles = res.roles;
-                    res.roles2.forEach(r => {
-                        const exists = user.roles.filter(x => x._id == r._id);
-                        if (exists.length == 0) user.roles.push(r);
-                    });
-                }
+
             } else {
                 var end: number = new Date().getTime();
                 var seconds = Math.round((end - this.cached_at.getTime()) / 1000);

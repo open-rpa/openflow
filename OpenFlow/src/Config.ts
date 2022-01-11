@@ -168,6 +168,7 @@ export class Config {
         Config.prometheus_measure__mongodb_watch = Config.parseBoolean(Config.getEnv("prometheus_measure__mongodb_watch", "false"));
         Config.prometheus_measure_onlineuser = Config.parseBoolean(Config.getEnv("prometheus_measure_onlineuser", "false"));
         Config.enable_analytics = Config.parseBoolean(Config.getEnv("enable_analytics", "true"));
+
         Config.otel_debug_log = Config.parseBoolean(Config.getEnv("otel_debug_log", "false"));
         Config.otel_warn_log = Config.parseBoolean(Config.getEnv("otel_warn_log", "false"));
         Config.otel_err_log = Config.parseBoolean(Config.getEnv("otel_err_log", "false"));
@@ -178,6 +179,7 @@ export class Config {
 
         Config.otel_trace_pingclients = Config.parseBoolean(Config.getEnv("otel_trace_pingclients", "false"));
         Config.otel_trace_dashboardauth = Config.parseBoolean(Config.getEnv("otel_trace_dashboardauth", "false"));
+        Config.otel_trace_include_query = Config.parseBoolean(Config.getEnv("otel_trace_include_query", "true"));
     
         Config.validate_user_form = Config.getEnv("validate_user_form", "");
     }
@@ -351,6 +353,7 @@ export class Config {
     public static otel_metric_interval: number = parseInt(Config.getEnv("otel_metric_interval", "5000"));
     public static otel_trace_pingclients: boolean = Config.parseBoolean(Config.getEnv("otel_trace_pingclients", "false"));
     public static otel_trace_dashboardauth: boolean = Config.parseBoolean(Config.getEnv("otel_trace_dashboardauth", "false"));
+    public static otel_trace_include_query: boolean = Config.parseBoolean(Config.getEnv("otel_trace_include_query", "false"));
     
 
     public static validate_user_form: string = Config.getEnv("validate_user_form", "");

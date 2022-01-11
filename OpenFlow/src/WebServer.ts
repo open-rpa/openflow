@@ -16,7 +16,7 @@ const { RateLimiterMemory } = require('rate-limiter-flexible')
 import * as url from "url";
 import { WebSocketServer } from "./WebSocketServer";
 import { WebSocketServerClient } from "./WebSocketServerClient";
-import { Counter } from "@opentelemetry/api-metrics"
+import { BaseObserver } from "@opentelemetry/api-metrics"
 import { Logger } from "./Logger";
 var _hostname = "";
 
@@ -34,13 +34,13 @@ const rateLimiter = (req: express.Request, res: express.Response, next: express.
         })
         .catch((e) => {
             const route = url.parse(req.url).pathname;
-            if (!NoderedUtil.IsNullUndefinded(websocket_rate_limit)) websocket_rate_limit.bind({ ...Logger.otel.defaultlabels, route: route }).add(1);
+            // if (!NoderedUtil.IsNullUndefinded(websocket_rate_limit)) websocket_rate_limit.bind({ ...Logger.otel.defaultlabels, route: route }).update(e.consumedPoints);
             console.warn("API_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints + " msBeforeNext: " + e.msBeforeNext);
             res.status(429).json({ response: 'RATE_LIMIT' });
         });
 };
 
-let websocket_rate_limit: Counter = null;
+// let websocket_rate_limit: BaseObserver = null;
 export class WebServer {
     public static remoteip(req: express.Request) {
         let remoteip: string = req.socket.remoteAddress;
@@ -53,9 +53,9 @@ export class WebServer {
     public static app: express.Express;
     static async configure(baseurl: string): Promise<http.Server> {
         if (!NoderedUtil.IsNullUndefinded(Logger.otel)) {
-            websocket_rate_limit = Logger.otel.meter.createCounter("openflow_webserver_rate_limit_count", {
-                description: 'Total number of rate limited web request'
-            }) // "route"
+            // websocket_rate_limit = Logger.otel.meter.createUpDownSumObserver("openflow_webserver_rate_limit_count", {
+            //     description: 'Total number of rate limited web request'
+            // }) // "route"
         }
         this.app = express();
         this.app.disable("x-powered-by");

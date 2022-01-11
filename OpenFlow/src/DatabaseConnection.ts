@@ -406,7 +406,7 @@ export class DatabaseConnection extends events.EventEmitter {
                             const ot_end = Logger.otel.startTimer();
                             const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.find", span);
                             mongodbspan?.setAttribute("collection", "users");
-                            mongodbspan?.setAttribute("query", JSON.stringify({ _id: ace._id }));
+                            if (Config.otel_trace_include_query) mongodbspan?.setAttribute("query", JSON.stringify({ _id: ace._id }));
                             const arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1 }).limit(1).toArray();
                             mongodbspan?.setAttribute("results", arr.length);
                             Logger.otel.endSpan(mongodbspan);
@@ -668,7 +668,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     } else
                         return value; // leave any other value as-is
                 });
-                span?.setAttribute("query", JSON.stringify(query));
+                if (Config.otel_trace_include_query) span?.setAttribute("query", JSON.stringify(query));
             }
             if (NoderedUtil.IsNullUndefinded(query)) {
                 throw new Error("Query is mandatory");
@@ -854,7 +854,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 return value; // leave any other value as-is
         });
         const user: TokenUser = Crypt.verityToken(jwt);
-        span?.setAttribute("aggregates", JSON.stringify(aggregates));
+        if (Config.otel_trace_include_query) span?.setAttribute("aggregates", JSON.stringify(aggregates));
         span?.setAttribute("collection", collectionname);
         span?.setAttribute("username", user.username);
         const aggregatesjson = JSON.stringify(aggregates, null, 2)
@@ -3028,14 +3028,14 @@ export class DatabaseConnection extends events.EventEmitter {
                                 if (indexnames.indexOf("_modified_1") === -1) {
                                     await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
                                 }
-                                if (indexnames.indexOf("unique_username_1") === -1) {
-                                    await this.createIndex(collection.name, "unique_username_1", { "username": 1 },
-                                        { "unique": true, "name": "unique_username_1", "partialFilterExpression": { "_type": "user" } }, span)
-                                }
-                                if (indexnames.indexOf("members._id_1") === -1) {
-                                    await this.createIndex(collection.name, "members._id_1", { "members._id": 1 },
-                                        { "partialFilterExpression": { "_type": "role" } }, span)
-                                }
+                                // if (indexnames.indexOf("unique_username_1") === -1) {
+                                //     await this.createIndex(collection.name, "unique_username_1", { "username": 1 },
+                                //         { "unique": true, "name": "unique_username_1", "partialFilterExpression": { "_type": "user" } }, span)
+                                // }
+                                // if (indexnames.indexOf("members._id_1") === -1) {
+                                //     await this.createIndex(collection.name, "members._id_1", { "members._id": 1 },
+                                //         { "partialFilterExpression": { "_type": "role" } }, span)
+                                // }
                                 if (indexnames.indexOf("_acl") === -1) {
                                     await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
                                 }
