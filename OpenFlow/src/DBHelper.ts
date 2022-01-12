@@ -122,6 +122,10 @@ export class DBHelper {
                             if (exists.length == 0) user.roles.push(r);
                         });
                     }
+                    let hasusers = user.roles.filter(x => x._id == WellknownIds.users);
+                    if (hasusers.length == 0) {
+                        user.roles.push(new Rolemember("users", WellknownIds.users));
+                    }
                     await Auth.AddUser(user.roles as any, user._id, "userroles");
                 }
 
@@ -148,7 +152,10 @@ export class DBHelper {
                         user.roles.push(new Rolemember(role.name, role._id));
                     }
                 }
-
+                let hasusers = user.roles.filter(x => x._id == WellknownIds.users);
+                if (hasusers.length == 0) {
+                    user.roles.push(new Rolemember("users", WellknownIds.users));
+                }
                 let updated: boolean = false;
                 do {
                     updated = false;
@@ -216,25 +223,27 @@ export class DBHelper {
     public static async EnsureUser(jwt: string, name: string, username: string, id: string, password: string, parent: Span): Promise<User> {
         const span: Span = Logger.otel.startSubSpan("dbhelper.ensureUser", parent);
         try {
+            span?.addEvent("FindByUsernameOrId");
             let user: User = await this.FindByUsernameOrId(username, id, span);
             if (user !== null && (user._id === id || id === null)) { return user; }
-            if (user !== null && id !== null) { await Config.db.DeleteOne(user._id, "users", jwt, span); }
+            if (user !== null && id !== null) {
+                span?.addEvent("FindByUsernameOrId");
+                await Config.db.DeleteOne(user._id, "users", jwt, span);
+            }
             user = new User(); user._id = id; user.name = name; user.username = username;
             if (password !== null && password !== undefined && password !== "") {
+                span?.addEvent("SetPassword");
                 await Crypt.SetPassword(user, password, span);
             } else {
+                span?.addEvent("SetPassword");
                 await Crypt.SetPassword(user, Math.random().toString(36).substr(2, 9), span);
             }
+            span?.addEvent("Insert user");
             user = await Config.db.InsertOne(user, "users", 0, false, jwt, span);
             user = User.assign(user);
-            Base.addRight(user, WellknownIds.admins, "admins", [Rights.full_control]);
-            Base.addRight(user, user._id, user.name, [Rights.full_control]);
-            Base.removeRight(user, user._id, [Rights.delete]);
-            await this.Save(user, jwt, span);
-            const users: Role = await this.FindRoleByName("users", span);
-            users.AddMember(user);
-            await this.Save(users, jwt, span)
+            span?.addEvent("DecorateWithRoles");
             user = await this.DecorateWithRoles(user, span);
+            span?.addEvent("return user");
             return user;
         } catch (error) {
             span?.recordException(error);
