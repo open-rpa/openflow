@@ -51,7 +51,7 @@ async function initDatabase(): Promise<boolean> {
         Base.removeRight(robot_agent_users, WellknownIds.admins, [Rights.delete]);
         Base.addRight(robot_agent_users, WellknownIds.root, "root", [Rights.full_control]);
         if (Config.multi_tenant) {
-            Logger.instanse.debug("[root][users] Running in multi tenant mode, remove " + robot_agent_users.name + " from self");
+            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + robot_agent_users.name + " from self");
             Base.removeRight(robot_agent_users, robot_agent_users._id, [Rights.full_control]);
         } else if (Config.update_acl_based_on_groups) {
             Base.removeRight(robot_agent_users, robot_agent_users._id, [Rights.full_control]);
@@ -80,7 +80,7 @@ async function initDatabase(): Promise<boolean> {
         Base.addRight(personal_nodered_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(personal_nodered_users, WellknownIds.admins, [Rights.delete]);
         if (Config.multi_tenant) {
-            Logger.instanse.debug("[root][users] Running in multi tenant mode, remove " + personal_nodered_users.name + " from self");
+            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + personal_nodered_users.name + " from self");
             Base.removeRight(personal_nodered_users, personal_nodered_users._id, [Rights.full_control]);
         } else if (Config.update_acl_based_on_groups) {
             Base.removeRight(personal_nodered_users, personal_nodered_users._id, [Rights.full_control]);
@@ -97,7 +97,7 @@ async function initDatabase(): Promise<boolean> {
         Base.addRight(nodered_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(nodered_users, WellknownIds.admins, [Rights.delete]);
         if (Config.multi_tenant) {
-            Logger.instanse.debug("[root][users] Running in multi tenant mode, remove " + nodered_users.name + " from self");
+            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + nodered_users.name + " from self");
             Base.removeRight(nodered_users, nodered_users._id, [Rights.full_control]);
         } else if (Config.update_acl_based_on_groups) {
             Base.removeRight(nodered_users, nodered_users._id, [Rights.full_control]);
@@ -109,7 +109,7 @@ async function initDatabase(): Promise<boolean> {
         Base.addRight(nodered_api_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(nodered_api_users, WellknownIds.admins, [Rights.delete]);
         if (Config.multi_tenant) {
-            Logger.instanse.debug("[root][users] Running in multi tenant mode, remove " + nodered_api_users.name + " from self");
+            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + nodered_api_users.name + " from self");
             Base.removeRight(nodered_api_users, nodered_api_users._id, [Rights.full_control]);
         } else if (Config.update_acl_based_on_groups) {
             Base.removeRight(nodered_api_users, nodered_api_users._id, [Rights.full_control]);
@@ -148,7 +148,7 @@ async function initDatabase(): Promise<boolean> {
         Base.addRight(robot_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(robot_users, WellknownIds.admins, [Rights.delete]);
         if (Config.multi_tenant) {
-            Logger.instanse.debug("[root][users] Running in multi tenant mode, remove " + robot_users.name + " from self");
+            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + robot_users.name + " from self");
             Base.removeRight(robot_users, robot_users._id, [Rights.full_control]);
         } else if (Config.update_acl_based_on_groups) {
             Base.removeRight(robot_users, robot_users._id, [Rights.full_control]);
@@ -166,7 +166,7 @@ async function initDatabase(): Promise<boolean> {
         Base.addRight(filestore_admins, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(filestore_admins, WellknownIds.admins, [Rights.delete]);
         if (Config.multi_tenant) {
-            Logger.instanse.debug("[root][users] Running in multi tenant mode, remove " + filestore_admins.name + " from self");
+            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + filestore_admins.name + " from self");
             Base.removeRight(filestore_admins, filestore_admins._id, [Rights.full_control]);
         }
         await DBHelper.Save(filestore_admins, jwt, span);
@@ -178,7 +178,7 @@ async function initDatabase(): Promise<boolean> {
         Base.addRight(filestore_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(filestore_users, WellknownIds.admins, [Rights.delete]);
         if (Config.multi_tenant) {
-            Logger.instanse.debug("[root][users] Running in multi tenant mode, remove " + filestore_users.name + " from self");
+            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + filestore_users.name + " from self");
             Base.removeRight(filestore_users, filestore_users._id, [Rights.full_control]);
         } else if (Config.update_acl_based_on_groups) {
             Base.removeRight(filestore_users, filestore_users._id, [Rights.full_control]);
