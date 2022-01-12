@@ -221,7 +221,6 @@ export class WebServer {
                                 delete msg.span;
                             }
                             delete WebServer.log_messages[key];
-                            // console.log("Ending " + key)
                         }
                     });
                 }, 1000)
@@ -359,7 +358,6 @@ export class WebServer {
                 events.on("runtime-event", validateNodes);
                 events.on("node-status", (e, e2, e3) => {
                     // {id:"runtime-unsupported-version",type:"error",text:"message.id"}
-                    // console.log(e);
                 });
 
                 Logger.instanse.debug("WebServer.configure::init nodered");

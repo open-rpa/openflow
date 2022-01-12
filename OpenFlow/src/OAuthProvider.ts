@@ -147,7 +147,7 @@ export class OAuthProvider {
                     short: {
                         path: '/',
                     },
-                    keys: [Config.oidc_cookie_key], // node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+                    keys: [Config.oidc_cookie_key],
                 },
             });
             provider.proxy = true;

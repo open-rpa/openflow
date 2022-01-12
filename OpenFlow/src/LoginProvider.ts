@@ -236,7 +236,6 @@ export class LoginProvider {
                         const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
                         if (allowed.length > 0) {
                             await Auth.AddUser(user, token, "dashboard");
-                            // Logger.instanse.info("dashboardauth: Authorized " + user.username + " for " + req.url);
                             return res.send({
                                 status: "success",
                                 display_status: "Success",
@@ -262,7 +261,6 @@ export class LoginProvider {
                     if (user != null) {
                         const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
                         if (allowed.length > 0) {
-                            // Logger.instanse.info("dashboardauth: Authorized " + user.username + " for " + req.url);
                             Auth.AddUser(user, b64auth, "dashboard");
                             return res.send({
                                 status: "success",
@@ -872,7 +870,6 @@ export class LoginProvider {
         const strategy: passport.Strategy = new GoogleStrategy.Strategy(options, options.verify);
         passport.use(key, strategy);
         strategy.name = key;
-        Logger.instanse.info(options.callbackURL);
         app.use("/" + key,
             express.urlencoded({ extended: false }),
             passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),
@@ -903,7 +900,6 @@ export class LoginProvider {
         const strategy: passport.Strategy = new SamlStrategy(options, options.verify);
         passport.use(key, strategy);
         strategy.name = key;
-        Logger.instanse.info(options.callbackUrl);
 
         // app.get("/" + key + "/FederationMetadata/2007-06/FederationMetadata.xml",
         //     wsfed.metadata({
@@ -1056,7 +1052,6 @@ export class LoginProvider {
         app.use("/local",
             express.urlencoded({ extended: false }),
             function (req: any, res: any, next: any): void {
-                Logger.instanse.debug("passport.authenticate local");
                 passport.authenticate("local", function (err, user, info) {
                     let originalUrl: any = req.cookies.originalUrl;
                     if (err) {

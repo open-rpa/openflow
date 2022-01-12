@@ -28,7 +28,6 @@ export class QueueClient {
             let span: Span = null;
             try {
                 if (!Config.db.isConnected) {
-                    console.log("nack");
                     ack(false);
                     return;
                 }

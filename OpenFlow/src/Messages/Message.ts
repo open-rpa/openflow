@@ -1788,7 +1788,7 @@ export class Message {
                         await docker.listContainers();
                         Message.usedocker = true;
                     } catch (error) {
-                        console.log(error);
+                        Logger.instanse.error(error);
                         Message.usedocker = false;
                     }
 
@@ -4405,6 +4405,7 @@ export class Message {
         const a: number = (date as any) - (Message.lastHouseKeeping as any);
         const diffminutes = a / (1000 * 60);
         // const diffhours = a / (1000 * 60 * 60);
+        Logger.instanse.silly(diffminutes + " minutes since laste house keeping");
         if (diffminutes < 60) return false;
         return true;
     }

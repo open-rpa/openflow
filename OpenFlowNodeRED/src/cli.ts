@@ -41,7 +41,6 @@ try {
                 for (const net of nets[name]) {
                     // skip over non-ipv4 and internal (i.e. 127.0.0.1) addresses
                     if (net.family === 'IPv4' && !net.internal) {
-                        //console.log(name, net);
                         console.log(name, net.address);
                     }
                 }
