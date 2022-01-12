@@ -451,9 +451,7 @@ export class DatabaseConnection extends events.EventEmitter {
             for (let i = original.members.length - 1; i >= 0; i--) {
                 const ace = original.members[i];
                 const exists = item.members.filter(x => x._id === ace._id);
-                if (exists.length === 0) {
-                    removed.push(ace);
-                }
+                if (exists.length === 0) removed.push(ace);
             }
         }
         let doadd: boolean = true;
@@ -1202,23 +1200,18 @@ export class DatabaseConnection extends events.EventEmitter {
             item = result.ops[0];
             if (collectionname === "users" && item._type === "user") {
                 Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
-                span?.addEvent("FindRoleByNameOrId");
+                span?.addEvent("FindRoleByNameOrId users");
                 const users: Role = await DBHelper.FindRoleByNameOrId("users", jwt, span);
                 users.AddMember(item);
-                span?.addEvent("CleanACL");
-                item = await this.CleanACL(item, user, collectionname, span);
-                span?.addEvent("Save");
-                await DBHelper.Save(users, Crypt.rootToken(), span);
+                span?.addEvent("Save Users");
+                DBHelper.Save(users, Crypt.rootToken(), span).catch((error) => Logger.instanse.error(error));
                 let user2: TokenUser = item as any;
-
                 if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
                     // TODO: Check user has permission to this customer
                     const custusers: Role = Role.assign(await this.getbyid<Role>(customer.users, "users", jwt, span));
                     custusers.AddMember(item);
-                    await DBHelper.Save(custusers, Crypt.rootToken(), span);
+                    DBHelper.Save(custusers, Crypt.rootToken(), span).catch((error) => Logger.instanse.error(error));
                 }
-
-                // DBHelper.EnsureNoderedRoles(user2, Crypt.rootToken(), false, span);
             }
             if (collectionname === "users" && item._type === "role") {
                 Base.addRight(item, item._id, item.name, [Rights.read]);
@@ -1261,7 +1254,7 @@ export class DatabaseConnection extends events.EventEmitter {
         return item;
     }
     async InsertMany<T extends Base>(items: T[], collectionname: string, w: number, j: boolean, jwt: string, parent: Span): Promise<T[]> {
-        const span: Span = Logger.otel.startSubSpan("db.InsertOne", parent);
+        const span: Span = Logger.otel.startSubSpan("db.InsertMany", parent);
         let result: T[] = [];
         try {
             if (NoderedUtil.IsNullUndefinded(items) || items.length == 0) { throw Error("Cannot create null item"); }
