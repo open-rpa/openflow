@@ -72,15 +72,13 @@ export class Auth {
         this.RemoveUser(key, type);
         return null;
     }
-    public static async clearCache() {
+    public static async clearCache(reason: string) {
+        Logger.instanse.verbose("clearCache " + reason);
         if (this.authorizationCache == null) return;
-        const keys: string[] = Object.keys(this.authorizationCache);
-        for (let i = keys.length - 1; i >= 0; i--) {
-            let key: string = keys[i];
-            var res: CachedUser = this.authorizationCache[key];
-            if (res === null || res === undefined) continue;
-            this.RemoveUser(key, res.type);
-        }
+        Auth.ensureotel();
+        await Auth.semaphore.down();
+        this.authorizationCache = {}
+        Auth.semaphore.up();
     }
     public static async cleanCache() {
         try {
