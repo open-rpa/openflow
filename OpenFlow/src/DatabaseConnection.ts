@@ -1690,7 +1690,8 @@ export class DatabaseConnection extends events.EventEmitter {
                         q.item = this.ensureResource(q.item, q.collectionname);
                     }
                 }
-                var _oldversion = q.item._version;
+                var _oldversion = 0;
+                if (original != null) _oldversion = original._version;
                 if (q.item.hasOwnProperty("_skiphistory")) {
                     delete (q.item as any)._skiphistory;
                     if (!Config.allow_skiphistory) {
