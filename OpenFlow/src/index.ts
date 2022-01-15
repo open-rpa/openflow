@@ -19,26 +19,57 @@ Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db);
 
 
 let amqp: amqpwrapper = null;
-async function initamqp() {
-    amqp = new amqpwrapper(Config.amqp_url);
-    amqpwrapper.SetInstance(amqp);
-    await amqp.connect();
-}
-async function ValidateValidateUserForm() {
-    var forms = await Config.db.query<Base>({ _id: Config.validate_user_form, _type: "form" }, null, 1, 0, null, "forms", Crypt.rootToken(), undefined, undefined, null);
-    if (forms.length == 0) {
-        Logger.instanse.error("validate_user_form " + Config.validate_user_form + " does not exists!");
-        Config.validate_user_form = "";
+async function initamqp(parent: Span) {
+    const span: Span = Logger.otel.startSubSpan("initamqp", parent);
+    try {
+        amqp = new amqpwrapper(Config.amqp_url);
+        amqpwrapper.SetInstance(amqp);
+        await amqp.connect(span);
+    } catch (error) {
+        span?.recordException(error);
+        Logger.instanse.error(error);
+        return false;
+    } finally {
+        Logger.otel.endSpan(span);
     }
 }
-async function initDatabase(): Promise<boolean> {
-    const span: Span = Logger.otel.startSpan("initDatabase");
+async function ValidateValidateUserForm(parent: Span) {
+    const span: Span = Logger.otel.startSubSpan("ValidateValidateUserForm", parent);
+    try {
+        var forms = await Config.db.query<Base>({ _id: Config.validate_user_form, _type: "form" }, null, 1, 0, null, "forms", Crypt.rootToken(), undefined, undefined, null);
+        if (forms.length == 0) {
+            Logger.instanse.error("validate_user_form " + Config.validate_user_form + " does not exists!");
+            Config.validate_user_form = "";
+        }
+    } catch (error) {
+        span?.recordException(error);
+        Logger.instanse.error(error);
+        return false;
+    } finally {
+        Logger.otel.endSpan(span);
+    }
+}
+function doHouseKeeping() {
+    Message.lastHouseKeeping = new Date();
+    amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping", "lastrun": Message.lastHouseKeeping.toISOString() }, 20000, null, "", 1);
+    var dt = new Date(Message.lastHouseKeeping.toISOString());
+    var msg2 = new Message(); msg2.jwt = Crypt.rootToken();
+    var skipUpdateUsage: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
+    msg2.Housekeeping(false, skipUpdateUsage, skipUpdateUsage, null).catch((error) => Logger.instanse.error(error));
+
+    // var dt = new Date(new Date().toISOString());
+    // var msg = new Message(); msg.jwt = Crypt.rootToken();
+    // var skipUpdateUsage: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
+    // await msg.Housekeeping(false, skipUpdateUsage, skipUpdateUsage, null);
+
+}
+async function initDatabase(parent: Span): Promise<boolean> {
+    const span: Span = Logger.otel.startSubSpan("initDatabase", parent);
     try {
         const jwt: string = Crypt.rootToken();
         const admins: Role = await DBHelper.EnsureRole(jwt, "admins", WellknownIds.admins, span);
         const users: Role = await DBHelper.EnsureRole(jwt, "users", WellknownIds.users, span);
         const root: User = await DBHelper.EnsureUser(jwt, "root", "root", WellknownIds.root, null, span);
-        await Config.db.ensureindexes(span);
 
         Base.addRight(root, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(root, WellknownIds.admins, [Rights.delete]);
@@ -187,48 +218,52 @@ async function initDatabase(): Promise<boolean> {
         await DBHelper.Save(filestore_users, jwt, span);
 
         await Config.db.ensureindexes(span);
-        Logger.otel.endSpan(span);
 
         if (Config.auto_hourly_housekeeping) {
             // Every 15 minutes, give and take a few minutes, send out a message to do house keeping, if ready
             const randomNum = (Math.floor(Math.random() * 100) + 1);
-            console.log("Housekeeping every 15 minutes plus " + randomNum + " seconds");
+            Logger.instanse.verbose("Housekeeping every 15 minutes plus " + randomNum + " seconds");
             housekeeping = setInterval(async () => {
                 if (Config.enable_openflow_amqp) {
-                    if (Config.enable_openflow_amqp) {
-                        if (!Message.ReadyForHousekeeping()) {
-                            return;
-                        }
-                        amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping" }, 20000, null, "", 1);
+                    if (!Message.ReadyForHousekeeping()) {
+                        return;
+                    }
+                    amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping" }, 10000, null, "", 1);
+                    await new Promise(resolve => { setTimeout(resolve, 10000) });
+                    if (Message.ReadyForHousekeeping()) {
+                        doHouseKeeping();
+                    } else {
+                        Logger.instanse.verbose("SKIP housekeeping");
                     }
                 } else {
-                    try {
-                        var dt = new Date(new Date().toISOString());
-                        var msg = new Message(); msg.jwt = Crypt.rootToken();
-                        var skipUpdateUsage: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
-                        await msg.Housekeeping(false, skipUpdateUsage, skipUpdateUsage, null);
-                    } catch (error) {
-                    }
+                    doHouseKeeping();
                 }
             }, (15 * 60 * 1000) + (randomNum * 1000));
             // If I'm first and noone else has run it, lets trigger it now
             // const randomNum2 = (Math.floor(Math.random() * 10) + 1);
-            // console.log("Trigger first Housekeeping in " + randomNum2 + " seconds");
+            // Logger.instanse.info("Trigger first Housekeeping in " + randomNum2 + " seconds");
             // setTimeout(async () => {
             //     if (Config.enable_openflow_amqp) {
             //         if (!Message.ReadyForHousekeeping()) {
             //             return;
             //         }
-            //         amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping" }, 20000, null, "", 1);
+            //         amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping" }, 10000, null, "", 1);
+            //         await new Promise(resolve => { setTimeout(resolve, 10000) });
+            //         if (Message.ReadyForHousekeeping()) {
+            //             doHouseKeeping();
+            //         } else {
+            //             Logger.instanse.verbose("SKIP housekeeping");
+            //         }
             //     }
             // }, randomNum2 * 1000);
         }
         return true;
     } catch (error) {
         span?.recordException(error);
-        Logger.otel.endSpan(span);
         Logger.instanse.error(error);
         return false;
+    } finally {
+        Logger.otel.endSpan(span);
     }
 }
 
@@ -330,24 +365,28 @@ const originalStderrWrite = process.stderr.write.bind(process.stderr);
 
 var server: http.Server = null;
 (async function (): Promise<void> {
+    const span: Span = Logger.otel.startSpan("openflow.startup");
     try {
-        await initamqp();
+        await initamqp(span);
         Logger.instanse.info("VERSION: " + Config.version);
-        server = await WebServer.configure(Config.baseurl());
+        server = await WebServer.configure(Config.baseurl(), span);
         if (GrafanaProxy != null) {
-            const grafana = await GrafanaProxy.GrafanaProxy.configure(WebServer.app);
+            const grafana = await GrafanaProxy.GrafanaProxy.configure(WebServer.app, span);
         }
-        OAuthProvider.configure(WebServer.app);
-        WebSocketServer.configure(server);
-        await QueueClient.configure();
+        OAuthProvider.configure(WebServer.app, span);
+        WebSocketServer.configure(server, span);
+        await QueueClient.configure(span);
         Logger.instanse.info("listening on " + Config.baseurl());
         Logger.instanse.info("namespace: " + Config.namespace);
-        await ValidateValidateUserForm();
-        if (!await initDatabase()) {
+        await ValidateValidateUserForm(span);
+        if (!await initDatabase(span)) {
             process.exit(404);
         }
     } catch (error) {
+        span?.recordException(error);
         Logger.instanse.error(error);
         process.exit(404);
+    } finally {
+        Logger.otel.endSpan(span);
     }
 })();

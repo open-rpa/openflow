@@ -64,10 +64,8 @@ export declare interface amqpwrapper {
 export class amqpwrapper extends events.EventEmitter {
     static waitFor(condition, callback) {
         if (!condition()) {
-            // console.log('waiting');
             setTimeout(amqpwrapper.waitFor.bind(null, condition, callback), 100); /* this checks the flag every 100 milliseconds*/
         } else {
-            // console.log('done');
             callback();
         }
     }
@@ -79,15 +77,11 @@ export class amqpwrapper extends events.EventEmitter {
     }
     public connected: boolean = false;
     private conn: amqplib.Connection;
-    private channel: amqplib.ConfirmChannel; // amqplib.Channel  channel: amqplib.ConfirmChannel;
-    // private confirmchannel: amqplib.ConfirmChannel; // channel: amqplib.ConfirmChannel;
+    private channel: amqplib.ConfirmChannel;
     private connectionstring: string;
     public AssertExchangeOptions: any = { durable: false, confirm: true };
     public AssertQueueOptions: amqplib.any = { durable: true };
     private activecalls: IHashTable<Deferred<string>> = {};
-    // private queues: IHashTable<Deferred<string>> = {};
-    // public queues: IHashTable<amqpqueue> = {};
-    // private exchanges: IHashTable<amqpexchange> = {};
     private queues: amqpqueue[] = [];
     private exchanges: amqpexchange[] = [];
     private replyqueue: amqpqueue;
@@ -115,13 +109,15 @@ export class amqpwrapper extends events.EventEmitter {
         this.queuemessagecounter[queuename] = result;
         return result;
     }
-    async connect(): Promise<void> {
+    async connect(parent: Span): Promise<void> {
+        const span: Span = Logger.otel.startSubSpan("amqpwrapper.connect", parent);
         try {
             if (this.timeout != null) {
                 clearTimeout(this.timeout);
                 this.timeout = null;
             }
             if (this.conn == null) {
+                span?.addEvent("connect");
                 this.conn = await amqplib.connect(this.connectionstring);
                 this.conn.on('error', (error) => {
                     if (error.code != 404) {
@@ -139,17 +135,21 @@ export class amqpwrapper extends events.EventEmitter {
                     this.emit("disconnected");
                 });
             }
-            await this.AddReplyQueue();
+            span?.addEvent("AddReplyQueue");
+            await this.AddReplyQueue(span);
             this.channel.on('error', (error) => {
                 if (error.code != 404) {
                     Logger.instanse.error(error);
                 }
             });
-            this.Adddlx();
-            this.AddOFExchange();
+            this.Adddlx(span);
+            this.AddOFExchange(span);
+            span?.addEvent("emit connected");
             this.emit("connected");
             this.connected = true;
         } catch (error) {
+            span?.recordException(error);
+            Logger.instanse.error(error);
             if (this.timeout != null) {
                 clearTimeout(this.timeout);
                 this.timeout = null;
@@ -159,6 +159,8 @@ export class amqpwrapper extends events.EventEmitter {
             }
             console.error(error);
             this.timeout = setTimeout(this.connect.bind(this), 1000);
+        } finally {
+            Logger.otel.endSpan(span);
         }
     }
     shutdown() {
@@ -182,7 +184,8 @@ export class amqpwrapper extends events.EventEmitter {
             this.timeout = null;
         }
     }
-    async AddReplyQueue(): Promise<void> {
+    async AddReplyQueue(parent: Span): Promise<void> {
+        const span: Span = Logger.otel.startSubSpan("AddReplyQueue", parent);
         try {
             this.channel = await this.conn.createConfirmChannel();
             this.channel.prefetch(Config.amqp_prefetch);
@@ -250,7 +253,11 @@ export class amqpwrapper extends events.EventEmitter {
                 this.timeout = setTimeout(this.connect.bind(this), 1000);
             });
         } catch (error) {
-            console.error(error);
+            span?.recordException(error);
+            Logger.instanse.error(error);
+            return;
+        } finally {
+            Logger.otel.endSpan(span);
         }
     }
     async RemoveQueueConsumer(queue: amqpqueue, parent: Span): Promise<void> {
@@ -459,7 +466,7 @@ export class amqpwrapper extends events.EventEmitter {
             this.channel.publish(exchange, routingkey, Buffer.from(data), options);
         }
     }
-    async Adddlx() {
+    async Adddlx(parent: Span) {
         if (NoderedUtil.IsNullEmpty(Config.amqp_dlx)) return;
         await this.AddExchangeConsumer(Config.amqp_dlx, "fanout", "", null, null, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
             if (typeof msg === "string" || msg instanceof String) {
@@ -484,13 +491,13 @@ export class amqpwrapper extends events.EventEmitter {
             }
             ack();
             done();
-        }, undefined);
+        }, parent);
     }
     IsMyconsumerTag(consumerTag: string) {
         var q = this.queues.filter(q => q.consumerTag == consumerTag);
         return q.length != 0;
     }
-    async AddOFExchange() {
+    async AddOFExchange(parent: Span) {
         if (!Config.enable_openflow_amqp) return;
         await this.AddExchangeConsumer("openflow", "fanout", "", null, null, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
             if (typeof msg === "string" || msg instanceof String) {
@@ -503,23 +510,18 @@ export class amqpwrapper extends events.EventEmitter {
                 if (Config.log_amqp) Logger.instanse.info("[OF][" + options.exchange + "] Received command " + msg.command);
                 switch (msg.command) {
                     case "clearcache":
-                        Auth.clearCache();
+                        Auth.clearCache("amqp broadcast");
                         break;
                     case "housekeeping":
-                        if (this.IsMyconsumerTag(options.consumerTag)) {
-                            ack();
-                            done();
-                            try {
-                                var dt = new Date(new Date().toISOString());
-                                var msg2 = new Message(); msg2.jwt = Crypt.rootToken();
-                                var skipUpdateUsage: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
-                                await msg2.Housekeeping(false, skipUpdateUsage, skipUpdateUsage, null);
-                            } catch (error) {
+                        // if (this.IsMyconsumerTag(options.consumerTag)) break;
+                        if (msg.lastrun) {
+                            console.log("set lastHouseKeeping too " + msg.lastrun)
+                            Message.lastHouseKeeping = new Date(msg.lastrun);
+                        } else {
+                            if (Message.lastHouseKeeping != null) {
+                                amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping", "lastrun": Message.lastHouseKeeping.toISOString() }, 20000, null, "", 1);
                             }
-                            return;
                         }
-                        console.log("Reset house keeping, someone else is doing it now");
-                        Message.lastHouseKeeping = new Date();
                         break;
                     case "shutdown":
                         try {
@@ -538,24 +540,10 @@ export class amqpwrapper extends events.EventEmitter {
                         break;
                 }
             } else {
-                if (Config.log_amqp) console.log("[OF] Received string message: " + JSON.stringify(msg));
+                if (Config.log_amqp) Logger.instanse.verbose("[OF] Received string message: " + JSON.stringify(msg));
             }
-            // try {
-            //     if (typeof msg === "string" || msg instanceof String) {
-            //         msg = "timeout"
-            //     } else {
-            //         msg.command = "timeout";
-            //     }
-            //     // Resend message, this time to the reply queue for the correct node (replyTo)
-            //     if (Config.log_amqp) Logger.instanse.info("[DLX][" + options.exchange + "] Send timeout to " + options.replyTo + " correlationId: " + options.correlationId);
-            //     // await amqpwrapper.Instance().sendWithReply("", options.replyTo, msg, 20000, options.correlationId, "");
-            //     await amqpwrapper.Instance().send("", options.replyTo, msg, 20000, options.correlationId, "");
-            // } catch (error) {
-            //     console.error("Failed sending deadletter message to " + options.replyTo);
-            //     console.error(error);
-            // }
             ack();
             done();
-        }, undefined);
+        }, parent);
     }
 }
