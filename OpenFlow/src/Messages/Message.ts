@@ -265,7 +265,6 @@ export class Message {
                     WebSocketServer.update_message_queue_count(cli);
                 }
                 if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
-                // Logger.otel.endSpan(span);
                 return;
             }
             const ot_end = Logger.otel.startTimer();
@@ -1444,9 +1443,7 @@ export class Message {
             } else if (tuser != null) {
                 Logger.instanse.info(tuser.username + " successfully signed in");
                 Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
-                const updatedoc = { _heartbeat: new Date(new Date().toISOString()), lastseen: new Date(new Date().toISOString()) };
-                Config.db.synRawUpdateOne("users", { _id: cli.user._id }, { $set: updatedoc, }, Config.prometheus_measure_onlineuser, null);
-
+                DBHelper.UpdateHeartbeat(cli);
             }
         } catch (error) {
             Logger.instanse.error(error);
@@ -1742,7 +1739,7 @@ export class Message {
             msg.user = TokenUser.From(user);
 
             const jwt: string = Crypt.createToken(msg.user, Config.shorttoken_expires_in);
-            DBHelper.EnsureNoderedRoles(user, jwt, false, span);
+            await DBHelper.EnsureNoderedRoles(user, jwt, false, span);
         } catch (error) {
             span?.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -1928,7 +1925,7 @@ export class Message {
                 const tuser: TokenUser = TokenUser.From(nodereduser);
                 const nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
 
-                DBHelper.EnsureNoderedRoles(tuser, this.jwt, true, span);
+                await DBHelper.EnsureNoderedRoles(tuser, this.jwt, true, span);
                 let saml_baseurl = Config.protocol + "://" + hostname + "/";
                 let _samlparsed = url.parse(Config.saml_federation_metadata);
                 if (_samlparsed.protocol == "http:" || _samlparsed.protocol == "ws:") {
@@ -2057,7 +2054,7 @@ export class Message {
             const tuser: TokenUser = TokenUser.From(nodereduser);
             const nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
 
-            DBHelper.EnsureNoderedRoles(tuser, this.jwt, true, span);
+            await DBHelper.EnsureNoderedRoles(tuser, this.jwt, true, span);
 
             const resources = new V1ResourceRequirements();
             let hasbilling: boolean = false;
