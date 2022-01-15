@@ -21,11 +21,12 @@ export class Logger {
         let arr = [];
         try {
             arr = e.stack.split("\n");
+            frame = arr[0];
             arr = arr.filter(x => x.indexOf("node_modules") === -1)
             arr = arr.filter(x => x.indexOf("dist") !== -1)
             arr = arr.filter(x => x.indexOf("Logger.js") === -1)
             arr = arr.filter(x => x.indexOf("otel.js") === -1)
-            frame = arr[0];
+            if (arr.length > 0) frame = arr[0];
             lineNumber = frame.split(":").reverse()[1];
             functionName = frame.split(" ")[5];
             filename = frame.substr(frame.indexOf("("));
