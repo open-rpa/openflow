@@ -644,11 +644,16 @@ export class entitiesCtrl<T> {
                     orderby = { _created: -1 };
                 }
             } else {
-                orderby = null;
+                if (NoderedUtil.IsNullUndefinded(this.orderby) || Object.keys(this.orderby).length == 0) {
+                    orderby = { _created: -1 };
+                }
+                if (!NoderedUtil.IsNullEmpty(this.searchstring) && !this.searchstring.startsWith(".")) {
+                    // Remove order by when using text index
+                    orderby = null;
+                }
             }
-            // orderby = null;
-
             if (this.page == 0) {
+
                 this.models = await NoderedUtil.Query(this.collection, query, this.baseprojection, orderby, this.pagesize, 0, null, basequeryas, null, 2);
             } else {
                 var temp = await NoderedUtil.Query(this.collection, query, this.baseprojection, orderby, this.pagesize, this.pagesize * this.page, null, basequeryas, null, 2);
@@ -691,7 +696,6 @@ export class entitiesCtrl<T> {
         if (this.loading == true) { console.debug("allready loading data, exit"); return; }
         if (this.models.length < (this.pagesize - 15)) { console.debug("Seems there are no more data, exit"); return; }
         this.page++;
-        console.log("loading more ... page: " + (this.page + 1))
         this.loadData();
     }
     ToggleOrder(field: string) {

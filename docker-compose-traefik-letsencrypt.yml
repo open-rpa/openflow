@@ -13,8 +13,7 @@ services:
     container_name: "traefik"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.traefik.rule=Host(`dashboard.localhost.openiap.io\
-        `)"
+      - "traefik.http.routers.traefik.rule=Host(`dashboard.localhost.openiap.io`)"
       - "traefik.http.routers.traefik.entrypoints=websecure"
       - "traefik.http.services.traefik.loadbalancer.server.port=8080"
       - "traefik.http.routers.traefik.tls.certresolver=myresolver"

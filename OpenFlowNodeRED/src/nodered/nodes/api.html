@@ -1643,7 +1643,7 @@ you can set filename using msg.filename<br>
         icon: "font-awesome/fa-bar-chart",
         defaults: {
             name: { value: "" },
-            aggregates: { value: '[{ "$match": { "fullDocument._type": "test" } }]' },
+            aggregates: { value: "[\"$.[?(@._type == 'test')]\"]" },
             collection: { value: "entities" }
         },
         inputs: 0,

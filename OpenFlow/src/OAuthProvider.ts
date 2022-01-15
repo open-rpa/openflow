@@ -147,7 +147,7 @@ export class OAuthProvider {
                     short: {
                         path: '/',
                     },
-                    keys: [Config.oidc_cookie_key], // node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+                    keys: [Config.oidc_cookie_key],
                 },
             });
             provider.proxy = true;
@@ -280,90 +280,99 @@ export class OAuthProvider {
         }
         Logger.otel.endSpan(span);
     }
-    static configure(app: express.Express): OAuthProvider {
-        const instance = new OAuthProvider();
+    static configure(app: express.Express, parent: Span): OAuthProvider {
+        const span: Span = Logger.otel.startSubSpan("OAuthProvider.configure", parent);
         try {
-            OAuthProvider.instance = instance;
-            instance.app = app;
-            instance.oauthServer = new OAuthServer({
-                model: instance,
-                grants: ['authorization_code', 'refresh_token'],
-                accessTokenLifetime: (60 * 60 * 24) * 7, // 7 days * 24 hours, or 1 day
-                refreshTokenLifetime: (60 * 60 * 24) * 7, // 7 days * 24 hours, or 1 day
-                allowEmptyState: true,
-                allowExtendedTokenAttributes: true,
-                allowBearerTokensInQueryString: true
-            });
-            this.LoadClients();
-            (app as any).oauth = instance.oauthServer;
-            app.all('/oauth/token', instance.obtainToken.bind(instance));
-            app.get('/oauth/login', async (req, res) => {
-                const span = Logger.otel.startSpan("OAuthProvider.oauth.login");
-                try {
-                    if (NoderedUtil.IsNullUndefinded(instance.clients)) {
-                        instance.clients = await Config.db.query<Base>({ _type: "oauthclient" }, null, 10, 0, null, "config", Crypt.rootToken(), undefined, undefined, span);
-                        if (instance.clients == null || instance.clients.length == 0) return res.status(500).json({ message: 'OAuth not configured' });
-                    }
-                    let state = ((req.params as any).state ? (req.params as any).state : req.params["amp;state"]);
-                    if (state == null) state = encodeURIComponent((req.query.state ? req.query.state : req.query["amp;state"]) as any);
-                    const access_type = (req.query.access_type ? req.query.access_type : req.query["amp;access_type"]);
-                    const client_id = (req.query.client_id ? req.query.client_id : req.query["amp;client_id"]);
-                    const redirect_uri = (req.query.redirect_uri ? req.query.redirect_uri : req.query["amp;redirect_uri"]) as string;
-                    const response_type = (req.query.response_type ? req.query.response_type : req.query["amp;response_type"]);
-                    const scope = (req.query.scope ? req.query.scope : req.query["amp;scope"]);
-                    let client = instance.getClientById(client_id);
-                    if (NoderedUtil.IsNullUndefinded(client)) {
-                        instance.clients = await Config.db.query<Base>({ _type: "oauthclient" }, null, 10, 0, null, "config", Crypt.rootToken(), undefined, undefined, span);
-                        if (instance.clients == null || instance.clients.length == 0) return res.status(500).json({ message: 'OAuth not configured' });
-                    }
-                    if (req.user) {
-                        if (!NoderedUtil.IsNullUndefinded(client) && !Array.isArray(client.redirectUris)) {
-                            client.redirectUris = [];
+            const instance = new OAuthProvider();
+            try {
+                OAuthProvider.instance = instance;
+                instance.app = app;
+                instance.oauthServer = new OAuthServer({
+                    model: instance,
+                    grants: ['authorization_code', 'refresh_token'],
+                    accessTokenLifetime: (60 * 60 * 24) * 7, // 7 days * 24 hours, or 1 day
+                    refreshTokenLifetime: (60 * 60 * 24) * 7, // 7 days * 24 hours, or 1 day
+                    allowEmptyState: true,
+                    allowExtendedTokenAttributes: true,
+                    allowBearerTokensInQueryString: true
+                });
+                this.LoadClients();
+                (app as any).oauth = instance.oauthServer;
+                app.all('/oauth/token', instance.obtainToken.bind(instance));
+                app.get('/oauth/login', async (req, res) => {
+                    const span = Logger.otel.startSpan("OAuthProvider.oauth.login");
+                    try {
+                        if (NoderedUtil.IsNullUndefinded(instance.clients)) {
+                            instance.clients = await Config.db.query<Base>({ _type: "oauthclient" }, null, 10, 0, null, "config", Crypt.rootToken(), undefined, undefined, span);
+                            if (instance.clients == null || instance.clients.length == 0) return res.status(500).json({ message: 'OAuth not configured' });
                         }
-                        if (!NoderedUtil.IsNullUndefinded(client) && client.redirectUris.length > 0) {
-                            if (client.redirectUris.indexOf(redirect_uri) == -1) {
-                                return res.status(500).json({ message: 'illegal redirect_uri ' + redirect_uri });
-                                // client.redirectUris.push(redirect_uri);
+                        let state = ((req.params as any).state ? (req.params as any).state : req.params["amp;state"]);
+                        if (state == null) state = encodeURIComponent((req.query.state ? req.query.state : req.query["amp;state"]) as any);
+                        const access_type = (req.query.access_type ? req.query.access_type : req.query["amp;access_type"]);
+                        const client_id = (req.query.client_id ? req.query.client_id : req.query["amp;client_id"]);
+                        const redirect_uri = (req.query.redirect_uri ? req.query.redirect_uri : req.query["amp;redirect_uri"]) as string;
+                        const response_type = (req.query.response_type ? req.query.response_type : req.query["amp;response_type"]);
+                        const scope = (req.query.scope ? req.query.scope : req.query["amp;scope"]);
+                        let client = instance.getClientById(client_id);
+                        if (NoderedUtil.IsNullUndefinded(client)) {
+                            instance.clients = await Config.db.query<Base>({ _type: "oauthclient" }, null, 10, 0, null, "config", Crypt.rootToken(), undefined, undefined, span);
+                            if (instance.clients == null || instance.clients.length == 0) return res.status(500).json({ message: 'OAuth not configured' });
+                        }
+                        if (req.user) {
+                            if (!NoderedUtil.IsNullUndefinded(client) && !Array.isArray(client.redirectUris)) {
+                                client.redirectUris = [];
                             }
-                        }
-                        const code = NoderedUtil.GetUniqueIdentifier();
+                            if (!NoderedUtil.IsNullUndefinded(client) && client.redirectUris.length > 0) {
+                                if (client.redirectUris.indexOf(redirect_uri) == -1) {
+                                    return res.status(500).json({ message: 'illegal redirect_uri ' + redirect_uri });
+                                    // client.redirectUris.push(redirect_uri);
+                                }
+                            }
+                            const code = NoderedUtil.GetUniqueIdentifier();
 
-                        Logger.instanse.info("[OAuth][" + (req.user as any).username + "] /oauth/login " + state);
-                        instance.saveAuthorizationCode(code, client, req.user, redirect_uri);
-                        res.redirect(`${redirect_uri}?state=${state}&code=${code}`);
-                    } else {
-                        Logger.instanse.info("[OAuth][anon] /oauth/login " + state);
-                        res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
-                        res.redirect("/login");
+                            Logger.instanse.info("[OAuth][" + (req.user as any).username + "] /oauth/login " + state);
+                            instance.saveAuthorizationCode(code, client, req.user, redirect_uri);
+                            res.redirect(`${redirect_uri}?state=${state}&code=${code}`);
+                        } else {
+                            Logger.instanse.info("[OAuth][anon] /oauth/login " + state);
+                            res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
+                            res.redirect("/login");
+                        }
+                    } catch (error) {
+                        span?.recordException(error);
+                        throw error;
+                    } finally {
+                        Logger.otel.endSpan(span);
                     }
-                } catch (error) {
-                    span?.recordException(error);
-                    throw error;
-                } finally {
-                    Logger.otel.endSpan(span);
-                }
-            });
-            // app.get('/oauth/authorize', instance.authorize.bind(instance));
-            app.all('/oauth/authorize', (req, res) => {
-                const request = new Request(req);
-                const response = new Response(res);
-                return instance.oauthServer.authenticate(request, response)
-                    .then((token) => {
-                        res.json(token.user);
-                    }).catch((err) => {
-                        console.error(err);
-                        res.status(err.code || 500).json(err);
-                    });
-            });
-            // app.all('/oauth/authorize', instance.oauthServer.authenticate.bind(instance));
-            // app.all('/oauth/authorize/emails', instance.oauthServer.authenticate.bind(instance));
+                });
+                // app.get('/oauth/authorize', instance.authorize.bind(instance));
+                app.all('/oauth/authorize', (req, res) => {
+                    const request = new Request(req);
+                    const response = new Response(res);
+                    return instance.oauthServer.authenticate(request, response)
+                        .then((token) => {
+                            res.json(token.user);
+                        }).catch((err) => {
+                            console.error(err);
+                            res.status(err.code || 500).json(err);
+                        });
+                });
+                // app.all('/oauth/authorize', instance.oauthServer.authenticate.bind(instance));
+                // app.all('/oauth/authorize/emails', instance.oauthServer.authenticate.bind(instance));
+            } catch (error) {
+                console.error(error);
+                const json = JSON.stringify(error, null, 3);
+                console.error(json);
+                throw error;
+            }
+            return instance;
         } catch (error) {
-            console.error(error);
-            const json = JSON.stringify(error, null, 3);
-            console.error(json);
-            throw error;
+            span?.recordException(error);
+            Logger.instanse.error(error);
+            return OAuthProvider.instance;
+        } finally {
+            Logger.otel.endSpan(span);
         }
-        return instance;
     }
     authorize(req, res) {
         Logger.instanse.info("[OAuth] authorize");

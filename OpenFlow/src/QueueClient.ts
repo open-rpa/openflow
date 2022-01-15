@@ -5,12 +5,21 @@ import { Config } from "./Config";
 import { Logger } from "./Logger";
 import { Message } from "./Messages/Message";
 export class QueueClient {
-    static async configure(): Promise<void> {
-        await QueueClient.connect();
-        var instance = amqpwrapper.Instance();
-        instance.on("connected", () => {
-            QueueClient.connect();
-        });
+    static async configure(parent: Span): Promise<void> {
+        const span: Span = Logger.otel.startSubSpan("QueueClient.configure", parent);
+        try {
+            await QueueClient.connect();
+            var instance = amqpwrapper.Instance();
+            instance.on("connected", () => {
+                QueueClient.connect();
+            });
+        } catch (error) {
+            span?.recordException(error);
+            Logger.instanse.error(error);
+            return;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
     }
     private static async connect() {
         await this.RegisterMyQueue();
@@ -28,7 +37,6 @@ export class QueueClient {
             let span: Span = null;
             try {
                 if (!Config.db.isConnected) {
-                    console.log("nack");
                     ack(false);
                     return;
                 }

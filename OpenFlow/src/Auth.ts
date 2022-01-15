@@ -4,6 +4,7 @@ import { DBHelper } from "./DBHelper";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { Config } from "./Config";
+import { BaseObserver } from "@opentelemetry/api-metrics"
 export class Auth {
     public static async ValidateByPassword(username: string, password: string, parent: Span): Promise<User> {
         const span: Span = Logger.otel.startSubSpan("Auth.ValidateByPassword", parent);
@@ -23,11 +24,31 @@ export class Auth {
         }
     }
 
+    public static item_cache: BaseObserver = null;
+
     public static authorizationCache: HashTable<CachedUser> = {};
     private static cacheTimer: NodeJS.Timeout;
     public static shutdown() {
         if (!NoderedUtil.IsNullUndefinded(this.cacheTimer)) {
             clearInterval(this.cacheTimer);
+        }
+    }
+    public static ensureotel() {
+        if (!NoderedUtil.IsNullUndefinded(Logger.otel) && NoderedUtil.IsNullUndefinded(Auth.item_cache)) {
+            Auth.item_cache = Logger.otel.meter.createValueObserver("openflow_item_cache_count", {
+                description: 'Total number of cached items'
+            }, res => {
+                let keys: string[] = Object.keys(this.authorizationCache);
+                let types = {};
+                for (let i = keys.length - 1; i >= 0; i--) {
+                    if (!types[this.authorizationCache[keys[i]].type]) types[this.authorizationCache[keys[i]].type] = 0;
+                    types[this.authorizationCache[keys[i]].type]++;
+                }
+                keys = Object.keys(types);
+                for (let i = keys.length - 1; i >= 0; i--) {
+                    res.observe(types[keys[i]], { ...Logger.otel.defaultlabels, type: keys[i] })
+                }
+            });
         }
     }
     public static getUser(key: string, type: string): User {
@@ -41,6 +62,7 @@ export class Auth {
         if (type == "grafana") cache_seconds = Config.grafana_credential_cache_seconds;
         if (type == "dashboard") cache_seconds = Config.dashboard_credential_cache_seconds;
         if (type == "cleanacl") cache_seconds = Config.cleanacl_credential_cache_seconds;
+        if (type == "userroles") cache_seconds = Config.cleanacl_credential_cache_seconds;
         if (type == "mq") cache_seconds = Config.mq_credential_cache_seconds;
         if (type == "mqe") cache_seconds = Config.mq_credential_cache_seconds;
         if (seconds < cache_seconds) {
@@ -50,15 +72,13 @@ export class Auth {
         this.RemoveUser(key, type);
         return null;
     }
-    public static async clearCache() {
+    public static async clearCache(reason: string) {
+        Logger.instanse.verbose("clearCache " + reason);
         if (this.authorizationCache == null) return;
-        const keys: string[] = Object.keys(this.authorizationCache);
-        for (let i = keys.length - 1; i >= 0; i--) {
-            let key: string = keys[i];
-            var res: CachedUser = this.authorizationCache[key];
-            if (res === null || res === undefined) continue;
-            this.RemoveUser(key, res.type);
-        }
+        Auth.ensureotel();
+        await Auth.semaphore.down();
+        this.authorizationCache = {}
+        Auth.semaphore.up();
     }
     public static async cleanCache() {
         try {
@@ -86,6 +106,7 @@ export class Auth {
         }
     }
     public static async RemoveUser(key: string, type: string): Promise<void> {
+        Auth.ensureotel();
         await Auth.semaphore.down();
         if (!NoderedUtil.IsNullUndefinded(this.authorizationCache[key + type])) {
             Logger.instanse.silly("Delete user with key " + key + " from cache");
@@ -94,6 +115,7 @@ export class Auth {
         Auth.semaphore.up();
     }
     public static async AddUser(user: User, key: string, type: string): Promise<void> {
+        Auth.ensureotel();
         await Auth.semaphore.down();
         if (NoderedUtil.IsNullUndefinded(this.authorizationCache[key + type])) {
             Logger.instanse.silly("Adding user " + user.name + " to cache with key " + key);

@@ -3,6 +3,8 @@ import { User, Role, Rolemember, WellknownIds, Rights, NoderedUtil, Base, TokenU
 import { Config } from "./Config";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
+import { Auth } from "./Auth";
+import { WebSocketServerClient } from "./WebSocketServerClient";
 
 export class DBHelper {
     public static async FindByUsername(username: string, jwt: string, parent: Span): Promise<User> {
@@ -80,43 +82,54 @@ export class DBHelper {
             if (NoderedUtil.IsNullUndefinded(user)) throw new Error("User is mandatory");
             if (!Config.decorate_roles_fetching_all_roles) {
                 if (!user.roles) user.roles = [];
-                const pipe: any = [{ "$match": { "_id": user._id } },
-                {
-                    "$graphLookup": {
-                        from: "users",
-                        startWith: "$_id",
-                        connectFromField: "_id",
-                        connectToField: "members._id",
-                        as: "roles",
-                        maxDepth: Config.max_recursive_group_depth,
-                        depthField: "depth"
-                        , restrictSearchWithMatch: { "_type": "role" }
-                        // , "_id": { $nin: Config.db.WellknownIdsArray }, "members._id": { $nin: Config.db.WellknownIdsArray }
+                const _roles = await Auth.getUser(user._id, "userroles");
+                if (_roles != null) {
+                    user.roles = _roles as any;
+                } else {
+                    const pipe: any = [{ "$match": { "_id": user._id } },
+                    {
+                        "$graphLookup": {
+                            from: "users",
+                            startWith: "$_id",
+                            connectFromField: "_id",
+                            connectToField: "members._id",
+                            as: "roles",
+                            maxDepth: Config.max_recursive_group_depth,
+                            depthField: "depth"
+                            , restrictSearchWithMatch: { "_type": "role" }
+                            // , "_id": { $nin: Config.db.WellknownIdsArray }, "members._id": { $nin: Config.db.WellknownIdsArray }
+                        }
+                    }, {
+                        "$graphLookup": {
+                            from: "users",
+                            startWith: "$_id",
+                            connectFromField: "members._id",
+                            connectToField: "members._id",
+                            as: "roles2",
+                            maxDepth: 0,
+                            depthField: "depth",
+                            restrictSearchWithMatch: { "_type": "role" }
+                        }
                     }
-                }, {
-                    "$graphLookup": {
-                        from: "users",
-                        startWith: "$_id",
-                        connectFromField: "members._id",
-                        connectToField: "members._id",
-                        as: "roles2",
-                        maxDepth: 0,
-                        depthField: "depth",
-                        restrictSearchWithMatch: { "_type": "role" }
+                    ]
+                    const results = await Config.db.aggregate<User>(pipe, "users", Crypt.rootToken(), null, span);
+                    if (results.length > 0) {
+                        let res = { roles: results[0].roles, roles2: (results[0] as any).roles2 }
+                        res.roles = res.roles.map(x => ({ "_id": x._id, "name": x.name, "d": (x as any).depth }));
+                        res.roles2 = res.roles2.map(x => ({ "_id": x._id, "name": x.name, "d": (x as any).depth }));
+                        user.roles = res.roles;
+                        res.roles2.forEach(r => {
+                            const exists = user.roles.filter(x => x._id == r._id);
+                            if (exists.length == 0) user.roles.push(r);
+                        });
                     }
+                    let hasusers = user.roles.filter(x => x._id == WellknownIds.users);
+                    if (hasusers.length == 0) {
+                        user.roles.push(new Rolemember("users", WellknownIds.users));
+                    }
+                    await Auth.AddUser(user.roles as any, user._id, "userroles");
                 }
-                ]
-                const results = await Config.db.aggregate<User>(pipe, "users", Crypt.rootToken(), null, span);
-                if (results.length > 0) {
-                    let res = { roles: results[0].roles, roles2: (results[0] as any).roles2 }
-                    res.roles = res.roles.map(x => ({ "_id": x._id, "name": x.name, "d": (x as any).depth }));
-                    res.roles2 = res.roles2.map(x => ({ "_id": x._id, "name": x.name, "d": (x as any).depth }));
-                    user.roles = res.roles;
-                    res.roles2.forEach(r => {
-                        const exists = user.roles.filter(x => x._id == r._id);
-                        if (exists.length == 0) user.roles.push(r);
-                    });
-                }
+
             } else {
                 var end: number = new Date().getTime();
                 var seconds = Math.round((end - this.cached_at.getTime()) / 1000);
@@ -140,7 +153,10 @@ export class DBHelper {
                         user.roles.push(new Rolemember(role.name, role._id));
                     }
                 }
-
+                let hasusers = user.roles.filter(x => x._id == WellknownIds.users);
+                if (hasusers.length == 0) {
+                    user.roles.push(new Rolemember("users", WellknownIds.users));
+                }
                 let updated: boolean = false;
                 do {
                     updated = false;
@@ -159,6 +175,7 @@ export class DBHelper {
                     }
                 } while (updated)
             }
+            user.roles.sort((a, b) => a.name.localeCompare(b.name));
         } catch (error) {
             span?.recordException(error);
             throw error;
@@ -208,25 +225,27 @@ export class DBHelper {
     public static async EnsureUser(jwt: string, name: string, username: string, id: string, password: string, parent: Span): Promise<User> {
         const span: Span = Logger.otel.startSubSpan("dbhelper.ensureUser", parent);
         try {
+            span?.addEvent("FindByUsernameOrId");
             let user: User = await this.FindByUsernameOrId(username, id, span);
             if (user !== null && (user._id === id || id === null)) { return user; }
-            if (user !== null && id !== null) { await Config.db.DeleteOne(user._id, "users", jwt, span); }
+            if (user !== null && id !== null) {
+                span?.addEvent("FindByUsernameOrId");
+                await Config.db.DeleteOne(user._id, "users", jwt, span);
+            }
             user = new User(); user._id = id; user.name = name; user.username = username;
             if (password !== null && password !== undefined && password !== "") {
+                span?.addEvent("SetPassword");
                 await Crypt.SetPassword(user, password, span);
             } else {
+                span?.addEvent("SetPassword");
                 await Crypt.SetPassword(user, Math.random().toString(36).substr(2, 9), span);
             }
+            span?.addEvent("Insert user");
             user = await Config.db.InsertOne(user, "users", 0, false, jwt, span);
             user = User.assign(user);
-            Base.addRight(user, WellknownIds.admins, "admins", [Rights.full_control]);
-            Base.addRight(user, user._id, user.name, [Rights.full_control]);
-            Base.removeRight(user, user._id, [Rights.delete]);
-            await this.Save(user, jwt, span);
-            const users: Role = await this.FindRoleByName("users", span);
-            users.AddMember(user);
-            await this.Save(users, jwt, span)
+            span?.addEvent("DecorateWithRoles");
             user = await this.DecorateWithRoles(user, span);
+            span?.addEvent("return user");
             return user;
         } catch (error) {
             span?.recordException(error);
@@ -235,7 +254,8 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public static async EnsureNoderedRoles(user: TokenUser | User, jwt: string, force: boolean, parent: Span): Promise<void> {
+    public static async EnsureNoderedRoles(user: TokenUser | User, jwt: string, force: boolean, parent: Span): Promise<boolean> {
+        let result: boolean = false;
         if (Config.auto_create_personal_nodered_group || force) {
             let name = user.username;
             name = name.split("@").join("").split(".").join("");
@@ -246,6 +266,7 @@ export class DBHelper {
             Base.removeRight(noderedadmins, user._id, [Rights.delete]);
             noderedadmins.AddMember(user as User);
             await this.Save(noderedadmins, jwt, parent);
+            result = true;
         }
         if (Config.auto_create_personal_noderedapi_group || force) {
             let name = user.username;
@@ -257,6 +278,56 @@ export class DBHelper {
             Base.removeRight(noderedadmins, user._id, [Rights.delete]);
             noderedadmins.AddMember(user as User);
             await this.Save(noderedadmins, jwt, parent);
+            result = true;
+        }
+        return result;
+    }
+    public static async UpdateHeartbeat(cli: WebSocketServerClient): Promise<any> {
+        const dt = new Date(new Date().toISOString());
+        const updatedoc = { _heartbeat: dt, lastseen: dt };
+        cli.user._heartbeat = dt; cli.user.lastseen = dt;
+        if (cli.clientagent == "openrpa") {
+            cli.user._rpaheartbeat = dt;
+            // Config.db.synRawUpdateOne("users", { _id: cli.user._id },
+            //     { $set: { ...updatedoc, _rpaheartbeat: new Date(new Date().toISOString()) } },
+            //     Config.prometheus_measure_onlineuser, null);
+            return { $set: { ...updatedoc, _rpaheartbeat: new Date(new Date().toISOString()) } };
+        }
+        if (cli.clientagent == "nodered") {
+            cli.user._noderedheartbeat = dt;
+            // Config.db.synRawUpdateOne("users", { _id: cli.user._id },
+            //     { $set: { ...updatedoc, _noderedheartbeat: new Date(new Date().toISOString()) } },
+            //     Config.prometheus_measure_onlineuser, null);
+            return { $set: { ...updatedoc, _noderedheartbeat: new Date(new Date().toISOString()) } };
+        }
+        if (cli.clientagent == "webapp" || cli.clientagent == "aiotwebapp") {
+            (cli.user as any)._webheartbeat = dt;
+            // Config.db.synRawUpdateOne("users", { _id: cli.user._id },
+            //     { $set: { ...updatedoc, _webheartbeat: new Date(new Date().toISOString()) } },
+            //     Config.prometheus_measure_onlineuser, null);
+            return { $set: { ...updatedoc, _webheartbeat: new Date(new Date().toISOString()) } };
+        }
+        if (cli.clientagent == "powershell") {
+            cli.user._powershellheartbeat = dt;
+            // Config.db.synRawUpdateOne("users", { _id: cli.user._id },
+            //     { $set: { ...updatedoc, _powershellheartbeat: new Date(new Date().toISOString()) } },
+            //     Config.prometheus_measure_onlineuser, null);
+            return { $set: { ...updatedoc, _powershellheartbeat: new Date(new Date().toISOString()) } };
+        }
+        if (cli.clientagent == "mobileapp" || cli.clientagent == "aiotmobileapp") {
+            (cli.user as any)._webheartbeat = dt;
+            (cli.user as any)._mobilheartbeat = dt;
+            // Config.db.synRawUpdateOne("users", { _id: cli.user._id },
+            //     { $set: { ...updatedoc, _webheartbeat: new Date(new Date().toISOString()), _mobilheartbeat: new Date(new Date().toISOString()) } },
+            //     Config.prometheus_measure_onlineuser, null);
+            return { $set: { ...updatedoc, _webheartbeat: new Date(new Date().toISOString()), _mobilheartbeat: new Date(new Date().toISOString()) } };
+        }
+        else {
+            // Should proberly turn this a little down, so we dont update all online users every 10th second
+            // Config.db.synRawUpdateOne("users", { _id: cli.user._id },
+            //     { $set: updatedoc, },
+            //     Config.prometheus_measure_onlineuser, null);
+            return { $set: updatedoc };
         }
     }
 }

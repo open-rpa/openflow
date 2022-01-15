@@ -236,7 +236,6 @@ export class LoginProvider {
                         const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
                         if (allowed.length > 0) {
                             await Auth.AddUser(user, token, "dashboard");
-                            // Logger.instanse.info("dashboardauth: Authorized " + user.username + " for " + req.url);
                             return res.send({
                                 status: "success",
                                 display_status: "Success",
@@ -262,7 +261,6 @@ export class LoginProvider {
                     if (user != null) {
                         const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
                         if (allowed.length > 0) {
-                            // Logger.instanse.info("dashboardauth: Authorized " + user.username + " for " + req.url);
                             Auth.AddUser(user, b64auth, "dashboard");
                             return res.send({
                                 status: "success",
@@ -872,7 +870,6 @@ export class LoginProvider {
         const strategy: passport.Strategy = new GoogleStrategy.Strategy(options, options.verify);
         passport.use(key, strategy);
         strategy.name = key;
-        Logger.instanse.info(options.callbackURL);
         app.use("/" + key,
             express.urlencoded({ extended: false }),
             passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),
@@ -903,7 +900,6 @@ export class LoginProvider {
         const strategy: passport.Strategy = new SamlStrategy(options, options.verify);
         passport.use(key, strategy);
         strategy.name = key;
-        Logger.instanse.info(options.callbackUrl);
 
         // app.get("/" + key + "/FederationMetadata/2007-06/FederationMetadata.xml",
         //     wsfed.metadata({
@@ -980,7 +976,7 @@ export class LoginProvider {
 
     static CreateLocalStrategy(app: express.Express, baseurl: string): passport.Strategy {
         const strategy: passport.Strategy = new LocalStrategy({ passReqToCallback: true }, async (req: any, username: string, password: string, done: any): Promise<void> => {
-            const span: Span = Logger.otel.startSpan("LoginProvider.CreateLocalStrategy");
+            const span: Span = Logger.otel.startSpan("LoginProvider.LocalLogin");
             try {
                 let remoteip: string = "";
                 if (!NoderedUtil.IsNullUndefinded(req)) {
@@ -1056,22 +1052,18 @@ export class LoginProvider {
         app.use("/local",
             express.urlencoded({ extended: false }),
             function (req: any, res: any, next: any): void {
-                Logger.instanse.debug("passport.authenticate local");
                 passport.authenticate("local", function (err, user, info) {
                     let originalUrl: any = req.cookies.originalUrl;
-                    Logger.instanse.debug("originalUrl: " + originalUrl);
                     if (err) {
                         Logger.instanse.error(err);
                     }
                     if (!err && user) {
-                        Logger.instanse.info(user);
                         req.logIn(user, function (err: any) {
                             if (err) {
                                 Logger.instanse.info("req.logIn failed");
                                 Logger.instanse.error(err);
                                 return next(err);
                             }
-                            Logger.instanse.info("req.logIn success");
                             if (!NoderedUtil.IsNullEmpty(originalUrl)) {
                                 try {
                                     res.cookie("originalUrl", "", { expires: new Date(0) });
@@ -1082,7 +1074,6 @@ export class LoginProvider {
                                     console.error(error.message ? error.message : error);
                                 }
                             } else {
-                                Logger.instanse.debug("redirect: to /");
                                 res.redirect("/");
                                 return next();
                             }
@@ -1096,7 +1087,6 @@ export class LoginProvider {
                             originalUrl = originalUrl + "&error=1"
                         }
                         try {
-                            Logger.instanse.debug("remove originalUrl");
                             res.cookie("originalUrl", "", { expires: new Date(0) });
                             Logger.instanse.debug("redirect: " + originalUrl);
                             LoginProvider.redirect(res, originalUrl);
@@ -1105,7 +1095,6 @@ export class LoginProvider {
                         }
                     } else {
                         try {
-                            Logger.instanse.debug("redirect: to /");
                             res.redirect("/");
                             return next();
                         } catch (error) {

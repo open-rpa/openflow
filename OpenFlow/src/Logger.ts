@@ -10,8 +10,33 @@ export class Logger {
         if (info instanceof Error || info.stack) {
             return `${info.timestamp} [${info.level}] ${info.message} \n ${info.stack}`;
         }
-        return `${info.timestamp} [${info.level}] ${info.message}`;
+        return `${info.timestamp} [${Logger.getLabel()}][${info.level}] ${info.message}`;
     });
+    static getLabel = function () {
+        let e = new Error();
+        let frame = "";
+        let lineNumber = "";
+        let functionName = "";
+        let filename = "";
+        let arr = [];
+        try {
+            arr = e.stack.split("\n");
+            frame = arr[0];
+            arr = arr.filter(x => x.indexOf("node_modules") === -1)
+            arr = arr.filter(x => x.indexOf("dist") !== -1)
+            arr = arr.filter(x => x.indexOf("Logger.js") === -1)
+            arr = arr.filter(x => x.indexOf("otel.js") === -1)
+            if (arr.length > 0) frame = arr[0];
+            lineNumber = frame.split(":").reverse()[1];
+            functionName = frame.split(" ")[5];
+            filename = frame.substr(frame.indexOf("("));
+            filename = filename.replace("(", "").replace(")", "");
+            filename = path.basename(filename)
+            return functionName + " " + filename;
+        } catch (error) {
+            return "n/a";
+        }
+    };
     static configure(skipotel: boolean, skiplic: boolean): winston.Logger {
         const filename = path.join(Config.logpath, "openflow.log");
         const options: any = {
@@ -122,5 +147,29 @@ export class Logger {
         Logger._ofid = openflow_uniqueid;
         return openflow_uniqueid;
     }
+    static getStackInfo(stackIndex) {
+        // get call stack, and analyze it
+        // get all file, method, and line numbers
+        var stacklist = (new Error()).stack.split('\n').slice(3)
 
+        // stack trace format:
+        // http://code.google.com/p/v8/wiki/JavaScriptStackTraceApi
+        // do not remove the regex expresses to outside of this method (due to a BUG in node.js)
+        var stackReg = /at\s+(.*)\s+\((.*):(\d*):(\d*)\)/gi
+        var stackReg2 = /at\s+()(.*):(\d*):(\d*)/gi
+
+        var s = stacklist[stackIndex] || stacklist[0]
+        var sp = stackReg.exec(s) || stackReg2.exec(s)
+
+        if (sp && sp.length === 5) {
+            return {
+                method: sp[1],
+                relativePath: path.relative(__dirname, sp[2]),
+                line: sp[3],
+                pos: sp[4],
+                file: path.basename(sp[2]),
+                stack: stacklist.join('\n')
+            }
+        }
+    }
 }
