@@ -2186,6 +2186,15 @@ export class Message {
                 if (!NoderedUtil.IsNullUndefinded(resources.requests) && NoderedUtil.IsNullEmpty(resources.requests.memory)) delete resources.requests.memory;
                 if (!NoderedUtil.IsNullUndefinded(resources.requests) && NoderedUtil.IsNullEmpty(resources.requests.memory)) delete resources.requests.memory;
 
+                var saml_federation_metadata = Config.saml_federation_metadata;
+                if (api_ws_url == "wss://pc.openiap.io/") {
+                    api_ws_url = "wss://demo.openiap.io/"
+                }
+                if (saml_federation_metadata == "https://pc.openiap.io/issue/FederationMetadata/2007-06/FederationMetadata.xml") {
+                    saml_federation_metadata = "https://demo.openiap.io/issue/FederationMetadata/2007-06/FederationMetadata.xml"
+                }
+                var port = 3000;
+
                 const _deployment = {
                     metadata: { name: name, namespace: namespace, labels: { billed: hasbilling.toString(), userid: _id, app: name } },
                     spec: {
@@ -2199,10 +2208,10 @@ export class Message {
                                         name: 'nodered',
                                         image: nodered_image,
                                         imagePullPolicy: "Always",
-                                        ports: [{ containerPort: Config.port }, { containerPort: 5859 }],
+                                        ports: [{ containerPort: port }, { containerPort: 5859 }],
                                         resources: resources,
                                         env: [
-                                            { name: "saml_federation_metadata", value: Config.saml_federation_metadata },
+                                            { name: "saml_federation_metadata", value: saml_federation_metadata },
                                             { name: "saml_issuer", value: Config.saml_issuer },
                                             { name: "saml_baseurl", value: saml_baseurl },
                                             { name: "nodered_id", value: name },
@@ -2212,7 +2221,7 @@ export class Message {
                                             { name: "api_ws_url", value: api_ws_url },
                                             { name: "domain", value: hostname },
                                             { name: "protocol", value: Config.protocol },
-                                            { name: "port", value: Config.port.toString() },
+                                            { name: "port", value: port.toString() },
                                             { name: "noderedusers", value: (name + "noderedusers") },
                                             { name: "noderedadmins", value: (name + "noderedadmins") },
                                             { name: "noderedapiusers", value: (name + "nodered api users") },
@@ -2293,18 +2302,23 @@ export class Message {
                 }
             }
 
+            let servicename = name;
+            if (!/[a-z]([-a-z0-9]*[a-z0-9])?/.test(servicename)) {
+                servicename = "nr" + name + "svc";
+            }
+
             Logger.instanse.debug("[" + tuser.username + "] GetService");
-            const service = await KubeUtil.instance().GetService(namespace, name);
+            const service = await KubeUtil.instance().GetService(namespace, servicename);
             if (service == null) {
-                Logger.instanse.debug("[" + _tuser.username + "] Service " + name + " not found in " + namespace + " creating it");
+                Logger.instanse.debug("[" + _tuser.username + "] Service " + servicename + " not found in " + namespace + " creating it");
                 const _service = {
-                    metadata: { name: name, namespace: namespace },
+                    metadata: { name: servicename, namespace: namespace },
                     spec: {
                         type: "NodePort",
                         sessionAffinity: "ClientIP",
                         selector: { app: name },
                         ports: [
-                            { port: Config.port, name: "www" }
+                            { port: port, name: "www" }
                         ]
                     }
                 }
@@ -2328,7 +2342,7 @@ export class Message {
                                 paths: [{
                                     path: "/",
                                     backend: {
-                                        serviceName: name,
+                                        serviceName: servicename,
                                         servicePort: "www"
                                     }
                                 }]
@@ -2344,9 +2358,9 @@ export class Message {
                                     pathType: "Prefix",
                                     backend: {
                                         service: {
-                                            name: name,
+                                            name: servicename,
                                             port: {
-                                                number: Config.port
+                                                number: port
                                             }
                                         }
                                     }
@@ -2403,9 +2417,13 @@ export class Message {
             } else {
                 Logger.instanse.warn("_DeleteNoderedInstance: Did not find deployment for " + name + " in namespace " + namespace);
             }
-            const service = await KubeUtil.instance().GetService(namespace, name);
+            let servicename = name;
+            if (!/[a-z]([-a-z0-9]*[a-z0-9])?/.test(servicename)) {
+                servicename = "nr" + name + "svc";
+            }
+            const service = await KubeUtil.instance().GetService(namespace, servicename);
             if (service != null) {
-                await KubeUtil.instance().CoreV1Api.deleteNamespacedService(name, namespace);
+                await KubeUtil.instance().CoreV1Api.deleteNamespacedService(servicename, namespace);
             } else {
                 Logger.instanse.warn("_DeleteNoderedInstance: Did not find service for " + name + " in namespace " + namespace);
             }
