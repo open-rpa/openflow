@@ -1165,7 +1165,6 @@ export class DatabaseConnection extends events.EventEmitter {
             span?.addEvent("CleanACL");
             item = await this.CleanACL(item, user, collectionname, span);
             if (collectionname === "users" && item._type === "user" && !NoderedUtil.IsNullEmpty(item._id)) {
-                Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control]);
                 Base.addRight(item, item._id, item.name, [Rights.full_control]);
                 Base.removeRight(item, item._id, [Rights.delete]);
                 span?.addEvent("ensureResource");
@@ -2491,17 +2490,17 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         item._type = item._type.toLowerCase();
         if (!item._acl) { item._acl = []; }
-        item._acl.forEach((a, index) => {
-            if (typeof a.rights === "string") {
-                item._acl[index].rights = (new Binary(Buffer.from(a.rights, "base64"), 0) as any);
-            }
-        });
         if (item._acl.length === 0) {
             Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control]);
         }
         if (Config.force_add_admins && item._id != WellknownIds.root) {
             Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control], false);
         }
+        item._acl.forEach((a, index) => {
+            if (typeof a.rights === "string") {
+                item._acl[index].rights = (new Binary(Buffer.from(a.rights, "base64"), 0) as any);
+            }
+        });
         if (DatabaseConnection.collections_with_text_index.indexOf(collection) > -1) {
             if (!NoderedUtil.IsNullEmpty(item.name)) {
                 var name: string = item.name.toLowerCase();
