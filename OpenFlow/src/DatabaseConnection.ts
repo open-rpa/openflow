@@ -2048,6 +2048,9 @@ export class DatabaseConnection extends events.EventEmitter {
                 const uqres = await this.UpdateOne(uq, span);
                 q.opresult = uqres.opresult;
                 q.result = uqres.result;
+                if (NoderedUtil.IsNullUndefinded(uqres.result) && !NoderedUtil.IsNullUndefinded(uqres.item)) {
+                    q.result = uqres.item;
+                }
             } else {
                 if (Config.log_updates) Logger.instanse.debug("[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Inserting as new in database");
                 if (q.collectionname === "openrpa_instances" && q.item._type === "workflowinstance") {
