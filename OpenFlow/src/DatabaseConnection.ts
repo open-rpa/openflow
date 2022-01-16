@@ -1,4 +1,4 @@
-import { MongoClient, ObjectID, Db, Binary, InsertOneWriteOpResult, MapReduceOptions, CollectionInsertOneOptions, GridFSBucket, ChangeStream, CollectionAggregationOptions, MongoClientOptions } from "mongodb";
+import { MongoClient, ObjectID, Db, Binary, InsertOneWriteOpResult, MapReduceOptions, CollectionInsertOneOptions, GridFSBucket, ChangeStream, CollectionAggregationOptions, MongoClientOptions, ReplaceOneOptions } from "mongodb";
 import { Crypt } from "./Crypt";
 import { Config } from "./Config";
 import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User, Customer, WatchEventMessage } from "@openiap/openflow-api";
@@ -1518,7 +1518,9 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (NoderedUtil.IsNullEmpty(name)) name = (q.item as any)._name;
                 if (NoderedUtil.IsNullEmpty(name)) name = "Unknown";
                 original = await this.getbyid<T>(q.item._id, q.collectionname, q.jwt, span);
-                if (!original) { throw Error("item not found or Access Denied"); }
+                if (!original) {
+                    throw Error("item not found or Access Denied");
+                }
                 if (!DatabaseConnection.hasAuthorization(user, original, Rights.update)) {
                     throw new Error("Access denied, no authorization to UpdateOne " + q.item._type + " " + name + " to database");
                 }
@@ -1744,7 +1746,10 @@ export class DatabaseConnection extends events.EventEmitter {
             if (q.query === null || q.query === undefined) {
                 const id: string = q.item._id;
                 const safeid = safeObjectID(id);
-                q.query = { $or: [{ _id: id }, { _id: safeObjectID(id) }] };
+                q.query = { _id: id };
+                if (safeid != null) {
+                    q.query = { $or: [{ _id: id }, { _id: safeid }] };
+                }
             }
             let _query: Object = {};
             if (DatabaseConnection.usemetadata(q.collectionname)) {
@@ -1753,11 +1758,12 @@ export class DatabaseConnection extends events.EventEmitter {
                 // todo: enforcer permissions when fetching _hist ?
                 _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.update])] };
             }
+            if (Config.api_bypass_perm_check) { _query = q.query; }
 
             q.j = ((q.j as any) === 'true' || q.j === true);
             if ((q.w as any) !== "majority") q.w = parseInt((q.w as any));
 
-            let options: CollectionInsertOneOptions = { writeConcern: { w: q.w, j: q.j } };
+            let options: ReplaceOneOptions = { writeConcern: { w: q.w, j: q.j }, upsert: false };
             (options as any).WriteConcern = { w: q.w, j: q.j };
             if (NoderedUtil.IsNullEmpty(this.replicat)) options = null;
 
@@ -1788,11 +1794,24 @@ export class DatabaseConnection extends events.EventEmitter {
                         }
                     }
                     if (!DatabaseConnection.usemetadata(q.collectionname)) {
-                        const ot_end = Logger.otel.startTimer();
-                        const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.replaceOne", span);
-                        q.opresult = await this.db.collection(q.collectionname).replaceOne(_query, q.item, options);
-                        Logger.otel.endSpan(mongodbspan);
-                        Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_replace, { collection: q.collectionname });
+                        try {
+                            const ot_end = Logger.otel.startTimer();
+                            const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.replaceOne", span);
+                            q.opresult = await this.db.collection(q.collectionname).replaceOne(_query, q.item, options);
+                            Logger.otel.endSpan(mongodbspan);
+                            Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_replace, { collection: q.collectionname });
+                        } catch (error) {
+                            var msg: string = error.message;
+                            if (msg.startsWith("After applying the update, the (immutable) field '_id' was found")) {
+                                const safeid = safeObjectID(q.item._id);
+                                q.opresult = await this.db.collection(q.collectionname).insertOne(q.item);
+                                q.opresult.matchedCount = q.opresult.insertedCount;
+                                await this.db.collection(q.collectionname).deleteOne({ _id: safeid });
+                            }
+                        }
+                        if (q.opresult.matchedCount == 0 && (q.w != 0)) {
+                            throw new Error("ReplaceOne failed, matched 0 documents with query {_id: '" + q.item._id + "'}");
+                        }
                     } else {
                         const fsc = Config.db.db.collection(q.collectionname);
                         const ot_end = Logger.otel.startTimer();
@@ -1800,6 +1819,9 @@ export class DatabaseConnection extends events.EventEmitter {
                         q.opresult = await fsc.updateOne(_query, { $set: { metadata: (q.item as any).metadata } });
                         Logger.otel.endSpan(mongodbspan);
                         Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: q.collectionname });
+                        if (q.opresult.matchedCount == 0 && (q.w != 0)) {
+                            throw new Error("ReplaceOne failed, matched 0 documents with query {_id: '" + q.item._id + "'}");
+                        }
                     }
                 } else {
                     if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };
