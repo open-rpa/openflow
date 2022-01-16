@@ -273,7 +273,9 @@ export class api_add {
 
             if (!NoderedUtil.IsNullUndefinded(_data)) {
                 if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
-                if (data.length === 0) { this.node.warn("input array is empty"); }
+                if (data.length === 0) {
+                    this.node.status({ fill: "yellow", shape: "dot", text: "input array is empty" });
+                }
             } else { this.node.warn("Input data is null"); }
 
             this.node.status({ fill: "blue", shape: "dot", text: "processing " + data.length + " items" });
@@ -376,7 +378,9 @@ export class api_addmany {
             let data: any[] = [];
             if (!NoderedUtil.IsNullUndefinded(_data)) {
                 if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
-                if (data.length === 0) { this.node.warn("input array is empty"); }
+                if (data.length === 0) {
+                    this.node.status({ fill: "yellow", shape: "dot", text: "input array is empty" });
+                }
             } else { this.node.warn("Input data is null"); }
 
             if (data.length > 0) {
@@ -463,7 +467,9 @@ export class api_update {
             let data: any[] = [];
             if (!NoderedUtil.IsNullUndefinded(_data)) {
                 if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
-                if (data.length === 0) { this.node.warn("input array is empty"); }
+                if (data.length === 0) {
+                    this.node.status({ fill: "yellow", shape: "dot", text: "input array is empty" });
+                }
             } else { this.node.warn("Input data is null"); }
 
             this.node.status({ fill: "blue", shape: "dot", text: "processing ..." });
@@ -490,6 +496,7 @@ export class api_update {
                 for (let i: number = 0; i < errors.length; i++) {
                     NoderedUtil.HandleError(this, errors[i], msg);
                 }
+                return;
             }
             data = data.filter(result => !NoderedUtil.IsString(result) && !(result instanceof Error));
             if (this.config.entities == null && this.config.resultfield != null) {
@@ -558,7 +565,9 @@ export class api_addorupdate {
             let data: any[] = [];
             if (!NoderedUtil.IsNullUndefinded(_data)) {
                 if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
-                if (data.length === 0) { this.node.warn("input array is empty"); }
+                if (data.length === 0) {
+                    this.node.status({ fill: "yellow", shape: "dot", text: "input array is empty" });
+                }
             } else { this.node.warn("Input data is null"); }
 
             this.node.status({ fill: "blue", shape: "dot", text: "processing ..." });
@@ -640,7 +649,9 @@ export class api_delete {
             let data: any[] = [];
             if (!NoderedUtil.IsNullUndefinded(_data)) {
                 if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
-                if (data.length === 0) { this.node.warn("input array is empty"); }
+                if (data.length === 0) {
+                    this.node.status({ fill: "yellow", shape: "dot", text: "input array is empty" });
+                }
             } else { this.node.warn("Input data is null"); }
 
             this.node.status({ fill: "blue", shape: "dot", text: "processing ..." });
@@ -1014,7 +1025,9 @@ export class grant_permission {
             const _data = NoderedUtil.FetchFromObject(msg, this.config.entities);
             if (!NoderedUtil.IsNullUndefinded(_data)) {
                 if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
-                if (data.length === 0) { this.node.warn("input array is empty"); }
+                if (data.length === 0) {
+                    this.node.status({ fill: "yellow", shape: "dot", text: "input array is empty" });
+                }
             } else { this.node.warn("Input data is null"); }
 
             this.node.status({ fill: "blue", shape: "dot", text: "processing ..." });
@@ -1083,7 +1096,9 @@ export class revoke_permission {
             const _data = NoderedUtil.FetchFromObject(msg, this.config.entities);
             if (!NoderedUtil.IsNullUndefinded(_data)) {
                 if (!Array.isArray(_data)) { data.push(_data); } else { data = _data; }
-                if (data.length === 0) { this.node.warn("input array is empty"); }
+                if (data.length === 0) {
+                    this.node.status({ fill: "yellow", shape: "dot", text: "input array is empty" });
+                }
             } else { this.node.warn("Input data is null"); }
 
             for (let i = 0; i < data.length; i++) {
