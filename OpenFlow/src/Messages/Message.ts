@@ -2303,7 +2303,8 @@ export class Message {
             }
 
             let servicename = name;
-            if (!/[a-z]([-a-z0-9]*[a-z0-9])?/.test(servicename)) {
+            var test = /[a-z]([-a-z0-9]*[a-z0-9])?/.exec(servicename);
+            if (test.index != 0) {
                 servicename = "nr" + name + "svc";
             }
 
@@ -2379,6 +2380,10 @@ export class Message {
                 throw new Error("failed locating useringress");
             }
         } catch (error) {
+            if (error.response && error.response.body && error.response.body.message) {
+                Logger.instanse.error(new Error(error.response.body.message));
+                error.message = error.response.body.message;
+            }
             span?.recordException(error);
             Logger.otel.endSpan(span);
             throw error;
