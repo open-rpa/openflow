@@ -1692,18 +1692,31 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                 }
                 var _oldversion = 0;
+                var _skiphistory = false;
                 if (original != null) _oldversion = original._version;
                 if (q.item.hasOwnProperty("_skiphistory")) {
                     delete (q.item as any)._skiphistory;
                     if (!Config.allow_skiphistory) {
                         q.item._version = await this.SaveDiff(q.collectionname, original, q.item, span);
+                    } else {
+                        _skiphistory = true;
                     }
                 } else {
                     q.item._version = await this.SaveDiff(q.collectionname, original, q.item, span);
                 }
-                if (_oldversion == q.item._version) {
-                    q.opresult = { modifiedCount: 1, result: { ok: 1 } };
-                    return q;
+                if (_oldversion == q.item._version && _skiphistory == false) {
+                    if (q.item._type === 'instance' && q.collectionname === 'workflows') {
+                    } else {
+                        const _skip_array: string[] = Config.skip_history_collections.split(",");
+                        const skip_array: string[] = [];
+                        _skip_array.forEach(x => skip_array.push(x.trim()));
+                        if (skip_array.indexOf(q.collectionname) > -1) {
+                        } else {
+                            q.result = q.item;
+                            q.opresult = { modifiedCount: 1, result: { ok: 1 } };
+                            return q;
+                        }
+                    }
                 }
             } else {
                 let json: string = q.item as any;
@@ -2782,7 +2795,6 @@ export class DatabaseConnection extends events.EventEmitter {
             if (!precision) return num;
             return (Math.floor(num / precision) * precision);
         };
-        if (item._type === 'instance' && collectionname === 'workflows') return 0;
         if (item._type === 'instance' && collectionname === 'workflows') return 0;
 
         if (!original && item._id) {
