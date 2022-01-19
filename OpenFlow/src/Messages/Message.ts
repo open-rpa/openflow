@@ -2129,10 +2129,11 @@ export class Message {
                     }
                 }
             }
+            var port = 3000;
             let livenessProbe: any = {
                 httpGet: {
                     path: "/livenessprobe",
-                    port: Config.port,
+                    port: 3000,
                     scheme: "HTTP"
                 },
                 initialDelaySeconds: Config.nodered_initial_liveness_delay,
@@ -2156,7 +2157,7 @@ export class Message {
                 if (!api_ws_url.endsWith("/")) api_ws_url += "/";
 
 
-
+                var port = 3000;
                 let saml_baseurl = Config.protocol + "://" + hostname + "/";
 
                 let _samlparsed = url.parse(Config.saml_federation_metadata);
@@ -2193,7 +2194,7 @@ export class Message {
                 if (saml_federation_metadata == "https://pc.openiap.io/issue/FederationMetadata/2007-06/FederationMetadata.xml") {
                     saml_federation_metadata = "https://demo.openiap.io/issue/FederationMetadata/2007-06/FederationMetadata.xml"
                 }
-                var port = 3000;
+
 
                 const _deployment = {
                     metadata: { name: name, namespace: namespace, labels: { billed: hasbilling.toString(), userid: _id, app: name } },
@@ -2304,7 +2305,7 @@ export class Message {
 
             let servicename = name;
             var test = /[a-z]([-a-z0-9]*[a-z0-9])?/.exec(servicename);
-            if (test.index != 0) {
+            if (test == null || test.index != 0) {
                 servicename = "nr" + name + "svc";
             }
 
@@ -2423,7 +2424,8 @@ export class Message {
                 Logger.instanse.warn("_DeleteNoderedInstance: Did not find deployment for " + name + " in namespace " + namespace);
             }
             let servicename = name;
-            if (!/[a-z]([-a-z0-9]*[a-z0-9])?/.test(servicename)) {
+            var test = /[a-z]([-a-z0-9]*[a-z0-9])?/.exec(servicename);
+            if (test == null || test.index != 0) {
                 servicename = "nr" + name + "svc";
             }
             const service = await KubeUtil.instance().GetService(namespace, servicename);
