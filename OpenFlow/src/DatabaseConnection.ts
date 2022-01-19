@@ -1097,8 +1097,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) throw new Error("Access denied (not admin) to customer with id " + user2.customerid);
                     }
                     customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, span)
-                    if (customer == null) throw new Error("Access denied to customer with id " + user2.customerid);
-                    // if (!user.HasRoleName(customer.name + " admins")) throw new Error("Access denied to customer with " + customer.name);
+                    if (customer == null) throw new Error("Access denied to customer with id " + user2.customerid + " when updating " + user2._id);
                 } else if (user.HasRoleName("customer admins") && !NoderedUtil.IsNullEmpty(user.customerid)) {
                     // user2.customerid = user.customerid;
                     if (NoderedUtil.IsNullEmpty(user2.selectedcustomerid)) {
@@ -1547,7 +1546,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         // User can update, just not created ?
                         // if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) throw new Error("Access denied (not admin) to customer with id " + user2.customerid);
                         customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span)
-                        if (customer == null) throw new Error("Access denied to customer with id " + user2.customerid);
+                        if (customer == null) throw new Error("Access denied to customer with id " + user2.customerid + " when updating " + user2._id);
                     } else if (user.HasRoleName("customer admins") && !NoderedUtil.IsNullEmpty(user.customerid)) {
                         customer = null;
                         if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) {
@@ -1560,7 +1559,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                 customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span);
                                 if (customer != null) user2.customerid = user.customerid;
                                 if (customer == null) {
-                                    throw new Error("Access denied to customer with id " + user2.customerid);
+                                    throw new Error("Access denied to customer with id " + user2.customerid + " when updating " + user2._id);
                                 }
                             }
                         }
