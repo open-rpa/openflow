@@ -4411,22 +4411,26 @@ export class NoderedCtrl {
                 // this.messages = "GetNoderedInstance completed, status unknown/non existent" + "\n" + this.messages;
             }
             let reload: boolean = false;
-            this.instances.forEach(instance => {
-                if (this.instance.metadata.deletionTimestamp != null) reload = true;
-                if (instance.status.phase == "deleting" || instance.status.phase == "Pending") reload = true;
-                if (instance.metrics && instance.metrics.memory) {
-                    if (instance.metrics.memory.endsWith("Ki")) {
-                        let memory: any = parseInt(instance.metrics.memory.replace("Ki", ""));
-                        memory = Math.floor(memory / 1024) + "Mi";
-                        instance.metrics.memory = memory;
+            if (this.instances) {
+                this.instances.forEach(instance => {
+                    if (this.instance.metadata.deletionTimestamp != null) reload = true;
+                    if (instance.status.phase == "deleting" || instance.status.phase == "Pending") reload = true;
+                    if (instance.metrics && instance.metrics.memory) {
+                        if (instance.metrics.memory.endsWith("Ki")) {
+                            let memory: any = parseInt(instance.metrics.memory.replace("Ki", ""));
+                            memory = Math.floor(memory / 1024) + "Mi";
+                            instance.metrics.memory = memory;
+                        }
+                        if (instance.metrics.cpu.endsWith("n")) { // nanocores or nanoCPU
+                            let cpu: any = parseInt(instance.metrics.cpu.replace("n", ""));
+                            cpu = Math.floor(cpu / (1024 * 1024)) + "m";  // 1000m = 1 vcpu
+                            instance.metrics.cpu = cpu;
+                        }
                     }
-                    if (instance.metrics.cpu.endsWith("n")) { // nanocores or nanoCPU
-                        let cpu: any = parseInt(instance.metrics.cpu.replace("n", ""));
-                        cpu = Math.floor(cpu / (1024 * 1024)) + "m";  // 1000m = 1 vcpu
-                        instance.metrics.cpu = cpu;
-                    }
-                }
-            });
+                });
+            } else {
+                console.warn("GetNoderedInstance return null, did we disconnect from the openflow websocket?");
+            }
 
             // this.messages = "GetNoderedInstance completed, status " + this.instancestatus + "\n" + this.messages;
 
