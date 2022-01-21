@@ -169,6 +169,7 @@ export class DatabaseConnection extends events.EventEmitter {
         } catch (error) {
             console.error(error);
         }
+        Logger.instanse.info("supports_watch: " + Config.supports_watch);
         if (Config.supports_watch) {
             let collections = await DatabaseConnection.toArray(this.db.listCollections());
             collections = collections.filter(x => x.name.indexOf("system.") === -1);
@@ -1821,8 +1822,11 @@ export class DatabaseConnection extends events.EventEmitter {
                                 await this.db.collection(q.collectionname).deleteOne({ _id: safeid });
                             }
                         }
-                        if (q.opresult.matchedCount == 0 && (q.w != 0)) {
+                        if (q.opresult && q.opresult.matchedCount == 0 && (q.w != 0)) {
                             throw new Error("ReplaceOne failed, matched 0 documents with query {_id: '" + q.item._id + "'}");
+                        }
+                        if (q.opresult == null) {
+                            Logger.instanse.error("[" + user.username + "][" + q.collectionname + "] opresult is null !!");
                         }
                     } else {
                         const fsc = Config.db.db.collection(q.collectionname);
@@ -1831,8 +1835,11 @@ export class DatabaseConnection extends events.EventEmitter {
                         q.opresult = await fsc.updateOne(_query, { $set: { metadata: (q.item as any).metadata } });
                         Logger.otel.endSpan(mongodbspan);
                         Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: q.collectionname });
-                        if (q.opresult.matchedCount == 0 && (q.w != 0)) {
+                        if ((q.opresult && q.opresult.matchedCount == 0) && (q.w != 0)) {
                             throw new Error("ReplaceOne failed, matched 0 documents with query {_id: '" + q.item._id + "'}");
+                        }
+                        if (q.opresult == null) {
+                            Logger.instanse.error("[" + user.username + "][" + q.collectionname + "] opresult is null !!");
                         }
                     }
                 } else {
