@@ -57,11 +57,8 @@ export class QueueClient {
                     // done(_data);
                     Logger.instanse.warn("[queue][nack] Process message failed command: " + msg.command + " queuename: " + this.queuename + " replyto: " + options.replyTo + " correlationId: " + options.correlationId + " error: " + (error.message ? error.message : error))
                 }, Config.amqp_requeue_time);
-            }
-            finally {
-                if (span != null) {
-                    Logger.otel.endSpan(span);
-                }
+            } finally {
+                Logger.otel.endSpan(span);
             }
         }, null);
     }
