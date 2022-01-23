@@ -74,16 +74,11 @@ export class LoginProvider {
     public static redirect(res: any, originalUrl: string) {
         res.write('<!DOCTYPE html>');
         res.write('<body>');
-        // res.write('<script>top.location = "' + encodeURI(originalUrl) + '";</script>');
         res.write('<script>top.location = "' + LoginProvider.escape(originalUrl) + '";</script>');
-        // res.write('<a href="' + originalUrl + '">click here</a>');
         res.write('</body>');
         res.write('</html>');
         res.end();
-        // res.redirect(originalUrl);
     }
-
-
     static async validateToken(rawAssertion: string, parent: Span): Promise<User> {
         const span: Span = Logger.otel.startSubSpan("LoginProvider.validateToken", parent);
         return new Promise<User>((resolve, reject) => {
@@ -285,20 +280,6 @@ export class LoginProvider {
             }
         });
         app.get("/Signout", (req: any, res: any, next: any): void => {
-            // const providerid: string = req.cookies.provider;
-            // const provider: passport.Strategy;
-            // if (providerid != null && providerid != undefined && providerid != "") {
-            //     provider = LoginProvider._providers[providerid];
-            // }
-            // if (provider != null && provider != undefined) {
-            //     (provider as any).logout(req, function (err, requestUrl) {
-            //         // LOCAL logout
-            //         req.logout();
-            //         // redirect to the IdP with the encrypted SAML logout request
-            //         res.redirect(requestUrl);
-            //     });
-            //     return;
-            // }
             req.logout();
             const originalUrl: any = req.cookies.originalUrl;
             if (!NoderedUtil.IsNullEmpty(originalUrl)) {
