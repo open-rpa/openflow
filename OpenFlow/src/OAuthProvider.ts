@@ -8,6 +8,8 @@ import { MongoAdapter } from "./MongoAdapter";
 import { DBHelper } from "./DBHelper";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
+import { LoginProvider } from "./LoginProvider";
+
 const Request = OAuthServer.Request;
 const Response = OAuthServer.Response;
 export class OAuthProvider {
@@ -55,6 +57,27 @@ export class OAuthProvider {
       </div>
       </body>
       </html>`;
+    }
+    static async postLogoutSuccessSource(ctx) {
+        // @param ctx - koa request context
+        // @param form - form source (id="op.logoutForm") to be embedded in the page and submitted by
+        //   the End-User
+        ctx.body = `<!DOCTYPE html>
+      <head>
+      <title>Logout Request</title>
+      <style>/* css and html classes omitted for brevity, see lib/helpers/defaults.js */</style>
+      </head>
+      <body onload="logout()">
+      <div>
+        <h1>You have successfully signed out from ${ctx.host}</h1>
+        <a href="${ctx.req.cookies.oidcrefere}">Return to ${ctx.req.cookies.oidcrefere}</a> ?
+      </div>
+      </body>
+      </html>`;
+        if (!NoderedUtil.IsNullEmpty(ctx.req.cookies.oidcrefere)) {
+            // ctx.res.cookie("oidcrefere", "", { expires: new Date(0) });
+            // LoginProvider.redirect(ctx.res, ctx.req.cookies.oidcrefere);
+        }
     }
     static store = new Map();
     public static generatekeys() {
@@ -126,7 +149,8 @@ export class OAuthProvider {
                     claimsParameter: { enabled: false },
                     rpInitiatedLogout: {
                         enabled: true,
-                        logoutSource: this.logoutSource
+                        logoutSource: this.logoutSource.bind(this),
+                        postLogoutSuccessSource: this.postLogoutSuccessSource.bind(this)
                     }
                 },
                 claims: {
@@ -181,50 +205,13 @@ export class OAuthProvider {
                     res.send('[]');
                     return;
                 }
-                // if (req.originalUrl.startsWith("/oidc/auth")) {
-                //     var _session: string = req.cookies["_session"];
-                //     var session: string = req.cookies["session"];
-                //     if (!NoderedUtil.IsNullEmpty(_session)) {
-                //         var session1 = await this.instance.oidc.Session.find(_session)
-                //         if (session1 != null) {
-                //             const referer: string = req.headers.referer;
-                //             if (NoderedUtil.IsNullEmpty(referer)) {
-                //                 res.redirect("/oidc/session/end");
-                //             } else {
-                //                 // await session1.destroy();
-                //                 res.redirect(referer);
-                //             }
-                //             return;
-                //         }
-                //     }
-                //     if (!NoderedUtil.IsNullEmpty(session)) {
-                //         if (session.endsWith("=")) {
-                //             try {
-                //                 var buff = Buffer.from(session, "base64");
-                //                 var json = buff.toString("ascii");
-                //                 var item = JSON.parse(json);
-                //                 console.log(item);
-                //                 if (item && item.passport && item.passport.user) {
-                //                     var payload = await MongoAdapter.findByUid(item.passport.user);
-                //                     if (payload == null) payload = await MongoAdapter.findByUserCode(item.passport.user);
-                //                     if (payload == null) payload = await MongoAdapter.find(item.passport.user);
-                //                     if (payload != null) {
-                //                         session = item.passport.user;
-                //                     }
-
-                //                 }
-                //             } catch (error) {
-
-                //             }
-                //         }
-
-                //         var session2 = await this.instance.oidc.Session.find(session)
-                //         if (session2 != null) {
-                //             session2.resetIdentifier(); session2.destroy();
-                //         }
-                //     }
-                //     // req.logout();
-                // }
+                if (req.originalUrl.startsWith("/oidc/session/end")) {
+                    if (!NoderedUtil.IsNullEmpty(req.headers.referer)) {
+                        if (req.headers.referer.indexOf("oidc/session") == -1) {
+                            res.cookie("oidcrefere", req.headers.referer, { maxAge: 900000, httpOnly: true });
+                        }
+                    }
+                }
                 instance.oidc.callback(req, res);
             });
 
