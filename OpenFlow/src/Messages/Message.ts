@@ -2386,10 +2386,10 @@ export class Message {
                 error.message = error.response.body.message;
             }
             span?.recordException(error);
-            Logger.otel.endSpan(span);
             throw error;
+        } finally {
+            Logger.otel.endSpan(span);
         }
-        Logger.otel.endSpan(span);
     }
     private async _DeleteNoderedInstance(_id: string, jwt: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message._DeleteNoderedInstance", parent);
@@ -2460,10 +2460,10 @@ export class Message {
             }
         } catch (error) {
             span?.recordException(error);
-            Logger.otel.endSpan(span);
             throw error;
+        } finally {
+            Logger.otel.endSpan(span);
         }
-        Logger.otel.endSpan(span);
     }
     private async DeleteNoderedInstance(parent: Span): Promise<void> {
         await this.DetectDocker();
@@ -2499,10 +2499,10 @@ export class Message {
             }
         } catch (error) {
             span?.recordException(error);
-            Logger.otel.endSpan(span);
             throw error;
+        } finally {
+            Logger.otel.endSpan(span);
         }
-        Logger.otel.endSpan(span);
     }
     private async DeleteNoderedPod(parent: Span): Promise<void> {
         await this.DetectDocker();
