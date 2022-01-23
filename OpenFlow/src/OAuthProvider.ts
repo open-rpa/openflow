@@ -83,7 +83,7 @@ export class OAuthProvider {
             if (jwksresults.length == 0) {
                 jwks = await this.generatekeys();
                 jwks._type = "jwks";
-                Config.db.InsertOne(jwks, "config", 1, true, Crypt.rootToken(), span);
+                await Config.db.InsertOne(jwks, "config", 1, true, Crypt.rootToken(), span);
             } else {
                 jwks = jwksresults[0];
             }
@@ -181,25 +181,50 @@ export class OAuthProvider {
                     res.send('[]');
                     return;
                 }
-                if (req.originalUrl.startsWith("/oidc/auth")) {
-                    const _session = req.cookies["_session"];
-                    const session = req.cookies["session"];
-                    var session1 = await this.instance.oidc.Session.find(_session)
-                    var session2 = await this.instance.oidc.Session.find(session)
-                    if (session1 != null) {
-                        const referer: string = req.headers.referer;
-                        if (NoderedUtil.IsNullEmpty(referer)) {
-                            res.redirect("/oidc/session/end");
-                        } else {
-                            await session1.destroy();
-                            res.redirect(referer);
-                        }
-                        return;
-                    }
-                    if (session2 != null) { session2.resetIdentifier(); session2.destroy(); }
+                // if (req.originalUrl.startsWith("/oidc/auth")) {
+                //     var _session: string = req.cookies["_session"];
+                //     var session: string = req.cookies["session"];
+                //     if (!NoderedUtil.IsNullEmpty(_session)) {
+                //         var session1 = await this.instance.oidc.Session.find(_session)
+                //         if (session1 != null) {
+                //             const referer: string = req.headers.referer;
+                //             if (NoderedUtil.IsNullEmpty(referer)) {
+                //                 res.redirect("/oidc/session/end");
+                //             } else {
+                //                 // await session1.destroy();
+                //                 res.redirect(referer);
+                //             }
+                //             return;
+                //         }
+                //     }
+                //     if (!NoderedUtil.IsNullEmpty(session)) {
+                //         if (session.endsWith("=")) {
+                //             try {
+                //                 var buff = Buffer.from(session, "base64");
+                //                 var json = buff.toString("ascii");
+                //                 var item = JSON.parse(json);
+                //                 console.log(item);
+                //                 if (item && item.passport && item.passport.user) {
+                //                     var payload = await MongoAdapter.findByUid(item.passport.user);
+                //                     if (payload == null) payload = await MongoAdapter.findByUserCode(item.passport.user);
+                //                     if (payload == null) payload = await MongoAdapter.find(item.passport.user);
+                //                     if (payload != null) {
+                //                         session = item.passport.user;
+                //                     }
 
-                    // req.logout();
-                }
+                //                 }
+                //             } catch (error) {
+
+                //             }
+                //         }
+
+                //         var session2 = await this.instance.oidc.Session.find(session)
+                //         if (session2 != null) {
+                //             session2.resetIdentifier(); session2.destroy();
+                //         }
+                //     }
+                //     // req.logout();
+                // }
                 instance.oidc.callback(req, res);
             });
 
@@ -214,8 +239,6 @@ export class OAuthProvider {
             });
             instance.app.use('/oidccb', async (req, res, next) => {
                 try {
-
-                    var test = await this.instance.oidc.interactionDetails(req, res);
                     const {
                         uid, prompt, params, session,
                     } = await this.instance.oidc.interactionDetails(req, res);
@@ -264,7 +287,6 @@ export class OAuthProvider {
                         );
                     }
                 } catch (error) {
-                    span?.recordException(error);
                     if (error.name == "SessionNotFound") {
                         res.redirect(`/`);
                         res.end();
@@ -278,7 +300,10 @@ export class OAuthProvider {
             span?.recordException(error);
             Logger.instanse.error(error);
         }
-        Logger.otel.endSpan(span);
+        finally {
+            Logger.otel.endSpan(span);
+        }
+
     }
     static configure(app: express.Express, parent: Span): OAuthProvider {
         const span: Span = Logger.otel.startSubSpan("OAuthProvider.configure", parent);
@@ -504,26 +529,6 @@ export class OAuthProvider {
         this.codes[code] = codeobject;
         await Config.db.InsertOne(codeobject, "oauthtokens", 1, false, Crypt.rootToken(), span);
         Logger.instanse.info("[OAuth] saveAuthorizationCode " + code + " saved");
-        // instance.codes[code].client_id = client_id;
-
-
-        // await Config.db.InsertOne(result, "oauthtokens", 0, false, Crypt.rootToken());
-
-        // // const codeToSave: any = this.codes[code];
-        // const codeToSave: any = {
-        //     'authorizationCode': code.authorizationCode,
-        //     'expiresAt': code.expiresAt,
-        //     'redirectUri': code.redirectUri,
-        //     'scope': code.scope,
-        //     'client': client.id,
-        //     'user': user.username
-        // };
-        // this.codes[code] = codeToSave;
-        // this.revokeAuthorizationCode(code);
-        // code = Object.assign({}, code, {
-        //     'client': client.id,
-        //     'user': user.username
-        // });
         Logger.otel.endSpan(span);
         return codeobject;
     }
