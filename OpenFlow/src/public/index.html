@@ -23,18 +23,23 @@
       <span class="navbar-text text-monospace">v{{menuctrl.WebSocketClientService.version}}</span>
       <ul class="navbar-nav d-none d-md-flex">
         <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Entities')}" id="menuentities">
-          <a href="#/Entities" class="nav-link" ng-show="menuctrl.hasrole('users')"><span translate
+          <a href="#/Entities" class="nav-link"
+            ng-show="(menuctrl.hasrole('users') && !menuctrl.hasrole('menu hide entities')) || menuctrl.hasrole('admins')"><span
+              translate
               lib="web">entities</span></a>
         </li>
         <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Workflows')}" id="menuworkflows">
           <a href="#/Workflows" class="nav-link"><span translate lib="web">workflows</span></a>
         </li>
         <li class="nav-item" ng-class="{active: menuctrl.PathIs('/RPAWorkflows')}" id="menurpaworkflows">
-          <a href="#/RPAWorkflows" class="nav-link" ng-show="menuctrl.hasrole('users')"><span translate
+          <a href="#/RPAWorkflows" class="nav-link"
+            ng-show="(menuctrl.hasrole('users') && !menuctrl.hasrole('menu hide rpaworkflows')) || menuctrl.hasrole('admins')"><span
+              translate
               lib="web">rpaworkflows</span></a>
         </li>
         <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Clients')}" id="menuclients">
-          <a href="#/Clients" class="nav-link" ng-show="menuctrl.hasrole('users')"><span translate
+          <a href="#/Clients" class="nav-link" ng-show="(menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins'))"><span
+              translate
               lib="web">clients</span></a>
         </li>
         <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Nodered')}" id="menunodered">
@@ -42,7 +47,8 @@
             ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')">
             <span translate lib="web">nodered</span></a>
         </li>
-        <div class="dropdown with-arrow" id="menuadminmenu">
+        <div class="dropdown with-arrow" id="menuadminmenu"
+          ng-show="(menuctrl.hasrole('users') && !menuctrl.hasrole('menu hide admins')) || menuctrl.hasrole('admins')">
           <button class="btn" data-toggle="dropdown" type="button" id="navbar-dropdown-toggle-btn-1">
             <span translate lib="web">admin</span>
             <i class="fa fa-angle-down" aria-hidden="true"></i>
