@@ -81,8 +81,9 @@ export class SamlProvider {
                     Audit.LoginSuccess(tuser, "tokenissued", "saml", remoteip, "samlverify", "unknown", span);
                 } catch (error) {
                     span?.recordException(error);
+                } finally {
+                    Logger.otel.endSpan(span);
                 }
-                Logger.otel.endSpan(span);
                 return req.user;
             },
             profileMapper: SamlProvider.profileMapper,
