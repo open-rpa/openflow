@@ -541,8 +541,15 @@ export async function get_rpa_robots(req, res) {
 export async function get_rpa_workflows(req, res) {
     try {
         const q: any = { _type: "workflow" };
+        if (!NoderedUtil.IsNullEmpty(req.query.name)) {
+            // q["name"] = new RegExp(["^", req.query.name, "$"].join(""), "i")
+            q["$or"] = [
+                { "projectandname": new RegExp([req.query.name].join(""), "i") },
+                { "_id": req.query.name }
+            ]
+        }
         const result: any[] = await NoderedUtil.Query('openrpa', q,
-            { name: 1, projectandname: 1 }, { projectid: -1, name: -1 }, 1000, 0, null, req.query.queue, null, 1)
+            { name: 1, projectandname: 1 }, { projectid: -1, name: -1 }, 20, 0, null, req.query.queue, null, 1)
         res.json(result);
     } catch (error) {
         res.status(500).json(error);
