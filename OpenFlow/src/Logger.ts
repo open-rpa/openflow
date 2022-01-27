@@ -133,6 +133,7 @@ export class Logger {
                         createValueRecorder: () => undefined,
                         createCounter: () => undefined,
                         createUpDownSumObserver: () => undefined,
+                        createValueObserver: () => undefined,
                     }
                 } as any;
         }
