@@ -38,6 +38,7 @@ and add this content to the file
 ```bash
 nodered_id=nodered1
 nodered_sa=nodered1
+auto_create_user_from_jwt=true
 port=80
 nodered_port=1880
 tls_crt=
