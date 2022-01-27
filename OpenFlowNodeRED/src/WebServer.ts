@@ -202,6 +202,7 @@ export class WebServer {
                 else {
                     this.settings.uiPort = Config.port;
                 }
+                this.settings.functionGlobalContext.NoderedUtil = NoderedUtil;
                 setInterval(() => {
                     const keys = Object.keys(WebServer.log_messages);
                     keys.forEach(key => {
