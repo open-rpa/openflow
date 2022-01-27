@@ -1,7 +1,6 @@
 import { Config } from "./Config";
 
 export class MongoAdapter {
-
     public name: string = "";
     /**
      *
@@ -37,7 +36,7 @@ export class MongoAdapter {
         }
 
         await this.coll().updateOne(
-            { _id: id },
+            { id },
             { $set: { payload, ...(expiresAt ? { expiresAt } : undefined) } },
             { upsert: true },
         );
@@ -164,9 +163,12 @@ export class MongoAdapter {
      * @param {string} id Identifier of oidc-provider model
      *
      */
-    async find(id) {
-        const result = await this.coll().find(
-            { _id: id }).limit(1).next();
+    async find(id: string) {
+        return MongoAdapter.find(id);
+    }
+    static async find(id: string) {
+        console.log("find: " + id);
+        const result = await MongoAdapter.coll().find({ id }).limit(1).next();
         if (!result) return undefined;
         return result.payload;
     }
@@ -183,13 +185,14 @@ export class MongoAdapter {
      *
      */
     async findByUserCode(userCode) {
-        const result = await this.coll().find(
-            { 'payload.userCode': userCode }).limit(1).next();
-
+        return MongoAdapter.findByUserCode(userCode);
+    }
+    static async findByUserCode(userCode) {
+        console.log("findByUserCode: " + userCode);
+        const result = await this.coll().find({ 'payload.userCode': userCode }).limit(1).next();
         if (!result) return undefined;
         return result.payload;
     }
-
     /**
      *
      * Return previously stored instance of Session by its uid reference property.
@@ -201,10 +204,49 @@ export class MongoAdapter {
      *
      */
     async findByUid(uid) {
-        const result = await this.coll().find(
-            { 'payload.uid': uid }).limit(1).next();
+        return MongoAdapter.findByUid(uid);
+    }
+    static async findByUid(uid) {
+        console.log("findByUid: " + uid);
+        const result = await this.coll().find({ 'payload.uid': uid }).limit(1).next();
         if (!result) return undefined;
         return result.payload;
+    }
+
+    /**
+     *
+     * Destroy/Drop/Remove a stored oidc-provider model. Future finds for this id should be fulfilled
+     * with falsy values.
+     *
+     * @return {Promise} Promise fulfilled when the operation succeeded. Rejected with error when
+     * encountered.
+     * @param {string} id Identifier of oidc-provider model
+     *
+     */
+    async destroy(id) {
+        MongoAdapter.destroy(id);
+    }
+    static async destroy(id) {
+        console.log("destroy: " + id);
+        await this.coll().deleteOne({ id });
+    }
+
+    /**
+     *
+     * Destroy/Drop/Remove a stored oidc-provider model by its grantId property reference. Future
+     * finds for all tokens having this grantId value should be fulfilled with falsy values.
+     *
+     * @return {Promise} Promise fulfilled when the operation succeeded. Rejected with error when
+     * encountered.
+     * @param {string} grantId the grantId value associated with a this model's instance
+     *
+     */
+    async revokeByGrantId(grantId) {
+        MongoAdapter.revokeByGrantId(grantId);
+    }
+    static async revokeByGrantId(grantId) {
+        console.log("revokeByGrantId: " + grantId);
+        await this.coll().deleteMany({ 'payload.grantId': grantId });
     }
 
     /**
@@ -219,41 +261,16 @@ export class MongoAdapter {
      *
      */
     async consume(id) {
-        await this.coll().findOneAndUpdate(
-            { _id: id },
-            { $set: { 'payload.consumed': Math.floor(Date.now() / 1000) } },
-        );
+        MongoAdapter.consume(id);
     }
-
-    /**
-     *
-     * Destroy/Drop/Remove a stored oidc-provider model. Future finds for this id should be fulfilled
-     * with falsy values.
-     *
-     * @return {Promise} Promise fulfilled when the operation succeeded. Rejected with error when
-     * encountered.
-     * @param {string} id Identifier of oidc-provider model
-     *
-     */
-    async destroy(id) {
-        await this.coll().deleteOne({ _id: id });
+    static async consume(id) {
+        console.log("consume: " + id);
+        await this.coll().findOneAndUpdate({ id }, { $set: { 'payload.consumed': Math.floor(Date.now() / 1000) } });
     }
-
-    /**
-     *
-     * Destroy/Drop/Remove a stored oidc-provider model by its grantId property reference. Future
-     * finds for all tokens having this grantId value should be fulfilled with falsy values.
-     *
-     * @return {Promise} Promise fulfilled when the operation succeeded. Rejected with error when
-     * encountered.
-     * @param {string} grantId the grantId value associated with a this model's instance
-     *
-     */
-    async revokeByGrantId(grantId) {
-        await this.coll().deleteMany({ 'payload.grantId': grantId });
-    }
-
     coll() {
+        return MongoAdapter.coll();
+    }
+    static coll() {
         return Config.db.db.collection("oauthtokens");
     }
 }

@@ -8,6 +8,8 @@ import { MongoAdapter } from "./MongoAdapter";
 import { DBHelper } from "./DBHelper";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
+import { LoginProvider } from "./LoginProvider";
+
 const Request = OAuthServer.Request;
 const Response = OAuthServer.Response;
 export class OAuthProvider {
@@ -56,6 +58,27 @@ export class OAuthProvider {
       </body>
       </html>`;
     }
+    static async postLogoutSuccessSource(ctx) {
+        // @param ctx - koa request context
+        // @param form - form source (id="op.logoutForm") to be embedded in the page and submitted by
+        //   the End-User
+        ctx.body = `<!DOCTYPE html>
+      <head>
+      <title>Logout Request</title>
+      <style>/* css and html classes omitted for brevity, see lib/helpers/defaults.js */</style>
+      </head>
+      <body onload="logout()">
+      <div>
+        <h1>You have successfully signed out from ${ctx.host}</h1>
+        <a href="${ctx.req.cookies.oidcrefere}">Return to ${ctx.req.cookies.oidcrefere}</a> ?
+      </div>
+      </body>
+      </html>`;
+        if (!NoderedUtil.IsNullEmpty(ctx.req.cookies.oidcrefere)) {
+            // ctx.res.cookie("oidcrefere", "", { expires: new Date(0) });
+            // LoginProvider.redirect(ctx.res, ctx.req.cookies.oidcrefere);
+        }
+    }
     static store = new Map();
     public static generatekeys() {
         return new Promise((resolve, reject) => {
@@ -83,7 +106,7 @@ export class OAuthProvider {
             if (jwksresults.length == 0) {
                 jwks = await this.generatekeys();
                 jwks._type = "jwks";
-                Config.db.InsertOne(jwks, "config", 1, true, Crypt.rootToken(), span);
+                await Config.db.InsertOne(jwks, "config", 1, true, Crypt.rootToken(), span);
             } else {
                 jwks = jwksresults[0];
             }
@@ -126,7 +149,8 @@ export class OAuthProvider {
                     claimsParameter: { enabled: false },
                     rpInitiatedLogout: {
                         enabled: true,
-                        logoutSource: this.logoutSource
+                        logoutSource: this.logoutSource.bind(this),
+                        postLogoutSuccessSource: this.postLogoutSuccessSource.bind(this)
                     }
                 },
                 claims: {
@@ -181,24 +205,12 @@ export class OAuthProvider {
                     res.send('[]');
                     return;
                 }
-                if (req.originalUrl.startsWith("/oidc/auth")) {
-                    const _session = req.cookies["_session"];
-                    const session = req.cookies["session"];
-                    var session1 = await this.instance.oidc.Session.find(_session)
-                    var session2 = await this.instance.oidc.Session.find(session)
-                    if (session1 != null) {
-                        const referer: string = req.headers.referer;
-                        if (NoderedUtil.IsNullEmpty(referer)) {
-                            res.redirect("/oidc/session/end");
-                        } else {
-                            await session1.destroy();
-                            res.redirect(referer);
+                if (req.originalUrl.startsWith("/oidc/session/end")) {
+                    if (!NoderedUtil.IsNullEmpty(req.headers.referer)) {
+                        if (req.headers.referer.indexOf("oidc/session") == -1) {
+                            res.cookie("oidcrefere", req.headers.referer, { maxAge: 900000, httpOnly: true });
                         }
-                        return;
                     }
-                    if (session2 != null) { session2.resetIdentifier(); session2.destroy(); }
-
-                    // req.logout();
                 }
                 instance.oidc.callback(req, res);
             });
@@ -214,8 +226,6 @@ export class OAuthProvider {
             });
             instance.app.use('/oidccb', async (req, res, next) => {
                 try {
-
-                    var test = await this.instance.oidc.interactionDetails(req, res);
                     const {
                         uid, prompt, params, session,
                     } = await this.instance.oidc.interactionDetails(req, res);
@@ -264,7 +274,6 @@ export class OAuthProvider {
                         );
                     }
                 } catch (error) {
-                    span?.recordException(error);
                     if (error.name == "SessionNotFound") {
                         res.redirect(`/`);
                         res.end();
@@ -278,7 +287,10 @@ export class OAuthProvider {
             span?.recordException(error);
             Logger.instanse.error(error);
         }
-        Logger.otel.endSpan(span);
+        finally {
+            Logger.otel.endSpan(span);
+        }
+
     }
     static configure(app: express.Express, parent: Span): OAuthProvider {
         const span: Span = Logger.otel.startSubSpan("OAuthProvider.configure", parent);
@@ -504,26 +516,6 @@ export class OAuthProvider {
         this.codes[code] = codeobject;
         await Config.db.InsertOne(codeobject, "oauthtokens", 1, false, Crypt.rootToken(), span);
         Logger.instanse.info("[OAuth] saveAuthorizationCode " + code + " saved");
-        // instance.codes[code].client_id = client_id;
-
-
-        // await Config.db.InsertOne(result, "oauthtokens", 0, false, Crypt.rootToken());
-
-        // // const codeToSave: any = this.codes[code];
-        // const codeToSave: any = {
-        //     'authorizationCode': code.authorizationCode,
-        //     'expiresAt': code.expiresAt,
-        //     'redirectUri': code.redirectUri,
-        //     'scope': code.scope,
-        //     'client': client.id,
-        //     'user': user.username
-        // };
-        // this.codes[code] = codeToSave;
-        // this.revokeAuthorizationCode(code);
-        // code = Object.assign({}, code, {
-        //     'client': client.id,
-        //     'user': user.username
-        // });
         Logger.otel.endSpan(span);
         return codeobject;
     }

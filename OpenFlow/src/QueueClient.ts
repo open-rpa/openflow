@@ -57,11 +57,8 @@ export class QueueClient {
                     // done(_data);
                     Logger.instanse.warn("[queue][nack] Process message failed command: " + msg.command + " queuename: " + this.queuename + " replyto: " + options.replyTo + " correlationId: " + options.correlationId + " error: " + (error.message ? error.message : error))
                 }, Config.amqp_requeue_time);
-            }
-            finally {
-                if (span != null) {
-                    Logger.otel.endSpan(span);
-                }
+            } finally {
+                Logger.otel.endSpan(span);
             }
         }, null);
     }
@@ -113,6 +110,13 @@ export class QueueClient {
                 if (Config.log_openflow_amqp) Logger.instanse.silly("[queue] Submit request for command: " + msg.command + " queuename: " + this.queuename + " replyto: " + this.queue.queue + " correlationId: " + msg.correlationId)
                 await amqpwrapper.Instance().sendWithReplyTo("", this.queuename, this.queue.queue, JSON.stringify(msg), Config.openflow_amqp_expiration, msg.correlationId, "", priority);
             } catch (error) {
+                if (NoderedUtil.IsNullUndefinded(this.queue)) {
+                    Logger.instanse.warn("SendForProcessing queue is null, shutdown amqp connection");
+                    amqpwrapper.Instance().shutdown();
+                    amqpwrapper.Instance().connect(null);
+                } else {
+                    Logger.instanse.error(error);
+                }
                 reject(error);
             }
         });

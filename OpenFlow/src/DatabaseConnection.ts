@@ -169,6 +169,7 @@ export class DatabaseConnection extends events.EventEmitter {
         } catch (error) {
             console.error(error);
         }
+        Logger.instanse.info("supports_watch: " + Config.supports_watch);
         if (Config.supports_watch) {
             let collections = await DatabaseConnection.toArray(this.db.listCollections());
             collections = collections.filter(x => x.name.indexOf("system.") === -1);
@@ -1097,8 +1098,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) throw new Error("Access denied (not admin) to customer with id " + user2.customerid);
                     }
                     customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, span)
-                    if (customer == null) throw new Error("Access denied to customer with id " + user2.customerid);
-                    // if (!user.HasRoleName(customer.name + " admins")) throw new Error("Access denied to customer with " + customer.name);
+                    if (customer == null) throw new Error("Access denied to customer with id " + user2.customerid + " when updating " + user2._id);
                 } else if (user.HasRoleName("customer admins") && !NoderedUtil.IsNullEmpty(user.customerid)) {
                     // user2.customerid = user.customerid;
                     if (NoderedUtil.IsNullEmpty(user2.selectedcustomerid)) {
@@ -1547,7 +1547,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         // User can update, just not created ?
                         // if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) throw new Error("Access denied (not admin) to customer with id " + user2.customerid);
                         customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span)
-                        if (customer == null) throw new Error("Access denied to customer with id " + user2.customerid);
+                        if (customer == null) throw new Error("Access denied to customer with id " + user2.customerid + " when updating " + user2._id);
                     } else if (user.HasRoleName("customer admins") && !NoderedUtil.IsNullEmpty(user.customerid)) {
                         customer = null;
                         if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) {
@@ -1560,7 +1560,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                 customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span);
                                 if (customer != null) user2.customerid = user.customerid;
                                 if (customer == null) {
-                                    throw new Error("Access denied to customer with id " + user2.customerid);
+                                    throw new Error("Access denied to customer with id " + user2.customerid + " when updating " + user2._id);
                                 }
                             }
                         }
@@ -1692,18 +1692,31 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                 }
                 var _oldversion = 0;
+                var _skiphistory = false;
                 if (original != null) _oldversion = original._version;
                 if (q.item.hasOwnProperty("_skiphistory")) {
                     delete (q.item as any)._skiphistory;
                     if (!Config.allow_skiphistory) {
                         q.item._version = await this.SaveDiff(q.collectionname, original, q.item, span);
+                    } else {
+                        _skiphistory = true;
                     }
                 } else {
                     q.item._version = await this.SaveDiff(q.collectionname, original, q.item, span);
                 }
-                if (_oldversion == q.item._version) {
-                    q.opresult = { modifiedCount: 1, result: { ok: 1 } };
-                    return q;
+                if (_oldversion == q.item._version && _skiphistory == false) {
+                    if (q.item._type === 'instance' && q.collectionname === 'workflows') {
+                    } else {
+                        const _skip_array: string[] = Config.skip_history_collections.split(",");
+                        const skip_array: string[] = [];
+                        _skip_array.forEach(x => skip_array.push(x.trim()));
+                        if (skip_array.indexOf(q.collectionname) > -1) {
+                        } else {
+                            q.result = q.item;
+                            q.opresult = { modifiedCount: 1, result: { ok: 1 } };
+                            return q;
+                        }
+                    }
                 }
             } else {
                 let json: string = q.item as any;
@@ -1809,8 +1822,11 @@ export class DatabaseConnection extends events.EventEmitter {
                                 await this.db.collection(q.collectionname).deleteOne({ _id: safeid });
                             }
                         }
-                        if (q.opresult.matchedCount == 0 && (q.w != 0)) {
+                        if (q.opresult && q.opresult.matchedCount == 0 && (q.w != 0)) {
                             throw new Error("ReplaceOne failed, matched 0 documents with query {_id: '" + q.item._id + "'}");
+                        }
+                        if (q.opresult == null) {
+                            Logger.instanse.error("[" + user.username + "][" + q.collectionname + "] opresult is null !!");
                         }
                     } else {
                         const fsc = Config.db.db.collection(q.collectionname);
@@ -1819,8 +1835,11 @@ export class DatabaseConnection extends events.EventEmitter {
                         q.opresult = await fsc.updateOne(_query, { $set: { metadata: (q.item as any).metadata } });
                         Logger.otel.endSpan(mongodbspan);
                         Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: q.collectionname });
-                        if (q.opresult.matchedCount == 0 && (q.w != 0)) {
+                        if ((q.opresult && q.opresult.matchedCount == 0) && (q.w != 0)) {
                             throw new Error("ReplaceOne failed, matched 0 documents with query {_id: '" + q.item._id + "'}");
+                        }
+                        if (q.opresult == null) {
+                            Logger.instanse.error("[" + user.username + "][" + q.collectionname + "] opresult is null !!");
                         }
                     }
                 } else {
@@ -2782,7 +2801,6 @@ export class DatabaseConnection extends events.EventEmitter {
             if (!precision) return num;
             return (Math.floor(num / precision) * precision);
         };
-        if (item._type === 'instance' && collectionname === 'workflows') return 0;
         if (item._type === 'instance' && collectionname === 'workflows') return 0;
 
         if (!original && item._id) {

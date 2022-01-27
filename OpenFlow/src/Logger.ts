@@ -10,7 +10,10 @@ export class Logger {
         if (info instanceof Error || info.stack) {
             return `${info.timestamp} [${info.level}] ${info.message} \n ${info.stack}`;
         }
-        return `${info.timestamp} [${Logger.getLabel()}][${info.level}] ${info.message}`;
+        if (Config.NODE_ENV == "development") {
+            return `${info.timestamp} [${Logger.getLabel()}][${info.level}] ${info.message}`;
+        }
+        return `${info.timestamp} [${info.level}] ${info.message}`;
     });
     static getLabel = function () {
         let e = new Error();
@@ -130,6 +133,7 @@ export class Logger {
                         createValueRecorder: () => undefined,
                         createCounter: () => undefined,
                         createUpDownSumObserver: () => undefined,
+                        createValueObserver: () => undefined,
                     }
                 } as any;
         }
