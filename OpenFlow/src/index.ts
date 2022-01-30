@@ -50,7 +50,7 @@ async function ValidateValidateUserForm(parent: Span) {
     }
 }
 function doHouseKeeping() {
-    Message.lastHouseKeeping = new Date();
+    // Message.lastHouseKeeping = new Date();
     amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping", "lastrun": Message.lastHouseKeeping.toISOString() }, 20000, null, "", 1);
     var dt = new Date(Message.lastHouseKeeping.toISOString());
     var msg2 = new Message(); msg2.jwt = Crypt.rootToken();
@@ -240,22 +240,22 @@ async function initDatabase(parent: Span): Promise<boolean> {
                 }
             }, (15 * 60 * 1000) + (randomNum * 1000));
             // If I'm first and noone else has run it, lets trigger it now
-            // const randomNum2 = (Math.floor(Math.random() * 10) + 1);
-            // Logger.instanse.info("Trigger first Housekeeping in " + randomNum2 + " seconds");
-            // setTimeout(async () => {
-            //     if (Config.enable_openflow_amqp) {
-            //         if (!Message.ReadyForHousekeeping()) {
-            //             return;
-            //         }
-            //         amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping" }, 10000, null, "", 1);
-            //         await new Promise(resolve => { setTimeout(resolve, 10000) });
-            //         if (Message.ReadyForHousekeeping()) {
-            //             doHouseKeeping();
-            //         } else {
-            //             Logger.instanse.verbose("SKIP housekeeping");
-            //         }
-            //     }
-            // }, randomNum2 * 1000);
+            const randomNum2 = (Math.floor(Math.random() * 10) + 1);
+            Logger.instanse.info("Trigger first Housekeeping in " + randomNum2 + " seconds");
+            setTimeout(async () => {
+                if (Config.enable_openflow_amqp) {
+                    if (!Message.ReadyForHousekeeping()) {
+                        return;
+                    }
+                    amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping" }, 10000, null, "", 1);
+                    await new Promise(resolve => { setTimeout(resolve, 10000) });
+                    if (Message.ReadyForHousekeeping()) {
+                        doHouseKeeping();
+                    } else {
+                        Logger.instanse.verbose("SKIP housekeeping");
+                    }
+                }
+            }, randomNum2 * 1000);
         }
         return true;
     } catch (error) {
