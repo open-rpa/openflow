@@ -59,9 +59,9 @@ services:
   api:
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.web.rule=Host(`localhost.openiap.io`)"
-      - "traefik.http.routers.web.entrypoints=web"
-      - "traefik.http.services.web.loadbalancer.server.port=3000"
+      - "traefik.http.routers.api.rule=Host(`localhost.openiap.io`)"
+      - "traefik.http.routers.api.entrypoints=web"
+      - "traefik.http.services.api.loadbalancer.server.port=3000"
       - "traefik.frontend.passHostHeader=true"
     image: "openiap/openflow"
     deploy:

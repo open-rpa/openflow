@@ -55,13 +55,13 @@ services:
     image: "rabbitmq:3-management"
     container_name: "rabbitmq"
     restart: always
-  web:
+  api:
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.web.rule=Host(`localhost.openiap.io`)"
-      - "traefik.http.routers.web.entrypoints=websecure"
-      - "traefik.http.routers.web.tls.certresolver=myresolver"
-      - "traefik.http.services.web.loadbalancer.server.port=3000"
+      - "traefik.http.routers.api.rule=Host(`localhost.openiap.io`)"
+      - "traefik.http.routers.api.entrypoints=websecure"
+      - "traefik.http.routers.api.tls.certresolver=myresolver"
+      - "traefik.http.services.api.loadbalancer.server.port=3000"
       - "traefik.frontend.passHostHeader=true"
     image: "openiap/openflow"
     deploy:
