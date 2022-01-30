@@ -330,6 +330,16 @@ export class WebServer {
                 } else {
                     this.settings.editorTheme.palette.catalogues = ['https://catalogue.nodered.org/catalogue.json'];
                 }
+                if (!NoderedUtil.IsNullEmpty(Config.noderedcatalogues)) {
+                    if (Config.noderedcatalogues.indexOf(";") > -1) {
+                        this.settings.editorTheme.palette.catalogues = Config.noderedcatalogues.split(";");
+                    } else {
+                        this.settings.editorTheme.palette.catalogues = Config.noderedcatalogues.split(",");
+                    }
+                    Logger.instanse.debug("WebServer.configure::Force nodered catalogues to be " + Config.noderedcatalogues);
+                } else {
+                    Logger.instanse.debug("WebServer.configure::Using default nodered catalogues as " + this.settings.editorTheme.palette.catalogues);
+                }
                 this.settings.editorTheme.tours = Config.tours;
 
                 this.settings.ui.path = "ui";

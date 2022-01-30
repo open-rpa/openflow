@@ -1970,7 +1970,8 @@ export class Message {
                     "otel_metric_url=" + Config.otel_metric_url,
                     "otel_trace_interval=" + Config.otel_trace_interval.toString(),
                     "otel_metric_interval=" + Config.otel_metric_interval.toString(),
-                    "amqp_enabled_exchange=" + Config.amqp_enabled_exchange.toString()
+                    "amqp_enabled_exchange=" + Config.amqp_enabled_exchange.toString(),
+                    "noderedcatalogues=" + Config.noderedcatalogues
                 ]
 
                 // const image = await docker.pull(nodered_image, { serveraddress: "https://index.docker.io/v1" });
@@ -2244,6 +2245,7 @@ export class Message {
                                             { name: "otel_warn_log", value: Config.otel_warn_log.toString() },
                                             { name: "otel_err_log", value: Config.otel_err_log.toString() },
                                             { name: "amqp_enabled_exchange", value: Config.amqp_enabled_exchange.toString() },
+                                            { name: "noderedcatalogues", value: Config.noderedcatalogues },
                                         ],
                                         livenessProbe: livenessProbe,
                                     }
