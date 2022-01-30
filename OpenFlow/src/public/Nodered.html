@@ -95,7 +95,13 @@
   <pre>{{ctrl.messages}}</pre>
 </div>
 <section>
-  <div class="row">
+  <div class="row" ng-show="menuctrl.WebSocketClientService.multi_tenant == false || (menuctrl.hasrole('admins')">
+    <label class="col-sm-4 control-label"><span translate lib="web">autocreate</span>: </label>
+    <div class="col-sm-1">
+      <input type="checkbox" ng-model="ctrl.user.nodered.autocreate"></input>
+    </div>
+  </div>
+    <div class="row">
     <label class="col-sm-4 control-label"><span translate lib="web">api_allow_anonymous</span>: </label>
     <div class="col-sm-1">
       <input type="checkbox" ng-model="ctrl.user.nodered.api_allow_anonymous"></input>
@@ -119,6 +125,7 @@
       <input type="checkbox" ng-model="ctrl.user.nodered.monaco"></input>
     </div>
   </div>
+  autocreate
   <div class="row" ng-show="menuctrl.WebSocketClientService.nodered_images.length > 1">
     <label class="col-sm-4 control-label"><span translate lib="web">nodered_image</span>: </label>
     <div class="col-sm-1">

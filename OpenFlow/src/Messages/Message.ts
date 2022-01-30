@@ -4425,6 +4425,10 @@ export class Message {
     }
     public static lastHouseKeeping: Date = null;
     public static ReadyForHousekeeping(): boolean {
+        if (Message.lastHouseKeeping == null) {
+            Message.lastHouseKeeping = new Date();
+            Message.lastHouseKeeping.setDate(Message.lastHouseKeeping.getDate() - 1);
+        }
         const date = new Date();
         const a: number = (date as any) - (Message.lastHouseKeeping as any);
         const diffminutes = a / (1000 * 60);
@@ -4446,9 +4450,23 @@ export class Message {
             return;
         }
         Message.lastHouseKeeping = new Date();
+        const jwt: string = Crypt.rootToken();
         const span: Span = Logger.otel.startSubSpan("message.QueueMessage", parent);
         try {
-            if (!skipNodered) await this.GetNoderedInstance(span)
+            if (!skipNodered) {
+                await this.GetNoderedInstance(span);
+                const users: any[] = await Config.db.db.collection("users").find({ "_type": "user", "nodered.autocreate": true }).toArray();
+                // TODO: we should get instances and compare, running ensure for each user will not scale well
+                for (let i = 0; i < users.length; i++) {
+                    var ensuremsg: EnsureNoderedInstanceMessage = new EnsureNoderedInstanceMessage();
+                    ensuremsg._id = users[i]._id;
+                    var msg: Message = new Message(); msg.jwt = jwt;
+                    msg.data = JSON.stringify(ensuremsg);
+                    await msg.EnsureNoderedInstance(span);
+                }
+
+
+            }
         } catch (error) {
         }
         try {
@@ -4604,7 +4622,6 @@ export class Message {
 
                 const user = Crypt.rootUser();
                 const tuser = TokenUser.From(user);
-                const jwt: string = Crypt.rootToken();
                 let collections = await Config.db.ListCollections(jwt);
                 collections = collections.filter(x => x.name.indexOf("system.") === -1);
                 let totalusage = 0;
