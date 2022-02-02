@@ -51,9 +51,14 @@ async function ValidateValidateUserForm(parent: Span) {
 }
 function doHouseKeeping() {
     // Message.lastHouseKeeping = new Date();
-    amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping", "lastrun": Message.lastHouseKeeping.toISOString() }, 20000, null, "", 1);
+    if (Message.lastHouseKeeping == null) {
+        Message.lastHouseKeeping = new Date();
+        Message.lastHouseKeeping.setDate(Message.lastHouseKeeping.getDate() - 1);
+    }
+    amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping", "lastrun": (new Date()).toISOString() }, 20000, null, "", 1);
     var dt = new Date(Message.lastHouseKeeping.toISOString());
     var msg2 = new Message(); msg2.jwt = Crypt.rootToken();
+    var h = dt.getHours();
     var skipUpdateUsage: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
     msg2.Housekeeping(false, skipUpdateUsage, skipUpdateUsage, null).catch((error) => Logger.instanse.error(error));
 

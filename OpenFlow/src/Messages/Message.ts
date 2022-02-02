@@ -4426,8 +4426,7 @@ export class Message {
     public static lastHouseKeeping: Date = null;
     public static ReadyForHousekeeping(): boolean {
         if (Message.lastHouseKeeping == null) {
-            Message.lastHouseKeeping = new Date();
-            Message.lastHouseKeeping.setDate(Message.lastHouseKeeping.getDate() - 1);
+            return true;
         }
         const date = new Date();
         const a: number = (date as any) - (Message.lastHouseKeeping as any);
@@ -4698,13 +4697,14 @@ export class Message {
                     Config.db.db.collection("dbusage").deleteMany({ timestamp: timestamp, collection: col.name });
                     let usage = 0;
                     if (items.length > 0) {
-                        // let bulkInsert = Config.db.db.collection("dbusage").initializeUnorderedBulkOp();
+                        let bulkInsert = Config.db.db.collection("dbusage").initializeUnorderedBulkOp();
                         for (var i = 0; i < items.length; i++) {
                             try {
                                 // sometimes the item is "weird", re-serializing it, cleans it, so it works again ... mongodb bug ???
                                 let item = JSON.parse(JSON.stringify(items[i]));
                                 item = Config.db.ensureResource(item, "dbusage");
                                 item = await Config.db.CleanACL(item, tuser, "dbusage", span);
+                                Base.addRight(item, item.userid, item.name, [Rights.read]);
                                 delete item._id;
                                 item.username = item.name;
                                 item.name = item.name + " / " + col.name + " / " + this.formatBytes(item.size);
@@ -4721,11 +4721,12 @@ export class Message {
                                 if (col.name == "cvr") {
                                     delete item.timestamp;
                                 }
-                                await Config.db.db.collection("dbusage").insertOne(item);
                                 if (col.name == "cvr") {
+                                    await Config.db.db.collection("dbusage").insertOne(item);
                                     await Config.db.db.collection("dbusage").updateOne({ _id: item._id }, { $set: { "timestamp": new Date(timestamp.toISOString()) } });
+                                } else {
+                                    bulkInsert.insert(item);
                                 }
-                                // bulkInsert.insert(item);
                             } catch (error) {
                                 Logger.instanse.error(error);
                                 span?.recordException(error);
@@ -4734,7 +4735,9 @@ export class Message {
                         }
                         totalusage += usage;
                         try {
-                            // await bulkInsert.execute();
+                            if (col.name != "cvr") {
+                                await bulkInsert.execute();
+                            }
                             if (items.length > 0) Logger.instanse.debug("[housekeeping][" + col.name + "][" + index + "/" + collections.length + "] add " + items.length + " items with a usage of " + this.formatBytes(usage));
 
                         } catch (error) {

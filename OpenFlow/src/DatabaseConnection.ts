@@ -3118,8 +3118,14 @@ export class DatabaseConnection extends events.EventEmitter {
                                 if (indexnames.indexOf("_modified_1") === -1) {
                                     await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
                                 }
-                                if (indexnames.indexOf("collection_1_timestamp_1") === -1) {
-                                    await this.createIndex(collection.name, "collection_1_timestamp_1", { _type: 1, "{collection:1,timestamp:1}": 1 }, null, span)
+                                // if (indexnames.indexOf("collection_1_timestamp_1") === -1) {
+                                //     await this.createIndex(collection.name, "collection_1_timestamp_1", { _type: 1, "{collection:1,timestamp:1}": 1 }, null, span)
+                                // }
+                                // if (indexnames.indexOf("collection_1_timestamp_1_userid_1") === -1) {
+                                //     await this.createIndex(collection.name, "collection_1_timestamp_1_userid_1", { _type: 1, "{collection:1,timestamp:1,userid:1}": 1 }, null, span)
+                                // }
+                                if (indexnames.indexOf("timestamp_1") === -1) {
+                                    await this.createIndex(collection.name, "timestamp_1", { _type: 1, "{timestamp:1}": 1 }, null, span)
                                 }
                                 if (indexnames.indexOf("_acl") === -1) {
                                     await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
