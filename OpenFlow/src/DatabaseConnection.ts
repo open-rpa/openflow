@@ -2408,10 +2408,16 @@ export class DatabaseConnection extends events.EventEmitter {
         if (NoderedUtil.IsNullUndefinded(item) || NoderedUtil.IsNullUndefinded(item._encrypt) || NoderedUtil.IsNullUndefinded(item._encrypt)) { return item; }
         const me: DatabaseConnection = this;
         return (Object.keys(item).reduce((newObj, key) => {
-            const value: any = item[key];
+            let value: any = item[key];
             try {
                 if (this._shouldEncryptValue(item._encrypt, key, (value as any))) {
                     if (typeof value === "string") {
+                        try {
+                            if (value.indexOf(":") > 1) {
+                                value = Crypt.decrypt(value);
+                            }
+                        } catch (error) {
+                        }
                         newObj[key] = Crypt.encrypt(value);
                     } else {
                         const tempvalue: any = JSON.stringify(value);
@@ -2795,6 +2801,7 @@ export class DatabaseConnection extends events.EventEmitter {
         }
     }
     async SaveDiff(collectionname: string, original: any, item: any, parent: Span) {
+        let decrypt: boolean = false;
         const span: Span = Logger.otel.startSubSpan("db.SaveDiff", parent);
         const roundDown = function (num, precision): number {
             num = parseFloat(num);
@@ -2834,6 +2841,8 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (original._version != undefined && original._version != null) {
                     _version = original._version + 1;
                 }
+                original = this.encryptentity(original);
+                decrypt = true;
             }
             let delta: any = null;
 
@@ -2927,6 +2936,12 @@ export class DatabaseConnection extends events.EventEmitter {
             span?.recordException(error);
             Logger.instanse.error(error);
         } finally {
+            try {
+                if (original != null && decrypt == true) {
+                    original = this.decryptentity(original);
+                }
+            } catch (error) {
+            }
             Logger.otel.endSpan(span);
         }
         return _version;
@@ -3089,6 +3104,9 @@ export class DatabaseConnection extends events.EventEmitter {
                                 //     await this.createIndex(collection.name, "unique_username_1", { "username": 1 },
                                 //         { "unique": true, "name": "unique_username_1", "partialFilterExpression": { "_type": "user" } }, span)
                                 // }
+                                if (indexnames.indexOf("username_1") === -1) {
+                                    await this.createIndex(collection.name, "username_1", { "username": 1 }, null, span)
+                                }
                                 if (indexnames.indexOf("members._id_1") === -1) {
                                     await this.createIndex(collection.name, "members._id_1", { "members._id": 1 },
                                         { "partialFilterExpression": { "_type": "role" } }, span)
