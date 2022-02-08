@@ -135,15 +135,31 @@ export class amqpwrapper extends events.EventEmitter {
                     this.emit("disconnected");
                 });
             }
-            span?.addEvent("AddReplyQueue");
-            await this.AddReplyQueue(span);
+            try {
+                span?.addEvent("AddReplyQueue");
+                await this.AddReplyQueue(span);
+            } catch (error) {
+                Logger.instanse.error(error);
+                if (Config.NODE_ENV == "production") {
+                    Logger.instanse.error("Exit, when we cannot create reply queue");
+                    process.exit(405);
+                }
+            }
             this.channel.on('error', (error) => {
                 if (error.code != 404) {
                     Logger.instanse.error(error);
                 }
             });
-            this.Adddlx(span);
-            this.AddOFExchange(span);
+            try {
+                this.Adddlx(span);
+                this.AddOFExchange(span);
+            } catch (error) {
+                Logger.instanse.error(error);
+                if (Config.NODE_ENV == "production") {
+                    Logger.instanse.error("Exit, when we cannot create dead letter exchange and/or Openflow exchange");
+                    process.exit(406);
+                }
+            }
             span?.addEvent("emit connected");
             this.emit("connected");
             this.connected = true;
