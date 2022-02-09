@@ -45,6 +45,32 @@ Object.defineProperty(Promise, 'retry', {
     }
 })
 
+
+export type QueryOptions = {
+    query: any,
+    projection?: Object,
+    top?: number,
+    skip?: number,
+    orderby?: Object | string,
+    collectionname: string,
+    jwt?: string,
+    queryas?: string,
+    hint?: Object | string,
+    decrypt?: boolean,
+}
+export type GetDocumentVersionOptions = {
+    collectionname: string,
+    id: string,
+    version: number,
+    jwt?: string,
+    decrypt?: boolean,
+}
+export type GetLatestDocumentVersionOptions = {
+    collectionname: string,
+    id: string,
+    jwt?: string,
+    decrypt?: boolean,
+}
 export class DatabaseConnection extends events.EventEmitter {
     private mongodburl: string;
     private cli: MongoClient;
@@ -214,7 +240,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         console.log(next.updateDescription.updatedFields);
                     }
                     var item = next.fullDocument;
-                    if (NoderedUtil.IsNullEmpty(item)) item = await this.GetLatestDocumentVersion(collectionname, _id, Crypt.rootToken(), null);
+                    if (NoderedUtil.IsNullEmpty(item)) item = await this.GetLatestDocumentVersion({ collectionname, id: _id, jwt: Crypt.rootToken() }, null);
                     if (NoderedUtil.IsNullEmpty(item)) {
                         Logger.instanse.error("Missing fullDocument and could not find historic version for " + _id + " in " + collectionname);
                         return;
@@ -593,10 +619,16 @@ export class DatabaseConnection extends events.EventEmitter {
      * @param {Object|string} orderby MongoDB orderby, or string with name of a single field to orderby
      * @param {string} collectionname What collection to query
      * @param {string} jwt JWT of user who is making the query, to limit results based on permissions
+     * @param {boolean} decrypt Decrypt encrypted data, default: true
      * @returns Promise<T[]> Array of results
      */
     // tslint:disable-next-line: max-line-length
-    async query<T extends Base>(query: any, projection: Object, top: number, skip: number, orderby: Object | string, collectionname: string, jwt: string, queryas: string, hint: Object | string, parent: Span): Promise<T[]> {
+    async query<T extends Base>(options: QueryOptions, parent: Span): Promise<T[]> {
+        let { query, projection, top, skip, orderby, collectionname, jwt, queryas, hint, decrypt } = Object.assign({
+            top: 100,
+            skip: 0,
+            decrypt: true
+        }, options);
         const span: Span = Logger.otel.startSubSpan("db.query", parent);
         let _query: Object = {};
         try {
@@ -734,7 +766,7 @@ export class DatabaseConnection extends events.EventEmitter {
             mongodbspan?.setAttribute("results", arr.length);
             Logger.otel.endSpan(mongodbspan);
             Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: collectionname });
-            for (let i: number = 0; i < arr.length; i++) { arr[i] = this.decryptentity(arr[i]); }
+            if (decrypt) for (let i: number = 0; i < arr.length; i++) { arr[i] = this.decryptentity(arr[i]); }
             DatabaseConnection.traversejsondecode(arr);
             if (Config.log_queries) Logger.instanse.debug("[" + user.username + "][" + collectionname + "] query gave " + arr.length + " results ");
             return arr;
@@ -746,43 +778,60 @@ export class DatabaseConnection extends events.EventEmitter {
             Logger.otel.endSpan(span);
         }
     }
-    async GetLatestDocumentVersion<T extends Base>(collectionname: string, id: string, jwt: string, parent: Span): Promise<T> {
-        let result: T = await this.getbyid<T>(id, collectionname, jwt, parent);
+    async GetLatestDocumentVersion<T extends Base>(options: GetLatestDocumentVersionOptions, parent: Span): Promise<T> {
+        let { collectionname, id, jwt, decrypt } = Object.assign({
+            decrypt: true
+        }, options);
+        let result: T = await this.getbyid<T>(id, collectionname, jwt, true, parent);
         if (result) return result;
 
-        const basehist = await this.query<any>({ id: id }, { _version: 1 }, 1, 0, { _version: -1 }, collectionname + "_hist", Crypt.rootToken(), undefined, undefined, parent);
+        const basehist = await this.query<any>({ query: { id: id }, projection: { _version: 1 }, top: 1, orderby: { _version: -1 }, collectionname: collectionname + "_hist", jwt: Crypt.rootToken(), decrypt }, parent);
         if (basehist.length > 0) {
             let result: T = null;
             try {
-                result = await this.GetDocumentVersion(collectionname, id, basehist[0]._version, Crypt.rootToken(), parent)
+                result = await this.GetDocumentVersion({ collectionname, id, version: basehist[0]._version, jwt: Crypt.rootToken(), decrypt }, parent)
                 return result;
             } catch (error) {
             }
         }
         return null;
     }
-    async GetDocumentVersion<T extends Base>(collectionname: string, id: string, version: number, jwt: string, parent: Span): Promise<T> {
+    async GetDocumentVersion<T extends Base>(options: GetDocumentVersionOptions, parent: Span): Promise<T> {
+        let { collectionname, id, version, jwt, decrypt } = Object.assign({
+            decrypt: true
+        }, options);
+
         const span: Span = Logger.otel.startSubSpan("db.GetDocumentVersion", parent);
         try {
-            let result: T = await this.getbyid<T>(id, collectionname, jwt, span);
+            let result: T = await this.getbyid<T>(id, collectionname, jwt, false, span);
             if (NoderedUtil.IsNullUndefinded(result)) {
-                const subbasehist = await this.query<any>({ id: id, item: { $exists: true, $ne: null } }, null, 1, 0, { _version: -1 }, collectionname + "_hist", jwt, undefined, undefined, span);
+                const subbasehist = await this.query<any>({ query: { id: id, item: { $exists: true, $ne: null } }, top: 1, orderby: { _version: -1 }, collectionname: collectionname + "_hist", decrypt: false, jwt }, span);
                 if (subbasehist.length === 0) return null;
                 result = subbasehist[0];
                 result._version = version + 1;
             }
             if (result._version > version) {
                 const rootjwt = Crypt.rootToken()
-                const basehist = await this.query<any>({ id: id, item: { $exists: true, $ne: null }, "_version": { $lte: version } }, null, 1, 0, { _version: -1 }, collectionname + "_hist", rootjwt, undefined, undefined, span);
+                const basehist = await this.query<any>(
+                    {
+                        query: { id: id, item: { $exists: true, $ne: null }, "_version": { $lte: version } },
+                        top: null, orderby: { _version: -1 }, collectionname: collectionname + "_hist", jwt: rootjwt,
+                        decrypt: false
+                    }, span);
                 result = basehist[0].item;
                 const baseversion = basehist[0]._version;
-                const history = await this.query<T>({ id: id, "_version": { $gt: baseversion, $lte: version } }, null, Config.history_delta_count, 0, { _version: 1 }, collectionname + "_hist", rootjwt, undefined, undefined, span);
+                const history = await this.query<T>({
+                    query: { id: id, "_version": { $gt: baseversion, $lte: version } },
+                    top: Config.history_delta_count, orderby: { _version: 1 }, collectionname: collectionname + "_hist", jwt: rootjwt,
+                    decrypt: false
+                }, span);
                 for (let delta of history) {
                     if (delta != null && (delta as any).delta != null) {
                         result = jsondiffpatch.patch(result, (delta as any).delta);
                     }
                 }
             }
+            if (decrypt && !NoderedUtil.IsNullUndefinded(result)) result = this.decryptentity(result);
             return result;
         } catch (error) {
             span?.recordException(error);
@@ -798,11 +847,11 @@ export class DatabaseConnection extends events.EventEmitter {
      * @param  {string} jwt JWT of user who is making the query, to limit results based on permissions
      * @returns Promise<T>
      */
-    async getbyid<T extends Base>(id: string, collectionname: string, jwt: string, parent: Span): Promise<T> {
+    async getbyid<T extends Base>(id: string, collectionname: string, jwt: string, decrypt: boolean, parent: Span): Promise<T> {
         const span: Span = Logger.otel.startSubSpan("db.getbyid", parent);
         try {
             if (id === null || id === undefined) { throw Error("Id cannot be null"); }
-            const arr: T[] = await this.query<T>({ _id: id }, null, 1, 0, null, collectionname, jwt, undefined, undefined, span);
+            const arr: T[] = await this.query<T>({ query: { _id: id }, top: 1, collectionname, jwt, decrypt }, span);
             if (arr === null || arr.length === 0) { return null; }
             return arr[0];
         } catch (error) {
@@ -1081,7 +1130,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 let user2: User = item as any;
                 if (NoderedUtil.IsNullEmpty(user2.customerid)) {
                     if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) {
-                        customer = await this.getbyid<Customer>(user.selectedcustomerid, "users", jwt, span)
+                        customer = await this.getbyid<Customer>(user.selectedcustomerid, "users", jwt, true, span)
                         if (customer != null) {
                             user2.customerid = user.selectedcustomerid;
                         }
@@ -1097,7 +1146,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (user2._type == "user") {
                         if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) throw new Error("Access denied (not admin) to customer with id " + user2.customerid);
                     }
-                    customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, span)
+                    customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, true, span)
                     if (customer == null) throw new Error("Access denied to customer with id " + user2.customerid + " when updating " + user2._id);
                 } else if (user.HasRoleName("customer admins") && !NoderedUtil.IsNullEmpty(user.customerid)) {
                     // user2.customerid = user.customerid;
@@ -1106,18 +1155,18 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (NoderedUtil.IsNullEmpty(user2.customerid) && !NoderedUtil.IsNullEmpty(user.customerid)) user2.customerid = user.customerid;
                     }
                     if (NoderedUtil.IsNullEmpty(user2.customerid)) throw new Error("Access denied, no customerid on you, and no customer selected");
-                    customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, span);
+                    customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, true, span);
                 } else if (Config.multi_tenant && !user.HasRoleName("admins")) {
                     // user2.customerid = user.customerid;
                     if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
                     if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
-                        customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, span);
+                        customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, true, span);
                     }
                     // User needs access to create roles for workflow node and more ... What to do ?
                     // throw new Error("Access denied (not admin or customer admin)");
                 }
                 if (customer != null) {
-                    const custadmins = await this.getbyid<Role>(customer.admins, "users", jwt, span);
+                    const custadmins = await this.getbyid<Role>(customer.admins, "users", jwt, true, span);
                     Base.addRight(item, custadmins._id, custadmins.name, [Rights.full_control]);
                     if (item._id == customer.admins || item._id == customer.users) {
                         Base.removeRight(item, custadmins._id, [Rights.delete]);
@@ -1130,14 +1179,14 @@ export class DatabaseConnection extends events.EventEmitter {
             w = parseInt((w as any));
             item._version = 0;
             if (item._id != null) {
-                const basehist = await this.query<any>({ id: item._id }, { _version: 1 }, 1, 0, { _version: -1 }, collectionname + "_hist", Crypt.rootToken(), undefined, undefined, span);
+                const basehist = await this.query<any>({ query: { id: item._id }, projection: { _version: 1 }, top: 1, orderby: { _version: -1 }, collectionname: collectionname + "_hist", jwt: Crypt.rootToken() }, span);
                 if (basehist.length > 0) {
                     item._version = basehist[0]._version;
                 }
                 if (basehist.length > 0) {
                     let org: any = null;
                     try {
-                        org = await this.GetDocumentVersion(collectionname, item._id, item._version, Crypt.rootToken(), span)
+                        org = await this.GetDocumentVersion({ collectionname, id: item._id, version: item._version, jwt: Crypt.rootToken() }, span)
                     } catch (error) {
 
                     }
@@ -1213,7 +1262,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 let user2: TokenUser = item as any;
                 if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
                     // TODO: Check user has permission to this customer
-                    const custusers: Role = Role.assign(await this.getbyid<Role>(customer.users, "users", jwt, span));
+                    const custusers: Role = Role.assign(await this.getbyid<Role>(customer.users, "users", jwt, true, span));
                     custusers.AddMember(item);
                     await DBHelper.Save(custusers, Crypt.rootToken(), span);
                 }
@@ -1332,12 +1381,12 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
                 item._version = 0;
                 if (item._id != null) {
-                    const basehist = await this.query<any>({ id: item._id }, { _version: 1 }, 1, 0, { _version: -1 }, collectionname + "_hist", Crypt.rootToken(), undefined, undefined, span);
+                    const basehist = await this.query<any>({ query: { id: item._id }, projection: { _version: 1 }, top: 1, orderby: { _version: -1 }, collectionname: collectionname + "_hist", jwt: Crypt.rootToken() }, span);
                     if (basehist.length > 0) {
                         item._version = basehist[0]._version;
                     }
                     if (basehist.length > 0) {
-                        const org = await this.GetDocumentVersion(collectionname, item._id, item._version, Crypt.rootToken(), span)
+                        const org = await this.GetDocumentVersion({ collectionname, id: item._id, version: item._version, jwt: Crypt.rootToken() }, span)
                         if (org != null) {
                             item._createdby = org._createdby;
                             item._createdbyid = org._createdbyid;
@@ -1517,7 +1566,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 let name = q.item.name;
                 if (NoderedUtil.IsNullEmpty(name)) name = (q.item as any)._name;
                 if (NoderedUtil.IsNullEmpty(name)) name = "Unknown";
-                original = await this.getbyid<T>(q.item._id, q.collectionname, q.jwt, span);
+                original = await this.getbyid<T>(q.item._id, q.collectionname, q.jwt, false, span);
                 if (!original) {
                     throw Error("item not found or Access Denied");
                 }
@@ -1546,18 +1595,18 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
                         // User can update, just not created ?
                         // if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) throw new Error("Access denied (not admin) to customer with id " + user2.customerid);
-                        customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span)
+                        customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, true, span)
                         if (customer == null) throw new Error("Access denied to customer with id " + user2.customerid + " when updating " + user2._id);
                     } else if (user.HasRoleName("customer admins") && !NoderedUtil.IsNullEmpty(user.customerid)) {
                         customer = null;
                         if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) {
-                            customer = await this.getbyid<Customer>(user.selectedcustomerid, "users", q.jwt, span);
+                            customer = await this.getbyid<Customer>(user.selectedcustomerid, "users", q.jwt, true, span);
                             if (customer != null) user2.customerid = user.selectedcustomerid;
                         }
                         if (customer == null) {
                             if (!user.HasRoleName("admins") && !user.HasRoleName("resellers")) {
                                 user2.customerid = user.customerid;
-                                customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span);
+                                customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, true, span);
                                 if (customer != null) user2.customerid = user.customerid;
                                 if (customer == null) {
                                     throw new Error("Access denied to customer with id " + user2.customerid + " when updating " + user2._id);
@@ -1566,18 +1615,18 @@ export class DatabaseConnection extends events.EventEmitter {
                         }
                         // user2.customerid = user.customerid;
                         // if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
-                        // customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span);
+                        // customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, true, span);
                     } else if (Config.multi_tenant && !user.HasRoleName("admins")) {
                         // We can update, we just don't want to allow inserts ?
                         // throw new Error("Access denied (not admin or customer admin)");
                         // user2.customerid = user.customerid;
                         if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
                         if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
-                            customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, span);
+                            customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, true, span);
                         }
                     }
                     if (customer != null && !NoderedUtil.IsNullEmpty(customer.admins)) {
-                        const custadmins = await this.getbyid<Role>(customer.admins, "users", q.jwt, span);
+                        const custadmins = await this.getbyid<Role>(customer.admins, "users", q.jwt, true, span);
                         Base.addRight(q.item, custadmins._id, custadmins.name, [Rights.full_control]);
                         if (q.item._id == customer.admins || q.item._id == customer.users) {
                             Base.removeRight(q.item, custadmins._id, [Rights.delete]);
@@ -1878,7 +1927,7 @@ export class DatabaseConnection extends events.EventEmitter {
 
                     if (customer != null && !NoderedUtil.IsNullEmpty(user2.customerid) && user2._id != customer.users && user2._id != customer.admins && user2._id != WellknownIds.root) {
                         // TODO: Check user has permission to this customer
-                        const custusers: Role = Role.assign(await this.getbyid<Role>(customer.users, "users", q.jwt, span));
+                        const custusers: Role = Role.assign(await this.getbyid<Role>(customer.users, "users", q.jwt, true, span));
                         if (!custusers.IsMember(q.item._id)) {
                             custusers.AddMember(q.item);
                             await DBHelper.Save(custusers, Crypt.rootToken(), span);
@@ -2058,7 +2107,7 @@ export class DatabaseConnection extends events.EventEmitter {
             let exists: Base[] = [];
             if (query != null) {
                 // exists = await this.query(query, { name: 1 }, 2, 0, null, q.collectionname, q.jwt);
-                exists = await this.query(query, null, 2, 0, null, q.collectionname, q.jwt, undefined, undefined, span);
+                exists = await this.query({ query, top: 2, collectionname: q.collectionname, jwt: q.jwt }, span);
             }
             if (exists.length === 1) {
                 q.item._id = exists[0]._id;
@@ -2412,12 +2461,6 @@ export class DatabaseConnection extends events.EventEmitter {
             try {
                 if (this._shouldEncryptValue(item._encrypt, key, (value as any))) {
                     if (typeof value === "string") {
-                        try {
-                            if (value.indexOf(":") > 1) {
-                                value = Crypt.decrypt(value);
-                            }
-                        } catch (error) {
-                        }
                         newObj[key] = Crypt.encrypt(value);
                     } else {
                         const tempvalue: any = JSON.stringify(value);
@@ -2511,7 +2554,7 @@ export class DatabaseConnection extends events.EventEmitter {
     }
     private async getbasequeryuserid(userid: string, field: string, bits: number[], parent: Span): Promise<Object> {
         // const user = await DBHelper.FindByUsernameOrId(null, userid, parent);
-        let user: User = await this.getbyid(userid, "users", Crypt.rootToken(), parent);
+        let user: User = await this.getbyid(userid, "users", Crypt.rootToken(), true, parent);
         if (NoderedUtil.IsNullUndefinded(user)) return null;
         if (user._type == "user" || user._type == "role") {
             user = await DBHelper.DecorateWithRoles(user as any, parent);
@@ -2563,7 +2606,7 @@ export class DatabaseConnection extends events.EventEmitter {
     async loadEntityRestrictions(parent: Span) {
         if (this.EntityRestrictions == null) {
             const rootjwt = Crypt.rootToken()
-            this.EntityRestrictions = await this.query<EntityRestriction>({ "_type": "restriction" }, null, 1000, 0, null, "config", rootjwt, null, null, parent);
+            this.EntityRestrictions = await this.query<EntityRestriction>({ query: { "_type": "restriction" }, top: 1000, collectionname: "config", jwt: rootjwt }, parent);
             let allowadmins = new EntityRestriction();
             allowadmins.copyperm = false; allowadmins.collection = ""; allowadmins.paths = ["$."];
             Base.addRight(allowadmins, WellknownIds.admins, "admins", [Rights.create]);
@@ -2747,7 +2790,7 @@ export class DatabaseConnection extends events.EventEmitter {
             const skip_array: string[] = [];
             _skip_array.forEach(x => skip_array.push(x.trim()));
             if (skip_array.indexOf(q.collectionname) > -1) { return 0; }
-            const res = await this.query<T>(q.query, null, 1, 0, null, q.collectionname, q.jwt, null, null, span);
+            const res = await this.query<T>({ query: q.query, top: 1, collectionname: q.collectionname, jwt: q.jwt }, span);
             let name: string = "unknown";
             let _id: string = "";
             let _version = 1;
@@ -2801,7 +2844,7 @@ export class DatabaseConnection extends events.EventEmitter {
         }
     }
     async SaveDiff(collectionname: string, original: any, item: any, parent: Span) {
-        let decrypt: boolean = false;
+        // let decrypt: boolean = false;
         const span: Span = Logger.otel.startSubSpan("db.SaveDiff", parent);
         const roundDown = function (num, precision): number {
             num = parseFloat(num);
@@ -2812,9 +2855,9 @@ export class DatabaseConnection extends events.EventEmitter {
 
         if (!original && item._id) {
             const rootjwt = Crypt.rootToken()
-            const current = await this.getbyid(item._id, collectionname, rootjwt, span);
+            const current = await this.getbyid(item._id, collectionname, rootjwt, true, span);
             if (current && current._version > 0) {
-                original = await this.GetDocumentVersion(collectionname, item._id, current._version - 1, rootjwt, span);
+                original = await this.GetDocumentVersion({ collectionname, id: item._id, version: current._version - 1, jwt: rootjwt }, span);
             }
         }
 
@@ -2841,8 +2884,14 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (original._version != undefined && original._version != null) {
                     _version = original._version + 1;
                 }
-                original = this.encryptentity(original);
-                decrypt = true;
+                // original = this.encryptentity(original);
+                // decrypt = true;
+                if (original.password) {
+                    console.log("********************************");
+                    console.log(original.password);
+                    console.log(item.password);
+                    console.log("********************************");
+                }
             }
             let delta: any = null;
 
@@ -2936,12 +2985,12 @@ export class DatabaseConnection extends events.EventEmitter {
             span?.recordException(error);
             Logger.instanse.error(error);
         } finally {
-            try {
-                if (original != null && decrypt == true) {
-                    original = this.decryptentity(original);
-                }
-            } catch (error) {
-            }
+            // try {
+            //     if (original != null && decrypt == true) {
+            //         original = this.decryptentity(original);
+            //     }
+            // } catch (error) {
+            // }
             Logger.otel.endSpan(span);
         }
         return _version;

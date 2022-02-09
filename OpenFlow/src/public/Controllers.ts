@@ -4146,7 +4146,6 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
     }
     async CompareNow(model) {
         this.ToggleModal();
-
         if (model.item == null) {
             const item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null, 2);
             if (item != null) model.item = item;
@@ -4154,18 +4153,30 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
         if (model.item == null) {
             document.getElementById('visual').innerHTML = "Failed loading item version " + model._version;
         }
-        const keys = Object.keys(model.item);
+        let encrypt = model.item._encrypt;
+        if (NoderedUtil.IsNullUndefinded(encrypt)) encrypt = [];
+        let keys = Object.keys(model.item);
         keys.forEach(key => {
             if (key.startsWith("_")) {
                 delete model.item[key];
             }
         });
         const delta = jsondiffpatch.diff(model.item, this.model);
+        if (delta) {
+            keys = Object.keys(delta);
+            keys.forEach(key => {
+                if (key.startsWith("$$")) {
+                    delete delta[key];
+                } else if (encrypt.indexOf(key) > -1) {
+                    delta[key][0] = "******";
+                    delta[key][1] = "******";
+                }
+            });
+        }
         document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(delta, this.model);
     }
     async ShowVersion(model) {
         this.ToggleModal();
-
         if (model.item == null) {
             const item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null, 2);
             if (item != null) model.item = item;
@@ -4181,7 +4192,6 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
         });
         const delta = jsondiffpatch.diff(model.item, { ...model.item, _id: this.id });
         document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(delta, model.item);
-        // document.getElementById('visual').innerText = JSON.stringify(model.item, null, 2);
     }
     download(filename, text) {
         var element = document.createElement('a');
@@ -4242,10 +4252,13 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
             }
             let result = window.confirm("Overwrite current version with version " + model._version + "?");
             if (result) {
+                console.log(model.item.password);
                 if (this.isNew) {
                     await NoderedUtil.InsertOne(this.collection, model.item, 1, false, null, 2);
                 } else {
                     jsondiffpatch.patch(model.item, model.delta);
+                    if (model.delta) console.log(model.delta.password);
+                    console.log(model.item.password);
                     model.item._id = this.id;
                     await NoderedUtil.UpdateOne(this.collection, null, model.item, 1, false, null, 2);
                 }
