@@ -36,7 +36,7 @@ async function initamqp(parent: Span) {
 async function ValidateValidateUserForm(parent: Span) {
     const span: Span = Logger.otel.startSubSpan("ValidateValidateUserForm", parent);
     try {
-        var forms = await Config.db.query<Base>({ _id: Config.validate_user_form, _type: "form" }, null, 1, 0, null, "forms", Crypt.rootToken(), undefined, undefined, null);
+        var forms = await Config.db.query<Base>({ query: { _id: Config.validate_user_form, _type: "form" }, top: 1, collectionname: "forms", jwt: Crypt.rootToken() }, null);
         if (forms.length == 0) {
             Logger.instanse.error("validate_user_form " + Config.validate_user_form + " does not exists!");
             Config.validate_user_form = "";

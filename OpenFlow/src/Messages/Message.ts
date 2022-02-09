@@ -591,7 +591,11 @@ export class Message {
             if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !NoderedUtil.IsNullEmpty(msg.exchangename)) {
                 let mq = Auth.getUser(msg.exchangename, "mqe");
                 if (mq == null) {
-                    const arr = await Config.db.query({ "name": msg.exchangename, "_type": "exchange" }, { name: 1, _acl: 1 }, 1, 0, null, "mq", rootjwt, undefined, undefined, parent);
+                    const arr = await Config.db.query(
+                        {
+                            query: { "name": msg.exchangename, "_type": "exchange" }, projection: { name: 1, _acl: 1 }, top: 1,
+                            collectionname: "mq", jwt: rootjwt
+                        }, parent);
                     if (arr.length > 0) {
                         await Auth.AddUser(arr[0] as any, msg.exchangename, "mqe");
                         mq = arr[0] as any;
@@ -661,7 +665,7 @@ export class Message {
                     }
                     if (skip) {
                         // Do i have permission to listen on a queue with this id ?
-                        const arr = await Config.db.query({ _id: msg.queuename }, { name: 1 }, 1, 0, null, "users", jwt, undefined, undefined, parent);
+                        const arr = await Config.db.query({ query: { _id: msg.queuename }, projection: { name: 1 }, top: 1, collectionname: "users", jwt }, parent);
                         if (arr.length == 0) skip = true;
                         if (!skip) {
                             msg.queuename = name + msg.queuename;
@@ -698,7 +702,7 @@ export class Message {
                     // Do i have permission to listen on a queue with this id ?
                     let mq = Auth.getUser(msg.queuename, "mq");
                     if (mq == null) {
-                        const arr = await Config.db.query({ _id: msg.queuename }, { name: 1, _acl: 1 }, 1, 0, null, "users", rootjwt, undefined, undefined, parent);
+                        const arr = await Config.db.query({ query: { _id: msg.queuename }, projection: { name: 1, _acl: 1 }, top: 1, collectionname: "users", jwt: rootjwt }, parent);
                         if (arr.length > 0) {
                             await Auth.AddUser(arr[0] as any, msg.queuename, "mq");
                             mq = arr[0] as any;
@@ -720,7 +724,7 @@ export class Message {
                 if (!allowed) {
                     let mq = Auth.getUser(msg.queuename, "mq");
                     if (mq == null) {
-                        const arr = await Config.db.query({ "name": msg.queuename, "_type": "queue" }, { name: 1, _acl: 1 }, 1, 0, null, "mq", rootjwt, undefined, undefined, parent);
+                        const arr = await Config.db.query({ query: { "name": msg.queuename, "_type": "queue" }, projection: { name: 1, _acl: 1 }, top: 1, collectionname: "mq", jwt: rootjwt }, parent);
                         if (arr.length > 0) {
                             await Auth.AddUser(arr[0] as any, msg.queuename, "mq");
                             mq = arr[0] as any;
@@ -813,7 +817,7 @@ export class Message {
                     // Do i have permission to send to a queue with this id ?
                     let mq = Auth.getUser(msg.queuename, "mq");
                     if (mq == null) {
-                        const arr = await Config.db.query({ _id: msg.queuename }, { name: 1, _acl: 1 }, 1, 0, null, "users", rootjwt, undefined, undefined, span);
+                        const arr = await Config.db.query({ query: { _id: msg.queuename }, projection: { name: 1, _acl: 1 }, top: 1, collectionname: "users", jwt: rootjwt }, span);
                         if (arr.length > 0) {
                             await Auth.AddUser(arr[0] as any, msg.queuename, "mq");
                             mq = arr[0] as any;
@@ -835,7 +839,7 @@ export class Message {
                 if (!allowed) {
                     let mq = Auth.getUser(msg.queuename, "mq");
                     if (mq == null) {
-                        const arr = await Config.db.query({ "name": msg.queuename, "_type": "queue" }, { name: 1, _acl: 1 }, 1, 0, null, "mq", rootjwt, undefined, undefined, span);
+                        const arr = await Config.db.query({ query: { "name": msg.queuename, "_type": "queue" }, projection: { name: 1, _acl: 1 }, top: 1, collectionname: "mq", jwt: rootjwt }, span);
                         if (arr.length > 0) {
                             await Auth.AddUser(arr[0] as any, msg.queuename, "mq");
                             mq = arr[0] as any;
@@ -870,7 +874,7 @@ export class Message {
                 if (!allowed) {
                     let mq = Auth.getUser(msg.exchange, "mqe");
                     if (mq == null) {
-                        const arr = await Config.db.query({ "name": msg.exchange, "_type": "exchange" }, { name: 1, _acl: 1 }, 1, 0, null, "mq", rootjwt, undefined, undefined, span);
+                        const arr = await Config.db.query({ query: { "name": msg.exchange, "_type": "exchange" }, projection: { name: 1, _acl: 1 }, top: 1, collectionname: "mq", jwt: rootjwt }, span);
                         if (arr.length > 0) {
                             await Auth.AddUser(arr[0] as any, msg.exchange, "mqe");
                             mq = arr[0] as any;
@@ -1078,7 +1082,8 @@ export class Message {
                 span?.recordException("Access denied, not signed in")
                 msg.error = "Access denied, not signed in";
             } else {
-                msg.result = await Config.db.query(msg.query, msg.projection, msg.top, msg.skip, msg.orderby, msg.collectionname, msg.jwt, msg.queryas, msg.hint, span);
+                const { query, projection, top, skip, orderby, collectionname, jwt, queryas, hint } = msg;
+                msg.result = await Config.db.query({ query, projection, top, skip, orderby, collectionname, jwt, queryas, hint }, span);
             }
             delete msg.query;
         } catch (error) {
@@ -1106,7 +1111,7 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) {
                 msg.error = "Access denied, not signed in";
             } else {
-                msg.result = await Config.db.GetDocumentVersion(msg.collectionname, msg._id, msg.version, msg.jwt, span);
+                msg.result = await Config.db.GetDocumentVersion({ collectionname: msg.collectionname, id: msg._id, version: msg.version, jwt: msg.jwt }, span);
             }
         } catch (error) {
             await handleError(null, error);
@@ -1573,7 +1578,7 @@ export class Message {
                     }
                     msg.user = tuser;
                     if (!NoderedUtil.IsNullEmpty(user.impersonating) && NoderedUtil.IsNullEmpty(msg.impersonate)) {
-                        const items = await Config.db.query({ _id: user.impersonating }, null, 1, 0, null, "users", msg.jwt, undefined, undefined, span);
+                        const items = await Config.db.query({ query: { _id: user.impersonating }, top: 1, collectionname: "users", jwt: msg.jwt }, span);
                         if (items.length == 0) {
                             msg.impersonate = null;
                         } else {
@@ -1583,9 +1588,9 @@ export class Message {
                         }
                     }
                     if (msg.impersonate !== undefined && msg.impersonate !== null && msg.impersonate !== "" && tuser._id != msg.impersonate) {
-                        const items = await Config.db.query({ _id: msg.impersonate }, null, 1, 0, null, "users", msg.jwt, undefined, undefined, span);
+                        const items = await Config.db.query({ query: { _id: msg.impersonate }, top: 1, collectionname: "users", jwt: msg.jwt }, span);
                         if (items.length == 0) {
-                            const impostors = await Config.db.query<User>({ _id: msg.impersonate }, null, 1, 0, null, "users", Crypt.rootToken(), undefined, undefined, span);
+                            const impostors = await Config.db.query<User>({ query: { _id: msg.impersonate }, top: 1, collectionname: "users", jwt: Crypt.rootToken() }, span);
                             const impb: User = new User(); impb.name = "unknown"; impb._id = msg.impersonate;
                             let imp: TokenUser = TokenUser.From(impb);
                             if (impostors.length == 1) {
@@ -1607,7 +1612,7 @@ export class Message {
                                 await Config.db._UpdateOne({ _id: tuserimpostor._id }, { "$set": { "impersonating": user._id } } as any, "users", 1, false, originialjwt, span);
                             }
                         } catch (error) {
-                            const impostors = await Config.db.query<User>({ _id: msg.impersonate }, null, 1, 0, null, "users", Crypt.rootToken(), undefined, undefined, span);
+                            const impostors = await Config.db.query<User>({ query: { _id: msg.impersonate }, top: 1, collectionname: "users", jwt: Crypt.rootToken() }, span);
                             const impb: User = new User(); impb.name = "unknown"; impb._id = msg.impersonate;
                             let imp: TokenUser = TokenUser.From(impb);
                             if (impostors.length == 1) {
@@ -1762,7 +1767,7 @@ export class Message {
         if (_id !== null && _id !== undefined && _id !== "" && _id != myid) {
             var qs: any[] = [{ _id: _id }];
             qs.push(Config.db.getbasequery(jwt, "_acl", [Rights.update]))
-            const res = await Config.db.query<User>({ "$and": qs }, null, 1, 0, null, "users", jwt, undefined, undefined, span);
+            const res = await Config.db.query<User>({ query: { "$and": qs }, top: 1, collectionname: "users", jwt }, span);
             if (res.length == 0) {
                 throw new Error("Unknown userid " + _id + " or permission denied");
             }
@@ -1836,7 +1841,7 @@ export class Message {
             if (_id === null || _id === undefined || _id === "") _id = tuser._id;
             const name = await this.GetInstanceName(_id, tuser._id, tuser.username, this.jwt, span);
 
-            const users = await Config.db.query<NoderedUser>({ _id: _id }, null, 1, 0, null, "users", this.jwt, undefined, undefined, span);
+            const users = await Config.db.query<NoderedUser>({ query: { _id: _id }, top: 1, collectionname: "users", jwt: this.jwt }, span);
             if (users.length == 0) {
                 throw new Error("Unknown userid " + _id);
             }
@@ -2037,7 +2042,7 @@ export class Message {
 
             Logger.instanse.debug("[" + _tuser.username + "] EnsureNoderedInstance for " + name + " in namespace " + Config.namespace);
 
-            const users = await Config.db.query<NoderedUser>({ _id: _id }, null, 1, 0, null, "users", this.jwt, undefined, undefined, span);
+            const users = await Config.db.query<NoderedUser>({ query: { _id: _id }, top: 1, collectionname: "users", jwt: this.jwt }, span);
             if (users.length == 0) {
                 throw new Error("Unknown userid " + _id);
             }
@@ -3140,14 +3145,14 @@ export class Message {
             msg.metadata = Config.db.ensureResource(msg.metadata, "fs.files");
             if (!NoderedUtil.hasAuthorization(user, msg.metadata, Rights.create)) { throw new Error("Access denied, no authorization to save file"); }
             msg.id = await this._SaveFile(readable, msg.filename, msg.mimeType, msg.metadata);
-            msg.result = await Config.db.getbyid(msg.id, "fs.files", msg.jwt, null);
+            msg.result = await Config.db.getbyid(msg.id, "fs.files", msg.jwt, true, null);
             if (NoderedUtil.IsNullUndefinded(msg.result)) {
                 await this.sleep(1000);
-                msg.result = await Config.db.getbyid(msg.id, "fs.files", msg.jwt, null);
+                msg.result = await Config.db.getbyid(msg.id, "fs.files", msg.jwt, true, null);
             }
             if (NoderedUtil.IsNullUndefinded(msg.result)) {
                 await this.sleep(1000);
-                msg.result = await Config.db.getbyid(msg.id, "fs.files", msg.jwt, null);
+                msg.result = await Config.db.getbyid(msg.id, "fs.files", msg.jwt, true, null);
             }
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -3194,13 +3199,13 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (!NoderedUtil.IsNullEmpty(msg.id)) {
-                const rows = await Config.db.query({ _id: safeObjectID(msg.id) }, null, 1, 0, null, "files", msg.jwt, undefined, undefined, span);
+                const rows = await Config.db.query({ query: { _id: safeObjectID(msg.id) }, top: 1, collectionname: "files", jwt: msg.jwt }, span);
                 if (rows.length == 0) { throw new Error("Not found"); }
                 msg.metadata = (rows[0] as any).metadata
                 msg.mimeType = (rows[0] as any).contentType;
             } else if (!NoderedUtil.IsNullEmpty(msg.filename)) {
-                let rows = await Config.db.query({ "metadata.uniquename": msg.filename }, null, 1, 0, { uploadDate: -1 }, "fs.files", msg.jwt, undefined, undefined, span);
-                if (rows.length == 0) rows = await Config.db.query({ "filename": msg.filename }, null, 1, 0, { uploadDate: -1 }, "fs.files", msg.jwt, undefined, undefined, span);
+                let rows = await Config.db.query({ query: { "metadata.uniquename": msg.filename }, top: 1, orderby: { uploadDate: -1 }, collectionname: "fs.files", jwt: msg.jwt }, span);
+                if (rows.length == 0) rows = await Config.db.query({ query: { "filename": msg.filename }, top: 1, orderby: { uploadDate: -1 }, collectionname: "fs.files", jwt: msg.jwt }, span);
                 if (rows.length == 0) { throw new Error("Not found"); }
                 msg.id = rows[0]._id;
                 msg.metadata = (rows[0] as any).metadata
@@ -3312,7 +3317,7 @@ export class Message {
             let workflow: any = null;
             if (NoderedUtil.IsNullEmpty(msg.queue)) {
                 const user: any = null;
-                const res = await Config.db.query({ "_id": msg.workflowid }, null, 1, 0, null, "workflow", msg.jwt, undefined, undefined, span);
+                const res = await Config.db.query({ query: { "_id": msg.workflowid }, top: 1, collectionname: "workflow", jwt: msg.jwt }, span);
                 if (res.length != 1) throw new Error("Unknown workflow id " + msg.workflowid);
                 workflow = res[0];
                 msg.queue = workflow.queue;
@@ -3324,7 +3329,7 @@ export class Message {
                 throw new Error("Cannot reply to self queuename: " + msg.queue + " correlationId: " + msg.resultqueue);
             }
 
-            const res = await Config.db.query({ "_id": msg.targetid }, null, 1, 0, null, "users", msg.jwt, undefined, undefined, span);
+            const res = await Config.db.query({ query: { "_id": msg.targetid }, top: 1, collectionname: "users", jwt: msg.jwt }, span);
             if (res.length != 1) throw new Error("Unknown target id " + msg.targetid);
             workflow = res[0];
             msg.state = "new";
@@ -3399,13 +3404,13 @@ export class Message {
     async _StripeCancelPlan(resourceusageid: string, quantity: number, jwt: string, parent: Span) {
         const span: Span = Logger.otel.startSubSpan("message.StripeCancelPlan", parent);
         try {
-            const usage: ResourceUsage = await Config.db.getbyid(resourceusageid, "config", jwt, span);
+            const usage: ResourceUsage = await Config.db.getbyid(resourceusageid, "config", jwt, true, span);
             if (usage == null) throw new Error("Unknown usage or Access Denied");
-            const customer: Customer = await Config.db.getbyid(usage.customerid, "users", jwt, span);
+            const customer: Customer = await Config.db.getbyid(usage.customerid, "users", jwt, true, span);
             if (customer == null) throw new Error("Unknown usage or Access Denied (customer)");
             let user: TokenUser;
             if (!NoderedUtil.IsNullEmpty(usage.userid)) {
-                user = await Config.db.getbyid(usage.userid, "users", jwt, span) as any;
+                user = await Config.db.getbyid(usage.userid, "users", jwt, true, span) as any;
                 if (user == null) throw new Error("Unknown usage or Access Denied (user)");
             }
             const tuser = Crypt.verityToken(jwt);
@@ -3416,14 +3421,14 @@ export class Message {
 
             if (!NoderedUtil.IsNullEmpty(usage.product.added_resourceid) && !NoderedUtil.IsNullEmpty(usage.product.added_stripeprice)) {
                 if (user != null) {
-                    const subusage: ResourceUsage[] = await Config.db.query({ "_type": "resourceusage", "userid": usage.userid, "product.stripeprice": usage.product.added_stripeprice }, null, 2, 0, null, "config", jwt, null, null, span);
+                    const subusage: ResourceUsage[] = await Config.db.query({ query: { "_type": "resourceusage", "userid": usage.userid, "product.stripeprice": usage.product.added_stripeprice }, top: 2, collectionname: "config", jwt }, span);
                     if (subusage.length == 1) {
                         await this._StripeCancelPlan(subusage[0]._id, usage.product.added_quantity_multiplier * subusage[0].quantity, jwt, span);
                     } else if (subusage.length > 1) {
                         throw new Error("Error found more than one resourceusage for userid " + usage.userid + " and stripeprice " + usage.product.added_stripeprice);
                     }
                 } else {
-                    const subusage: ResourceUsage[] = await Config.db.query({ "_type": "resourceusage", "customerid": usage.customerid, "product.stripeprice": usage.product.added_stripeprice }, null, 2, 0, null, "config", jwt, null, null, span);
+                    const subusage: ResourceUsage[] = await Config.db.query({ query: { "_type": "resourceusage", "customerid": usage.customerid, "product.stripeprice": usage.product.added_stripeprice }, top: 2, collectionname: "config", jwt }, span);
                     if (subusage.length == 1) {
                         await this._StripeCancelPlan(subusage[0]._id, usage.product.added_quantity_multiplier * subusage[0].quantity, jwt, span);
                     } else if (subusage.length > 1) {
@@ -3435,7 +3440,7 @@ export class Message {
 
             if (quantity < 1) quantity = 1;
 
-            const total_usage = await Config.db.query<ResourceUsage>({ "_type": "resourceusage", "customerid": usage.customerid, "siid": usage.siid }, null, 1000, 0, null, "config", jwt, null, null, span);
+            const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": usage.customerid, "siid": usage.siid }, top: 1000, collectionname: "config", jwt }, span);
             let _quantity: number = 0;
             total_usage.forEach(x => _quantity += x.quantity);
 
@@ -3524,7 +3529,7 @@ export class Message {
             if (NoderedUtil.IsNullUndefinded(msg.jwt)) { msg.jwt = cli.jwt; }
 
             let payload: any = {};
-            const customer: Customer = await Config.db.getbyid(msg.customerid, "users", msg.jwt, span);
+            const customer: Customer = await Config.db.getbyid(msg.customerid, "users", msg.jwt, true, span);
             if (NoderedUtil.IsNullUndefinded(customer)) throw new Error("Unknown customer or Access Denied");
             if (NoderedUtil.IsNullEmpty(customer.stripeid) && NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
                 this.Send(cli);
@@ -3610,7 +3615,7 @@ export class Message {
                                 payload.subscription = (exists[i] as any).subscription;
 
 
-                                const total_usage = await Config.db.query<ResourceUsage>({ "_type": "resourceusage", "customerid": customer._id, "siid": exists[i].subscription_item }, null, 1000, 0, null, "config", msg.jwt, null, null, span);
+                                const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": customer._id, "siid": exists[i].subscription_item }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
                                 let _quantity: number = 0;
                                 total_usage.forEach(x => _quantity += x.quantity);
                                 _quantity += quantity;
@@ -3737,7 +3742,7 @@ export class Message {
 
 
 
-            const customer: Customer = await Config.db.getbyid(customerid, "users", jwt, span);
+            const customer: Customer = await Config.db.getbyid(customerid, "users", jwt, true, span);
             if (customer == null) throw new Error("Unknown customer or Access Denied");
             if (Config.stripe_force_vat && (NoderedUtil.IsNullEmpty(customer.vattype) || NoderedUtil.IsNullEmpty(customer.vatnumber))) {
                 throw new Error("Only business can buy, please fill out vattype and vatnumber");
@@ -3756,7 +3761,7 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(customer.vatnumber) && customer.vattype == "eu_vat" && customer.vatnumber.substring(0, 2) != customer.country) {
                 throw new Error("Country and VAT number does not match (eu vat numbers must be prefixed with country code)");
             }
-            const resource: Resource = await Config.db.getbyid(resourceid, "config", jwt, span);
+            const resource: Resource = await Config.db.getbyid(resourceid, "config", jwt, true, span);
             if (resource == null) throw new Error("Unknown resource or Access Denied");
             if (resource.products.filter(x => x.stripeprice == stripeprice).length != 1) throw new Error("Unknown resource product");
             const product: ResourceVariant = resource.products.filter(x => x.stripeprice == stripeprice)[0];
@@ -3764,11 +3769,11 @@ export class Message {
             if (resource.target == "user" && NoderedUtil.IsNullEmpty(userid)) throw new Error("Missing userid for user targeted resource");
             let user: TokenUser = null
             if (resource.target == "user") {
-                user = await Config.db.getbyid(userid, "users", jwt, span) as any;
+                user = await Config.db.getbyid(userid, "users", jwt, true, span) as any;
                 if (user == null) throw new Error("Unknown user or Access Denied");
             }
 
-            const total_usage = await Config.db.query<ResourceUsage>({ "_type": "resourceusage", "customerid": customerid }, null, 1000, 0, null, "config", jwt, null, null, span);
+            const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": customerid }, top: 1000, collectionname: "config", jwt }, span);
 
             // Ensure assign does not conflict with resource assign limit
             if (resource.target == "customer") {
@@ -3910,7 +3915,7 @@ export class Message {
                         }
                         payload.line_items.push(line_item);
                         if (!NoderedUtil.IsNullEmpty(product.added_resourceid) && !NoderedUtil.IsNullEmpty(product.added_stripeprice)) {
-                            const addresource: Resource = await Config.db.getbyid(product.added_resourceid, "config", jwt, span);
+                            const addresource: Resource = await Config.db.getbyid(product.added_resourceid, "config", jwt, true, span);
                             const addproduct = addresource.products.filter(x => x.stripeprice == product.added_stripeprice)[0];
                             let line_item: any = { price: addproduct.stripeprice, tax_rates };
                             if ((resource.target == "user" && addproduct.userassign != "metered") ||
@@ -4124,8 +4129,8 @@ export class Message {
                 if (msg.object == "billing_portal/sessions") {
                     const tuser = Crypt.verityToken(cli.jwt);
                     let customer: Customer;
-                    if (!NoderedUtil.IsNullEmpty(tuser.selectedcustomerid)) customer = await Config.db.getbyid(tuser.selectedcustomerid, "users", cli.jwt, null);
-                    if (!NoderedUtil.IsNullEmpty(tuser.selectedcustomerid) && customer == null) customer = await Config.db.getbyid(tuser.customerid, "users", cli.jwt, null);
+                    if (!NoderedUtil.IsNullEmpty(tuser.selectedcustomerid)) customer = await Config.db.getbyid(tuser.selectedcustomerid, "users", cli.jwt, true, null);
+                    if (!NoderedUtil.IsNullEmpty(tuser.selectedcustomerid) && customer == null) customer = await Config.db.getbyid(tuser.customerid, "users", cli.jwt, true, null);
                     if (customer == null) throw new Error("Access denied, or customer not found");
                     if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
                         throw new Error("Access denied, adding plan (admins)");
@@ -4167,7 +4172,7 @@ export class Message {
             let user: User = cli.user;
             let customer: Customer = null;
             if (msg.customer != null && msg.customer._id != null) {
-                const customers = await Config.db.query<Customer>({ _type: "customer", "_id": msg.customer._id }, null, 1, 0, null, "users", msg.jwt, undefined, undefined, span);
+                const customers = await Config.db.query<Customer>({ query: { _type: "customer", "_id": msg.customer._id }, top: 1, collectionname: "users", jwt: msg.jwt }, span);
                 if (customers.length > 0) {
                     customer = customers[0];
                 }
@@ -4246,7 +4251,7 @@ export class Message {
                 if (msg.stripecustomer.subscriptions.total_count > 0) {
                     let sub = msg.stripecustomer.subscriptions.data[0];
                     msg.customer.subscriptionid = sub.id;
-                    const total_usage = await Config.db.query<ResourceUsage>({ "_type": "resourceusage", "customerid": msg.customer._id, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }] }, null, 1000, 0, null, "config", msg.jwt, null, null, span);
+                    const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }] }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
 
                     for (let usage of total_usage) {
                         const items = sub.items.data.filter(x => ((x.price && x.price.id == usage.product.stripeprice) || (x.plan && x.plan.id == usage.product.stripeprice)));
@@ -4261,7 +4266,7 @@ export class Message {
                     }
                 } else {
                     msg.customer.subscriptionid = null;
-                    const total_usage = await Config.db.query<ResourceUsage>({ "_type": "resourceusage", "customerid": msg.customer._id, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }] }, null, 1000, 0, null, "config", msg.jwt, null, null, span);
+                    const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }] }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
                     for (let usage of total_usage) {
                         await Config.db.DeleteOne(usage._id, "config", rootjwt, span);
                     }
@@ -4332,9 +4337,9 @@ export class Message {
             // Base.removeRight(customeradmins, WellknownIds.admins, [Rights.delete]);
             customeradmins.AddMember(user);
             if (!NoderedUtil.IsNullEmpty(user.customerid) && user.customerid != msg.customer._id) {
-                const usercustomer = await Config.db.getbyid<Customer>(user.customerid, "users", msg.jwt, span);
+                const usercustomer = await Config.db.getbyid<Customer>(user.customerid, "users", msg.jwt, true, span);
                 if (usercustomer != null) {
-                    const usercustomeradmins = await Config.db.getbyid<Role>(usercustomer.admins, "users", msg.jwt, span);
+                    const usercustomeradmins = await Config.db.getbyid<Role>(usercustomer.admins, "users", msg.jwt, true, span);
                     if (usercustomeradmins != null) customeradmins.AddMember(usercustomeradmins);
                 }
             }
@@ -5016,7 +5021,7 @@ export class Message {
         try {
             msg = SelectCustomerMessage.assign(this.data);
             if (!NoderedUtil.IsNullEmpty(msg.customerid)) {
-                var customer = await Config.db.getbyid<Customer>(msg.customerid, "users", this.jwt, parent)
+                var customer = await Config.db.getbyid<Customer>(msg.customerid, "users", this.jwt, true, parent)
                 if (customer == null) msg.customerid = null;
             }
             user = User.assign(Crypt.verityToken(this.jwt));
