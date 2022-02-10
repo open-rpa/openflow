@@ -237,7 +237,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (next.updateDescription.updatedFields.hasOwnProperty("_webheartbeat")) return;
                         if (next.updateDescription.updatedFields.hasOwnProperty("_noderedheartbeat")) return;
                         if (next.updateDescription.updatedFields.hasOwnProperty("_powershellheartbeat")) return;
-                        console.log(next.updateDescription.updatedFields);
+                        // console.log(next.updateDescription.updatedFields);
                     }
                     var item = next.fullDocument;
                     if (NoderedUtil.IsNullEmpty(item)) item = await this.GetLatestDocumentVersion({ collectionname, id: _id, jwt: Crypt.rootToken() }, null);
@@ -324,7 +324,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (collectionname == "mq") {
                         Auth.clearCache("watch detectec change in " + collectionname + " collection for a " + _type + " " + item.name);
                     }
-                    if (collectionname == "users" && (_type == "user" || _type == "role")) {
+                    if (collectionname == "users" && (_type == "user" || _type == "role" || _type == "customer")) {
                         Auth.clearCache("watch detectec change in " + collectionname + " collection for a " + _type + " " + item.name);
                     }
                     if (collectionname == "config" && (_type == "provider" || _type == "restriction" || _type == "resource")) {
