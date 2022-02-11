@@ -151,8 +151,8 @@ export class amqpwrapper extends events.EventEmitter {
                 }
             });
             try {
-                this.Adddlx(span);
-                this.AddOFExchange(span);
+                await this.Adddlx(span);
+                await this.AddOFExchange(span);
             } catch (error) {
                 Logger.instanse.error(error);
                 if (Config.NODE_ENV == "production") {
