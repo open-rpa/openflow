@@ -225,8 +225,9 @@ async function initDatabase(parent: Span): Promise<boolean> {
         await Config.db.ensureindexes(span);
 
         if (Config.auto_hourly_housekeeping) {
+            const crypto = require('crypto');
+            const randomNum = crypto.randomInt(1, 100);
             // Every 15 minutes, give and take a few minutes, send out a message to do house keeping, if ready
-            const randomNum = (Math.floor(Math.random() * 100) + 1);
             Logger.instanse.verbose("Housekeeping every 15 minutes plus " + randomNum + " seconds");
             housekeeping = setInterval(async () => {
                 if (Config.enable_openflow_amqp) {
@@ -245,7 +246,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
                 }
             }, (15 * 60 * 1000) + (randomNum * 1000));
             // If I'm first and noone else has run it, lets trigger it now
-            const randomNum2 = (Math.floor(Math.random() * 10) + 1);
+            const randomNum2 = crypto.randomInt(1, 10);
             Logger.instanse.info("Trigger first Housekeeping in " + randomNum2 + " seconds");
             setTimeout(async () => {
                 if (Config.enable_openflow_amqp) {
