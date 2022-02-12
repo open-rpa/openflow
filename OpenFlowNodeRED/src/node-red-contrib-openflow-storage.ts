@@ -422,11 +422,20 @@ export class noderedcontribopenflowstorage {
         try {
             Logger.instanse.silly("noderedcontribopenflowstorage::_getFlows");
             if (WebSocketClient.instance.isConnected()) {
-                const array = await NoderedUtil.Query("nodered", { _type: "flow", nodered_id: Config.nodered_id }, null, null, 1, 0, null, null, null, 1);
+                const array = await NoderedUtil.Query("nodered", { _type: "flow", "$or": [{ nodered_id: Config.nodered_id }, { shared: true }] }, null, null, 5, 0, null, null, null, 1);
                 if (NoderedUtil.IsNullUndefinded(array) || array.length === 0) { return []; }
                 try {
-                    this.flowversion = array[0]._version;
-                    this._flows = JSON.parse(array[0].flows);
+                    var flows = [];
+                    for (var i = 0; i < array.length; i++) {
+                        if (array[i].shared === true) {
+                            this.sflowversion = array[i]._version;
+                            flows = flows.concat(JSON.parse(array[i].flows));
+                        } else {
+                            this.flowversion = array[i]._version;
+                            flows = flows.concat(JSON.parse(array[i].flows));
+                        }
+                    }
+                    this._flows = flows;
                     result = this._flows;
                 } catch (error) {
                     Logger.instanse.error(error);
@@ -457,19 +466,52 @@ export class noderedcontribopenflowstorage {
             if (WebSocketClient.instance.isConnected()) {
                 this.last_reload = new Date();
                 const result = await NoderedUtil.Query("nodered", { _type: "flow", nodered_id: Config.nodered_id }, null, null, 1, 0, null, null, null, 1);
+                const result2 = await NoderedUtil.Query("nodered", { _type: "flow", shared: true }, null, null, 1, 0, null, null, null, 1);
                 this.last_reload = new Date();
+                const mainflow = [];
+                const sharedflows = [];
+                const ids = [];
+                for (var i = 0; i < flows.length; i++) {
+                    var node = flows[i];
+                    if ((node.type == "tab" || node.type == "subflow") && node.label && (node.label as string).startsWith("_")) {
+                        ids.push(node.id);
+                    }
+                }
+                for (var i = 0; i < flows.length; i++) {
+                    var node = flows[i];
+                    if (ids.indexOf(node.id) == -1 && ids.indexOf(node.z) == -1) {
+                        mainflow.push(node);
+                    } else {
+                        sharedflows.push(node);
+                    }
+                }
                 if (NoderedUtil.IsNullUndefinded(result) || result.length === 0) {
                     const item: any = {
                         name: "flows for " + Config.nodered_id,
-                        flows: JSON.stringify(flows), _type: "flow", nodered_id: Config.nodered_id
+                        flows: JSON.stringify(mainflow), _type: "flow", nodered_id: Config.nodered_id
                     };
                     var iresult = await NoderedUtil.InsertOne("nodered", item, 1, true, null, 1);
                     if (!NoderedUtil.IsNullUndefinded(iresult)) this.flowversion = iresult._version;
 
                 } else {
-                    result[0].flows = JSON.stringify(flows);
+                    result[0].flows = JSON.stringify(mainflow);
                     var uresult = await NoderedUtil.UpdateOne("nodered", null, result[0], 1, true, null, 1);
                     if (!NoderedUtil.IsNullUndefinded(uresult)) this.flowversion = uresult._version;
+                }
+                if (sharedflows.length > 0) {
+                    if (NoderedUtil.IsNullUndefinded(result2) || result2.length === 0) {
+                        const item: any = {
+                            name: "shared flows created by " + Config.nodered_id,
+                            flows: JSON.stringify(sharedflows), _type: "flow", shared: true
+                        };
+                        var iresult = await NoderedUtil.InsertOne("nodered", item, 1, true, null, 1);
+                        if (!NoderedUtil.IsNullUndefinded(iresult)) this.sflowversion = iresult._version;
+
+                    } else {
+                        result2[0].flows = JSON.stringify(sharedflows);
+                        var uresult = await NoderedUtil.UpdateOne("nodered", null, result2[0], 1, true, null, 1);
+                        if (!NoderedUtil.IsNullUndefinded(uresult)) this.sflowversion = uresult._version;
+                    }
                 }
                 this._flows = flows;
             } else {
@@ -646,7 +688,8 @@ export class noderedcontribopenflowstorage {
             if (this.firstrun) {
                 if (WebSocketClient.instance.user != null) {
                     if (WebSocketClient.instance.supports_watch) {
-                        await NoderedUtil.Watch("nodered", [{ "$match": { "fullDocument.nodered_id": Config.nodered_id } }], WebSocketClient.instance.jwt, this.onupdate.bind(this));
+                        // await NoderedUtil.Watch("nodered", [{ "$match": { "fullDocument.nodered_id": Config.nodered_id } }], WebSocketClient.instance.jwt, this.onupdate.bind(this));
+                        await NoderedUtil.Watch("nodered", ["$."] as any, WebSocketClient.instance.jwt, this.onupdate.bind(this));
                     } else {
                         setTimeout(this.CheckUpdates.bind(this), Config.flow_refresh_initial_interval);
                     }
@@ -681,6 +724,7 @@ export class noderedcontribopenflowstorage {
     public bussy: boolean = false;
     public settingsversion: number = -1;
     public flowversion: number = -1;
+    public sflowversion: number = -1;
     public async onupdate(msg: any) {
         try {
             // let events = this.RED.runtime.events;
@@ -716,23 +760,18 @@ export class noderedcontribopenflowstorage {
                 return;
             }
             if (entity._type == "flow") {
-                if (entity._version == this.flowversion) {
+                if (!(entity as any).shared && (entity as any).nodered_id != Config.nodered_id) return;
+                if ((entity as any).shared === true && entity._version == this.sflowversion) {
                     Logger.instanse.info("noderedcontribopenflowstorage::onupdate flow, skip is same version " + this.settingsversion);
                     return;
                 }
-
-                let oldflows: any[] = null;
-                if (this._flows != null) {
-                    oldflows = JSON.parse(JSON.stringify(this._flows));
-                    if (this.DiffObjects(entity, oldflows)) {
-                        update = true;
-                        this._flows = (entity as any).flows;
-                    }
-                } else {
-                    update = true;
-                    this._flows = (entity as any).flows;
+                if (!(entity as any).shared && entity._version == this.flowversion) {
+                    Logger.instanse.info("noderedcontribopenflowstorage::onupdate flow, skip is same version " + this.settingsversion);
+                    return;
                 }
+                update = true;
             } else if (entity._type == "credential") {
+                if (!(entity as any).shared && (entity as any).nodered_id != Config.nodered_id) return;
                 let oldcredentials: any[] = null;
                 if (this._credentials != null) {
                     oldcredentials = JSON.parse(JSON.stringify(this._credentials));
@@ -743,6 +782,7 @@ export class noderedcontribopenflowstorage {
                     update = true;
                 }
             } else if (entity._type == "setting") {
+                if (!(entity as any).shared && (entity as any).nodered_id != Config.nodered_id) return;
                 if (entity._version == this.settingsversion) {
                     Logger.instanse.info("noderedcontribopenflowstorage::onupdate settings, skip is same version " + this.settingsversion);
                     return;
