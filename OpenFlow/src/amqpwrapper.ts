@@ -349,7 +349,7 @@ export class amqpwrapper extends events.EventEmitter {
             }
             // q.ExchangeOptions = new Object((ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));
             q.ExchangeOptions = Object.assign({}, (ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));
-            if (exchange != Config.amqp_dlx) q.ExchangeOptions.autoDelete = true;
+            if (exchange != Config.amqp_dlx && exchange != "openflow") q.ExchangeOptions.autoDelete = true;
             q.exchange = exchange; q.algorithm = algorithm; q.routingkey = routingkey; q.callback = callback;
             const _ok = await this.channel.assertExchange(q.exchange, q.algorithm, q.ExchangeOptions);
             let AssertQueueOptions = null;
