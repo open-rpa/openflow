@@ -1006,7 +1006,9 @@ export class grant_permission {
             // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
             let priority: number = 1;
             if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
-            if (!NoderedUtil.IsNullEmpty(msg.targetid)) { this.config.targetid = msg.targetid; }
+            if (!NoderedUtil.IsNullEmpty(msg.targetid) && (NoderedUtil.IsNullEmpty(this.config.targetid) || this.config.targetid == "from msg.targetid")) {
+                this.config.targetid = msg.targetid;
+            }
             if (!NoderedUtil.IsNullUndefinded(msg.bits)) { this.config.bits = msg.bits; }
 
 
@@ -1081,7 +1083,9 @@ export class revoke_permission {
             this.node.status({});
 
             // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
-            if (!NoderedUtil.IsNullEmpty(msg.targetid)) { this.config.targetid = msg.targetid; }
+            if (!NoderedUtil.IsNullEmpty(msg.targetid) && (NoderedUtil.IsNullEmpty(this.config.targetid) || this.config.targetid == "from msg.targetid")) {
+                this.config.targetid = msg.targetid;
+            }
             if (!NoderedUtil.IsNullUndefinded(msg.bits)) { this.config.bits = msg.bits; }
 
 
