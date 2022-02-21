@@ -531,7 +531,7 @@ export class amqpwrapper extends events.EventEmitter {
                     case "housekeeping":
                         // if (this.IsMyconsumerTag(options.consumerTag)) break;
                         if (msg.lastrun) {
-                            console.log("set lastHouseKeeping too " + msg.lastrun)
+                            Logger.instanse.info("[OF][" + options.exchange + "] " + msg.lastrun)
                             Message.lastHouseKeeping = new Date(msg.lastrun);
                         } else {
                             if (Message.lastHouseKeeping != null) {
