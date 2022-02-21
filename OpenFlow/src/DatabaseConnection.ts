@@ -2884,14 +2884,6 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (original._version != undefined && original._version != null) {
                     _version = original._version + 1;
                 }
-                // original = this.encryptentity(original);
-                // decrypt = true;
-                if (original.password) {
-                    console.log("********************************");
-                    console.log(original.password);
-                    console.log(item.password);
-                    console.log("********************************");
-                }
             }
             let delta: any = null;
 
