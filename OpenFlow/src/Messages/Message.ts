@@ -619,7 +619,15 @@ export class Message {
                 }
 
             }
-            var res = await cli.RegisterExchange(msg.exchangename, msg.algorithm, msg.routingkey, parent);
+            if (NoderedUtil.IsNullUndefinded(msg.algorithm)) throw new Error("algorithm is mandatory, as either direct, fanout, topic or header");
+            if (msg.algorithm != "direct" && msg.algorithm != "fanout" && msg.algorithm != "topic" && msg.algorithm != "header") {
+                throw new Error("invalid algorithm must be either direct, fanout, topic or header");
+            }
+            if (NoderedUtil.IsNullUndefinded(msg.routingkey)) msg.routingkey = "";
+            var addqueue: boolean = (msg.addqueue as any);
+            if (NoderedUtil.IsNullEmpty(addqueue)) addqueue = true;
+            addqueue = Config.parseBoolean(addqueue);
+            var res = await cli.RegisterExchange(msg.exchangename, msg.algorithm, msg.routingkey, addqueue, parent);
             msg.queuename = res.queuename;
             msg.exchangename = res.exchangename;
         } catch (error) {

@@ -338,29 +338,27 @@ export class amqpwrapper extends events.EventEmitter {
             Logger.otel.endSpan(span);
         }
     }
-    async AddExchangeConsumer(exchange: string, algorithm: exchangealgorithm, routingkey: string, ExchangeOptions: any, jwt: string, callback: QueueOnMessage, parent: Span): Promise<amqpexchange> {
+    async AddExchangeConsumer(exchange: string, algorithm: exchangealgorithm, routingkey: string, ExchangeOptions: any, jwt: string, addqueue: boolean, callback: QueueOnMessage, parent: Span): Promise<amqpexchange> {
         const span: Span = Logger.otel.startSubSpan("amqpwrapper.AddExchangeConsumer", parent);
         try {
             if (NoderedUtil.IsNullEmpty(exchange)) throw new Error("exchange name cannot be empty");
             if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Exchange Consumer, not connected to rabbitmq");
             const q: amqpexchange = new amqpexchange();
-            if (!NoderedUtil.IsNullEmpty(q.queue)) {
-                this.RemoveQueueConsumer(q.queue, span);
-            }
-            // q.ExchangeOptions = new Object((ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));
             q.ExchangeOptions = Object.assign({}, (ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));
             if (exchange != Config.amqp_dlx) q.ExchangeOptions.autoDelete = true;
             q.exchange = exchange; q.algorithm = algorithm; q.routingkey = routingkey; q.callback = callback;
             const _ok = await this.channel.assertExchange(q.exchange, q.algorithm, q.ExchangeOptions);
-            let AssertQueueOptions = null;
-            if (!NoderedUtil.IsNullEmpty(Config.amqp_dlx) && exchange == Config.amqp_dlx) {
-                AssertQueueOptions = Object.create(this.AssertQueueOptions);
-                delete AssertQueueOptions.arguments;
-            }
-            q.queue = await this.AddQueueConsumer("", AssertQueueOptions, jwt, q.callback, span);
-            if (q.queue) {
-                this.channel.bindQueue(q.queue.queue, q.exchange, q.routingkey);
-                if (Config.log_amqp) Logger.instanse.info("[AMQP] Added exchange consumer " + q.exchange + ' to queue ' + q.queue.queue);
+            if (addqueue) {
+                let AssertQueueOptions = null;
+                if (!NoderedUtil.IsNullEmpty(Config.amqp_dlx) && exchange == Config.amqp_dlx) {
+                    AssertQueueOptions = Object.create(this.AssertQueueOptions);
+                    delete AssertQueueOptions.arguments;
+                }
+                q.queue = await this.AddQueueConsumer("", AssertQueueOptions, jwt, q.callback, span);
+                if (q.queue) {
+                    this.channel.bindQueue(q.queue.queue, q.exchange, q.routingkey);
+                    if (Config.log_amqp) Logger.instanse.info("[AMQP] Added exchange consumer " + q.exchange + ' to queue ' + q.queue.queue);
+                }
             }
             this.exchanges.push(q);
             return q;
@@ -484,7 +482,7 @@ export class amqpwrapper extends events.EventEmitter {
     }
     async Adddlx(parent: Span) {
         if (NoderedUtil.IsNullEmpty(Config.amqp_dlx)) return;
-        await this.AddExchangeConsumer(Config.amqp_dlx, "fanout", "", null, null, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+        await this.AddExchangeConsumer(Config.amqp_dlx, "fanout", "", null, null, true, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
             if (typeof msg === "string" || msg instanceof String) {
                 try {
                     msg = JSON.parse((msg as any));
@@ -515,7 +513,7 @@ export class amqpwrapper extends events.EventEmitter {
     }
     async AddOFExchange(parent: Span) {
         if (!Config.enable_openflow_amqp) return;
-        await this.AddExchangeConsumer("openflow", "fanout", "", null, null, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+        await this.AddExchangeConsumer("openflow", "fanout", "", null, null, true, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
             if (typeof msg === "string" || msg instanceof String) {
                 try {
                     msg = JSON.parse((msg as any));
