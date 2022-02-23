@@ -167,7 +167,6 @@ export class MongoAdapter {
         return MongoAdapter.find(id);
     }
     static async find(id: string) {
-        console.log("find: " + id);
         const result = await MongoAdapter.coll().find({ id }).limit(1).next();
         if (!result) return undefined;
         return result.payload;
@@ -188,7 +187,6 @@ export class MongoAdapter {
         return MongoAdapter.findByUserCode(userCode);
     }
     static async findByUserCode(userCode) {
-        console.log("findByUserCode: " + userCode);
         const result = await this.coll().find({ 'payload.userCode': userCode }).limit(1).next();
         if (!result) return undefined;
         return result.payload;
@@ -207,7 +205,6 @@ export class MongoAdapter {
         return MongoAdapter.findByUid(uid);
     }
     static async findByUid(uid) {
-        console.log("findByUid: " + uid);
         const result = await this.coll().find({ 'payload.uid': uid }).limit(1).next();
         if (!result) return undefined;
         return result.payload;
@@ -227,7 +224,6 @@ export class MongoAdapter {
         MongoAdapter.destroy(id);
     }
     static async destroy(id) {
-        console.log("destroy: " + id);
         await this.coll().deleteOne({ id });
     }
 
@@ -245,7 +241,6 @@ export class MongoAdapter {
         MongoAdapter.revokeByGrantId(grantId);
     }
     static async revokeByGrantId(grantId) {
-        console.log("revokeByGrantId: " + grantId);
         await this.coll().deleteMany({ 'payload.grantId': grantId });
     }
 
@@ -264,7 +259,6 @@ export class MongoAdapter {
         MongoAdapter.consume(id);
     }
     static async consume(id) {
-        console.log("consume: " + id);
         await this.coll().findOneAndUpdate({ id }, { $set: { 'payload.consumed': Math.floor(Date.now() / 1000) } });
     }
     coll() {

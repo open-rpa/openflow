@@ -833,6 +833,10 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 
             $.getJSON('api_roles', function (data) {
                 $('#node-input-targetid-select').empty();
+                $('#node-input-targetid-select').append($('<option>', {
+                    value: "from msg.targetid",
+                    text: "from msg.targetid"
+                }));
                 $.each(data, function (i, ele) {
                     $('#node-input-targetid-select').append($('<option>', {
                         value: ele._id,
@@ -918,6 +922,10 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 
             $.getJSON('api_roles', function (data) {
                 $('#node-input-targetid-select').empty();
+                $('#node-input-targetid-select').append($('<option>', {
+                    value: "from msg.targetid",
+                    text: "from msg.targetid"
+                }));
                 $.each(data, function (i, ele) {
                     $('#node-input-targetid-select').append($('<option>', {
                         value: ele._id,
