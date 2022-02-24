@@ -282,7 +282,7 @@ export class amqpwrapper extends events.EventEmitter {
             if (NoderedUtil.IsNullUndefinded(queue)) throw new Error("queue is mandatory");
             if (queue != null) {
                 if (Config.log_amqp) Logger.instanse.info("[AMQP] Remove queue consumer " + queue.queue + "/" + queue.consumerTag);
-                var exc = this.exchanges.filter(x => x.queue.consumerTag == queue.consumerTag);
+                var exc = this.exchanges.filter(x => x.queue?.consumerTag == queue.consumerTag);
                 if (exc.length > 0) {
                     try {
                         this.channel.unbindQueue(exc[0].queue.queue, exc[0].exchange, exc[0].routingkey);
