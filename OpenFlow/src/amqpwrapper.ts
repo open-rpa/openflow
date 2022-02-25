@@ -451,6 +451,7 @@ export class amqpwrapper extends events.EventEmitter {
         }
     }
     async send(exchange: string, queue: string, data: any, expiration: number, correlationId: string, routingkey: string, priority: number = 1): Promise<void> {
+        if (exchange == "openflow" && !Config.enable_openflow_amqp) return;
         await amqpwrapper.asyncWaitFor(() => this.connected);
         if (this.channel == null || this.conn == null) {
             throw new Error("Cannot send message, when not connected");
