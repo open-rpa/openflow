@@ -37,12 +37,12 @@ services:
     image: "rabbitmq:3-management"
     container_name: "rabbitmq"
     restart: always
-  web:
+  api:
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.web.rule=Host(`localhost.openiap.io`)"
-      - "traefik.http.routers.web.entrypoints=web"
-      - "traefik.http.services.web.loadbalancer.server.port=3000"
+      - "traefik.http.routers.api.rule=Host(`localhost.openiap.io`)"
+      - "traefik.http.routers.api.entrypoints=web"
+      - "traefik.http.services.api.loadbalancer.server.port=3000"
       - "traefik.frontend.passHostHeader=true"
     image: "openiap/openflow"
     deploy:
@@ -86,8 +86,8 @@ services:
         "image":"openiap/nodered"},{"name":"Latest Puppeteer Nodered",
         "image":"openiap/nodered-puppeteer"},{"name":"Latest TagUI Nodered",
         "image":"openiap/nodered-tagui"}]
-      - nodered_ws_url=ws://web:3000
-      - saml_federation_metadata=http://web:3000/issue/FederationMetadata/2007-06/FederationMetadata.xml
+      - nodered_ws_url=ws://api:3000
+      - saml_federation_metadata=http://api:3000/issue/FederationMetadata/2007-06/FederationMetadata.xml
       - amqp_url=amqp://guest:guest@rabbitmq
       - mongodb_url=mongodb://mongodb:27017
       - mongodb_db=openrpa
@@ -115,14 +115,16 @@ volumes:
   #     - "traefik.frontend.passHostHeader=true"
   #   image: "openiap/nodered"
   #   container_name: "nodered1"
+  #   depends_on:
+  #     - api
   #   environment:
   #     - nodered_sa=nodered1
-  #     - saml_federation_metadata=http://web:3000/issue/FederationMetadata/2007-06/FederationMetadata.xml
+  #     - saml_federation_metadata=http://api:3000/issue/FederationMetadata/2007-06/FederationMetadata.xml
   #     - saml_issuer=uri:localhost.openiap.io
   #     - saml_entrypoint=http://localhost.openiap.io/issue
   #     - saml_baseurl=http://nodered1.localhost.openiap.io/
   #     - port=1880
-  #     - api_ws_url=ws://web:3000
+  #     - api_ws_url=ws://api:3000
   #     - api_credential_cache_seconds=300
   #     - api_allow_anonymous=false
   #     # this is the "trick" to make the nodered beable to login.

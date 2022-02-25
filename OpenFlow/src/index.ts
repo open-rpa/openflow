@@ -36,7 +36,7 @@ async function initamqp(parent: Span) {
 async function ValidateValidateUserForm(parent: Span) {
     const span: Span = Logger.otel.startSubSpan("ValidateValidateUserForm", parent);
     try {
-        var forms = await Config.db.query<Base>({ _id: Config.validate_user_form, _type: "form" }, null, 1, 0, null, "forms", Crypt.rootToken(), undefined, undefined, null);
+        var forms = await Config.db.query<Base>({ query: { _id: Config.validate_user_form, _type: "form" }, top: 1, collectionname: "forms", jwt: Crypt.rootToken() }, null);
         if (forms.length == 0) {
             Logger.instanse.error("validate_user_form " + Config.validate_user_form + " does not exists!");
             Config.validate_user_form = "";
@@ -50,10 +50,15 @@ async function ValidateValidateUserForm(parent: Span) {
     }
 }
 function doHouseKeeping() {
-    Message.lastHouseKeeping = new Date();
-    amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping", "lastrun": Message.lastHouseKeeping.toISOString() }, 20000, null, "", 1);
+    // Message.lastHouseKeeping = new Date();
+    if (Message.lastHouseKeeping == null) {
+        Message.lastHouseKeeping = new Date();
+        Message.lastHouseKeeping.setDate(Message.lastHouseKeeping.getDate() - 1);
+    }
+    amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping", "lastrun": (new Date()).toISOString() }, 20000, null, "", 1);
     var dt = new Date(Message.lastHouseKeeping.toISOString());
     var msg2 = new Message(); msg2.jwt = Crypt.rootToken();
+    var h = dt.getHours();
     var skipUpdateUsage: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
     msg2.Housekeeping(false, skipUpdateUsage, skipUpdateUsage, null).catch((error) => Logger.instanse.error(error));
 
@@ -220,8 +225,9 @@ async function initDatabase(parent: Span): Promise<boolean> {
         await Config.db.ensureindexes(span);
 
         if (Config.auto_hourly_housekeeping) {
+            const crypto = require('crypto');
+            const randomNum = crypto.randomInt(1, 100);
             // Every 15 minutes, give and take a few minutes, send out a message to do house keeping, if ready
-            const randomNum = (Math.floor(Math.random() * 100) + 1);
             Logger.instanse.verbose("Housekeeping every 15 minutes plus " + randomNum + " seconds");
             housekeeping = setInterval(async () => {
                 if (Config.enable_openflow_amqp) {
@@ -240,22 +246,22 @@ async function initDatabase(parent: Span): Promise<boolean> {
                 }
             }, (15 * 60 * 1000) + (randomNum * 1000));
             // If I'm first and noone else has run it, lets trigger it now
-            // const randomNum2 = (Math.floor(Math.random() * 10) + 1);
-            // Logger.instanse.info("Trigger first Housekeeping in " + randomNum2 + " seconds");
-            // setTimeout(async () => {
-            //     if (Config.enable_openflow_amqp) {
-            //         if (!Message.ReadyForHousekeeping()) {
-            //             return;
-            //         }
-            //         amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping" }, 10000, null, "", 1);
-            //         await new Promise(resolve => { setTimeout(resolve, 10000) });
-            //         if (Message.ReadyForHousekeeping()) {
-            //             doHouseKeeping();
-            //         } else {
-            //             Logger.instanse.verbose("SKIP housekeeping");
-            //         }
-            //     }
-            // }, randomNum2 * 1000);
+            const randomNum2 = crypto.randomInt(1, 10);
+            Logger.instanse.info("Trigger first Housekeeping in " + randomNum2 + " seconds");
+            setTimeout(async () => {
+                if (Config.enable_openflow_amqp) {
+                    if (!Message.ReadyForHousekeeping()) {
+                        return;
+                    }
+                    amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping" }, 10000, null, "", 1);
+                    await new Promise(resolve => { setTimeout(resolve, 10000) });
+                    if (Message.ReadyForHousekeeping()) {
+                        doHouseKeeping();
+                    } else {
+                        Logger.instanse.verbose("SKIP housekeeping");
+                    }
+                }
+            }, randomNum2 * 1000);
         }
         return true;
     } catch (error) {

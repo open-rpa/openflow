@@ -2388,7 +2388,6 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
                 this.proration = true;
                 this.ToggleNextInvoiceModal();
                 this.loading = false;
-                console.log(this.nextinvoice);
             } else {
                 this.AddPlan2();
             }
@@ -2440,7 +2439,6 @@ export class UserCtrl extends entityCtrl<TokenUser> {
     async processdata() {
         if (this.model != null && (this.model._id != null && this.model._id != "")) {
             if (this.model._id == WebSocketClient.instance.user._id) {
-                console.log(WebSocketClient.instance.user)
                 this.memberof = WebSocketClient.instance.user.roles as any;
             } else {
                 this.memberof = await NoderedUtil.Query("users",
@@ -2512,7 +2510,6 @@ export class UserCtrl extends entityCtrl<TokenUser> {
                         if (exists.length > 0) {
                             memberof.members = memberof.members.filter(x => x._id != this.model._id);
                             try {
-                                console.log("Updating " + memberof.name, memberof);
                                 await NoderedUtil.UpdateOne("users", null, memberof, 1, false, null, 2);
                             } catch (error) {
                                 console.error("Error updating " + memberof.name, error);
@@ -3218,7 +3215,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         if (!NoderedUtil.IsNullEmpty(this.localexchangequeue)) return;
         const result = await NoderedUtil.RegisterExchange(WebSocketClient.instance, exchange, "direct",
             "", async (msg: QueueMessage, ack: any) => {
-                console.log(msg);
+                console.debug(msg);
                 ack();
                 if (NoderedUtil.IsNullEmpty(msg.routingkey) || msg.routingkey == this.instanceid) {
                     // this.loadData();
@@ -3241,7 +3238,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 // setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
             });
         this.localexchangequeue = result.queuename;
-        console.log("Register exchange for " + exchange + " with queue " + this.localexchangequeue);
+        console.debug("Register exchange for " + exchange + " with queue " + this.localexchangequeue);
 
     }
     async RegisterQueue() {
@@ -3300,7 +3297,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             console.error(this.errormessage);
             return;
         }
-        this.RegisterExchange(this.workflow.queue);
+        // this.RegisterExchange(this.workflow.queue);
         if (this.instanceid !== null && this.instanceid !== undefined && this.instanceid !== "") {
             const res = await NoderedUtil.Query("workflow_instances", { _id: this.instanceid }, null, { _created: -1 }, 1, 0, null, null, null, 2);
             if (res.length > 0) { this.model = res[0]; } else {
@@ -4146,7 +4143,6 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
     }
     async CompareNow(model) {
         this.ToggleModal();
-
         if (model.item == null) {
             const item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null, 2);
             if (item != null) model.item = item;
@@ -4154,18 +4150,30 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
         if (model.item == null) {
             document.getElementById('visual').innerHTML = "Failed loading item version " + model._version;
         }
-        const keys = Object.keys(model.item);
+        let encrypt = model.item._encrypt;
+        if (NoderedUtil.IsNullUndefinded(encrypt)) encrypt = [];
+        let keys = Object.keys(model.item);
         keys.forEach(key => {
             if (key.startsWith("_")) {
                 delete model.item[key];
             }
         });
         const delta = jsondiffpatch.diff(model.item, this.model);
+        if (delta) {
+            keys = Object.keys(delta);
+            keys.forEach(key => {
+                if (key.startsWith("$$")) {
+                    delete delta[key];
+                } else if (encrypt.indexOf(key) > -1) {
+                    delta[key][0] = "******";
+                    delta[key][1] = "******";
+                }
+            });
+        }
         document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(delta, this.model);
     }
     async ShowVersion(model) {
         this.ToggleModal();
-
         if (model.item == null) {
             const item = await NoderedUtil.GetDocumentVersion(this.collection, this.id, model._version, null, 2);
             if (item != null) model.item = item;
@@ -4181,7 +4189,6 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
         });
         const delta = jsondiffpatch.diff(model.item, { ...model.item, _id: this.id });
         document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(delta, model.item);
-        // document.getElementById('visual').innerText = JSON.stringify(model.item, null, 2);
     }
     download(filename, text) {
         var element = document.createElement('a');
@@ -6014,7 +6021,6 @@ export class CustomerCtrl extends entityCtrl<Customer> {
 
             this.ToggleNextInvoiceModal();
             this.loading = false;
-            console.log(this.nextinvoice);
         } catch (error) {
             console.debug(error);
             this.loading = false;
@@ -6116,7 +6122,6 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                 this.proration = true;
                 this.ToggleNextInvoiceModal();
                 this.loading = false;
-                console.log(this.nextinvoice);
             } else {
                 this.AddPlan2();
             }

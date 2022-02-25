@@ -13,9 +13,9 @@ export class DBHelper {
             if (NoderedUtil.IsNullEmpty(username)) throw new Error("Username is mandatory")
             const byuser = { username: new RegExp(["^", username, "$"].join(""), "i") };
             const byid = { federationids: new RegExp(["^", username, "$"].join(""), "i") }
-            const q = { $or: [byuser, byid] };
+            const query = { $or: [byuser, byid] };
             if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
-            const items: User[] = await Config.db.query<User>(q, null, 1, 0, null, "users", jwt, undefined, undefined, span);
+            const items: User[] = await Config.db.query<User>({ query, top: 1, collectionname: "users", jwt }, span);
             if (items === null || items === undefined || items.length === 0) { return null; }
             return await this.DecorateWithRoles(User.assign(items[0]), span);
         } catch (error) {
@@ -30,7 +30,7 @@ export class DBHelper {
         try {
             if (NoderedUtil.IsNullEmpty(_id)) throw new Error("_id cannot be null");
             if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
-            const items: User[] = await Config.db.query<User>({ _id }, null, 1, 0, null, "users", jwt, undefined, undefined, span);
+            const items: User[] = await Config.db.query<User>({ query: { _id }, top: 1, collectionname: "users", jwt }, span);
             if (items === null || items === undefined || items.length === 0) { return null; }
             return await this.DecorateWithRoles(User.assign(items[0]), span);
         } catch (error) {
@@ -46,8 +46,11 @@ export class DBHelper {
             var _id = id;
             if (NoderedUtil.IsNullEmpty(_id)) _id = null;
             if (NoderedUtil.IsNullEmpty(username) && NoderedUtil.IsNullEmpty(_id)) throw new Error("Either username or id is mandatory");
-            const items: User[] = await Config.db.query<User>({ $or: [{ username: new RegExp(["^", username, "$"].join(""), "i") }, { _id }] },
-                null, 1, 0, null, "users", Crypt.rootToken(), undefined, undefined, span);
+            const items: User[] = await Config.db.query<User>(
+                {
+                    query: { $or: [{ username: new RegExp(["^", username, "$"].join(""), "i") }, { _id }] },
+                    top: 1, collectionname: "users", jwt: Crypt.rootToken()
+                }, span);
             if (items === null || items === undefined || items.length === 0) { return null; }
             return await this.DecorateWithRoles(User.assign(items[0]), span);
         } catch (error) {
@@ -63,8 +66,8 @@ export class DBHelper {
             if (NoderedUtil.IsNullEmpty(username)) throw new Error("username cannot be null");
             const byuser = { username: new RegExp(["^", username, "$"].join(""), "i") };
             const byid = { federationids: new RegExp(["^", username, "$"].join(""), "i") }
-            const q = { $or: [byuser, byid] };
-            const items: User[] = await Config.db.query<User>(q, null, 1, 0, null, "users", Crypt.rootToken(), undefined, undefined, span);
+            const query = { $or: [byuser, byid] };
+            const items: User[] = await Config.db.query<User>({ query, top: 1, collectionname: "users", jwt: Crypt.rootToken() }, span);
             if (items === null || items === undefined || items.length === 0) { return null; }
             return await this.DecorateWithRoles(User.assign(items[0]), span);
         } catch (error) {
@@ -138,8 +141,7 @@ export class DBHelper {
                 }
                 if (this.cached_roles.length == 0) {
                     let query: any = { _type: "role" };
-                    this.cached_roles = await Config.db.query<Role>(query, { "name": 1, "members": 1 }, Config.expected_max_roles, 0, null, "users", Crypt.rootToken(),
-                        undefined, undefined, span);
+                    this.cached_roles = await Config.db.query<Role>({ query, projection: { "name": 1, "members": 1 }, top: Config.expected_max_roles, collectionname: "users", jwt: Crypt.rootToken() }, span);
                     this.cached_at = new Date();
                 }
                 if (this.cached_roles.length === 0 && user.username !== "root") {
@@ -185,7 +187,7 @@ export class DBHelper {
         return user as any;
     }
     public static async FindRoleByName(name: string, parent: Span): Promise<Role> {
-        const items: Role[] = await Config.db.query<Role>({ name: name, "_type": "role" }, null, 1, 0, null, "users", Crypt.rootToken(), undefined, undefined, parent);
+        const items: Role[] = await Config.db.query<Role>({ query: { name: name, "_type": "role" }, top: 1, collectionname: "users", jwt: Crypt.rootToken() }, parent);
         if (items === null || items === undefined || items.length === 0) { return null; }
         return Role.assign(items[0]);
     }
@@ -194,7 +196,7 @@ export class DBHelper {
         if (NoderedUtil.IsNullEmpty(_id)) _id = null; // undefined is bad here
         if (NoderedUtil.IsNullEmpty(name) && NoderedUtil.IsNullEmpty(_id)) throw new Error("Either username or id is mandatory");
         const jwt = Crypt.rootToken();
-        const items: Role[] = await Config.db.query<Role>({ $or: [{ name }, { _id }], "_type": "role" }, null, 5, 0, null, "users", jwt, undefined, undefined, parent);
+        const items: Role[] = await Config.db.query<Role>({ query: { $or: [{ name }, { _id }], "_type": "role" }, top: 5, collectionname: "users", jwt }, parent);
         if (items === null || items === undefined || items.length === 0) { return null; }
         return Role.assign(items[0]);
     }

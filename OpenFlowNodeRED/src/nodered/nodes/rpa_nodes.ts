@@ -41,19 +41,40 @@ export class rpa_detector_node {
         if (message == null) message = "";
         if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected " + message });
     }
+    detector: any = null;
     async connect() {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
             Logger.instanse.info("track::rpa detector node in::connect");
 
-            this.localqueue = await NoderedUtil.RegisterQueue(WebSocketClient.instance, this.config.queue, (msg: QueueMessage, ack: any) => {
-                this.OnMessage(msg, ack);
-            }, (msg) => {
-                this.localqueue = "";
-                if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected" });
-                setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
-            });
-            this.node.status({ fill: "green", shape: "dot", text: "Connected" });
+            const result: any[] = await NoderedUtil.Query('openrpa', { _type: "detector", _id: this.config.queue },
+                null, null, 1, 0, null, null, null, 1);
+
+            if (result.length == 0) {
+                this.node.status({ fill: "red", shape: "dot", text: "Failed locating detector" });
+            }
+            this.detector = result[0];
+
+            if (this.detector.detectortype == "exchange") {
+                var exch = await NoderedUtil.RegisterExchange(WebSocketClient.instance, this.config.queue, "fanout", "", (msg: QueueMessage, ack: any) => {
+                    this.OnMessage(msg, ack);
+                }, (msg) => {
+                    this.localqueue = "";
+                    if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected" });
+                    setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+                });
+                this.localqueue = exch.queuename;
+                this.node.status({ fill: "green", shape: "dot", text: "Connected as exchange" });
+            } else {
+                this.localqueue = await NoderedUtil.RegisterQueue(WebSocketClient.instance, this.config.queue, (msg: QueueMessage, ack: any) => {
+                    this.OnMessage(msg, ack);
+                }, (msg) => {
+                    this.localqueue = "";
+                    if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected" });
+                    setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+                });
+                this.node.status({ fill: "green", shape: "dot", text: "Connected as queue" });
+            }
         } catch (error) {
             this.localqueue = "";
             NoderedUtil.HandleError(this, error, null);

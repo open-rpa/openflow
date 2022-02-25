@@ -101,7 +101,7 @@ export class OAuthProvider {
         const instance = OAuthProvider.instance;
         const span = Logger.otel.startSpan("OAuthProvider.LoadClients");
         try {
-            const jwksresults = await Config.db.query<Base>({ _type: "jwks" }, null, 10, 0, null, "config", Crypt.rootToken(), undefined, undefined, span);
+            const jwksresults = await Config.db.query<Base>({ query: { _type: "jwks" }, top: 10, collectionname: "config", jwt: Crypt.rootToken() }, span);
             let jwks = null;
             if (jwksresults.length == 0) {
                 jwks = await this.generatekeys();
@@ -110,7 +110,7 @@ export class OAuthProvider {
             } else {
                 jwks = jwksresults[0];
             }
-            const result = await Config.db.query<Base>({ _type: "oauthclient" }, null, 10, 0, null, "config", Crypt.rootToken(), undefined, undefined, span);
+            const result = await Config.db.query<Base>({ query: { _type: "oauthclient" }, top: 10, collectionname: "config", jwt: Crypt.rootToken() }, span);
             instance.clients = result;
             instance.clients.forEach(cli => {
                 cli.client_id = cli.clientId;
@@ -315,7 +315,7 @@ export class OAuthProvider {
                     const span = Logger.otel.startSpan("OAuthProvider.oauth.login");
                     try {
                         if (NoderedUtil.IsNullUndefinded(instance.clients)) {
-                            instance.clients = await Config.db.query<Base>({ _type: "oauthclient" }, null, 10, 0, null, "config", Crypt.rootToken(), undefined, undefined, span);
+                            instance.clients = await Config.db.query<Base>({ query: { _type: "oauthclient" }, top: 10, collectionname: "config", jwt: Crypt.rootToken() }, span);
                             if (instance.clients == null || instance.clients.length == 0) return res.status(500).json({ message: 'OAuth not configured' });
                         }
                         let state = ((req.params as any).state ? (req.params as any).state : req.params["amp;state"]);
@@ -327,7 +327,7 @@ export class OAuthProvider {
                         const scope = (req.query.scope ? req.query.scope : req.query["amp;scope"]);
                         let client = instance.getClientById(client_id);
                         if (NoderedUtil.IsNullUndefinded(client)) {
-                            instance.clients = await Config.db.query<Base>({ _type: "oauthclient" }, null, 10, 0, null, "config", Crypt.rootToken(), undefined, undefined, span);
+                            instance.clients = await Config.db.query<Base>({ query: { _type: "oauthclient" }, top: 10, collectionname: "config", jwt: Crypt.rootToken() }, span);
                             if (instance.clients == null || instance.clients.length == 0) return res.status(500).json({ message: 'OAuth not configured' });
                         }
                         if (req.user) {
@@ -431,7 +431,7 @@ export class OAuthProvider {
             Logger.instanse.info("[OAuth] getAccessToken " + accessToken);
             let token = await OAuthProvider.getCachedAccessToken(accessToken);
             if (token != null) return token;
-            const tokens = await Config.db.query<Base>({ _type: "token", "accessToken": accessToken }, null, 10, 0, null, "oauthtokens", Crypt.rootToken(), undefined, undefined, span);
+            const tokens = await Config.db.query<Base>({ query: { _type: "token", "accessToken": accessToken }, top: 10, collectionname: "oauthtokens", jwt: Crypt.rootToken() }, span);
             token = tokens.length ? tokens[0] as any : null;
             await OAuthProvider.addToken(token);
             if (token == null) return false;
@@ -449,7 +449,7 @@ export class OAuthProvider {
             Logger.instanse.info("[OAuth] getRefreshToken " + refreshToken);
             let token = await OAuthProvider.getCachedAccessToken(refreshToken);
             if (token != null) return token;
-            const tokens = await Config.db.query<Base>({ _type: "token", "refreshToken": refreshToken }, null, 10, 0, null, "oauthtokens", Crypt.rootToken(), undefined, undefined, span);
+            const tokens = await Config.db.query<Base>({ query: { _type: "token", "refreshToken": refreshToken }, top: 10, collectionname: "oauthtokens", jwt: Crypt.rootToken() }, span);
             token = tokens.length ? tokens[0] as any : null;
             await OAuthProvider.addToken(token);
             if (token == null) return false;
@@ -529,16 +529,16 @@ export class OAuthProvider {
             Logger.instanse.info("[OAuth] getAuthorizationCode " + code);
             let user: any = this.codes[code];
             if (user == null) {
-                let users = await Config.db.query<Base>({ _type: "code", "code": code }, null, 10, 0, null, "oauthtokens", Crypt.rootToken(), undefined, undefined, span);
+                let users = await Config.db.query<Base>({ query: { _type: "code", "code": code }, top: 10, collectionname: "oauthtokens", jwt: Crypt.rootToken() }, span);
                 user = users.length ? users[0] as any : null;
                 if (user == null) {
                     await this.sleep(1000);
-                    users = await Config.db.query<Base>({ _type: "code", "code": code }, null, 10, 0, null, "oauthtokens", Crypt.rootToken(), undefined, undefined, span);
+                    users = await Config.db.query<Base>({ query: { _type: "code", "code": code }, top: 10, collectionname: "oauthtokens", jwt: Crypt.rootToken() }, span);
                     user = users.length ? users[0] as any : null;
                 }
                 if (user == null) {
                     await this.sleep(1000);
-                    users = await Config.db.query<Base>({ _type: "code", "code": code }, null, 10, 0, null, "oauthtokens", Crypt.rootToken(), undefined, undefined, span);
+                    users = await Config.db.query<Base>({ query: { _type: "code", "code": code }, top: 10, collectionname: "oauthtokens", jwt: Crypt.rootToken() }, span);
                     user = users.length ? users[0] as any : null;
                 }
                 if (user == null) {

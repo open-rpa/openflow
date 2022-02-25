@@ -131,6 +131,18 @@ let server: http.Server = null;
                 if (!NoderedUtil.IsNullEmpty(nodered.codeeditor_lib)) { Config.codeeditor_lib = nodered.codeeditor_lib; }
                 if (!NoderedUtil.IsNullEmpty(nodered.monaco) && Config.parseBoolean(nodered.monaco)) { Config.codeeditor_lib = "monaco"; }
                 if (!NoderedUtil.IsNullEmpty(nodered.tours)) { Config.tours = nodered.tours; }
+                if (!NoderedUtil.IsNullUndefinded(nodered.catalogues)) {
+                    if (Array.isArray(nodered.catalogues)) {
+                        Config.noderedcatalogues = nodered.catalogues;
+                    } else if (!NoderedUtil.IsNullEmpty(nodered.catalogues)) {
+                        if (nodered.catalogues.indexOf(";") > -1) {
+                            Config.noderedcatalogues = nodered.catalogues.split(";");
+                        } else {
+                            Config.noderedcatalogues = nodered.catalogues.split(",");
+                        }
+                    }
+
+                }
             }
         }
         socket.setCacheFolder(Config.logpath);

@@ -289,7 +289,7 @@ export class WebSocketServerClient {
             Logger.otel.endSpan(span);
         }
     }
-    public async RegisterExchange(exchangename: string, algorithm: exchangealgorithm, routingkey: string = "", parent: Span): Promise<RegisterExchangeResponse> {
+    public async RegisterExchange(exchangename: string, algorithm: exchangealgorithm, routingkey: string = "", addqueue: boolean, parent: Span): Promise<RegisterExchangeResponse> {
         const span: Span = Logger.otel.startSubSpan("WebSocketServerClient.CreateConsumer", parent);
         try {
             let exclusive: boolean = false; // Should we keep the queue around ? for robots and roles
@@ -311,7 +311,7 @@ export class WebSocketServerClient {
             try {
                 const AssertExchangeOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertExchangeOptions));
                 AssertExchangeOptions.exclusive = exclusive;
-                exchangequeue = await amqpwrapper.Instance().AddExchangeConsumer(exchange, algorithm, routingkey, AssertExchangeOptions, this.jwt, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+                exchangequeue = await amqpwrapper.Instance().AddExchangeConsumer(exchange, algorithm, routingkey, AssertExchangeOptions, this.jwt, addqueue, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
                     const _data = msg;
                     try {
                         const result = await this.Queue(msg, exchange, options);
@@ -327,11 +327,13 @@ export class WebSocketServerClient {
                 }, span);
                 if (exchangequeue) {
                     await semaphore.down();
-                    exchange = exchangequeue.queue.queue;
+                    if (exchangequeue.queue) exchange = exchangequeue.queue.queue;
                     this._exchanges.push(exchangequeue);
-                    this._queues.push(exchangequeue.queue);
-                    this._queuescounter++;
-                    this._queuescurrent++;
+                    if (exchangequeue.queue) {
+                        this._queues.push(exchangequeue.queue);
+                        this._queuescounter++;
+                        this._queuescurrent++;
+                    }
                     this._queuescounterstr = this._queuescounter.toString();
                     this._queuescurrentstr = this._queuescurrent.toString();
                 }
@@ -339,7 +341,7 @@ export class WebSocketServerClient {
                 Logger.instanse.error("WebSocketclient::CreateConsumer " + error);
             }
             if (exchangequeue) semaphore.up();
-            if (exchangequeue != null) return { exchangename: exchangequeue.exchange, queuename: exchangequeue.queue.queue };
+            if (exchangequeue != null) return { exchangename: exchangequeue.exchange, queuename: exchangequeue.queue?.queue };
             return null;
         } catch (error) {
             span?.recordException(error);

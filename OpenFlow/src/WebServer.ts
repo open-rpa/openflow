@@ -138,8 +138,10 @@ export class WebServer {
             const port = Config.port;
             server.listen(port).on('error', function (error) {
                 Logger.instanse.error(error);
-                // server.close();
-                // process.exit(404);
+                if (Config.NODE_ENV == "production") {
+                    server.close();
+                    process.exit(404);
+                }
             });
             return server;
         } catch (error) {

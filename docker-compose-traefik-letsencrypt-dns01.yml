@@ -63,13 +63,13 @@ services:
     image: "rabbitmq:3-management"
     container_name: "rabbitmq"
     restart: always
-  web:
+  api:
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.web.rule=Host(`localhost.openiap.io`)"
-      - "traefik.http.routers.web.entrypoints=websecure"
-      - "traefik.http.routers.web.tls.certresolver=myresolver"
-      - "traefik.http.services.web.loadbalancer.server.port=3000"
+      - "traefik.http.routers.api.rule=Host(`localhost.openiap.io`)"
+      - "traefik.http.routers.api.entrypoints=websecure"
+      - "traefik.http.routers.api.tls.certresolver=myresolver"
+      - "traefik.http.services.api.loadbalancer.server.port=3000"
       - "traefik.frontend.passHostHeader=true"
     image: "openiap/openflow"
     deploy:
@@ -108,8 +108,8 @@ services:
       - socket_rate_limit_points_disconnect=2500
 
       - nodered_images=[{"name":"Latest Plain Nodered", "image":"openiap/nodered"},{"name":"Latest Puppeteer Nodered", "image":"openiap/nodered-puppeteer"},{"name":"Latest TagUI Nodered", "image":"openiap/nodered-tagui"}]
-      - nodered_ws_url=ws://web:3000
-      - saml_federation_metadata=http://web:3000/issue/FederationMetadata/2007-06/FederationMetadata.xml
+      - nodered_ws_url=ws://api:3000
+      - saml_federation_metadata=http://api:3000/issue/FederationMetadata/2007-06/FederationMetadata.xml
       - amqp_url=amqp://guest:guest@rabbitmq
       - mongodb_url=mongodb://mongodb:27017
       - mongodb_db=openrpa

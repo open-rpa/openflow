@@ -110,7 +110,7 @@ export class WebServer {
         }
 
         try {
-            Logger.instanse.debug("WebServer.configure::begin");
+            Logger.instanse.silly("WebServer.configure::begin");
             let server: http.Server = null;
             if (this.app === null) {
                 this.app = express();
@@ -123,13 +123,13 @@ export class WebServer {
                 const name = Config.getEnv("nodered_id", null);
                 if (!NoderedUtil.IsNullEmpty(name)) defaultLabels["name"] = name;
                 if (NoderedUtil.IsNullEmpty(name)) defaultLabels["name"] = hostname;
-                Logger.instanse.debug("WebServer.configure::configure register");
+                Logger.instanse.silly("WebServer.configure::configure register");
                 const loggerstream = {
                     write: function (message, encoding) {
                         Logger.instanse.silly(message);
                     }
                 };
-                Logger.instanse.debug("WebServer.configure::setup express middleware");
+                Logger.instanse.silly("WebServer.configure::setup express middleware");
                 this.app.use(morgan('combined', { stream: loggerstream }));
                 this.app.use(compression());
                 this.app.use(express.urlencoded({ limit: '10mb', extended: true }))
@@ -149,7 +149,7 @@ export class WebServer {
                     done(null, user);
                 });
                 if (Config.tls_crt != '' && Config.tls_key != '') {
-                    Logger.instanse.debug("WebServer.configure::configure ssl");
+                    Logger.instanse.silly("WebServer.configure::configure ssl");
                     let options: any = {
                         cert: Config.tls_crt,
                         key: Config.tls_key
@@ -173,7 +173,7 @@ export class WebServer {
                     if (Config.tls_passphrase !== "") {
                         options.passphrase = Config.tls_passphrase;
                     }
-                    Logger.instanse.debug("WebServer.configure::create https server");
+                    Logger.instanse.silly("WebServer.configure::create https server");
                     server = https.createServer(options, this.app);
 
                     const redirapp = express();
@@ -185,14 +185,14 @@ export class WebServer {
                     })
                     // _http.listen(80);
                 } else {
-                    Logger.instanse.debug("WebServer.configure::create http server");
+                    Logger.instanse.silly("WebServer.configure::create http server");
                     server = http.createServer(this.app);
                 }
                 server.on("error", (error) => {
                     Logger.instanse.error(error);
                 });
 
-                Logger.instanse.debug("WebServer.configure::configure nodered settings");
+                Logger.instanse.silly("WebServer.configure::configure nodered settings");
                 this.settings = new nodered_settings();
                 this.settings.functionExternalModules = Config.function_external_modules;
                 this.settings.editorTheme.codeEditor.lib = Config.codeeditor_lib;
@@ -202,6 +202,7 @@ export class WebServer {
                 else {
                     this.settings.uiPort = Config.port;
                 }
+                this.settings.functionGlobalContext.NoderedUtil = NoderedUtil;
                 setInterval(() => {
                     const keys = Object.keys(WebServer.log_messages);
                     keys.forEach(key => {
@@ -321,13 +322,23 @@ export class WebServer {
                     noderedcontribmiddlewareauth.process(socket, req, res, next);
                 };
 
-                Logger.instanse.debug("WebServer.configure::configure nodered storageModule");
+                Logger.instanse.silly("WebServer.configure::configure nodered storageModule");
                 this.settings.storageModule = new noderedcontribopenflowstorage(socket);
                 const n: noderednpmrc = await this.settings.storageModule._getnpmrc();
                 if (!NoderedUtil.IsNullUndefinded(n) && !NoderedUtil.IsNullUndefinded(n.catalogues)) {
                     this.settings.editorTheme.palette.catalogues = n.catalogues;
                 } else {
                     this.settings.editorTheme.palette.catalogues = ['https://catalogue.nodered.org/catalogue.json'];
+                }
+                if (!NoderedUtil.IsNullEmpty(Config.noderedcatalogues)) {
+                    if (Config.noderedcatalogues.indexOf(";") > -1) {
+                        this.settings.editorTheme.palette.catalogues = Config.noderedcatalogues.split(";");
+                    } else {
+                        this.settings.editorTheme.palette.catalogues = Config.noderedcatalogues.split(",");
+                    }
+                    Logger.instanse.debug("WebServer.configure::Force nodered catalogues to be " + Config.noderedcatalogues);
+                } else {
+                    Logger.instanse.debug("WebServer.configure::Using default nodered catalogues as " + this.settings.editorTheme.palette.catalogues);
                 }
                 this.settings.editorTheme.tours = Config.tours;
 
@@ -387,7 +398,14 @@ export class WebServer {
                     Logger.instanse.debug("WebServer.configure::server.listen on port " + Config.port);
                     server.listen(Config.port).on('error', function (error) {
                         Logger.instanse.error(error);
-                        process.exit(404);
+                        if (Config.NODE_ENV == "production") {
+                            try {
+                                server.close();
+                            } catch (error) {
+                            }
+                            process.exit(404);
+                        }
+
                     });
                 }
 
@@ -406,7 +424,7 @@ export class WebServer {
             let hasErrors: boolean = true, errorCounter: number = 0, err: any;
             while (hasErrors) {
                 try {
-                    Logger.instanse.debug("WebServer.configure::restarting nodered ...");
+                    if (errorCounter > 0) Logger.instanse.warn("WebServer.configure::restarting nodered ...");
                     RED.start();
                     hasErrors = false;
                 } catch (error) {
@@ -425,8 +443,9 @@ export class WebServer {
             return server;
         } catch (error) {
             Logger.instanse.error(error);
-            Logger.instanse.error("WEBSERVER ERROR");
-            // process.exit(404);
+            if (Config.NODE_ENV == "production") {
+                process.exit(404);
+            }
         }
         return null;
     }

@@ -120,7 +120,7 @@ export class LoginProvider {
     static async getProviders(parent: Span): Promise<any[]> {
         const span: Span = Logger.otel.startSubSpan("LoginProvider.getProviders", parent);
         try {
-            LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", Crypt.rootToken(), undefined, undefined, span);
+            LoginProvider.login_providers = await Config.db.query<Provider>({ query: { _type: "provider" }, top: 10, collectionname: "config", jwt: Crypt.rootToken() }, span);
             const result: any[] = [];
             LoginProvider.login_providers.forEach(provider => {
                 const item: any = { name: provider.name, id: provider.id, provider: provider.provider, logo: "fa-question-circle" };
@@ -477,7 +477,7 @@ export class LoginProvider {
                     Logger.otel.endSpan(span);
                     return;
                 }
-                var forms = await Config.db.query<Base>({ _id: Config.validate_user_form, _type: "form" }, null, 1, 0, null, "forms", Crypt.rootToken(), undefined, undefined, span);
+                var forms = await Config.db.query<Base>({ query: { _id: Config.validate_user_form, _type: "form" }, top: 1, collectionname: "forms", jwt: Crypt.rootToken() }, span);
                 if (forms.length == 1) {
                     res.end(JSON.stringify(forms[0]));
                     res.end();
@@ -588,7 +588,7 @@ export class LoginProvider {
                 }
 
                 const id = req.params.id;
-                const rows = await Config.db.query({ _id: safeObjectID(id) }, null, 1, 0, null, "files", jwt, undefined, undefined, span);
+                const rows = await Config.db.query({ query: { _id: safeObjectID(id) }, top: 1, collectionname: "files", jwt }, span);
                 if (rows == null || rows.length != 1) { return res.status(404).send({ message: 'id ' + id + ' Not found.' }); }
                 const file = rows[0] as any;
 
@@ -693,16 +693,16 @@ export class LoginProvider {
                     if (user == null) {
                         return res.status(404).send({ message: 'Route ' + req.url + ' Not found.' });
                     }
-                    const query = req.query;
-                    let uniquename: string = query.uniquename;
-                    let q: any = {};
+                    const _query = req.query;
+                    let uniquename: string = _query.uniquename;
+                    let query: any = {};
                     if (!NoderedUtil.IsNullEmpty(uniquename)) {
                         if (Array.isArray(uniquename)) uniquename = uniquename.join("_");
                         if (uniquename.indexOf('/') > -1) uniquename = uniquename.substr(0, uniquename.indexOf('/'));
-                        q = { "metadata.uniquename": uniquename };
+                        query = { "metadata.uniquename": uniquename };
                     }
 
-                    const arr = await Config.db.query(q, undefined, 1, 0, { "uploadDate": -1 }, "files", jwt, undefined, undefined, span);
+                    const arr = await Config.db.query({ query, top: 1, orderby: { "uploadDate": -1 }, collectionname: "files", jwt }, span);
                     if (arr.length > 0) {
                         await Config.db.DeleteOne(arr[0]._id, "files", jwt, span);
                     }
@@ -738,19 +738,19 @@ export class LoginProvider {
                     if (user == null) {
                         return res.status(404).send({ message: 'Route ' + req.url + ' Not found.' });
                     }
-                    const query = req.query;
-                    let uniquename: string = query.uniquename;
-                    let q: any = {};
+                    const _query = req.query;
+                    let uniquename: string = _query.uniquename;
+                    let query: any = {};
                     if (!NoderedUtil.IsNullEmpty(uniquename)) {
                         if (Array.isArray(uniquename)) uniquename = uniquename.join("_");
                         if (uniquename.indexOf('/') > -1) uniquename = uniquename.substr(0, uniquename.indexOf('/'));
-                        q = { "metadata.uniquename": uniquename };
+                        query = { "metadata.uniquename": uniquename };
                     }
 
-                    const arr = await Config.db.query(q, undefined, 1, 0, { "uploadDate": -1 }, "files", jwt, undefined, undefined, span);
+                    const arr = await Config.db.query({ query, top: 1, orderby: { "uploadDate": -1 }, collectionname: "files", jwt }, span);
 
                     const id = arr[0]._id;
-                    const rows = await Config.db.query({ _id: safeObjectID(id) }, null, 1, 0, null, "files", jwt, undefined, undefined, span);
+                    const rows = await Config.db.query({ query: { _id: safeObjectID(id) }, top: 1, collectionname: "files", jwt }, span);
                     if (rows == null || rows.length != 1) { return res.status(404).send({ message: 'id ' + id + ' Not found.' }); }
                     const file = rows[0] as any;
 
@@ -806,7 +806,7 @@ export class LoginProvider {
         try {
             if (LoginProvider.login_providers.length === 0) {
                 const _jwt = Crypt.rootToken();
-                LoginProvider.login_providers = await Config.db.query<Provider>({ _type: "provider" }, null, 10, 0, null, "config", _jwt, undefined, undefined, span);
+                LoginProvider.login_providers = await Config.db.query<Provider>({ query: { _type: "provider" }, top: 10, collectionname: "config", jwt: _jwt }, span);
             }
             let hasLocal: boolean = false;
             if (LoginProvider.login_providers.length === 0) { hasLocal = true; }

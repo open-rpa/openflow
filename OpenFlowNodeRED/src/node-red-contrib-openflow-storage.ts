@@ -422,15 +422,32 @@ export class noderedcontribopenflowstorage {
         try {
             Logger.instanse.silly("noderedcontribopenflowstorage::_getFlows");
             if (WebSocketClient.instance.isConnected()) {
-                const array = await NoderedUtil.Query("nodered", { _type: "flow", nodered_id: Config.nodered_id }, null, null, 1, 0, null, null, null, 1);
+                const array = await NoderedUtil.Query("nodered", { _type: "flow", "$or": [{ nodered_id: Config.nodered_id }, { shared: true }] }, null, null, 5, 0, null, null, null, 1);
                 if (NoderedUtil.IsNullUndefinded(array) || array.length === 0) { return []; }
+                console.log("******************************");
                 try {
-                    this._flows = JSON.parse(array[0].flows);
+                    var flows = [];
+                    for (var i = 0; i < array.length; i++) {
+                        this.versions[array[i]._id] = array[i]._version;
+                        if (array[i].shared == true) {
+                            var arr = JSON.parse(array[i].flows);
+                            if (!arr[0].env) arr[0].env = [];
+                            arr[0].env = arr[0].env.filter(x => x.name != "_id");
+                            arr[0].env.push({ name: '_id', type: 'str', value: array[i]._id })
+                            console.log("* subflow id: " + array[i]._id + " version: " + array[i]._version);
+                            flows = flows.concat(arr);
+                        } else {
+                            console.log("* mainflow id: " + array[i]._id + " version: " + array[i]._version);
+                            flows = flows.concat(JSON.parse(array[i].flows));
+                        }
+                    }
+                    this._flows = flows;
                     result = this._flows;
                 } catch (error) {
                     Logger.instanse.error(error);
                     result = [];
                 }
+                console.log("******************************");
             }
         } catch (error) {
             Logger.instanse.error(error);
@@ -450,22 +467,99 @@ export class noderedcontribopenflowstorage {
     }
     public async _saveFlows(flows: any[]): Promise<void> {
         try {
-            Logger.instanse.silly("noderedcontribopenflowstorage::_saveFlows");
+            Logger.instanse.info("noderedcontribopenflowstorage::_saveFlows.:begin");
             const filename: string = Config.nodered_id + "_flows.json";
             await this.backupStore.set(filename, JSON.stringify(flows));
+
             if (WebSocketClient.instance.isConnected()) {
-                this.last_reload = new Date();
+                const mainflow = [];
+                let sharedflows: any = {};
+                const ids = [];
+                for (var i = 0; i < flows.length; i++) {
+                    var node = flows[i];
+                    if (node.type == "tab" || node.type == "subflow") {
+                        var _id = null;
+                        if (node.env) _id = node.env.filter(x => x.name == "_id");
+                        if (node.label && (node.label as string).startsWith("__")) {
+                            ids.push(node.id);
+                            if (!sharedflows[node.id]) sharedflows[node.id] = [];
+                        } else if (_id && _id.length > 0) {
+                            ids.push(node.id);
+                            if (!sharedflows[node.id]) sharedflows[node.id] = [];
+                        }
+                    }
+                }
+                for (var i = 0; i < flows.length; i++) {
+                    var node = flows[i];
+                    if (ids.indexOf(node.id) > -1) {
+                        sharedflows[node.id].push(node);
+                    } else if (node.z && ids.indexOf(node.z) > -1) {
+                        sharedflows[node.z].push(node);
+                    } else {
+                        mainflow.push(node);
+                    }
+                }
                 const result = await NoderedUtil.Query("nodered", { _type: "flow", nodered_id: Config.nodered_id }, null, null, 1, 0, null, null, null, 1);
-                this.last_reload = new Date();
                 if (NoderedUtil.IsNullUndefinded(result) || result.length === 0) {
                     const item: any = {
                         name: "flows for " + Config.nodered_id,
-                        flows: JSON.stringify(flows), _type: "flow", nodered_id: Config.nodered_id
+                        flows: JSON.stringify(mainflow), _type: "flow", nodered_id: Config.nodered_id
                     };
-                    await NoderedUtil.InsertOne("nodered", item, 1, true, null, 1);
+                    var iresult = await NoderedUtil.InsertOne("nodered", item, 1, true, null, 1);
+                    if (!NoderedUtil.IsNullUndefinded(iresult)) this.versions[iresult._id] = iresult._version;
                 } else {
-                    result[0].flows = JSON.stringify(flows);
-                    await NoderedUtil.UpdateOne("nodered", null, result[0], 1, true, null, 1);
+                    result[0].flows = JSON.stringify(mainflow);
+                    this.versions[result[0]._id] = result[0]._version + 1;
+                    var uresult = await NoderedUtil.UpdateOne("nodered", null, result[0], 1, true, null, 1);
+                    if (!NoderedUtil.IsNullUndefinded(uresult)) this.versions[uresult._id] = uresult._version;
+                }
+                let update: boolean = false;
+                let keys = Object.keys(sharedflows);
+                if (keys.length > 0) {
+                    console.log("******************************");
+                    for (let i = 0; i < keys.length; i++) {
+                        let key = keys[i];
+                        let arr = sharedflows[key];
+                        let node = arr[0];
+                        let result2 = [];
+                        var _id = null;
+                        if (node.env) _id = node.env.filter(x => x.name == "_id");
+
+                        if (_id && _id.length > 0) {
+                            console.log("* query id: " + _id[0].value);
+                            result2 = await NoderedUtil.Query("nodered", { _type: "flow", _id: _id[0].value }, null, null, 1, 0, null, null, null, 1);
+                        }
+                        if (NoderedUtil.IsNullUndefinded(result2) || result2.length === 0) {
+                            update = true;
+                            const item: any = {
+                                name: "shared flows: " + node.label,
+                                flows: JSON.stringify(arr), _type: "flow", shared: true
+                            };
+                            var iresult = await NoderedUtil.InsertOne("nodered", item, 1, true, null, 1);
+                            if (!NoderedUtil.IsNullUndefinded(iresult)) {
+                                this.versions[iresult._id] = iresult._version;
+                                console.log("* updated id: " + _id[0].value + " version: " + iresult._version);
+                            } else {
+                                this.RED.log.error("Failed updating flow!");
+                            }
+                        } else {
+                            result2[0].flows = JSON.stringify(arr);
+                            result2[0].name = "shared flows: " + node.label;
+                            this.versions[_id[0].value] = result2[0]._version + 1; // bump version before saving, some times the change stream is faster than UpdateOne
+                            var uresult = await NoderedUtil.UpdateOne("nodered", null, result2[0], 1, true, null, 1);
+                            if (!NoderedUtil.IsNullUndefinded(uresult)) {
+                                this.versions[uresult._id] = uresult._version;
+                                console.log("* new id: " + uresult._id + " version: " + uresult._version);
+                            } else {
+                                this.RED.log.error("Failed adding new flow!");
+                            }
+                        }
+                    }
+                    console.log("******************************");
+                }
+                if (update == true) {
+                    // reload flows to add the _id
+                    await this.RED.nodes.loadFlows(true);
                 }
                 this._flows = flows;
             } else {
@@ -473,6 +567,8 @@ export class noderedcontribopenflowstorage {
             }
         } catch (error) {
             Logger.instanse.error(error);
+        } finally {
+            Logger.instanse.info("noderedcontribopenflowstorage::_saveFlows.:end");
         }
     }
     public async _getCredentials(): Promise<any> {
@@ -519,9 +615,7 @@ export class noderedcontribopenflowstorage {
             await this.backupStore.set(filename, noderedcontribopenflowstorage.encrypt(JSON.stringify(credentials)));
             let result: any[] = [];
             if (WebSocketClient.instance.isConnected()) {
-                this.last_reload = new Date();
                 result = await NoderedUtil.Query("nodered", { _type: "credential", nodered_id: Config.nodered_id }, null, null, 1, 0, null, null, null, 1);
-                this.last_reload = new Date();
                 const orgkeys = Object.keys(credentials);
                 for (let i = 0; i < orgkeys.length; i++) {
                     const key = orgkeys[i];
@@ -559,6 +653,7 @@ export class noderedcontribopenflowstorage {
             if (WebSocketClient.instance.isConnected()) {
                 const result = await NoderedUtil.Query("nodered", { _type: "setting", nodered_id: Config.nodered_id }, null, null, 1, 0, null, null, null, 1);
                 if (NoderedUtil.IsNullUndefinded(result) || result.length === 0) { return {}; }
+                this.versions[result[0]._id] = result[0]._version;
                 settings = JSON.parse(result[0].settings);
             }
         } catch (error) {
@@ -639,7 +734,7 @@ export class noderedcontribopenflowstorage {
             if (this.firstrun) {
                 if (WebSocketClient.instance.user != null) {
                     if (WebSocketClient.instance.supports_watch) {
-                        await NoderedUtil.Watch("nodered", [{ "$match": { "fullDocument.nodered_id": Config.nodered_id } }], WebSocketClient.instance.jwt, this.onupdate.bind(this));
+                        await NoderedUtil.Watch("nodered", ["$."] as any, WebSocketClient.instance.jwt, this.onupdate.bind(this));
                     } else {
                         setTimeout(this.CheckUpdates.bind(this), Config.flow_refresh_initial_interval);
                     }
@@ -650,9 +745,7 @@ export class noderedcontribopenflowstorage {
                         this.firstrun = false;
                         if (WebSocketClient.instance.supports_watch) {
                             try {
-                                this.last_reload = new Date();
                                 await this.CheckUpdates();
-                                this.last_reload = new Date();
                             } catch (error) {
                                 Logger.instanse.error(error);
                             }
@@ -670,66 +763,47 @@ export class noderedcontribopenflowstorage {
         }
         return settings;
     }
-    public last_reload: Date = new Date();
     public bussy: boolean = false;
+    public versions: any = {};
     public async onupdate(msg: any) {
         try {
-            // let events = this.RED.runtime.events;
-            // events.emit("runtime-event", { id: "runtime-deploy", payload: { revision: "1" }, retain: true });
-            // events.emit("runtime-event", { id: NoderedUtil.GetUniqueIdentifier(), payload: { type: "warning", text: "Hi mom1" }, retain: false });
-            // events.emit("runtime-event", { id: NoderedUtil.GetUniqueIdentifier(), payload: { type: "warning", text: "Hi mom2" }, retain: true });
-            // events.emit("runtime-event", { id: NoderedUtil.GetUniqueIdentifier(), payload: { text: "Hi mom3" }, retain: true });
-            // events.emit("runtime-event", { id: NoderedUtil.GetUniqueIdentifier(), payload: { text: "Hi mom4" }, retain: false });
-            // events.emit("runtime-event", { id: "runtime-state", payload: { type: "warning", text: "Hi mom" }, retain: true });
-            // events.emit("runtime-event", { id: "runtime-state", payload: { type: "warning", text: "Hi mom" }, retain: false });
-            // events.emit("runtime-event", { id: "node/added", retain: false, payload: "Hi mom" });
-            // events.emit("runtime-event", { id: "runtime-state", retain: true });
-            // events.emit("runtime-event", { id: "node/enabled", retain: false, payload: "Hi mom" });
-            // try {
-            // events.emit("runtime-event", { id: NoderedUtil.GetUniqueIdentifier(), payload: { text: "Hi mom" }, retain: false });
-            // events.emit("runtime-event", { id: NoderedUtil.GetUniqueIdentifier(), payload: { type: "info", text: "Hi mom" }, retain: false });
-            // events.emit("runtime-event", { id: NoderedUtil.GetUniqueIdentifier(), payload: { text: "Hi mom" } });
-            // } catch (error) {
-            //     console.error(error);
-            // }
-            const begin: number = this.last_reload.getTime();
-            const end: number = new Date().getTime();
-            const seconds = Math.round((end - begin) / 1000);
-            var r = this.RED.runtime;
-            if (seconds < 2 || this.bussy) {
+            if (this.bussy) {
                 return;
             }
             let update: boolean = false;
             let entity: Base = msg.fullDocument;
+            console.log(msg.operationType);
             Logger.instanse.info("noderedcontribopenflowstorage::onupdate " + entity._type + " - " + new Date().toLocaleTimeString());
             if (entity._type != "setting" && entity._type != "flow" && entity._type != "credential") {
                 Logger.instanse.info("noderedcontribopenflowstorage::onupdate " + entity._type + " - skipped " + new Date().toLocaleTimeString());
                 return;
             }
             if (entity._type == "flow") {
-                let oldflows: any[] = null;
-                if (this._flows != null) {
-                    oldflows = JSON.parse(JSON.stringify(this._flows));
-                    if (this.DiffObjects(entity, oldflows)) {
-                        update = true;
-                        this._flows = (entity as any).flows;
-                    }
+                if (!(entity as any).shared && (entity as any).nodered_id != Config.nodered_id) return;
+                if (this.versions[entity._id] && this.versions[entity._id] == entity._version && msg.operationType != "delete") {
+                    Logger.instanse.info("noderedcontribopenflowstorage::onupdate " + entity._type + ", skip " + entity._id + " is same version " + entity._version);
+                    return;
                 } else {
-                    update = true;
-                    this._flows = (entity as any).flows;
+                    Logger.instanse.info("noderedcontribopenflowstorage::onupdate " + entity._type + ", " + entity._id + " got " + entity._version + " up from " + this.versions[entity._id]);
                 }
+                update = true;
             } else if (entity._type == "credential") {
-                let oldcredentials: any[] = null;
-                if (this._credentials != null) {
-                    oldcredentials = JSON.parse(JSON.stringify(this._credentials));
-                    if (this.DiffObjects(entity, oldcredentials)) {
-                        update = true;
-                    }
+                if (!(entity as any).shared && (entity as any).nodered_id != Config.nodered_id) return;
+                if (this.versions[entity._id] && this.versions[entity._id] == entity._version && msg.operationType != "delete") {
+                    Logger.instanse.info("noderedcontribopenflowstorage::onupdate " + entity._type + ", skip " + entity._id + " is same version " + entity._version);
+                    return;
                 } else {
-                    update = true;
+                    Logger.instanse.info("noderedcontribopenflowstorage::onupdate " + entity._type + ", " + entity._id + " got " + entity._version + " up from " + this.versions[entity._id]);
                 }
+                update = true;
             } else if (entity._type == "setting") {
-                Logger.instanse.info("noderedcontribopenflowstorage::onupdate setting init " + new Date().toLocaleTimeString());
+                if (!(entity as any).shared && (entity as any).nodered_id != Config.nodered_id) return;
+                if (this.versions[entity._id] && this.versions[entity._id] == entity._version && msg.operationType != "delete") {
+                    Logger.instanse.info("noderedcontribopenflowstorage::onupdate " + entity._type + ", skip " + entity._id + " is same version " + entity._version);
+                    return;
+                } else {
+                    Logger.instanse.info("noderedcontribopenflowstorage::onupdate " + entity._type + ", " + entity._id + " got " + entity._version + " up from " + this.versions[entity._id]);
+                }
                 let oldsettings: any = null;
                 let exitprocess: boolean = false;
                 if (this._settings != null) {
@@ -760,14 +834,12 @@ export class noderedcontribopenflowstorage {
                                         }
                                     }
                                     if (newsettings.nodes[key] == null) {
-                                        // Logger.instanse.info("**************************************************");
                                         Logger.instanse.info("Remove module " + key + "@" + version);
                                         this.RED.log.warn("Remove module " + key + "@" + version);
                                         await this.RED.runtime.nodes.removeModule({ user: "admin", module: key, version: version });
                                         // HACK
                                         // exitprocess = true;
                                     } else if (version != oldversion) {
-                                        // Logger.instanse.info("**************************************************");
                                         Logger.instanse.info("Install module " + key + "@" + version + " up from " + oldversion);
                                         this.RED.log.warn("Install module " + key + "@" + version + " up from " + oldversion);
                                         let result = await this.RED.runtime.nodes.addModule({ user: "admin", module: key, version: version });
@@ -861,7 +933,6 @@ export class noderedcontribopenflowstorage {
                         Logger.instanse.info("noderedcontribopenflowstorage::onupdate DiffObjects " + new Date().toLocaleTimeString());
                         if (this.DiffObjects(newsettings, oldsettings)) {
                             update = true;
-                            // Logger.instanse.info("**************************************************");
                         }
                         this._settings = newsettings;
                     } catch (error) {
@@ -899,10 +970,8 @@ export class noderedcontribopenflowstorage {
 
             }
             if (update) {
-                this.last_reload = new Date();
                 Logger.instanse.info("**************************************************");
                 Logger.instanse.info("* " + entity._type + " was updated, reloading NodeRED flows");
-                Logger.instanse.info("* loadFlows last updated " + seconds + " seconds ago");
                 Logger.instanse.info("**************************************************");
                 this.RED.log.warn("Reloading flows");
                 await this.RED.nodes.loadFlows(true);
@@ -918,26 +987,25 @@ export class noderedcontribopenflowstorage {
     }
     public async _saveSettings(settings: any): Promise<void> {
         try {
-            Logger.instanse.silly("noderedcontribopenflowstorage::_saveSettings");
+            Logger.instanse.info("noderedcontribopenflowstorage::_saveSettings.:begin");
             Logger.instanse.info(" _saveSettings - " + new Date().toLocaleTimeString());
             const filename: string = Config.nodered_id + "_settings";
             await this.backupStore.set(filename, JSON.stringify(settings));
             if (WebSocketClient.instance.isConnected()) {
-                this.last_reload = new Date();
                 const result = await NoderedUtil.Query("nodered", { _type: "setting", nodered_id: Config.nodered_id }, null, null, 1, 0, null, null, null, 1);
-                this.last_reload = new Date();
                 if (NoderedUtil.IsNullUndefinded(result) || result.length === 0) {
                     const item: any = {
                         name: "settings for " + Config.nodered_id,
                         settings: JSON.stringify(settings), _type: "setting", nodered_id: Config.nodered_id
                     };
-                    await NoderedUtil.InsertOne("nodered", item, 1, true, null, 1);
+                    var iresult = await NoderedUtil.InsertOne("nodered", item, 1, true, null, 1);
+                    if (!NoderedUtil.IsNullUndefinded(iresult)) this.versions[iresult._id] = iresult._version;
                 } else {
                     result[0].settings = JSON.stringify(settings);
-                    await NoderedUtil.UpdateOne("nodered", null, result[0], 1, true, null, 1);
+                    var uresult = await NoderedUtil.UpdateOne("nodered", null, result[0], 1, true, null, 1);
+                    if (!NoderedUtil.IsNullUndefinded(uresult)) this.versions[uresult._id] = uresult._version;
                 }
             }
-
             this._settings = settings;
             let exitprocess: boolean = false;
             let keys = Object.keys(settings.nodes);
@@ -974,8 +1042,9 @@ export class noderedcontribopenflowstorage {
             }
         } catch (error) {
             Logger.instanse.error(error);
+        } finally {
+            Logger.instanse.info("noderedcontribopenflowstorage::_saveSettings.:complete");
         }
-        Logger.instanse.info(" _saveSettings - COMPLETE!!! " + new Date().toLocaleTimeString());
     }
     public async _getSessions(): Promise<any[]> {
         let item: any[] = [];
@@ -1006,9 +1075,7 @@ export class noderedcontribopenflowstorage {
             const filename: string = Config.nodered_id + "_sessions";
             await this.backupStore.set(filename, JSON.stringify(sessions));
             if (WebSocketClient.instance.isConnected()) {
-                this.last_reload = new Date();
                 const result = await NoderedUtil.Query("nodered", { _type: "session", nodered_id: Config.nodered_id }, null, null, 1, 0, null, null, null, 1);
-                this.last_reload = new Date();
                 if (NoderedUtil.IsNullUndefinded(result) || result.length === 0) {
                     const item: any = {
                         name: "sessions for " + Config.nodered_id,
@@ -1033,10 +1100,8 @@ export class noderedcontribopenflowstorage {
             const item = { type, path, meta, body, _type: "library", nodered_id: Config.nodered_id };
             // await this.backupStore.set(filename, JSON.stringify(sessions));
             if (WebSocketClient.instance.isConnected()) {
-                this.last_reload = new Date();
                 // const result = await NoderedUtil.Query("nodered", { _type: "library", nodered_id: Config.nodered_id }, null, null, 1, 0, null);
                 const result = await NoderedUtil.InsertOrUpdateOne("nodered", item, "_type,nodered_id,type,path", 1, true, null, 1);
-                this.last_reload = new Date();
             }
         } catch (error) {
             Logger.instanse.error(error);

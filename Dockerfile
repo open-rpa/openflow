@@ -1,12 +1,18 @@
-FROM node:lts
-# FROM node:10.16.0-jessie
+FROM node:lts-alpine
 EXPOSE 80
 EXPOSE 5858
 WORKDIR /data
-RUN groupadd -r openiapuser && useradd -r -g openiapuser -G audio,video openiapuser \
+# alpine
+RUN addgroup -S openiapuser && adduser -S openiapuser -G openiapuser \
     && mkdir -p /home/openiapuser/Downloads \
     && chown -R openiapuser:openiapuser /home/openiapuser \
     && chown -R openiapuser:openiapuser /data/
+
+# full image
+# RUN groupadd -r openiapuser && useradd -r -g openiapuser -G audio,video openiapuser \
+#     && mkdir -p /home/openiapuser/Downloads \
+#     && chown -R openiapuser:openiapuser /home/openiapuser \
+#     && chown -R openiapuser:openiapuser /data/
 
 COPY --chown=openiapuser:openiapuser docker-package.json ./package.json
 RUN npm install --only=prod
