@@ -509,6 +509,7 @@ export class noderedcontribopenflowstorage {
                     if (!NoderedUtil.IsNullUndefinded(iresult)) this.versions[iresult._id] = iresult._version;
                 } else {
                     result[0].flows = JSON.stringify(mainflow);
+                    this.versions[result[0]._id] = result[0]._version + 1;
                     var uresult = await NoderedUtil.UpdateOne("nodered", null, result[0], 1, true, null, 1);
                     if (!NoderedUtil.IsNullUndefinded(uresult)) this.versions[uresult._id] = uresult._version;
                 }
