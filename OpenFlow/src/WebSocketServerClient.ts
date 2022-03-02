@@ -3,7 +3,7 @@ import { SocketMessage } from "./SocketMessage";
 import { Message, JSONfn } from "./Messages/Message";
 import { Config } from "./Config";
 import { amqpwrapper, QueueMessageOptions, amqpqueue, amqpexchange, exchangealgorithm } from "./amqpwrapper";
-import { NoderedUtil, Base, InsertOneMessage, QueueMessage, MapReduceMessage, QueryMessage, UpdateOneMessage, UpdateManyMessage, DeleteOneMessage, User, mapFunc, reduceFunc, finalizeFunc, QueuedMessage, QueuedMessageCallback, WatchEventMessage, QueueClosedMessage, ExchangeClosedMessage } from "@openiap/openflow-api";
+import { NoderedUtil, Base, InsertOneMessage, QueueMessage, MapReduceMessage, QueryMessage, UpdateOneMessage, UpdateManyMessage, DeleteOneMessage, User, mapFunc, reduceFunc, finalizeFunc, QueuedMessage, QueuedMessageCallback, WatchEventMessage, QueueClosedMessage, ExchangeClosedMessage, TokenUser } from "@openiap/openflow-api";
 import { ChangeStream } from "mongodb";
 import { WebSocketServer } from "./WebSocketServer";
 import { Span } from "@opentelemetry/api";
@@ -215,7 +215,7 @@ export class WebSocketServerClient {
         for (let i = this._queues.length - 1; i >= 0; i--) {
             try {
                 // await this.CloseConsumer(this._queues[i]);
-                await amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i], undefined);
+                await amqpwrapper.Instance().RemoveQueueConsumer(this.user, this._queues[i], undefined);
                 this._queues.splice(i, 1);
                 this._queuescurrent--;
                 this._queuescurrentstr = this._queuescurrent.toString();
@@ -260,7 +260,7 @@ export class WebSocketServerClient {
             Logger.otel.endSpan(span);
         }
     }
-    public async CloseConsumer(queuename: string, parent: Span): Promise<void> {
+    public async CloseConsumer(user: TokenUser | User, queuename: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("WebSocketServerClient.CloseConsumer", parent);
         await semaphore.down();
         try {
@@ -269,7 +269,7 @@ export class WebSocketServerClient {
                 const q = this._queues[i];
                 if (q && (q.queue == queuename || q.queuename == queuename)) {
                     try {
-                        amqpwrapper.Instance().RemoveQueueConsumer(this._queues[i], span).catch((err) => {
+                        amqpwrapper.Instance().RemoveQueueConsumer(user, this._queues[i], span).catch((err) => {
                             Logger.instanse.error("WebSocketclient::CloseConsumer::RemoveQueueConsumer " + err);
                         });
                         this._queues.splice(i, 1);
@@ -289,7 +289,7 @@ export class WebSocketServerClient {
             Logger.otel.endSpan(span);
         }
     }
-    public async RegisterExchange(exchangename: string, algorithm: exchangealgorithm, routingkey: string = "", addqueue: boolean, parent: Span): Promise<RegisterExchangeResponse> {
+    public async RegisterExchange(user: TokenUser | User, exchangename: string, algorithm: exchangealgorithm, routingkey: string = "", addqueue: boolean, parent: Span): Promise<RegisterExchangeResponse> {
         const span: Span = Logger.otel.startSubSpan("WebSocketServerClient.CreateConsumer", parent);
         try {
             let exclusive: boolean = false; // Should we keep the queue around ? for robots and roles
@@ -311,7 +311,7 @@ export class WebSocketServerClient {
             try {
                 const AssertExchangeOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertExchangeOptions));
                 AssertExchangeOptions.exclusive = exclusive;
-                exchangequeue = await amqpwrapper.Instance().AddExchangeConsumer(exchange, algorithm, routingkey, AssertExchangeOptions, this.jwt, addqueue, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+                exchangequeue = await amqpwrapper.Instance().AddExchangeConsumer(user, exchange, algorithm, routingkey, AssertExchangeOptions, this.jwt, addqueue, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
                     const _data = msg;
                     try {
                         const result = await this.Queue(msg, exchange, options);
@@ -368,7 +368,7 @@ export class WebSocketServerClient {
                     qname = "unknown." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
                 }
             }
-            await this.CloseConsumer(qname, span);
+            await this.CloseConsumer(this.user, qname, span);
             let queue: amqpqueue = null;
             try {
                 const AssertQueueOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertQueueOptions));
@@ -380,10 +380,10 @@ export class WebSocketServerClient {
                 if (exists.length > 0) {
                     Logger.instanse.warn("CreateConsumer: " + qname + " already exists, removing before re-creating");
                     for (let i = 0; i < exists.length; i++) {
-                        await amqpwrapper.Instance().RemoveQueueConsumer(exists[i], span);
+                        await amqpwrapper.Instance().RemoveQueueConsumer(this.user, exists[i], span);
                     }
                 }
-                queue = await amqpwrapper.Instance().AddQueueConsumer(qname, AssertQueueOptions, this.jwt, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+                queue = await amqpwrapper.Instance().AddQueueConsumer(this.user, qname, AssertQueueOptions, this.jwt, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
                     const _data = msg;
                     try {
                         Logger.instanse.verbose("[preack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId)

@@ -2,6 +2,7 @@ import { NoderedUtil } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import { amqpqueue, amqpwrapper, QueueMessageOptions } from "./amqpwrapper";
 import { Config } from "./Config";
+import { Crypt } from "./Crypt";
 import { Logger } from "./Logger";
 import { Message } from "./Messages/Message";
 export class QueueClient {
@@ -32,7 +33,7 @@ export class QueueClient {
         AssertQueueOptions.exclusive = false;
         AssertQueueOptions["x-max-priority"] = 5;
         AssertQueueOptions.maxPriority = 5;
-        await amqpwrapper.Instance().AddQueueConsumer(this.queuename, AssertQueueOptions, null, async (data: any, options: QueueMessageOptions, ack: any, done: any) => {
+        await amqpwrapper.Instance().AddQueueConsumer(Crypt.rootUser(), this.queuename, AssertQueueOptions, null, async (data: any, options: QueueMessageOptions, ack: any, done: any) => {
             const msg: Message = Message.fromjson(data);
             let span: Span = null;
             try {
@@ -65,7 +66,7 @@ export class QueueClient {
     public static async RegisterMyQueue() {
         const AssertQueueOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertQueueOptions));
         AssertQueueOptions.exclusive = false;
-        this.queue = await amqpwrapper.Instance().AddQueueConsumer("", AssertQueueOptions, null, async (data: any, options: QueueMessageOptions, ack: any, done: any) => {
+        this.queue = await amqpwrapper.Instance().AddQueueConsumer(Crypt.rootUser(), "", AssertQueueOptions, null, async (data: any, options: QueueMessageOptions, ack: any, done: any) => {
             const msg: Message = Message.fromjson(data);
             try {
                 if (NoderedUtil.IsNullEmpty(options.replyTo)) {
