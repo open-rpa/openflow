@@ -1,7 +1,7 @@
 import * as amqplib from "amqplib";
 import { Config } from "./Config";
 import { Crypt } from "./Crypt";
-import { NoderedUtil } from "@openiap/openflow-api";
+import { NoderedUtil, TokenUser, User } from "@openiap/openflow-api";
 import { WebSocketServer } from "./WebSocketServer";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
@@ -205,7 +205,7 @@ export class amqpwrapper extends events.EventEmitter {
         try {
             this.channel = await this.conn.createConfirmChannel();
             this.channel.prefetch(Config.amqp_prefetch);
-            this.replyqueue = await this.AddQueueConsumer("", null, null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+            this.replyqueue = await this.AddQueueConsumer(Crypt.rootUser(), "", null, null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
                 try {
                     if (this.replyqueue) {
                         if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_message_count)) WebSocketServer.websocket_queue_message_count.
@@ -276,12 +276,12 @@ export class amqpwrapper extends events.EventEmitter {
             Logger.otel.endSpan(span);
         }
     }
-    async RemoveQueueConsumer(queue: amqpqueue, parent: Span): Promise<void> {
+    async RemoveQueueConsumer(user: TokenUser | User, queue: amqpqueue, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("amqpwrapper.RemoveQueueConsumer", parent);
         try {
             if (NoderedUtil.IsNullUndefinded(queue)) throw new Error("queue is mandatory");
             if (queue != null) {
-                if (Config.log_amqp) Logger.instanse.info("[AMQP] Remove queue consumer " + queue.queue + "/" + queue.consumerTag);
+                if (Config.log_amqp) Logger.instanse.info("[AMQP][" + user?.username + "] Remove queue consumer " + queue.queue + "/" + queue.consumerTag);
                 var exc = this.exchanges.filter(x => x.queue?.consumerTag == queue.consumerTag);
                 if (exc.length > 0) {
                     try {
@@ -305,7 +305,7 @@ export class amqpwrapper extends events.EventEmitter {
             Logger.otel.endSpan(span);
         }
     }
-    async AddQueueConsumer(queuename: string, QueueOptions: any, jwt: string, callback: QueueOnMessage, parent: Span): Promise<amqpqueue> {
+    async AddQueueConsumer(user: TokenUser | User, queuename: string, QueueOptions: any, jwt: string, callback: QueueOnMessage, parent: Span): Promise<amqpqueue> {
         const span: Span = Logger.otel.startSubSpan("amqpwrapper.AddQueueConsumer", parent);
         try {
             if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Queue Consumer, not connected to rabbitmq");
@@ -326,7 +326,7 @@ export class amqpwrapper extends events.EventEmitter {
                     this.OnMessage(q, msg, q.callback);
                 }, { noAck: false });
                 q.consumerTag = consumeresult.consumerTag;
-                if (Config.log_amqp) Logger.instanse.info("[AMQP] Added queue consumer " + q.queue + "/" + q.consumerTag);
+                if (Config.log_amqp) Logger.instanse.info("[AMQP][" + user?.username + "] Added queue consumer " + q.queue + "/" + q.consumerTag);
             } else {
                 throw new Error("Failed asserting Queue " + queue);
             }
@@ -338,7 +338,7 @@ export class amqpwrapper extends events.EventEmitter {
             Logger.otel.endSpan(span);
         }
     }
-    async AddExchangeConsumer(exchange: string, algorithm: exchangealgorithm, routingkey: string, ExchangeOptions: any, jwt: string, addqueue: boolean, callback: QueueOnMessage, parent: Span): Promise<amqpexchange> {
+    async AddExchangeConsumer(user: TokenUser | User, exchange: string, algorithm: exchangealgorithm, routingkey: string, ExchangeOptions: any, jwt: string, addqueue: boolean, callback: QueueOnMessage, parent: Span): Promise<amqpexchange> {
         const span: Span = Logger.otel.startSubSpan("amqpwrapper.AddExchangeConsumer", parent);
         try {
             if (NoderedUtil.IsNullEmpty(exchange)) throw new Error("exchange name cannot be empty");
@@ -354,10 +354,10 @@ export class amqpwrapper extends events.EventEmitter {
                     AssertQueueOptions = Object.create(this.AssertQueueOptions);
                     delete AssertQueueOptions.arguments;
                 }
-                q.queue = await this.AddQueueConsumer("", AssertQueueOptions, jwt, q.callback, span);
+                q.queue = await this.AddQueueConsumer(user, "", AssertQueueOptions, jwt, q.callback, span);
                 if (q.queue) {
                     this.channel.bindQueue(q.queue.queue, q.exchange, q.routingkey);
-                    if (Config.log_amqp) Logger.instanse.info("[AMQP] Added exchange consumer " + q.exchange + ' to queue ' + q.queue.queue);
+                    if (Config.log_amqp) Logger.instanse.info("[AMQP][" + user?.username + "] Added exchange consumer " + q.exchange + ' to queue ' + q.queue.queue);
                 }
             }
             this.exchanges.push(q);
@@ -451,6 +451,7 @@ export class amqpwrapper extends events.EventEmitter {
         }
     }
     async send(exchange: string, queue: string, data: any, expiration: number, correlationId: string, routingkey: string, priority: number = 1): Promise<void> {
+        if (exchange == "openflow" && !Config.enable_openflow_amqp) return;
         await amqpwrapper.asyncWaitFor(() => this.connected);
         if (this.channel == null || this.conn == null) {
             throw new Error("Cannot send message, when not connected");
@@ -482,7 +483,7 @@ export class amqpwrapper extends events.EventEmitter {
     }
     async Adddlx(parent: Span) {
         if (NoderedUtil.IsNullEmpty(Config.amqp_dlx)) return;
-        await this.AddExchangeConsumer(Config.amqp_dlx, "fanout", "", null, null, true, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+        await this.AddExchangeConsumer(Crypt.rootUser(), Config.amqp_dlx, "fanout", "", null, null, true, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
             if (typeof msg === "string" || msg instanceof String) {
                 try {
                     msg = JSON.parse((msg as any));
@@ -513,7 +514,7 @@ export class amqpwrapper extends events.EventEmitter {
     }
     async AddOFExchange(parent: Span) {
         if (!Config.enable_openflow_amqp) return;
-        await this.AddExchangeConsumer("openflow", "fanout", "", null, null, true, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+        await this.AddExchangeConsumer(Crypt.rootUser(), "openflow", "fanout", "", null, null, true, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
             if (typeof msg === "string" || msg instanceof String) {
                 try {
                     msg = JSON.parse((msg as any));

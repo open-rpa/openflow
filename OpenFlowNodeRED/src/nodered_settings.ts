@@ -50,6 +50,14 @@ export class nodered_settings {
         tours: true,
         codeEditor: {
             lib: "" // monaco
+        },
+        projects: {
+            enabled: false,
+            workflow: {
+                //  - manual - you must manually commit changes
+                //  - auto - changes are automatically committed
+                mode: "manual"
+            }
         }
     };
 

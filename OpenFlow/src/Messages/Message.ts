@@ -604,11 +604,11 @@ export class Message {
                 if (mq != null) {
                     if (Config.amqp_force_consumer_has_update) {
                         if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
-                            throw new Error("Unknown queue or access denied, missing update permission on exchange object " + tuser.name);
+                            throw new Error("[" + tuser.name + "] Unknown queue or access denied, missing update permission on exchange object " + msg.exchangename);
                         }
                     } else if (Config.amqp_force_sender_has_invoke) {
                         if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
-                            throw new Error("Unknown queue or access denied, missing invoke permission on exchange object " + tuser.name);
+                            throw new Error("[" + tuser.name + "] Unknown queue or access denied, missing invoke permission on exchange object " + msg.exchangename);
                         }
                     }
                 } else {
@@ -627,7 +627,7 @@ export class Message {
             var addqueue: boolean = (msg.addqueue as any);
             if (NoderedUtil.IsNullEmpty(addqueue)) addqueue = true;
             addqueue = Config.parseBoolean(addqueue);
-            var res = await cli.RegisterExchange(msg.exchangename, msg.algorithm, msg.routingkey, addqueue, parent);
+            var res = await cli.RegisterExchange(tuser, msg.exchangename, msg.algorithm, msg.routingkey, addqueue, parent);
             msg.queuename = res.queuename;
             msg.exchangename = res.exchangename;
         } catch (error) {
@@ -719,11 +719,11 @@ export class Message {
                     if (mq != null) {
                         if (Config.amqp_force_consumer_has_update) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
-                                throw new Error("Unknown queue or access denied, missing update permission on users object " + tuser.name);
+                                throw new Error("[" + tuser.name + "] Unknown queue or access denied, missing update permission on users object " + mq.name + " " + mq._id);
                             }
                         } else if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
-                                throw new Error("Unknown queue or access denied, missing invoke permission on users object " + tuser.name);
+                                throw new Error("[" + tuser.name + "] Unknown queue or access denied, missing invoke permission on users object " + mq.name + " " + mq._id);
                             }
                         }
                         allowed = true;
@@ -741,11 +741,11 @@ export class Message {
                     if (mq != null) {
                         if (Config.amqp_force_consumer_has_update) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
-                                throw new Error("Unknown queue or access denied, missing update permission on queue object " + tuser.name);
+                                throw new Error("[" + tuser.name + "] Unknown queue or access denied, missing update permission on queue object " + msg.queuename);
                             }
                         } else if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
-                                throw new Error("Unknown queue or access denied, missing invoke permission on queue object " + tuser.name);
+                                throw new Error("[" + tuser.name + "] Unknown queue or access denied, missing invoke permission on queue object " + msg.queuename);
                             }
                         }
                         allowed = true;
@@ -834,11 +834,11 @@ export class Message {
                     if (mq != null) {
                         if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
-                                throw new Error("Unknown queue or access denied, missing invoke permission on users object " + tuser.name);
+                                throw new Error("[" + tuser.name + "] Unknown queue or access denied, missing invoke permission on users object " + mq.name + " " + mq._id);
                             }
                         } else {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.read)) {
-                                throw new Error("Unknown queue or access denied, missing read permission on users object " + tuser.name);
+                                throw new Error("[" + tuser.name + "] Unknown queue or access denied, missing read permission on users object " + mq.name + " " + mq._id);
                             }
                         }
                         allowed = true;
@@ -856,11 +856,11 @@ export class Message {
                     if (mq != null) {
                         if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
-                                throw new Error("Unknown queue or access denied, missing invoke permission on queue object " + tuser.name);
+                                throw new Error("[" + tuser.name + "] Unknown queue or access denied, missing invoke permission on queue object " + msg.queuename);
                             }
                         } else {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.read)) {
-                                throw new Error("Unknown queue or access denied, missing read permission on queue object " + tuser.name);
+                                throw new Error("[" + tuser.name + "] Unknown queue or access denied, missing read permission on queue object " + msg.queuename);
                             }
 
                         }
@@ -951,7 +951,9 @@ export class Message {
         let msg: CloseQueueMessage
         try {
             msg = CloseQueueMessage.assign(this.data);
-            await cli.CloseConsumer(msg.queuename, parent);
+            const jwt: string = msg.jwt || this.jwt;
+            const tuser = Crypt.verityToken(jwt);
+            await cli.CloseConsumer(tuser, msg.queuename, parent);
         } catch (error) {
             await handleError(cli, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }

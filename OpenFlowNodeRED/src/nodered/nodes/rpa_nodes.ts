@@ -52,6 +52,7 @@ export class rpa_detector_node {
 
             if (result.length == 0) {
                 this.node.status({ fill: "red", shape: "dot", text: "Failed locating detector" });
+                return;
             }
             this.detector = result[0];
 
