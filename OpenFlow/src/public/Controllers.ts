@@ -4343,8 +4343,8 @@ export class NoderedCtrl {
                 this.label = (this.user.nodered as any).nodeselector;
                 this.labelkeys = Object.keys(this.label);
             }
-            this.name = this.name.split("@").join("").split(".").join("");
             this.name = this.name.toLowerCase();
+            this.name = this.name.replace(/([^a-z0-9]+){1,63}/gi, "");
             this.noderedurl = "//" + WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", this.name);
             this.GetNoderedInstance();
             this.labels = await NoderedUtil.GetKubeNodeLabels(null);
@@ -4694,8 +4694,8 @@ export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
     }
     OpenNodered(model: any) {
         let name = model.username;
-        name = name.split("@").join("").split(".").join("");
         name = name.toLowerCase();
+        name = name.replace(/([^a-z0-9]+){1,63}/gi, "");
         const noderedurl = "//" + this.WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", name);
         window.open(noderedurl);
     }
