@@ -1785,8 +1785,10 @@ export class Message {
         } else {
             name = myusername;
         }
-        name = name.split("@").join("").split(".").join("");
+        if (NoderedUtil.IsNullEmpty(name)) throw new Error("Instance name cannot be empty");
+        // name = name.split("@").join("").split(".").join("");
         name = name.toLowerCase();
+        name = name.replace(/([^a-z0-9]+){1,63}/gi, "");
         span?.setAttribute("instancename", name)
         Logger.otel.endSpan(span);
         return name;
@@ -2321,6 +2323,7 @@ export class Message {
             }
 
             let servicename = name;
+            // /^(?!-)[a-zA-Z0-9-]{1,63}$/g;
             var test = /[a-z]([-a-z0-9]*[a-z0-9])?/.exec(servicename);
             if (test == null || test.index != 0) {
                 servicename = "nr" + name + "svc";

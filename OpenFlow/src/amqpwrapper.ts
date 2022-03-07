@@ -491,15 +491,20 @@ export class amqpwrapper extends events.EventEmitter {
                 }
             }
             try {
+                var ismine = this.IsMyQueue(options.replyTo);
                 if (typeof msg === "string" || msg instanceof String) {
                     msg = "timeout"
                 } else {
                     msg.command = "timeout";
                 }
-                // Resend message, this time to the reply queue for the correct node (replyTo)
-                if (Config.log_amqp) Logger.instanse.info("[DLX][" + options.exchange + "] Send timeout to " + options.replyTo + " correlationId: " + options.correlationId);
-                // await amqpwrapper.Instance().sendWithReply("", options.replyTo, msg, 20000, options.correlationId, "");
-                await amqpwrapper.Instance().send("", options.replyTo, msg, 20000, options.correlationId, "");
+                if (ismine) {
+                    // Resend message, this time to the reply queue for the correct node (replyTo)
+                    if (Config.log_amqp) Logger.instanse.warn("[DLX][" + options.exchange + "] Send timeout to " + options.replyTo + " correlationId: " + options.correlationId);
+                    // await amqpwrapper.Instance().sendWithReply("", options.replyTo, msg, 20000, options.correlationId, "");
+                    await amqpwrapper.Instance().send("", options.replyTo, msg, 20000, options.correlationId, "");
+                } else {
+                    if (Config.log_amqp) Logger.instanse.info("[DLX][" + options.exchange + "] Received timeout, (not handled by me) to " + options.replyTo + " correlationId: " + options.correlationId);
+                }
             } catch (error) {
                 console.error("Failed sending deadletter message to " + options.replyTo);
                 console.error(error);
@@ -510,6 +515,10 @@ export class amqpwrapper extends events.EventEmitter {
     }
     IsMyconsumerTag(consumerTag: string) {
         var q = this.queues.filter(q => q.consumerTag == consumerTag);
+        return q.length != 0;
+    }
+    IsMyQueue(queuename: string) {
+        var q = this.queues.filter(q => q.queuename == queuename || q.queue == queuename);
         return q.length != 0;
     }
     async AddOFExchange(parent: Span) {
