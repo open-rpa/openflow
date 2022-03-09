@@ -2347,17 +2347,18 @@ export class Message {
                 await KubeUtil.instance().CoreV1Api.createNamespacedService(namespace, _service);
             }
             Logger.instanse.debug("[" + _tuser.username + "] GetIngress useringress");
-            const ingress = await KubeUtil.instance().GetIngressV1beta1(namespace, "useringress");
-            if (ingress !== null) {
-                let rule = null;
-                for (let i = 0; i < ingress.spec.rules.length; i++) {
-                    if (ingress.spec.rules[i].host == hostname) {
-                        rule = ingress.spec.rules[i];
+
+            if (Config.use_ingress_beta1_syntax) {
+                const ingress = await KubeUtil.instance().GetIngressV1beta1(namespace, "useringress");
+                if (ingress !== null) {
+                    let rule = null;
+                    for (let i = 0; i < ingress.spec.rules.length; i++) {
+                        if (ingress.spec.rules[i].host == hostname) {
+                            rule = ingress.spec.rules[i];
+                        }
                     }
-                }
-                if (rule == null) {
-                    Logger.instanse.debug("[" + _tuser.username + "] ingress " + hostname + " not found in useringress creating it");
-                    if (Config.use_ingress_beta1_syntax) {
+                    if (rule == null) {
+                        Logger.instanse.debug("[" + _tuser.username + "] ingress " + hostname + " not found in useringress creating it");
                         rule = {
                             host: hostname,
                             http: {
@@ -2371,39 +2372,78 @@ export class Message {
                             }
                         }
                         ingress.spec.rules.push(rule);
-                    } else {
-                        rule = {
-                            host: hostname,
-                            http: {
-                                paths: [{
-                                    path: "/",
-                                    pathType: "Prefix",
-                                    backend: {
-                                        service: {
-                                            name: servicename,
-                                            port: {
-                                                number: port
-                                            }
-                                        }
-                                    }
-                                }]
-                            }
-                        }
-                        ingress.spec.rules.push(rule);
+                        delete ingress.metadata.creationTimestamp;
+                        delete ingress.status;
+                        Logger.instanse.debug("[" + _tuser.username + "] replaceNamespacedIngress");
+                        await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("useringress", namespace, ingress);
                     }
-                    delete ingress.metadata.creationTimestamp;
-                    delete ingress.status;
-                    Logger.instanse.debug("[" + _tuser.username + "] replaceNamespacedIngress");
-                    await KubeUtil.instance().ExtensionsV1beta1Api.replaceNamespacedIngress("useringress", namespace, ingress);
+                } else {
+                    Logger.instanse.error("[" + _tuser.username + "] failed locating useringress");
+                    throw new Error("failed locating useringress");
                 }
             } else {
-                Logger.instanse.error("[" + _tuser.username + "] failed locating useringress");
-                throw new Error("failed locating useringress");
+                const ingress = await KubeUtil.instance().GetIngressV1(namespace, "useringress");
+                if (ingress !== null) {
+                    let rule = null;
+                    for (let i = 0; i < ingress.spec.rules.length; i++) {
+                        if (ingress.spec.rules[i].host == hostname) {
+                            rule = ingress.spec.rules[i];
+                        }
+                    }
+                    if (rule == null) {
+                        Logger.instanse.debug("[" + _tuser.username + "] ingress " + hostname + " not found in useringress creating it");
+                        if (Config.use_ingress_beta1_syntax) {
+                            rule = {
+                                host: hostname,
+                                http: {
+                                    paths: [{
+                                        path: "/",
+                                        backend: {
+                                            serviceName: servicename,
+                                            servicePort: "www"
+                                        }
+                                    }]
+                                }
+                            }
+                            ingress.spec.rules.push(rule);
+                        } else {
+                            rule = {
+                                host: hostname,
+                                http: {
+                                    paths: [{
+                                        path: "/",
+                                        pathType: "Prefix",
+                                        backend: {
+                                            service: {
+                                                name: servicename,
+                                                port: {
+                                                    number: port
+                                                }
+                                            }
+                                        }
+                                    }]
+                                }
+                            }
+                            ingress.spec.rules.push(rule);
+                        }
+                        delete ingress.metadata.creationTimestamp;
+                        delete ingress.status;
+                        Logger.instanse.debug("[" + _tuser.username + "] replaceNamespacedIngress");
+                        await KubeUtil.instance().NetworkingV1Api.replaceNamespacedIngress("useringress", namespace, ingress);
+                    }
+                } else {
+                    Logger.instanse.error("[" + _tuser.username + "] failed locating useringress");
+                    throw new Error("failed locating useringress");
+                }
             }
+
         } catch (error) {
             if (error.response && error.response.body && error.response.body.message) {
                 Logger.instanse.error(new Error(error.response.body.message));
                 error.message = error.response.body.message;
+            } else if (error.response && error.response.body) {
+                Logger.instanse.error(new Error(error.response.body));
+                error.message = error.response.body;
             }
             span?.recordException(error);
             throw error;

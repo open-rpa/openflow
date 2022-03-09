@@ -1,4 +1,4 @@
-import { CoreV1Api, AppsV1Api, ExtensionsV1beta1Api, VoidAuth, ApiKeyAuth, V1PodList } from "@kubernetes/client-node";
+import { CoreV1Api, AppsV1Api, ExtensionsV1beta1Api, VoidAuth, ApiKeyAuth, V1PodList, NetworkingV1Api } from "@kubernetes/client-node";
 import http = require('http');
 const localVarRequest = require("request");
 let defaultBasePath = 'https://localhost';
@@ -8,6 +8,7 @@ export class KubeUtil {
     public AppsV1Api: AppsV1Api = null; // kc.makeApiClient(k8s.AppsV1Api);
     public ExtensionsV1beta1Api: ExtensionsV1beta1Api = null; // kc.makeApiClient(k8s.ExtensionsV1beta1Api);
     public Metricsv1beta1Api: Metricsv1beta1Api = null;
+    public NetworkingV1Api: NetworkingV1Api = null; // kc.makeApiClient(k8s.NetworkingV1Api);
 
     private static _instance: KubeUtil = null;
     public static instance(): KubeUtil {
@@ -39,6 +40,7 @@ export class KubeUtil {
         this.AppsV1Api = kc.makeApiClient(k8s.AppsV1Api);
         this.ExtensionsV1beta1Api = kc.makeApiClient(k8s.ExtensionsV1beta1Api);
         this.Metricsv1beta1Api = kc.makeApiClient(Metricsv1beta1Api);
+        this.NetworkingV1Api = kc.makeApiClient(NetworkingV1Api);
     }
 
     async GetStatefulSet(namespace, name) {
@@ -86,6 +88,14 @@ export class KubeUtil {
     }
     async GetIngressV1beta1(namespace, name) {
         const list = await this.ExtensionsV1beta1Api.listNamespacedIngress(namespace);
+        for (let i = 0; i < list.body.items.length; i++) {
+            const item = list.body.items[i];
+            if (item.metadata.name == name) return item;
+        }
+        return null;
+    }
+    async GetIngressV1(namespace, name) {
+        const list = await this.NetworkingV1Api.listNamespacedIngress(namespace);
         for (let i = 0; i < list.body.items.length; i++) {
             const item = list.body.items[i];
             if (item.metadata.name == name) return item;
