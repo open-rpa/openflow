@@ -2392,40 +2392,24 @@ export class Message {
                     }
                     if (rule == null) {
                         Logger.instanse.debug("[" + _tuser.username + "] ingress " + hostname + " not found in useringress creating it");
-                        if (Config.use_ingress_beta1_syntax) {
-                            rule = {
-                                host: hostname,
-                                http: {
-                                    paths: [{
-                                        path: "/",
-                                        backend: {
-                                            serviceName: servicename,
-                                            servicePort: "www"
-                                        }
-                                    }]
-                                }
-                            }
-                            ingress.spec.rules.push(rule);
-                        } else {
-                            rule = {
-                                host: hostname,
-                                http: {
-                                    paths: [{
-                                        path: "/",
-                                        pathType: "Prefix",
-                                        backend: {
-                                            service: {
-                                                name: servicename,
-                                                port: {
-                                                    number: port
-                                                }
+                        rule = {
+                            host: hostname,
+                            http: {
+                                paths: [{
+                                    path: "/",
+                                    pathType: "Prefix",
+                                    backend: {
+                                        service: {
+                                            name: servicename,
+                                            port: {
+                                                number: port
                                             }
                                         }
-                                    }]
-                                }
+                                    }
+                                }]
                             }
-                            ingress.spec.rules.push(rule);
                         }
+                        ingress.spec.rules.push(rule);
                         delete ingress.metadata.creationTimestamp;
                         delete ingress.status;
                         Logger.instanse.debug("[" + _tuser.username + "] replaceNamespacedIngress");
