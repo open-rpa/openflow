@@ -2192,14 +2192,6 @@ export class Message {
                 }
                 saml_baseurl += "/";
 
-                // _url = "ws://" + url.parse(baseurl).host;
-
-                // const api_ws_url = Config.api_ws_url;
-                // const api_ws_url = Config.baseurl();
-                // const api_ws_url = "ws://api/";
-                // const api_ws_url = "https://demo.openiap.io/"
-                // const api_ws_url = "https://demo.openiap.io/"
-
                 if (!NoderedUtil.IsNullUndefinded(resources.limits) && NoderedUtil.IsNullEmpty(resources.limits.memory)) delete resources.limits.memory;
                 if (!NoderedUtil.IsNullUndefinded(resources.limits) && NoderedUtil.IsNullEmpty(resources.limits.cpu)) delete resources.limits.cpu;
                 if (!NoderedUtil.IsNullUndefinded(resources.requests) && NoderedUtil.IsNullEmpty(resources.requests.memory)) delete resources.requests.memory;
@@ -2212,7 +2204,6 @@ export class Message {
                 if (saml_federation_metadata == "https://pc.openiap.io/issue/FederationMetadata/2007-06/FederationMetadata.xml") {
                     saml_federation_metadata = "https://demo.openiap.io/issue/FederationMetadata/2007-06/FederationMetadata.xml"
                 }
-
 
                 const _deployment = {
                     metadata: { name: name, namespace: namespace, labels: { billed: hasbilling.toString(), userid: _id, app: name } },
