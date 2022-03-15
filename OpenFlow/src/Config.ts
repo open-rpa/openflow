@@ -18,6 +18,7 @@ export class Config {
     public static reload(): void {
         Config.getversion();
         Config.logpath = Config.getEnv("logpath", __dirname);
+        Config.log_cache = Config.parseBoolean(Config.getEnv("log_cache", "true"));
         Config.log_error_stack = Config.parseBoolean(Config.getEnv("log_error_stack", "false"));
         Config.log_errors = Config.parseBoolean(Config.getEnv("log_errors", "true"));
         Config.log_queries = Config.parseBoolean(Config.getEnv("log_queries", "false"));
@@ -30,7 +31,7 @@ export class Config {
         Config.log_amqp = Config.parseBoolean(Config.getEnv("log_amqp", "true"));
         Config.log_index_mngt = Config.parseBoolean(Config.getEnv("log_index_mngt", "true"));
         Config.log_watches = Config.parseBoolean(Config.getEnv("log_watches", "false"));
-        Config.log_watches_notify = Config.parseBoolean(Config.getEnv("log_watches_notify", "true"));
+        Config.log_watches_notify = Config.parseBoolean(Config.getEnv("log_watches_notify", "false"));
 
         Config.openflow_uniqueid = Config.getEnv("openflow_uniqueid", "");
         Config.enable_openflow_amqp = Config.parseBoolean(Config.getEnv("enable_openflow_amqp", "false"));
@@ -189,6 +190,7 @@ export class Config {
     public static license_key: string = Config.getEnv("license_key", "");
     public static version: string = Config.getversion();
     public static logpath: string = Config.getEnv("logpath", __dirname);
+    public static log_cache: boolean = Config.parseBoolean(Config.getEnv("log_cache", "false"));
     public static log_error_stack: boolean = Config.parseBoolean(Config.getEnv("log_error_stack", "false"));
     public static log_errors: boolean = Config.parseBoolean(Config.getEnv("log_errors", "true"));
     public static log_queries: boolean = Config.parseBoolean(Config.getEnv("log_queries", "false"));
@@ -201,7 +203,7 @@ export class Config {
     public static log_amqp: boolean = Config.parseBoolean(Config.getEnv("log_amqp", "true"));
     public static log_index_mngt: boolean = Config.parseBoolean(Config.getEnv("log_index_mngt", "true"));
     public static log_watches: boolean = Config.parseBoolean(Config.getEnv("log_watches", "false"));
-    public static log_watches_notify: boolean = Config.parseBoolean(Config.getEnv("log_watches_notify", "true"));
+    public static log_watches_notify: boolean = Config.parseBoolean(Config.getEnv("log_watches_notify", "false"));
     public static openflow_uniqueid: string = Config.getEnv("openflow_uniqueid", "");
     public static enable_openflow_amqp: boolean = Config.parseBoolean(Config.getEnv("enable_openflow_amqp", "false"));
     public static openflow_amqp_expiration: number = parseInt(Config.getEnv("openflow_amqp_expiration", (60 * 1000 * 25).toString())); // 25 min

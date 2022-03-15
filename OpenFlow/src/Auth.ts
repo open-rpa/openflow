@@ -54,7 +54,10 @@ export class Auth {
     public static getUser(key: string, type: string): User {
         if (NoderedUtil.IsNullUndefinded(this.cacheTimer)) this.cacheTimer = setInterval(this.cleanCache, 60000)
         var res: CachedUser = this.authorizationCache[key + type];
-        if (res === null || res === undefined) return null;
+        if (res === null || res === undefined) {
+            if (Config.log_cache) Logger.instanse.debug("[" + type + "][" + key + "] not found in cache");
+            return null;
+        }
         var begin: number = res.firstsignin.getTime();
         var end: number = new Date().getTime();
         var seconds = Math.round((end - begin) / 1000);
@@ -73,12 +76,16 @@ export class Auth {
         return null;
     }
     public static async clearCache(reason: string) {
-        Logger.instanse.verbose("clearCache " + reason);
-        if (this.authorizationCache == null) return;
+        if (this.authorizationCache == null || this.authorizationCache == {}) {
+            if (Config.log_cache) Logger.instanse.debug("clearCache called, but cache was empty, reason: " + reason);
+            return;
+        }
         Auth.ensureotel();
+        let keys: string[] = Object.keys(this.authorizationCache);
         await Auth.semaphore.down();
         this.authorizationCache = {}
         Auth.semaphore.up();
+        if (Config.log_cache) Logger.instanse.debug("clearCache called with " + keys.length + " keys in cache, reason: " + reason);
     }
     public static async cleanCache() {
         try {
@@ -101,6 +108,8 @@ export class Auth {
                     this.RemoveUser(key, res.type);
                 }
             }
+            const keys2: string[] = Object.keys(this.authorizationCache);
+            if (Config.log_cache) Logger.instanse.debug("cleanCache called with " + keys.length + " keys in cache, and " + keys2.length + " after enumeration");
         } catch (error) {
             Logger.instanse.error(error)
         }
@@ -109,8 +118,10 @@ export class Auth {
         Auth.ensureotel();
         await Auth.semaphore.down();
         if (!NoderedUtil.IsNullUndefinded(this.authorizationCache[key + type])) {
-            Logger.instanse.silly("Delete user with key " + key + " from cache");
+            if (Config.log_cache) Logger.instanse.debug("Delete user with key " + key + " from cache");
             delete this.authorizationCache[key + type];
+        } else {
+            if (Config.log_cache) Logger.instanse.debug("RemoveUser user called with " + key + " but was not found in cache");
         }
         Auth.semaphore.up();
     }
@@ -118,10 +129,12 @@ export class Auth {
         Auth.ensureotel();
         await Auth.semaphore.down();
         if (NoderedUtil.IsNullUndefinded(this.authorizationCache[key + type])) {
-            Logger.instanse.silly("Adding user " + user.name + " to cache with key " + key);
-            var cuser: CachedUser = new CachedUser(user, user._id, type);
-            this.authorizationCache[key + type] = cuser;
+            if (Config.log_cache) Logger.instanse.debug("Adding user " + user.name + " to cache with key " + key);
+        } else {
+            if (Config.log_cache) Logger.instanse.debug("Updating user " + user.name + " to cache with key " + key);
         }
+        var cuser: CachedUser = new CachedUser(user, user._id, type);
+        this.authorizationCache[key + type] = cuser;
         Auth.semaphore.up();
     }
     public static Semaphore = (n) => ({
