@@ -40,8 +40,8 @@ export class WebSocketClientService {
                 this.enable_entity_restriction = data.enable_entity_restriction;
                 this.enable_web_tours = data.enable_web_tours;
 
-                this.collections_with_text_index = data.collections_with_text_index;
-                this.timeseries_collections = data.timeseries_collections;
+                if (data.collections_with_text_index) this.collections_with_text_index = data.collections_with_text_index;
+                if (data.timeseries_collections) this.timeseries_collections = data.timeseries_collections;
 
 
                 if (NoderedUtil.IsNullUndefinded(WebSocketClient.instance)) {
