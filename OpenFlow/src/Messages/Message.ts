@@ -1942,9 +1942,14 @@ export class Message {
                 const tuser: TokenUser = TokenUser.From(nodereduser);
                 const nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
 
+                var saml_federation_metadata = Config.saml_federation_metadata;
+                if (saml_federation_metadata == "https://pc.openiap.io/issue/FederationMetadata/2007-06/FederationMetadata.xml") {
+                    saml_federation_metadata = "https://demo.openiap.io/issue/FederationMetadata/2007-06/FederationMetadata.xml"
+                }
+
                 await DBHelper.EnsureNoderedRoles(tuser, this.jwt, true, span);
                 let saml_baseurl = Config.protocol + "://" + hostname + "/";
-                let _samlparsed = url.parse(Config.saml_federation_metadata);
+                let _samlparsed = url.parse(saml_federation_metadata);
                 if (_samlparsed.protocol == "http:" || _samlparsed.protocol == "ws:") {
                     saml_baseurl = "http://" + hostname
                     if (_samlparsed.port && _samlparsed.port != "80" && _samlparsed.port != "3000") {
@@ -1957,11 +1962,15 @@ export class Message {
                     }
                 }
                 saml_baseurl += "/";
+                // https://demo.openiap.io/issue
                 // "saml_baseurl=" + saml_baseurl,
+                var nodered_saml_entrypoint = saml_federation_metadata.split("/FederationMetadata/2007-06/FederationMetadata.xml").join("");
+                if (!NoderedUtil.IsNullEmpty(Config.nodered_saml_entrypoint)) nodered_saml_entrypoint = Config.nodered_saml_entrypoint
                 const Env = [
-                    "saml_federation_metadata=" + Config.saml_federation_metadata,
+                    "saml_federation_metadata=" + saml_federation_metadata,
                     "saml_issuer=" + Config.saml_issuer,
                     "saml_entrypoint=" + Config.baseurl() + 'issue',
+                    "nodered_saml_entrypoint=" + nodered_saml_entrypoint,
                     "nodered_id=" + name,
                     "nodered_sa=" + nodereduser.username,
                     "jwt=" + nodered_jwt,
@@ -2178,7 +2187,12 @@ export class Message {
                 var port = 3000;
                 let saml_baseurl = Config.protocol + "://" + hostname + "/";
 
-                let _samlparsed = url.parse(Config.saml_federation_metadata);
+                var saml_federation_metadata = Config.saml_federation_metadata;
+                if (saml_federation_metadata == "https://pc.openiap.io/issue/FederationMetadata/2007-06/FederationMetadata.xml") {
+                    saml_federation_metadata = "https://demo.openiap.io/issue/FederationMetadata/2007-06/FederationMetadata.xml"
+                }
+
+                let _samlparsed = url.parse(saml_federation_metadata);
                 if (_samlparsed.protocol == "http:" || _samlparsed.protocol == "ws:") {
                     saml_baseurl = "http://" + hostname
                     if (_samlparsed.port && _samlparsed.port != "80") {
@@ -2197,13 +2211,12 @@ export class Message {
                 if (!NoderedUtil.IsNullUndefinded(resources.requests) && NoderedUtil.IsNullEmpty(resources.requests.memory)) delete resources.requests.memory;
                 if (!NoderedUtil.IsNullUndefinded(resources.requests) && NoderedUtil.IsNullEmpty(resources.requests.memory)) delete resources.requests.memory;
 
-                var saml_federation_metadata = Config.saml_federation_metadata;
+
                 if (api_ws_url == "wss://pc.openiap.io/") {
                     api_ws_url = "wss://demo.openiap.io/"
                 }
-                if (saml_federation_metadata == "https://pc.openiap.io/issue/FederationMetadata/2007-06/FederationMetadata.xml") {
-                    saml_federation_metadata = "https://demo.openiap.io/issue/FederationMetadata/2007-06/FederationMetadata.xml"
-                }
+                var nodered_saml_entrypoint = saml_federation_metadata.split("/FederationMetadata/2007-06/FederationMetadata.xml").join("");
+                if (!NoderedUtil.IsNullEmpty(Config.nodered_saml_entrypoint)) nodered_saml_entrypoint = Config.nodered_saml_entrypoint
 
                 const _deployment = {
                     metadata: { name: name, namespace: namespace, labels: { billed: hasbilling.toString(), userid: _id, app: name } },
@@ -2224,6 +2237,7 @@ export class Message {
                                             { name: "saml_federation_metadata", value: saml_federation_metadata },
                                             { name: "saml_issuer", value: Config.saml_issuer },
                                             { name: "saml_baseurl", value: saml_baseurl },
+                                            { name: "nodered_saml_entrypoint", value: nodered_saml_entrypoint },
                                             { name: "nodered_id", value: name },
                                             { name: "nodered_sa", value: nodereduser.username },
                                             { name: "jwt", value: nodered_jwt },

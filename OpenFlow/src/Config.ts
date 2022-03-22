@@ -151,6 +151,7 @@ export class Config {
         Config.saml_federation_metadata = Config.getEnv("saml_federation_metadata", "");
         Config.api_ws_url = Config.getEnv("api_ws_url", "");
         Config.nodered_ws_url = Config.getEnv("nodered_ws_url", "");
+        Config.nodered_saml_entrypoint = Config.getEnv("nodered_saml_entrypoint", "");
         Config.nodered_docker_entrypoints = Config.getEnv("nodered_docker_entrypoints", "web");
         Config.nodered_docker_certresolver = Config.getEnv("nodered_docker_certresolver", "");
         Config.namespace = Config.getEnv("namespace", ""); // also sent to website 
@@ -329,6 +330,8 @@ export class Config {
     public static saml_federation_metadata: string = Config.getEnv("saml_federation_metadata", "");
     public static api_ws_url: string = Config.getEnv("api_ws_url", "");
     public static nodered_ws_url: string = Config.getEnv("nodered_ws_url", "");
+    public static nodered_saml_entrypoint: string = Config.getEnv("nodered_saml_entrypoint", "");
+
     public static nodered_docker_entrypoints: string = Config.getEnv("nodered_docker_entrypoints", "web");
     public static nodered_docker_certresolver: string = Config.getEnv("nodered_docker_certresolver", "");
 
