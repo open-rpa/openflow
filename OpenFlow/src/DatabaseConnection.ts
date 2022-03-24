@@ -229,6 +229,33 @@ export class DatabaseConnection extends events.EventEmitter {
             });
             (stream.stream as any).on("change", async (next) => {
                 try {
+                    if (collectionname == "mq") {
+                        Auth.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
+                    }
+                    if (collectionname == "users" && (_type == "user" || _type == "role" || _type == "customer")) {
+                        Auth.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
+                    }
+                    if (collectionname == "config" && (_type == "provider" || _type == "restriction" || _type == "resource")) {
+                        Auth.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
+                    }
+                    if (collectionname == "config" && _type == "provider") {
+                        await LoginProvider.RegisterProviders(WebServer.app, Config.baseurl());
+                    }
+                    let doContinue: boolean = false;
+                    for (let i = 0; i < WebSocketServer._clients.length; i++) {
+                        let client = WebSocketServer._clients[i];
+                        if (NoderedUtil.IsNullUndefinded(client.user)) continue;
+                        let ids = Object.keys(client.watches);
+                        for (let y = 0; y < ids.length; y++) {
+                            var stream = client.watches[ids[y]];
+                            if (stream.collectionname != collectionname) continue;
+                            doContinue = true;
+                            break;
+                        }
+                        if (doContinue == true) break;
+                    }
+                    if (!doContinue) return;
+
                     var _id = next.documentKey._id;
                     if (next.operationType == 'update' && collectionname == "users") {
                         if (next.updateDescription.updatedFields.hasOwnProperty("_heartbeat")) return;
@@ -320,18 +347,6 @@ export class DatabaseConnection extends events.EventEmitter {
                         }
                     } catch (error) {
                         Logger.instanse.error(error);
-                    }
-                    if (collectionname == "mq") {
-                        Auth.clearCache("watch detectec change in " + collectionname + " collection for a " + _type + " " + item.name);
-                    }
-                    if (collectionname == "users" && (_type == "user" || _type == "role" || _type == "customer")) {
-                        Auth.clearCache("watch detectec change in " + collectionname + " collection for a " + _type + " " + item.name);
-                    }
-                    if (collectionname == "config" && (_type == "provider" || _type == "restriction" || _type == "resource")) {
-                        Auth.clearCache("watch detectec change in " + collectionname + " collection for a " + _type + " " + item.name);
-                    }
-                    if (collectionname == "config" && _type == "provider") {
-                        await LoginProvider.RegisterProviders(WebServer.app, Config.baseurl());
                     }
                 } catch (error) {
                     Logger.instanse.error(error);
@@ -2355,19 +2370,22 @@ export class DatabaseConnection extends events.EventEmitter {
             if (DatabaseConnection.usemetadata(collectionname)) {
                 const ot_end = Logger.otel.startTimer();
                 const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.find", span);
-                const arr = await this.db.collection(collectionname).find(_query).toArray();
+                const cursor = await this.db.collection(collectionname).find(_query)
+
+                let deletecounter = 0;
                 Logger.otel.endSpan(mongodbspan);
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: collectionname });
-                Logger.instanse.debug("[" + user.username + "][" + collectionname + "] Deleting " + arr.length + " files in database");
-                for (let i = 0; i < arr.length; i++) {
+                Logger.instanse.debug("[" + user.username + "][" + collectionname + "] Deleting multiple files in database");
+                for await (const c of cursor) {
+                    deletecounter++;
                     const ot_end = Logger.otel.startTimer();
                     const _mongodbspan: Span = Logger.otel.startSubSpan("mongodb.deletefile", span);
-                    await this._DeleteFile(arr[i]._id);
+                    await this._DeleteFile(c._id);
                     Logger.otel.endSpan(_mongodbspan);
                     Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });
                 }
-                if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] deleted " + arr.length + " items in database");
-                return arr.length;
+                if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] deleted " + deletecounter + " files in database");
+                return deletecounter;
             } else {
                 // const ot_end = Logger.otel.startTimer();
                 // const res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteMany(_query);
@@ -2379,13 +2397,20 @@ export class DatabaseConnection extends events.EventEmitter {
                 const date = new Date()
                 date.setMonth(date.getMonth() - 1)
 
+                var addToHist = false;
+                if (skip_array.indexOf(collectionname) == -1) {
+                    if (!collectionname.endsWith("_hist")) addToHist = true;
+                }
+
+
+                if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] quering items to delete from " + collectionname);
                 const qot_end = Logger.otel.startTimer();
                 const qmongodbspan: Span = Logger.otel.startSubSpan("mongodb.find", span);
-                const docs = await this.db.collection(collectionname).find(_query).toArray();
+                const cursor = await this.db.collection(collectionname).find(_query);
                 Logger.otel.endSpan(qmongodbspan);
                 Logger.otel.endTimer(qot_end, DatabaseConnection.mongodb_query, { collection: collectionname });
-                for (let i = 0; i < docs.length; i++) {
-                    const doc = docs[i];
+                for await (const c of cursor) {
+                    const doc = c;
                     const fullhist = {
                         _acl: doc._acl,
                         _type: doc._type,
@@ -2404,16 +2429,15 @@ export class DatabaseConnection extends events.EventEmitter {
                         _version: doc._version,
                         reason: doc.reason
                     }
-                    if (skip_array.indexOf(collectionname) == -1) {
-                        if (!collectionname.endsWith("_hist")) bulkInsert.insert(fullhist);
-                    }
-                    // bulkRemove.find({ _id: doc._id }).removeOne();
+                    if (addToHist) bulkInsert.insert(fullhist);
                     bulkRemove.find({ _id: doc._id }).deleteOne();
                     counter++
                     if (counter % x === 0) {
                         const ot_end = Logger.otel.startTimer();
-                        bulkInsert.execute()
-                        bulkRemove.execute()
+                        if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] Inserting " + bulkInsert.length + " items into " + collectionname + "_hist");
+                        if (bulkInsert.length > 0) bulkInsert.execute()
+                        if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] Deleting " + bulkRemove.length + " items from " + collectionname);
+                        if (bulkRemove.length > 0) bulkRemove.execute()
                         bulkInsert = this.db.collection(collectionname + "_hist").initializeUnorderedBulkOp()
                         bulkRemove = this.db.collection(collectionname).initializeUnorderedBulkOp()
                         Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });
@@ -2421,7 +2445,9 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
                 const ot_end = Logger.otel.startTimer();
                 const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.bulkexecute", span);
+                if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] Inserting " + bulkInsert.length + " items into " + collectionname + "_hist");
                 if (bulkInsert.length > 0) bulkInsert.execute()
+                if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] Deleting " + bulkRemove.length + " items from " + collectionname);
                 if (bulkRemove.length > 0) bulkRemove.execute()
                 Logger.otel.endSpan(mongodbspan);
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });
