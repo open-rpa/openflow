@@ -1966,11 +1966,11 @@ export class Message {
                 // "saml_baseurl=" + saml_baseurl,
                 var nodered_saml_entrypoint = saml_federation_metadata.split("/FederationMetadata/2007-06/FederationMetadata.xml").join("");
                 if (!NoderedUtil.IsNullEmpty(Config.nodered_saml_entrypoint)) nodered_saml_entrypoint = Config.nodered_saml_entrypoint
+                // "saml_entrypoint=" + Config.baseurl() + 'issue',
                 const Env = [
                     "saml_federation_metadata=" + saml_federation_metadata,
                     "saml_issuer=" + Config.saml_issuer,
-                    "saml_entrypoint=" + Config.baseurl() + 'issue',
-                    "nodered_saml_entrypoint=" + nodered_saml_entrypoint,
+                    "saml_entrypoint=" + nodered_saml_entrypoint,
                     "nodered_id=" + name,
                     "nodered_sa=" + nodereduser.username,
                     "jwt=" + nodered_jwt,
@@ -1989,6 +1989,7 @@ export class Message {
                     "NODE_ENV=" + Config.NODE_ENV,
                     "HTTP_PROXY=" + Config.HTTP_PROXY,
                     "HTTPS_PROXY=" + Config.HTTPS_PROXY,
+                    "NO_PROXY=" + Config.NO_PROXY,
                     "prometheus_expose_metric=" + "false",
                     "enable_analytics=" + Config.enable_analytics.toString(),
                     "tours=" + Config.enable_web_tours.toString(),
@@ -2192,16 +2193,17 @@ export class Message {
                     saml_federation_metadata = "https://demo.openiap.io/issue/FederationMetadata/2007-06/FederationMetadata.xml"
                 }
 
-                let _samlparsed = url.parse(saml_federation_metadata);
-                if (_samlparsed.protocol == "http:" || _samlparsed.protocol == "ws:") {
+                let _api_ws_parsed = url.parse(api_ws_url);
+                //if (_samlparsed.protocol == "http:" || _samlparsed.protocol == "ws:") {
+                if (_api_ws_parsed.protocol == "http" || _api_ws_parsed.protocol == "ws") {
                     saml_baseurl = "http://" + hostname
-                    if (_samlparsed.port && _samlparsed.port != "80") {
-                        saml_baseurl += ":" + _samlparsed.port;
+                    if (_api_ws_parsed.port && _api_ws_parsed.port != "80" && _api_ws_parsed.port != "3000") {
+                        saml_baseurl += ":" + _api_ws_parsed.port;
                     }
                 } else {
                     saml_baseurl = "https://" + hostname
-                    if (_samlparsed.port && _samlparsed.port != "443") {
-                        saml_baseurl += ":" + _samlparsed.port;
+                    if (_api_ws_parsed.port && _api_ws_parsed.port != "443" && _api_ws_parsed.port != "3000") {
+                        saml_baseurl += ":" + _api_ws_parsed.port;
                     }
                 }
                 saml_baseurl += "/";
@@ -2237,7 +2239,7 @@ export class Message {
                                             { name: "saml_federation_metadata", value: saml_federation_metadata },
                                             { name: "saml_issuer", value: Config.saml_issuer },
                                             { name: "saml_baseurl", value: saml_baseurl },
-                                            { name: "nodered_saml_entrypoint", value: nodered_saml_entrypoint },
+                                            { name: "saml_entrypoint", value: nodered_saml_entrypoint },
                                             { name: "nodered_id", value: name },
                                             { name: "nodered_sa", value: nodereduser.username },
                                             { name: "jwt", value: nodered_jwt },
@@ -2256,6 +2258,7 @@ export class Message {
                                             { name: "NODE_ENV", value: Config.NODE_ENV },
                                             { name: "HTTP_PROXY", value: Config.HTTP_PROXY },
                                             { name: "HTTPS_PROXY", value: Config.HTTPS_PROXY },
+                                            { name: "NO_PROXY", value: Config.NO_PROXY },
                                             { name: "prometheus_expose_metric", value: "false" },
                                             { name: "enable_analytics", value: Config.enable_analytics.toString() },
                                             { name: "tours", value: Config.enable_web_tours.toString() },
