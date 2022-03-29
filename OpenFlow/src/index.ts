@@ -15,7 +15,7 @@ import { Message } from "./Messages/Message";
 import { Auth } from "./Auth";
 
 Logger.configure(false, false);
-Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db);
+Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, true);
 
 
 let amqp: amqpwrapper = null;
