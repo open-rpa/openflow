@@ -87,10 +87,13 @@ export class DatabaseConnection extends events.EventEmitter {
     public static mongodb_delete: ValueRecorder;
     public static mongodb_deletemany: ValueRecorder;
     public static semaphore = Auth.Semaphore(1);
-    constructor(mongodburl: string, dbname: string) {
+
+    public registerGlobalWatches: boolean = true;
+    constructor(mongodburl: string, dbname: string, registerGlobalWatches: boolean) {
         super();
         this._dbname = dbname;
         this.mongodburl = mongodburl;
+        if (!NoderedUtil.IsNullEmpty(registerGlobalWatches)) this.registerGlobalWatches = registerGlobalWatches;
 
         if (!NoderedUtil.IsNullUndefinded(Logger.otel)) {
             DatabaseConnection.mongodb_query = Logger.otel.meter.createValueRecorder('openflow_mongodb_query_seconds', {
@@ -221,6 +224,7 @@ export class DatabaseConnection extends events.EventEmitter {
         this.emit("connected");
     }
     registerGlobalWatch(collectionname: string, parent: Span) {
+        if (!this.registerGlobalWatches) return;
         const span: Span = Logger.otel.startSubSpan("registerGlobalWatch", parent);
         try {
             span?.setAttribute("collectionname", collectionname);
@@ -239,33 +243,6 @@ export class DatabaseConnection extends events.EventEmitter {
             });
             (stream.stream as any).on("change", async (next) => {
                 try {
-                    if (collectionname == "mq") {
-                        Auth.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
-                    }
-                    if (collectionname == "users" && (_type == "user" || _type == "role" || _type == "customer")) {
-                        Auth.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
-                    }
-                    if (collectionname == "config" && (_type == "provider" || _type == "restriction" || _type == "resource")) {
-                        Auth.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
-                    }
-                    if (collectionname == "config" && _type == "provider") {
-                        await LoginProvider.RegisterProviders(WebServer.app, Config.baseurl());
-                    }
-                    let doContinue: boolean = false;
-                    for (let i = 0; i < WebSocketServer._clients.length; i++) {
-                        let client = WebSocketServer._clients[i];
-                        if (NoderedUtil.IsNullUndefinded(client.user)) continue;
-                        let ids = Object.keys(client.watches);
-                        for (let y = 0; y < ids.length; y++) {
-                            var stream = client.watches[ids[y]];
-                            if (stream.collectionname != collectionname) continue;
-                            doContinue = true;
-                            break;
-                        }
-                        if (doContinue == true) break;
-                    }
-                    if (!doContinue) return;
-
                     var _id = next.documentKey._id;
                     if (next.operationType == 'update' && collectionname == "users") {
                         if (next.updateDescription.updatedFields.hasOwnProperty("_heartbeat")) return;
@@ -277,6 +254,39 @@ export class DatabaseConnection extends events.EventEmitter {
                         // console.log(next.updateDescription.updatedFields);
                     }
                     var item = next.fullDocument;
+                    var _type = "";
+                    if (!NoderedUtil.IsNullUndefinded(item)) {
+                        _type = item._type;
+
+                        if (collectionname == "mq") {
+                            Auth.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
+                        }
+                        if (collectionname == "users" && (_type == "user" || _type == "role" || _type == "customer")) {
+                            Auth.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
+                        }
+                        if (collectionname == "config" && (_type == "provider" || _type == "restriction" || _type == "resource")) {
+                            Auth.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
+                        }
+                        if (collectionname == "config" && _type == "provider") {
+                            await LoginProvider.RegisterProviders(WebServer.app, Config.baseurl());
+                        }
+                    }
+                    let doContinue: boolean = false;
+                    if (WebSocketServer._clients)
+                        for (let i = 0; i < WebSocketServer._clients.length; i++) {
+                            let client = WebSocketServer._clients[i];
+                            if (NoderedUtil.IsNullUndefinded(client.user)) continue;
+                            let ids = Object.keys(client.watches);
+                            for (let y = 0; y < ids.length; y++) {
+                                var stream = client.watches[ids[y]];
+                                if (stream.collectionname != collectionname) continue;
+                                doContinue = true;
+                                break;
+                            }
+                            if (doContinue == true) break;
+                        }
+                    if (!doContinue) return;
+
                     if (NoderedUtil.IsNullEmpty(item)) item = await this.GetLatestDocumentVersion({ collectionname, id: _id, jwt: Crypt.rootToken() }, null);
                     if (NoderedUtil.IsNullEmpty(item)) {
                         Logger.instanse.error("Missing fullDocument and could not find historic version for " + _id + " in " + collectionname);
@@ -284,7 +294,6 @@ export class DatabaseConnection extends events.EventEmitter {
                     } else {
                         if (Config.log_watches) Logger.instanse.verbose("[" + collectionname + "][" + next.operationType + "] " + _id + " " + item.name);
                     }
-                    var _type = item._type;
                     try {
                         for (var i = 0; i < WebSocketServer._clients.length; i++) {
                             var client = WebSocketServer._clients[i];
