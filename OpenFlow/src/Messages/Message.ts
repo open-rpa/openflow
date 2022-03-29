@@ -144,6 +144,12 @@ export class Message {
                 case "housekeeping":
                     await this.Housekeeping(false, false, false, span);
                     break;
+                case "updateworkitemqueue":
+                    await this.UpdateWorkItemQueue(span);
+                    break;
+                case "deleteworkitemqueue":
+                    await this.DeleteWorkItemQueue(span);
+                    break;
                 default:
                     span?.recordException("Unknown command " + this.command);
                     this.UnknownCommand();
@@ -199,8 +205,6 @@ export class Message {
         }
         if (NoderedUtil.IsNullEmpty(this.jwt)) this.jwt = cli.jwt;
         if (NoderedUtil.IsNullEmpty(this.jwt)) {
-            console.warn("no jwt");
-
             this.Reply("error");
             this.data = "{\"message\": \"Not signed in, and missing jwt\"}";
             cli.Send(this);
@@ -278,7 +282,10 @@ export class Message {
             span?.setAttribute("id", this.id);
             switch (command) {
                 case "listcollections":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -287,7 +294,10 @@ export class Message {
                     }
                     break;
                 case "dropcollection":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -296,7 +306,10 @@ export class Message {
                     }
                     break;
                 case "query":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -305,7 +318,10 @@ export class Message {
                     }
                     break;
                 case "getdocumentversion":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -314,7 +330,10 @@ export class Message {
                     }
                     break;
                 case "aggregate":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -323,15 +342,24 @@ export class Message {
                     }
                     break;
                 case "watch":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.Watch(cli);
                     break;
                 case "unwatch":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.UnWatch(cli);
                     break;
                 case "insertone":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -340,7 +368,10 @@ export class Message {
                     }
                     break;
                 case "insertmany":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -349,7 +380,10 @@ export class Message {
                     }
                     break;
                 case "updateone":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -358,7 +392,10 @@ export class Message {
                     }
                     break;
                 case "updatemany":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -367,7 +404,10 @@ export class Message {
                     }
                     break;
                 case "insertorupdateone":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -376,7 +416,10 @@ export class Message {
                     }
                     break;
                 case "deleteone":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -385,7 +428,10 @@ export class Message {
                     }
                     break;
                 case "deletemany":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -400,7 +446,10 @@ export class Message {
                     await this.RegisterUser(cli, span);
                     break;
                 case "mapreduce":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.MapReduce(cli);
                     break;
                 case "refreshtoken":
@@ -409,23 +458,38 @@ export class Message {
                     // this.Ping(cli);
                     break;
                 case "registerqueue":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.RegisterQueue(cli, span);
                     break;
                 case "registerexchange":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.RegisterExchange(cli, span);
                     break;
                 case "queuemessage":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.QueueMessage(cli, span);
                     break;
                 case "closequeue":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.CloseQueue(cli, span);
                     break;
                 case "ensurenoderedinstance":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -435,7 +499,10 @@ export class Message {
                     await this.ReloadUserToken(cli, span);
                     break;
                 case "deletenoderedinstance":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -444,7 +511,10 @@ export class Message {
                     }
                     break;
                 case "restartnoderedinstance":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -453,11 +523,17 @@ export class Message {
                     }
                     break;
                 case "getkubenodelabels":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.GetKubeNodeLabels(cli);
                     break;
                 case "getnoderedinstance":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -466,19 +542,31 @@ export class Message {
                     }
                     break;
                 case "getnoderedinstancelog":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.GetNoderedInstanceLog(cli, span);
                     break;
                 case "startnoderedinstance":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.StartNoderedInstance(cli, span);
                     break;
                 case "stopnoderedinstance":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.StopNoderedInstance(cli, span);
                     break;
                 case "deletenoderedpod":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -487,35 +575,59 @@ export class Message {
                     }
                     break;
                 case "savefile":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.SaveFile(cli);
                     break;
                 case "getfile":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.GetFile(cli, span);
                     break;
                 case "updatefile":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.UpdateFile(cli);
                     break;
                 case "createworkflowinstance":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.CreateWorkflowInstance(cli, span);
                     break;
                 case "stripeaddplan":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.StripeAddPlan(cli, span);
                     break;
                 case "getnextinvoice":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.GetNextInvoice(cli, span);
                     break;
                 case "stripecancelplan":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.StripeCancelPlan(cli, span);
                     break;
                 case "ensurestripecustomer":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     this.Reply();
                     this.Send(cli);
                     break;
@@ -537,18 +649,56 @@ export class Message {
                     await this.EnsureCustomer(cli, span);
                     break;
                 case "selectcustomer":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     var user = await this.SelectCustomer(span);
                     if (user != null) cli.user.selectedcustomerid = user.selectedcustomerid;
                     this.ReloadUserToken(cli, span);
                     cli.Send(this);
                     break;
                 case "housekeeping":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
                         await this.DeleteNoderedPod(span);
+                        cli.Send(this);
+                    }
+                    break;
+                case "addworkitemqueue":
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
+                    await this.AddWorkItemQueue(cli, span);
+                    cli.Send(this);
+                    break;
+                case "updateworkitemqueue":
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
+                    if (Config.enable_openflow_amqp) {
+                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                    } else {
+                        await this.UpdateWorkItemQueue(span);
+                        cli.Send(this);
+                    }
+                    break;
+                case "deleteworkitemqueue":
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
+                    if (Config.enable_openflow_amqp) {
+                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                    } else {
+                        await this.DeleteWorkItemQueue(span);
                         cli.Send(this);
                     }
                     break;
@@ -4461,6 +4611,7 @@ export class Message {
         })
     }
     public async ReloadUserToken(cli: WebSocketServerClient, parent: Span) {
+        if (NoderedUtil.IsNullUndefinded(cli)) return;
         await this.sleep(1000);
         const l: SigninMessage = new SigninMessage();
         Auth.RemoveUser(cli.user._id, "passport");
@@ -5100,6 +5251,151 @@ export class Message {
         return user;
     }
 
+
+    async AddWorkItemQueue(cli: WebSocketServerClient, parent: Span): Promise<void> {
+        let user: TokenUser = null;
+        this.Reply();
+        let msg: any;
+        try {
+            const rootjwt = Crypt.rootToken();
+            const jwt = this.jwt;
+            // msg = SelectCustomerMessage.assign(this.data);
+            msg = this.data;
+            if (typeof msg == 'string') msg = JSON.parse(msg);
+            if (NoderedUtil.IsNullEmpty(msg.name)) throw new Error("Name is mandatory")
+
+            var queues = await Config.db.query({ query: { name: msg.name, "_type": "workitemqueue" }, collectionname: "mq", jwt: rootjwt }, parent);
+            if (queues.length > 0) throw new Error("Work item queue with name " + msg.name + " already exists");
+            user = User.assign(Crypt.verityToken(this.jwt));
+
+            const wiqusers: Role = await DBHelper.EnsureRole(jwt, msg.name + " users", null, parent);
+            Base.addRight(wiqusers, WellknownIds.admins, "admins", [Rights.full_control]);
+            Base.addRight(wiqusers, user._id, user.name, [Rights.full_control]);
+            // Base.removeRight(wiqusers, user._id, [Rights.delete]);
+            wiqusers.AddMember(user as any);
+            await DBHelper.Save(wiqusers, rootjwt, parent);
+
+
+            if (NoderedUtil.IsNullEmpty(msg.workflowid)) msg.workflowid = undefined;
+            var wiq = new Base(); wiq._type = "workitemqueue";
+            wiq.name = msg.name;
+            (wiq as any).workflowid = msg.workflowid;
+            (wiq as any).robotqueue = msg.robotqueue;
+            Base.addRight(wiq, wiqusers._id, wiqusers.name, [Rights.full_control]);
+            await Config.db.InsertOne(wiq as any, "mq", 1, true, jwt, parent);
+
+            if (!NoderedUtil.IsNullUndefinded(cli)) await this.ReloadUserToken(cli, parent);
+        } catch (error) {
+            await handleError(null, error);
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) {
+                msg.error = (error.message ? error.message : error);
+            }
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            await handleError(null, error);
+        }
+    }
+
+    async UpdateWorkItemQueue(parent: Span): Promise<TokenUser> {
+        let user: TokenUser = null;
+        this.Reply();
+        let msg: any;
+        try {
+            const rootjwt = Crypt.rootToken();
+            const jwt = this.jwt;
+            // msg = SelectCustomerMessage.assign(this.data);
+            msg = this.data;
+            if (NoderedUtil.IsNullEmpty(msg.name) && NoderedUtil.IsNullEmpty(msg._id)) throw new Error("Name or _id is mandatory")
+
+            var wiq = new Base();
+            if (!NoderedUtil.IsNullEmpty(msg._id)) {
+                var queues = await Config.db.query({ query: { _id: msg._id }, collectionname: "mq", jwt }, parent);
+                if (queues.length == 0) throw new Error("Work item queue with _id " + msg._id + " not found.");
+                wiq = queues[0];
+            } else {
+                var queues = await Config.db.query({ query: { name: msg.name, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
+                if (queues.length == 0) throw new Error("Work item queue with name " + msg.name + " not found.");
+                wiq = queues[0];
+            }
+            user = User.assign(Crypt.verityToken(this.jwt));
+
+            // const wiqusers: Role = await DBHelper.EnsureRole(jwt, msg.name + " users", null, parent);
+            // Base.addRight(wiqusers, WellknownIds.admins, "admins", [Rights.full_control]);
+            // Base.addRight(wiqusers, user._id, user.name, [Rights.full_control]);
+            // // Base.removeRight(wiqusers, user._id, [Rights.delete]);
+            // wiqusers.AddMember(user as any);
+            // await DBHelper.Save(wiqusers, rootjwt, parent);
+
+
+            if (NoderedUtil.IsNullEmpty(msg.workflowid)) msg.workflowid = undefined;
+            var wiq = new Base();
+            wiq.name = msg.name;
+            (wiq as any).workflowid = msg.workflowid;
+            (wiq as any).robotqueue = msg.robotqueue;
+            // Base.addRight(wiq, wiqusers._id, wiqusers.name, [Rights.full_control]);
+            await Config.db._UpdateOne(null, wiq as any, "mq", 1, true, jwt, parent);
+        } catch (error) {
+            await handleError(null, error);
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) {
+                msg.error = (error.message ? error.message : error);
+            }
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            await handleError(null, error);
+        }
+        return user;
+    }
+    async DeleteWorkItemQueue(parent: Span): Promise<TokenUser> {
+        let user: TokenUser = null;
+        this.Reply();
+        let msg: any;
+        try {
+            const rootjwt = Crypt.rootToken();
+            const jwt = this.jwt;
+            // msg = SelectCustomerMessage.assign(this.data);
+            msg = this.data;
+            if (NoderedUtil.IsNullEmpty(msg.name) && NoderedUtil.IsNullEmpty(msg._id)) throw new Error("Name or _id is mandatory")
+
+            var wiq = new Base();
+            if (!NoderedUtil.IsNullEmpty(msg._id)) {
+                var queues = await Config.db.query({ query: { _id: msg._id }, collectionname: "mq", jwt }, parent);
+                if (queues.length == 0) throw new Error("Work item queue with _id " + msg._id + " not found.");
+                wiq = queues[0];
+            } else {
+                var queues = await Config.db.query({ query: { name: msg.name, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
+                if (queues.length == 0) throw new Error("Work item queue with name " + msg.name + " not found.");
+                wiq = queues[0];
+            }
+            user = User.assign(Crypt.verityToken(this.jwt));
+
+            await Config.db.DeleteOne(wiq._id, "mq", jwt, parent);
+            var roles = await Config.db.query({ query: { name: msg.name + " users" }, collectionname: "users", jwt }, parent);
+            if (roles.length == 1) {
+                await Config.db.DeleteOne(roles[0]._id, "users", jwt, parent);
+            }
+        } catch (error) {
+            await handleError(null, error);
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) {
+                msg.error = (error.message ? error.message : error);
+            }
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            await handleError(null, error);
+        }
+        return user;
+    }
 }
 
 export class JSONfn {
