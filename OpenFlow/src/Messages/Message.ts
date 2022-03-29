@@ -3610,7 +3610,7 @@ export class Message {
             }
             const tuser = Crypt.verityToken(jwt);
             if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
-                throw new Error("Access denied, adding plan (admins)");
+                throw new Error("Access denied, adding plan (not in '" + customer.name + " admins')");
             }
 
 
@@ -3736,7 +3736,7 @@ export class Message {
 
             const user = Crypt.verityToken(cli.jwt);
             if (!user.HasRoleName(customer.name + " admins") && !user.HasRoleName("admins")) {
-                throw new Error("Access denied, getting invoice (admins)");
+                throw new Error("Access denied, getting invoice (not in '" + customer.name + " admins')");
             }
 
             let subscription: stripe_subscription;
@@ -3945,7 +3945,7 @@ export class Message {
 
             const tuser = Crypt.verityToken(jwt);
             if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
-                throw new Error("Access denied, adding plan (admins)");
+                throw new Error("Access denied, adding plan (not in '" + customer.name + " admins')");
             }
 
             if (NoderedUtil.IsNullEmpty(customer.vattype)) customer.vattype = "";
@@ -4328,7 +4328,7 @@ export class Message {
                     if (!NoderedUtil.IsNullEmpty(tuser.selectedcustomerid) && customer == null) customer = await Config.db.getbyid(tuser.customerid, "users", cli.jwt, true, null);
                     if (customer == null) throw new Error("Access denied, or customer not found");
                     if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
-                        throw new Error("Access denied, adding plan (admins)");
+                        throw new Error("Access denied, adding plan (not in '" + customer.name + " admins')");
                     }
                 }
                 if (msg.object == "subscription_items" && msg.method != "POST") throw new Error("Access to " + msg.object + " is not allowed");
