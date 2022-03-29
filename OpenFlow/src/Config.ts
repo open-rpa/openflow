@@ -63,6 +63,7 @@ export class Config {
         Config.auto_create_user_from_jwt = Config.parseBoolean(Config.getEnv("auto_create_user_from_jwt", "false"));
         Config.auto_create_domains = Config.parseArray(Config.getEnv("auto_create_domains", ""));
         Config.persist_user_impersonation = Config.parseBoolean(Config.getEnv("persist_user_impersonation", "true"));
+        Config.ping_clients_interval = parseInt(Config.getEnv("ping_clients_interval", (10000).toString())); // 12 seconds
         Config.allow_personal_nodered = Config.parseBoolean(Config.getEnv("allow_personal_nodered", "false"));
         Config.use_ingress_beta1_syntax = Config.parseBoolean(Config.getEnv("use_ingress_beta1_syntax", "true"));
         Config.auto_create_personal_nodered_group = Config.parseBoolean(Config.getEnv("auto_create_personal_nodered_group", "false"));
@@ -236,6 +237,8 @@ export class Config {
     public static auto_create_user_from_jwt: boolean = Config.parseBoolean(Config.getEnv("auto_create_user_from_jwt", "false"));
     public static auto_create_domains: string[] = Config.parseArray(Config.getEnv("auto_create_domains", ""));
     public static persist_user_impersonation: boolean = Config.parseBoolean(Config.getEnv("persist_user_impersonation", "true"));
+    public static ping_clients_interval: number = parseInt(Config.getEnv("ping_clients_interval", (10000).toString())); // 12 seconds
+
     public static allow_personal_nodered: boolean = Config.parseBoolean(Config.getEnv("allow_personal_nodered", "false"));
     public static use_ingress_beta1_syntax: boolean = Config.parseBoolean(Config.getEnv("use_ingress_beta1_syntax", "true"));
     public static auto_create_personal_nodered_group: boolean = Config.parseBoolean(Config.getEnv("auto_create_personal_nodered_group", "false"));

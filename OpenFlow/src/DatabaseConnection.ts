@@ -80,7 +80,9 @@ export class DatabaseConnection extends events.EventEmitter {
     public static mongodb_query: ValueRecorder;
     public static mongodb_aggregate: ValueRecorder;
     public static mongodb_insert: ValueRecorder;
+    public static mongodb_insertmany: ValueRecorder;
     public static mongodb_update: ValueRecorder;
+    public static mongodb_updatemany: ValueRecorder;
     public static mongodb_replace: ValueRecorder;
     public static mongodb_delete: ValueRecorder;
     public static mongodb_deletemany: ValueRecorder;
@@ -103,8 +105,16 @@ export class DatabaseConnection extends events.EventEmitter {
                 description: 'Duration for mongodb inserts',
                 boundaries: Logger.otel.default_boundaries
             });
+            DatabaseConnection.mongodb_insertmany = Logger.otel.meter.createValueRecorder('openflow_mongodb_insertmany_seconds', {
+                description: 'Duration for mongodb insert many',
+                boundaries: Logger.otel.default_boundaries
+            });
             DatabaseConnection.mongodb_update = Logger.otel.meter.createValueRecorder('openflow_mongodb_update_seconds', {
                 description: 'Duration for mongodb updates',
+                boundaries: Logger.otel.default_boundaries
+            });
+            DatabaseConnection.mongodb_updatemany = Logger.otel.meter.createValueRecorder('openflow_mongodb_updatemany_seconds', {
+                description: 'Duration for mongodb update many',
                 boundaries: Logger.otel.default_boundaries
             });
             DatabaseConnection.mongodb_replace = Logger.otel.meter.createValueRecorder('openflow_mongodb_replace_seconds', {
@@ -1456,7 +1466,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     const mongodbspan_inner: Span = Logger.otel.startSubSpan("mongodb.bulkexecute", span);
                     tempresult = tempresult.concat(bulkInsert.execute())
                     Logger.otel.endSpan(mongodbspan_inner);
-                    Logger.otel.endTimer(ot_end_inner, DatabaseConnection.mongodb_insert, { collection: collectionname });
+                    Logger.otel.endTimer(ot_end_inner, DatabaseConnection.mongodb_insertmany, { collection: collectionname });
                     bulkInsert = this.db.collection(collectionname).initializeUnorderedBulkOp()
                 }
             }
@@ -1464,7 +1474,7 @@ export class DatabaseConnection extends events.EventEmitter {
             const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.bulkexecute", span);
             tempresult = tempresult.concat(bulkInsert.execute())
             Logger.otel.endSpan(mongodbspan);
-            Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname });
+            Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insertmany, { collection: collectionname });
 
             for (let y = 0; y < items.length; y++) {
                 let item = items[y];

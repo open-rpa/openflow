@@ -4638,7 +4638,7 @@ export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
                 if (this.show == "webapp") this.basequery = { "_webheartbeat": { "$exists": true } };
                 if (this.show == "all") this.basequery = { _heartbeat: { "$exists": true } };
             } else {
-                dt.setMinutes(dt.getMinutes() - 1);
+                dt.setMilliseconds(dt.getMilliseconds() - (WebSocketClientService.ping_clients_interval + 20000));
                 this.basequery = { "$or": [] };
                 if (this.show == "openrpa") this.basequery = { "_rpaheartbeat": { "$gte": dt } };
                 if (this.show == "nodered") this.basequery = { "_noderedheartbeat": { "$gte": dt } };
