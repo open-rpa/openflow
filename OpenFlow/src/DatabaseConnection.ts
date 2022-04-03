@@ -251,7 +251,6 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (next.updateDescription.updatedFields.hasOwnProperty("_webheartbeat")) return;
                         if (next.updateDescription.updatedFields.hasOwnProperty("_noderedheartbeat")) return;
                         if (next.updateDescription.updatedFields.hasOwnProperty("_powershellheartbeat")) return;
-                        // console.log(next.updateDescription.updatedFields);
                     }
                     var item = next.fullDocument;
                     var _type = "";
@@ -1586,7 +1585,7 @@ export class DatabaseConnection extends events.EventEmitter {
             const user: TokenUser = Crypt.verityToken(q.jwt);
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             if (!DatabaseConnection.hasAuthorization(user, (q.item as Base), Rights.update)) {
-                throw new Error("Access denied, no authorization to UpdateOne");
+                throw new Error("Access denied, no authorization to UpdateOne with current ACL");
             }
             if (q.collectionname === "files") { q.collectionname = "fs.files"; }
 
