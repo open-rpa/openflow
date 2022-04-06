@@ -26,7 +26,7 @@ import { Span } from "@opentelemetry/api";
 import { Logger } from "../Logger";
 import Dockerode = require("dockerode");
 import { QueueClient } from "../QueueClient";
-import { AddWorkItemMessage, AddWorkItemQueueMessage, DeleteWorkItemMessage, DeleteWorkItemQueueMessage, GetWorkItemQueueMessage, PopWorkItemMessage, UpdateWorkItemMessage, UpdateWorkItemQueueMessage, Workitem, WorkitemQueue } from "./WorkItemMessages";
+import { AddWorkItemMessage, AddWorkItemQueueMessage, AddWorkItemsMessage, DeleteWorkItemMessage, DeleteWorkItemQueueMessage, GetWorkItemQueueMessage, PopWorkItemMessage, UpdateWorkItemMessage, UpdateWorkItemQueueMessage, Workitem, WorkitemQueue } from "./WorkItemMessages";
 const pako = require('pako');
 const got = require("got");
 const { RateLimiterMemory } = require('rate-limiter-flexible')
@@ -710,6 +710,14 @@ export class Message {
                         break;
                     }
                     await this.AddWorkItem(span);
+                    cli.Send(this);
+                    break;
+                case "addworkitems":
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
+                    await this.AddWorkItems(span);
                     cli.Send(this);
                     break;
                 case "popworkitem":
@@ -1546,6 +1554,13 @@ export class Message {
         try {
             msg = DeleteOneMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (msg.collectionname == "mq") {
+                var doc = await Config.db.getbyid(msg._id, "mq", msg.jwt, false, span);
+                if (doc._type == "workitemqueue") {
+                    throw new Error("Access Denied, you must call DeleteWorkItemQueue to delete");
+                }
+
+            }
             await Config.db.DeleteOne(msg._id, msg.collectionname, msg.jwt, span);
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -5320,16 +5335,16 @@ export class Message {
             msg = AddWorkItemMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.wiqid) && NoderedUtil.IsNullEmpty(msg.wiq)) throw new Error("wiq or wiqid is mandatory")
 
-            var wiq: Base = null;
+            var wiq: WorkitemQueue = null;
             if (!NoderedUtil.IsNullEmpty(msg.wiqid)) {
-                var queues = await Config.db.query({ query: { _id: msg.wiqid }, collectionname: "mq", jwt }, parent);
+                var queues = await Config.db.query<WorkitemQueue>({ query: { _id: msg.wiqid }, collectionname: "mq", jwt }, parent);
                 if (queues.length > 0) wiq = queues[0];
             }
             if (wiq == null && !NoderedUtil.IsNullEmpty(msg.wiq)) {
-                var queues = await Config.db.query({ query: { name: msg.wiq, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
+                var queues = await Config.db.query<WorkitemQueue>({ query: { name: msg.wiq, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
                 if (queues.length > 0) wiq = queues[0];
             }
-            if (wiq == null) throw new Error("Work item queue not fount " + msg.wiq + " (" + msg.wiqid + ") not found.");
+            if (wiq == null) throw new Error("Work item queue not found " + msg.wiq + " (" + msg.wiqid + ") not found.");
 
 
             var wi: Workitem = new Workitem(); wi._type = "workitem";
@@ -5339,9 +5354,19 @@ export class Message {
             wi.wiqid = wiq._id;
             wi.name = msg.name ? msg.name : "New work item";
             wi.payload = msg.payload ? msg.payload : {};
+            wi.priority = msg.priority;
+            wi.nextrun = msg.nextrun;
+
             wi.state = "new"
             wi.retries = 0;
             wi.files = [];
+            wi.lastrun = null;
+            if (!wi.nextrun) {
+                wi.nextrun = new Date(new Date().toISOString());
+                wi.nextrun.setSeconds(wi.nextrun.getSeconds() + wiq.initialdelay);
+            }
+
+
             if (msg.files) {
                 for (var i = 0; i < msg.files.length; i++) {
                     var file = msg.files[i];
@@ -5382,8 +5407,8 @@ export class Message {
                         metadata._modifiedbyid = user._id;
                         metadata._modified = metadata._created;
                         (metadata as any).wi = wi._id;
-                        (metadata as any).wik = wiq.name;
-                        (metadata as any).wikid = wiq._id;
+                        (metadata as any).wiq = wiq.name;
+                        (metadata as any).wiqid = wiq._id;
 
                         metadata._acl = wiq._acl;
                         metadata.name = path.basename(file.filename);
@@ -5404,6 +5429,143 @@ export class Message {
 
             wi = await Config.db.InsertOne(wi, "workitems", 1, true, jwt, parent);
             msg.result = wi;
+            if (!NoderedUtil.IsNullEmpty(wiq.robotqueue) && !NoderedUtil.IsNullEmpty(wiq.workflowid)) {
+                const rpacommand = {
+                    command: "invoke",
+                    workflowid: wiq.workflowid,
+                    data: { payload: wi.payload }
+                }
+                await amqpwrapper.Instance().send(null, wiq.robotqueue, rpacommand, 5000, null, null, 2);
+            }
+        } catch (error) {
+            await handleError(null, error);
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) {
+                msg.error = (error.message ? error.message : error);
+            }
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            await handleError(null, error);
+        }
+    }
+    async AddWorkItems(parent: Span): Promise<void> {
+        let user: TokenUser = null;
+        this.Reply();
+        let msg: AddWorkItemsMessage;
+        try {
+            const rootjwt = Crypt.rootToken();
+            const jwt = this.jwt;
+            const user: TokenUser = Crypt.verityToken(jwt);
+
+            msg = AddWorkItemsMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.wiqid) && NoderedUtil.IsNullEmpty(msg.wiq)) throw new Error("wiq or wiqid is mandatory")
+
+            var wiq: WorkitemQueue = null;
+            if (!NoderedUtil.IsNullEmpty(msg.wiqid)) {
+                var queues = await Config.db.query<WorkitemQueue>({ query: { _id: msg.wiqid }, collectionname: "mq", jwt }, parent);
+                if (queues.length > 0) wiq = queues[0];
+            }
+            if (wiq == null && !NoderedUtil.IsNullEmpty(msg.wiq)) {
+                var queues = await Config.db.query<WorkitemQueue>({ query: { name: msg.wiq, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
+                if (queues.length > 0) wiq = queues[0];
+            }
+            if (wiq == null) throw new Error("Work item queue not found " + msg.wiq + " (" + msg.wiqid + ") not found.");
+
+            for (let i = 0; i < msg.items.length; i++) {
+                let item = msg.items[i];
+                let wi: Workitem = new Workitem(); wi._type = "workitem";
+                wi._id = new ObjectID().toHexString();
+                wi._acl = wiq._acl;
+                wi.wiq = wiq.name;
+                wi.wiqid = wiq._id;
+                wi.name = item.name ? item.name : "New work item";
+                wi.payload = item.payload ? item.payload : {};
+                wi.priority = item.priority;
+                wi.nextrun = item.nextrun;
+                wi.state = "new"
+                wi.retries = 0;
+                wi.files = [];
+                wi.lastrun = null;
+                if (!wi.nextrun) {
+                    wi.nextrun = new Date(new Date().toISOString());
+                    wi.nextrun.setSeconds(wi.nextrun.getSeconds() + wiq.initialdelay);
+                }
+
+                if (item.files) {
+                    for (let i = 0; i < item.files.length; i++) {
+                        let file = item.files[i];
+                        try {
+                            if (NoderedUtil.IsNullUndefinded(file.file)) continue;
+                            const readable = new Readable();
+                            readable._read = () => { }; // _read is required but you can noop it
+                            if (file.file && (!file.compressed)) {
+                                // console.debug("base64 data length: " + this.formatBytes(file.file.length));
+
+                                const buf: Buffer = Buffer.from(file.file, 'base64');
+                                readable.push(buf);
+                                readable.push(null);
+                            } else {
+                                try {
+                                    // const zlib = require('zlib');
+                                    let result: Buffer;
+                                    try {
+                                        var data = Buffer.from(file.file, 'base64')
+                                        result = pako.inflate(data);
+                                    } catch (error) {
+                                        console.error(error);
+                                    }
+                                    // console.debug("zlib data length: " + this.formatBytes(file.file.length));
+                                    readable.push(result);
+                                    readable.push(null);
+                                } catch (error) {
+                                    console.error(error);
+                                    throw error;
+                                }
+                            }
+                            const mimeType = mimetype.lookup(file.filename);
+                            const metadata = new Base();
+                            metadata._createdby = user.name;
+                            metadata._createdbyid = user._id;
+                            metadata._created = new Date(new Date().toISOString());
+                            metadata._modifiedby = user.name;
+                            metadata._modifiedbyid = user._id;
+                            metadata._modified = metadata._created;
+                            (metadata as any).wi = wi._id;
+                            (metadata as any).wiq = wiq.name;
+                            (metadata as any).wiqid = wiq._id;
+
+                            metadata._acl = wiq._acl;
+                            metadata.name = path.basename(file.filename);
+                            (metadata as any).filename = file.filename;
+                            (metadata as any).path = path.dirname(file.filename);
+                            if ((metadata as any).path == ".") (metadata as any).path = "";
+
+
+                            const fileid = await this._SaveFile(readable, file.filename, mimeType, metadata);
+                            wi.files.push({ "name": file.filename, "filename": path.basename(file.filename), _id: fileid });
+
+                        } catch (err) {
+                            console.error(err);
+                        }
+                    }
+                }
+                delete item.files;
+                wi = await Config.db.InsertOne(wi, "workitems", 1, true, jwt, parent);
+            }
+
+            delete msg.items;
+            msg.items = [];
+            if (!NoderedUtil.IsNullEmpty(wiq.robotqueue) && !NoderedUtil.IsNullEmpty(wiq.workflowid)) {
+                const rpacommand = {
+                    command: "invoke",
+                    workflowid: wiq.workflowid,
+                    data: { payload: {} }
+                }
+                await amqpwrapper.Instance().send(null, wiq.robotqueue, rpacommand, 5000, null, null, 2);
+            }
         } catch (error) {
             await handleError(null, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -5422,6 +5584,7 @@ export class Message {
 
 
 
+
     async UpdateWorkItem(parent: Span): Promise<void> {
         let user: TokenUser = null;
         this.Reply();
@@ -5431,6 +5594,8 @@ export class Message {
             const jwt = this.jwt;
             const user: TokenUser = Crypt.verityToken(jwt);
 
+            let retry: boolean = false;
+
             msg = UpdateWorkItemMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg._id)) throw new Error("_id is mandatory")
 
@@ -5438,16 +5603,16 @@ export class Message {
             if (wis.length == 0) throw new Error("Work item  with _id " + msg._id + " not found.");
             var wi: Workitem = wis[0];
 
-            var wiq: Base = null;
+            var wiq: WorkitemQueue = null;
             if (!NoderedUtil.IsNullEmpty(wi.wiqid)) {
-                var queues = await Config.db.query({ query: { _id: wi.wiqid }, collectionname: "mq", jwt }, parent);
+                var queues = await Config.db.query<WorkitemQueue>({ query: { _id: wi.wiqid }, collectionname: "mq", jwt }, parent);
                 if (queues.length > 0) wiq = queues[0];
             }
             if (wiq == null && !NoderedUtil.IsNullEmpty(wi.wiq)) {
-                var queues = await Config.db.query({ query: { name: wi.wiq, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
+                var queues = await Config.db.query<WorkitemQueue>({ query: { name: wi.wiq, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
                 if (queues.length > 0) wiq = queues[0];
             }
-            if (wiq == null) throw new Error("Work item queue not fount " + wi.wiq + " (" + wi.wiqid + ") not found.");
+            if (wiq == null) throw new Error("Work item queue not found " + wi.wiq + " (" + wi.wiqid + ") not found.");
 
 
 
@@ -5456,7 +5621,35 @@ export class Message {
             wi.wiqid = wiq._id;
             if (!NoderedUtil.IsNullEmpty(msg.name)) wi.name = msg.name;
             if (!NoderedUtil.IsNullUndefinded(msg.payload)) wi.payload = msg.payload;
-            if (!NoderedUtil.IsNullEmpty(msg.state)) wi.state = msg.state;
+            if (!NoderedUtil.IsNullUndefinded(msg.errormessage)) wi.errormessage = msg.errormessage;
+            if (!NoderedUtil.IsNullUndefinded(msg.errorsource)) wi.errorsource = msg.errorsource;
+
+            if (!NoderedUtil.IsNullEmpty(msg.state)) {
+                msg.state = msg.state.toLowerCase();
+                // if (["failed", "successful", "abandoned", "retry", "processing"].indexOf(msg.state) == -1) {
+                //     throw new Error("Illegal state " + msg.state + " on Workitem, must be failed, successful, abandoned, processing or retry");
+                // }
+                if (["failed", "successful", "retry", "processing"].indexOf(msg.state) == -1) {
+                    throw new Error("Illegal state " + msg.state + " on Workitem, must be failed, successful, processing or retry");
+                }
+
+                if (msg.state == "retry") {
+                    if (NoderedUtil.IsNullEmpty(wi.retries)) wi.retries = 0;
+                    if (wi.retries < wiq.maxretries || msg.ignoremaxretries) {
+                        wi.retries += 1;
+                        retry = true;
+                        wi.state = "new";
+                        wi.userid = null;
+                        wi.username = null;
+                        wi.nextrun = new Date(new Date().toISOString());
+                        wi.nextrun.setSeconds(wi.nextrun.getSeconds() + wiq.retrydelay);
+                    } else {
+                        wi.state = "failed";
+                    }
+                } else {
+                    wi.state = msg.state
+                }
+            }
             if (msg.files) {
                 for (var i = 0; i < msg.files.length; i++) {
                     var file = msg.files[i];
@@ -5504,8 +5697,8 @@ export class Message {
                         metadata._modifiedbyid = user._id;
                         metadata._modified = metadata._created;
                         (metadata as any).wi = wi._id;
-                        (metadata as any).wik = wiq.name;
-                        (metadata as any).wikid = wiq._id;
+                        (metadata as any).wiq = wiq.name;
+                        (metadata as any).wiqid = wiq._id;
 
                         metadata._acl = wiq._acl;
                         metadata.name = path.basename(file.filename);
@@ -5523,8 +5716,22 @@ export class Message {
             }
             delete msg.files;
 
+            if (wi.state != "new") {
+                delete wi.nextrun;
+            }
+
             wi = await Config.db._UpdateOne(null, wi, "workitems", 1, true, jwt, parent);
             msg.result = wi;
+
+            if (retry && !NoderedUtil.IsNullEmpty(wiq.robotqueue) && !NoderedUtil.IsNullEmpty(wiq.workflowid)) {
+                const rpacommand = {
+                    command: "invoke",
+                    workflowid: wiq.workflowid,
+                    data: { payload: wi.payload }
+                }
+                await amqpwrapper.Instance().send(null, wiq.robotqueue, rpacommand, 5000, null, null, 2);
+            }
+
         } catch (error) {
             await handleError(null, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -5564,10 +5771,11 @@ export class Message {
                 var queues = await Config.db.query({ query: { name: msg.wiq, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
                 if (queues.length > 0) wiq = queues[0];
             }
-            if (wiq == null) throw new Error("Work item queue not fount " + msg.wiq + " (" + msg.wiqid + ") not found.");
+            if (wiq == null) throw new Error("Work item queue not found " + msg.wiq + " (" + msg.wiqid + ") not found.");
 
+            // query: { wiqid: wiq._id, "_type": "workitem", state: { "$in": ["new", "pending"] } },
             var workitems = await Config.db.query<Workitem>({
-                query: { wiqid: wiq._id, "_type": "workitem", state: { "$in": ["new", "pending"] } },
+                query: { wiqid: wiq._id, "_type": "workitem", state: "new", "nextrun": { "$lte": new Date(new Date().toISOString()) } },
                 collectionname: "workitems", jwt
             }, parent);
 
@@ -5577,7 +5785,7 @@ export class Message {
                 wi.state = "processing";
                 wi.userid = user._id;
                 wi.username = user.name;
-                wi.retries += 1;
+                wi.lastrun = new Date(new Date().toISOString());
                 wi = await Config.db._UpdateOne<Workitem>(null, wi, "workitems", 1, true, jwt, parent);
                 msg.result = wi;
             }
@@ -5658,20 +5866,28 @@ export class Message {
             }
             user = User.assign(Crypt.verityToken(this.jwt));
 
-            const wiqusers: Role = await DBHelper.EnsureRole(jwt, msg.name + " users", null, parent);
-            Base.addRight(wiqusers, WellknownIds.admins, "admins", [Rights.full_control]);
-            Base.addRight(wiqusers, user._id, user.name, [Rights.full_control]);
-            // Base.removeRight(wiqusers, user._id, [Rights.delete]);
-            wiqusers.AddMember(user as any);
-            await DBHelper.Save(wiqusers, rootjwt, parent);
-
+            var wiq = new WorkitemQueue(); wiq._type = "workitemqueue";
+            if (!msg.skiprole) {
+                const wiqusers: Role = await DBHelper.EnsureRole(jwt, msg.name + " users", null, parent);
+                Base.addRight(wiqusers, WellknownIds.admins, "admins", [Rights.full_control]);
+                Base.addRight(wiqusers, user._id, user.name, [Rights.full_control]);
+                // Base.removeRight(wiqusers, user._id, [Rights.delete]);
+                wiqusers.AddMember(user as any);
+                await DBHelper.Save(wiqusers, rootjwt, parent);
+                Base.addRight(wiq, wiqusers._id, wiqusers.name, [Rights.full_control]);
+                wiq.usersrole = wiqusers._id;
+            }
 
             if (NoderedUtil.IsNullEmpty(msg.workflowid)) msg.workflowid = undefined;
-            var wiq = new WorkitemQueue(); wiq._type = "workitemqueue";
             wiq.name = msg.name;
             wiq.workflowid = msg.workflowid;
             wiq.robotqueue = msg.robotqueue;
-            Base.addRight(wiq, wiqusers._id, wiqusers.name, [Rights.full_control]);
+            wiq.projectid = msg.projectid;
+            wiq.amqpqueue = msg.amqpqueue;
+            wiq.maxretries = msg.maxretries;
+            wiq.retrydelay = msg.retrydelay;
+            wiq.initialdelay = msg.initialdelay;
+
             msg.result = await Config.db.InsertOne(wiq, "mq", 1, true, jwt, parent);
 
             if (!NoderedUtil.IsNullUndefinded(cli)) await this.ReloadUserToken(cli, parent);
@@ -5734,13 +5950,13 @@ export class Message {
 
             if (NoderedUtil.IsNullEmpty(msg.name) && NoderedUtil.IsNullEmpty(msg._id)) throw new Error("Name or _id is mandatory")
 
-            var wiq = new Base();
+            var wiq = new WorkitemQueue();
             if (!NoderedUtil.IsNullEmpty(msg._id)) {
-                var queues = await Config.db.query({ query: { _id: msg._id }, collectionname: "mq", jwt }, parent);
+                var queues = await Config.db.query<WorkitemQueue>({ query: { _id: msg._id }, collectionname: "mq", jwt }, parent);
                 if (queues.length == 0) throw new Error("Work item queue with _id " + msg._id + " not found.");
                 wiq = queues[0];
             } else {
-                var queues = await Config.db.query({ query: { name: msg.name, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
+                var queues = await Config.db.query<WorkitemQueue>({ query: { name: msg.name, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
                 if (queues.length == 0) throw new Error("Work item queue with name " + msg.name + " not found.");
                 wiq = queues[0];
             }
@@ -5748,10 +5964,25 @@ export class Message {
 
             if (NoderedUtil.IsNullEmpty(msg.workflowid)) msg.workflowid = undefined;
             wiq.name = msg.name;
-            (wiq as any).workflowid = msg.workflowid;
-            (wiq as any).robotqueue = msg.robotqueue;
-            // Base.addRight(wiq, wiqusers._id, wiqusers.name, [Rights.full_control]);
+            wiq.workflowid = msg.workflowid;
+            wiq.robotqueue = msg.robotqueue;
+            wiq.projectid = msg.projectid;
+            wiq.amqpqueue = msg.amqpqueue;
+            if (!NoderedUtil.IsNullEmpty(msg.maxretries)) wiq.maxretries = msg.maxretries;
+            if (!NoderedUtil.IsNullEmpty(msg.retrydelay)) wiq.retrydelay = msg.retrydelay;
+            if (!NoderedUtil.IsNullEmpty(msg.initialdelay)) wiq.initialdelay = msg.initialdelay;
+
+            if (msg._acl) wiq._acl = msg._acl;
             await Config.db._UpdateOne(null, wiq as any, "mq", 1, true, jwt, parent);
+
+            if (msg.purge) {
+                await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", jwt, parent);
+                var items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
+                if (items.length > 0) {
+                    throw new Error("Failed purging workitemqueue " + wiq.name);
+                }
+                await Config.db.DeleteMany({ "metadata.wiqid": wiq._id }, null, "fs.files", jwt, parent);
+            }
         } catch (error) {
             await handleError(null, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -5776,22 +6007,35 @@ export class Message {
             msg = DeleteWorkItemQueueMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.name) && NoderedUtil.IsNullEmpty(msg._id)) throw new Error("Name or _id is mandatory")
 
-            var wiq = new Base();
+            var wiq = new WorkitemQueue();
             if (!NoderedUtil.IsNullEmpty(msg._id)) {
-                var queues = await Config.db.query({ query: { _id: msg._id }, collectionname: "mq", jwt }, parent);
+                var queues = await Config.db.query<WorkitemQueue>({ query: { _id: msg._id }, collectionname: "mq", jwt }, parent);
                 if (queues.length == 0) throw new Error("Work item queue with _id " + msg._id + " not found.");
                 wiq = queues[0];
             } else {
-                var queues = await Config.db.query({ query: { name: msg.name, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
+                var queues = await Config.db.query<WorkitemQueue>({ query: { name: msg.name, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
                 if (queues.length == 0) throw new Error("Work item queue with name " + msg.name + " not found.");
                 wiq = queues[0];
             }
             user = User.assign(Crypt.verityToken(this.jwt));
 
+            if (msg.purge) {
+                await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", jwt, parent);
+                var items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
+                if (items.length > 0) {
+                    throw new Error("Failed purging workitemqueue " + wiq.name);
+                }
+                await Config.db.DeleteMany({ "metadata.wiqid": wiq._id }, null, "fs.files", jwt, parent);
+            } else {
+                var items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
+                if (items.length > 0) {
+                    throw new Error("Work item queue " + wiq.name + " is not empty, enable purge to delete");
+                }
+            }
+
             await Config.db.DeleteOne(wiq._id, "mq", jwt, parent);
-            var roles = await Config.db.query({ query: { name: msg.name + " users" }, collectionname: "users", jwt }, parent);
-            if (roles.length == 1) {
-                await Config.db.DeleteOne(roles[0]._id, "users", jwt, parent);
+            if (wiq.usersrole) {
+                await Config.db.DeleteOne(wiq.usersrole, "users", jwt, parent);
             }
         } catch (error) {
             await handleError(null, error);

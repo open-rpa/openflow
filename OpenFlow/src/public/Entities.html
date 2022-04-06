@@ -14,19 +14,23 @@
     </div>
   </div>
   <div class=" col-md-6 text-right" id="entitiestools">
-    <em class="fas fa-cog fa-spin" ng-show="ctrl.loading==true"></em>
+    <em class="fas fa-cog fa-spin" ng-show="ctrl.loading==true" title="Hang on, loading data"></em>
+    <em class="fas fa-cog" ng-show="ctrl.loading!=true" title="I spin, while loading data"></em>
     <div ng-show="ctrl.collection == 'openrpa_instances'">
       <input type="checkbox" id="checkbox-1" ng-model="ctrl.showrunning" ng-change="ctrl.loadData()">
       <label for="checkbox-1"><span translate lib="web">running</span></label>
     </div>
 
-    <a ng-href="#/Deleted/{{ctrl.collection}}" class="btn btn-info" ng-show="ctrl.loading == false"><em
+    <a ng-href="#/Deleted/{{ctrl.collection}}" class="btn btn-info" ng-show="ctrl.loading == false"
+      title="Show deleted items, if history is not disabled for this collection"><em
         class="fas fa-undo"></em></a>
     <em class="fas fa-undo btn disabled" ng-show="ctrl.loading == true"></em>
-    <a ng-href="#/Duplicates/{{ctrl.collection}}" class="btn btn-info" ng-show="ctrl.loading == false"><em
+    <a ng-href="#/Duplicates/{{ctrl.collection}}" class="btn btn-info" ng-show="ctrl.loading == false"
+      title="Open duplicates detection interface"><em
         class="fas fa-clone"></em></a>
     <em class="fas fa-clone btn disabled" ng-show="ctrl.loading == true"></em>
-    <a ng-href="#/Entity/{{ctrl.collection}}" class="btn btn-info" ng-show="ctrl.loading == false"><em
+    <a ng-href="#/Entity/{{ctrl.collection}}" class="btn btn-info" ng-show="ctrl.loading == false"
+      title="Add new item to this collection"><em
         class="fas fa-plus"></em></a>
     <em class="fas fa-plus btn disabled" ng-show="ctrl.loading == true"></em>
   </div>
@@ -48,9 +52,9 @@
   </thead>
   <tbody>
     <tr ng-repeat="model in ctrl.models">
-      <td>{{model.name}}</td>
+      <td class="text-truncate">{{model.name}}</td>
       <td><span translate lib="web">{{model.type || model._type}}</span></td>
-      <td>{{model._createdby}}</td>
+      <td class="text-truncate">{{model._createdby}}</td>
       <td>
         <timesince ng-model="model._created" />
       </td>
@@ -58,13 +62,15 @@
         <timesince ng-model="model._modified" />
       </td>
       <td>
-        <a ng-href="#/History/{{ctrl.collection}}/{{model._id}}" class="btn" ng-show="ctrl.loading == false"><em
+        <a ng-href="#/History/{{ctrl.collection}}/{{model._id}}" class="btn" ng-show="ctrl.loading == false"
+          title="Show version hisotry for this item"><em
             class="fas fa-notes-medical"></em></a>
         <em class="fas fa-notes-medical btn disabled" ng-show="ctrl.loading == true"></em>
-        <a ng-href="#/Entity/{{ctrl.collection}}/{{model._id}}" class="btn" ng-show="ctrl.loading == false"><em
+        <a ng-href="#/Entity/{{ctrl.collection}}/{{model._id}}" class="btn" ng-show="ctrl.loading == false"
+          title="Edit this item"><em
             class="fas fa-edit"></em></a>
         <em class="fas fa-edit btn disabled" ng-show="ctrl.loading == true"></em>
-        <a href ng-click="ctrl.DeleteOne(model)" ng-disabled="ctrl.loading==true" class="btn"><em
+        <a href ng-click="ctrl.DeleteOne(model)" ng-disabled="ctrl.loading==true" class="btn" title="Delete this item"><em
             class="fas fa-trash"></em></a>
       </td>
     </tr>

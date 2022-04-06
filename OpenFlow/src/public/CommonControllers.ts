@@ -30,7 +30,29 @@ function _timeSince(timeStamp) {
         return day + " " + month + year;
     }
 }
+function _timeToo(timeStamp) {
+    const now: Date = new Date();
+    let secondsPast: number = (now.getTime() - timeStamp.getTime()) / 1000;
+    var suffix = "";
+    if (secondsPast > 0) suffix = " ago";
+    if (secondsPast < 0) secondsPast *= -1
 
+    if (secondsPast < 60) {
+        return parseInt(secondsPast.toString()) + 's' + suffix;
+    }
+    if (secondsPast < 3600) {
+        return parseInt((secondsPast / 60).toString()) + 'm' + suffix;
+    }
+    if (secondsPast <= 86400) {
+        return parseInt((secondsPast / 3600).toString()) + 'h' + suffix;
+    }
+    if (secondsPast > 86400) {
+        let day = timeStamp.getDate();
+        let month = timeStamp.toDateString().match(/ [a-zA-Z]*/)[0].replace(" ", "");
+        let year = timeStamp.getFullYear() == now.getFullYear() ? "" : " " + timeStamp.getFullYear();
+        return day + " " + month + year;
+    }
+}
 export class timesince implements ng.IDirective {
     // restrict = 'E';
     require = 'ngModel';
@@ -49,6 +71,28 @@ export class timesince implements ng.IDirective {
     }
     static factory(): ng.IDirectiveFactory {
         const directive = ($location: ng.ILocationService, $timeout: ng.ITimeoutService) => new timesince($location, $timeout);
+        directive.$inject = ['$location', '$timeout'];
+        return directive;
+    }
+}
+export class timetoo implements ng.IDirective {
+    // restrict = 'E';
+    require = 'ngModel';
+    replace = true;
+
+    constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService) {
+
+    }
+
+    link: ng.IDirectiveLinkFn = (scope: ng.IScope, element: ng.IAugmentedJQuery, attr: ng.IAttributes, ngModelCtrl: any) => {
+        scope.$watch(() => {
+            if (ngModelCtrl.$viewValue === null || ngModelCtrl.$viewValue === undefined) { return; }
+            const timeStamp = ngModelCtrl.$viewValue;
+            element.text(_timeToo(new Date(timeStamp)));
+        });
+    }
+    static factory(): ng.IDirectiveFactory {
+        const directive = ($location: ng.ILocationService, $timeout: ng.ITimeoutService) => new timetoo($location, $timeout);
         directive.$inject = ['$location', '$timeout'];
         return directive;
     }
@@ -768,7 +812,8 @@ export class entityCtrl<T> {
         "$routeParams",
         "$interval",
         "WebSocketClientService",
-        "api"
+        "api",
+        "userdata"
     ];
     constructor(
         public $rootScope: ng.IRootScopeService,
@@ -777,7 +822,8 @@ export class entityCtrl<T> {
         public $routeParams: ng.route.IRouteParamsService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
-        public api: api
+        public api: api,
+        public userdata: userdata
     ) {
         this.id = $routeParams.id;
         this.basequery = { _id: this.id };

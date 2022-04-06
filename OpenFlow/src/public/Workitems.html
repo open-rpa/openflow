@@ -1,0 +1,96 @@
+<div id="title" class="row">
+  <h1>{{ctrl.queue}} <span translate lib="web">workitems</span></h1>
+</div>
+<div class="row">
+  <div class="col-md-4">
+    <div className="btn-group-justified">
+      <div class="btn-group" role="group">
+        <select id="menucollections" ng-model="ctrl.queue"
+          ng-options="item.name as item.name for item in ctrl.workitemqueues" ng-change="ctrl.SelectWorkitemqueues()">
+        </select>
+        <a class="btn" ng-href="#/WorkitemQueues" title="Manage Workitem Queues">
+          Manage
+        </a>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="col-md-8 text-right">
+
+    <a class="btn" href ng-click="ctrl.loadData()" title="Reload current data">
+      Reload
+    </a>
+    <a class="btn" href ng-click="ctrl.SetState('New')" ng-class="{'btn-primary': ctrl.basequery['state'] == 'new'}"
+      title="Show only new Workitemss">
+      New
+    </a>
+    <a class="btn" href ng-click="ctrl.SetState('Successful')" title="Show only successfully completed Workitems"
+      ng-class="{'btn-primary': ctrl.basequery['state'] == 'successful'}">
+      Successful
+    </a>
+    <a class="btn " href ng-click="ctrl.SetState('Failed')" title="Show only failed Workitems"
+      ng-class="{'btn-primary': ctrl.basequery['state'] == 'failed'}">
+      Failed
+    </a>
+    <a class="btn" href ng-click="ctrl.SetState('Processing')" title="Show only Workitems currently being processd"
+      ng-class="{'btn-primary': ctrl.basequery['state'] == 'processing'}">
+      Processing
+    </a>
+    <!-- <a class="btn" href ng-click="ctrl.SetState('Retry')" ng-class="{'btn-primary': ctrl.basequery['state'] == 'retry'}">
+      Retry
+    </a> -->
+    <a class="btn" ng-href="#/Workitems" ng-show="ctrl.queue != ''" ng-click="ctrl.SetState('')"
+      title="clear filters and show all status and Workitem queues">
+      All
+    </a>
+    <a ng-href="#/Workitem" class="btn btn-info" ng-show="ctrl.loading == false && ctrl.queue != ''"
+      title="Add new Workitem to selected queue"><em class="fas fa-plus"></em></a>
+    <em class="fas fa-cog fa-spin" ng-show="ctrl.loading==true" title="Hang on, loading data"></em>
+    <em class="fas fa-cog" ng-show="ctrl.loading!=true" title="I spin, while loading data"></em>
+  </div>
+</div>
+
+<div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
+<table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;">
+  <thead class="thead-dark">
+    <tr>
+      <th ng-click="ctrl.ToggleOrder('name')"><b translate lib="web">name</b></th>
+      <th ng-click="ctrl.ToggleOrder('state')"><b translate lib="web">state</b></th>
+      <th ng-click="ctrl.ToggleOrder('retries')"><b translate lib="web">retries</b></th>
+      <th ng-click="ctrl.ToggleOrder('wiq')" ng-show="ctrl.queue == ''"><b translate lib="web">queue</b></th>
+      <th ng-click="ctrl.ToggleOrder('lastrun')"><b translate lib="web">lastrun</b></th>
+      <th ng-click="ctrl.ToggleOrder('nextrun')"><b translate lib="web">nextrun</b></th>
+      <th class="text-right"></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr ng-repeat="model in ctrl.models">
+      <td class="text-truncate"><a ng-href="#/Workitem/{{model._id}}">{{model.name}}</a></td>
+      <td class="text-truncate">{{model.state}}</td>
+      <td class="text-truncate">{{model.retries}}</td>
+      <td class="text-truncate" ng-show="ctrl.queue == ''">
+        {{model.wiq}}
+        <!-- <a class="btn" ng-href="#/Workitems/{{model.wiq}}"></a> -->
+      </td>
+      <td>
+        <timesince ng-model="model.lastrun" />
+      </td>
+      <td>
+        <timetoo ng-model="model.nextrun" />
+      </td>
+      <td>
+        <div class="w-200 text-right">
+          <a class="btn" ng-href="#/Workitem/{{model._id}}" title="Open and edit this Workitem">
+            <em class="fas fa-edit"></em>
+          </a>
+          <a href ng-click="ctrl.UpdateWorkitem(model, 'retry')" class="btn" ng-disabled="ctrl.loading==true"
+            title="Resubmit this Workitem to Workitem queue"><em class="fas fa-undo"></em></a>
+          <a href ng-click="ctrl.DeleteWorkitem(model)" class="btn" ng-disabled="ctrl.loading==true"
+            title="Delete Workitem and all associated files, this action cannot be undone"><em
+              class="fas fa-trash"></em></a>
+        </div>
+      </td>
+    </tr>
+  </tbody>
+</table>

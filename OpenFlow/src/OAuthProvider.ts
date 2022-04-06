@@ -24,6 +24,25 @@ export class OAuthProvider {
         return "/oidclogin";
     }
     static async logoutSource(ctx, form) {
+
+
+        if (ctx && ctx.oidc && ctx.oidc.session && ctx.oidc.session.authorizations) {
+            for (var i = 0; i < this.instance.clients.length; i++) {
+                var cli = this.instance.clients[i];
+                var auth = ctx.oidc.session.authorizations[cli.id];
+                if (auth) {
+                    // console.log(auth);
+                    if (cli.openflowsignout && cli.openflowsignout == true) {
+                        ctx.req.logout();
+                    }
+                }
+            }
+        }
+        // if(!ctx.oidc || !ctx.oidc.provider) return;
+        // var provider = ctx.oidc.provider;
+
+
+
         // @param ctx - koa request context
         // @param form - form source (id="op.logoutForm") to be embedded in the page and submitted by
         //   the End-User
