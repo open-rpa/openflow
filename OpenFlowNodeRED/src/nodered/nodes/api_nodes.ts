@@ -1006,10 +1006,21 @@ export class grant_permission {
             // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
             let priority: number = 1;
             if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
-            if (!NoderedUtil.IsNullEmpty(msg.targetid) && (NoderedUtil.IsNullEmpty(this.config.targetid) || this.config.targetid == "from msg.targetid")) {
-                this.config.targetid = msg.targetid;
+
+            let targetid: string = "";
+            if (this.config.targetid == "from msg.targetid" || NoderedUtil.IsNullEmpty(this.config.targetid)) {
+                targetid = msg.targetid;
+            } else {
+                targetid = this.config.targetid;
             }
-            if (!NoderedUtil.IsNullUndefinded(msg.bits)) { this.config.bits = msg.bits; }
+            if (NoderedUtil.IsNullEmpty(targetid)) {
+                throw new Error("targetid is null or empty");
+            }
+            let bits = this.config.bits;
+            if (!NoderedUtil.IsNullUndefinded(msg.bits)) { bits = msg.bits; }
+            if (NoderedUtil.IsNullUndefinded(bits)) {
+                throw new Error("bits is null or empty");
+            }
 
 
             if (!Array.isArray(this.config.bits)) {
@@ -1019,8 +1030,8 @@ export class grant_permission {
                 this.config.bits[i] = parseInt(this.config.bits[i]);
             }
 
-            const result: any[] = await NoderedUtil.Query('users', { _id: this.config.targetid }, { name: 1 }, { name: -1 }, 1, 0, msg.jwt, null, null, priority)
-            if (result.length === 0) { return NoderedUtil.HandleError(this, "Target " + this.config.targetid + " not found ", msg); }
+            const result: any[] = await NoderedUtil.Query('users', { _id: targetid }, { name: 1 }, { name: -1 }, 1, 0, msg.jwt, null, null, priority)
+            if (result.length === 0) { return NoderedUtil.HandleError(this, "Target " + targetid + " not found ", msg); }
             const found = result[0];
 
             let data: any[] = [];
@@ -1036,11 +1047,11 @@ export class grant_permission {
             for (let i = 0; i < data.length; i++) {
                 if (NoderedUtil.IsNullEmpty(data[i]._type) && !NoderedUtil.IsNullUndefinded(data[i].metadata)) {
                     const metadata: Base = (data[i].metadata as any);
-                    Base.addRight(metadata, this.config.targetid, found.name, this.config.bits);
+                    Base.addRight(metadata, targetid, found.name, this.config.bits);
                     data[i].metadata = metadata;
                 } else {
                     const entity: Base = data[i];
-                    Base.addRight(entity, this.config.targetid, found.name, this.config.bits);
+                    Base.addRight(entity, targetid, found.name, this.config.bits);
                     data[i] = entity;
                 }
                 if ((i % 50) == 0 && i > 0) {
@@ -1082,18 +1093,28 @@ export class revoke_permission {
         try {
             this.node.status({});
 
-            // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
-            if (!NoderedUtil.IsNullEmpty(msg.targetid) && (NoderedUtil.IsNullEmpty(this.config.targetid) || this.config.targetid == "from msg.targetid")) {
-                this.config.targetid = msg.targetid;
+            let targetid: string = "";
+            if (this.config.targetid == "from msg.targetid" || NoderedUtil.IsNullEmpty(this.config.targetid)) {
+                targetid = msg.targetid;
+            } else {
+                targetid = this.config.targetid;
             }
-            if (!NoderedUtil.IsNullUndefinded(msg.bits)) { this.config.bits = msg.bits; }
+            if (NoderedUtil.IsNullEmpty(targetid)) {
+                throw new Error("targetid is null or empty");
+            }
+            let bits = this.config.bits;
+            if (!NoderedUtil.IsNullUndefinded(msg.bits)) { bits = msg.bits; }
+            if (NoderedUtil.IsNullUndefinded(bits)) {
+                throw new Error("bits is null or empty");
+            }
 
 
-            if (!Array.isArray(this.config.bits)) {
-                this.config.bits = this.config.bits.split(',');
+
+            if (!Array.isArray(bits)) {
+                bits = bits.split(',');
             }
-            for (let i = 0; i < this.config.bits.length; i++) {
-                this.config.bits[i] = parseInt(this.config.bits[i]);
+            for (let i = 0; i < bits.length; i++) {
+                bits[i] = parseInt(bits[i]);
             }
 
             let data: any[] = [];
@@ -1109,18 +1130,18 @@ export class revoke_permission {
 
                 if (NoderedUtil.IsNullEmpty(data[i]._type) && !NoderedUtil.IsNullUndefinded(data[i].metadata)) {
                     const metadata: Base = data[i].metadata;
-                    if (this.config.bits.indexOf(-1) > -1) {
-                        metadata._acl = metadata._acl.filter((m: any) => { return m._id !== this.config.targetid; });
+                    if (bits.indexOf(-1) > -1) {
+                        metadata._acl = metadata._acl.filter((m: any) => { return m._id !== targetid; });
                     } else {
-                        Base.removeRight(metadata, this.config.targetid, this.config.bits);
+                        Base.removeRight(metadata, targetid, bits);
                     }
                     data[i].metadata = metadata;
                 } else {
                     const entity: Base = data[i];
-                    if (this.config.bits.indexOf(-1) > -1) {
-                        entity._acl = entity._acl.filter((m: any) => { return m._id !== this.config.targetid; });
+                    if (bits.indexOf(-1) > -1) {
+                        entity._acl = entity._acl.filter((m: any) => { return m._id !== targetid; });
                     } else {
-                        Base.removeRight(entity, this.config.targetid, this.config.bits);
+                        Base.removeRight(entity, targetid, bits);
                     }
                     data[i] = entity;
                 }

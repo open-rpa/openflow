@@ -26,7 +26,7 @@ import { Span } from "@opentelemetry/api";
 import { Logger } from "../Logger";
 import Dockerode = require("dockerode");
 import { QueueClient } from "../QueueClient";
-import { AddWorkItemMessage, AddWorkItemQueueMessage, AddWorkItemsMessage, DeleteWorkItemMessage, DeleteWorkItemQueueMessage, GetWorkItemQueueMessage, PopWorkItemMessage, UpdateWorkItemMessage, UpdateWorkItemQueueMessage, Workitem, WorkitemQueue } from "./WorkItemMessages";
+import { AddWorkitemMessage, AddWorkitemQueueMessage, AddWorkitemsMessage, DeleteWorkitemMessage, DeleteWorkitemQueueMessage, GetWorkitemQueueMessage, PopWorkitemMessage, UpdateWorkitemMessage, UpdateWorkitemQueueMessage, Workitem, WorkitemQueue } from "@openiap/openflow-api";
 const pako = require('pako');
 const got = require("got");
 const { RateLimiterMemory } = require('rate-limiter-flexible')
@@ -147,10 +147,10 @@ export class Message {
                     await this.Housekeeping(false, false, false, span);
                     break;
                 case "updateworkitemqueue":
-                    await this.UpdateWorkItemQueue(span);
+                    await this.UpdateWorkitemQueue(span);
                     break;
                 case "deleteworkitemqueue":
-                    await this.DeleteWorkItemQueue(span);
+                    await this.DeleteWorkitemQueue(span);
                     break;
                 default:
                     span?.recordException("Unknown command " + this.command);
@@ -677,7 +677,7 @@ export class Message {
                         if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
-                    await this.AddWorkItemQueue(cli, span);
+                    await this.AddWorkitemQueue(cli, span);
                     cli.Send(this);
                     break;
                 case "updateworkitemqueue":
@@ -688,7 +688,7 @@ export class Message {
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
-                        await this.UpdateWorkItemQueue(span);
+                        await this.UpdateWorkitemQueue(span);
                         cli.Send(this);
                     }
                     break;
@@ -700,7 +700,7 @@ export class Message {
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
-                        await this.DeleteWorkItemQueue(span);
+                        await this.DeleteWorkitemQueue(span);
                         cli.Send(this);
                     }
                     break;
@@ -709,7 +709,7 @@ export class Message {
                         if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
-                    await this.AddWorkItem(span);
+                    await this.AddWorkitem(span);
                     cli.Send(this);
                     break;
                 case "addworkitems":
@@ -717,7 +717,7 @@ export class Message {
                         if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
-                    await this.AddWorkItems(span);
+                    await this.AddWorkitems(span);
                     cli.Send(this);
                     break;
                 case "popworkitem":
@@ -725,7 +725,7 @@ export class Message {
                         if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
-                    await this.PopWorkItem(span);
+                    await this.PopWorkitem(span);
                     cli.Send(this);
                     break;
                 case "updateworkitem":
@@ -733,7 +733,7 @@ export class Message {
                         if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
-                    await this.UpdateWorkItem(span);
+                    await this.UpdateWorkitem(span);
                     cli.Send(this);
                     break;
                 case "deleteworkitem":
@@ -741,7 +741,7 @@ export class Message {
                         if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
-                    await this.DeleteWorkItem(span);
+                    await this.DeleteWorkitem(span);
                     cli.Send(this);
                     break;
                 default:
@@ -3461,7 +3461,7 @@ export class Message {
         this.Reply();
         let msg: GetFileMessage
         try {
-            msg = SaveFileMessage.assign(this.data);
+            msg = GetFileMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (!NoderedUtil.IsNullEmpty(msg.id)) {
@@ -5323,16 +5323,16 @@ export class Message {
     }
 
 
-    async AddWorkItem(parent: Span): Promise<void> {
+    async AddWorkitem(parent: Span): Promise<void> {
         let user: TokenUser = null;
         this.Reply();
-        let msg: AddWorkItemMessage;
+        let msg: AddWorkitemMessage;
         try {
             const rootjwt = Crypt.rootToken();
             const jwt = this.jwt;
             const user: TokenUser = Crypt.verityToken(jwt);
 
-            msg = AddWorkItemMessage.assign(this.data);
+            msg = AddWorkitemMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.wiqid) && NoderedUtil.IsNullEmpty(msg.wiq)) throw new Error("wiq or wiqid is mandatory")
 
             var wiq: WorkitemQueue = null;
@@ -5354,8 +5354,10 @@ export class Message {
             wi.wiqid = wiq._id;
             wi.name = msg.name ? msg.name : "New work item";
             wi.payload = msg.payload ? msg.payload : {};
+            if (typeof wi.payload !== 'object') wi.payload = { "value": wi.payload };
             wi.priority = msg.priority;
             wi.nextrun = msg.nextrun;
+            if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
 
             wi.state = "new"
             wi.retries = 0;
@@ -5437,6 +5439,15 @@ export class Message {
                 }
                 await amqpwrapper.Instance().send(null, wiq.robotqueue, rpacommand, 5000, null, null, 2);
             }
+            if (!NoderedUtil.IsNullEmpty(wiq.amqpqueue)) {
+                const rpacommand = {
+                    command: "invoke",
+                    workflowid: wiq.workflowid,
+                    data: { payload: wi.payload }
+                }
+                await amqpwrapper.Instance().send(null, wiq.amqpqueue, rpacommand, 5000, null, null, 2);
+            }
+
         } catch (error) {
             await handleError(null, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -5451,16 +5462,16 @@ export class Message {
             await handleError(null, error);
         }
     }
-    async AddWorkItems(parent: Span): Promise<void> {
+    async AddWorkitems(parent: Span): Promise<void> {
         let user: TokenUser = null;
         this.Reply();
-        let msg: AddWorkItemsMessage;
+        let msg: AddWorkitemsMessage;
         try {
             const rootjwt = Crypt.rootToken();
             const jwt = this.jwt;
             const user: TokenUser = Crypt.verityToken(jwt);
 
-            msg = AddWorkItemsMessage.assign(this.data);
+            msg = AddWorkitemsMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.wiqid) && NoderedUtil.IsNullEmpty(msg.wiq)) throw new Error("wiq or wiqid is mandatory")
 
             var wiq: WorkitemQueue = null;
@@ -5483,11 +5494,13 @@ export class Message {
                 wi.wiqid = wiq._id;
                 wi.name = item.name ? item.name : "New work item";
                 wi.payload = item.payload ? item.payload : {};
+                if (typeof wi.payload !== 'object') wi.payload = { "value": wi.payload };
                 wi.priority = item.priority;
                 wi.nextrun = item.nextrun;
                 wi.state = "new"
                 wi.retries = 0;
                 wi.files = [];
+                if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
                 wi.lastrun = null;
                 if (!wi.nextrun) {
                     wi.nextrun = new Date(new Date().toISOString());
@@ -5566,6 +5579,15 @@ export class Message {
                 }
                 await amqpwrapper.Instance().send(null, wiq.robotqueue, rpacommand, 5000, null, null, 2);
             }
+            if (!NoderedUtil.IsNullEmpty(wiq.amqpqueue)) {
+                const rpacommand = {
+                    command: "invoke",
+                    workflowid: wiq.workflowid,
+                    data: { payload: {} }
+                }
+                await amqpwrapper.Instance().send(null, wiq.amqpqueue, rpacommand, 5000, null, null, 2);
+            }
+
         } catch (error) {
             await handleError(null, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -5585,10 +5607,10 @@ export class Message {
 
 
 
-    async UpdateWorkItem(parent: Span): Promise<void> {
+    async UpdateWorkitem(parent: Span): Promise<void> {
         let user: TokenUser = null;
         this.Reply();
-        let msg: UpdateWorkItemMessage;
+        let msg: UpdateWorkitemMessage;
         try {
             const rootjwt = Crypt.rootToken();
             const jwt = this.jwt;
@@ -5596,7 +5618,7 @@ export class Message {
 
             let retry: boolean = false;
 
-            msg = UpdateWorkItemMessage.assign(this.data);
+            msg = UpdateWorkitemMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg._id)) throw new Error("_id is mandatory")
 
             var wis = await Config.db.query<Workitem>({ query: { "_id": msg._id, "_type": "workitem" }, collectionname: "workitems", jwt }, parent);
@@ -5621,8 +5643,10 @@ export class Message {
             wi.wiqid = wiq._id;
             if (!NoderedUtil.IsNullEmpty(msg.name)) wi.name = msg.name;
             if (!NoderedUtil.IsNullUndefinded(msg.payload)) wi.payload = msg.payload;
+            if (typeof wi.payload !== 'object') wi.payload = { "value": wi.payload };
             if (!NoderedUtil.IsNullUndefinded(msg.errormessage)) wi.errormessage = msg.errormessage;
             if (!NoderedUtil.IsNullUndefinded(msg.errorsource)) wi.errorsource = msg.errorsource;
+            if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
 
             if (!NoderedUtil.IsNullEmpty(msg.state)) {
                 msg.state = msg.state.toLowerCase();
@@ -5731,6 +5755,15 @@ export class Message {
                 }
                 await amqpwrapper.Instance().send(null, wiq.robotqueue, rpacommand, 5000, null, null, 2);
             }
+            if (retry && !NoderedUtil.IsNullEmpty(wiq.amqpqueue)) {
+                const rpacommand = {
+                    command: "invoke",
+                    workflowid: wiq.workflowid,
+                    data: { payload: wi.payload }
+                }
+                await amqpwrapper.Instance().send(null, wiq.amqpqueue, rpacommand, 5000, null, null, 2);
+            }
+            //
 
         } catch (error) {
             await handleError(null, error);
@@ -5750,16 +5783,16 @@ export class Message {
 
 
 
-    async PopWorkItem(parent: Span): Promise<void> {
+    async PopWorkitem(parent: Span): Promise<void> {
         let user: TokenUser = null;
         this.Reply();
-        let msg: PopWorkItemMessage;
+        let msg: PopWorkitemMessage;
         try {
             const rootjwt = Crypt.rootToken();
             const jwt = this.jwt;
             const user: TokenUser = Crypt.verityToken(jwt);
 
-            msg = PopWorkItemMessage.assign(this.data);
+            msg = PopWorkitemMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.wiqid) && NoderedUtil.IsNullEmpty(msg.wiq)) throw new Error("wiq or wiqid is mandatory")
 
             var wiq: Base = null;
@@ -5782,10 +5815,14 @@ export class Message {
             if (workitems.length > 0) {
                 var wi = workitems[0];
                 if (NoderedUtil.IsNullEmpty(wi.retries)) wi.retries = 0;
+                if (typeof wi.payload !== 'object') wi.payload = { "value": wi.payload };
+                if (typeof wi.payload !== 'object') wi.payload = { "value": wi.payload };
                 wi.state = "processing";
                 wi.userid = user._id;
                 wi.username = user.name;
                 wi.lastrun = new Date(new Date().toISOString());
+                wi.nextrun = null;
+                if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
                 wi = await Config.db._UpdateOne<Workitem>(null, wi, "workitems", 1, true, jwt, parent);
                 msg.result = wi;
             }
@@ -5804,16 +5841,16 @@ export class Message {
         }
     }
 
-    async DeleteWorkItem(parent: Span): Promise<void> {
+    async DeleteWorkitem(parent: Span): Promise<void> {
         let user: TokenUser = null;
         this.Reply();
-        let msg: DeleteWorkItemMessage;
+        let msg: DeleteWorkitemMessage;
         try {
             const rootjwt = Crypt.rootToken();
             const jwt = this.jwt;
             const user: TokenUser = Crypt.verityToken(jwt);
 
-            msg = DeleteWorkItemMessage.assign(this.data);
+            msg = DeleteWorkitemMessage.assign(this.data);
 
             if (NoderedUtil.IsNullEmpty(msg._id)) throw new Error("_id is mandatory")
 
@@ -5850,14 +5887,14 @@ export class Message {
         }
     }
 
-    async AddWorkItemQueue(cli: WebSocketServerClient, parent: Span): Promise<void> {
+    async AddWorkitemQueue(cli: WebSocketServerClient, parent: Span): Promise<void> {
         let user: TokenUser = null;
         this.Reply();
-        let msg: AddWorkItemQueueMessage;
+        let msg: AddWorkitemQueueMessage;
         try {
             const rootjwt = Crypt.rootToken();
             const jwt = this.jwt;
-            msg = AddWorkItemQueueMessage.assign(this.data);
+            msg = AddWorkitemQueueMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.name)) throw new Error("Name is mandatory")
 
             var queues = await Config.db.query({ query: { name: msg.name, "_type": "workitemqueue" }, collectionname: "mq", jwt: rootjwt }, parent);
@@ -5905,14 +5942,14 @@ export class Message {
             await handleError(null, error);
         }
     }
-    async GetWorkItemQueue(parent: Span): Promise<void> {
+    async GetWorkitemQueue(parent: Span): Promise<void> {
         let user: TokenUser = null;
         this.Reply();
-        let msg: GetWorkItemQueueMessage;
+        let msg: GetWorkitemQueueMessage;
         try {
             const rootjwt = Crypt.rootToken();
             const jwt = this.jwt;
-            msg = GetWorkItemQueueMessage.assign(this.data);
+            msg = GetWorkitemQueueMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.name) && NoderedUtil.IsNullEmpty(msg._id)) throw new Error("Name or _id is mandatory")
 
             var wiq: WorkitemQueue = null;
@@ -5939,14 +5976,14 @@ export class Message {
         }
     }
 
-    async UpdateWorkItemQueue(parent: Span): Promise<void> {
+    async UpdateWorkitemQueue(parent: Span): Promise<void> {
         let user: TokenUser = null;
         this.Reply();
-        let msg: UpdateWorkItemQueueMessage;
+        let msg: UpdateWorkitemQueueMessage;
         try {
             const rootjwt = Crypt.rootToken();
             const jwt = this.jwt;
-            msg = UpdateWorkItemQueueMessage.assign(this.data);
+            msg = UpdateWorkitemQueueMessage.assign(this.data);
 
             if (NoderedUtil.IsNullEmpty(msg.name) && NoderedUtil.IsNullEmpty(msg._id)) throw new Error("Name or _id is mandatory")
 
@@ -5973,7 +6010,8 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(msg.initialdelay)) wiq.initialdelay = msg.initialdelay;
 
             if (msg._acl) wiq._acl = msg._acl;
-            await Config.db._UpdateOne(null, wiq as any, "mq", 1, true, jwt, parent);
+
+            msg.result = await Config.db._UpdateOne(null, wiq as any, "mq", 1, true, jwt, parent);
 
             if (msg.purge) {
                 await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", jwt, parent);
@@ -5997,14 +6035,14 @@ export class Message {
             await handleError(null, error);
         }
     }
-    async DeleteWorkItemQueue(parent: Span): Promise<void> {
+    async DeleteWorkitemQueue(parent: Span): Promise<void> {
         let user: TokenUser = null;
         this.Reply();
-        let msg: DeleteWorkItemQueueMessage;
+        let msg: DeleteWorkitemQueueMessage;
         try {
             const rootjwt = Crypt.rootToken();
             const jwt = this.jwt;
-            msg = DeleteWorkItemQueueMessage.assign(this.data);
+            msg = DeleteWorkitemQueueMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.name) && NoderedUtil.IsNullEmpty(msg._id)) throw new Error("Name or _id is mandatory")
 
             var wiq = new WorkitemQueue();

@@ -9,6 +9,9 @@ export = function (RED: Red) {
         }
     });
     RED.nodes.registerType("workitem addworkitem", workitem.addworkitem);
+    RED.nodes.registerType("workitem addworkitems", workitem.addworkitems);
+    RED.nodes.registerType("workitem updateworkitem", workitem.updateworkitem);
+    RED.nodes.registerType("workitem popworkitem", workitem.popworkitem);
     // RED.nodes.registerType("workflow in", workflow.workflow_in_node);
     // RED.nodes.registerType("workflow out", workflow.workflow_out_node);
     // RED.nodes.registerType("assign workflow", workflow.assign_workflow_node);

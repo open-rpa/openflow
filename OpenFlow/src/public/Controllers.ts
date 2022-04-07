@@ -5,7 +5,7 @@ import { WebSocketClientService } from "./WebSocketClientService";
 
 import * as jsondiffpatch from "jsondiffpatch";
 import * as ofurl from "./formsio_of_provider";
-import { AddWorkItemMessage, AddWorkItemQueueMessage, DeleteWorkItemMessage, DeleteWorkItemQueueMessage, UpdateWorkItemMessage, UpdateWorkItemQueueMessage, Workitem, WorkitemQueue } from "../Messages/WorkItemMessages";
+import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, DeleteWorkitemQueueMessage, UpdateWorkitemMessage, UpdateWorkitemQueueMessage, Workitem, WorkitemQueue } from "@openiap/openflow-api";
 
 
 declare let $: any;
@@ -6881,12 +6881,12 @@ export class WorkitemsCtrl extends entitiesCtrl<Base> {
     async DeleteWorkitem(model) {
         this.loading = true;
         try {
-            const q: DeleteWorkItemMessage = new DeleteWorkItemMessage();
+            const q: DeleteWorkitemMessage = new DeleteWorkitemMessage();
             const _msg: Message = new Message();
             q._id = model._id;
             _msg.command = 'deleteworkitem';
             _msg.data = JSON.stringify(q);
-            const result: DeleteWorkItemMessage = await WebSocketClient.instance.Send<DeleteWorkItemMessage>(_msg, 1);
+            const result: DeleteWorkitemMessage = await WebSocketClient.instance.Send<DeleteWorkitemMessage>(_msg, 1);
             this.loading = false;
             this.loadData();
         } catch (error) {
@@ -6898,14 +6898,14 @@ export class WorkitemsCtrl extends entitiesCtrl<Base> {
     async UpdateWorkitem(model, newstate) {
         this.loading = true;
         try {
-            const q: UpdateWorkItemMessage = new UpdateWorkItemMessage();
+            const q: UpdateWorkitemMessage = new UpdateWorkitemMessage();
             const _msg: Message = new Message();
             q._id = model._id;
             q.state = newstate;
             q.ignoremaxretries = true;
             _msg.command = 'updateworkitem';
             _msg.data = JSON.stringify(q);
-            const result: UpdateWorkItemMessage = await WebSocketClient.instance.Send<UpdateWorkItemMessage>(_msg, 1);
+            const result: UpdateWorkitemMessage = await WebSocketClient.instance.Send<UpdateWorkitemMessage>(_msg, 1);
             this.loading = false;
             this.loadData();
         } catch (error) {
@@ -6952,10 +6952,11 @@ export class WorkitemCtrl extends entityCtrl<Workitem> {
             } else {
                 this.workitemqueues = await NoderedUtil.Query("mq", { "_type": "workitemqueue" }, { "name": 1 }, null, 100, 0, null, null, null, 1);
                 this.workitemqueues.unshift({ "name": "" } as any)
-                this.model = {} as any;
+                this.model = new Workitem();
                 this.model.retries = 0;
                 this.model.payload = {};
-                if (this.userdata.data && this.userdata.data.WorkitemsCtrl) this.queue = this.userdata.data.WorkitemsCtrl.queue;
+                if (this.userdata.data && this.userdata.data.WorkitemsCtrl) this.model.wiq = this.userdata.data.WorkitemsCtrl.queue;
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
         });
     }
@@ -6980,16 +6981,16 @@ export class WorkitemCtrl extends entityCtrl<Workitem> {
             this.loading = true;
             try {
                 if (NoderedUtil.IsNullEmpty(this.model._id)) {
-                    const q: AddWorkItemMessage = new AddWorkItemMessage();
+                    const q: AddWorkitemMessage = new AddWorkitemMessage();
                     const _msg: Message = new Message();
                     q.name = model.name;
                     q.wiq = model.wiq;
                     q.payload = model.payload;
                     _msg.command = 'addworkitem';
                     _msg.data = JSON.stringify(q);
-                    const result: AddWorkItemMessage = await WebSocketClient.instance.Send<AddWorkItemMessage>(_msg, 1);
+                    const result: AddWorkitemMessage = await WebSocketClient.instance.Send<AddWorkitemMessage>(_msg, 1);
                 } else {
-                    const q: UpdateWorkItemMessage = new UpdateWorkItemMessage();
+                    const q: UpdateWorkitemMessage = new UpdateWorkitemMessage();
                     const _msg: Message = new Message();
                     q._id = model._id;
                     q.name = model.name;
@@ -6997,7 +6998,7 @@ export class WorkitemCtrl extends entityCtrl<Workitem> {
                     q.payload = model.payload;
                     _msg.command = 'updateworkitem';
                     _msg.data = JSON.stringify(q);
-                    const result: UpdateWorkItemMessage = await WebSocketClient.instance.Send<UpdateWorkItemMessage>(_msg, 1);
+                    const result: UpdateWorkitemMessage = await WebSocketClient.instance.Send<UpdateWorkitemMessage>(_msg, 1);
                 }
                 this.$location.path("/Workitems");
             } catch (error) {
@@ -7060,12 +7061,12 @@ export class WorkitemQueuesCtrl extends entitiesCtrl<Base> {
     async DeleteWorkitemQueue(model) {
         this.loading = true;
         try {
-            const q: DeleteWorkItemQueueMessage = new DeleteWorkItemQueueMessage();
+            const q: DeleteWorkitemQueueMessage = new DeleteWorkitemQueueMessage();
             const _msg: Message = new Message();
             q._id = model._id;
             _msg.command = 'deleteworkitemqueue';
             _msg.data = JSON.stringify(q);
-            const result: DeleteWorkItemQueueMessage = await WebSocketClient.instance.Send<DeleteWorkItemQueueMessage>(_msg, 1);
+            const result: DeleteWorkitemQueueMessage = await WebSocketClient.instance.Send<DeleteWorkitemQueueMessage>(_msg, 1);
             this.loading = false;
             this.loadData();
         } catch (error) {
@@ -7079,7 +7080,7 @@ export class WorkitemQueuesCtrl extends entitiesCtrl<Base> {
         try {
             let isExecuted = confirm("Are you sure you want to purge (delete) all workitems from " + model.name + "?\nThis action cannot be undone!");
             if (!isExecuted) return;
-            const q: UpdateWorkItemQueueMessage = new UpdateWorkItemQueueMessage();
+            const q: UpdateWorkitemQueueMessage = new UpdateWorkitemQueueMessage();
             const _msg: Message = new Message();
             q._id = model._id;
             q.purge = true;
@@ -7094,7 +7095,7 @@ export class WorkitemQueuesCtrl extends entitiesCtrl<Base> {
 
             _msg.command = 'updateworkitemqueue';
             _msg.data = JSON.stringify(q);
-            const result: UpdateWorkItemQueueMessage = await WebSocketClient.instance.Send<UpdateWorkItemQueueMessage>(_msg, 1);
+            const result: UpdateWorkitemQueueMessage = await WebSocketClient.instance.Send<UpdateWorkitemQueueMessage>(_msg, 1);
             this.loading = false;
             this.loadData();
         } catch (error) {
@@ -7122,7 +7123,7 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
     public projects: Base[] = [];
     public workflows: Base[] = [];
     public users: Base[] = [];
-    public amqpqueue: Base[] = [];
+    public amqpqueues: Base[] = [];
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -7137,24 +7138,29 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
         console.debug("WorkitemQueueCtrl");
         this.collection = "mq";
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
-            this.projects = await NoderedUtil.Query("openrpa", { "_type": "project" }, { "name": 1 }, null, 100, 0, null, null, null, 2);
-            this.projects.unshift({ "name": "(no project)", "_id": "" } as any);
-            this.workflows = await NoderedUtil.Query("openrpa", { "_type": "workflow" }, { "name": 1 }, null, 500, 0, null, null, null, 2);
-            this.workflows.unshift({ "name": "(no workflow)", "_id": "" } as any);
-            this.users = await NoderedUtil.Query("users", { "$or": [{ "_type": "user" }, { "_type": "role" }] }, { "name": 1 }, null, 500, 0, null, null, null, 2);
-            this.users.unshift({ "name": "(no robot)", "_id": "" } as any);
-            this.amqpqueue = await NoderedUtil.Query("mq", { "_type": "queue" }, { "name": 1 }, null, 500, 0, null, null, null, 2);
-            this.amqpqueue.unshift({ "name": "(no queue)", "_id": "" } as any);
+            try {
+                this.projects = await NoderedUtil.Query("openrpa", { "_type": "project" }, { "name": 1 }, null, 100, 0, null, null, null, 2);
+                this.projects.unshift({ "name": "(no project)", "_id": "" } as any);
+                this.workflows = await NoderedUtil.Query("openrpa", { "_type": "workflow" }, { "name": 1 }, null, 500, 0, null, null, null, 2);
+                this.workflows.unshift({ "name": "(no workflow)", "_id": "" } as any);
+                this.users = await NoderedUtil.Query("users", { "$or": [{ "_type": "user" }, { "_type": "role" }] }, { "name": 1 }, null, 500, 0, null, null, null, 2);
+                this.users.unshift({ "name": "(no robot)", "_id": "" } as any);
+                this.amqpqueues = await NoderedUtil.Query("mq", { "_type": "queue" }, { "name": 1 }, null, 500, 0, null, null, null, 2);
+                this.amqpqueues.unshift({ "name": "(no queue)", "_id": "" } as any);
 
-            if (this.id !== null && this.id !== undefined) {
-                await this.loadData();
-            } else {
-                this.model = {} as any; // new WorkitemQueue();
-                this.model.maxretries = 3;
-                this.model.retrydelay = 0;
-                this.model.initialdelay = 0;
-                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                if (this.id !== null && this.id !== undefined) {
+                    await this.loadData();
+                } else {
+                    this.model = new WorkitemQueue();
+                    this.model.maxretries = 3;
+                    this.model.retrydelay = 0;
+                    this.model.initialdelay = 0;
+                }
+            } catch (error) {
+                console.error(error);
+                this.errormessage = error.message ? error.message : error;
             }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         });
     }
     async submit(): Promise<void> {
@@ -7164,7 +7170,7 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
 
             try {
                 if (NoderedUtil.IsNullEmpty(this.model._id)) {
-                    const q: AddWorkItemQueueMessage = new AddWorkItemQueueMessage();
+                    const q: AddWorkitemQueueMessage = new AddWorkitemQueueMessage();
                     const _msg: Message = new Message();
                     q.name = model.name;
                     q.workflowid = model.workflowid;
@@ -7176,9 +7182,9 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
                     q.initialdelay = model.initialdelay;
                     _msg.command = 'addworkitemqueue';
                     _msg.data = JSON.stringify(q);
-                    const result: AddWorkItemQueueMessage = await WebSocketClient.instance.Send<AddWorkItemQueueMessage>(_msg, 1);
+                    const result: AddWorkitemQueueMessage = await WebSocketClient.instance.Send<AddWorkitemQueueMessage>(_msg, 1);
                 } else {
-                    const q: UpdateWorkItemQueueMessage = new UpdateWorkItemQueueMessage();
+                    const q: UpdateWorkitemQueueMessage = new UpdateWorkitemQueueMessage();
                     const _msg: Message = new Message();
                     q._id = model._id;
                     q.name = model.name;
@@ -7191,7 +7197,7 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
                     q.initialdelay = model.initialdelay;
                     _msg.command = 'updateworkitemqueue';
                     _msg.data = JSON.stringify(q);
-                    const result: UpdateWorkItemQueueMessage = await WebSocketClient.instance.Send<UpdateWorkItemQueueMessage>(_msg, 1);
+                    const result: UpdateWorkitemQueueMessage = await WebSocketClient.instance.Send<UpdateWorkitemQueueMessage>(_msg, 1);
 
                 }
                 this.$location.path("/WorkitemQueues");
