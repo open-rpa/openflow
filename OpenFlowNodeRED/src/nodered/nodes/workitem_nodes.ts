@@ -3,6 +3,7 @@ import { Red } from "node-red";
 import { Logger } from "../../Logger";
 import { AddWorkitem, MessageWorkitemFile, NoderedUtil, Workitem } from "@openiap/openflow-api";
 import { Util } from "./Util";
+const pako = require('pako');
 
 export interface iworkitemqueue_config {
     name: string;
@@ -192,6 +193,7 @@ export interface ipopworkitem {
     name: string;
     workitem: string;
     config: any;
+    download: boolean;
 }
 export class popworkitem {
     public node: Red = null;
@@ -214,9 +216,22 @@ export class popworkitem {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Processing" });
             const { wiq, wiqid } = this.workitemqueue_config;
+            let download = this.config.download;
+            if (NoderedUtil.IsNullEmpty(download)) download = false;
 
             const result = await NoderedUtil.PopWorkitem({ wiqid, wiq })
             if (result != null) {
+                if (download && result.files && result.files.length > 0) {
+                    for (let i = 0; i < result.files.length; i++) {
+                        var file = result.files[i];
+                        if (!NoderedUtil.IsNullEmpty(file._id)) {
+                            var down = await NoderedUtil.GetFile(null, file._id, null, 1, true);
+                            // (file as any).file = Buffer.from(down.file, 'base64');
+                            var data = Buffer.from(down.file, 'base64');
+                            (file as any).file = Buffer.from(pako.inflate(data));
+                        }
+                    }
+                }
                 if (!NoderedUtil.IsNullEmpty(this.config.workitem)) {
                     Util.SetMessageProperty(msg, this.config.workitem, result);
                 }
@@ -226,6 +241,53 @@ export class popworkitem {
                 this.node.send([null, msg]);
                 this.node.status({ fill: "green", shape: "dot", text: "No more workitems" });
             }
+        } catch (error) {
+            NoderedUtil.HandleError(this, error, msg);
+        }
+    }
+    async onclose(removed: boolean, done: any) {
+        try {
+        } catch (error) {
+            Logger.instanse.error(error);
+            NoderedUtil.HandleError(this, error, null);
+        }
+        if (done != null) done();
+    }
+}
+
+
+export interface ideleteworkitem {
+    name: string;
+    workitem: string;
+    config: any;
+}
+export class deleteworkitem {
+    public node: Red = null;
+    public name: string = "";
+    private workitemqueue_config: workitemqueue_config;
+    constructor(public config: ideleteworkitem) {
+        RED.nodes.createNode(this, config);
+        try {
+            this.node = this;
+            this.name = config.name;
+            var conf = RED.nodes.getNode(this.config.config);
+            if (conf != null) this.workitemqueue_config = conf.config;
+            this.node.on("close", this.onclose);
+            this.node.on("input", this.oninput);
+        } catch (error) {
+            NoderedUtil.HandleError(this, error, null);
+        }
+    }
+    async oninput(msg: any) {
+        try {
+            this.node.status({ fill: "blue", shape: "dot", text: "Processing" });
+            const workitem = await Util.EvaluateNodeProperty<Workitem>(this, msg, "workitem");
+            if (!NoderedUtil.IsNullUndefinded(workitem) && !NoderedUtil.IsNullEmpty(workitem._id)) {
+                await NoderedUtil.DeleteWorkitem({ _id: workitem._id })
+            } else {
+                throw new Error("workitem missing, or workitem is missing _id");
+            }
+            this.node.send(msg);
         } catch (error) {
             NoderedUtil.HandleError(this, error, msg);
         }

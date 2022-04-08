@@ -13,7 +13,7 @@ import { NoderedUtil, User, SaveFileMessage } from '@openiap/openflow-api';
 import { Auth } from '../OpenFlow/src/Auth';
 import { Crypt } from '../OpenFlow/src/Crypt';
 import { DBHelper } from '../OpenFlow/src/DBHelper';
-import { AddWorkItemMessage, AddWorkItemQueueMessage, DeleteWorkItemMessage, DeleteWorkItemQueueMessage, GetWorkItemQueueMessage, PopWorkItemMessage, UpdateWorkItemMessage, UpdateWorkItemQueueMessage } from "../OpenFlow/src/Messages/WorkItemMessages";
+import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, DeleteWorkitemQueueMessage, GetWorkitemQueueMessage, PopWorkitemMessage, UpdateWorkitemMessage, UpdateWorkitemQueueMessage } from "@openiap/openflow-api";
 
 @suite class OpenFlowConfigTests {
     private rootToken: string;
@@ -36,12 +36,12 @@ import { AddWorkItemMessage, AddWorkItemQueueMessage, DeleteWorkItemMessage, Del
         Auth.shutdown();
     }
     async GetItem(name) {
-        var q: any = new GetWorkItemQueueMessage();
+        var q: any = new GetWorkitemQueueMessage();
         var msg = new Message(); msg.jwt = this.userToken;
         q.name = name
         msg.data = JSON.stringify(q);
         Config.log_errors = false;
-        await msg.GetWorkItemQueue(null);
+        await msg.GetWorkitemQueue(null);
         Config.log_errors = true;
         q = JSON.parse(msg.data);
         return q.result;
@@ -130,12 +130,12 @@ import { AddWorkItemMessage, AddWorkItemQueueMessage, DeleteWorkItemMessage, Del
 
 
 
-        var q: any = new PopWorkItemMessage();
+        var q: any = new PopWorkitemMessage();
         var msg = new Message(); msg.jwt = this.userToken;
         q.wiqid = wiq._id; q.wiq = wiq.name;
         msg.data = JSON.stringify(q);
         Config.log_errors = false;
-        await msg.PopWorkItem(null);
+        await msg.PopWorkitem(null);
         Config.log_errors = true;
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
@@ -159,12 +159,12 @@ import { AddWorkItemMessage, AddWorkItemQueueMessage, DeleteWorkItemMessage, Del
     }
     @timeout(50000) // @test 
     async 'Delete work item'(wi) {
-        var q: any = new DeleteWorkItemMessage();
+        var q: any = new DeleteWorkitemMessage();
         var msg = new Message(); msg.jwt = this.userToken;
         q._id = wi._id;
         msg.data = JSON.stringify(q);
         Config.log_errors = false;
-        await msg.DeleteWorkItem(null);
+        await msg.DeleteWorkitem(null);
         Config.log_errors = true;
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
@@ -172,7 +172,7 @@ import { AddWorkItemMessage, AddWorkItemQueueMessage, DeleteWorkItemMessage, Del
     }
     @timeout(50000) // @test 
     async 'Update work item'(wi) {
-        var q: any = new UpdateWorkItemMessage();
+        var q: any = new UpdateWorkitemMessage();
         var msg = new Message(); msg.jwt = this.userToken;
         q._id = wi._id;
         q.files = [];
@@ -187,7 +187,7 @@ import { AddWorkItemMessage, AddWorkItemQueueMessage, DeleteWorkItemMessage, Del
         }
         msg.data = JSON.stringify(q);
         Config.log_errors = false;
-        await msg.UpdateWorkItem(null);
+        await msg.UpdateWorkitem(null);
         Config.log_errors = true;
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
@@ -197,7 +197,7 @@ import { AddWorkItemMessage, AddWorkItemQueueMessage, DeleteWorkItemMessage, Del
     }
     @timeout(50000) // @test 
     async 'Create work item'(wiq) {
-        var q: any = new AddWorkItemMessage();
+        var q: any = new AddWorkitemMessage();
         var msg = new Message(); msg.jwt = this.userToken;
         q.wiq = wiq.name;
         q.wiqid = wiq._id;
@@ -220,7 +220,7 @@ import { AddWorkItemMessage, AddWorkItemQueueMessage, DeleteWorkItemMessage, Del
         }
         msg.data = JSON.stringify(q);
         Config.log_errors = false;
-        await msg.AddWorkItem(null);
+        await msg.AddWorkitem(null);
         Config.log_errors = true;
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
@@ -231,12 +231,12 @@ import { AddWorkItemMessage, AddWorkItemQueueMessage, DeleteWorkItemMessage, Del
 
     @timeout(50000)
     async 'Create work item queue'(name) {
-        var q: any = new AddWorkItemQueueMessage();
+        var q: any = new AddWorkitemQueueMessage();
         var msg = new Message(); msg.jwt = this.userToken;
         q.name = name ? name : "test queue"
         msg.data = JSON.stringify(q);
         Config.log_errors = false;
-        await msg.AddWorkItemQueue(null, null);
+        await msg.AddWorkitemQueue(null, null);
         Config.log_errors = true;
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
@@ -246,12 +246,12 @@ import { AddWorkItemMessage, AddWorkItemQueueMessage, DeleteWorkItemMessage, Del
     }
     @timeout(50000)
     async 'update test work item queue'(name) {
-        var q: any = new UpdateWorkItemQueueMessage();
+        var q: any = new UpdateWorkitemQueueMessage();
         var msg = new Message(); msg.jwt = this.userToken;
         q.name = name ? name : "test queue"
         msg.data = JSON.stringify(q);
         Config.log_errors = false;
-        await msg.UpdateWorkItemQueue(null);
+        await msg.UpdateWorkitemQueue(null);
         Config.log_errors = true;
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
@@ -261,12 +261,12 @@ import { AddWorkItemMessage, AddWorkItemQueueMessage, DeleteWorkItemMessage, Del
     }
     @timeout(50000)
     async 'delete test work item queue'(name) {
-        var q: any = new DeleteWorkItemQueueMessage();
+        var q: any = new DeleteWorkitemQueueMessage();
         var msg = new Message(); msg.jwt = this.userToken;
         q.name = name ? name : "test queue"
         msg.data = JSON.stringify(q);
         Config.log_errors = false;
-        await msg.DeleteWorkItemQueue(null);
+        await msg.DeleteWorkitemQueue(null);
         Config.log_errors = true;
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");

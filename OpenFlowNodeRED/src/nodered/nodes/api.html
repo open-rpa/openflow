@@ -1475,6 +1475,10 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
     <input style="width:70%" type="text" id="node-input-filename" placeholder="Get by filename">
 </div>
 <div class="form-row">
+    <label><i class="fa fa-tag"></i> Return as buffer</label>
+    <input type="checkbox" id="node-input-asbuffer" style="width: auto;">
+  </div>
+  <div class="form-row">
     <label><i class="fa fa-tag"></i> Name</label>
     <input type="text" id="node-input-name" placeholder="Node name">
 </div>
@@ -1493,8 +1497,9 @@ you can set filename using msg.filename<br>
         defaults: {
             fileid: { value: "", validate: validate("fileidtype") },
             fileidtype: { value: "" },
-            filename: { value: "", validate: validate("filenametype"), required: true },
+            filename: { value: "", validate: validate("filenametype")},
             filenametype: { value: "" },
+            asbuffer: { value: true, required: true },
             name: { value: "" }
         },
         inputs: 1,

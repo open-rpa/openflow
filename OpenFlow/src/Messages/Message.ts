@@ -3434,7 +3434,7 @@ export class Message {
         }
         if (cli) this.Send(cli);
     }
-    private async _GetFile(id: string): Promise<string> {
+    private async _GetFile(id: string, compressed: boolean): Promise<string> {
         return new Promise<string>(async (resolve, reject) => {
             try {
                 const bucket = new GridFSBucket(Config.db.db);
@@ -3447,9 +3447,18 @@ export class Message {
                     reject(error);
                 });
                 downloadStream.on('end', () => {
-                    const buffer = Buffer.concat(bufs);
-                    const result = buffer.toString('base64');
-                    resolve(result);
+                    try {
+                        const buffer = Buffer.concat(bufs);
+                        let result: string = "";
+                        if (compressed) {
+                            result = Buffer.from(pako.deflate(buffer)).toString('base64');
+                        } else {
+                            result = buffer.toString('base64');
+                        }
+                        resolve(result);
+                    } catch (error) {
+                        reject(error);
+                    }
                 });
             } catch (err) {
                 reject(err);
@@ -3479,7 +3488,7 @@ export class Message {
             } else {
                 throw new Error("id or filename is mandatory");
             }
-            msg.file = await this._GetFile(msg.id);
+            msg.file = await this._GetFile(msg.id, msg.compress);
         } catch (error) {
             span?.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }

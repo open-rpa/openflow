@@ -5,6 +5,7 @@ import { Config } from "../../Config";
 import { Logger } from "../../Logger";
 import { NoderedUtil, SigninMessage, TokenUser, Message, WebSocketClient, Base, mapFunc, reduceFunc, finalizeFunc, UpdateOneMessage } from "@openiap/openflow-api";
 import { Util } from "./Util";
+const pako = require('pako');
 
 export interface Iapi_credentials {
     name: string;
@@ -1163,6 +1164,7 @@ export interface Idownload_file {
     fileid: string;
     filename: string;
     name: string;
+    asbuffer: boolean;
 }
 export class download_file {
     public node: Red = null;
@@ -1180,14 +1182,22 @@ export class download_file {
 
             const fileid = await Util.EvaluateNodeProperty<string>(this, msg, "fileid");
             const filename = await Util.EvaluateNodeProperty<string>(this, msg, "filename");
-
+            let asbuffer: boolean = this.config.asbuffer;
+            if (NoderedUtil.IsNullEmpty(asbuffer)) asbuffer = false;
+            asbuffer = Boolean(asbuffer);;
             const jwt = msg.jwt;
             let priority: number = 1;
             if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Getting file" });
-            const file = await NoderedUtil.GetFile(filename, fileid, jwt, priority);
-            msg.payload = file.file;
+            const file = await NoderedUtil.GetFile(filename, fileid, jwt, priority, asbuffer);
+            if (asbuffer) {
+                var data = Buffer.from(file.file, 'base64');
+                msg.payload = pako.inflate(data);
+                msg.payload = Buffer.from(msg.payload);
+            } else {
+                msg.payload = file.file;
+            }
             msg.error = file.error;
             msg.filename = file.filename;
             msg.id = file.id;
