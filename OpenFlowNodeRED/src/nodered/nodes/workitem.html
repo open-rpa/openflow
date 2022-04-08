@@ -13,309 +13,306 @@
 </div>
 </script>
 <script type="text/javascript">
-    RED.nodes.registerType('iworkitemqueue-config', {
-      category: 'config',
-      defaults: {
-        wiq: { value: "" },
-        wiqid: { value: "" },
-        name: { value: "" },
-      },
-      credentials: {
-        password: { type: "password" }
-      },
-      label: function () {
-        return (this.name || this.wiq) || "iworkitemqueue config";
-      }
-    });
+RED.nodes.registerType('iworkitemqueue-config', {
+  category: 'config',
+  defaults: {
+    wiq: { value: "" },
+    wiqid: { value: "" },
+    name: { value: "" },
+  },
+  credentials: {
+    password: { type: "password" }
+  },
+  label: function () {
+    return (this.name || this.wiq) || "iworkitemqueue config";
+  }
+});
 </script>
 
 
 
 <script type="text/x-red" data-template-name="workitem addworkitem">
 <div class="form-row">
-<label for="node-input-config"><i class="fa fa-globe"></i> Config</label>
-<input type="text" id="node-input-config">
+  <label for="node-input-config"><i class="fa fa-globe"></i> Config</label>
+  <input type="text" id="node-input-config">
 </div>
 <div class="form-row">
-<label><i class="fa fa-tag"></i> Workitems Payload</label>
-<input type="hidden" id="node-input-payloadtype">
-<input style="width:70%" type="text" id="node-input-payload" placeholder="Workitem payload">
+  <label><i class="fa fa-tag"></i> Workitems Payload</label>
+  <input type="hidden" id="node-input-payloadtype">
+  <input style="width:70%" type="text" id="node-input-payload" placeholder="Workitem payload">
 </div>
 <div class="form-row">
-<label><i class="fa fa-tag"></i> Nextrun</label>
-<input type="hidden" id="node-input-nextruntype">
-<input style="width:70%" type="text" id="node-input-nextrun" placeholder="Set time when this can be processed">
+  <label><i class="fa fa-tag"></i> Nextrun</label>
+  <input type="hidden" id="node-input-nextruntype">
+  <input style="width:70%" type="text" id="node-input-nextrun" placeholder="Set time when this can be processed">
 </div>
 <div class="form-row">
-<label><i class="fa fa-tag"></i> Priority</label>
-<input type="hidden" id="node-input-prioritytype">
-<input style="width:70%" type="text" id="node-input-priority" placeholder="Set time when this can be processed">
+  <label><i class="fa fa-tag"></i> Priority</label>
+  <input type="hidden" id="node-input-prioritytype">
+  <input style="width:70%" type="text" id="node-input-priority" placeholder="Set time when this can be processed">
 </div>
 <div class="form-row">
-<label><i class="fa fa-tag"></i> Workitem Name</label>
-<input type="hidden" id="node-input-topictype">
-<input style="width:70%" type="text" id="node-input-topic" placeholder="Workitem name">
+  <label><i class="fa fa-tag"></i> Workitem Name</label>
+  <input type="hidden" id="node-input-topictype">
+  <input style="width:70%" type="text" id="node-input-topic" placeholder="Workitem name">
 </div>
 <div class="form-row">
-<label ><i class="fa fa-tag"></i> Name</label>
-<input type="text" id="node-config-input-name" placeholder="Node name">
+  <label ><i class="fa fa-tag"></i> Name</label>
+  <input type="text" id="node-config-input-name" placeholder="Node name">
 </div>
 </script>
 <script type="text/x-red" data-help-name="workitem addworkitem">
 </script>
 <script type="text/javascript">
-  RED.nodes.registerType('workitem addworkitem', {
-    category: 'workitem',
-    paletteLabel: 'Add Workitem',
-    color: "#a6bbcf",
-    defaults: {
-      name: { value: "" },
-      config: { value: "", type: "iworkitemqueue-config", required: true },
-      payload: { value: "payload", validate: validate("payloadtype") },
-      payloadtype: { value: "" },
-      topic: { value: "topic", validate: validate("topictype") },
-      topictype: { value: "" },
-      nextrun: { value: "nextrun", validate: validate("nextruntype") },
-      nextruntype: { value: "" },
-      priority: { value: "3", validate: validate("prioritytype") },
-      prioritytype: { value: "" },
-
-    },
-    inputs: 1,
-    outputs: 1,
-    icon: "bridge.png",
-    label: function () {
-      return this.name || "add workitem";
-    },
-    labelStyle: function () {
-      return this.name ? "node_label_italic" : "";
-    },
-    oneditprepare: function () {
-      if (this.payloadtype === null) $("#node-input-payloadtype").val('msg');
-      $("#node-input-payload").typedInput({
-        default: 'msg',
-        typeField: $("#node-input-payloadtype"),
-        types: ['msg']
-      });
-      if (this.topictype === null) $("#node-input-topictype").val('msg');
-      $("#node-input-topic").typedInput({
-        default: 'msg',
-        typeField: $("#node-input-topictype"),
-        types: ['msg', 'str', 'flow', 'global']
-      });
-      if (this.nextruntype === null) $("#node-input-nextruntype").val('msg');
-      $("#node-input-nextrun").typedInput({
-        default: 'msg',
-        typeField: $("#node-input-nextruntype"),
-        types: ['msg', 'str', 'flow', 'global']
-      });
-      if (this.prioritytype === null) $("#node-input-prioritytype").val('num');
-      $("#node-input-priority").typedInput({
-        default: 'msg',
-        typeField: $("#node-input-prioritytype"),
-        types: ['msg', 'num', 'flow', 'global']
-      });
-    }
-  });
+RED.nodes.registerType('workitem addworkitem', {
+  category: 'workitem',
+  paletteLabel: 'Add Workitem',
+  color: "#a6bbcf",
+  defaults: {
+    name: { value: "" },
+    config: { value: "", type: "iworkitemqueue-config", required: true },
+    payload: { value: "payload", validate: validate("payloadtype") },
+    payloadtype: { value: "" },
+    topic: { value: "topic", validate: validate("topictype") },
+    topictype: { value: "" },
+    nextrun: { value: "nextrun", validate: validate("nextruntype") },
+    nextruntype: { value: "" },
+    priority: { value: "3", validate: validate("prioritytype") },
+    prioritytype: { value: "" }
+  },
+  inputs: 1,
+  outputs: 1,
+  icon: "bridge.png",
+  label: function () {
+    return this.name || "add workitem";
+  },
+  labelStyle: function () {
+    return this.name ? "node_label_italic" : "";
+  },
+  oneditprepare: function () {
+    if (this.payloadtype === null) $("#node-input-payloadtype").val('msg');
+    $("#node-input-payload").typedInput({
+      default: 'msg',
+      typeField: $("#node-input-payloadtype"),
+      types: ['msg']
+    });
+    if (this.topictype === null) $("#node-input-topictype").val('msg');
+    $("#node-input-topic").typedInput({
+      default: 'msg',
+      typeField: $("#node-input-topictype"),
+      types: ['msg', 'str', 'flow', 'global']
+    });
+    if (this.nextruntype === null) $("#node-input-nextruntype").val('msg');
+    $("#node-input-nextrun").typedInput({
+      default: 'msg',
+      typeField: $("#node-input-nextruntype"),
+      types: ['msg', 'str', 'flow', 'global']
+    });
+    if (this.prioritytype === null) $("#node-input-prioritytype").val('num');
+    $("#node-input-priority").typedInput({
+      default: 'msg',
+      typeField: $("#node-input-prioritytype"),
+      types: ['msg', 'num', 'flow', 'global']
+    });
+  }
+});
 </script>
 
 <script type="text/x-red" data-template-name="workitem addworkitems">
 <div class="form-row">
-<label for="node-input-config"><i class="fa fa-globe"></i> Config</label>
-<input type="text" id="node-input-config">
+  <label for="node-input-config"><i class="fa fa-globe"></i> Config</label>
+  <input type="text" id="node-input-config">
 </div>
 <div class="form-row">
-<label><i class="fa fa-tag"></i> Workitems</label>
-<input type="hidden" id="node-input-workitemstype">
-<input style="width:70%" type="text" id="node-input-workitems" placeholder="Workitem workitems">
+  <label><i class="fa fa-tag"></i> Workitems</label>
+  <input type="hidden" id="node-input-workitemstype">
+  <input style="width:70%" type="text" id="node-input-workitems" placeholder="Workitem workitems">
 </div>
 <div class="form-row">
-<label><i class="fa fa-tag"></i> Nextrun</label>
-<input type="hidden" id="node-input-nextruntype">
-<input style="width:70%" type="text" id="node-input-nextrun" placeholder="Set time when this can be processed">
+  <label><i class="fa fa-tag"></i> Nextrun</label>
+  <input type="hidden" id="node-input-nextruntype">
+  <input style="width:70%" type="text" id="node-input-nextrun" placeholder="Set time when this can be processed">
 </div>
 <div class="form-row">
-<label><i class="fa fa-tag"></i> Priority</label>
-<input type="hidden" id="node-input-prioritytype">
-<input style="width:70%" type="text" id="node-input-priority" placeholder="Set time when this can be processed">
+  <label><i class="fa fa-tag"></i> Priority</label>
+  <input type="hidden" id="node-input-prioritytype">
+  <input style="width:70%" type="text" id="node-input-priority" placeholder="Set time when this can be processed">
 </div>
 <div class="form-row">
-<label ><i class="fa fa-tag"></i> Name</label>
-<input type="text" id="node-config-input-name" placeholder="Node name">
+  <label ><i class="fa fa-tag"></i> Name</label>
+  <input type="text" id="node-config-input-name" placeholder="Node name">
 </div>
 </script>
 <script type="text/x-red" data-help-name="workitem addworkitems">
 </script>
 <script type="text/javascript">
-  RED.nodes.registerType('workitem addworkitems', {
-    category: 'workitem',
-    paletteLabel: 'Add Workitems',
-    color: "#a6bbcf",
-    defaults: {
-      name: { value: "" },
-      config: { value: "", type: "iworkitemqueue-config", required: true },
-      workitems: { value: "workitems", validate: validate("workitemstype") },
-      workitemstype: { value: "" },
-      nextrun: { value: "nextrun", validate: validate("nextruntype") },
-      nextruntype: { value: "" },
-      priority: { value: "3", validate: validate("prioritytype") },
-      prioritytype: { value: "" },
-
-    },
-    inputs: 1,
-    outputs: 1,
-    icon: "bridge.png",
-    label: function () {
-      return this.name || "add workitems";
-    },
-    labelStyle: function () {
-      return this.name ? "node_label_italic" : "";
-    },
-    oneditprepare: function () {
-      if (this.workitemstype === null) $("#node-input-workitemstype").val('msg');
-      $("#node-input-workitems").typedInput({
-        default: 'msg',
-        typeField: $("#node-input-workitemstype"),
-        types: ['msg', 'json']
-      });
-      if (this.nextruntype === null) $("#node-input-nextruntype").val('msg');
-      $("#node-input-nextrun").typedInput({
-        default: 'msg',
-        typeField: $("#node-input-nextruntype"),
-        types: ['msg', 'str', 'flow', 'global']
-      });
-      if (this.prioritytype === null) $("#node-input-prioritytype").val('num');
-      $("#node-input-priority").typedInput({
-        default: 'msg',
-        typeField: $("#node-input-prioritytype"),
-        types: ['msg', 'num', 'flow', 'global']
-      });
-    }
-  });
+RED.nodes.registerType('workitem addworkitems', {
+  category: 'workitem',
+  paletteLabel: 'Add Workitems',
+  color: "#a6bbcf",
+  defaults: {
+    name: { value: "" },
+    config: { value: "", type: "iworkitemqueue-config", required: true },
+    workitems: { value: "workitems", validate: validate("workitemstype") },
+    workitemstype: { value: "" },
+    nextrun: { value: "nextrun", validate: validate("nextruntype") },
+    nextruntype: { value: "" },
+    priority: { value: "3", validate: validate("prioritytype") },
+    prioritytype: { value: "" }
+  },
+  inputs: 1,
+  outputs: 1,
+  icon: "bridge.png",
+  label: function () {
+    return this.name || "add workitems";
+  },
+  labelStyle: function () {
+    return this.name ? "node_label_italic" : "";
+  },
+  oneditprepare: function () {
+    if (this.workitemstype === null) $("#node-input-workitemstype").val('msg');
+    $("#node-input-workitems").typedInput({
+      default: 'msg',
+      typeField: $("#node-input-workitemstype"),
+      types: ['msg', 'json']
+    });
+    if (this.nextruntype === null) $("#node-input-nextruntype").val('msg');
+    $("#node-input-nextrun").typedInput({
+      default: 'msg',
+      typeField: $("#node-input-nextruntype"),
+      types: ['msg', 'str', 'flow', 'global']
+    });
+    if (this.prioritytype === null) $("#node-input-prioritytype").val('num');
+    $("#node-input-priority").typedInput({
+      default: 'msg',
+      typeField: $("#node-input-prioritytype"),
+      types: ['msg', 'num', 'flow', 'global']
+    });
+  }
+});
 </script>
 
 
 
 <script type="text/x-red" data-template-name="workitem updateworkitem">
 <div class="form-row">
-<label for="node-input-config"><i class="fa fa-globe"></i> Config</label>
-<input type="text" id="node-input-config">
+  <label for="node-input-config"><i class="fa fa-globe"></i> Config</label>
+  <input type="text" id="node-input-config">
 </div>
 <div class="form-row">
-<label><i class="fa fa-tag"></i> Workitem</label>
-<input type="hidden" id="node-input-workitemtype">
-<input style="width:70%" type="text" id="node-input-workitem" placeholder="Workitem workitem">
+  <label><i class="fa fa-tag"></i> Workitem</label>
+  <input type="hidden" id="node-input-workitemtype">
+  <input style="width:70%" type="text" id="node-input-workitem" placeholder="Workitem workitem">
 </div>
 <div class="form-row">
-<label for="node-input-state"><i class="fa fa-globe"></i> State</label>
-<select id="node-input-state">
-<option value="msg">msg.state</option>
-<option value="successful">Successful</option>
-<option value="failed">Failed</option>
-<option value="processing">Processing</option>
-<option value="retry">Retry</option>
-</select>
+  <label for="node-input-state"><i class="fa fa-globe"></i> State</label>
+  <select id="node-input-state">
+  <option value="msg">msg.state</option>
+  <option value="successful">Successful</option>
+  <option value="failed">Failed</option>
+  <option value="processing">Processing</option>
+  <option value="retry">Retry</option>
+  </select>
 </div>
 <div class="form-row">
-<div class="form-row">
-<label><i class="fa fa-tag"></i> Ignore max retries</label>
-<input type="hidden" id="node-input-ignoremaxretriestype">
-<input style="width:70%" type="text" id="node-input-ignoremaxretries" placeholder="Set time when this can be processed">
+  <label><i class="fa fa-tag"></i> Ignore max retries</label>
+  <input type="hidden" id="node-input-ignoremaxretriestype">
+  <input style="width:70%" type="text" id="node-input-ignoremaxretries" placeholder="Set time when this can be processed">
 </div>
 <div class="form-row">
-<label ><i class="fa fa-tag"></i> Name</label>
-<input type="text" id="node-config-input-name" placeholder="Node name">
+  <label ><i class="fa fa-tag"></i> Name</label>
+  <input type="text" id="node-config-input-name" placeholder="Node name">
 </div>
 </script>
 <script type="text/x-red" data-help-name="workitem updateworkitem">
 </script>
 <script type="text/javascript">
-                RED.nodes.registerType('workitem updateworkitem', {
-        category: 'workitem',
-                paletteLabel: 'Update Workitem',
-        color: "#a6bbcf",
-        defaults: {
-          name: { value: "" },
-          config: { value: "", type: "iworkitemqueue-config", required: true },
-          workitem: { value: "payload", validate: validate("workitemtype") },
-          workitemtype: { value: "" },
-          ignoremaxretries: { value: "ignoremaxretries", validate: validate("ignoremaxretriestype") },
-          ignoremaxretriestype: { value: "" },
-          state: { value: "successful", required: true }
-        },
-        inputs: 1,
-        outputs: 1,
-        icon: "bridge.png",
-        label: function () {
-          return this.name || "update workitem";
-        },
-        labelStyle: function () {
-          return this.name ? "node_label_italic" : "";
-        },
-        oneditprepare: function () {
-          if (this.workitemtype === null) $("#node-input-workitemtype").val('msg');
-          $("#node-input-workitem").typedInput({
-            default: 'msg',
-            typeField: $("#node-input-workitemtype"),
-            types: ['msg', 'str', 'flow', 'global', 'json']
-          });
-                  if (this.ignoremaxretriestype === null) $("#node-input-ignoremaxretriestype").val('msg');
-                  $("#node-input-ignoremaxretries").typedInput({
-                    default: 'msg',
-                    typeField: $("#node-input-ignoremaxretriestype"),
-                    types: ['msg', 'bool', 'flow', 'global']
-                  });
-                }
-              });
-                </script>
+RED.nodes.registerType('workitem updateworkitem', {
+  category: 'workitem',
+  paletteLabel: 'Update Workitem',
+  color: "#a6bbcf",
+  defaults: {
+    name: { value: "" },
+    config: { value: "", type: "iworkitemqueue-config", required: true },
+    workitem: { value: "payload", validate: validate("workitemtype") },
+    workitemtype: { value: "" },
+    ignoremaxretries: { value: "ignoremaxretries", validate: validate("ignoremaxretriestype") },
+    ignoremaxretriestype: { value: "" },
+    state: { value: "successful", required: true }
+  },
+  inputs: 1,
+  outputs: 1,
+  icon: "bridge.png",
+  label: function () {
+    return this.name || "update workitem";
+  },
+  labelStyle: function () {
+    return this.name ? "node_label_italic" : "";
+  },
+  oneditprepare: function () {
+    if (this.workitemtype === null) $("#node-input-workitemtype").val('msg');
+    $("#node-input-workitem").typedInput({
+      default: 'msg',
+      typeField: $("#node-input-workitemtype"),
+      types: ['msg', 'str', 'flow', 'global', 'json']
+    });
+    if (this.ignoremaxretriestype === null) $("#node-input-ignoremaxretriestype").val('msg');
+    $("#node-input-ignoremaxretries").typedInput({
+      default: 'msg',
+      typeField: $("#node-input-ignoremaxretriestype"),
+      types: ['msg', 'bool', 'flow', 'global']
+    });
+  }
+});
+</script>
 
 
 <script type="text/x-red" data-template-name="workitem popworkitem">
 <div class="form-row">
-<label for="node-input-config"><i class="fa fa-globe"></i> Config</label>
-<input type="text" id="node-input-config">
+  <label for="node-input-config"><i class="fa fa-globe"></i> Config</label>
+  <input type="text" id="node-input-config">
 </div>
 <div class="form-row">
-<label><i class="fa fa-tag"></i> Workitem</label>
-<input type="hidden" id="node-input-workitemtype">
-<input style="width:70%" type="text" id="node-input-workitem" placeholder="Workitem workitem">
+  <label><i class="fa fa-tag"></i> Workitem</label>
+  <input type="hidden" id="node-input-workitemtype">
+  <input style="width:70%" type="text" id="node-input-workitem" placeholder="Workitem workitem">
 </div>
 <div class="form-row">
-<div class="form-row">
-<label ><i class="fa fa-tag"></i> Name</label>
-<input type="text" id="node-config-input-name" placeholder="Node name">
+  <div class="form-row">
+  <label ><i class="fa fa-tag"></i> Name</label>
+  <input type="text" id="node-config-input-name" placeholder="Node name">
 </div>
 </script>
 <script type="text/x-red" data-help-name="workitem popworkitem">
 </script>
 <script type="text/javascript">
-  RED.nodes.registerType('workitem popworkitem', {
-    category: 'workitem',
-    paletteLabel: 'Pop Workitem',
-    color: "#a6bbcf",
-    defaults: {
-      name: { value: "" },
-      config: { value: "", type: "iworkitemqueue-config", required: true },
-      workitem: { value: "payload", validate: validate("workitemtype") },
-      workitemtype: { value: "" },
-    },
-    inputs: 1,
-    outputs: 2,
-    outputLabels: ["workitem", "no more workitems"],
-    icon: "bridge.png",
-    label: function () {
-      return this.name || "pop workitem";
-    },
-    labelStyle: function () {
-      return this.name ? "node_label_italic" : "";
-    },
-    oneditprepare: function () {
-      if (this.workitemtype === null) $("#node-input-workitemtype").val('msg');
-      $("#node-input-workitem").typedInput({
-        default: 'msg',
-        typeField: $("#node-input-workitemtype"),
-        types: ['msg']
-      });
-    }
-  });
+RED.nodes.registerType('workitem popworkitem', {
+  category: 'workitem',
+  paletteLabel: 'Pop Workitem',
+  color: "#a6bbcf",
+  defaults: {
+    name: { value: "" },
+    config: { value: "", type: "iworkitemqueue-config", required: true },
+    workitem: { value: "payload", validate: validate("workitemtype") },
+    workitemtype: { value: "" },
+  },
+  inputs: 1,
+  outputs: 2,
+  outputLabels: ["workitem", "no more workitems"],
+  icon: "bridge.png",
+  label: function () {
+    return this.name || "pop workitem";
+  },
+  labelStyle: function () {
+    return this.name ? "node_label_italic" : "";
+  },
+  oneditprepare: function () {
+    if (this.workitemtype === null) $("#node-input-workitemtype").val('msg');
+    $("#node-input-workitem").typedInput({
+      default: 'msg',
+      typeField: $("#node-input-workitemtype"),
+      types: ['msg']
+    });
+  }
+});
 </script>
