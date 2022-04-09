@@ -7141,7 +7141,7 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
             try {
                 this.projects = await NoderedUtil.Query("openrpa", { "_type": "project" }, { "name": 1 }, null, 100, 0, null, null, null, 2);
                 this.projects.unshift({ "name": "(no project)", "_id": "" } as any);
-                this.workflows = await NoderedUtil.Query("openrpa", { "_type": "workflow" }, { "name": 1 }, null, 500, 0, null, null, null, 2);
+                this.workflows = await NoderedUtil.Query("openrpa", { "_type": "workflow" }, { "name": 1, "projectandname": 1 }, null, 500, 0, null, null, null, 2);
                 this.workflows.unshift({ "name": "(no workflow)", "_id": "" } as any);
                 this.users = await NoderedUtil.Query("users", { "$or": [{ "_type": "user" }, { "_type": "role" }] }, { "name": 1 }, null, 500, 0, null, null, null, 2);
                 this.users.unshift({ "name": "(no robot)", "_id": "" } as any);
