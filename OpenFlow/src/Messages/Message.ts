@@ -4606,11 +4606,15 @@ export class Message {
                 await Config.db._UpdateOne({ "_id": cli.user._id }, UpdateDoc, "users", 1, false, rootjwt, span)
             }
 
+            const global_customer_admins: Role = await DBHelper.EnsureRole(rootjwt, "global customer admins", "62545f1f1ddfe5ab4cc946d5", span);
+
             const customeradmins: Role = await DBHelper.EnsureRole(rootjwt, msg.customer.name + " admins", msg.customer.admins, span);
             customeradmins.name = msg.customer.name + " admins";
             Base.addRight(customeradmins, WellknownIds.admins, "admins", [Rights.full_control]);
+            Base.addRight(customeradmins, global_customer_admins._id, global_customer_admins.name, [Rights.full_control]);
             // Base.removeRight(customeradmins, WellknownIds.admins, [Rights.delete]);
             customeradmins.AddMember(user);
+            customeradmins.AddMember(global_customer_admins);
             if (!NoderedUtil.IsNullEmpty(user.customerid) && user.customerid != msg.customer._id) {
                 const usercustomer = await Config.db.getbyid<Customer>(user.customerid, "users", msg.jwt, true, span);
                 if (usercustomer != null) {
@@ -5896,15 +5900,19 @@ export class Message {
             user = User.assign(Crypt.verityToken(this.jwt));
 
             var wiq = new WorkitemQueue(); wiq._type = "workitemqueue";
+            const workitem_queue_admins: Role = await DBHelper.EnsureRole(jwt, "workitem queue admins", "625440c4231309af5f2052cd", parent);
             if (!msg.skiprole) {
                 const wiqusers: Role = await DBHelper.EnsureRole(jwt, msg.name + " users", null, parent);
                 Base.addRight(wiqusers, WellknownIds.admins, "admins", [Rights.full_control]);
                 Base.addRight(wiqusers, user._id, user.name, [Rights.full_control]);
                 // Base.removeRight(wiqusers, user._id, [Rights.delete]);
                 wiqusers.AddMember(user as any);
+                wiqusers.AddMember(workitem_queue_admins);
                 await DBHelper.Save(wiqusers, rootjwt, parent);
                 Base.addRight(wiq, wiqusers._id, wiqusers.name, [Rights.full_control]);
                 wiq.usersrole = wiqusers._id;
+            } else {
+                Base.addRight(wiq, workitem_queue_admins._id, workitem_queue_admins.name, [Rights.full_control]);
             }
 
             if (NoderedUtil.IsNullEmpty(msg.workflowid)) msg.workflowid = undefined;

@@ -222,6 +222,29 @@ async function initDatabase(parent: Span): Promise<boolean> {
         }
         await DBHelper.Save(filestore_users, jwt, span);
 
+
+
+        const workitem_queue_admins: Role = await DBHelper.EnsureRole(jwt, "workitem queue admins", "625440c4231309af5f2052cd", span);
+        workitem_queue_admins.AddMember(admins);
+        Base.addRight(workitem_queue_admins, WellknownIds.admins, "admins", [Rights.full_control]);
+        Base.removeRight(workitem_queue_admins, WellknownIds.admins, [Rights.delete]);
+        await DBHelper.Save(workitem_queue_admins, jwt, span);
+
+        const workitem_queue_users: Role = await DBHelper.EnsureRole(jwt, "workitem queue users", "62544134231309e2cd2052ce", span);
+        Base.addRight(workitem_queue_users, WellknownIds.admins, "admins", [Rights.full_control]);
+        Base.removeRight(workitem_queue_users, WellknownIds.admins, [Rights.delete]);
+        await DBHelper.Save(workitem_queue_users, jwt, span);
+
+
+        if (Config.multi_tenant) {
+            const global_customer_admins: Role = await DBHelper.EnsureRole(jwt, "global customer admins", "62545f1f1ddfe5ab4cc946d5", span);
+            global_customer_admins.AddMember(admins);
+            Base.addRight(global_customer_admins, WellknownIds.admins, "admins", [Rights.full_control]);
+            Base.removeRight(global_customer_admins, WellknownIds.admins, [Rights.delete]);
+            await DBHelper.Save(global_customer_admins, jwt, span);
+
+        }
+
         await Config.db.ensureindexes(span);
 
         if (Config.auto_hourly_housekeeping) {
