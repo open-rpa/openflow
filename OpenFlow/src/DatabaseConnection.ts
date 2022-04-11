@@ -367,10 +367,13 @@ export class DatabaseConnection extends events.EventEmitter {
                                         for (var y = 0; y < ids.length; y++) {
                                             let notify: boolean = false;
                                             var stream = client.watches[ids[y]];
-                                            if (stream.collectionname != collectionname) continue;
-                                            if (NoderedUtil.IsNullUndefinded(stream.aggregates)) { notify = true; continue; }
-                                            if (stream.aggregates.length == 0) { notify = true; continue; }
-                                            if (typeof stream.aggregates[0] === 'object') {
+                                            if (stream.collectionname != collectionname) {
+
+                                            } else if (NoderedUtil.IsNullUndefinded(stream.aggregates)) {
+                                                notify = true;
+                                            } else if (stream.aggregates.length == 0) {
+                                                notify = true;
+                                            } else if (typeof stream.aggregates[0] === 'object') {
                                                 // This is fucking ugly, but need something to be backward compatible with older version of OpenRPA and Nodered Nodes
                                                 var match = stream.aggregates[0]["$match"];
                                                 if (NoderedUtil.IsNullUndefinded(match)) { continue; }
@@ -395,8 +398,13 @@ export class DatabaseConnection extends events.EventEmitter {
                                                             const result = JSONPath({ path, json: { a: item } });
                                                             if (result && result.length > 0) notify = true;
                                                         } catch (error) {
+                                                            console.log(error);
                                                         }
                                                     }
+                                                }
+                                                // Watch all
+                                                if (stream.aggregates.length == 0) {
+                                                    notify = true;
                                                 }
                                             }
                                             if (notify) {
