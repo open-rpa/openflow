@@ -88,6 +88,7 @@ services:
         "image":"openiap/nodered-tagui"}]
       - nodered_ws_url=ws://api:3000
       - saml_federation_metadata=http://api:3000/issue/FederationMetadata/2007-06/FederationMetadata.xml
+      - nodered_saml_entrypoint=https://localhost.openiap.io/issue
       - amqp_url=amqp://guest:guest@rabbitmq
       - mongodb_url=mongodb://mongodb:27017
       - mongodb_db=openrpa
