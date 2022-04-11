@@ -36,29 +36,30 @@ export class QueueClient {
         await amqpwrapper.Instance().AddQueueConsumer(Crypt.rootUser(), this.queuename, AssertQueueOptions, null, async (data: any, options: QueueMessageOptions, ack: any, done: any) => {
             const msg: Message = Message.fromjson(data);
             let span: Span = null;
+            if (!Config.db.isConnected) {
+                ack(false);
+                return;
+            }
             try {
-                if (!Config.db.isConnected) {
-                    ack(false);
-                    return;
-                }
                 msg.priority = options.priority;
                 if (!NoderedUtil.IsNullEmpty(options.replyTo)) {
                     span = Logger.otel.startSpan("QueueClient.QueueMessage");
                     if (Config.log_openflow_amqp) Logger.instanse.debug("[queue] Process command: " + msg.command + " id: " + msg.id + " correlationId: " + options.correlationId);
                     await msg.QueueProcess(options, span);
-                    ack();
+                    // ack();
                     await amqpwrapper.Instance().send(options.exchange, options.replyTo, msg, Config.openflow_amqp_expiration, options.correlationId, options.routingKey);
                 } else {
                     Logger.instanse.debug("[queue][ack] No replyto !!!!");
-                    ack();
+                    // ack();
                 }
             } catch (error) {
-                setTimeout(() => {
-                    ack(false);
-                    // done(_data);
-                    Logger.instanse.warn("[queue][nack] Process message failed command: " + msg.command + " queuename: " + this.queuename + " replyto: " + options.replyTo + " correlationId: " + options.correlationId + " error: " + (error.message ? error.message : error))
-                }, Config.amqp_requeue_time);
+                // setTimeout(() => {
+                //     ack(false);
+                //     // done(_data);
+                //     Logger.instanse.warn("[queue][nack] Process message failed command: " + msg.command + " queuename: " + this.queuename + " replyto: " + options.replyTo + " correlationId: " + options.correlationId + " error: " + (error.message ? error.message : error))
+                // }, Config.amqp_requeue_time);
             } finally {
+                ack();
                 Logger.otel.endSpan(span);
             }
         }, null);
@@ -81,13 +82,15 @@ export class QueueClient {
                 } else {
                     // throw new Error("Got message with no replyto");
                 }
-                ack();
+                // ack();
             } catch (error) {
-                setTimeout(() => {
-                    ack(false);
-                    // done(_data);
-                    Logger.instanse.warn("[queue][nack] Received response failed for command: " + msg.command + " queuename: " + this.queuename + " replyto: " + options.replyTo + " correlationId: " + options.correlationId + " error: " + (error.message ? error.message : error))
-                }, Config.amqp_requeue_time);
+                // setTimeout(() => {
+                //     ack(false);
+                //     // done(_data);
+                //     Logger.instanse.warn("[queue][nack] Received response failed for command: " + msg.command + " queuename: " + this.queuename + " replyto: " + options.replyTo + " correlationId: " + options.correlationId + " error: " + (error.message ? error.message : error))
+                // }, Config.amqp_requeue_time);
+            } finally {
+                ack();
             }
         }, null);
     }

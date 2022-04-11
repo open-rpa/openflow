@@ -384,19 +384,27 @@ export class WebSocketServerClient {
                     }
                 }
                 queue = await amqpwrapper.Instance().AddQueueConsumer(this.user, qname, AssertQueueOptions, this.jwt, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
-                    const _data = msg;
+                    // const _data = msg;
+                    var _data = msg;
                     try {
                         Logger.instanse.verbose("[preack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId)
-                        const result = await this.Queue(msg, qname, options);
-                        ack();
-                        done(result);
+                        _data = await this.Queue(msg, qname, options);;
+                        // const result = await this.Queue(msg, qname, options);
+                        // ack();
+                        // done(result);
                         Logger.instanse.debug("[ack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId)
                     } catch (error) {
-                        setTimeout(() => {
-                            ack(false);
+                        // setTimeout(() => {
+                        //     ack(false);
+                        //     done(_data);
+                        //     Logger.instanse.warn("[nack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId + " error: " + (error.message ? error.message : error))
+                        // }, Config.amqp_requeue_time);
+                    } finally {
+                        ack();
+                        try {
                             done(_data);
-                            Logger.instanse.warn("[nack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId + " error: " + (error.message ? error.message : error))
-                        }, Config.amqp_requeue_time);
+                        } catch (error) {
+                        }
                     }
                 }, span);
                 if (queue) {
