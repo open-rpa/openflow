@@ -17,7 +17,7 @@
         <label for="state" class="col-sm-2 control-label" translate lib="web">project</label>
         <div class="col-sm-4">
             <select class="form-control" id="country" ng-model="ctrl.model.projectid" required="required"
-                ng-options="item._id as item.name for item in ctrl.projects | orderBy: 'name'"
+                ng-options="item._id as item.display for item in ctrl.projects | orderBy: 'display'"
                 ng-disabled="ctrl.loading==true">
             </select>
         </div>
@@ -44,7 +44,7 @@
         <label for="state" class="col-sm-2 control-label" translate lib="web">workflow</label>
         <div class="col-sm-4">
             <select class="form-control" id="country" ng-model="ctrl.model.workflowid" required="required"
-                ng-options="item._id as item.projectandname for item in ctrl.workflows | orderBy: 'projectandname'"
+                ng-options="item._id as item.display for item in ctrl.workflows | orderBy: 'display'"
                 ng-disabled="ctrl.loading==true">
             </select>
         </div>
@@ -53,7 +53,7 @@
         <label for="state" class="col-sm-2 control-label" translate lib="web">robot/role</label>
         <div class="col-sm-4">
             <select class="form-control" id="country" ng-model="ctrl.model.robotqueue" required="required"
-                ng-options="item._id as item.name for item in ctrl.users | orderBy: 'name'"
+                ng-options="item._id as item.display for item in ctrl.users | orderBy: 'display'"
                 ng-disabled="ctrl.loading==true">
             </select>
         </div>
@@ -62,7 +62,7 @@
         <label for="state" class="col-sm-2 control-label" translate lib="web">amqpqueue</label>
         <div class="col-sm-4">
             <select class="form-control" id="country" ng-model="ctrl.model.amqpqueue" required="required"
-                ng-options="item.name as item.name for item in ctrl.amqpqueues | orderBy: 'name'"
+                ng-options="item.name as item.display for item in ctrl.amqpqueues | orderBy: 'display'"
                 ng-disabled="ctrl.loading==true">
             </select>
         </div>

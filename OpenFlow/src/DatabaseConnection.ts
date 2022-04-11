@@ -1,7 +1,7 @@
 import { MongoClient, ObjectID, Db, Binary, InsertOneWriteOpResult, MapReduceOptions, CollectionInsertOneOptions, GridFSBucket, ChangeStream, CollectionAggregationOptions, MongoClientOptions, ReplaceOneOptions } from "mongodb";
 import { Crypt } from "./Crypt";
 import { Config } from "./Config";
-import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User, Customer, WatchEventMessage } from "@openiap/openflow-api";
+import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User, Customer, WatchEventMessage, Workitem, WorkitemQueue } from "@openiap/openflow-api";
 import { DBHelper } from "./DBHelper";
 import { OAuthProvider } from "./OAuthProvider";
 import { ValueRecorder } from "@opentelemetry/api-metrics"
@@ -89,6 +89,9 @@ export class DatabaseConnection extends events.EventEmitter {
     public static semaphore = Auth.Semaphore(1);
 
     public registerGlobalWatches: boolean = true;
+    public queuemonitoringhandle: NodeJS.Timeout = null;
+    public queuemonitoringpaused: boolean = false;
+    public queuemonitoringlastrun: Date = new Date();
     constructor(mongodburl: string, dbname: string, registerGlobalWatches: boolean) {
         super();
         this._dbname = dbname;
@@ -219,9 +222,68 @@ export class DatabaseConnection extends events.EventEmitter {
                 this.registerGlobalWatch(collections[c].name, span);
             }
         }
+        if (this.queuemonitoringhandle == null && Config.workitem_queue_monitoring_enabled) {
+            this.queuemonitoringpaused = false;
+            this.queuemonitoringhandle = setTimeout(this.queuemonitoring.bind(this), Config.workitem_queue_monitoring_interval);
+        }
         this.isConnected = true;
         Logger.otel.endSpan(span);
         this.emit("connected");
+    }
+    async queuemonitoring() {
+        try {
+            if (!this.isConnected == true) return;
+            if (this.queuemonitoringpaused) return;
+            const jwt = Crypt.rootToken();
+            var pipeline: any[] = [];
+            pipeline.push({ "$match": { state: "new", "_type": "workitem", "nextrun": { "$lte": new Date(new Date().toISOString()) } } });
+            pipeline.push({ "$group": { _id: "$wiq", "count": { "$sum": 1 } } });
+            pipeline.push({
+                "$graphLookup":
+                {
+                    from: 'mq',
+                    startWith: '$_id',
+                    connectFromField: '_id',
+                    connectToField: 'name',
+                    as: 'queue',
+                    maxDepth: 1,
+                    restrictSearchWithMatch: {
+                        "$or": [
+                            { robotqueue: { "$exists": true, $ne: null } },
+                            { amqpqueue: { "$exists": true, $ne: null } }
+                        ]
+                    }
+                }
+            });
+            pipeline.push({ "$match": { "queue": { $size: 1 } } });
+
+            var results: any[] = await this.aggregate(pipeline, "workitems", jwt, null, null);
+            this.queuemonitoringlastrun = new Date();
+            if (results.length > 0) Logger.instanse.verbose("[workitems] found " + results.length + " queues with pending workitems");
+            for (var i = 0; i < results.length; i++) {
+                if (results[i].count > 0 && results[i].queue.length > 0) {
+                    const wiq: WorkitemQueue = results[i].queue[0];
+                    const payload = {
+                        command: "invoke",
+                        workflowid: wiq.workflowid,
+                        data: { payload: {} }
+                    }
+                    if (!NoderedUtil.IsNullEmpty(wiq.robotqueue) && !NoderedUtil.IsNullEmpty(wiq.workflowid)) {
+                        Logger.instanse.verbose("[workitems] Send invoke message to robot queue " + wiq.workflowid);
+                        await amqpwrapper.Instance().send(null, wiq.robotqueue, payload, 5000, null, null, 2);
+                    }
+                    if (!NoderedUtil.IsNullEmpty(wiq.amqpqueue)) {
+                        Logger.instanse.verbose("[workitems] Send invoke message to amqp queue " + wiq.amqpqueue);
+                        await amqpwrapper.Instance().send(null, wiq.amqpqueue, payload, 5000, null, null, 2);
+                    }
+                }
+            }
+        } catch (error) {
+            Logger.instanse.error(error);
+        }
+        finally {
+            this.queuemonitoringhandle = setTimeout(this.queuemonitoring.bind(this), Config.workitem_queue_monitoring_interval);
+        }
     }
     registerGlobalWatch(collectionname: string, parent: Span) {
         if (!this.registerGlobalWatches) return;

@@ -43,6 +43,8 @@ export class Config {
         Config.auto_hourly_housekeeping = Config.parseBoolean(Config.getEnv("auto_hourly_housekeeping", "false"));
         Config.housekeeping_update_usage_hourly = Config.parseBoolean(Config.getEnv("housekeeping_update_usage_hourly", "false"));
         Config.housekeeping_update_usersize_hourly = Config.parseBoolean(Config.getEnv("housekeeping_update_usersize_hourly", "true"));
+        Config.workitem_queue_monitoring_enabled = Config.parseBoolean(Config.getEnv("workitem_queue_monitoring_enabled", "true"));
+        Config.workitem_queue_monitoring_interval = parseInt(Config.getEnv("workitem_queue_monitoring_interval", (30 * 1000).toString())); // 30 sec
 
 
         Config.getting_started_url = Config.getEnv("getting_started_url", "");
@@ -218,6 +220,8 @@ export class Config {
     public static auto_hourly_housekeeping: boolean = Config.parseBoolean(Config.getEnv("auto_hourly_housekeeping", "true"));
     public static housekeeping_update_usage_hourly: boolean = Config.parseBoolean(Config.getEnv("housekeeping_update_usage_hourly", "false"));
     public static housekeeping_update_usersize_hourly: boolean = Config.parseBoolean(Config.getEnv("housekeeping_update_usersize_hourly", "true"));
+    public static workitem_queue_monitoring_enabled: boolean = Config.parseBoolean(Config.getEnv("workitem_queue_monitoring_enabled", "true"));
+    public static workitem_queue_monitoring_interval: number = parseInt(Config.getEnv("workitem_queue_monitoring_interval", (30 * 1000).toString())); // 30 sec
 
     public static upload_max_filesize_mb: number = parseInt(Config.getEnv("upload_max_filesize_mb", "25"));
 

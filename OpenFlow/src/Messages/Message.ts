@@ -5440,23 +5440,13 @@ export class Message {
 
             wi = await Config.db.InsertOne(wi, "workitems", 1, true, jwt, parent);
             msg.result = wi;
-            if (!NoderedUtil.IsNullEmpty(wiq.robotqueue) && !NoderedUtil.IsNullEmpty(wiq.workflowid)) {
-                const rpacommand = {
-                    command: "invoke",
-                    workflowid: wiq.workflowid,
-                    data: { payload: wi.payload }
-                }
-                await amqpwrapper.Instance().send(null, wiq.robotqueue, rpacommand, 5000, null, null, 2);
+            const end: number = new Date().getTime();
+            const seconds = Math.round((end - Config.db.queuemonitoringlastrun.getTime()) / 1000);
+            const nextrun_seconds = Math.round((end - wi.nextrun.getTime()) / 1000);
+            if (seconds > 5 && nextrun_seconds >= 0) {
+                Config.db.queuemonitoringlastrun = new Date();
+                Config.db.queuemonitoring()
             }
-            if (!NoderedUtil.IsNullEmpty(wiq.amqpqueue)) {
-                const rpacommand = {
-                    command: "invoke",
-                    workflowid: wiq.workflowid,
-                    data: { payload: wi.payload }
-                }
-                await amqpwrapper.Instance().send(null, wiq.amqpqueue, rpacommand, 5000, null, null, 2);
-            }
-
         } catch (error) {
             await handleError(null, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -5479,6 +5469,9 @@ export class Message {
             const rootjwt = Crypt.rootToken();
             const jwt = this.jwt;
             const user: TokenUser = Crypt.verityToken(jwt);
+            let isRelevant: boolean = false;
+
+            let end: number = new Date().getTime();
 
             msg = AddWorkitemsMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.wiqid) && NoderedUtil.IsNullEmpty(msg.wiq)) throw new Error("wiq or wiqid is mandatory")
@@ -5494,6 +5487,7 @@ export class Message {
             }
             if (wiq == null) throw new Error("Work item queue not found " + msg.wiq + " (" + msg.wiqid + ") not found.");
 
+            // isRelevant = (msg.items.length > 0);
             for (let i = 0; i < msg.items.length; i++) {
                 let item = msg.items[i];
                 let wi: Workitem = new Workitem(); wi._type = "workitem";
@@ -5514,7 +5508,13 @@ export class Message {
                 if (!wi.nextrun) {
                     wi.nextrun = new Date(new Date().toISOString());
                     wi.nextrun.setSeconds(wi.nextrun.getSeconds() + wiq.initialdelay);
+                } else {
+                    wi.nextrun = new Date(wi.nextrun);
                 }
+
+                const nextrun_seconds = Math.round((end - wi.nextrun.getTime()) / 1000);
+                if (nextrun_seconds >= 0) isRelevant = true;
+
 
                 if (item.files) {
                     for (let i = 0; i < item.files.length; i++) {
@@ -5580,23 +5580,14 @@ export class Message {
 
             delete msg.items;
             msg.items = [];
-            if (!NoderedUtil.IsNullEmpty(wiq.robotqueue) && !NoderedUtil.IsNullEmpty(wiq.workflowid)) {
-                const rpacommand = {
-                    command: "invoke",
-                    workflowid: wiq.workflowid,
-                    data: { payload: {} }
-                }
-                await amqpwrapper.Instance().send(null, wiq.robotqueue, rpacommand, 5000, null, null, 2);
-            }
-            if (!NoderedUtil.IsNullEmpty(wiq.amqpqueue)) {
-                const rpacommand = {
-                    command: "invoke",
-                    workflowid: wiq.workflowid,
-                    data: { payload: {} }
-                }
-                await amqpwrapper.Instance().send(null, wiq.amqpqueue, rpacommand, 5000, null, null, 2);
-            }
 
+
+            end = new Date().getTime();
+            const seconds = Math.round((end - Config.db.queuemonitoringlastrun.getTime()) / 1000);
+            if (seconds > 5 && isRelevant) {
+                Config.db.queuemonitoringlastrun = new Date();
+                Config.db.queuemonitoring()
+            }
         } catch (error) {
             await handleError(null, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -5662,10 +5653,10 @@ export class Message {
                 // if (["failed", "successful", "abandoned", "retry", "processing"].indexOf(msg.state) == -1) {
                 //     throw new Error("Illegal state " + msg.state + " on Workitem, must be failed, successful, abandoned, processing or retry");
                 // }
-                if (["failed", "successful", "retry", "processing"].indexOf(msg.state) == -1) {
+                if (msg.state == "new" && wi.state == "new") {
+                } else if (["failed", "successful", "retry", "processing"].indexOf(msg.state) == -1) {
                     throw new Error("Illegal state " + msg.state + " on Workitem, must be failed, successful, processing or retry");
                 }
-
                 if (msg.state == "retry") {
                     if (NoderedUtil.IsNullEmpty(wi.retries)) wi.retries = 0;
                     if (wi.retries < wiq.maxretries || msg.ignoremaxretries) {
@@ -5753,27 +5744,18 @@ export class Message {
                 delete wi.nextrun;
             }
 
+            if (retry) {
+                const end: number = new Date().getTime();
+                const seconds = Math.round((end - Config.db.queuemonitoringlastrun.getTime()) / 1000);
+                const nextrun_seconds = Math.round((end - wi.nextrun.getTime()) / 1000);
+                if (seconds > 5 && nextrun_seconds >= 0) {
+                    Config.db.queuemonitoringlastrun = new Date();
+                    Config.db.queuemonitoring()
+                }
+            }
+
             wi = await Config.db._UpdateOne(null, wi, "workitems", 1, true, jwt, parent);
             msg.result = wi;
-
-            if (retry && !NoderedUtil.IsNullEmpty(wiq.robotqueue) && !NoderedUtil.IsNullEmpty(wiq.workflowid)) {
-                const rpacommand = {
-                    command: "invoke",
-                    workflowid: wiq.workflowid,
-                    data: { payload: wi.payload }
-                }
-                await amqpwrapper.Instance().send(null, wiq.robotqueue, rpacommand, 5000, null, null, 2);
-            }
-            if (retry && !NoderedUtil.IsNullEmpty(wiq.amqpqueue)) {
-                const rpacommand = {
-                    command: "invoke",
-                    workflowid: wiq.workflowid,
-                    data: { payload: wi.payload }
-                }
-                await amqpwrapper.Instance().send(null, wiq.amqpqueue, rpacommand, 5000, null, null, 2);
-            }
-            //
-
         } catch (error) {
             await handleError(null, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -5818,6 +5800,7 @@ export class Message {
             // query: { wiqid: wiq._id, "_type": "workitem", state: { "$in": ["new", "pending"] } },
             var workitems = await Config.db.query<Workitem>({
                 query: { wiqid: wiq._id, "_type": "workitem", state: "new", "nextrun": { "$lte": new Date(new Date().toISOString()) } },
+                orderby: { "priority": 1 },
                 collectionname: "workitems", jwt
             }, parent);
 

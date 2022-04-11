@@ -7077,6 +7077,7 @@ export class WorkitemQueuesCtrl extends entitiesCtrl<Base> {
     }
     async PurgeWorkitemQueue(model) {
         this.loading = true;
+        this.errormessage = "";
         try {
             let isExecuted = confirm("Are you sure you want to purge (delete) all workitems from " + model.name + "?\nThis action cannot be undone!");
             if (!isExecuted) return;
@@ -7137,17 +7138,21 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
         super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         console.debug("WorkitemQueueCtrl");
         this.collection = "mq";
+        this.postloadData = this.processdata;
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
             try {
                 this.projects = await NoderedUtil.Query("openrpa", { "_type": "project" }, { "name": 1 }, null, 100, 0, null, null, null, 2);
-                this.projects.unshift({ "name": "(no project)", "_id": "" } as any);
+                this.projects.forEach((e: any) => { e.display = e.name });
+                this.projects.unshift({ "_id": "", "name": "", "display": "(no project)" } as any);
                 this.workflows = await NoderedUtil.Query("openrpa", { "_type": "workflow" }, { "name": 1, "projectandname": 1 }, null, 500, 0, null, null, null, 2);
-                this.workflows.unshift({ "name": "(no workflow)", "_id": "" } as any);
+                this.workflows.forEach((e: any) => { e.display = e.projectandname });
+                this.workflows.unshift({ "_id": "", "name": "", "display": "(no workflow)" } as any);
                 this.users = await NoderedUtil.Query("users", { "$or": [{ "_type": "user" }, { "_type": "role" }] }, { "name": 1 }, null, 500, 0, null, null, null, 2);
-                this.users.unshift({ "name": "(no robot)", "_id": "" } as any);
+                this.users.forEach((e: any) => { e.display = e.name });
+                this.users.unshift({ "_id": "", "name": "", "display": "(no robot)" } as any);
                 this.amqpqueues = await NoderedUtil.Query("mq", { "_type": "queue" }, { "name": 1 }, null, 500, 0, null, null, null, 2);
-                this.amqpqueues.unshift({ "name": "(no queue)", "_id": "" } as any);
-
+                this.amqpqueues.forEach((e: any) => { e.display = e.name });
+                this.amqpqueues.unshift({ "_id": "", "name": "", "display": "(no queue)" } as any);
                 if (this.id !== null && this.id !== undefined) {
                     await this.loadData();
                 } else {
@@ -7163,11 +7168,19 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         });
     }
+    processdata() {
+        this.loading = false;
+        if (NoderedUtil.IsNullEmpty(this.model.projectid)) this.model.projectid = "";
+        if (NoderedUtil.IsNullEmpty(this.model.workflowid)) this.model.workflowid = "";
+        if (NoderedUtil.IsNullEmpty(this.model.robotqueue)) this.model.robotqueue = "";
+        if (NoderedUtil.IsNullEmpty(this.model.amqpqueue)) this.model.amqpqueue = "";
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+
     async submit(): Promise<void> {
         try {
             var model: any = this.model;
             this.loading = true;
-
             try {
                 if (NoderedUtil.IsNullEmpty(this.model._id)) {
                     const q: AddWorkitemQueueMessage = new AddWorkitemQueueMessage();

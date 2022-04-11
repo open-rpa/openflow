@@ -1,9 +1,11 @@
 import * as RED from "node-red";
 import { Red } from "node-red";
 import { Logger } from "../../Logger";
-import { AddWorkitem, MessageWorkitemFile, NoderedUtil, Workitem } from "@openiap/openflow-api";
+import { AddWorkitem, MessageWorkitemFile, NoderedUtil, Workitem, WorkitemFile } from "@openiap/openflow-api";
 import { Util } from "./Util";
 const pako = require('pako');
+const fs = require('fs');
+const path = require("path");
 
 export interface iworkitemqueue_config {
     name: string;
@@ -60,6 +62,24 @@ export class addworkitem {
             const priority = await Util.EvaluateNodeProperty<number>(this, msg, "priority");
             const { wiq, wiqid } = this.workitemqueue_config;
 
+            if (!NoderedUtil.IsNullUndefinded(files)) {
+                for (var i = 0; i < files.length; i++) {
+                    var file = files[i];
+                    if (file.file && (Array.isArray(file.file) || Buffer.isBuffer(file.file))) {
+                        if (NoderedUtil.IsNullEmpty(file.filename)) throw new Error("filename is mandatory for each file")
+                        file.compressed = true;
+                        file.file = Buffer.from(pako.deflate(file.file)).toString('base64');
+                    } else if (!NoderedUtil.IsNullEmpty(file.filename)) {
+                        if (fs.existsSync(file.filename)) {
+                            file.compressed = true;
+                            file.file = Buffer.from(pako.deflate(fs.readFileSync(file.filename, null))).toString('base64');
+                            file.filename = path.basename(file.filename);
+                        } else {
+                            throw new Error("File not found " + file.filename)
+                        }
+                    }
+                }
+            }
             const result = await NoderedUtil.AddWorkitem({ payload, files, wiqid, wiq, name: topic, nextrun, priority })
             if (!NoderedUtil.IsNullEmpty(this.config.payload)) {
                 Util.SetMessageProperty(msg, this.config.payload, result);
@@ -114,6 +134,23 @@ export class addworkitems {
             items.forEach(item => {
                 if (!NoderedUtil.IsNullEmpty(nextrun)) item.nextrun = nextrun;
                 if (!NoderedUtil.IsNullEmpty(priority)) item.priority = priority;
+
+                if (!NoderedUtil.IsNullUndefinded(item.files)) {
+                    for (var i = 0; i < item.files.length; i++) {
+                        var file = item.files[i];
+                        if (file.file && Array.isArray(file.file)) {
+                            file.compressed = true;
+                            file.file = Buffer.from(pako.deflate(file.file)).toString('base64');
+                        } else if (NoderedUtil.IsNullEmpty(file.filename)) {
+                            if (fs.existsSync(file.filename)) {
+                                file.compressed = true;
+                                file.file = Buffer.from(pako.deflate(fs.readFileSync(file.filename, null))).toString('base64');
+                                file.filename = path.basename(file.filename);
+                            }
+                        }
+                    }
+                }
+
             });
             await NoderedUtil.AddWorkitems({ items, wiqid, wiq })
             this.node.send(msg);
@@ -193,6 +230,7 @@ export interface ipopworkitem {
     name: string;
     workitem: string;
     config: any;
+    files: string;
     download: boolean;
 }
 export class popworkitem {
@@ -220,7 +258,9 @@ export class popworkitem {
             if (NoderedUtil.IsNullEmpty(download)) download = false;
 
             const result = await NoderedUtil.PopWorkitem({ wiqid, wiq })
+            var files: WorkitemFile[] = null;
             if (result != null) {
+                files = [];
                 if (download && result.files && result.files.length > 0) {
                     for (let i = 0; i < result.files.length; i++) {
                         var file = result.files[i];
@@ -229,11 +269,15 @@ export class popworkitem {
                             // (file as any).file = Buffer.from(down.file, 'base64');
                             var data = Buffer.from(down.file, 'base64');
                             (file as any).file = Buffer.from(pako.inflate(data));
+                            files.push(file);
                         }
                     }
                 }
                 if (!NoderedUtil.IsNullEmpty(this.config.workitem)) {
                     Util.SetMessageProperty(msg, this.config.workitem, result);
+                }
+                if (!NoderedUtil.IsNullEmpty(this.config.files) && result) {
+                    Util.SetMessageProperty(msg, this.config.files, files);
                 }
                 this.node.send(msg);
                 this.node.status({ fill: "green", shape: "dot", text: "successfully popped a Workitem" });

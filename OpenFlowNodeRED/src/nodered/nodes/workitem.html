@@ -52,13 +52,18 @@ RED.nodes.registerType('iworkitemqueue-config', {
   <input style="width:70%" type="text" id="node-input-priority" placeholder="Set time when this can be processed">
 </div>
 <div class="form-row">
+  <label><i class="fa fa-tag"></i> Files</label>
+  <input type="hidden" id="node-input-filestype">
+  <input style="width:70%" type="text" id="node-input-files" placeholder="List of files to add to the worktiem">
+</div>
+<div class="form-row">
   <label><i class="fa fa-tag"></i> Workitem Name</label>
   <input type="hidden" id="node-input-topictype">
   <input style="width:70%" type="text" id="node-input-topic" placeholder="Workitem name">
 </div>
 <div class="form-row">
   <label ><i class="fa fa-tag"></i> Name</label>
-  <input type="text" id="node-config-input-name" placeholder="Node name">
+  <input type="text" id="node-input-name" placeholder="Node name">
 </div>
 </script>
 <script type="text/x-red" data-help-name="workitem addworkitem">
@@ -78,7 +83,9 @@ RED.nodes.registerType('workitem addworkitem', {
     nextrun: { value: "nextrun", validate: validate("nextruntype") },
     nextruntype: { value: "" },
     priority: { value: "3", validate: validate("prioritytype") },
-    prioritytype: { value: "" }
+    prioritytype: { value: "" },
+    files: { value: "files", validate: validate("filestype") },
+    filestype: { value: "msg" }
   },
   inputs: 1,
   outputs: 1,
@@ -113,6 +120,12 @@ RED.nodes.registerType('workitem addworkitem', {
       default: 'msg',
       typeField: $("#node-input-prioritytype"),
       types: ['msg', 'num', 'flow', 'global']
+    });
+    if (this.filestype === null) $("#node-input-filestype").val('msg');
+    $("#node-input-files").typedInput({
+      default: 'msg',
+      typeField: $("#node-input-filestype"),
+      types: ['msg', 'flow', 'global']
     });
   }
 });
@@ -220,6 +233,11 @@ RED.nodes.registerType('workitem addworkitems', {
   <input style="width:70%" type="text" id="node-input-ignoremaxretries" placeholder="Set time when this can be processed">
 </div>
 <div class="form-row">
+  <label><i class="fa fa-tag"></i> Files</label>
+  <input type="hidden" id="node-input-filestype">
+  <input style="width:70%" type="text" id="node-input-files" placeholder="Set this to, to add or update files on this workitem">
+</div>
+<div class="form-row">
   <label ><i class="fa fa-tag"></i> Name</label>
   <input type="text" id="node-config-input-name" placeholder="Node name">
 </div>
@@ -238,6 +256,8 @@ RED.nodes.registerType('workitem updateworkitem', {
     workitemtype: { value: "" },
     ignoremaxretries: { value: "ignoremaxretries", validate: validate("ignoremaxretriestype") },
     ignoremaxretriestype: { value: "" },
+    files: { value: "newfiles", validate: validate("filestype") },
+    filestype: { value: "msg" },
     state: { value: "successful", required: true }
   },
   inputs: 1,
@@ -262,6 +282,12 @@ RED.nodes.registerType('workitem updateworkitem', {
       typeField: $("#node-input-ignoremaxretriestype"),
       types: ['msg', 'bool', 'flow', 'global']
     });
+    if (this.filestype === null) $("#node-input-filestype").val('msg');
+    $("#node-input-files").typedInput({
+      default: 'msg',
+      typeField: $("#node-input-filestype"),
+      types: ['msg', 'flow', 'global']
+    });
   }
 });
 </script>
@@ -282,6 +308,11 @@ RED.nodes.registerType('workitem updateworkitem', {
   <input type="checkbox" id="node-input-download" style="width: auto;">
 </div>
 <div class="form-row">
+  <label><i class="fa fa-tag"></i> Files</label>
+  <input type="hidden" id="node-input-filestype">
+  <input style="width:70%" type="text" id="node-input-files" placeholder="Save fetched files here">
+</div>
+<div class="form-row">
   <div class="form-row">
   <label ><i class="fa fa-tag"></i> Name</label>
   <input type="text" id="node-config-input-name" placeholder="Node name">
@@ -300,6 +331,8 @@ RED.nodes.registerType('workitem popworkitem', {
     config: { value: "", type: "iworkitemqueue-config", required: true },
     workitem: { value: "payload", validate: validate("workitemtype") },
     workitemtype: { value: "" },
+    files: { value: "files", validate: validate("filestype") },
+    filestype: { value: "msg" },
   },
   inputs: 1,
   outputs: 2,
@@ -317,6 +350,12 @@ RED.nodes.registerType('workitem popworkitem', {
       default: 'msg',
       typeField: $("#node-input-workitemtype"),
       types: ['msg']
+    });
+    if (this.filestype === null) $("#node-input-filestype").val('msg');
+    $("#node-input-files").typedInput({
+      default: 'msg',
+      typeField: $("#node-input-filestype"),
+      types: ['msg', 'flow', 'global']
     });
   }
 });

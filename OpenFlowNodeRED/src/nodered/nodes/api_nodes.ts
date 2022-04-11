@@ -1165,6 +1165,7 @@ export interface Idownload_file {
     filename: string;
     name: string;
     asbuffer: boolean;
+    result: string;
 }
 export class download_file {
     public node: Red = null;
@@ -1181,7 +1182,7 @@ export class download_file {
             this.node.status({});
 
             const fileid = await Util.EvaluateNodeProperty<string>(this, msg, "fileid");
-            const filename = await Util.EvaluateNodeProperty<string>(this, msg, "filename");
+            const filename = await Util.EvaluateNodeProperty<string>(this, msg, "filename", true);
             let asbuffer: boolean = this.config.asbuffer;
             if (NoderedUtil.IsNullEmpty(asbuffer)) asbuffer = false;
             asbuffer = Boolean(asbuffer);;
@@ -1191,19 +1192,20 @@ export class download_file {
 
             this.node.status({ fill: "blue", shape: "dot", text: "Getting file" });
             const file = await NoderedUtil.GetFile(filename, fileid, jwt, priority, asbuffer);
+            var result = null;
             if (asbuffer) {
                 var data = Buffer.from(file.file, 'base64');
-                msg.payload = pako.inflate(data);
-                msg.payload = Buffer.from(msg.payload);
+                result = pako.inflate(data);
+                result = Buffer.from(result);
             } else {
-                msg.payload = file.file;
+                result = file.file;
             }
+            Util.SetMessageProperty(msg, this.config.result, result);
+            Util.SetMessageProperty(msg, this.config.filename, file.metadata.filename);
             msg.error = file.error;
-            msg.filename = file.filename;
             msg.id = file.id;
             msg.mimeType = file.mimeType;
             msg.metadata = file.metadata;
-            msg.filename = file.metadata.filename;
 
             this.node.send(msg);
             this.node.status({});
