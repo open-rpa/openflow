@@ -748,18 +748,25 @@ export class Account {
     }
     static AddAccount(tuser: TokenUser, client: any) {
         try {
-            let acc = Auth.getUser(tuser._id, "oidc");
-            if (!acc) {
-                let role = client.defaultrole;
-                const keys: string[] = Object.keys(client.rolemappings);
-                for (let i = 0; i < keys.length; i++) {
-                    if (tuser.HasRoleName(keys[i])) role = client.rolemappings[keys[i]];
-                }
-                (tuser as any).role = role;
-                Auth.AddUser(tuser, tuser._id, "oidc")
-                return tuser as any;
+            let role = client.defaultrole;
+            const keys: string[] = Object.keys(client.rolemappings);
+            for (let i = 0; i < keys.length; i++) {
+                if (tuser.HasRoleName(keys[i])) role = client.rolemappings[keys[i]];
             }
-            return acc;
+            (tuser as any).role = role;
+            Auth.AddUser(tuser, tuser._id, "oidc")
+            return new Account(tuser._id, TokenUser.From(tuser));
+            // let acc = Auth.getUser(tuser._id, "oidc");
+            // if (!acc) {
+            //     let role = client.defaultrole;
+            //     const keys: string[] = Object.keys(client.rolemappings);
+            //     for (let i = 0; i < keys.length; i++) {
+            //         if (tuser.HasRoleName(keys[i])) role = client.rolemappings[keys[i]];
+            //     }
+            //     (tuser as any).role = role;
+            //     Auth.AddUser(tuser, tuser._id, "oidc")
+            // }
+            // return new Account(tuser._id, TokenUser.From(tuser));
         } catch (error) {
             console.error(error);
         }
