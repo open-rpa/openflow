@@ -202,8 +202,8 @@ export class updateworkitem {
             const errormessage = await Util.EvaluateNodeProperty<string>(this, msg, "errormessage");
             const ignoremaxretries = await Util.EvaluateNodeProperty<boolean>(this, msg, "ignoremaxretries");
             var errorsource: string = "";
-            const { _id, name, payload } = workitem;
-            const result = await NoderedUtil.UpdateWorkitem({ _id, name, files, state, payload, ignoremaxretries, errormessage, errorsource })
+            const { _id, name, payload, errortype } = workitem;
+            const result = await NoderedUtil.UpdateWorkitem({ _id, name, files, state, payload, ignoremaxretries, errormessage, errorsource, errortype })
             if (!NoderedUtil.IsNullEmpty(this.config.workitem)) {
                 Util.SetMessageProperty(msg, this.config.workitem, result);
             }
