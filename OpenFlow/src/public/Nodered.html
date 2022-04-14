@@ -95,7 +95,7 @@
   <pre>{{ctrl.messages}}</pre>
 </div>
 <section>
-  <div class="row" ng-show="menuctrl.WebSocketClientService.multi_tenant == false || (menuctrl.hasrole('admins')">
+  <div class="row" ng-show="menuctrl.WebSocketClientService.multi_tenant == false || menuctrl.hasrole('admins')">
     <label class="col-sm-4 control-label"><span translate lib="web">autocreate</span>: </label>
     <div class="col-sm-1">
       <input type="checkbox" ng-model="ctrl.user.nodered.autocreate"></input>
